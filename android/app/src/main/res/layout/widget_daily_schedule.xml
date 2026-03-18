@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TAGESPLAN"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_text_accent_blue"
+            android:letterSpacing="0.1" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/widget_divider" />
+
+    <TextView
+        android:id="@+id/widget_daily_schedule_text"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="Lädt..."
+        android:textSize="15sp"
+        android:textColor="@color/widget_text_primary"
+        android:padding="16dp"
+        android:gravity="top|left"
+        android:lineSpacingExtra="6dp" />
+
+</LinearLayout>

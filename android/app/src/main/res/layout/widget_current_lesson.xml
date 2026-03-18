@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@drawable/widget_background">
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="JETZT"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="@color/widget_text_accent"
+        android:letterSpacing="0.05" />
+
+    <TextView
+        android:id="@+id/widget_current_lesson"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/widget_title"
+        android:layout_marginTop="4dp"
+        android:text="Keine Stunde"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/widget_text_primary"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/widget_time_remaining"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/widget_current_lesson"
+        android:layout_marginTop="2dp"
+        android:text="-"
+        android:textSize="14sp"
+        android:textColor="@color/widget_text_secondary"
+        android:textStyle="normal" />
+
+    <View
+        android:id="@+id/divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/widget_divider"
+        android:layout_above="@id/widget_next_lesson_container"
+        android:layout_marginBottom="12dp" />
+
+    <LinearLayout
+        android:id="@+id/widget_next_lesson_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Danach"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_text_secondary"
+            android:paddingRight="8dp" />
+
+        <TextView
+            android:id="@+id/widget_next_lesson"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="-"
+            android:textSize="14sp"
+            android:textColor="@color/widget_text_primary"
+            android:textStyle="bold"
+            android:gravity="right"
+            android:maxLines="1"
+            android:ellipsize="end" />
+    </LinearLayout>
+</RelativeLayout>

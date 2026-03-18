@@ -27,6 +27,11 @@ class AppL10n {
   String get loginButton => _t('loginButton');
   String get loginFailed => _t('loginFailed');
   String get loginConnectionError => _t('loginConnectionError');
+  String get loginSearchSchool => _t('loginSearchSchool');
+  String get loginSelectSchool => _t('loginSelectSchool');
+  String get loginSearchHint => _t('loginSearchHint');
+  String get loginNoSchoolsFound => _t('loginNoSchoolsFound');
+  String get loginChangeLanguage => _t('loginChangeLanguage');
 
   // ── Timetable ───────────────────────────────────────────────────────────────
   String get timetableTitle => _t('timetableTitle');
@@ -69,10 +74,9 @@ class AppL10n {
   String get examsDelete => _t('examsDelete');
   String get examsToday => _t('examsToday');
   String get examsTomorrow => _t('examsTomorrow');
-  String get examsDaysIn => _t('examsDaysIn');
   String get examsOwn => _t('examsOwn');
   String get examsUnknown => _t('examsUnknown');
-  String examsInDays(int n) => '${_t('examsDaysIn')} $n d';
+  String examsInDays(int n) => _t('examsDaysIn').replaceAll('{n}', '$n');
 
   // ── AI Chat ─────────────────────────────────────────────────────────────────
   String get aiTitle => _t('aiTitle');
@@ -124,8 +128,11 @@ class AppL10n {
   String get settingsSectionTimetable => _t('settingsSectionTimetable');
   String get settingsShowCancelled => _t('settingsShowCancelled');
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
+  String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
+  String get settingsBackgroundAnimationsDesc => _t('settingsBackgroundAnimationsDesc');
   String get settingsSectionAbout => _t('settingsSectionAbout');
   String get settingsAppVersion => _t('settingsAppVersion');
+  String get settingsSectionSubjects => _t('settingsSectionSubjects');
 
   // ── AI System Prompt ─────────────────────────────────────────────────────────
   String get aiSystemPersona => _t('aiSystemPersona');
@@ -146,6 +153,11 @@ class AppL10n {
       'loginButton': 'Loslegen',
       'loginFailed': 'Login fehlgeschlagen. Prüfe deine Daten.',
       'loginConnectionError': 'Verbindungsfehler',
+      'loginSearchSchool': 'Schule suchen',
+      'loginSelectSchool': 'Schule wählen',
+      'loginSearchHint': 'Schulname oder Stadt...',
+      'loginNoSchoolsFound': 'Keine Schulen gefunden.',
+      'loginChangeLanguage': 'Sprache',
 
       'timetableTitle': 'Stundenplan',
       'timetablePrevWeek': 'Vorherige Woche',
@@ -174,7 +186,7 @@ class AppL10n {
       'examsNoneHint': 'Tippe auf + um eine Prüfung hinzuzufügen.',
       'examsUpcoming': 'Bevorstehend',
       'examsPast': 'Vergangen',
-      'examsAdd': 'Hinzufügen',
+      'examsAdd': '',
       'examsAddTitle': 'Prüfung hinzufügen',
       'examsEditTitle': 'Prüfung bearbeiten',
       'examsSubjectLabel': 'Fach / Titel *',
@@ -185,7 +197,7 @@ class AppL10n {
       'examsDelete': 'Löschen',
       'examsToday': 'Heute',
       'examsTomorrow': 'Morgen',
-      'examsDaysIn': 'in',
+      'examsDaysIn': 'in {n} Tagen',
       'examsOwn': 'Eigene',
       'examsUnknown': '(unbekannt)',
 
@@ -241,8 +253,11 @@ class AppL10n {
       'settingsSectionTimetable': 'Stundenplan',
       'settingsShowCancelled': 'Ausgefallene Stunden anzeigen',
       'settingsShowCancelledDesc': 'Ausgefallene Stunden werden im Stundenplan angezeigt',
+      'settingsBackgroundAnimations': 'Hintergrundanimationen',
+      'settingsBackgroundAnimationsDesc': 'Animierte Farbverläufe im Hintergrund anzeigen',
       'settingsSectionAbout': 'Über die App',
       'settingsAppVersion': 'Version',
+      'settingsSectionSubjects': 'Fächer & Farben',
 
       'aiSystemPersona':
           'Du bist "Plan-Assistent", ein freundlicher und motivierender KI-Helfer für Schüler*innen.',
@@ -270,6 +285,11 @@ class AppL10n {
       'loginButton': "Let's go",
       'loginFailed': 'Login failed. Check your credentials.',
       'loginConnectionError': 'Connection error',
+      'loginSearchSchool': 'Search school',
+      'loginSelectSchool': 'Select school',
+      'loginSearchHint': 'School name or city...',
+      'loginNoSchoolsFound': 'No schools found.',
+      'loginChangeLanguage': 'Language',
 
       'timetableTitle': 'Timetable',
       'timetablePrevWeek': 'Previous week',
@@ -298,7 +318,7 @@ class AppL10n {
       'examsNoneHint': 'Tap + to add an exam.',
       'examsUpcoming': 'Upcoming',
       'examsPast': 'Past',
-      'examsAdd': 'Add',
+      'examsAdd': '',
       'examsAddTitle': 'Add exam',
       'examsEditTitle': 'Edit exam',
       'examsSubjectLabel': 'Subject / Title *',
@@ -309,7 +329,7 @@ class AppL10n {
       'examsDelete': 'Delete',
       'examsToday': 'Today',
       'examsTomorrow': 'Tomorrow',
-      'examsDaysIn': 'in',
+      'examsDaysIn': 'in {n} days',
       'examsOwn': 'Custom',
       'examsUnknown': '(unknown)',
 
@@ -365,8 +385,11 @@ class AppL10n {
       'settingsSectionTimetable': 'Timetable',
       'settingsShowCancelled': 'Show cancelled lessons',
       'settingsShowCancelledDesc': 'Cancelled lessons are shown in the timetable',
+      'settingsBackgroundAnimations': 'Background Animations',
+      'settingsBackgroundAnimationsDesc': 'Show animated gradient effects in the background',
       'settingsSectionAbout': 'About',
       'settingsAppVersion': 'Version',
+      'settingsSectionSubjects': 'Subjects & Colors',
 
       'aiSystemPersona':
           'You are "Schedule Assistant", a friendly and motivating AI helper for students.',
@@ -394,6 +417,11 @@ class AppL10n {
       'loginButton': 'Commencer',
       'loginFailed': 'Connexion échouée. Vérifie tes données.',
       'loginConnectionError': 'Erreur de connexion',
+      'loginSearchSchool': 'Rechercher une école',
+      'loginSelectSchool': "Sélectionner l'école",
+      'loginSearchHint': "Nom de l'école ou ville...",
+      'loginNoSchoolsFound': 'Aucune école trouvée.',
+      'loginChangeLanguage': 'Langue',
 
       'timetableTitle': 'Emploi du temps',
       'timetablePrevWeek': 'Semaine précédente',
@@ -433,7 +461,7 @@ class AppL10n {
       'examsDelete': 'Supprimer',
       'examsToday': "Aujourd'hui",
       'examsTomorrow': 'Demain',
-      'examsDaysIn': 'dans',
+      'examsDaysIn': 'dans {n} jours',
       'examsOwn': 'Personnel',
       'examsUnknown': '(inconnu)',
 
@@ -489,8 +517,11 @@ class AppL10n {
       'settingsSectionTimetable': 'Emploi du temps',
       'settingsShowCancelled': 'Afficher les cours annulés',
       'settingsShowCancelledDesc': 'Les cours annulés sont visibles dans l\'emploi du temps',
+      'settingsBackgroundAnimations': 'Animations de fond',
+      'settingsBackgroundAnimationsDesc': 'Afficher des effets de dégradé animés en arrière-plan',
       'settingsSectionAbout': 'À propos',
       'settingsAppVersion': 'Version',
+      'settingsSectionSubjects': 'Matières & Couleurs',
 
       'aiSystemPersona':
           'Tu es "Assistant Planning", un assistant IA amical et motivant pour les élèves.',
@@ -518,6 +549,11 @@ class AppL10n {
       'loginButton': 'Empezar',
       'loginFailed': 'Error de inicio de sesión. Verifica tus datos.',
       'loginConnectionError': 'Error de conexión',
+      'loginSearchSchool': 'Buscar escuela',
+      'loginSelectSchool': 'Seleccionar escuela',
+      'loginSearchHint': 'Nombre o ciudad...',
+      'loginNoSchoolsFound': 'No se encontraron escuelas.',
+      'loginChangeLanguage': 'Idioma',
 
       'timetableTitle': 'Horario',
       'timetablePrevWeek': 'Semana anterior',
@@ -557,7 +593,7 @@ class AppL10n {
       'examsDelete': 'Eliminar',
       'examsToday': 'Hoy',
       'examsTomorrow': 'Mañana',
-      'examsDaysIn': 'en',
+      'examsDaysIn': 'en {n} días',
       'examsOwn': 'Propio',
       'examsUnknown': '(desconocido)',
 
@@ -613,8 +649,11 @@ class AppL10n {
       'settingsSectionTimetable': 'Horario',
       'settingsShowCancelled': 'Mostrar clases canceladas',
       'settingsShowCancelledDesc': 'Las clases canceladas se muestran en el horario',
+      'settingsBackgroundAnimations': 'Animaciones de fondo',
+      'settingsBackgroundAnimationsDesc': 'Mostrar efectos de degradado animados en el fondo',
       'settingsSectionAbout': 'Acerca de',
       'settingsAppVersion': 'Versión',
+      'settingsSectionSubjects': 'Asignaturas & Colores',
 
       'aiSystemPersona':
           'Eres "Asistente de Horario", un ayudante IA amigable y motivador para estudiantes.',
