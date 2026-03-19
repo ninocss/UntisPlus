@@ -16,44 +16,6 @@ Untis+ is a Flutter app for WebUntis, focused on quick access to the timetable, 
 - Switch between German, English, French, and Spanish
 - Light, dark, and system themes
 
-## Requirements
-
-- Flutter SDK 3.11 or newer
-- A WebUntis account from your school
-- A Gemini API key if you want to use the AI assistant
-- Notification permissions on Android and iOS if you want push features to work
-
-## Set Up the Project
-
-1. Install dependencies:
-
-```bash
-flutter pub get
-```
-
-2. Start the app on a device or emulator:
-
-```bash
-flutter run
-```
-
-3. Optional: create a release build:
-
-```bash
-flutter build apk
-```
-
-## First-Time App Setup
-
-1. Open the app.
-2. On the login screen, enter your WebUntis credentials:
-   - School server or WebUntis host
-   - School name or school identifier
-   - Username
-   - Password
-3. After login, the credentials are stored locally on the device.
-4. You will then land on the main view with timetable, exams, and settings.
-
 ## Set Up the Gemini API Key
 
 The Gemini API key is used for the AI assistant in the timetable view.
@@ -106,13 +68,43 @@ Under **Settings**, you can adjust among other things:
 
 ## Privacy and Storage
 
-The app stores configuration data locally on the device, including:
+The app stores configuration data **locally** on the device, including:
 
 - Session ID
 - School server and school name
 - Username and password
 - App settings
 - Gemini API key
+
+No data is sent to any external server except the WebUntis server for authentication and timetable data, and the Gemini API for AI features if configured. The app does not use any analytics or tracking services. Everything is DsGVO compliant and made by a student for students.
+
+## Requirements
+
+- Flutter SDK 3.11 or newer
+- A WebUntis account from your school
+- A Gemini API key if you want to use the AI assistant
+- Notification permissions on Android and iOS if you want push features to work
+
+## Set Up the Project
+
+1. Install dependencies:
+
+```bash
+flutter pub get
+```
+
+2. Start the app on a device or emulator:
+
+```bash
+flutter run
+```
+
+3. Optional: create a release build:
+
+```bash
+flutter build apk
+```
+
 
 ## Project Structure
 

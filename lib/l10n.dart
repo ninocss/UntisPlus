@@ -32,6 +32,43 @@ class AppL10n {
   String get loginSearchHint => _t('loginSearchHint');
   String get loginNoSchoolsFound => _t('loginNoSchoolsFound');
   String get loginChangeLanguage => _t('loginChangeLanguage');
+  String get loginManualEntry => _t('loginManualEntry');
+  String get loginSwitchToSearch => _t('loginSwitchToSearch');
+  String get loginChangeSchool => _t('loginChangeSchool');
+
+  // ── Onboarding ─────────────────────────────────────────────────────────────
+  String get onboardingWelcomeTitle => _t('onboardingWelcomeTitle');
+  String get onboardingChooseLanguageSubtitle =>
+      _t('onboardingChooseLanguageSubtitle');
+  String get onboardingAppearanceTitle => _t('onboardingAppearanceTitle');
+  String get onboardingAppearanceSubtitle => _t('onboardingAppearanceSubtitle');
+  String get onboardingThemeSystem => _t('onboardingThemeSystem');
+  String get onboardingThemeLight => _t('onboardingThemeLight');
+  String get onboardingThemeDark => _t('onboardingThemeDark');
+  String get onboardingAnimationsHint => _t('onboardingAnimationsHint');
+  String get onboardingSchoolLoginTitle => _t('onboardingSchoolLoginTitle');
+  String get onboardingSchoolLoginSubtitle => _t('onboardingSchoolLoginSubtitle');
+  String get onboardingGeminiTitle => _t('onboardingGeminiTitle');
+  String get onboardingGeminiSubtitle => _t('onboardingGeminiSubtitle');
+  String get onboardingGeminiInfo => _t('onboardingGeminiInfo');
+  String get onboardingGeminiGetApiKey => _t('onboardingGeminiGetApiKey');
+  String get onboardingSkip => _t('onboardingSkip');
+  String get onboardingNext => _t('onboardingNext');
+  String get onboardingGeminiEnterKeyOrSkip =>
+      _t('onboardingGeminiEnterKeyOrSkip');
+  String get onboardingReadyTitle => _t('onboardingReadyTitle');
+  String get onboardingReadySubtitle => _t('onboardingReadySubtitle');
+  String get onboardingFeatureTimetableTitle =>
+      _t('onboardingFeatureTimetableTitle');
+  String get onboardingFeatureTimetableDesc =>
+      _t('onboardingFeatureTimetableDesc');
+  String get onboardingFeatureExamsTitle => _t('onboardingFeatureExamsTitle');
+  String get onboardingFeatureExamsDesc => _t('onboardingFeatureExamsDesc');
+  String get onboardingFeatureAiTitle => _t('onboardingFeatureAiTitle');
+  String get onboardingFeatureAiDesc => _t('onboardingFeatureAiDesc');
+  String get onboardingFeatureNotifyTitle => _t('onboardingFeatureNotifyTitle');
+  String get onboardingFeatureNotifyDesc => _t('onboardingFeatureNotifyDesc');
+  String get onboardingFinishSetup => _t('onboardingFinishSetup');
 
   // ── Timetable ───────────────────────────────────────────────────────────────
   String get timetableTitle => _t('timetableTitle');
@@ -41,6 +78,10 @@ class AppL10n {
   String get timetableDayGrid => _t('timetableDayGrid');
   String get timetableNotLoaded => _t('timetableNotLoaded');
   String get timetableReload => _t('timetableReload');
+  String get timetableSelectClass => _t('timetableSelectClass');
+  String get timetableMyTimetable => _t('timetableMyTimetable');
+  String get timetableSelectAnother => _t('timetableSelectAnother');
+  String get timetableNoClassesFound => _t('timetableNoClassesFound');
   List<String> get weekDayShort => List<String>.from(_strings[locale]!['weekDayShort'] as List);
   List<String> get weekDayFull => List<String>.from(_strings[locale]!['weekDayFull'] as List);
   String get noLesson => _t('noLesson');
@@ -130,6 +171,12 @@ class AppL10n {
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
   String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
   String get settingsBackgroundAnimationsDesc => _t('settingsBackgroundAnimationsDesc');
+    String get settingsProgressivePush => _t('settingsProgressivePush');
+    String get settingsProgressivePushDesc => _t('settingsProgressivePushDesc');
+    String get settingsRefreshPushWidgetNow => _t('settingsRefreshPushWidgetNow');
+    String get settingsRefreshPushWidgetNowDesc =>
+            _t('settingsRefreshPushWidgetNowDesc');
+    String get settingsBackgroundLoading => _t('settingsBackgroundLoading');
   String get settingsSectionAbout => _t('settingsSectionAbout');
   String get settingsAppVersion => _t('settingsAppVersion');
   String get settingsSectionSubjects => _t('settingsSectionSubjects');
@@ -158,6 +205,48 @@ class AppL10n {
       'loginSearchHint': 'Schulname oder Stadt...',
       'loginNoSchoolsFound': 'Keine Schulen gefunden.',
       'loginChangeLanguage': 'Sprache',
+      'loginManualEntry': 'Manuelle Eingabe',
+      'loginSwitchToSearch': 'Zurück zur Suche',
+      'loginChangeSchool': 'Schule ändern',
+
+      'onboardingWelcomeTitle': 'Willkommen bei Untis+',
+      'onboardingChooseLanguageSubtitle': 'Wähle deine bevorzugte Sprache',
+      'onboardingAppearanceTitle': 'Erscheinungsbild',
+      'onboardingAppearanceSubtitle':
+          'Gestalte Untis+ genau so, wie du es möchtest',
+      'onboardingThemeSystem': 'System',
+      'onboardingThemeLight': 'Hell',
+      'onboardingThemeDark': 'Dunkel',
+      'onboardingAnimationsHint':
+          'Schöne Hintergrundanimationen aktivieren',
+      'onboardingSchoolLoginTitle': 'Schul-Login',
+      'onboardingSchoolLoginSubtitle': 'Verbinde dein WebUntis-Konto',
+      'onboardingGeminiTitle': 'Gemini KI',
+      'onboardingGeminiSubtitle':
+          'Chatte mit deinem Stundenplan und deinen Hausaufgaben',
+      'onboardingGeminiInfo':
+          'Hol dir einen kostenlosen Gemini API-Schlüssel in Google AI Studio, um den leistungsstarken KI-Assistenten in Untis+ freizuschalten.',
+      'onboardingGeminiGetApiKey': 'API-Schlüssel holen',
+      'onboardingSkip': 'Überspringen',
+      'onboardingNext': 'Weiter',
+      'onboardingGeminiEnterKeyOrSkip':
+          'Bitte gib einen Schlüssel ein oder überspringe diesen Schritt',
+      'onboardingReadyTitle': 'Bereit zum Start!',
+      'onboardingReadySubtitle':
+          'Das kannst du alles in Untis+ machen',
+      'onboardingFeatureTimetableTitle': 'Stundenplan & Kalender',
+      'onboardingFeatureTimetableDesc':
+          'Behalte deinen Stundenplan perfekt im Blick.',
+      'onboardingFeatureExamsTitle': 'Prüfungen & Hausaufgaben',
+      'onboardingFeatureExamsDesc':
+          'Verfolge deinen Lernstand und kommende Prüfungen.',
+      'onboardingFeatureAiTitle': 'KI-Assistent',
+      'onboardingFeatureAiDesc':
+          'Frag Gemini nach deinem Tag, Hausaufgaben oder Prüfungen.',
+      'onboardingFeatureNotifyTitle': 'Benachrichtigungen & Widgets',
+      'onboardingFeatureNotifyDesc':
+          'Bleib auf dem Laufenden, bevor die Schule startet.',
+      'onboardingFinishSetup': 'Einrichtung abschließen',
 
       'timetableTitle': 'Stundenplan',
       'timetablePrevWeek': 'Vorherige Woche',
@@ -166,6 +255,10 @@ class AppL10n {
       'timetableDayGrid': 'Tagesraster',
       'timetableNotLoaded': 'Stundenplan nicht geladen',
       'timetableReload': 'Neu laden',
+      'timetableSelectClass': 'Klasse wählen',
+      'timetableMyTimetable': 'Mein Stundenplan',
+      'timetableSelectAnother': 'Andere Klasse',
+      'timetableNoClassesFound': 'Keine Klassen gefunden oder Zugriff verweigert.',
       'weekDayShort': ['Mo', 'Di', 'Mi', 'Do', 'Fr'],
       'weekDayFull': ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'],
       'noLesson': '(kein Unterricht)',
@@ -255,6 +348,14 @@ class AppL10n {
       'settingsShowCancelledDesc': 'Ausgefallene Stunden werden im Stundenplan angezeigt',
       'settingsBackgroundAnimations': 'Hintergrundanimationen',
       'settingsBackgroundAnimationsDesc': 'Animierte Farbverläufe im Hintergrund anzeigen',
+      'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
+      'settingsProgressivePushDesc':
+          'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
+      'settingsRefreshPushWidgetNow': 'Push & Widget jetzt aktualisieren',
+      'settingsRefreshPushWidgetNowDesc':
+          'Lädt sofort die neuesten Daten aus dem API-Cache und aktualisiert Widget und Push',
+      'settingsBackgroundLoading':
+          'Daten werden im Hintergrund geladen...',
       'settingsSectionAbout': 'Über die App',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Fächer & Farben',
@@ -290,6 +391,46 @@ class AppL10n {
       'loginSearchHint': 'School name or city...',
       'loginNoSchoolsFound': 'No schools found.',
       'loginChangeLanguage': 'Language',
+      'loginManualEntry': 'Manual Entry',
+      'loginSwitchToSearch': 'Back to search',
+      'loginChangeSchool': 'Change school',
+
+      'onboardingWelcomeTitle': 'Welcome to Untis+',
+      'onboardingChooseLanguageSubtitle': 'Choose your preferred language',
+      'onboardingAppearanceTitle': 'Appearance',
+      'onboardingAppearanceSubtitle':
+          'Make Untis+ look exactly how you want',
+      'onboardingThemeSystem': 'System',
+      'onboardingThemeLight': 'Light',
+      'onboardingThemeDark': 'Dark',
+      'onboardingAnimationsHint': 'Enable beautiful background animations',
+      'onboardingSchoolLoginTitle': 'School Login',
+      'onboardingSchoolLoginSubtitle': 'Connect your WebUntis account',
+      'onboardingGeminiTitle': 'Gemini AI',
+      'onboardingGeminiSubtitle':
+          'Chat with your schedule and homework',
+      'onboardingGeminiInfo':
+          'Get a free Gemini API key from Google AI Studio to unlock the powerful AI assistant in Untis+.',
+      'onboardingGeminiGetApiKey': 'Get API Key',
+      'onboardingSkip': 'Skip',
+      'onboardingNext': 'Next',
+      'onboardingGeminiEnterKeyOrSkip':
+          'Please enter a key or skip this step',
+      'onboardingReadyTitle': 'Ready to go!',
+      'onboardingReadySubtitle': 'Here is what you can do in Untis+',
+      'onboardingFeatureTimetableTitle': 'Timetable & Calendar',
+      'onboardingFeatureTimetableDesc':
+          'View your schedule flawlessly.',
+      'onboardingFeatureExamsTitle': 'Exams & Homework',
+      'onboardingFeatureExamsDesc':
+          'Track performance and upcoming exams.',
+      'onboardingFeatureAiTitle': 'AI Assistant',
+      'onboardingFeatureAiDesc':
+          'Ask Gemini about your day, homework or exams.',
+      'onboardingFeatureNotifyTitle': 'Notifications & Widgets',
+      'onboardingFeatureNotifyDesc':
+          'Stay updated before school starts.',
+      'onboardingFinishSetup': 'Finish Setup',
 
       'timetableTitle': 'Timetable',
       'timetablePrevWeek': 'Previous week',
@@ -298,6 +439,10 @@ class AppL10n {
       'timetableDayGrid': 'Day grid',
       'timetableNotLoaded': 'Timetable not loaded',
       'timetableReload': 'Reload',
+      'timetableSelectClass': 'Select class',
+      'timetableMyTimetable': 'My timetable',
+      'timetableSelectAnother': 'Another class',
+      'timetableNoClassesFound': 'No classes found or access denied.',
       'weekDayShort': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
       'weekDayFull': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
       'noLesson': '(no lessons)',
@@ -387,6 +532,13 @@ class AppL10n {
       'settingsShowCancelledDesc': 'Cancelled lessons are shown in the timetable',
       'settingsBackgroundAnimations': 'Background Animations',
       'settingsBackgroundAnimationsDesc': 'Show animated gradient effects in the background',
+      'settingsProgressivePush': 'Progressive push notification',
+      'settingsProgressivePushDesc':
+          'Show the current lesson as a persistent notification',
+      'settingsRefreshPushWidgetNow': 'Refresh push & widget now',
+      'settingsRefreshPushWidgetNowDesc':
+          'Immediately loads the newest data from the API cache and updates widget and push',
+      'settingsBackgroundLoading': 'Data is loading in the background...',
       'settingsSectionAbout': 'About',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Subjects & Colors',
@@ -422,6 +574,49 @@ class AppL10n {
       'loginSearchHint': "Nom de l'école ou ville...",
       'loginNoSchoolsFound': 'Aucune école trouvée.',
       'loginChangeLanguage': 'Langue',
+      'loginManualEntry': 'Saisie manuelle',
+      'loginSwitchToSearch': 'Retour à la recherche',
+      'loginChangeSchool': 'Changer d\'école',
+
+      'onboardingWelcomeTitle': 'Bienvenue sur Untis+',
+      'onboardingChooseLanguageSubtitle': 'Choisis ta langue préférée',
+      'onboardingAppearanceTitle': 'Apparence',
+      'onboardingAppearanceSubtitle':
+          'Personnalise Untis+ exactement comme tu veux',
+      'onboardingThemeSystem': 'Système',
+      'onboardingThemeLight': 'Clair',
+      'onboardingThemeDark': 'Sombre',
+      'onboardingAnimationsHint':
+          'Activer de belles animations d\'arrière-plan',
+      'onboardingSchoolLoginTitle': 'Connexion école',
+      'onboardingSchoolLoginSubtitle':
+          'Connecte ton compte WebUntis',
+      'onboardingGeminiTitle': 'Gemini IA',
+      'onboardingGeminiSubtitle':
+          'Discute avec ton emploi du temps et tes devoirs',
+      'onboardingGeminiInfo':
+          'Obtiens une clé API Gemini gratuite depuis Google AI Studio pour débloquer le puissant assistant IA dans Untis+.',
+      'onboardingGeminiGetApiKey': 'Obtenir une clé API',
+      'onboardingSkip': 'Passer',
+      'onboardingNext': 'Suivant',
+      'onboardingGeminiEnterKeyOrSkip':
+          'Saisis une clé ou passe cette étape',
+      'onboardingReadyTitle': 'Prêt à commencer !',
+      'onboardingReadySubtitle':
+          'Voici ce que tu peux faire dans Untis+',
+      'onboardingFeatureTimetableTitle': 'Emploi du temps & Calendrier',
+      'onboardingFeatureTimetableDesc':
+          'Consulte ton planning sans effort.',
+      'onboardingFeatureExamsTitle': 'Examens & Devoirs',
+      'onboardingFeatureExamsDesc':
+          'Suis tes résultats et les examens à venir.',
+      'onboardingFeatureAiTitle': 'Assistant IA',
+      'onboardingFeatureAiDesc':
+          'Demande à Gemini des infos sur ta journée, tes devoirs ou tes examens.',
+      'onboardingFeatureNotifyTitle': 'Notifications & Widgets',
+      'onboardingFeatureNotifyDesc':
+          'Reste informé avant le début des cours.',
+      'onboardingFinishSetup': 'Terminer la configuration',
 
       'timetableTitle': 'Emploi du temps',
       'timetablePrevWeek': 'Semaine précédente',
@@ -430,6 +625,10 @@ class AppL10n {
       'timetableDayGrid': 'Grille journalière',
       'timetableNotLoaded': "Emploi du temps non chargé",
       'timetableReload': 'Recharger',
+      'timetableSelectClass': 'Sélectionner une classe',
+      'timetableMyTimetable': 'Mon emploi du temps',
+      'timetableSelectAnother': 'Autre classe',
+      'timetableNoClassesFound': 'Aucune classe trouvée ou accès refusé.',
       'weekDayShort': ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'],
       'weekDayFull': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'],
       'noLesson': '(pas de cours)',
@@ -519,6 +718,15 @@ class AppL10n {
       'settingsShowCancelledDesc': 'Les cours annulés sont visibles dans l\'emploi du temps',
       'settingsBackgroundAnimations': 'Animations de fond',
       'settingsBackgroundAnimationsDesc': 'Afficher des effets de dégradé animés en arrière-plan',
+      'settingsProgressivePush': 'Notification push progressive',
+      'settingsProgressivePushDesc':
+          'Afficher le cours actuel comme notification persistante',
+      'settingsRefreshPushWidgetNow':
+          'Actualiser push et widget maintenant',
+      'settingsRefreshPushWidgetNowDesc':
+          'Charge immédiatement les dernières données du cache API et met à jour widget et push',
+      'settingsBackgroundLoading':
+          'Les données se chargent en arrière-plan...',
       'settingsSectionAbout': 'À propos',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Matières & Couleurs',
@@ -554,6 +762,49 @@ class AppL10n {
       'loginSearchHint': 'Nombre o ciudad...',
       'loginNoSchoolsFound': 'No se encontraron escuelas.',
       'loginChangeLanguage': 'Idioma',
+      'loginManualEntry': 'Entrada manual',
+      'loginSwitchToSearch': 'Volver a buscar',
+      'loginChangeSchool': 'Cambiar escuela',
+
+      'onboardingWelcomeTitle': 'Bienvenido a Untis+',
+      'onboardingChooseLanguageSubtitle': 'Elige tu idioma preferido',
+      'onboardingAppearanceTitle': 'Apariencia',
+      'onboardingAppearanceSubtitle':
+          'Haz que Untis+ se vea exactamente como quieres',
+      'onboardingThemeSystem': 'Sistema',
+      'onboardingThemeLight': 'Claro',
+      'onboardingThemeDark': 'Oscuro',
+      'onboardingAnimationsHint':
+          'Activar bonitas animaciones de fondo',
+      'onboardingSchoolLoginTitle': 'Inicio de sesión escolar',
+      'onboardingSchoolLoginSubtitle':
+          'Conecta tu cuenta de WebUntis',
+      'onboardingGeminiTitle': 'Gemini IA',
+      'onboardingGeminiSubtitle':
+          'Chatea con tu horario y tus deberes',
+      'onboardingGeminiInfo':
+          'Obtén una clave API gratuita de Gemini en Google AI Studio para desbloquear el potente asistente IA en Untis+.',
+      'onboardingGeminiGetApiKey': 'Obtener clave API',
+      'onboardingSkip': 'Saltar',
+      'onboardingNext': 'Continuar',
+      'onboardingGeminiEnterKeyOrSkip':
+          'Introduce una clave o salta este paso',
+      'onboardingReadyTitle': 'Listo para empezar',
+      'onboardingReadySubtitle':
+          'Esto es lo que puedes hacer en Untis+',
+      'onboardingFeatureTimetableTitle': 'Horario y Calendario',
+      'onboardingFeatureTimetableDesc':
+          'Consulta tu horario sin complicaciones.',
+      'onboardingFeatureExamsTitle': 'Exámenes y Deberes',
+      'onboardingFeatureExamsDesc':
+          'Sigue tu progreso y los próximos exámenes.',
+      'onboardingFeatureAiTitle': 'Asistente IA',
+      'onboardingFeatureAiDesc':
+          'Pregunta a Gemini sobre tu día, deberes o exámenes.',
+      'onboardingFeatureNotifyTitle': 'Notificaciones y Widgets',
+      'onboardingFeatureNotifyDesc':
+          'Mantente al día antes de que empiece la escuela.',
+      'onboardingFinishSetup': 'Finalizar configuración',
 
       'timetableTitle': 'Horario',
       'timetablePrevWeek': 'Semana anterior',
@@ -562,6 +813,10 @@ class AppL10n {
       'timetableDayGrid': 'Cuadrícula diaria',
       'timetableNotLoaded': 'Horario no cargado',
       'timetableReload': 'Recargar',
+      'timetableSelectClass': 'Seleccionar clase',
+      'timetableMyTimetable': 'Mi horario',
+      'timetableSelectAnother': 'Otra clase',
+      'timetableNoClassesFound': 'No se encontraron clases o acceso denegado.',
       'weekDayShort': ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'],
       'weekDayFull': ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
       'noLesson': '(sin clases)',
@@ -651,6 +906,14 @@ class AppL10n {
       'settingsShowCancelledDesc': 'Las clases canceladas se muestran en el horario',
       'settingsBackgroundAnimations': 'Animaciones de fondo',
       'settingsBackgroundAnimationsDesc': 'Mostrar efectos de degradado animados en el fondo',
+      'settingsProgressivePush': 'Notificación push progresiva',
+      'settingsProgressivePushDesc':
+          'Mostrar la clase actual como notificación persistente',
+      'settingsRefreshPushWidgetNow': 'Actualizar push y widget ahora',
+      'settingsRefreshPushWidgetNowDesc':
+          'Carga inmediatamente los datos más recientes de la caché API y actualiza widget y push',
+      'settingsBackgroundLoading':
+          'Los datos se están cargando en segundo plano...',
       'settingsSectionAbout': 'Acerca de',
       'settingsAppVersion': 'Versión',
       'settingsSectionSubjects': 'Asignaturas & Colores',

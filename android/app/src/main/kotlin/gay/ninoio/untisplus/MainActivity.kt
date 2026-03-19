@@ -1,4 +1,4 @@
-package com.example.untisplus
+package gay.ninoio.untisplus
 
 import io.flutter.embedding.android.FlutterActivity
 

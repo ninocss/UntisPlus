@@ -35,7 +35,7 @@
             android:value="2" />
 
         <!-- Untis+ Widgets -->
-        <receiver android:name="com.example.untisplus.UntisWidgetCurrentLesson" android:exported="true">
+        <receiver android:name="gay.ninoio.untisplus.UntisWidgetCurrentLesson" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -44,7 +44,7 @@
                 android:resource="@xml/widget_current_lesson_info" />
         </receiver>
 
-        <receiver android:name="com.example.untisplus.UntisWidgetDailySchedule" android:exported="true">
+        <receiver android:name="gay.ninoio.untisplus.UntisWidgetDailySchedule" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

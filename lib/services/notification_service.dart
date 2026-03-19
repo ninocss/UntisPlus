@@ -1,7 +1,5 @@
-import 'dart:ui';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -20,7 +18,6 @@ class NotificationService {
     );
     await _flutterLocalNotificationsPlugin.initialize(settings: initializationSettings);
 
-    // Request permissions for Android 13+
     _flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
   }
 
@@ -41,10 +38,9 @@ class NotificationService {
       channelDescription: 'Zeigt die aktuelle Stunde oder Pause an.',
       importance: Importance.defaultImportance,
       priority: Priority.high,
-      ongoing: true, // Macht die Benachrichtigung progressiv/dauerhaft
+      ongoing: true,
       autoCancel: false,
-      color: const Color.fromARGB(255, 9, 132, 227), // Modern accent color
-      colorized: true, // Sometimes colors the whole background on some Android versions
+      colorized: false,
       subText: subText,
       showProgress: hasProgress,
       maxProgress: maxProgress ?? 0,
@@ -52,7 +48,7 @@ class NotificationService {
       indeterminate: false,
       usesChronometer: endTimeMs != null,
       when: endTimeMs, 
-      chronometerCountDown: endTimeMs != null, // Android 11+ Nativ Countdown!
+      chronometerCountDown: endTimeMs != null,
       category: AndroidNotificationCategory.progress,
       actions: const <AndroidNotificationAction>[
         AndroidNotificationAction(

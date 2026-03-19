@@ -22,20 +22,18 @@ void callbackDispatcher() {
 class BackgroundService {
   static void initialize() {
     Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
-    // Registriere Background Task der alle 15 Minuten feuert (Minimum bei Android)
     Workmanager().registerPeriodicTask(
       "untis_widget_update",
       "update_timetable_task",
       frequency: const Duration(minutes: 15),
       constraints: Constraints(
-        networkType: NetworkType.connected, // Nur wenn Internet da ist
+        networkType: NetworkType.connected,
       ),
     );
   }
 }
 
 Future<void> updateUntisData() async {
-  // 1. Hole prefs
   final prefs = await SharedPreferences.getInstance();
   final schoolUrl = prefs.getString('schoolUrl') ?? '';
   final schoolName = prefs.getString('schoolName') ?? '';
@@ -46,7 +44,6 @@ Future<void> updateUntisData() async {
     return;
   }
 
-  // 2. Authenticate
   String sessionId = "";
   final authUrl = Uri.parse(
     'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
@@ -68,9 +65,8 @@ Future<void> updateUntisData() async {
 
   if (sessionId.isEmpty) return;
 
-  // 3. Request Timetable für heute
   int personId = prefs.getInt('personId') ?? 0;
-  int personType = prefs.getInt('personType') ?? 5; // Studenten standard
+  int personType = prefs.getInt('personType') ?? 5;
 
   if (personId == 0) return;
 
@@ -108,31 +104,27 @@ Future<void> updateUntisData() async {
   }
 
   if (lessons.isEmpty) {
-    // Keine Schule heute
     await WidgetService.updateWidgets(
       currentLesson: "Kein Unterricht heute",
       nextLesson: "-",
       timeRemaining: "",
-      dailySchedule: "Heute stehen keine Stunden an.",
+      dailySchedule: "Kein Unterricht heute",
     );
-    await NotificationService().cancelNotification(1); // Notification entfernen
+    await NotificationService().cancelNotification(1);
     return;
   }
 
-  // 4. Lektionen sortieren
   lessons.sort(
     (a, b) => (a['startTime'] as int).compareTo(b['startTime'] as int),
   );
 
-  // Daten aufbereiten
-  String currentLessonName = "Frei / Pause";
+  String currentLessonName = "Frei";
   String nextLessonName = "-";
   String timeRemaining = "";
 
   StringBuffer dailyScheduleBuffer = StringBuffer();
 
-  // Finde aktuelle und nächste Stunde
-  final currentTimeInt = now.hour * 100 + now.minute; // z.B. 8:15 -> 815
+  final currentTimeInt = now.hour * 100 + now.minute;
   bool foundCurrent = false;
 
   int? currentProgress;
@@ -151,7 +143,6 @@ Future<void> updateUntisData() async {
     int start = l['startTime'] as int;
     int end = l['endTime'] as int;
 
-    // Extrahiere Fachname
     String name = "Unbekannt";
     if (l['su'] != null && (l['su'] as List).isNotEmpty) {
       name = l['su'][0]['name'] ?? "Unbekannt";
@@ -167,7 +158,7 @@ Future<void> updateUntisData() async {
         currentLessonName = name;
         timeRemaining = "Bis $endStr Uhr";
         foundCurrent = true;
-        subTextInfo = "Laufende Stunde";
+        subTextInfo = "Aktuelle Stunde";
 
         DateTime startTimeDate = untisTimeToDate(start);
         DateTime endTimeDate = untisTimeToDate(end);
@@ -182,13 +173,12 @@ Future<void> updateUntisData() async {
             nextLessonName = nextL['su'][0]['name'] ?? "Unbekannt";
           }
         } else {
-          nextLessonName = "Schulschluss!";
+          nextLessonName = "Schluss";
         }
       } else if (currentTimeInt < start) {
-        // Noch vor der nächsten Stunde (z.B. Pause oder morgens)
         timeRemaining = "Start um $startStr";
         nextLessonName = name;
-        foundCurrent = true; // Wir nehmen die anstehende als "Danach"
+        foundCurrent = true;
         subTextInfo = "Nächste Stunde";
         endTimeMs = untisTimeToDate(start).millisecondsSinceEpoch;
       }
@@ -196,12 +186,11 @@ Future<void> updateUntisData() async {
   }
 
   if (!foundCurrent && currentTimeInt > (lessons.last['endTime'] as int)) {
-    currentLessonName = "Unterricht vorbei";
-    timeRemaining = "Schönen Feierabend!";
-    subTextInfo = "Feierabend";
+    currentLessonName = "Schluss";
+    timeRemaining = "-";
+    subTextInfo = "-";
   }
 
-  // 5. Update Home Widgets
   await WidgetService.updateWidgets(
     currentLesson: currentLessonName,
     nextLesson: nextLessonName,
@@ -209,16 +198,14 @@ Future<void> updateUntisData() async {
     dailySchedule: dailyScheduleBuffer.toString(),
   );
 
-  // 6. Update Notification if enabled
   final isProgressivePushEnabled = prefs.getBool('progressivePush') ?? true;
-  await NotificationService().init(); // Sicherstellen dass es initialisiert ist
+  await NotificationService().init();
   if (isProgressivePushEnabled) {
     await NotificationService().showProgressiveNotification(
       id: 1,
       title: currentLessonName,
       body:
-          (timeRemaining.isNotEmpty ? "$timeRemaining  |  " : "") +
-          "Danach: $nextLessonName",
+          "${timeRemaining.isNotEmpty ? "$timeRemaining  |  " : ""}Danach: $nextLessonName",
       subText: subTextInfo,
       currentProgress: currentProgress,
       maxProgress: maxProgress,

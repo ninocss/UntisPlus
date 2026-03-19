@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher_string.dart' as url_launcher;
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,12 +20,14 @@ class SchoolSearchResult {
   final String loginName;
   final String displayName;
   final String serverUrl;
+  final String address;
 
   SchoolSearchResult({
     required this.id,
     required this.loginName,
     required this.displayName,
     required this.serverUrl,
+    required this.address,
   });
 
   factory SchoolSearchResult.fromJson(Map<String, dynamic> json) {
@@ -32,7 +35,8 @@ class SchoolSearchResult {
       id: json['schoolId'] ?? 0,
       loginName: json['loginName'] ?? '',
       displayName: json['displayName'] ?? '',
-      serverUrl: json['serverUrl'] ?? '',
+      address: json['address'] ?? '',
+      serverUrl: json['server'] ?? json['serverUrl'] ?? '',
     );
   }
 }
@@ -49,14 +53,6 @@ void main() async {
     initializeDateFormatting('es_ES', null),
   ]);
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Colors.transparent,
-    ),
-  );
-
   final prefs = await SharedPreferences.getInstance();
   final bool isLoggedIn = prefs.containsKey('sessionId');
 
@@ -71,6 +67,7 @@ void main() async {
   themeModeNotifier.value = ThemeMode.values[prefs.getInt('themeMode') ?? 0];
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
   backgroundAnimationsNotifier.value = prefs.getBool('backgroundAnimations') ?? true;
+  blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
 
   hiddenSubjectsNotifier.value =
       (prefs.getStringList('hiddenSubjects') ?? []).toSet();
@@ -97,7 +94,7 @@ void main() async {
     UntisPlusApp(
       startScreen: isLoggedIn
           ? const MainNavigationScreen()
-          : const LoginPage(),
+          : const OnboardingFlow(),
     ),
   );
 }
@@ -130,7 +127,15 @@ class UntisPlusApp extends StatelessWidget {
                 ThemeData themeFrom(ColorScheme scheme) => ThemeData(
                       useMaterial3: true,
                       colorScheme: scheme,
-                      textTheme: GoogleFonts.outfitTextTheme(),
+                      textTheme: GoogleFonts.outfitTextTheme(
+                        ThemeData(
+                          useMaterial3: true,
+                          colorScheme: scheme,
+                        ).textTheme,
+                      ).apply(
+                        bodyColor: scheme.onSurface,
+                        displayColor: scheme.onSurface,
+                      ),
                       pageTransitionsTheme: const PageTransitionsTheme(
                         builders: {
                           TargetPlatform.android: ZoomPageTransitionsBuilder(),
@@ -160,6 +165,23 @@ class UntisPlusApp extends StatelessWidget {
                   theme: themeFrom(lightScheme),
                   darkTheme: themeFrom(darkScheme),
                   themeMode: themeMode,
+                  builder: (context, child) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final overlayStyle = SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness:
+                          isDark ? Brightness.light : Brightness.dark,
+                      statusBarBrightness:
+                          isDark ? Brightness.dark : Brightness.light,
+                      systemNavigationBarColor: Colors.transparent,
+                      systemNavigationBarIconBrightness:
+                          isDark ? Brightness.light : Brightness.dark,
+                    );
+                    return AnnotatedRegion<SystemUiOverlayStyle>(
+                      value: overlayStyle,
+                      child: child ?? const SizedBox.shrink(),
+                    );
+                  },
                   home: startScreen,
                 );
               },
@@ -214,6 +236,7 @@ final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(ThemeMode.syste
 final ValueNotifier<bool> showCancelledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
 final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
+final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 
 String _icuLocale(String locale) {
   switch (locale) {
@@ -295,28 +318,46 @@ Future<bool> _reAuthenticate() async {
 }
 
 // --- LOGIN SEITE ---
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+
+class OnboardingFlow extends StatefulWidget {
+  const OnboardingFlow({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<OnboardingFlow> createState() => _OnboardingFlowState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _OnboardingFlowState extends State<OnboardingFlow> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  // Login controllers
   final _serverController = TextEditingController();
   final _schoolController = TextEditingController();
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
+  bool _isLogginIn = false;
   
+  bool _manualSchoolEntry = false;
   bool _isSearching = false;
   List<SchoolSearchResult> _searchResults = [];
   Timer? _debounce;
+  final _geminiController = TextEditingController();
 
+  void _nextPage() {
+    FocusScope.of(context).unfocus();
+    if (_currentPage < 4) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+      );
+    } else {
+      _completeOnboarding();
+    }
+  }
 
   Future<void> _handleLogin() async {
     HapticFeedback.heavyImpact();
-    setState(() => _isLoading = true);
+    setState(() => _isLogginIn = true);
 
     schoolUrl = _serverController.text;
     schoolName = _schoolController.text;
@@ -343,21 +384,17 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
       if (data['result'] != null) {
         sessionID = data['result']['sessionId']?.toString() ?? "";
-
+        
         var rawId = data['result']['personId'];
         var rawType = data['result']['personType'];
 
         if (rawId != null && rawId.toString() != "0") {
           personId = int.tryParse(rawId.toString()) ?? 0;
           personType = int.tryParse(rawType.toString()) ?? 5;
-        }
-
-        else if (data['result']['klasseId'] != null) {
+        } else if (data['result']['klasseId'] != null) {
           personId = int.tryParse(data['result']['klasseId'].toString()) ?? 0;
           personType = 1;
-        }
-
-        else {
+        } else {
           personId = 0;
           personType = 5;
         }
@@ -371,22 +408,17 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setInt('personType', personType);
         await prefs.setInt('personId', personId);
 
-        // Nach Erstlogin direkt einmal Daten für das Hintergrund-Widget laden
         updateUntisData().catchError((_) {});
-
-        if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
-        );
+        
+        if (mounted) _nextPage();
       } else {
-        final l = AppL10n.of(appLocaleNotifier.value);
-        _showError(l.loginFailed);
+        _showError(AppL10n.of(appLocaleNotifier.value).loginFailed);
       }
     } catch (e) {
       final l = AppL10n.of(appLocaleNotifier.value);
       _showError('${l.loginConnectionError}: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLogginIn = false);
     }
   }
 
@@ -395,127 +427,539 @@ class _LoginPageState extends State<LoginPage> {
       SnackBar(
         content: Text(msg),
         backgroundColor: Theme.of(context).colorScheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+
+  void _completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_geminiController.text.isNotEmpty) {
+      geminiApiKey = _geminiController.text;
+      await prefs.setString('geminiApiKey', geminiApiKey);
+    }
+    
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, anim1, anim2) => const MainNavigationScreen(),
+        transitionsBuilder: (context, anim1, anim2, child) => 
+            FadeTransition(opacity: anim1, child: child),
+        transitionDuration: const Duration(milliseconds: 800),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient layer
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).colorScheme.primaryContainer,
-                    Theme.of(context).colorScheme.surface,
-                  ],
-                  begin: Alignment.topRight,
-                ),
+          // Dynamic Gradient Background
+          AnimatedContainer(
+            duration: const Duration(seconds: 1),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                   _currentPage % 2 == 0 ? colors.primaryContainer : colors.secondaryContainer,
+                   colors.surface,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
           ),
-          // Animated background orbs
+          
           ValueListenableBuilder<bool>(
             valueListenable: backgroundAnimationsNotifier,
             builder: (context, enabled, _) =>
                 enabled ? const _AnimatedOrbs() : const SizedBox.shrink(),
           ),
           
-          // Language Switcher
-          Positioned(
-            top: 20 + MediaQuery.of(context).padding.top,
-            right: 20,
-            child: PopupMenuButton<String>(
-              icon: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: const Icon(Icons.language),
-              ),
-              tooltip: "Change language",
-              onSelected: (val) async {
-                  appLocaleNotifier.value = val;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('appLocale', val);
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'de', child: Text('Deutsch')),
-                const PopupMenuItem(value: 'en', child: Text('English')),
-                const PopupMenuItem(value: 'fr', child: Text('Français')),
-                const PopupMenuItem(value: 'es', child: Text('Español')),
+          SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 20),
+                // Progress Indicator
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Row(
+                    children: List.generate(5, (index) {
+                      return Expanded(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: _currentPage >= index 
+                                ? colors.primary 
+                                : colors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    onPageChanged: (idx) => setState(() => _currentPage = idx),
+                    children: [
+                      _buildLanguageStep(),
+                      _buildThemeStep(),
+                      _buildLoginStep(),
+                      _buildGeminiStep(),
+                      _buildTutorialStep(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          // Login content
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30),
-            child: Center(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.school_rounded,
-                      size: 80,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      "Untis+",
-                      style: GoogleFonts.outfit(
-                        fontSize: 48,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    Builder(builder: (context) {
-                      final l = AppL10n.of(appLocaleNotifier.value);
-                      return Column(children: [
-                        _buildField(_serverController, l.loginServer, Icons.dns),
-                        const SizedBox(height: 15),
-                        _buildField(
-                          _schoolController, 
-                          l.loginSchool, 
-                          Icons.location_city,
-                          suffix: IconButton(
-                            icon: const Icon(Icons.search),
-                            onPressed: () => _showSchoolSearchDialog(context),
-                          ),
+  // --- Step 1: Language ---
+  Widget _buildLanguageStep() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+
+    return _StepWrapper(
+      icon: Icons.language,
+      title: l.onboardingWelcomeTitle,
+      subtitle: l.onboardingChooseLanguageSubtitle,
+      content: ValueListenableBuilder<String>(
+        valueListenable: appLocaleNotifier,
+        builder: (context, currentLang, _) {
+          return Column(
+            children: [
+              _buildLangBtn('de', 'Deutsch', '🇩🇪', currentLang),
+              const SizedBox(height: 12),
+              _buildLangBtn('en', 'English', '🇬🇧', currentLang),
+              const SizedBox(height: 12),
+              _buildLangBtn('fr', 'Français', '🇫🇷', currentLang),
+              const SizedBox(height: 12),
+              _buildLangBtn('es', 'Español', '🇪🇸', currentLang),
+              const Spacer(),
+              _buildNextBtn(),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
+  Widget _buildLangBtn(String code, String name, String flag, String current) {
+    final colors = Theme.of(context).colorScheme;
+    final isSel = current == code;
+    return InkWell(
+      onTap: () async {
+        appLocaleNotifier.value = code;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('appLocale', code);
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+        decoration: BoxDecoration(
+          color: isSel ? colors.primaryContainer : colors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSel ? colors.primary : colors.outlineVariant,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(flag, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 16),
+            Text(
+              name,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                color: isSel ? colors.onPrimaryContainer : colors.onSurface,
+              ),
+            ),
+            const Spacer(),
+            if (isSel) Icon(Icons.check_circle, color: colors.primary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Step 2: Theme & Animations ---
+  Widget _buildThemeStep() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    
+    return _StepWrapper(
+      icon: Icons.palette,
+      title: l.onboardingAppearanceTitle,
+      subtitle: l.onboardingAppearanceSubtitle,
+      content: Column(
+        children: [
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: themeModeNotifier,
+            builder: (context, val, _) => SegmentedButton<int>(
+              segments: [
+                ButtonSegment(value: 0, icon: const Icon(Icons.brightness_auto), label: Text(l.onboardingThemeSystem)),
+                ButtonSegment(value: 1, icon: const Icon(Icons.light_mode), label: Text(l.onboardingThemeLight)),
+                ButtonSegment(value: 2, icon: const Icon(Icons.dark_mode), label: Text(l.onboardingThemeDark)),
+              ],
+              selected: {val.index},
+              onSelectionChanged: (set) async {
+                final mode = ThemeMode.values[set.first];
+                themeModeNotifier.value = mode;
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt('themeMode', mode.index);
+              },
+            ),
+          ),
+          const SizedBox(height: 32),
+          ValueListenableBuilder<bool>(
+            valueListenable: backgroundAnimationsNotifier,
+            builder: (context, val, _) => SwitchListTile(
+              title: Text(l.settingsAppearance),
+              subtitle: Text(l.onboardingAnimationsHint),
+              value: val,
+              onChanged: (nv) async {
+                backgroundAnimationsNotifier.value = nv;
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('backgroundAnimations', nv);
+              },
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              tileColor: Theme.of(context).colorScheme.surface,
+            ),
+          ),
+          const Spacer(),
+          _buildNextBtn(),
+        ],
+      ),
+    );
+  }
+
+  // --- Step 3: School Login ---
+  Widget _buildLoginStep() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    
+    Widget content;
+    if (!_manualSchoolEntry && _schoolController.text.isEmpty) {
+      content = Column(
+        children: [
+          TextField(
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: l.loginSearchHint,
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            onChanged: (val) {
+              if (_debounce?.isActive ?? false) _debounce!.cancel();
+              _debounce = Timer(const Duration(milliseconds: 800), () {
+                if (!mounted) return;
+                _searchSchool(val);
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: _isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : _searchResults.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.search_off, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            const SizedBox(height: 10),
+                            Text(l.loginNoSchoolsFound),
+                          ],
                         ),
-                        const SizedBox(height: 15),
-                        _buildField(_userController, l.loginUsername, Icons.person),
-                        const SizedBox(height: 15),
-                        _buildField(_passwordController, l.loginPassword, Icons.key, obscure: true),
-                        const SizedBox(height: 40),
-                        _isLoading
-                            ? const CircularProgressIndicator()
-                            : FilledButton(
-                                onPressed: _handleLogin,
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size(double.infinity, 64),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                ),
-                                child: Text(
-                                  l.loginButton,
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                      ]);
-                    }),
-                  ],
+                      )
+                    : ListView.builder(
+                        itemCount: _searchResults.length,
+                        itemBuilder: (context, index) {
+                          final s = _searchResults[index];
+                          return ListTile(
+                            title: Text(s.displayName),
+                            subtitle: Text(
+                              s.address.isNotEmpty
+                                  ? '${s.address}\n${s.loginName} • ${s.serverUrl}'
+                                  : '${s.loginName} • ${s.serverUrl}',
+                            ),
+                            isThreeLine: s.address.isNotEmpty,
+                            onTap: () {
+                              setState(() {
+                                _schoolController.text = s.loginName;
+                                _serverController.text = s.serverUrl;
+                                _searchResults = [];
+                              });
+                            },
+                          );
+                        },
+                      ),
+          ),
+          const SizedBox(height: 10),
+          TextButton(
+            onPressed: () => setState(() => _manualSchoolEntry = true),
+            child: Text(l.loginManualEntry),
+          ),
+        ],
+      );
+    } else {
+      content = SingleChildScrollView(
+        child: Column(
+          children: [
+            if (!_manualSchoolEntry && _schoolController.text.isNotEmpty) ...[
+              Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: ListTile(
+                  leading: const Icon(Icons.school),
+                  title: Text(_schoolController.text),
+                  subtitle: Text(_serverController.text),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.edit),
+                    tooltip: l.loginChangeSchool,
+                    onPressed: () {
+                      setState(() {
+                        _schoolController.clear();
+                        _serverController.clear();
+                      });
+                    },
+                  ),
                 ),
               ),
+              const SizedBox(height: 12),
+            ] else ...[
+              _buildField(_serverController, l.loginServer, Icons.dns),
+              const SizedBox(height: 12),
+              _buildField(
+                _schoolController,
+                l.loginSchool,
+                Icons.location_city,
+              ),
+              const SizedBox(height: 12),
+            ],
+            _buildField(_userController, l.loginUsername, Icons.person),
+            const SizedBox(height: 12),
+            _buildField(_passwordController, l.loginPassword, Icons.key, obscure: true),
+            const SizedBox(height: 32),
+            _isLogginIn
+                ? const CircularProgressIndicator()
+                : FilledButton(
+                    onPressed: _handleLogin,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: Text(l.loginButton, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ),
+            if (_manualSchoolEntry) ...[
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => setState(() {
+                  _manualSchoolEntry = false;
+                  _schoolController.clear();
+                  _serverController.clear();
+                }),
+                child: Text(l.loginSwitchToSearch),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return _StepWrapper(
+      icon: Icons.school_rounded,
+      title: l.onboardingSchoolLoginTitle,
+      subtitle: l.onboardingSchoolLoginSubtitle,
+      content: content,
+    );
+  }
+
+  // --- Step 4: Gemini AI ---
+  Widget _buildGeminiStep() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+
+    return _StepWrapper(
+      icon: Icons.auto_awesome,
+      title: l.onboardingGeminiTitle,
+      subtitle: l.onboardingGeminiSubtitle,
+      content: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.info_outline, size: 32),
+                const SizedBox(height: 12),
+                Text(
+                  l.onboardingGeminiInfo,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  icon: const Icon(Icons.open_in_new),
+                  label: Text(l.onboardingGeminiGetApiKey),
+                  onPressed: () => url_launcher.launchUrlString('https://aistudio.google.com/app/apikey'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildField(_geminiController, l.settingsApiKey, Icons.key),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _nextPage,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(l.onboardingSkip, style: const TextStyle(fontSize: 16)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () {
+                    if (_geminiController.text.isNotEmpty) {
+                      _nextPage();
+                    } else {
+                      _showError(l.onboardingGeminiEnterKeyOrSkip);
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    l.onboardingNext,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Step 5: Features Tutorial ---
+  Widget _buildTutorialStep() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+
+    return _StepWrapper(
+      icon: Icons.rocket_launch,
+      title: l.onboardingReadyTitle,
+      subtitle: l.onboardingReadySubtitle,
+      content: Column(
+        children: [
+          _buildFeatureRow(
+            Icons.calendar_month,
+            l.onboardingFeatureTimetableTitle,
+            l.onboardingFeatureTimetableDesc,
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureRow(
+            Icons.draw,
+            l.onboardingFeatureExamsTitle,
+            l.onboardingFeatureExamsDesc,
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureRow(
+            Icons.auto_awesome,
+            l.onboardingFeatureAiTitle,
+            l.onboardingFeatureAiDesc,
+          ),
+          const SizedBox(height: 16),
+          _buildFeatureRow(
+            Icons.notifications_active,
+            l.onboardingFeatureNotifyTitle,
+            l.onboardingFeatureNotifyDesc,
+          ),
+          const Spacer(),
+          FilledButton.icon(
+            onPressed: _completeOnboarding,
+            icon: const Icon(Icons.check),
+            label: Text(
+              l.onboardingFinishSetup,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 64),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureRow(IconData icon, String title, String desc) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Theme.of(context).colorScheme.onPrimaryContainer),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(desc, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- Helpers ---
+  Widget _buildNextBtn([String? lbl, VoidCallback? onTap]) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+
+    return FilledButton(
+      onPressed: onTap ?? _nextPage,
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(double.infinity, 56),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      child: Text(
+        lbl ?? l.onboardingNext,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -528,19 +972,24 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final url = Uri.parse('https://mobile.webuntis.com/ms/schoolquery2?search=$query');
-      final response = await http.get(url);
+      final url = Uri.parse('https://mobile.webuntis.com/ms/schoolquery2');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "id": "1",
+          "method": "searchSchool",
+          "params": [{"search": query}],
+          "jsonrpc": "2.0"
+        }),
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['schools'] != null) {
-          final list = (data['schools'] as List)
+        if (data['result'] != null && data['result']['schools'] != null) {
+          final list = (data['result']['schools'] as List)
               .map((e) => SchoolSearchResult.fromJson(e))
               .toList();
-          if (mounted) {
-            setState(() {
-              _searchResults = list;
-            });
-          }
+          if (mounted) setState(() => _searchResults = list);
         }
       }
     } catch (_) {} finally {
@@ -548,102 +997,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _showSchoolSearchDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.5,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (context, scrollController) {
-          return StatefulBuilder(
-            builder: (context, setSheetState) {
-              return Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Text(
-                      l.loginSearchSchool,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: l.loginSearchHint,
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      onChanged: (val) {
-                         if (_debounce?.isActive ?? false) _debounce!.cancel();
-                         _debounce = Timer(const Duration(milliseconds: 500), () {
-                            if (!mounted) return;
-                            _searchSchool(val).then((_) {
-                              setSheetState(() {});
-                            });
-                         });
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: _isSearching
-                          ? const Center(child: CircularProgressIndicator())
-                          : _searchResults.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.search_off, size: 48, color: Colors.grey),
-                                      const SizedBox(height: 10),
-                                      Text(l.loginNoSchoolsFound),
-                                    ],
-                                  ),
-                                )
-                              : ListView.builder(
-                                  controller: scrollController,
-                                  itemCount: _searchResults.length,
-                                  itemBuilder: (context, index) {
-                                    final s = _searchResults[index];
-                                    return ListTile(
-                                      title: Text(s.displayName),
-                                      subtitle: Text('${s.loginName} • ${s.serverUrl}'),
-                                      onTap: () {
-                                        setState(() {
-                                          _schoolController.text = s.loginName;
-                                          _serverController.text = s.serverUrl;
-                                        });
-                                        Navigator.pop(context);
-                                      },
-                                    );
-                                  },
-                                ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildField(
-    TextEditingController c,
-    String l,
-    IconData i, {
-    bool obscure = false,
-    Widget? suffix,
-  }) {
+  Widget _buildField(TextEditingController c, String l, IconData i, {bool obscure = false, Widget? suffix}) {
     return TextField(
       controller: c,
       obscureText: obscure,
@@ -652,11 +1006,54 @@ class _LoginPageState extends State<LoginPage> {
         prefixIcon: Icon(i),
         suffixIcon: suffix,
         filled: true,
-        fillColor: Colors.white.withOpacity(0.7),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.7),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
         ),
+      ),
+    );
+  }
+}
+
+class _StepWrapper extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget content;
+
+  const _StepWrapper({required this.icon, required this.title, required this.subtitle, required this.content});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 80, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 24),
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 36,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 48),
+          Expanded(child: content),
+        ],
       ),
     );
   }
@@ -745,11 +1142,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             // ─── Menu Island (Glassmorphism) ───
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
+              duration: const Duration(milliseconds: 520),
               curve: Curves.easeOutBack,
               builder: (context, val, child) {
                  return Transform.translate(
-                   offset: Offset(0, (1 - val) * 20),
+                   offset: Offset(0, (1 - val) * 26),
                    child: Opacity(opacity: val.clamp(0, 1), child: child),
                  );
               },
@@ -758,8 +1155,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOutBack,
+                    duration: const Duration(milliseconds: 360),
+                    curve: Curves.easeOutCubic,
                     height: 64,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
@@ -786,7 +1183,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           selectedIcon: Icons.assignment_rounded,
                           selected: _selectedIndex == 1,
                           onTap: () {
-                             setState(() => _selectedIndex = 1);
+                             if (_selectedIndex != 1) {
+                               setState(() => _selectedIndex = 1);
+                             }
                           },
                         ),
                         const SizedBox(width: 4),
@@ -811,7 +1210,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           selectedIcon: Icons.settings_rounded,
                           selected: _selectedIndex == 2,
                           onTap: () {
-                             setState(() => _selectedIndex = 2);
+                             if (_selectedIndex != 2) {
+                               setState(() => _selectedIndex = 2);
+                             }
                           },
                         ),
                       ],
@@ -826,16 +1227,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             // ─── Main Action Button (Timetable) ───
             AnimatedScale(
               scale: _selectedIndex == 0 ? 1.05 : 0.95,
-              duration: const Duration(milliseconds: 400),
+              duration: const Duration(milliseconds: 320),
               curve: Curves.elasticOut,
               child: _BouncyButton(
                 onTap: () {
-                  setState(() => _selectedIndex = 0);
+                  if (_selectedIndex != 0) {
+                    setState(() => _selectedIndex = 0);
+                  }
                 },
-                scaleTarget: 0.85,
+                scaleTarget: 0.9,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.elasticOut,
+                  duration: const Duration(milliseconds: 420),
+                  curve: Curves.easeOutBack,
                   height: _selectedIndex == 0 ? 72 : 60, 
                   width: _selectedIndex == 0 ? 72 : 60,
                   decoration: BoxDecoration(
@@ -852,9 +1255,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                   child: Center(
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 500),
+                      duration: const Duration(milliseconds: 300),
                       switchInCurve: Curves.elasticOut,
-                      switchOutCurve: Curves.easeInCirc,
+                      switchOutCurve: Curves.easeInCubic,
                       transitionBuilder: (child, anim) {
                          return RotationTransition(
                            turns: Tween(begin: 0.8, end: 1.0).animate(anim),
@@ -889,7 +1292,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       onTap: onTap,
       scaleTarget: 0.8,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 280),
         curve: Curves.easeOutBack,
         width: selected ? 64 : 44,
         height: 44,
@@ -901,9 +1304,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             : Border.all(color: Colors.transparent, width: 0),
         ),
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 260),
           switchInCurve: Curves.elasticOut,
-          switchOutCurve: Curves.easeIn,
+          switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (child, anim) {
             return ScaleTransition(
               scale: anim,
@@ -926,14 +1329,11 @@ class _BouncyButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
   final double scaleTarget;
-  final Duration duration;
 
   const _BouncyButton({
-    super.key,
     required this.child,
     required this.onTap,
     this.scaleTarget = 0.9,
-    this.duration = const Duration(milliseconds: 100),
   });
 
   @override
@@ -943,17 +1343,22 @@ class _BouncyButton extends StatefulWidget {
 class _BouncyButtonState extends State<_BouncyButton> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+  bool _tapLocked = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
         vsync: this,
-        duration: widget.duration,
-        reverseDuration: widget.duration,
+      duration: const Duration(milliseconds: 90),
+      reverseDuration: const Duration(milliseconds: 260),
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleTarget).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.elasticOut,
+      ),
     );
   }
 
@@ -967,12 +1372,19 @@ class _BouncyButtonState extends State<_BouncyButton> with SingleTickerProviderS
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) {
+        if (_tapLocked) return;
         _controller.forward();
         HapticFeedback.lightImpact();
       },
-      onTapUp: (_) {
-        _controller.reverse();
+      onTap: () {
+        if (_tapLocked) return;
+        _tapLocked = true;
         widget.onTap();
+        _controller.reverse();
+        Future.delayed(const Duration(milliseconds: 140), () {
+          if (!mounted) return;
+          _tapLocked = false;
+        });
       },
       onTapCancel: () {
         _controller.reverse();
@@ -1927,9 +2339,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     } catch (_) {}
 
+    final l = AppL10n.of(appLocaleNotifier.value);
+
     showModalBottomSheet(
         context: context,
         useSafeArea: true,
+        backgroundColor: Colors.transparent,
         builder: (ctx) {
           return DraggableScrollableSheet(
               initialChildSize: 0.6,
@@ -1937,52 +2352,128 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               maxChildSize: 0.9,
               expand: false,
               builder: (_, scrollController) {
-                return ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Text("Klasse wählen",
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  ),
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                    children: [
+                      Text(
+                        l.timetableSelectClass,
                         style: GoogleFonts.outfit(
-                            fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    ListTile(
-                      leading: const Icon(Icons.person),
-                      title: const Text("Mein Stundenplan"),
-                      onTap: () {
-                        setState(() {
-                          _viewingClassId = null;
-                          _viewingClassName = null;
-                          _tempSessionId = null;
-                        });
-                        Navigator.pop(ctx);
-                        _fetchFullWeek();
-                      },
-                    ),
-                    const Divider(),
-                    if (classes.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text("Keine Klassen gefunden oder Zugriff verweigert."),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
-                    ...classes.map((c) {
-                      final name = c['name'] ?? c['longName'] ?? '?';
-                      final id = c['id'] as int?;
-                      if (id == null) return const SizedBox.shrink();
-                      return ListTile(
-                        leading: const Icon(Icons.class_outlined),
-                        title: Text(name),
-                        onTap: () {
-                          setState(() {
-                            _viewingClassId = id;
-                            _viewingClassName = name;
-                            _tempSessionId = sid;
-                          });
-                          Navigator.pop(ctx);
-                          _fetchFullWeek();
-                        },
-                      );
-                    }),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        'Wähle einen Stundenplan aus',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Card(
+                        elevation: 0,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.person,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          title: Text(
+                            l.timetableMyTimetable,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _viewingClassId = null;
+                              _viewingClassName = null;
+                              _tempSessionId = null;
+                            });
+                            Navigator.pop(ctx);
+                            _fetchFullWeek();
+                          },
+                        ),
+                      ),
+                      if (classes.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 16),
+                            Text(
+                              'Andere Klassen',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...classes.map((c) {
+                              final name = c['name'] ?? c['longName'] ?? '?';
+                              final id = c['id'] as int?;
+                              if (id == null) return const SizedBox.shrink();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Card(
+                                  elevation: 0,
+                                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: ListTile(
+                                    leading: Icon(
+                                      Icons.class_outlined,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                    title: Text(
+                                      name,
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    onTap: () {
+                                      setState(() {
+                                        _viewingClassId = id;
+                                        _viewingClassName = name;
+                                        _tempSessionId = sid;
+                                      });
+                                      Navigator.pop(ctx);
+                                      _fetchFullWeek();
+                                    },
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            l.timetableNoClassesFound,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               });
         });
@@ -1994,10 +2485,19 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
+        backgroundColor: blurEnabledNotifier.value ? Theme.of(context).colorScheme.surface.withOpacity(0.5) : null,
+        flexibleSpace: blurEnabledNotifier.value ? ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(color: Colors.transparent),
+          ),
+        ) : null,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         leading: IconButton(
-          tooltip: l.timetablePrevWeek,
-          icon: const Icon(Icons.chevron_left_rounded),
-          onPressed: _prevWeek,
+          tooltip: l.timetableSelectAnother,
+          icon: const Icon(Icons.groups_rounded),
+          onPressed: _openClassSearch,
         ),
         title: GestureDetector(
           onTap: () {
@@ -2010,36 +2510,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               _fetchFullWeek();
             }
           },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _viewingClassName ?? l.timetableTitle,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 20),
-              ),
-              Text(
-                _weekRangeLabel,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+          child: Text(
+            _viewingClassName ?? l.timetableTitle,
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 20),
           ),
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            tooltip: l.timetableNextWeek,
-            icon: const Icon(Icons.chevron_right_rounded),
-            onPressed: _nextWeek,
-          ),
-          IconButton(
-            tooltip: "Andere Klasse",
-            icon: const Icon(Icons.groups_rounded),
-            onPressed: _openClassSearch,
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
@@ -2060,7 +2537,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             fontSize: 16,
           ),
           labelColor: Theme.of(context).colorScheme.primary,
-          unselectedLabelColor: Colors.grey,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           dividerColor: Colors.transparent,
           tabs: List.generate(5, (i) {
             final d = _currentMonday.add(Duration(days: i));
@@ -2068,22 +2545,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 d.month == DateTime.now().month &&
                 d.day == DateTime.now().day;
             return Tab(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(_dayShort[i]),
-                  Text(
-                    '${d.day}',
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isToday
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
+              child: Text(_dayShort[i]),
             );
           }),
         ),
@@ -2100,7 +2562,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     Icon(
                       Icons.cloud_off_rounded,
                       size: 80,
-                      color: Colors.grey.withOpacity(0.35),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.35),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -2109,7 +2571,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       style: GoogleFonts.outfit(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -2119,7 +2581,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       style: GoogleFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -2501,15 +2963,18 @@ class _ExamsPageState extends State<ExamsPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.assignment_outlined,
-                          size: 80, color: Colors.grey.withOpacity(0.3)),
+                      Icon(
+                        Icons.assignment_outlined,
+                        size: 80,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         l.examsNone,
                         style: GoogleFonts.outfit(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
-                          color: Colors.grey,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -2517,7 +2982,8 @@ class _ExamsPageState extends State<ExamsPage> {
                         l.examsNoneHint,
                         textAlign: TextAlign.center,
                         style: GoogleFonts.outfit(
-                            fontSize: 14, color: Colors.grey),
+                            fontSize: 14,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -2589,7 +3055,7 @@ class _ExamsPageState extends State<ExamsPage> {
     return TweenAnimationBuilder<double>(
       key: ValueKey('exam_${exam['date']}_${exam['subject']}_$index'),
       duration: Duration(milliseconds: 350 + index * 70),
-      curve: Curves.easeOutBack,
+      curve: Curves.easeInOutCubicEmphasized,
       tween: Tween<double>(begin: 0, end: 1),
       builder: (context, v, child) => Transform.translate(
         offset: Offset(0, 28 * (1 - v)),
@@ -2970,7 +3436,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 320),
-          curve: Curves.easeOut,
+          curve: Curves.easeInOutCubicEmphasized,
         );
       }
     });
@@ -3201,7 +3667,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                 style: GoogleFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color: Colors.white,
+                  color: cs.onPrimary,
                 ),
               )
             : MarkdownBody(
@@ -3291,11 +3757,11 @@ class _DotState extends State<_Dot>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
+        vsync: this, duration: const Duration(milliseconds: 800));
     Future.delayed(Duration(milliseconds: widget.delay),
         () => mounted ? _ctrl.repeat(reverse: true) : null);
     _anim = Tween(begin: 0.3, end: 1.0).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubicEmphasized));
   }
 
   @override
@@ -3358,6 +3824,7 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
   );
 }
 
+// ignore: unused_element
 class _AnimatedLessonCard extends StatelessWidget {
   final int index;
   final dynamic lesson;
@@ -3369,8 +3836,8 @@ class _AnimatedLessonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder(
-      duration: Duration(milliseconds: 600 + (index * 150)),
-      curve: Curves.easeOutBack,
+      duration: Duration(milliseconds: 800 + (index * 150)),
+      curve: Curves.easeInOutCubicEmphasized,
       tween: Tween<double>(begin: 0, end: 1),
       builder: (context, double value, child) {
         return Transform.scale(
@@ -3544,7 +4011,7 @@ class _LessonDetailSheet extends StatelessWidget {
             _row(context, Icons.tag_rounded, l.detailLesson, lessonNr),
           if (info.isNotEmpty)
             _row(context, Icons.info_outline_rounded, l.detailInfo, info,
-                iconColor: Colors.orange),
+                iconColor: cs.tertiary),
 
           const SizedBox(height: 16),
           Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
@@ -3813,14 +4280,21 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         title: Text(l.settingsLanguage,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18)),
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: Theme.of(context).colorScheme.onSurface,
+            )),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: _localeLabels.entries.map((e) {
             final selected = appLocaleNotifier.value == e.key;
             return ListTile(
               title: Text(e.value,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  )),
               trailing: selected
                   ? Icon(Icons.check_rounded,
                       color: Theme.of(context).colorScheme.primary)
@@ -3918,7 +4392,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.clear();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const LoginPage()),
+      MaterialPageRoute(builder: (context) => const OnboardingFlow()),
       (route) => false,
     );
   }
@@ -3994,14 +4468,20 @@ class _SettingsPageState extends State<SettingsPage> {
                 children: [
                   Text(title,
                       style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w600, fontSize: 15.5)),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15.5,
+                        color: Theme.of(context).colorScheme.onSurface)),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: GoogleFonts.outfit(
                           fontSize: 12.5,
-                          color: subtitleColor ?? Colors.grey.withOpacity(0.75)),
+                            color: subtitleColor ??
+                              Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant
+                                .withOpacity(0.75)),
                     ),
                   ],
                 ],
@@ -4044,7 +4524,9 @@ class _SettingsPageState extends State<SettingsPage> {
               title: Text(
                 l.settingsTitle,
                 style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w900, fontSize: 23),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 23,
+                  color: cs.onSurface),
               ),
               collapseMode: CollapseMode.pin,
               background: ValueListenableBuilder<bool>(
@@ -4081,7 +4563,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           Text(l.settingsThemeMode,
                               style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 15.5)),
+                                fontSize: 15.5,
+                                color: cs.onSurface)),
                         ]),
                         const SizedBox(height: 10),
                         SegmentedButton<ThemeMode>(
@@ -4184,8 +4667,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           ? cs.primary
                           : cs.outline,
                     ),
-                    title: "Progressive Push-Benachrichtigung",
-                    subtitle: "Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen",
+                    title: l.settingsProgressivePush,
+                    subtitle: l.settingsProgressivePushDesc,
                     trailing: Switch.adaptive(
                       value: progressivePushNotifier.value,
                       onChanged: (v) {
@@ -4199,15 +4682,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   ),
                   _tile(
-                    leading: _tileIcon(Icons.system_update_alt_rounded, Colors.blue),
-                    title: "Push & Widget jetzt aktualisieren",
-                    subtitle: "Lädt sofort die neusten Daten aus dem API-Cache und aktualisiert Widget/Push",
+                    leading: _tileIcon(
+                      Icons.system_update_alt_rounded,
+                      cs.primary,
+                    ),
+                    title: l.settingsRefreshPushWidgetNow,
+                    subtitle: l.settingsRefreshPushWidgetNowDesc,
                     trailing: Icon(Icons.chevron_right_rounded, size: 20, color: cs.onSurface.withOpacity(0.4)),
                     onTap: () async {
                       HapticFeedback.heavyImpact();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text("Daten werden im Hintergrund geladen..."),
+                          content: Text(l.settingsBackgroundLoading),
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           duration: const Duration(seconds: 2),
@@ -4253,7 +4739,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: l.settingsSectionHidden,
                     subtitle: hidden.isEmpty 
                         ? l.settingsNoHidden 
-                        : '${hidden.length} ${hidden.length == 1 ? "subject" : "subjects"} hidden', // Fallback English literal for count or use l10n logic if intricate
+                      : l.settingsHiddenCount(hidden.length),
                     trailing: Icon(Icons.chevron_right_rounded,
                         size: 20, color: cs.onSurface.withOpacity(0.4)),
                     onTap: () {
@@ -4269,9 +4755,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     leading:
                         _tileIcon(Icons.rocket_launch_outlined, cs.primary),
                     title: 'Untis+',
-                    subtitle: '${l.settingsAppVersion} 1.0.0',
-                    trailing: const Icon(Icons.auto_awesome_rounded,
-                        size: 16, color: Colors.amber),
+                    subtitle: '${l.settingsAppVersion} 1.0.1',
+                    trailing: Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 16,
+                      color: cs.tertiary,
+                    ),
                   ),
                 ], cs),
               ]),
@@ -4337,9 +4826,9 @@ class _AnimatedOrbsState extends State<_AnimatedOrbs>
     final cs = Theme.of(context).colorScheme;
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) {
+      builder: (_, _) {
         final t = _ctrl.value;
-        final t2 = Curves.easeInOut.transform(t);
+        final t2 = Curves.easeInOutCubicEmphasized.transform(t);
         final t3 = Curves.slowMiddle.transform(1.0 - t);
         return Stack(
           clipBehavior: Clip.hardEdge,
@@ -4439,8 +4928,8 @@ class _SettingsAccountCard extends StatelessWidget {
                 child: Center(
                   child: Text(
                     username.isNotEmpty ? username[0].toUpperCase() : '?',
-                    style: const TextStyle(
-                        color: Colors.white,
+                    style: TextStyle(
+                      color: cs.onPrimary,
                         fontSize: 22,
                         fontWeight: FontWeight.bold),
                   ),
@@ -4462,7 +4951,9 @@ class _SettingsAccountCard extends StatelessWidget {
                     Text(
                       username.isNotEmpty ? username : '…',
                       style: GoogleFonts.outfit(
-                          fontSize: 20, fontWeight: FontWeight.w900),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: cs.onPrimaryContainer),
                     ),
                     if (serverUrl.isNotEmpty)
                       Text(
@@ -4544,7 +5035,13 @@ class SubjectColorsPage extends StatelessWidget {
                           : null,
                     ),
                     child: isSelected
-                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                        ? Icon(
+                            Icons.check_rounded,
+                            color: ThemeData.estimateBrightnessForColor(c) == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                            size: 22,
+                          )
                         : null,
                   ),
                 );
@@ -4591,7 +5088,12 @@ class SubjectColorsPage extends StatelessWidget {
                   Icon(Icons.palette_outlined, size: 64, color: Theme.of(context).colorScheme.outlineVariant),
                   const SizedBox(height: 16),
                   Text(l.settingsNoSubjectsLoaded, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
-                  Text(l.settingsNoSubjectsLoadedDesc, style: GoogleFonts.outfit(color: Colors.grey)),
+                  Text(
+                    l.settingsNoSubjectsLoadedDesc,
+                    style: GoogleFonts.outfit(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -4625,7 +5127,10 @@ class SubjectColorsPage extends StatelessWidget {
                     title: Text(subj, style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16)),
                     subtitle: Text(
                       subjectColor != null ? l.settingsCustomColor : l.settingsDefaultColor,
-                      style: GoogleFonts.outfit(fontSize: 13, color: Colors.grey),
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => _showColorPicker(context, subj, subjectColor),
@@ -4664,7 +5169,12 @@ class HiddenSubjectsPage extends StatelessWidget {
                   Icon(Icons.visibility_off_outlined, size: 64, color: Theme.of(context).colorScheme.outlineVariant),
                   const SizedBox(height: 16),
                   Text(l.settingsNoHidden, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
-                  Text(l.settingsNoHiddenDesc, style: GoogleFonts.outfit(color: Colors.grey)),
+                  Text(
+                    l.settingsNoHiddenDesc,
+                    style: GoogleFonts.outfit(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -4710,4 +5220,3 @@ class HiddenSubjectsPage extends StatelessWidget {
     );
   }
 }
-

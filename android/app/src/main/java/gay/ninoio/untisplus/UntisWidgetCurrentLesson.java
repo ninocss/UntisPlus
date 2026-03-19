@@ -1,4 +1,4 @@
-package com.example.untisplus;
+package gay.ninoio.untisplus;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
