@@ -18,6 +18,8 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'l10n.dart';
 import 'services/notification_service.dart';
 import 'services/background_service.dart';
+import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
+import 'widgets/rounded_blur_app_bar.dart';
 
 class SchoolSearchResult {
   final int id;
@@ -3437,19 +3439,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        flexibleSpace: blurEnabledNotifier.value
-            ? ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                  child: Container(color: Colors.transparent),
-                ),
-              )
-            : null,
-        elevation: 0,
-        scrolledUnderElevation: 0,
+      appBar: RoundedBlurAppBar(
         leading: IconButton(
           tooltip: l.timetableSelectAnother,
           icon: const Icon(Icons.groups_rounded),
@@ -4091,7 +4081,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
 
     return Scaffold(
       backgroundColor: cs.surface,
-      appBar: AppBar(
+      appBar: RoundedBlurAppBar(
         title: Text(
           l.examsTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
@@ -6109,27 +6099,41 @@ class _SettingsPageState extends State<SettingsPage> {
               elevation: 0,
               scrolledUnderElevation: 0,
               surfaceTintColor: Colors.transparent,
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 14),
-                title: Text(
-                  l.settingsTitle,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 23,
-                    color: cs.onSurface,
-                  ),
-                ),
-                collapseMode: CollapseMode.pin,
-                background: ValueListenableBuilder<bool>(
-                  valueListenable: backgroundAnimationsNotifier,
-                  builder: (context, enabled, _) {
-                    if (!enabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<int>(
-                      valueListenable: backgroundAnimationStyleNotifier,
-                      builder: (context, style, _) =>
-                          _AnimatedBackgroundScene(style: style),
-                    );
-                  },
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+              ),
+              flexibleSpace: ClipRRect(
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                child: Stack(
+                  children: [
+                    BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: Container(color: Colors.transparent),
+                    ),
+                    FlexibleSpaceBar(
+                      titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 14),
+                      title: Text(
+                        l.settingsTitle,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 23,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      collapseMode: CollapseMode.pin,
+                      background: ValueListenableBuilder<bool>(
+                        valueListenable: backgroundAnimationsNotifier,
+                        builder: (context, enabled, _) {
+                          if (!enabled) return const SizedBox.shrink();
+                          return ValueListenableBuilder<int>(
+                            valueListenable: backgroundAnimationStyleNotifier,
+                            builder: (context, style, _) =>
+                                _AnimatedBackgroundScene(style: style),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -6138,14 +6142,7 @@ class _SettingsPageState extends State<SettingsPage> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 44),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _SettingsAccountCard(
-                    username: _username,
-                    serverUrl: _serverDisplay,
-                    l: l,
-                    cs: cs,
-                    onLogout: () => _logout(context),
-                  ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 8),
 
                   _section(l.settingsSectionQuick, Icons.tune_rounded, [
                     _tile(
@@ -6189,6 +6186,33 @@ class _SettingsPageState extends State<SettingsPage> {
                   ], cs),
 
                   _section(l.settingsSectionGeneral, Icons.palette_outlined, [
+                    _tile(
+                      leading: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            _username.isNotEmpty ? _username[0].toUpperCase() : '?',
+                            style: TextStyle(
+                              color: cs.onPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      title: l.settingsLoggedInAs,
+                      subtitle: _username.isNotEmpty ? _username : '…',
+                      trailing: IconButton(
+                        tooltip: l.settingsLogout,
+                        icon: Icon(Icons.logout_rounded, color: cs.error),
+                        onPressed: () => _logout(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                       child: Column(
@@ -7280,7 +7304,7 @@ class SubjectColorsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     return Scaffold(
-      appBar: AppBar(
+      appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsSectionColors,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
@@ -7396,7 +7420,7 @@ class HiddenSubjectsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     return Scaffold(
-      appBar: AppBar(
+      appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsSectionHidden,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
