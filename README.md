@@ -18,7 +18,6 @@ Most settings are stored **locally on your device**. Optionally, you can enable 
 - [Project structure](#project-structure)
 - [Contributing](#contributing)
 - [Disclaimer](#disclaimer)
-- [License](#license)
 
 ## Features
 
