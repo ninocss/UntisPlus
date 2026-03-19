@@ -105,6 +105,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.8"
+  custom_refresh_indicator:
+    dependency: "direct main"
+    description:
+      name: custom_refresh_indicator
+      sha256: e4b0d8b2dd1e21b76b7fc0388e9c31e075f8b3216cb0f0584760288e19301f2b
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.2"
   dbus:
     dependency: transitive
     description:

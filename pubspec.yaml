@@ -3,7 +3,7 @@ description: "A Flutter application for displaying school schedules and related 
 
 publish_to: 'none' 
 
-version: 1.0.0+1
+version: 1.1.0+1
 
 environment:
   sdk: ^3.11.0
@@ -29,6 +29,7 @@ dependencies:
   file_picker: ^10.3.10
   image_picker: ^1.2.1
   google_generative_ai: ^0.4.7
+  custom_refresh_indicator: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -42,5 +43,3 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon.png"
-  adaptive_icon_background: "#FE6033"
-  adaptive_icon_foreground: "assets/icon_adaptive_foreground.png"

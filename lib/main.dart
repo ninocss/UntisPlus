@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher_string.dart' as url_launcher;
@@ -71,6 +72,8 @@ void main() async {
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
   backgroundAnimationsNotifier.value =
       prefs.getBool('backgroundAnimations') ?? true;
+  backgroundAnimationStyleNotifier.value =
+      (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 5);
   blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
 
   hiddenSubjectsNotifier.value = (prefs.getStringList('hiddenSubjects') ?? [])
@@ -243,7 +246,7 @@ Color _autoLessonColor(String subjectKey, bool isDark) {
 }
 
 // ── APP VERSION ────────────────────────────────────────────────────────────
-const String APP_VERSION = '1.0.2';
+const String APP_VERSION = '1.1.0';
 
 String sessionID = "";
 String schoolUrl = "";
@@ -258,6 +261,7 @@ final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
 );
 final ValueNotifier<bool> showCancelledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
+final ValueNotifier<int> backgroundAnimationStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 
@@ -516,8 +520,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
           ValueListenableBuilder<bool>(
             valueListenable: backgroundAnimationsNotifier,
-            builder: (context, enabled, _) =>
-                enabled ? const _AnimatedOrbs() : const SizedBox.shrink(),
+            builder: (context, enabled, _) {
+              if (!enabled) return const SizedBox.shrink();
+              return ValueListenableBuilder<int>(
+                valueListenable: backgroundAnimationStyleNotifier,
+                builder: (context, style, _) =>
+                    _AnimatedBackgroundScene(style: style),
+              );
+            },
           ),
 
           SafeArea(
@@ -1530,6 +1540,42 @@ class WeeklyTimetablePage extends StatefulWidget {
   State<WeeklyTimetablePage> createState() => _WeeklyTimetablePageState();
 }
 
+class _LessonSlot {
+  const _LessonSlot({
+    required this.lesson,
+    required this.startMin,
+    required this.endMin,
+    required this.column,
+    required this.columnCount,
+  });
+
+  final Map<dynamic, dynamic> lesson;
+  final int startMin;
+  final int endMin;
+  final int column;
+  final int columnCount;
+}
+
+class _LessonSlotCandidate {
+  _LessonSlotCandidate({
+    required this.lesson,
+    required this.startMin,
+    required this.endMin,
+  });
+
+  final Map<dynamic, dynamic> lesson;
+  final int startMin;
+  final int endMin;
+  int column = 0;
+}
+
+class _TimeRangeLabel {
+  const _TimeRangeLabel({required this.startMin, required this.endMin});
+
+  final int startMin;
+  final int endMin;
+}
+
 class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     with TickerProviderStateMixin {
   late TabController _tabController;
@@ -1541,6 +1587,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   String? _tempSessionId;
   int? _viewingClassId;
   String? _viewingClassName;
+  String _classSessionSource = 'account';
 
   String get _currentSessionId =>
       (_viewingClassId != null && _tempSessionId != null)
@@ -1556,6 +1603,96 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final Map<int, String> _subjectShortMap = {};
   final Map<int, String> _teacherMap = {};
   final Map<int, String> _roomMap = {};
+
+  String _extractTeacherNamesFromLesson(Map<dynamic, dynamic> lesson) {
+    final teacherEntries = ((lesson['te'] as List?) ?? const <dynamic>[])
+        .whereType<Map>()
+        .cast<Map<dynamic, dynamic>>()
+        .toList();
+    final teacherParts = <String>[];
+    for (final te in teacherEntries) {
+      final teId = te['id'] as int?;
+      final mapped = teId != null ? _teacherMap[teId] : null;
+      final direct =
+          (te['longName'] ??
+                  te['longname'] ??
+                  te['displayName'] ??
+                  te['fullName'] ??
+                  te['name'] ??
+                  '')
+              .toString()
+              .trim();
+      final candidate = (mapped?.trim().isNotEmpty == true)
+          ? mapped!.trim()
+          : direct;
+      if (candidate.isNotEmpty && !teacherParts.contains(candidate)) {
+        teacherParts.add(candidate);
+      }
+    }
+    return teacherParts.join(', ');
+  }
+
+  String _extractTeacherNamesFromTopLevel(Map<dynamic, dynamic> lesson) {
+    final candidates = <String>[];
+
+    void addValue(dynamic value) {
+      if (value == null) return;
+      if (value is List) {
+        for (final v in value) {
+          final s = v?.toString().trim() ?? '';
+          if (s.isNotEmpty && !candidates.contains(s)) candidates.add(s);
+        }
+        return;
+      }
+      final s = value.toString().trim();
+      if (s.isNotEmpty && !candidates.contains(s)) candidates.add(s);
+    }
+
+    addValue(lesson['teacher']);
+    addValue(lesson['teacherName']);
+    addValue(lesson['teacherLongName']);
+    addValue(lesson['teachers']);
+    addValue(lesson['teName']);
+    addValue(lesson['teLongName']);
+    addValue(lesson['orgTeacher']);
+    addValue(lesson['orgTeacherName']);
+    addValue(lesson['substTeacher']);
+    addValue(lesson['substTeacherName']);
+    addValue(lesson['teacherText']);
+    addValue(lesson['teacherDisplay']);
+
+    return candidates.join(', ');
+  }
+
+  String _lessonTeacherKey(
+    Map<dynamic, dynamic> lesson, {
+    bool withRoom = true,
+  }) {
+    final date = lesson['date']?.toString() ?? '';
+    final start = lesson['startTime']?.toString() ?? '';
+    final end = lesson['endTime']?.toString() ?? '';
+    final subId = (lesson['su'] as List?)?.firstOrNull?['id']?.toString() ?? '';
+    final roomId = withRoom
+        ? ((lesson['ro'] as List?)?.firstOrNull?['id']?.toString() ?? '')
+        : '';
+    return '$date|$start|$end|$subId|$roomId';
+  }
+
+  String _lessonTeacherKeyFromParts({
+    required dynamic date,
+    required dynamic startTime,
+    required dynamic endTime,
+    required dynamic subjectId,
+    dynamic roomId,
+    bool withRoom = true,
+  }) {
+    final d = date?.toString() ?? '';
+    final s = startTime?.toString() ?? '';
+    final e = endTime?.toString() ?? '';
+    final sub = subjectId?.toString() ?? '';
+    final room = withRoom ? (roomId?.toString() ?? '') : '';
+    return '$d|$s|$e|$sub|$room';
+  }
 
   Future<void> _fetchMasterData() async {
     final url = Uri.parse(
@@ -1636,8 +1773,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   Future<void> _loadViewPref() async {
     final prefs = await SharedPreferences.getInstance();
-    if (mounted)
+    if (mounted) {
       setState(() => _viewMode = (prefs.getInt('viewMode') ?? 0).clamp(0, 1));
+    }
   }
 
   void _prevWeek() {
@@ -1723,6 +1861,125 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   static int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
+  static String _formatMinutes(int minutes) {
+    final hh = minutes ~/ 60;
+    final mm = minutes % 60;
+    return '$hh:${mm.toString().padLeft(2, '0')}';
+  }
+
+  static int _lessonStartMinutes(Map<dynamic, dynamic> lesson) =>
+      _toMinutes((lesson['startTime'] as int?) ?? 800);
+
+  static int _lessonEndMinutes(Map<dynamic, dynamic> lesson) => _toMinutes(
+    (lesson['endTime'] as int?) ??
+        (((lesson['startTime'] as int?) ?? 800) + 45),
+  );
+
+  static String _norm(dynamic value) => value?.toString().trim() ?? '';
+
+  bool _isSameConsecutiveLessonBlock(
+    Map<dynamic, dynamic> a,
+    Map<dynamic, dynamic> b,
+  ) {
+    final sameSubjectShort =
+        _norm(a['_subjectShort']) == _norm(b['_subjectShort']);
+    final sameSubjectLong =
+        _norm(a['_subjectLong']) == _norm(b['_subjectLong']);
+    final sameTeacher = _norm(a['_teacher']) == _norm(b['_teacher']);
+    final sameRoom = _norm(a['_room']) == _norm(b['_room']);
+    final sameCode = _norm(a['code']) == _norm(b['code']);
+    final sameDate = _norm(a['date']) == _norm(b['date']);
+
+    if (!(sameSubjectShort &&
+        sameSubjectLong &&
+        sameTeacher &&
+        sameRoom &&
+        sameCode &&
+        sameDate)) {
+      return false;
+    }
+
+    final aEnd = _lessonEndMinutes(a);
+    final bStart = _lessonStartMinutes(b);
+    final gap = bStart - aEnd;
+
+    // Treat short breaks between identical consecutive lessons as one block.
+    return gap >= 0 && gap <= 10;
+  }
+
+  List<dynamic> _mergeConsecutiveLessons(List<dynamic> lessons) {
+    final sorted =
+        lessons
+            .whereType<Map>()
+            .map((l) => Map<dynamic, dynamic>.from(l.cast<dynamic, dynamic>()))
+            .toList()
+          ..sort((a, b) {
+            final byStart = _lessonStartMinutes(
+              a,
+            ).compareTo(_lessonStartMinutes(b));
+            if (byStart != 0) return byStart;
+            return _lessonEndMinutes(a).compareTo(_lessonEndMinutes(b));
+          });
+
+    if (sorted.isEmpty) return const [];
+
+    final merged = <Map<dynamic, dynamic>>[];
+    for (final lesson in sorted) {
+      if (merged.isEmpty) {
+        merged.add(lesson);
+        continue;
+      }
+
+      final previous = merged.last;
+      if (_isSameConsecutiveLessonBlock(previous, lesson)) {
+        final prevEnd = _lessonEndMinutes(previous);
+        final lessonEnd = _lessonEndMinutes(lesson);
+        if (lessonEnd > prevEnd) {
+          previous['endTime'] = lesson['endTime'];
+        }
+      } else {
+        merged.add(lesson);
+      }
+    }
+
+    return merged;
+  }
+
+  List<_TimeRangeLabel> _collectTimeRangesFromWeek() {
+    final seen = <String>{};
+    final ranges = <_TimeRangeLabel>[];
+    for (final day in _weekData.values) {
+      final visibleDayLessons = day
+          .where(
+            (l) => !hiddenSubjectsNotifier.value.contains(
+              l['_subjectShort']?.toString() ?? '',
+            ),
+          )
+          .where(
+            (l) =>
+                showCancelledNotifier.value || (l['code'] ?? '') != 'cancelled',
+          )
+          .toList();
+      final mergedDayLessons = _mergeConsecutiveLessons(visibleDayLessons);
+      for (final lesson in mergedDayLessons) {
+        final map = lesson as Map<dynamic, dynamic>;
+        final start = _lessonStartMinutes(map);
+        final end = _lessonEndMinutes(map);
+        if (end <= start) continue;
+        final key = '$start-$end';
+        if (seen.add(key)) {
+          ranges.add(_TimeRangeLabel(startMin: start, endMin: end));
+        }
+      }
+    }
+    ranges.sort((a, b) {
+      final byStart = a.startMin.compareTo(b.startMin);
+      if (byStart != 0) return byStart;
+      return a.endMin.compareTo(b.endMin);
+    });
+    return ranges;
+  }
+
   static const List<double> _grayscaleMatrix = <double>[
     0.2126,
     0.7152,
@@ -1757,6 +2014,92 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+  List<_LessonSlot> _computeLessonSlots(List<dynamic> rawLessons) {
+    final entries =
+        rawLessons.whereType<Map>().map((lesson) {
+          final map = lesson.cast<dynamic, dynamic>();
+          final rawStart = (map['startTime'] as int?) ?? 800;
+          final rawEnd = (map['endTime'] as int?) ?? (rawStart + 45);
+          return _LessonSlotCandidate(
+            lesson: map,
+            startMin: _toMinutes(rawStart),
+            endMin: _toMinutes(rawEnd),
+          );
+        }).toList()..sort((a, b) {
+          final byStart = a.startMin.compareTo(b.startMin);
+          if (byStart != 0) return byStart;
+          return a.endMin.compareTo(b.endMin);
+        });
+
+    if (entries.isEmpty) return const [];
+
+    final slots = <_LessonSlot>[];
+
+    void flushCluster(List<_LessonSlotCandidate> cluster) {
+      if (cluster.isEmpty) return;
+      final columnEnds = <int>[];
+
+      for (final entry in cluster) {
+        var assignedColumn = -1;
+        for (var i = 0; i < columnEnds.length; i++) {
+          if (columnEnds[i] <= entry.startMin) {
+            assignedColumn = i;
+            break;
+          }
+        }
+
+        if (assignedColumn == -1) {
+          columnEnds.add(entry.endMin);
+          assignedColumn = columnEnds.length - 1;
+        } else {
+          columnEnds[assignedColumn] = entry.endMin;
+        }
+
+        entry.column = assignedColumn;
+      }
+
+      final columnCount = columnEnds.isEmpty ? 1 : columnEnds.length;
+      for (final entry in cluster) {
+        slots.add(
+          _LessonSlot(
+            lesson: entry.lesson,
+            startMin: entry.startMin,
+            endMin: entry.endMin,
+            column: entry.column,
+            columnCount: columnCount,
+          ),
+        );
+      }
+    }
+
+    final cluster = <_LessonSlotCandidate>[];
+    var clusterMaxEnd = -1;
+
+    for (final entry in entries) {
+      if (cluster.isEmpty) {
+        cluster.add(entry);
+        clusterMaxEnd = entry.endMin;
+        continue;
+      }
+
+      if (entry.startMin < clusterMaxEnd) {
+        cluster.add(entry);
+        if (entry.endMin > clusterMaxEnd) {
+          clusterMaxEnd = entry.endMin;
+        }
+      } else {
+        flushCluster(cluster);
+        cluster
+          ..clear()
+          ..add(entry);
+        clusterMaxEnd = entry.endMin;
+      }
+    }
+    flushCluster(cluster);
+
+    return slots;
+  }
+
   Widget _buildGridView(int dayIndex) {
     final lessons = (_weekData[dayIndex] ?? [])
         .where(
@@ -1788,7 +2131,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ticks.add(m);
     }
 
-    const double timeColWidth = 44;
+    const double timeColWidth = 56;
+    final timeRanges = _collectTimeRangesFromWeek();
 
     final now = DateTime.now();
     final dayDate = _currentMonday.add(Duration(days: dayIndex));
@@ -1799,16 +2143,25 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final nowMin = now.hour * 60 + now.minute;
     final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
+    final visibleLessons = lessons
+        .where(
+          (l) =>
+              showCancelledNotifier.value || (l['code'] ?? '') != 'cancelled',
+        )
+        .toList();
+    final mergedLessons = _mergeConsecutiveLessons(visibleLessons);
+    final lessonSlots = _computeLessonSlots(mergedLessons);
 
     final csG = Theme.of(context).colorScheme;
     return RefreshIndicator(
       onRefresh: _onRefresh,
-      color: csG.primary,
-      backgroundColor: csG.surface,
-      strokeWidth: 2.5,
+      displacement: 40,
+      edgeOffset: 120,
+      color: csG.onPrimaryContainer,
+      backgroundColor: csG.primaryContainer,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 32, top: 12),
+        padding: const EdgeInsets.only(bottom: 32, top: 130),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1816,58 +2169,88 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               width: timeColWidth,
               height: totalHeight,
               child: Stack(
-                children: ticks.map((tick) {
-                  final top = (tick - globalMin) * _ppm - 9;
-                  final hh = tick ~/ 60;
-                  final mm = tick % 60;
-                  return Positioned(
-                    top: top,
-                    left: 0,
-                    right: 0,
-                    child: Text(
-                      '$hh:${mm.toString().padLeft(2, '0')}',
-                      textAlign: TextAlign.right,
-                      style: GoogleFonts.outfit(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: csG.onSurfaceVariant.withOpacity(0.7),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                children: timeRanges.isNotEmpty
+                    ? timeRanges.map((range) {
+                        final top = (range.startMin - globalMin) * _ppm;
+                        final blockHeight =
+                            ((range.endMin - range.startMin) * _ppm).clamp(
+                              18.0,
+                              9999.0,
+                            );
+                        return Positioned(
+                          top: top,
+                          left: 0,
+                          right: 0,
+                          height: blockHeight,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                _formatMinutes(range.startMin),
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: csG.onSurfaceVariant.withOpacity(0.8),
+                                ),
+                              ),
+                              Text(
+                                _formatMinutes(range.endMin),
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: csG.onSurfaceVariant.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList()
+                    : ticks.map((tick) {
+                        final top = (tick - globalMin) * _ppm - 9;
+                        return Positioned(
+                          top: top,
+                          left: 0,
+                          right: 0,
+                          child: Text(
+                            _formatMinutes(tick),
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: csG.onSurfaceVariant.withOpacity(0.7),
+                            ),
+                          ),
+                        );
+                      }).toList(),
               ),
             ),
             const SizedBox(width: 6),
             Expanded(
               child: SizedBox(
                 height: totalHeight,
-                child: Stack(
-                  children: [
-                    ...ticks.map((tick) {
-                      final top = (tick - globalMin) * _ppm;
-                      return Positioned(
-                        top: top,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          height: 0.5,
-                          color: csG.outlineVariant.withOpacity(0.6),
-                        ),
-                      );
-                    }),
-                    ...lessons
-                        .where(
-                          (l) =>
-                              showCancelledNotifier.value ||
-                              (l['code'] ?? '') != 'cancelled',
-                        )
-                        .map((l) {
-                          final startMin = _toMinutes(
-                            (l['startTime'] as int?) ?? globalMin,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Stack(
+                      children: [
+                        ...ticks.map((tick) {
+                          final top = (tick - globalMin) * _ppm;
+                          return Positioned(
+                            top: top,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              height: 0.5,
+                              color: csG.outlineVariant.withOpacity(0.6),
+                            ),
                           );
-                          final endMin = _toMinutes(
-                            (l['endTime'] as int?) ?? (startMin + 45),
-                          );
+                        }),
+                        ...lessonSlots.map((slot) {
+                          final l = slot.lesson;
+                          final startMin = slot.startMin;
+                          final endMin = slot.endMin;
                           final top = (startMin - globalMin) * _ppm;
                           final height = ((endMin - startMin) * _ppm).clamp(
                             28.0,
@@ -1884,6 +2267,21 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     : '?');
                           final room = l['_room']?.toString() ?? '';
                           final teacher = l['_teacher']?.toString() ?? '';
+
+                          const horizontalInset = 2.0;
+                          const columnGap = 4.0;
+                          final columns = slot.columnCount;
+                          final availableWidth =
+                              constraints.maxWidth - (horizontalInset * 2);
+                          final totalGap = (columns - 1) * columnGap;
+                          final rawCardWidth =
+                              (availableWidth - totalGap) / columns;
+                          final cardWidth = rawCardWidth > 8
+                              ? rawCardWidth
+                              : 8.0;
+                          final left =
+                              horizontalInset +
+                              (slot.column * (cardWidth + columnGap));
 
                           final cs = Theme.of(context).colorScheme;
                           final sk = l['_subjectShort']?.toString() ?? '';
@@ -1903,8 +2301,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
                           return Positioned(
                             top: top,
-                            left: 2,
-                            right: 2,
+                            left: left,
+                            width: cardWidth,
                             height: height,
                             child: _dimPastLesson(
                               dim: dim,
@@ -1947,18 +2345,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           decorationThickness: 2.0,
                                         ),
                                       ),
-                                      if (height >= 48 && room.isNotEmpty)
-                                        Text(
-                                          room,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: fgColor.withOpacity(0.75),
-                                          ),
-                                        ),
-                                      if (height >= 64 && teacher.isNotEmpty)
+                                      if (height >= 32 && teacher.isNotEmpty)
                                         Text(
                                           teacher,
                                           maxLines: 1,
@@ -1969,6 +2356,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                             color: fgColor.withOpacity(0.6),
                                           ),
                                         ),
+                                      if (height >= 52 && room.isNotEmpty)
+                                        Text(
+                                          room,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: fgColor.withOpacity(0.75),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),
@@ -1976,37 +2374,39 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             ),
                           );
                         }),
-                    if (showNowLine)
-                      Positioned(
-                        top: nowTop - 1,
-                        left: 0,
-                        right: 0,
-                        child: IgnorePointer(
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: csG.error,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Container(
-                                  height: 2,
-                                  decoration: BoxDecoration(
-                                    color: csG.error,
-                                    borderRadius: BorderRadius.circular(2),
+                        if (showNowLine)
+                          Positioned(
+                            top: nowTop - 1,
+                            left: 0,
+                            right: 0,
+                            child: IgnorePointer(
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: csG.error,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Container(
+                                      height: 2,
+                                      decoration: BoxDecoration(
+                                        color: csG.error,
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -2038,9 +2438,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ticks.add(m);
     }
 
-    const double timeColWidth = 40.0;
+    const double timeColWidth = 52.0;
     const double dayColWidth = 72.0;
     const double dayColGap = 4.0;
+    final timeRanges = _collectTimeRangesFromWeek();
     final cs = Theme.of(context).colorScheme;
     final today = DateTime.now();
 
@@ -2062,12 +2463,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final csW = Theme.of(context).colorScheme;
     return RefreshIndicator(
       onRefresh: _onRefresh,
-      color: csW.primary,
-      backgroundColor: csW.surface,
-      strokeWidth: 2.5,
+      displacement: 40, 
+      edgeOffset: 120,
+      color: csW.onPrimaryContainer,
+      backgroundColor: csW.primaryContainer,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 32, top: 8),
+        padding: const EdgeInsets.only(bottom: 32, top: 100),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           scrollDirection: Axis.horizontal,
@@ -2136,25 +2539,65 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     width: timeColWidth,
                     height: totalHeight,
                     child: Stack(
-                      children: ticks.map((tick) {
-                        final top = (tick - globalMin) * _ppm - 9;
-                        final hh = tick ~/ 60;
-                        final mm = tick % 60;
-                        return Positioned(
-                          top: top,
-                          left: 0,
-                          right: 0,
-                          child: Text(
-                            '$hh:${mm.toString().padLeft(2, '0')}',
-                            textAlign: TextAlign.right,
-                            style: GoogleFonts.outfit(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: cs.onSurfaceVariant.withOpacity(0.7),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                      children: timeRanges.isNotEmpty
+                          ? timeRanges.map((range) {
+                              final top = (range.startMin - globalMin) * _ppm;
+                              final blockHeight =
+                                  ((range.endMin - range.startMin) * _ppm)
+                                      .clamp(16.0, 9999.0);
+                              return Positioned(
+                                top: top,
+                                left: 0,
+                                right: 0,
+                                height: blockHeight,
+                                child: Column(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      _formatMinutes(range.startMin),
+                                      textAlign: TextAlign.right,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: cs.onSurfaceVariant.withOpacity(
+                                          0.8,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatMinutes(range.endMin),
+                                      textAlign: TextAlign.right,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                        color: cs.onSurfaceVariant.withOpacity(
+                                          0.7,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList()
+                          : ticks.map((tick) {
+                              final top = (tick - globalMin) * _ppm - 9;
+                              return Positioned(
+                                top: top,
+                                left: 0,
+                                right: 0,
+                                child: Text(
+                                  _formatMinutes(tick),
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: cs.onSurfaceVariant.withOpacity(0.7),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -2168,37 +2611,41 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             ),
                           )
                           .toList();
+                      final visibleLessons = lessons
+                          .where(
+                            (l) =>
+                                showCancelledNotifier.value ||
+                                (l['code'] ?? '') != 'cancelled',
+                          )
+                          .toList();
+                      final mergedLessons = _mergeConsecutiveLessons(
+                        visibleLessons,
+                      );
+                      final lessonSlots = _computeLessonSlots(mergedLessons);
                       return Container(
                         width: dayColWidth,
                         height: totalHeight,
                         margin: const EdgeInsets.only(right: dayColGap),
-                        child: Stack(
-                          children: [
-                            ...ticks.map((tick) {
-                              final top = (tick - globalMin) * _ppm;
-                              return Positioned(
-                                top: top,
-                                left: 0,
-                                right: 0,
-                                child: Container(
-                                  height: 0.5,
-                                  color: cs.outlineVariant.withOpacity(0.6),
-                                ),
-                              );
-                            }),
-                            ...lessons
-                                .where(
-                                  (l) =>
-                                      showCancelledNotifier.value ||
-                                      (l['code'] ?? '') != 'cancelled',
-                                )
-                                .map((l) {
-                                  final startMin = _toMinutes(
-                                    (l['startTime'] as int?) ?? globalMin,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return Stack(
+                              children: [
+                                ...ticks.map((tick) {
+                                  final top = (tick - globalMin) * _ppm;
+                                  return Positioned(
+                                    top: top,
+                                    left: 0,
+                                    right: 0,
+                                    child: Container(
+                                      height: 0.5,
+                                      color: cs.outlineVariant.withOpacity(0.6),
+                                    ),
                                   );
-                                  final endMin = _toMinutes(
-                                    (l['endTime'] as int?) ?? (startMin + 45),
-                                  );
+                                }),
+                                ...lessonSlots.map((slot) {
+                                  final l = slot.lesson;
+                                  final startMin = slot.startMin;
+                                  final endMin = slot.endMin;
                                   final top = (startMin - globalMin) * _ppm;
                                   final height = ((endMin - startMin) * _ppm)
                                       .clamp(24.0, 9999.0);
@@ -2220,6 +2667,25 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                             ? l['_subjectLong'].toString()
                                             : '?');
                                   final room = l['_room']?.toString() ?? '';
+                                  final teacher =
+                                      l['_teacher']?.toString() ?? '';
+
+                                  const horizontalInset = 1.0;
+                                  const columnGap = 2.0;
+                                  final columns = slot.columnCount;
+                                  final availableWidth =
+                                      constraints.maxWidth -
+                                      (horizontalInset * 2);
+                                  final totalGap = (columns - 1) * columnGap;
+                                  final rawCardWidth =
+                                      (availableWidth - totalGap) / columns;
+                                  final cardWidth = rawCardWidth > 6
+                                      ? rawCardWidth
+                                      : 6.0;
+                                  final left =
+                                      horizontalInset +
+                                      (slot.column * (cardWidth + columnGap));
+
                                   final sk2 =
                                       l['_subjectShort']?.toString() ?? '';
                                   final cv2 = isCancelled
@@ -2240,8 +2706,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         );
                                   return Positioned(
                                     top: top,
-                                    left: 1,
-                                    right: 1,
+                                    left: left,
+                                    width: cardWidth,
                                     height: height,
                                     child: _dimPastLesson(
                                       dim: dim,
@@ -2288,7 +2754,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   decorationThickness: 2.0,
                                                 ),
                                               ),
-                                              if (height >= 44 &&
+                                              if (height >= 30 &&
+                                                  teacher.isNotEmpty)
+                                                Text(
+                                                  teacher,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: GoogleFonts.outfit(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: fgColor.withOpacity(
+                                                      0.6,
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (height >= 45 &&
                                                   room.isNotEmpty)
                                                 Text(
                                                   room,
@@ -2310,39 +2791,40 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     ),
                                   );
                                 }),
-                            if (showNowLine && dayIndex == todayIndex)
-                              Positioned(
-                                top: nowTop - 1,
-                                left: 0,
-                                right: 0,
-                                child: IgnorePointer(
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 6,
-                                        height: 6,
-                                        decoration: BoxDecoration(
-                                          color: cs.error,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Container(
-                                          height: 2,
-                                          decoration: BoxDecoration(
-                                            color: cs.error,
-                                            borderRadius: BorderRadius.circular(
-                                              2,
+                                if (showNowLine && dayIndex == todayIndex)
+                                  Positioned(
+                                    top: nowTop - 1,
+                                    left: 0,
+                                    right: 0,
+                                    child: IgnorePointer(
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: BoxDecoration(
+                                              color: cs.error,
+                                              shape: BoxShape.circle,
                                             ),
                                           ),
-                                        ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Container(
+                                              height: 2,
+                                              decoration: BoxDecoration(
+                                                color: cs.error,
+                                                borderRadius:
+                                                    BorderRadius.circular(2),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              ),
-                          ],
+                              ],
+                            );
+                          },
                         ),
                       );
                     }),
@@ -2447,6 +2929,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _ => <dynamic>[],
       };
       Map<int, List<dynamic>> tempWeek = {0: [], 1: [], 2: [], 3: [], 4: []};
+      final classIdsInWeek = <int>{};
 
       for (var lesson in allLessons) {
         String dStr = lesson['date'].toString();
@@ -2457,10 +2940,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           int dayIndex = lessonDate.weekday - 1;
           if (dayIndex >= 0 && dayIndex < 5) {
             final subId = (lesson['su'] as List?)?.firstOrNull?['id'] as int?;
-            final teId = (lesson['te'] as List?)?.firstOrNull?['id'] as int?;
             final roId = (lesson['ro'] as List?)?.firstOrNull?['id'] as int?;
+            final klId = (lesson['kl'] as List?)?.firstOrNull?['id'] as int?;
+            if (klId != null) classIdsInWeek.add(klId);
 
-            final resolvedLesson = Map<String, dynamic>.from(lesson as Map);
+            final lessonMap = lesson as Map<dynamic, dynamic>;
+            final teacherFromTe = _extractTeacherNamesFromLesson(lessonMap);
+            final teacherFromTopLevel = _extractTeacherNamesFromTopLevel(
+              lessonMap,
+            );
+            final teacherResolved = teacherFromTe.isNotEmpty
+                ? teacherFromTe
+                : teacherFromTopLevel;
+
+            final resolvedLesson = Map<String, dynamic>.from(lesson);
             resolvedLesson['_subjectLong'] =
                 (lesson['su'] as List?)?.firstOrNull?['longname'] ??
                 (lesson['su'] as List?)?.firstOrNull?['longName'] ??
@@ -2470,16 +2963,185 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 (lesson['su'] as List?)?.firstOrNull?['name'] ??
                 _subjectShortMap[subId] ??
                 '';
-            resolvedLesson['_teacher'] =
-                _teacherMap[teId] ??
-                (lesson['te'] as List?)?.firstOrNull?['name'] ??
-                '';
+            resolvedLesson['_teacher'] = teacherResolved;
             resolvedLesson['_room'] =
                 (lesson['ro'] as List?)?.firstOrNull?['name'] ??
                 _roomMap[roId] ??
                 '';
 
             tempWeek[dayIndex]!.add(resolvedLesson);
+          }
+        }
+      }
+
+      final missingTeacherLessons = tempWeek.values
+          .expand((day) => day)
+          .where((l) => ((l['_teacher'] ?? '').toString().trim().isEmpty))
+          .toList();
+
+      if (missingTeacherLessons.isNotEmpty) {
+        final exactKeyToTeacher = <String, String>{};
+        final looseKeyToTeacher = <String, String>{};
+
+        // Fallback 1: Public weekly endpoint often contains teacher IDs in
+        // period elements (type=2) even when JSON-RPC omits `te`.
+        try {
+          final weeklyDate = DateFormat('yyyy-MM-dd').format(_currentMonday);
+          final publicUri = Uri.https(
+            schoolUrl,
+            '/WebUntis/api/public/timetable/weekly/data',
+            {
+              'elementType': requestPersonType.toString(),
+              'elementId': requestPersonId.toString(),
+              'date': weeklyDate,
+              'formatId': '2',
+            },
+          );
+          final publicResp = await http.get(
+            publicUri,
+            headers: {
+              "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+              "Accept": "application/json",
+            },
+          );
+          if (publicResp.statusCode == 200) {
+            final decoded = jsonDecode(publicResp.body);
+            final data = decoded is Map
+                ? (((decoded['data'] as Map?)?['result'] as Map?)?['data']
+                      as Map?)
+                : null;
+            final elements = (data?['elements'] as List?) ?? const <dynamic>[];
+            final teacherNameById = <int, String>{};
+            for (final e in elements) {
+              if (e is! Map) continue;
+              if ((e['type'] as int?) != 2) continue;
+              final id = e['id'] as int?;
+              if (id == null) continue;
+              final n =
+                  (e['longName'] ??
+                          e['longname'] ??
+                          e['displayname'] ??
+                          e['name'] ??
+                          '')
+                      .toString()
+                      .trim();
+              if (n.isNotEmpty) teacherNameById[id] = n;
+            }
+
+            final elementPeriods =
+                (data?['elementPeriods'] as Map?) ?? const {};
+            final periodsForElement =
+                elementPeriods[requestPersonId.toString()];
+            final periods = periodsForElement is List
+                ? periodsForElement
+                : const <dynamic>[];
+            for (final p in periods) {
+              if (p is! Map) continue;
+              final pElements = (p['elements'] as List?) ?? const <dynamic>[];
+              int? subjectId;
+              int? roomId;
+              final teacherNames = <String>[];
+              for (final pe in pElements) {
+                if (pe is! Map) continue;
+                final t = pe['type'] as int?;
+                final id = pe['id'] as int?;
+                if (t == 3 && id != null) subjectId ??= id;
+                if (t == 4 && id != null) roomId ??= id;
+                if (t == 2 && id != null) {
+                  final tn = teacherNameById[id];
+                  if (tn != null &&
+                      tn.isNotEmpty &&
+                      !teacherNames.contains(tn)) {
+                    teacherNames.add(tn);
+                  }
+                }
+              }
+              final teacherJoined = teacherNames.join(', ');
+              if (teacherJoined.isEmpty || subjectId == null) continue;
+
+              final exactKey = _lessonTeacherKeyFromParts(
+                date: p['date'],
+                startTime: p['startTime'],
+                endTime: p['endTime'],
+                subjectId: subjectId,
+                roomId: roomId,
+                withRoom: true,
+              );
+              final looseKey = _lessonTeacherKeyFromParts(
+                date: p['date'],
+                startTime: p['startTime'],
+                endTime: p['endTime'],
+                subjectId: subjectId,
+                withRoom: false,
+              );
+              exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
+              looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
+            }
+          }
+        } catch (_) {}
+
+        // Fallback 2: Query related class timetables and try key matching.
+        if (classIdsInWeek.isNotEmpty) {
+          for (final classId in classIdsInWeek) {
+            try {
+              final classResp = await http.post(
+                url,
+                headers: {
+                  "Cookie":
+                      "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+                  "Content-Type": "application/json",
+                  "Accept": "application/json",
+                },
+                body: jsonEncode({
+                  "id": "week_class_$classId",
+                  "method": "getTimetable",
+                  "params": {
+                    "id": classId,
+                    "type": 1,
+                    "startDate": startDate,
+                    "endDate": endDate,
+                  },
+                  "jsonrpc": "2.0",
+                }),
+              );
+              if (classResp.statusCode != 200) continue;
+              final classJson = jsonDecode(classResp.body);
+              if (classJson is! Map || classJson['error'] != null) continue;
+              final classResult = classJson['result'];
+              final List<dynamic> classLessons = switch (classResult) {
+                List<dynamic> r => r,
+                Map r when r['timetable'] is List<dynamic> =>
+                  (r['timetable'] as List<dynamic>),
+                _ => <dynamic>[],
+              };
+              for (final lRaw in classLessons) {
+                if (lRaw is! Map) continue;
+                final lMap = Map<dynamic, dynamic>.from(lRaw);
+                final t = _extractTeacherNamesFromLesson(lMap);
+                if (t.isEmpty) continue;
+                exactKeyToTeacher.putIfAbsent(
+                  _lessonTeacherKey(lMap, withRoom: true),
+                  () => t,
+                );
+                looseKeyToTeacher.putIfAbsent(
+                  _lessonTeacherKey(lMap, withRoom: false),
+                  () => t,
+                );
+              }
+            } catch (_) {}
+          }
+        }
+
+        for (final l in missingTeacherLessons) {
+          if (l is! Map) continue;
+          final lMap = Map<dynamic, dynamic>.from(l);
+          final exact =
+              exactKeyToTeacher[_lessonTeacherKey(lMap, withRoom: true)];
+          final loose =
+              looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
+          final fallbackTeacher = exact ?? loose ?? '';
+          if (fallbackTeacher.isNotEmpty) {
+            l['_teacher'] = fallbackTeacher;
           }
         }
       }
@@ -2546,15 +3208,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
-    String? sid = await _authenticateAnonymous();
-    
-    sid ??= sessionID;
+    final url = Uri.parse(
+      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+    );
 
-    List<dynamic> classes = [];
-    try {
-      final url = Uri.parse(
-        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-      );
+    Future<List<dynamic>> fetchClassesForSession(String sid) async {
       final response = await http.post(
         url,
         headers: {"Cookie": "JSESSIONID=$sid; schoolname=$schoolName"},
@@ -2565,13 +3223,43 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           "jsonrpc": "2.0",
         }),
       );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] is List) {
-          classes = data['result'];
-        }
+      if (response.statusCode != 200) return const <dynamic>[];
+      final data = jsonDecode(response.body);
+      if (data is Map && data['result'] is List) {
+        return data['result'] as List<dynamic>;
       }
-    } catch (_) {}
+      return const <dynamic>[];
+    }
+
+    String? sid;
+    String sidSource = 'account';
+    List<dynamic> classes = [];
+
+    if (sessionID.isNotEmpty) {
+      try {
+        classes = await fetchClassesForSession(sessionID);
+        if (classes.isNotEmpty) {
+          sid = sessionID;
+          sidSource = 'account';
+        }
+      } catch (_) {}
+    }
+
+    if (classes.isEmpty) {
+      try {
+        final anonSid = await _authenticateAnonymous();
+        if (anonSid != null && anonSid.isNotEmpty) {
+          final anonClasses = await fetchClassesForSession(anonSid);
+          if (anonClasses.isNotEmpty) {
+            classes = anonClasses;
+            sid = anonSid;
+            sidSource = 'anonymous';
+          }
+        }
+      } catch (_) {}
+    }
+
+    sid ??= sessionID;
 
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -2653,6 +3341,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           _viewingClassId = null;
                           _viewingClassName = null;
                           _tempSessionId = null;
+                          _classSessionSource = 'account';
                         });
                         Navigator.pop(ctx);
                         _fetchFullWeek();
@@ -2705,7 +3394,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   setState(() {
                                     _viewingClassId = id;
                                     _viewingClassName = name;
-                                    _tempSessionId = sid;
+                                    _tempSessionId =
+                                        (sid != null && sid != sessionID)
+                                        ? sid
+                                        : null;
+                                    _classSessionSource = _tempSessionId != null
+                                        ? sidSource
+                                        : 'account';
                                   });
                                   Navigator.pop(ctx);
                                   _fetchFullWeek();
@@ -2740,11 +3435,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: blurEnabledNotifier.value
-            ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
-            : null,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         flexibleSpace: blurEnabledNotifier.value
             ? ClipRect(
                 child: BackdropFilter(
@@ -4806,7 +5501,9 @@ class _SettingsPageState extends State<SettingsPage> {
     showCancelledNotifier.addListener(_onChanged);
     themeModeNotifier.addListener(_onChanged);
     backgroundAnimationsNotifier.addListener(_onChanged);
+    backgroundAnimationStyleNotifier.addListener(_onChanged);
     progressivePushNotifier.addListener(_onChanged);
+    blurEnabledNotifier.addListener(_onChanged);
   }
 
   void _onChanged() => setState(() {});
@@ -4820,7 +5517,9 @@ class _SettingsPageState extends State<SettingsPage> {
     showCancelledNotifier.removeListener(_onChanged);
     themeModeNotifier.removeListener(_onChanged);
     backgroundAnimationsNotifier.removeListener(_onChanged);
+    backgroundAnimationStyleNotifier.removeListener(_onChanged);
     progressivePushNotifier.removeListener(_onChanged);
+    blurEnabledNotifier.removeListener(_onChanged);
     super.dispose();
   }
 
@@ -4987,6 +5686,19 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setBool('backgroundAnimations', v);
   }
 
+  Future<void> _setBackgroundAnimationStyle(int style) async {
+    final normalized = style.clamp(0, 5);
+    backgroundAnimationStyleNotifier.value = normalized;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('backgroundAnimationStyle', normalized);
+  }
+
+  Future<void> _setBlurEnabled(bool v) async {
+    blurEnabledNotifier.value = v;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('blurEnabled', v);
+  }
+
   Future<void> _setProgressivePush(bool v) async {
     progressivePushNotifier.value = v;
     final prefs = await SharedPreferences.getInstance();
@@ -5039,6 +5751,90 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             );
           }).toList(),
+        ),
+      ),
+    );
+  }
+
+  String _backgroundStyleLabel(AppL10n l, int style) {
+    switch (style) {
+      case 1:
+        return l.settingsBackgroundStyleSpace;
+      case 2:
+        return l.settingsBackgroundStyleBubbles;
+      case 3:
+        return l.settingsBackgroundStyleLines;
+      case 4:
+        return l.settingsBackgroundStyleThreeD;
+      case 5:
+        return l.settingsBackgroundStyleAurora;
+      default:
+        return l.settingsBackgroundStyleOrbs;
+    }
+  }
+
+  IconData _backgroundStyleIcon(int style) {
+    switch (style) {
+      case 1:
+        return Icons.nightlight_round;
+      case 2:
+        return Icons.bubble_chart_rounded;
+      case 3:
+        return Icons.show_chart_rounded;
+      case 4:
+        return Icons.view_in_ar_rounded;
+      case 5:
+        return Icons.water_drop_rounded;
+      default:
+        return Icons.blur_circular_rounded;
+    }
+  }
+
+  void _showBackgroundStyleDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final cs = Theme.of(context).colorScheme;
+    final styleOptions = List<int>.generate(6, (index) => index);
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(
+          l.settingsBackgroundStyle,
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: cs.onSurface,
+          ),
+        ),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: styleOptions.map((style) {
+              final selected = backgroundAnimationStyleNotifier.value == style;
+              return ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                leading: Icon(
+                  _backgroundStyleIcon(style),
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+                title: Text(
+                  _backgroundStyleLabel(l, style),
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                trailing: selected
+                    ? Icon(Icons.check_rounded, color: cs.primary)
+                    : null,
+                onTap: () {
+                  _setBackgroundAnimationStyle(style);
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -5309,6 +6105,9 @@ class _SettingsPageState extends State<SettingsPage> {
             SliverAppBar(
               pinned: true,
               expandedHeight: 96,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              scrolledUnderElevation: 0,
               surfaceTintColor: Colors.transparent,
               flexibleSpace: FlexibleSpaceBar(
                 titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 14),
@@ -5323,8 +6122,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 collapseMode: CollapseMode.pin,
                 background: ValueListenableBuilder<bool>(
                   valueListenable: backgroundAnimationsNotifier,
-                  builder: (context, enabled, _) =>
-                      enabled ? const _AnimatedOrbs() : const SizedBox.shrink(),
+                  builder: (context, enabled, _) {
+                    if (!enabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<int>(
+                      valueListenable: backgroundAnimationStyleNotifier,
+                      builder: (context, style, _) =>
+                          _AnimatedBackgroundScene(style: style),
+                    );
+                  },
                 ),
               ),
             ),
@@ -5341,6 +6146,47 @@ class _SettingsPageState extends State<SettingsPage> {
                     onLogout: () => _logout(context),
                   ),
                   const SizedBox(height: 32),
+
+                  _section(l.settingsSectionQuick, Icons.tune_rounded, [
+                    _tile(
+                      leading: _tileIcon(
+                        Icons.event_busy_rounded,
+                        showCancelledNotifier.value ? cs.outline : cs.error,
+                      ),
+                      title: l.settingsShowCancelled,
+                      subtitle: l.settingsShowCancelledDesc,
+                      trailing: Switch.adaptive(
+                        value: showCancelledNotifier.value,
+                        onChanged: (v) {
+                          HapticFeedback.selectionClick();
+                          _setShowCancelled(v);
+                        },
+                      ),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _setShowCancelled(!showCancelledNotifier.value);
+                      },
+                    ),
+                    _tile(
+                      leading: _tileIcon(
+                        Icons.notifications_active_rounded,
+                        progressivePushNotifier.value ? cs.primary : cs.outline,
+                      ),
+                      title: l.settingsProgressivePush,
+                      subtitle: l.settingsProgressivePushDesc,
+                      trailing: Switch.adaptive(
+                        value: progressivePushNotifier.value,
+                        onChanged: (v) {
+                          HapticFeedback.selectionClick();
+                          _setProgressivePush(v);
+                        },
+                      ),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _setProgressivePush(!progressivePushNotifier.value);
+                      },
+                    ),
+                  ], cs),
 
                   _section(l.settingsSectionGeneral, Icons.palette_outlined, [
                     Padding(
@@ -5409,6 +6255,67 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                     ),
+                    _tile(
+                      leading: _tileIcon(
+                        Icons.auto_awesome_motion_outlined,
+                        backgroundAnimationsNotifier.value
+                            ? cs.tertiary
+                            : cs.outline,
+                      ),
+                      title: l.settingsBackgroundAnimations,
+                      subtitle: l.settingsBackgroundAnimationsDesc,
+                      trailing: Switch.adaptive(
+                        value: backgroundAnimationsNotifier.value,
+                        onChanged: (v) {
+                          HapticFeedback.selectionClick();
+                          _setBackgroundAnimations(v);
+                        },
+                      ),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _setBackgroundAnimations(
+                          !backgroundAnimationsNotifier.value,
+                        );
+                      },
+                    ),
+                    _tile(
+                      leading: _tileIcon(
+                        _backgroundStyleIcon(
+                          backgroundAnimationStyleNotifier.value,
+                        ),
+                        cs.secondary,
+                      ),
+                      title: l.settingsBackgroundStyle,
+                      subtitle: _backgroundStyleLabel(
+                        l,
+                        backgroundAnimationStyleNotifier.value,
+                      ),
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: cs.onSurface.withOpacity(0.4),
+                      ),
+                      onTap: _showBackgroundStyleDialog,
+                    ),
+                    _tile(
+                      leading: _tileIcon(
+                        Icons.blur_on_rounded,
+                        blurEnabledNotifier.value ? cs.primary : cs.outline,
+                      ),
+                      title: l.settingsGlassEffect,
+                      subtitle: l.settingsGlassEffectDesc,
+                      trailing: Switch.adaptive(
+                        value: blurEnabledNotifier.value,
+                        onChanged: (v) {
+                          HapticFeedback.selectionClick();
+                          _setBlurEnabled(v);
+                        },
+                      ),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _setBlurEnabled(!blurEnabledNotifier.value);
+                      },
+                    ),
                     // Language tile
                     _tile(
                       leading: _tileIcon(Icons.language_rounded, cs.primary),
@@ -5427,69 +6334,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     l.settingsSectionTimetable,
                     Icons.calendar_today_outlined,
                     [
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.event_busy_rounded,
-                          showCancelledNotifier.value ? cs.outline : cs.error,
-                        ),
-                        title: l.settingsShowCancelled,
-                        subtitle: l.settingsShowCancelledDesc,
-                        trailing: Switch.adaptive(
-                          value: showCancelledNotifier.value,
-                          onChanged: (v) {
-                            HapticFeedback.selectionClick();
-                            _setShowCancelled(v);
-                          },
-                        ),
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          _setShowCancelled(!showCancelledNotifier.value);
-                        },
-                      ),
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.auto_awesome_motion_outlined,
-                          backgroundAnimationsNotifier.value
-                              ? cs.tertiary
-                              : cs.outline,
-                        ),
-                        title: l.settingsBackgroundAnimations,
-                        subtitle: l.settingsBackgroundAnimationsDesc,
-                        trailing: Switch.adaptive(
-                          value: backgroundAnimationsNotifier.value,
-                          onChanged: (v) {
-                            HapticFeedback.selectionClick();
-                            _setBackgroundAnimations(v);
-                          },
-                        ),
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          _setBackgroundAnimations(
-                            !backgroundAnimationsNotifier.value,
-                          );
-                        },
-                      ),
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.notifications_active_rounded,
-                          progressivePushNotifier.value
-                              ? cs.primary
-                              : cs.outline,
-                        ),
-                        title: l.settingsProgressivePush,
-                        subtitle: l.settingsProgressivePushDesc,
-                        trailing: Switch.adaptive(
-                          value: progressivePushNotifier.value,
-                          onChanged: (v) {
-                            HapticFeedback.selectionClick();
-                            _setProgressivePush(v);
-                          },
-                        ),
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          _setProgressivePush(!progressivePushNotifier.value);
-                        },
-                      ),
                       _tile(
                         leading: _tileIcon(
                           Icons.system_update_alt_rounded,
@@ -5586,6 +6430,77 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ], cs),
 
+                  _section(l.settingsSectionUpdates, Icons.download_rounded, [
+                    _tile(
+                      leading: _tileIcon(
+                        Icons.system_update_alt_rounded,
+                        cs.primary,
+                      ),
+                      title: l.settingsGithubUpdateCheck,
+                      subtitle: l.settingsGithubUpdateCheckDesc,
+                      trailing: _checkingGithubUpdate
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  cs.primary,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: cs.onSurface.withOpacity(0.4),
+                            ),
+                      onTap: _checkingGithubUpdate
+                          ? null
+                          : () {
+                              HapticFeedback.selectionClick();
+                              _checkGithubUpdate();
+                            },
+                    ),
+                    _tile(
+                      leading: _tileIcon(
+                        Icons.download_rounded,
+                        _githubDirectDownload ? cs.primary : cs.outline,
+                      ),
+                      title: l.settingsGithubDirectDownload,
+                      subtitle: l.settingsGithubDirectDownloadDesc,
+                      trailing: Switch.adaptive(
+                        value: _githubDirectDownload,
+                        onChanged: (v) {
+                          HapticFeedback.selectionClick();
+                          _setGithubDirectDownload(v);
+                        },
+                      ),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _setGithubDirectDownload(!_githubDirectDownload);
+                      },
+                    ),
+                    _tile(
+                      leading: _tileIcon(
+                        Icons.open_in_new_rounded,
+                        cs.secondary,
+                      ),
+                      title: l.settingsGithubOpenReleasePage,
+                      subtitle: 'github.com/ninocss/UntisPlus',
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: cs.onSurface.withOpacity(0.4),
+                      ),
+                      onTap: () {
+                        url_launcher.launchUrlString(
+                          'https://github.com/ninocss/UntisPlus/releases',
+                          mode: url_launcher.LaunchMode.externalApplication,
+                        );
+                      },
+                    ),
+                  ], cs),
+
                   // ── About ────────────────────────────────────────────────
                   _section(
                     l.settingsSectionAbout,
@@ -5603,74 +6518,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           size: 16,
                           color: cs.tertiary,
                         ),
-                      ),
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.system_update_alt_rounded,
-                          cs.primary,
-                        ),
-                        title: l.settingsGithubUpdateCheck,
-                        subtitle: l.settingsGithubUpdateCheckDesc,
-                        trailing: _checkingGithubUpdate
-                            ? SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    cs.primary,
-                                  ),
-                                ),
-                              )
-                            : Icon(
-                                Icons.chevron_right_rounded,
-                                size: 20,
-                                color: cs.onSurface.withOpacity(0.4),
-                              ),
-                        onTap: _checkingGithubUpdate
-                            ? null
-                            : () {
-                                HapticFeedback.selectionClick();
-                                _checkGithubUpdate();
-                              },
-                      ),
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.download_rounded,
-                          _githubDirectDownload ? cs.primary : cs.outline,
-                        ),
-                        title: l.settingsGithubDirectDownload,
-                        subtitle: l.settingsGithubDirectDownloadDesc,
-                        trailing: Switch.adaptive(
-                          value: _githubDirectDownload,
-                          onChanged: (v) {
-                            HapticFeedback.selectionClick();
-                            _setGithubDirectDownload(v);
-                          },
-                        ),
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          _setGithubDirectDownload(!_githubDirectDownload);
-                        },
-                      ),
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.open_in_new_rounded,
-                          cs.secondary,
-                        ),
-                        title: l.settingsGithubOpenReleasePage,
-                        subtitle: 'github.com/ninocss/UntisPlus',
-                        trailing: Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: cs.onSurface.withOpacity(0.4),
-                        ),
-                        onTap: () {
-                          url_launcher.launchUrlString(
-                            'https://github.com/ninocss/UntisPlus/releases',
-                            mode: url_launcher.LaunchMode.externalApplication,
-                          );
-                        },
                       ),
                     ],
                     cs,
@@ -5697,26 +6544,32 @@ class _AnimatedBackground extends StatelessWidget {
       valueListenable: backgroundAnimationsNotifier,
       builder: (context, enabled, _) {
         if (!enabled) return child;
-        return Stack(
-          children: [
-            Positioned.fill(child: const _AnimatedOrbs()),
-            child,
-          ],
+        return ValueListenableBuilder<int>(
+          valueListenable: backgroundAnimationStyleNotifier,
+          builder: (context, style, _) {
+            return Stack(
+              children: [
+                Positioned.fill(child: _AnimatedBackgroundScene(style: style)),
+                child,
+              ],
+            );
+          },
         );
       },
     );
   }
 }
 
-// ── Animated background orbs ─────────────────────────────────────────────────
-class _AnimatedOrbs extends StatefulWidget {
-  const _AnimatedOrbs();
+class _AnimatedBackgroundScene extends StatefulWidget {
+  final int style;
+  const _AnimatedBackgroundScene({required this.style});
 
   @override
-  State<_AnimatedOrbs> createState() => _AnimatedOrbsState();
+  State<_AnimatedBackgroundScene> createState() =>
+      _AnimatedBackgroundSceneState();
 }
 
-class _AnimatedOrbsState extends State<_AnimatedOrbs>
+class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
 
@@ -5725,8 +6578,8 @@ class _AnimatedOrbsState extends State<_AnimatedOrbs>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 9),
-    )..repeat(reverse: true);
+      duration: const Duration(seconds: 16),
+    )..repeat();
   }
 
   @override
@@ -5740,46 +6593,67 @@ class _AnimatedOrbsState extends State<_AnimatedOrbs>
     final cs = Theme.of(context).colorScheme;
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, _) {
-        final t = _ctrl.value;
-        final t2 = Curves.easeInOutCubicEmphasized.transform(t);
-        final t3 = Curves.slowMiddle.transform(1.0 - t);
-        return Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // Top-right: primary
-            Positioned(
-              top: -80 + t * 65,
-              right: -40 + t2 * 50,
-              child: _orb(240, cs.primaryContainer.withOpacity(0.38)),
-            ),
-            // Bottom-left: secondary
-            Positioned(
-              bottom: -70 + t2 * 55,
-              left: -45 + t * 40,
-              child: _orb(210, cs.secondaryContainer.withOpacity(0.34)),
-            ),
-            // Mid-right: tertiary
-            Positioned(
-              top: 85 + t3 * 90,
-              right: 15 - t2 * 30,
-              child: _orb(150, cs.tertiaryContainer.withOpacity(0.27)),
-            ),
-            // Mid-left: primary variant (slow)
-            Positioned(
-              top: 175 + t2 * 80,
-              left: 8 + t * 45,
-              child: _orb(170, cs.primaryContainer.withOpacity(0.20)),
-            ),
-            // Bottom-right: secondary variant
-            Positioned(
-              bottom: 55 - t3 * 35,
-              right: 35 + t * 60,
-              child: _orb(125, cs.secondaryContainer.withOpacity(0.22)),
-            ),
-          ],
-        );
-      },
+      builder: (_, _) => _buildStyle(cs, _ctrl.value),
+    );
+  }
+
+  Widget _buildStyle(ColorScheme cs, double t) {
+    final style = widget.style.clamp(0, 5);
+    switch (style) {
+      case 1:
+        return _SpaceLayer(t: t, cs: cs);
+      case 2:
+        return _BubblesLayer(t: t, cs: cs);
+      case 3:
+        return _LinesLayer(t: t, cs: cs);
+      case 4:
+        return _ThreeDLayer(t: t, cs: cs);
+      case 5:
+        return _AuroraLayer(t: t, cs: cs);
+      default:
+        return _OrbsLayer(t: t, cs: cs);
+    }
+  }
+}
+
+class _OrbsLayer extends StatelessWidget {
+  final double t;
+  final ColorScheme cs;
+  const _OrbsLayer({required this.t, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    final t2 = Curves.easeInOutCubicEmphasized.transform(t);
+    final t3 = Curves.slowMiddle.transform(1.0 - t);
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        Positioned(
+          top: -80 + t * 65,
+          right: -40 + t2 * 50,
+          child: _orb(240, cs.primaryContainer.withOpacity(0.38)),
+        ),
+        Positioned(
+          bottom: -70 + t2 * 55,
+          left: -45 + t * 40,
+          child: _orb(210, cs.secondaryContainer.withOpacity(0.34)),
+        ),
+        Positioned(
+          top: 85 + t3 * 90,
+          right: 15 - t2 * 30,
+          child: _orb(150, cs.tertiaryContainer.withOpacity(0.27)),
+        ),
+        Positioned(
+          top: 175 + t2 * 80,
+          left: 8 + t * 45,
+          child: _orb(170, cs.primaryContainer.withOpacity(0.20)),
+        ),
+        Positioned(
+          bottom: 55 - t3 * 35,
+          right: 35 + t * 60,
+          child: _orb(125, cs.secondaryContainer.withOpacity(0.22)),
+        ),
+      ],
     );
   }
 
@@ -5788,6 +6662,281 @@ class _AnimatedOrbsState extends State<_AnimatedOrbs>
     height: size,
     decoration: BoxDecoration(shape: BoxShape.circle, color: color),
   );
+}
+
+class _SpaceLayer extends StatelessWidget {
+  final double t;
+  final ColorScheme cs;
+  const _SpaceLayer({required this.t, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(-0.3, -0.8),
+                radius: 1.35,
+                colors: [
+                  cs.primaryContainer.withOpacity(0.24),
+                  cs.surface.withOpacity(0.04),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _StarfieldPainter(t: t, cs: cs),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BubblesLayer extends StatelessWidget {
+  final double t;
+  final ColorScheme cs;
+  const _BubblesLayer({required this.t, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    final bubbles = List<Widget>.generate(18, (i) {
+      final f = (i + 1) / 19;
+      final drift = math.sin((t * math.pi * 2) + i) * 0.06;
+      final x = ((i * 0.13) % 1.0).clamp(0.04, 0.96) - 0.5 + drift;
+      final y = 0.6 - (((t + f) % 1.0) * 1.4);
+      final size = 18.0 + (i % 5) * 11.0;
+      final color = Color.lerp(
+        cs.secondaryContainer,
+        cs.tertiaryContainer,
+        (i % 7) / 6,
+      )!.withOpacity(0.22);
+      return Align(
+        alignment: Alignment(x * 2, y * 2),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                color.withOpacity(0.92),
+                color.withOpacity(0.45),
+                color.withOpacity(0.12),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  cs.tertiaryContainer.withOpacity(0.20),
+                  cs.primaryContainer.withOpacity(0.10),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+        ...bubbles,
+      ],
+    );
+  }
+}
+
+class _LinesLayer extends StatelessWidget {
+  final double t;
+  final ColorScheme cs;
+  const _LinesLayer({required this.t, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _LinesPainter(t: t, cs: cs),
+    );
+  }
+}
+
+class _ThreeDLayer extends StatelessWidget {
+  final double t;
+  final ColorScheme cs;
+  const _ThreeDLayer({required this.t, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    final layers = List<Widget>.generate(6, (i) {
+      final p = (t + i * 0.13) % 1.0;
+      final size = 120.0 + i * 32.0;
+      final x = math.sin((p * math.pi * 2) + i) * 90;
+      final y = math.cos((p * math.pi * 2 * 0.7) + i) * 70;
+      final color = Color.lerp(
+        cs.primaryContainer,
+        cs.secondaryContainer,
+        i / 5,
+      )!.withOpacity(0.12 + i * 0.02);
+      return Positioned.fill(
+        child: Transform.translate(
+          offset: Offset(x, y),
+          child: Center(
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateX((p * math.pi) / 3)
+                ..rotateZ((p * math.pi) / 2),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: cs.onSurface.withOpacity(0.08),
+                    width: 1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+    return Stack(children: layers);
+  }
+}
+
+class _AuroraLayer extends StatelessWidget {
+  final double t;
+  final ColorScheme cs;
+  const _AuroraLayer({required this.t, required this.cs});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _AuroraPainter(t: t, cs: cs),
+    );
+  }
+}
+
+class _StarfieldPainter extends CustomPainter {
+  final double t;
+  final ColorScheme cs;
+  _StarfieldPainter({required this.t, required this.cs});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final starPaint = Paint()..style = PaintingStyle.fill;
+    for (int i = 0; i < 120; i++) {
+      final seed = i * 0.6180339;
+      final x = ((seed * 9973) % 1.0) * size.width;
+      final yBase = ((seed * 6967) % 1.0) * size.height;
+      final y = (yBase + (t * (10 + (i % 7)))) % size.height;
+      final twinkle =
+          0.25 + 0.75 * (0.5 + 0.5 * math.sin((t * 8 + i) * math.pi));
+      final r = 0.5 + (i % 3) * 0.5;
+      starPaint.color = Color.lerp(
+        cs.onSurface,
+        cs.primary,
+        (i % 5) / 4,
+      )!.withOpacity(0.08 + 0.20 * twinkle);
+      canvas.drawCircle(Offset(x, y), r, starPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StarfieldPainter oldDelegate) => true;
+}
+
+class _LinesPainter extends CustomPainter {
+  final double t;
+  final ColorScheme cs;
+  _LinesPainter({required this.t, required this.cs});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+
+    for (int i = -2; i < 15; i++) {
+      final y = i * 52.0 + (t * 120.0);
+      final path = Path()
+        ..moveTo(-40, y)
+        ..lineTo(size.width + 40, y - 70);
+      paint.color = Color.lerp(
+        cs.primary,
+        cs.tertiary,
+        ((i + 2) % 6) / 5,
+      )!.withOpacity(0.12 + ((i + 2) % 3) * 0.05);
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LinesPainter oldDelegate) => true;
+}
+
+class _AuroraPainter extends CustomPainter {
+  final double t;
+  final ColorScheme cs;
+  _AuroraPainter({required this.t, required this.cs});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final base = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          cs.primaryContainer.withOpacity(0.15),
+          cs.secondaryContainer.withOpacity(0.10),
+          Colors.transparent,
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, base);
+
+    for (int i = 0; i < 4; i++) {
+      final path = Path();
+      final phase = t * math.pi * 2 + i * 0.8;
+      final top = 60.0 + i * 65.0;
+      path.moveTo(0, top + math.sin(phase) * 18);
+      for (double x = 0; x <= size.width; x += 20) {
+        final y =
+            top +
+            math.sin((x / size.width) * math.pi * 2 + phase) * (20 + i * 4);
+        path.lineTo(x, y);
+      }
+      path.lineTo(size.width, size.height);
+      path.lineTo(0, size.height);
+      path.close();
+
+      final fill = Paint()
+        ..style = PaintingStyle.fill
+        ..color = Color.lerp(
+          cs.primary,
+          cs.tertiary,
+          i / 3,
+        )!.withOpacity(0.09 + i * 0.03);
+      canvas.drawPath(path, fill);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AuroraPainter oldDelegate) => true;
 }
 
 // ── Standalone account card for settings ─────────────────────────────────────

@@ -144,6 +144,7 @@ class AppL10n {
   String get settingsTitle => _t('settingsTitle');
   String get settingsLoggedInAs => _t('settingsLoggedInAs');
   String get settingsLogout => _t('settingsLogout');
+  String get settingsSectionQuick => _t('settingsSectionQuick');
   String get settingsSectionGeneral => _t('settingsSectionGeneral');
   String get settingsAppearance => _t('settingsAppearance');
   String get settingsAppearanceDesc => _t('settingsAppearanceDesc');
@@ -171,11 +172,11 @@ class AppL10n {
   String settingsColorFor(String s) =>
       _t('settingsColorFor').replaceAll('{s}', s);
   String get settingsColorReset => _t('settingsColorReset');
-    String get settingsColorCustomPicker => _t('settingsColorCustomPicker');
-    String get settingsColorApply => _t('settingsColorApply');
-    String get settingsColorRed => _t('settingsColorRed');
-    String get settingsColorGreen => _t('settingsColorGreen');
-    String get settingsColorBlue => _t('settingsColorBlue');
+  String get settingsColorCustomPicker => _t('settingsColorCustomPicker');
+  String get settingsColorApply => _t('settingsColorApply');
+  String get settingsColorRed => _t('settingsColorRed');
+  String get settingsColorGreen => _t('settingsColorGreen');
+  String get settingsColorBlue => _t('settingsColorBlue');
   String get settingsThemeMode => _t('settingsThemeMode');
   String get settingsThemeLight => _t('settingsThemeLight');
   String get settingsThemeSystem => _t('settingsThemeSystem');
@@ -186,12 +187,25 @@ class AppL10n {
   String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
   String get settingsBackgroundAnimationsDesc =>
       _t('settingsBackgroundAnimationsDesc');
+  String get settingsBackgroundStyle => _t('settingsBackgroundStyle');
+  String get settingsBackgroundStyleOrbs => _t('settingsBackgroundStyleOrbs');
+  String get settingsBackgroundStyleSpace => _t('settingsBackgroundStyleSpace');
+  String get settingsBackgroundStyleBubbles =>
+      _t('settingsBackgroundStyleBubbles');
+  String get settingsBackgroundStyleLines => _t('settingsBackgroundStyleLines');
+  String get settingsBackgroundStyleThreeD =>
+      _t('settingsBackgroundStyleThreeD');
+  String get settingsBackgroundStyleAurora =>
+      _t('settingsBackgroundStyleAurora');
+  String get settingsGlassEffect => _t('settingsGlassEffect');
+  String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
   String get settingsProgressivePush => _t('settingsProgressivePush');
   String get settingsProgressivePushDesc => _t('settingsProgressivePushDesc');
   String get settingsRefreshPushWidgetNow => _t('settingsRefreshPushWidgetNow');
   String get settingsRefreshPushWidgetNowDesc =>
       _t('settingsRefreshPushWidgetNowDesc');
   String get settingsBackgroundLoading => _t('settingsBackgroundLoading');
+  String get settingsSectionUpdates => _t('settingsSectionUpdates');
   String get settingsSectionAbout => _t('settingsSectionAbout');
   String get settingsAppVersion => _t('settingsAppVersion');
   String get settingsSectionSubjects => _t('settingsSectionSubjects');
@@ -357,6 +371,7 @@ class AppL10n {
       'settingsTitle': 'Einstellungen',
       'settingsLoggedInAs': 'Angemeldet als',
       'settingsLogout': 'Abmelden',
+      'settingsSectionQuick': 'Schnellzugriff',
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Erscheinungsbild',
       'settingsAppearanceDesc': 'System (Hell/Dunkel)',
@@ -383,11 +398,11 @@ class AppL10n {
       'settingsDefaultColor': 'Standardfarbe',
       'settingsColorFor': 'Farbe für „{s}"',
       'settingsColorReset': 'Auf Standard zurücksetzen',
-    'settingsColorCustomPicker': 'Eigene Farbe wählen',
-    'settingsColorApply': 'Farbe übernehmen',
-    'settingsColorRed': 'Rot',
-    'settingsColorGreen': 'Grün',
-    'settingsColorBlue': 'Blau',
+      'settingsColorCustomPicker': 'Eigene Farbe wählen',
+      'settingsColorApply': 'Farbe übernehmen',
+      'settingsColorRed': 'Rot',
+      'settingsColorGreen': 'Grün',
+      'settingsColorBlue': 'Blau',
       'settingsThemeMode': 'Farbschema',
       'settingsThemeLight': 'Hell',
       'settingsThemeSystem': 'System',
@@ -399,6 +414,16 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Hintergrundanimationen',
       'settingsBackgroundAnimationsDesc':
           'Animierte Farbverläufe im Hintergrund anzeigen',
+      'settingsBackgroundStyle': 'Animationsstil',
+      'settingsBackgroundStyleOrbs': 'Orbs',
+      'settingsBackgroundStyleSpace': 'Space',
+      'settingsBackgroundStyleBubbles': 'Blasen',
+      'settingsBackgroundStyleLines': 'Linien',
+      'settingsBackgroundStyleThreeD': '3D-Formen',
+      'settingsBackgroundStyleAurora': 'Aurora',
+      'settingsGlassEffect': 'Glaseffekt (Blur)',
+      'settingsGlassEffectDesc':
+          'Aktiviert weiche Glas-/Unschärfeeffekte in der Oberfläche',
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
@@ -406,6 +431,7 @@ class AppL10n {
       'settingsRefreshPushWidgetNowDesc':
           'Lädt sofort die neuesten Daten aus dem API-Cache und aktualisiert Widget und Push',
       'settingsBackgroundLoading': 'Daten werden im Hintergrund geladen...',
+      'settingsSectionUpdates': 'Updates',
       'settingsSectionAbout': 'Über die App',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Fächer & Farben',
@@ -564,6 +590,7 @@ class AppL10n {
       'settingsTitle': 'Settings',
       'settingsLoggedInAs': 'Logged in as',
       'settingsLogout': 'Sign out',
+      'settingsSectionQuick': 'Quick Controls',
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Appearance',
       'settingsAppearanceDesc': 'System (Light/Dark)',
@@ -590,11 +617,11 @@ class AppL10n {
       'settingsDefaultColor': 'Default color',
       'settingsColorFor': 'Color for "{s}"',
       'settingsColorReset': 'Reset to default',
-    'settingsColorCustomPicker': 'Pick custom color',
-    'settingsColorApply': 'Apply color',
-    'settingsColorRed': 'Red',
-    'settingsColorGreen': 'Green',
-    'settingsColorBlue': 'Blue',
+      'settingsColorCustomPicker': 'Pick custom color',
+      'settingsColorApply': 'Apply color',
+      'settingsColorRed': 'Red',
+      'settingsColorGreen': 'Green',
+      'settingsColorBlue': 'Blue',
       'settingsThemeMode': 'Color scheme',
       'settingsThemeLight': 'Light',
       'settingsThemeSystem': 'System',
@@ -606,6 +633,16 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Background Animations',
       'settingsBackgroundAnimationsDesc':
           'Show animated gradient effects in the background',
+      'settingsBackgroundStyle': 'Animation Style',
+      'settingsBackgroundStyleOrbs': 'Orbs',
+      'settingsBackgroundStyleSpace': 'Space',
+      'settingsBackgroundStyleBubbles': 'Bubbles',
+      'settingsBackgroundStyleLines': 'Lines',
+      'settingsBackgroundStyleThreeD': '3D Forms',
+      'settingsBackgroundStyleAurora': 'Aurora',
+      'settingsGlassEffect': 'Glass Effect (Blur)',
+      'settingsGlassEffectDesc':
+          'Enables soft glass/blur effects across the interface',
       'settingsProgressivePush': 'Progressive push notification',
       'settingsProgressivePushDesc':
           'Show the current lesson as a persistent notification',
@@ -613,6 +650,7 @@ class AppL10n {
       'settingsRefreshPushWidgetNowDesc':
           'Immediately loads the newest data from the API cache and updates widget and push',
       'settingsBackgroundLoading': 'Data is loading in the background...',
+      'settingsSectionUpdates': 'Updates',
       'settingsSectionAbout': 'About',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Subjects & Colors',
@@ -800,11 +838,11 @@ class AppL10n {
       'settingsDefaultColor': 'Couleur par défaut',
       'settingsColorFor': 'Couleur pour « {s} »',
       'settingsColorReset': 'Réinitialiser par défaut',
-    'settingsColorCustomPicker': 'Choisir une couleur personnalisée',
-    'settingsColorApply': 'Appliquer la couleur',
-    'settingsColorRed': 'Rouge',
-    'settingsColorGreen': 'Vert',
-    'settingsColorBlue': 'Bleu',
+      'settingsColorCustomPicker': 'Choisir une couleur personnalisée',
+      'settingsColorApply': 'Appliquer la couleur',
+      'settingsColorRed': 'Rouge',
+      'settingsColorGreen': 'Vert',
+      'settingsColorBlue': 'Bleu',
       'settingsThemeMode': 'Schéma de couleurs',
       'settingsThemeLight': 'Clair',
       'settingsThemeSystem': 'Système',
@@ -816,6 +854,13 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Animations de fond',
       'settingsBackgroundAnimationsDesc':
           'Afficher des effets de dégradé animés en arrière-plan',
+      'settingsBackgroundStyle': 'Style d\'animation',
+      'settingsBackgroundStyleOrbs': 'Orbes',
+      'settingsBackgroundStyleSpace': 'Espace',
+      'settingsBackgroundStyleBubbles': 'Bulles',
+      'settingsBackgroundStyleLines': 'Lignes',
+      'settingsBackgroundStyleThreeD': 'Formes 3D',
+      'settingsBackgroundStyleAurora': 'Aurore',
       'settingsProgressivePush': 'Notification push progressive',
       'settingsProgressivePushDesc':
           'Afficher le cours actuel comme notification persistante',
@@ -1012,11 +1057,11 @@ class AppL10n {
       'settingsDefaultColor': 'Color predeterminado',
       'settingsColorFor': 'Color para "{s}"',
       'settingsColorReset': 'Restablecer predeterminado',
-    'settingsColorCustomPicker': 'Elegir color personalizado',
-    'settingsColorApply': 'Aplicar color',
-    'settingsColorRed': 'Rojo',
-    'settingsColorGreen': 'Verde',
-    'settingsColorBlue': 'Azul',
+      'settingsColorCustomPicker': 'Elegir color personalizado',
+      'settingsColorApply': 'Aplicar color',
+      'settingsColorRed': 'Rojo',
+      'settingsColorGreen': 'Verde',
+      'settingsColorBlue': 'Azul',
       'settingsThemeMode': 'Esquema de colores',
       'settingsThemeLight': 'Claro',
       'settingsThemeSystem': 'Sistema',
@@ -1028,6 +1073,13 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Animaciones de fondo',
       'settingsBackgroundAnimationsDesc':
           'Mostrar efectos de degradado animados en el fondo',
+      'settingsBackgroundStyle': 'Estilo de animación',
+      'settingsBackgroundStyleOrbs': 'Orbes',
+      'settingsBackgroundStyleSpace': 'Espacio',
+      'settingsBackgroundStyleBubbles': 'Burbujas',
+      'settingsBackgroundStyleLines': 'Líneas',
+      'settingsBackgroundStyleThreeD': 'Formas 3D',
+      'settingsBackgroundStyleAurora': 'Aurora',
       'settingsProgressivePush': 'Notificación push progresiva',
       'settingsProgressivePushDesc':
           'Mostrar la clase actual como notificación persistente',
