@@ -11,6 +11,9 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'l10n.dart';
 import 'services/notification_service.dart';
 import 'services/background_service.dart';
@@ -45,7 +48,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService().init();
   BackgroundService.initialize();
-  
+
   await Future.wait([
     initializeDateFormatting('de_DE', null),
     initializeDateFormatting('en_US', null),
@@ -66,17 +69,19 @@ void main() async {
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
   themeModeNotifier.value = ThemeMode.values[prefs.getInt('themeMode') ?? 0];
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
-  backgroundAnimationsNotifier.value = prefs.getBool('backgroundAnimations') ?? true;
+  backgroundAnimationsNotifier.value =
+      prefs.getBool('backgroundAnimations') ?? true;
   blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
 
-  hiddenSubjectsNotifier.value =
-      (prefs.getStringList('hiddenSubjects') ?? []).toSet();
+  hiddenSubjectsNotifier.value = (prefs.getStringList('hiddenSubjects') ?? [])
+      .toSet();
   try {
     final colorsJson = prefs.getString('subjectColors');
     if (colorsJson != null) {
       final decoded = jsonDecode(colorsJson) as Map<String, dynamic>;
-      subjectColorsNotifier.value =
-          decoded.map((k, v) => MapEntry(k, (v as num).toInt()));
+      subjectColorsNotifier.value = decoded.map(
+        (k, v) => MapEntry(k, (v as num).toInt()),
+      );
     }
   } catch (_) {}
 
@@ -113,21 +118,24 @@ class UntisPlusApp extends StatelessWidget {
           builder: (context, themeMode, _) {
             return DynamicColorBuilder(
               builder: (lightDynamic, darkDynamic) {
-                final lightScheme = lightDynamic ??
+                final lightScheme =
+                    lightDynamic ??
                     ColorScheme.fromSeed(
                       seedColor: const Color(0xFF4F378B),
                       brightness: Brightness.light,
                     );
-                final darkScheme = darkDynamic ??
+                final darkScheme =
+                    darkDynamic ??
                     ColorScheme.fromSeed(
                       seedColor: const Color(0xFF4F378B),
                       brightness: Brightness.dark,
                     );
 
                 ThemeData themeFrom(ColorScheme scheme) => ThemeData(
-                      useMaterial3: true,
-                      colorScheme: scheme,
-                      textTheme: GoogleFonts.outfitTextTheme(
+                  useMaterial3: true,
+                  colorScheme: scheme,
+                  textTheme:
+                      GoogleFonts.outfitTextTheme(
                         ThemeData(
                           useMaterial3: true,
                           colorScheme: scheme,
@@ -136,28 +144,31 @@ class UntisPlusApp extends StatelessWidget {
                         bodyColor: scheme.onSurface,
                         displayColor: scheme.onSurface,
                       ),
-                      pageTransitionsTheme: const PageTransitionsTheme(
-                        builders: {
-                          TargetPlatform.android: ZoomPageTransitionsBuilder(),
-                          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-                          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-                          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
-                        },
+                  pageTransitionsTheme: const PageTransitionsTheme(
+                    builders: {
+                      TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                      TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+                      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+                      TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+                    },
+                  ),
+                  navigationBarTheme: NavigationBarThemeData(
+                    labelBehavior:
+                        NavigationDestinationLabelBehavior.onlyShowSelected,
+                    height: 80,
+                    indicatorColor: scheme.secondaryContainer,
+                    indicatorShape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    labelTextStyle: WidgetStateProperty.all(
+                      GoogleFonts.outfit(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
                       ),
-                      navigationBarTheme: NavigationBarThemeData(
-                        labelBehavior:
-                            NavigationDestinationLabelBehavior.onlyShowSelected,
-                        height: 80,
-                        indicatorColor: scheme.secondaryContainer,
-                        indicatorShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        labelTextStyle: WidgetStateProperty.all(
-                          GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 13),
-                        ),
-                      ),
-                    );
+                    ),
+                  ),
+                );
 
                 return MaterialApp(
                   debugShowCheckedModeBanner: false,
@@ -166,16 +177,20 @@ class UntisPlusApp extends StatelessWidget {
                   darkTheme: themeFrom(darkScheme),
                   themeMode: themeMode,
                   builder: (context, child) {
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark;
                     final overlayStyle = SystemUiOverlayStyle(
                       statusBarColor: Colors.transparent,
-                      statusBarIconBrightness:
-                          isDark ? Brightness.light : Brightness.dark,
-                      statusBarBrightness:
-                          isDark ? Brightness.dark : Brightness.light,
+                      statusBarIconBrightness: isDark
+                          ? Brightness.light
+                          : Brightness.dark,
+                      statusBarBrightness: isDark
+                          ? Brightness.dark
+                          : Brightness.light,
                       systemNavigationBarColor: Colors.transparent,
-                      systemNavigationBarIconBrightness:
-                          isDark ? Brightness.light : Brightness.dark,
+                      systemNavigationBarIconBrightness: isDark
+                          ? Brightness.light
+                          : Brightness.dark,
                     );
                     return AnnotatedRegion<SystemUiOverlayStyle>(
                       value: overlayStyle,
@@ -207,7 +222,10 @@ List<Color> _subjectColorPalette(ColorScheme cs) {
     cs.surfaceTint,
   ];
   final seen = <int>{};
-  return [for (final c in candidates) if (seen.add(c.value)) c];
+  return [
+    for (final c in candidates)
+      if (seen.add(c.value)) c,
+  ];
 }
 
 Color _autoLessonColor(String subjectKey, bool isDark) {
@@ -225,8 +243,7 @@ Color _autoLessonColor(String subjectKey, bool isDark) {
 }
 
 // ── APP VERSION ────────────────────────────────────────────────────────────
-// Update this when releasing a new version
-const String APP_VERSION = '1.0.1';
+const String APP_VERSION = '1.0.2';
 
 String sessionID = "";
 String schoolUrl = "";
@@ -236,7 +253,9 @@ int personType = 0;
 String geminiApiKey = "";
 
 final ValueNotifier<String> appLocaleNotifier = ValueNotifier('de');
-final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(ThemeMode.system);
+final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
+  ThemeMode.system,
+);
 final ValueNotifier<bool> showCancelledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
 final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
@@ -244,10 +263,14 @@ final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 
 String _icuLocale(String locale) {
   switch (locale) {
-    case 'en': return 'en_US';
-    case 'fr': return 'fr_FR';
-    case 'es': return 'es_ES';
-    default:   return 'de_DE';
+    case 'en':
+      return 'en_US';
+    case 'fr':
+      return 'fr_FR';
+    case 'es':
+      return 'es_ES';
+    default:
+      return 'de_DE';
   }
 }
 
@@ -274,17 +297,25 @@ final ValueNotifier<Set<String>> knownSubjectsNotifier = ValueNotifier({});
 
 Future<void> _setSubjectColor(String key, int colorValue) async {
   if (key.isEmpty) return;
-  final updated = Map<String, int>.from(subjectColorsNotifier.value)..[key] = colorValue;
+  final updated = Map<String, int>.from(subjectColorsNotifier.value)
+    ..[key] = colorValue;
   subjectColorsNotifier.value = updated;
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('subjectColors', jsonEncode(Map<String, dynamic>.from(updated)));
+  await prefs.setString(
+    'subjectColors',
+    jsonEncode(Map<String, dynamic>.from(updated)),
+  );
 }
 
 Future<void> _clearSubjectColor(String key) async {
-  final updated = Map<String, int>.from(subjectColorsNotifier.value)..remove(key);
+  final updated = Map<String, int>.from(subjectColorsNotifier.value)
+    ..remove(key);
   subjectColorsNotifier.value = updated;
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('subjectColors', jsonEncode(Map<String, dynamic>.from(updated)));
+  await prefs.setString(
+    'subjectColors',
+    jsonEncode(Map<String, dynamic>.from(updated)),
+  );
 }
 
 String _formatUntisTime(String time) {
@@ -300,14 +331,18 @@ Future<bool> _reAuthenticate() async {
   if (user.isEmpty || pass.isEmpty) return false;
 
   try {
-    final url = Uri.parse('https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName');
-    final response = await http.post(url,
-        body: jsonEncode({
-          "id": "relogin",
-          "method": "authenticate",
-          "params": {"user": user, "password": pass, "client": "UntisPlus"},
-          "jsonrpc": "2.0",
-        }));
+    final url = Uri.parse(
+      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+    );
+    final response = await http.post(
+      url,
+      body: jsonEncode({
+        "id": "relogin",
+        "method": "authenticate",
+        "params": {"user": user, "password": pass, "client": "UntisPlus"},
+        "jsonrpc": "2.0",
+      }),
+    );
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final newSession = data['result']?['sessionId']?.toString();
@@ -340,7 +375,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLogginIn = false;
-  
+
   bool _manualSchoolEntry = false;
   bool _isSearching = false;
   List<SchoolSearchResult> _searchResults = [];
@@ -388,7 +423,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       final data = jsonDecode(response.body);
       if (data['result'] != null) {
         sessionID = data['result']['sessionId']?.toString() ?? "";
-        
+
         var rawId = data['result']['personId'];
         var rawType = data['result']['personType'];
 
@@ -413,7 +448,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         await prefs.setInt('personId', personId);
 
         updateUntisData().catchError((_) {});
-        
+
         if (mounted) _nextPage();
       } else {
         _showError(AppL10n.of(appLocaleNotifier.value).loginFailed);
@@ -443,12 +478,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       geminiApiKey = _geminiController.text;
       await prefs.setString('geminiApiKey', geminiApiKey);
     }
-    
+
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, anim1, anim2) => const MainNavigationScreen(),
-        transitionsBuilder: (context, anim1, anim2, child) => 
+        transitionsBuilder: (context, anim1, anim2, child) =>
             FadeTransition(opacity: anim1, child: child),
         transitionDuration: const Duration(milliseconds: 800),
       ),
@@ -458,7 +493,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    
+
     return Scaffold(
       body: Stack(
         children: [
@@ -468,21 +503,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                   _currentPage % 2 == 0 ? colors.primaryContainer : colors.secondaryContainer,
-                   colors.surface,
+                  _currentPage % 2 == 0
+                      ? colors.primaryContainer
+                      : colors.secondaryContainer,
+                  colors.surface,
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
           ),
-          
+
           ValueListenableBuilder<bool>(
             valueListenable: backgroundAnimationsNotifier,
             builder: (context, enabled, _) =>
                 enabled ? const _AnimatedOrbs() : const SizedBox.shrink(),
           ),
-          
+
           SafeArea(
             child: Column(
               children: [
@@ -498,8 +535,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           height: 6,
                           decoration: BoxDecoration(
-                            color: _currentPage >= index 
-                                ? colors.primary 
+                            color: _currentPage >= index
+                                ? colors.primary
                                 : colors.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(3),
                           ),
@@ -508,7 +545,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     }),
                   ),
                 ),
-                
+
                 Expanded(
                   child: PageView(
                     controller: _pageController,
@@ -555,7 +592,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               _buildNextBtn(),
             ],
           );
-        }
+        },
       ),
     );
   }
@@ -604,7 +641,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   // --- Step 2: Theme & Animations ---
   Widget _buildThemeStep() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    
+
     return _StepWrapper(
       icon: Icons.palette,
       title: l.onboardingAppearanceTitle,
@@ -615,9 +652,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             valueListenable: themeModeNotifier,
             builder: (context, val, _) => SegmentedButton<int>(
               segments: [
-                ButtonSegment(value: 0, icon: const Icon(Icons.brightness_auto), label: Text(l.onboardingThemeSystem)),
-                ButtonSegment(value: 1, icon: const Icon(Icons.light_mode), label: Text(l.onboardingThemeLight)),
-                ButtonSegment(value: 2, icon: const Icon(Icons.dark_mode), label: Text(l.onboardingThemeDark)),
+                ButtonSegment(
+                  value: 0,
+                  icon: const Icon(Icons.brightness_auto),
+                  label: Text(l.onboardingThemeSystem),
+                ),
+                ButtonSegment(
+                  value: 1,
+                  icon: const Icon(Icons.light_mode),
+                  label: Text(l.onboardingThemeLight),
+                ),
+                ButtonSegment(
+                  value: 2,
+                  icon: const Icon(Icons.dark_mode),
+                  label: Text(l.onboardingThemeDark),
+                ),
               ],
               selected: {val.index},
               onSelectionChanged: (set) async {
@@ -640,7 +689,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setBool('backgroundAnimations', nv);
               },
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               tileColor: Theme.of(context).colorScheme.surface,
             ),
           ),
@@ -654,7 +705,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   // --- Step 3: School Login ---
   Widget _buildLoginStep() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    
+
     Widget content;
     if (!_manualSchoolEntry && _schoolController.text.isEmpty) {
       content = Column(
@@ -664,7 +715,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             decoration: InputDecoration(
               labelText: l.loginSearchHint,
               prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
             onChanged: (val) {
               if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -679,38 +732,42 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             child: _isSearching
                 ? const Center(child: CircularProgressIndicator())
                 : _searchResults.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.search_off, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                            const SizedBox(height: 10),
-                            Text(l.loginNoSchoolsFound),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: _searchResults.length,
-                        itemBuilder: (context, index) {
-                          final s = _searchResults[index];
-                          return ListTile(
-                            title: Text(s.displayName),
-                            subtitle: Text(
-                              s.address.isNotEmpty
-                                  ? '${s.address}\n${s.loginName} • ${s.serverUrl}'
-                                  : '${s.loginName} • ${s.serverUrl}',
-                            ),
-                            isThreeLine: s.address.isNotEmpty,
-                            onTap: () {
-                              setState(() {
-                                _schoolController.text = s.loginName;
-                                _serverController.text = s.serverUrl;
-                                _searchResults = [];
-                              });
-                            },
-                          );
+                        const SizedBox(height: 10),
+                        Text(l.loginNoSchoolsFound),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final s = _searchResults[index];
+                      return ListTile(
+                        title: Text(s.displayName),
+                        subtitle: Text(
+                          s.address.isNotEmpty
+                              ? '${s.address}\n${s.loginName} • ${s.serverUrl}'
+                              : '${s.loginName} • ${s.serverUrl}',
+                        ),
+                        isThreeLine: s.address.isNotEmpty,
+                        onTap: () {
+                          setState(() {
+                            _schoolController.text = s.loginName;
+                            _serverController.text = s.serverUrl;
+                            _searchResults = [];
+                          });
                         },
-                      ),
+                      );
+                    },
+                  ),
           ),
           const SizedBox(height: 10),
           TextButton(
@@ -727,7 +784,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               Card(
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: ListTile(
                   leading: const Icon(Icons.school),
                   title: Text(_schoolController.text),
@@ -757,7 +816,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ],
             _buildField(_userController, l.loginUsername, Icons.person),
             const SizedBox(height: 12),
-            _buildField(_passwordController, l.loginPassword, Icons.key, obscure: true),
+            _buildField(
+              _passwordController,
+              l.loginPassword,
+              Icons.key,
+              obscure: true,
+            ),
             const SizedBox(height: 32),
             _isLogginIn
                 ? const CircularProgressIndicator()
@@ -769,7 +833,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    child: Text(l.loginButton, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      l.loginButton,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
             if (_manualSchoolEntry) ...[
               const SizedBox(height: 16),
@@ -808,7 +878,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.secondaryContainer.withOpacity(0.5),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -824,7 +896,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 TextButton.icon(
                   icon: const Icon(Icons.open_in_new),
                   label: Text(l.onboardingGeminiGetApiKey),
-                  onPressed: () => url_launcher.launchUrlString('https://aistudio.google.com/app/apikey'),
+                  onPressed: () => url_launcher.launchUrlString(
+                    'https://aistudio.google.com/app/apikey',
+                  ),
                 ),
               ],
             ),
@@ -843,7 +917,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
-                  child: Text(l.onboardingSkip, style: const TextStyle(fontSize: 16)),
+                  child: Text(
+                    l.onboardingSkip,
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -864,7 +941,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   ),
                   child: Text(
                     l.onboardingNext,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -918,7 +998,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
             style: FilledButton.styleFrom(
               minimumSize: const Size(double.infinity, 64),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
             ),
           ),
         ],
@@ -935,15 +1017,29 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             color: Theme.of(context).colorScheme.primaryContainer,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: Theme.of(context).colorScheme.onPrimaryContainer),
+          child: Icon(
+            icon,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text(desc, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                desc,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),
@@ -983,8 +1079,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         body: jsonEncode({
           "id": "1",
           "method": "searchSchool",
-          "params": [{"search": query}],
-          "jsonrpc": "2.0"
+          "params": [
+            {"search": query},
+          ],
+          "jsonrpc": "2.0",
         }),
       );
       if (response.statusCode == 200) {
@@ -996,12 +1094,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           if (mounted) setState(() => _searchResults = list);
         }
       }
-    } catch (_) {} finally {
+    } catch (_) {
+    } finally {
       if (mounted) setState(() => _isSearching = false);
     }
   }
 
-  Widget _buildField(TextEditingController c, String l, IconData i, {bool obscure = false, Widget? suffix}) {
+  Widget _buildField(
+    TextEditingController c,
+    String l,
+    IconData i, {
+    bool obscure = false,
+    Widget? suffix,
+  }) {
     return TextField(
       controller: c,
       obscureText: obscure,
@@ -1010,7 +1115,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         prefixIcon: Icon(i),
         suffixIcon: suffix,
         filled: true,
-        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.7),
+        fillColor: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withOpacity(0.7),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
@@ -1026,7 +1133,12 @@ class _StepWrapper extends StatelessWidget {
   final String subtitle;
   final Widget content;
 
-  const _StepWrapper({required this.icon, required this.title, required this.subtitle, required this.content});
+  const _StepWrapper({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.content,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1107,13 +1219,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       extendBody: true,
       body: Stack(
         children: [
-          // Inner pages — give them extra bottom padding so content
-          // isn't hidden behind the floating nav bar.
           MediaQuery(
             data: mq.copyWith(
-              padding: mq.padding.copyWith(
-                bottom: mq.padding.bottom + 104,
-              ),
+              padding: mq.padding.copyWith(bottom: mq.padding.bottom + 104),
             ),
             child: IndexedStack(index: _selectedIndex, children: _pages),
           ),
@@ -1135,7 +1243,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Widget _buildFloatingNavBar(BuildContext context, ColorScheme cs) {
-    // Material 3 Expressive / Glass style - UI Blur focus
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(bottom: 24),
@@ -1143,16 +1250,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ─── Menu Island (Glassmorphism) ───
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 520),
               curve: Curves.easeOutBack,
               builder: (context, val, child) {
-                 return Transform.translate(
-                   offset: Offset(0, (1 - val) * 26),
-                   child: Opacity(opacity: val.clamp(0, 1), child: child),
-                 );
+                return Transform.translate(
+                  offset: Offset(0, (1 - val) * 26),
+                  child: Opacity(opacity: val.clamp(0, 1), child: child),
+                );
               },
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(32),
@@ -1187,9 +1293,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           selectedIcon: Icons.assignment_rounded,
                           selected: _selectedIndex == 1,
                           onTap: () {
-                             if (_selectedIndex != 1) {
-                               setState(() => _selectedIndex = 1);
-                             }
+                            if (_selectedIndex != 1) {
+                              setState(() => _selectedIndex = 1);
+                            }
                           },
                         ),
                         const SizedBox(width: 4),
@@ -1199,12 +1305,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           selectedIcon: Icons.auto_awesome_rounded,
                           selected: false,
                           onTap: () {
-                             if (_selectedIndex != 0) {
-                               setState(() => _selectedIndex = 0);
-                             }
-                             Future.delayed(const Duration(milliseconds: 50), () {
-                               _chatRequest.value++;
-                             });
+                            if (_selectedIndex != 0) {
+                              setState(() => _selectedIndex = 0);
+                            }
+                            Future.delayed(
+                              const Duration(milliseconds: 50),
+                              () {
+                                _chatRequest.value++;
+                              },
+                            );
                           },
                         ),
                         const SizedBox(width: 4),
@@ -1214,9 +1323,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           selectedIcon: Icons.settings_rounded,
                           selected: _selectedIndex == 2,
                           onTap: () {
-                             if (_selectedIndex != 2) {
-                               setState(() => _selectedIndex = 2);
-                             }
+                            if (_selectedIndex != 2) {
+                              setState(() => _selectedIndex = 2);
+                            }
                           },
                         ),
                       ],
@@ -1225,10 +1334,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(width: 16),
-            
-            // ─── Main Action Button (Timetable) ───
+
             AnimatedScale(
               scale: _selectedIndex == 0 ? 1.05 : 0.95,
               duration: const Duration(milliseconds: 320),
@@ -1243,15 +1351,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 420),
                   curve: Curves.easeOutBack,
-                  height: _selectedIndex == 0 ? 72 : 60, 
+                  height: _selectedIndex == 0 ? 72 : 60,
                   width: _selectedIndex == 0 ? 72 : 60,
                   decoration: BoxDecoration(
-                    color: _selectedIndex == 0 ? cs.primary : cs.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(_selectedIndex == 0 ? 24 : 30),
+                    color: _selectedIndex == 0
+                        ? cs.primary
+                        : cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(
+                      _selectedIndex == 0 ? 24 : 30,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: (_selectedIndex == 0 ? cs.primary : cs.surfaceContainerHighest)
-                            .withOpacity(0.4),
+                        color:
+                            (_selectedIndex == 0
+                                    ? cs.primary
+                                    : cs.surfaceContainerHighest)
+                                .withOpacity(0.4),
                         blurRadius: _selectedIndex == 0 ? 24 : 12,
                         offset: Offset(0, _selectedIndex == 0 ? 8 : 4),
                       ),
@@ -1263,15 +1378,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       switchInCurve: Curves.elasticOut,
                       switchOutCurve: Curves.easeInCubic,
                       transitionBuilder: (child, anim) {
-                         return RotationTransition(
-                           turns: Tween(begin: 0.8, end: 1.0).animate(anim),
-                           child: ScaleTransition(scale: anim, child: child),
-                         );
+                        return RotationTransition(
+                          turns: Tween(begin: 0.8, end: 1.0).animate(anim),
+                          child: ScaleTransition(scale: anim, child: child),
+                        );
                       },
                       child: Icon(
-                        _selectedIndex == 0 ? Icons.watch_later_rounded : Icons.watch_later_outlined,
+                        _selectedIndex == 0
+                            ? Icons.watch_later_rounded
+                            : Icons.watch_later_outlined,
                         key: ValueKey(_selectedIndex == 0),
-                        color: _selectedIndex == 0 ? cs.onPrimary : cs.onSurfaceVariant,
+                        color: _selectedIndex == 0
+                            ? cs.onPrimary
+                            : cs.onSurfaceVariant,
                         size: _selectedIndex == 0 ? 34 : 28,
                       ),
                     ),
@@ -1303,25 +1422,27 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         decoration: BoxDecoration(
           color: selected ? cs.secondaryContainer : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
-          border: selected 
-            ? Border.all(color: cs.secondaryContainer.withOpacity(0.5), width: 0)
-            : Border.all(color: Colors.transparent, width: 0),
+          border: selected
+              ? Border.all(
+                  color: cs.secondaryContainer.withOpacity(0.5),
+                  width: 0,
+                )
+              : Border.all(color: Colors.transparent, width: 0),
         ),
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 260),
           switchInCurve: Curves.elasticOut,
           switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (child, anim) {
-            return ScaleTransition(
-              scale: anim,
-              child: child,
-            );
+            return ScaleTransition(scale: anim, child: child);
           },
           child: Icon(
             selected ? selectedIcon : icon,
             key: ValueKey(selected),
             size: 24,
-            color: selected ? cs.onSecondaryContainer : cs.onSurfaceVariant.withOpacity(0.8),
+            color: selected
+                ? cs.onSecondaryContainer
+                : cs.onSurfaceVariant.withOpacity(0.8),
           ),
         ),
       ),
@@ -1344,7 +1465,8 @@ class _BouncyButton extends StatefulWidget {
   State<_BouncyButton> createState() => _BouncyButtonState();
 }
 
-class _BouncyButtonState extends State<_BouncyButton> with SingleTickerProviderStateMixin {
+class _BouncyButtonState extends State<_BouncyButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   bool _tapLocked = false;
@@ -1353,17 +1475,18 @@ class _BouncyButtonState extends State<_BouncyButton> with SingleTickerProviderS
   void initState() {
     super.initState();
     _controller = AnimationController(
-        vsync: this,
+      vsync: this,
       duration: const Duration(milliseconds: 90),
       reverseDuration: const Duration(milliseconds: 260),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleTarget).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.elasticOut,
-      ),
-    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleTarget)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.elasticOut,
+          ),
+        );
   }
 
   @override
@@ -1393,10 +1516,7 @@ class _BouncyButtonState extends State<_BouncyButton> with SingleTickerProviderS
       onTapCancel: () {
         _controller.reverse();
       },
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: widget.child,
-      ),
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
 }
@@ -1424,12 +1544,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   String get _currentSessionId =>
       (_viewingClassId != null && _tempSessionId != null)
-          ? _tempSessionId!
-          : sessionID;
+      ? _tempSessionId!
+      : sessionID;
 
   static const double _ppm = 1.5;
 
-  List<String> get _dayShort => AppL10n.of(appLocaleNotifier.value).weekDayShort;
+  List<String> get _dayShort =>
+      AppL10n.of(appLocaleNotifier.value).weekDayShort;
 
   final Map<int, String> _subjectLong = {};
   final Map<int, String> _subjectShortMap = {};
@@ -1437,24 +1558,39 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final Map<int, String> _roomMap = {};
 
   Future<void> _fetchMasterData() async {
-    final url = Uri.parse('https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName');
+    final url = Uri.parse(
+      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+    );
     final headers = {
       "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
       "Content-Type": "application/json",
     };
 
     Future<Map<String, dynamic>> rpc(String id, String method) async {
-      final r = await http.post(url, headers: headers,
-          body: jsonEncode({"id": id, "method": method, "params": {}, "jsonrpc": "2.0"}));
+      final r = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          "id": id,
+          "method": method,
+          "params": {},
+          "jsonrpc": "2.0",
+        }),
+      );
       return jsonDecode(r.body) as Map<String, dynamic>;
     }
 
-    final results = await Future.wait([rpc("sub", "getSubjects"), rpc("tea", "getTeachers"), rpc("roo", "getRooms")]);
+    final results = await Future.wait([
+      rpc("sub", "getSubjects"),
+      rpc("tea", "getTeachers"),
+      rpc("roo", "getRooms"),
+    ]);
 
     for (var s in (results[0]['result'] as List? ?? [])) {
       final id = s['id'] as int?;
       if (id != null) {
-        _subjectLong[id] = (s['longName'] ?? s['longname'] ?? s['name'] ?? '').toString();
+        _subjectLong[id] = (s['longName'] ?? s['longname'] ?? s['name'] ?? '')
+            .toString();
         _subjectShortMap[id] = (s['name'] ?? '').toString();
       }
     }
@@ -1473,6 +1609,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     }
   }
+
   DateTime _currentMonday = DateTime.now().subtract(
     Duration(days: DateTime.now().weekday - 1),
   );
@@ -1499,7 +1636,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   Future<void> _loadViewPref() async {
     final prefs = await SharedPreferences.getInstance();
-    if (mounted) setState(() => _viewMode = (prefs.getInt('viewMode') ?? 0).clamp(0, 1));
+    if (mounted)
+      setState(() => _viewMode = (prefs.getInt('viewMode') ?? 0).clamp(0, 1));
   }
 
   void _prevWeek() {
@@ -1586,10 +1724,26 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   static int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
   static const List<double> _grayscaleMatrix = <double>[
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0.2126, 0.7152, 0.0722, 0, 0,
-    0, 0, 0, 1, 0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0.2126,
+    0.7152,
+    0.0722,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 
   Widget _dimPastLesson({required Widget child, required bool dim}) {
@@ -1605,9 +1759,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   Widget _buildGridView(int dayIndex) {
     final lessons = (_weekData[dayIndex] ?? [])
-        .where((l) =>
-            !hiddenSubjectsNotifier.value
-                .contains(l['_subjectShort']?.toString() ?? ''))
+        .where(
+          (l) => !hiddenSubjectsNotifier.value.contains(
+            l['_subjectShort']?.toString() ?? '',
+          ),
+        )
         .toList();
 
     int globalMin = 480;
@@ -1628,9 +1784,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final totalHeight = totalMinutes * _ppm;
 
     final List<int> ticks = [];
-    for (int m = globalMin - (globalMin % 60) + 60;
-        m < globalMax;
-        m += 60) {
+    for (int m = globalMin - (globalMin % 60) + 60; m < globalMax; m += 60) {
       ticks.add(m);
     }
 
@@ -1638,12 +1792,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     final now = DateTime.now();
     final dayDate = _currentMonday.add(Duration(days: dayIndex));
-    final isToday = dayDate.year == now.year &&
-      dayDate.month == now.month &&
-      dayDate.day == now.day;
+    final isToday =
+        dayDate.year == now.year &&
+        dayDate.month == now.month &&
+        dayDate.day == now.day;
     final nowMin = now.hour * 60 + now.minute;
-    final showNowLine =
-      isToday && nowMin >= globalMin && nowMin <= globalMax;
+    final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
 
     final csG = Theme.of(context).colorScheme;
@@ -1653,193 +1807,212 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       backgroundColor: csG.surface,
       strokeWidth: 2.5,
       child: SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 32, top: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: timeColWidth,
-            height: totalHeight,
-            child: Stack(
-              children: ticks.map((tick) {
-                final top = (tick - globalMin) * _ppm - 9;
-                final hh = tick ~/ 60;
-                final mm = tick % 60;
-                return Positioned(
-                  top: top,
-                  left: 0,
-                  right: 0,
-                  child: Text(
-                    '$hh:${mm.toString().padLeft(2, '0')}',
-                    textAlign: TextAlign.right,
-                    style: GoogleFonts.outfit(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: csG.onSurfaceVariant.withOpacity(0.7)),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: SizedBox(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 32, top: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: timeColWidth,
               height: totalHeight,
               child: Stack(
-                children: [
-                  ...ticks.map((tick) {
-                    final top = (tick - globalMin) * _ppm;
-                    return Positioned(
-                      top: top,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 0.5,
-                        color: csG.outlineVariant.withOpacity(0.6),
+                children: ticks.map((tick) {
+                  final top = (tick - globalMin) * _ppm - 9;
+                  final hh = tick ~/ 60;
+                  final mm = tick % 60;
+                  return Positioned(
+                    top: top,
+                    left: 0,
+                    right: 0,
+                    child: Text(
+                      '$hh:${mm.toString().padLeft(2, '0')}',
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.outfit(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: csG.onSurfaceVariant.withOpacity(0.7),
                       ),
-                    );
-                  }),
-                  ...lessons
-                    .where((l) => showCancelledNotifier.value ||
-                        (l['code'] ?? '') != 'cancelled')
-                    .map((l) {
-                    final startMin =
-                        _toMinutes((l['startTime'] as int?) ?? globalMin);
-                    final endMin =
-                        _toMinutes((l['endTime'] as int?) ?? (startMin + 45));
-                    final top = (startMin - globalMin) * _ppm;
-                    final height =
-                        ((endMin - startMin) * _ppm).clamp(28.0, 9999.0);
-                    final dim = isToday && endMin <= nowMin;
-                    final isCancelled =
-                        (l['code'] ?? '') == 'cancelled';
-                    final subject = l['_subjectShort']?.toString().isNotEmpty ==
-                            true
-                        ? l['_subjectShort'].toString()
-                        : (l['_subjectLong']?.toString().isNotEmpty == true
-                            ? l['_subjectLong'].toString()
-                            : '?');
-                    final room = l['_room']?.toString() ?? '';
-                    final teacher = l['_teacher']?.toString() ?? '';
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: SizedBox(
+                height: totalHeight,
+                child: Stack(
+                  children: [
+                    ...ticks.map((tick) {
+                      final top = (tick - globalMin) * _ppm;
+                      return Positioned(
+                        top: top,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          height: 0.5,
+                          color: csG.outlineVariant.withOpacity(0.6),
+                        ),
+                      );
+                    }),
+                    ...lessons
+                        .where(
+                          (l) =>
+                              showCancelledNotifier.value ||
+                              (l['code'] ?? '') != 'cancelled',
+                        )
+                        .map((l) {
+                          final startMin = _toMinutes(
+                            (l['startTime'] as int?) ?? globalMin,
+                          );
+                          final endMin = _toMinutes(
+                            (l['endTime'] as int?) ?? (startMin + 45),
+                          );
+                          final top = (startMin - globalMin) * _ppm;
+                          final height = ((endMin - startMin) * _ppm).clamp(
+                            28.0,
+                            9999.0,
+                          );
+                          final dim = isToday && endMin <= nowMin;
+                          final isCancelled = (l['code'] ?? '') == 'cancelled';
+                          final subject =
+                              l['_subjectShort']?.toString().isNotEmpty == true
+                              ? l['_subjectShort'].toString()
+                              : (l['_subjectLong']?.toString().isNotEmpty ==
+                                        true
+                                    ? l['_subjectLong'].toString()
+                                    : '?');
+                          final room = l['_room']?.toString() ?? '';
+                          final teacher = l['_teacher']?.toString() ?? '';
 
-                    final cs = Theme.of(context).colorScheme;
-                    final sk = l['_subjectShort']?.toString() ?? '';
-                    final cv = isCancelled ? null : subjectColorsNotifier.value[sk];
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
-                    final fgColor = isCancelled
-                        ? cs.error
-                        : cv != null
-                            ? Color(cv)
-                            : _autoLessonColor(sk, isDark);
-                    final bgColor = isCancelled
-                        ? cs.errorContainer
-                        : fgColor.withOpacity(isDark ? 0.28 : 0.20);
+                          final cs = Theme.of(context).colorScheme;
+                          final sk = l['_subjectShort']?.toString() ?? '';
+                          final cv = isCancelled
+                              ? null
+                              : subjectColorsNotifier.value[sk];
+                          final isDark =
+                              Theme.of(context).brightness == Brightness.dark;
+                          final fgColor = isCancelled
+                              ? cs.error
+                              : cv != null
+                              ? Color(cv)
+                              : _autoLessonColor(sk, isDark);
+                          final bgColor = isCancelled
+                              ? cs.errorContainer
+                              : fgColor.withOpacity(isDark ? 0.28 : 0.20);
 
-                    return Positioned(
-                      top: top,
-                      left: 2,
-                      right: 2,
-                      height: height,
-                      child: _dimPastLesson(
-                        dim: dim,
-                        child: GestureDetector(
-                          onTap: () => _showLessonDetail(context, l),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: bgColor,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border(
-                                left: BorderSide(
-                                    color: fgColor, width: 3.5),
-                              ),
-                            ),
-                            padding: const EdgeInsets.fromLTRB(7, 4, 5, 4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  subject,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: fgColor,
-                                    decoration: isCancelled
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                    decorationColor: fgColor,
-                                    decorationThickness: 2.0,
+                          return Positioned(
+                            top: top,
+                            left: 2,
+                            right: 2,
+                            height: height,
+                            child: _dimPastLesson(
+                              dim: dim,
+                              child: GestureDetector(
+                                onTap: () => _showLessonDetail(context, l),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: bgColor,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: fgColor,
+                                        width: 3.5,
+                                      ),
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    7,
+                                    4,
+                                    5,
+                                    4,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        subject,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: fgColor,
+                                          decoration: isCancelled
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                          decorationColor: fgColor,
+                                          decorationThickness: 2.0,
+                                        ),
+                                      ),
+                                      if (height >= 48 && room.isNotEmpty)
+                                        Text(
+                                          room,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: fgColor.withOpacity(0.75),
+                                          ),
+                                        ),
+                                      if (height >= 64 && teacher.isNotEmpty)
+                                        Text(
+                                          teacher,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                            color: fgColor.withOpacity(0.6),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
-                                if (height >= 48 && room.isNotEmpty)
-                                  Text(
-                                    room,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: fgColor.withOpacity(0.75),
-                                    ),
-                                  ),
-                                if (height >= 64 && teacher.isNotEmpty)
-                                  Text(
-                                    teacher,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                      color: fgColor.withOpacity(0.6),
-                                    ),
-                                  ),
-                              ],
+                              ),
                             ),
+                          );
+                        }),
+                    if (showNowLine)
+                      Positioned(
+                        top: nowTop - 1,
+                        left: 0,
+                        right: 0,
+                        child: IgnorePointer(
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: csG.error,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Container(
+                                  height: 2,
+                                  decoration: BoxDecoration(
+                                    color: csG.error,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    );
-                  }),
-                  if (showNowLine)
-                    Positioned(
-                      top: nowTop - 1,
-                      left: 0,
-                      right: 0,
-                      child: IgnorePointer(
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: csG.error,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Container(
-                                height: 2,
-                                decoration: BoxDecoration(
-                                  color: csG.error,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
+            const SizedBox(width: 12),
+          ],
+        ),
       ),
     );
   }
@@ -1872,12 +2045,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final today = DateTime.now();
 
     final todayDate = DateTime(today.year, today.month, today.day);
-    final mondayDate =
-      DateTime(_currentMonday.year, _currentMonday.month, _currentMonday.day);
+    final mondayDate = DateTime(
+      _currentMonday.year,
+      _currentMonday.month,
+      _currentMonday.day,
+    );
     final todayIndex = todayDate.difference(mondayDate).inDays;
     final nowMin = today.hour * 60 + today.minute;
     final showNowLine =
-      todayIndex >= 0 && todayIndex < 5 && nowMin >= globalMin && nowMin <= globalMax;
+        todayIndex >= 0 &&
+        todayIndex < 5 &&
+        nowMin >= globalMin &&
+        nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
 
     final csW = Theme.of(context).colorScheme;
@@ -1887,245 +2066,292 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       backgroundColor: csW.surface,
       strokeWidth: 2.5,
       child: SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 32, top: 8),
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: timeColWidth + 6, bottom: 6),
-              child: Row(
-                children: List.generate(5, (i) {
-                  final d = _currentMonday.add(Duration(days: i));
-                  final isToday = d.year == today.year &&
-                      d.month == today.month &&
-                      d.day == today.day;
-                  return SizedBox(
-                    width: dayColWidth + dayColGap,
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            _dayShort[i],
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: isToday
-                                  ? cs.primary
-                                  : cs.onSurfaceVariant.withOpacity(0.8),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: isToday ? cs.primary : Colors.transparent,
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '${d.day}',
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color:
-                                    isToday ? cs.onPrimary : cs.onSurface,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: timeColWidth,
-                  height: totalHeight,
-                  child: Stack(
-                    children: ticks.map((tick) {
-                      final top = (tick - globalMin) * _ppm - 9;
-                      final hh = tick ~/ 60;
-                      final mm = tick % 60;
-                      return Positioned(
-                        top: top,
-                        left: 0,
-                        right: 0,
-                        child: Text(
-                          '$hh:${mm.toString().padLeft(2, '0')}',
-                          textAlign: TextAlign.right,
-                          style: GoogleFonts.outfit(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: cs.onSurfaceVariant.withOpacity(0.7),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 32, top: 8),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: timeColWidth + 6,
+                  bottom: 6,
                 ),
-                const SizedBox(width: 6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: List.generate(5, (dayIndex) {
-                    final lessons = (_weekData[dayIndex] ?? [])
-                        .where((l) => !hiddenSubjectsNotifier.value
-                            .contains(l['_subjectShort']?.toString() ?? ''))
-                        .toList();
-                    return Container(
-                      width: dayColWidth,
-                      height: totalHeight,
-                      margin: const EdgeInsets.only(right: dayColGap),
-                      child: Stack(
-                        children: [
-                          ...ticks.map((tick) {
-                            final top = (tick - globalMin) * _ppm;
-                            return Positioned(
-                              top: top,
-                              left: 0,
-                              right: 0,
-                              child: Container(
-                                height: 0.5,
-                                color: cs.outlineVariant.withOpacity(0.6),
+                child: Row(
+                  children: List.generate(5, (i) {
+                    final d = _currentMonday.add(Duration(days: i));
+                    final isToday =
+                        d.year == today.year &&
+                        d.month == today.month &&
+                        d.day == today.day;
+                    return SizedBox(
+                      width: dayColWidth + dayColGap,
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              _dayShort[i],
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isToday
+                                    ? cs.primary
+                                    : cs.onSurfaceVariant.withOpacity(0.8),
                               ),
-                            );
-                          }),
-                          ...lessons
-                            .where((l) => showCancelledNotifier.value ||
-                                (l['code'] ?? '') != 'cancelled')
-                            .map((l) {
-                            final startMin =
-                                _toMinutes((l['startTime'] as int?) ?? globalMin);
-                            final endMin =
-                                _toMinutes((l['endTime'] as int?) ?? (startMin + 45));
-                            final top = (startMin - globalMin) * _ppm;
-                            final height =
-                                ((endMin - startMin) * _ppm).clamp(24.0, 9999.0);
-                            final dim = (dayIndex == todayIndex) && endMin <= nowMin;
-                            final isCancelled = (l['code'] ?? '') == 'cancelled';
-                            final subject =
-                                l['_subjectShort']?.toString().isNotEmpty == true
-                                    ? l['_subjectShort'].toString()
-                                    : (l['_subjectLong']?.toString().isNotEmpty == true
-                                        ? l['_subjectLong'].toString()
-                                        : '?');
-                            final room = l['_room']?.toString() ?? '';
-                            final sk2 = l['_subjectShort']?.toString() ?? '';
-                            final cv2 = isCancelled ? null : subjectColorsNotifier.value[sk2];
-                            final isDark2 = Theme.of(context).brightness == Brightness.dark;
-                            final fgColor = isCancelled
-                                ? cs.error
-                                : cv2 != null
-                                    ? Color(cv2)
-                                    : _autoLessonColor(sk2, isDark2);
-                            final bgColor = isCancelled
-                                ? cs.errorContainer
-                                : fgColor.withOpacity(isDark2 ? 0.28 : 0.20);
-                            return Positioned(
-                              top: top,
-                              left: 1,
-                              right: 1,
-                              height: height,
-                              child: _dimPastLesson(
-                                dim: dim,
-                                child: GestureDetector(
-                                  onTap: () => _showLessonDetail(context, l),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: bgColor,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border(
-                                        left: BorderSide(color: fgColor, width: 3),
-                                      ),
-                                    ),
-                                    padding:
-                                        const EdgeInsets.fromLTRB(5, 3, 3, 3),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          subject,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w800,
-                                            color: fgColor,
-                                            decoration: isCancelled
-                                                ? TextDecoration.lineThrough
-                                                : null,
-                                            decorationColor: fgColor,
-                                            decorationThickness: 2.0,
-                                          ),
-                                        ),
-                                        if (height >= 44 && room.isNotEmpty)
-                                          Text(
-                                            room,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w600,
-                                              color: fgColor.withOpacity(0.75),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                            ),
+                            const SizedBox(height: 2),
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: isToday
+                                    ? cs.primary
+                                    : Colors.transparent,
+                                shape: BoxShape.circle,
                               ),
-                            );
-                          }),
-                          if (showNowLine && dayIndex == todayIndex)
-                            Positioned(
-                              top: nowTop - 1,
-                              left: 0,
-                              right: 0,
-                              child: IgnorePointer(
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        color: cs.error,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Container(
-                                        height: 2,
-                                        decoration: BoxDecoration(
-                                          color: cs.error,
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${d.day}',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                  color: isToday ? cs.onPrimary : cs.onSurface,
                                 ),
                               ),
                             ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   }),
                 ),
-              ],
-            ),
-          ],
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: timeColWidth,
+                    height: totalHeight,
+                    child: Stack(
+                      children: ticks.map((tick) {
+                        final top = (tick - globalMin) * _ppm - 9;
+                        final hh = tick ~/ 60;
+                        final mm = tick % 60;
+                        return Positioned(
+                          top: top,
+                          left: 0,
+                          right: 0,
+                          child: Text(
+                            '$hh:${mm.toString().padLeft(2, '0')}',
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.outfit(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurfaceVariant.withOpacity(0.7),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(5, (dayIndex) {
+                      final lessons = (_weekData[dayIndex] ?? [])
+                          .where(
+                            (l) => !hiddenSubjectsNotifier.value.contains(
+                              l['_subjectShort']?.toString() ?? '',
+                            ),
+                          )
+                          .toList();
+                      return Container(
+                        width: dayColWidth,
+                        height: totalHeight,
+                        margin: const EdgeInsets.only(right: dayColGap),
+                        child: Stack(
+                          children: [
+                            ...ticks.map((tick) {
+                              final top = (tick - globalMin) * _ppm;
+                              return Positioned(
+                                top: top,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  height: 0.5,
+                                  color: cs.outlineVariant.withOpacity(0.6),
+                                ),
+                              );
+                            }),
+                            ...lessons
+                                .where(
+                                  (l) =>
+                                      showCancelledNotifier.value ||
+                                      (l['code'] ?? '') != 'cancelled',
+                                )
+                                .map((l) {
+                                  final startMin = _toMinutes(
+                                    (l['startTime'] as int?) ?? globalMin,
+                                  );
+                                  final endMin = _toMinutes(
+                                    (l['endTime'] as int?) ?? (startMin + 45),
+                                  );
+                                  final top = (startMin - globalMin) * _ppm;
+                                  final height = ((endMin - startMin) * _ppm)
+                                      .clamp(24.0, 9999.0);
+                                  final dim =
+                                      (dayIndex == todayIndex) &&
+                                      endMin <= nowMin;
+                                  final isCancelled =
+                                      (l['code'] ?? '') == 'cancelled';
+                                  final subject =
+                                      l['_subjectShort']
+                                              ?.toString()
+                                              .isNotEmpty ==
+                                          true
+                                      ? l['_subjectShort'].toString()
+                                      : (l['_subjectLong']
+                                                    ?.toString()
+                                                    .isNotEmpty ==
+                                                true
+                                            ? l['_subjectLong'].toString()
+                                            : '?');
+                                  final room = l['_room']?.toString() ?? '';
+                                  final sk2 =
+                                      l['_subjectShort']?.toString() ?? '';
+                                  final cv2 = isCancelled
+                                      ? null
+                                      : subjectColorsNotifier.value[sk2];
+                                  final isDark2 =
+                                      Theme.of(context).brightness ==
+                                      Brightness.dark;
+                                  final fgColor = isCancelled
+                                      ? cs.error
+                                      : cv2 != null
+                                      ? Color(cv2)
+                                      : _autoLessonColor(sk2, isDark2);
+                                  final bgColor = isCancelled
+                                      ? cs.errorContainer
+                                      : fgColor.withOpacity(
+                                          isDark2 ? 0.28 : 0.20,
+                                        );
+                                  return Positioned(
+                                    top: top,
+                                    left: 1,
+                                    right: 1,
+                                    height: height,
+                                    child: _dimPastLesson(
+                                      dim: dim,
+                                      child: GestureDetector(
+                                        onTap: () =>
+                                            _showLessonDetail(context, l),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: bgColor,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border(
+                                              left: BorderSide(
+                                                color: fgColor,
+                                                width: 3,
+                                              ),
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.fromLTRB(
+                                            5,
+                                            3,
+                                            3,
+                                            3,
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                subject,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: fgColor,
+                                                  decoration: isCancelled
+                                                      ? TextDecoration
+                                                            .lineThrough
+                                                      : null,
+                                                  decorationColor: fgColor,
+                                                  decorationThickness: 2.0,
+                                                ),
+                                              ),
+                                              if (height >= 44 &&
+                                                  room.isNotEmpty)
+                                                Text(
+                                                  room,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: GoogleFonts.outfit(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: fgColor.withOpacity(
+                                                      0.75,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                            if (showNowLine && dayIndex == todayIndex)
+                              Positioned(
+                                top: nowTop - 1,
+                                left: 0,
+                                right: 0,
+                                child: IgnorePointer(
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          color: cs.error,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Container(
+                                          height: 2,
+                                          decoration: BoxDecoration(
+                                            color: cs.error,
+                                            borderRadius: BorderRadius.circular(
+                                              2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -2191,9 +2417,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
       if (decodedResponse['error'] != null) {
         final errCode = decodedResponse['error']['code'] as int? ?? 0;
-        final apiMsg = decodedResponse['error']['message']?.toString() ?? "Unbekannter API-Fehler";
+        final apiMsg =
+            decodedResponse['error']['message']?.toString() ??
+            "Unbekannter API-Fehler";
 
-        if (errCode == -8504 || apiMsg.toLowerCase().contains('not authenticated')) {
+        if (errCode == -8504 ||
+            apiMsg.toLowerCase().contains('not authenticated')) {
           final ok = await _reAuthenticate();
           if (ok) {
             await _fetchFullWeek();
@@ -2228,19 +2457,27 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           int dayIndex = lessonDate.weekday - 1;
           if (dayIndex >= 0 && dayIndex < 5) {
             final subId = (lesson['su'] as List?)?.firstOrNull?['id'] as int?;
-            final teId  = (lesson['te'] as List?)?.firstOrNull?['id'] as int?;
-            final roId  = (lesson['ro'] as List?)?.firstOrNull?['id'] as int?;
+            final teId = (lesson['te'] as List?)?.firstOrNull?['id'] as int?;
+            final roId = (lesson['ro'] as List?)?.firstOrNull?['id'] as int?;
 
             final resolvedLesson = Map<String, dynamic>.from(lesson as Map);
-            resolvedLesson['_subjectLong']  = (lesson['su'] as List?)?.firstOrNull?['longname']
-                ?? (lesson['su'] as List?)?.firstOrNull?['longName']
-                ?? _subjectLong[subId] ?? '';
-            resolvedLesson['_subjectShort'] = (lesson['su'] as List?)?.firstOrNull?['name']
-                ?? _subjectShortMap[subId] ?? '';
-            resolvedLesson['_teacher']      = _teacherMap[teId]
-                ?? (lesson['te'] as List?)?.firstOrNull?['name'] ?? '';
-            resolvedLesson['_room']         = (lesson['ro'] as List?)?.firstOrNull?['name']
-                ?? _roomMap[roId] ?? '';
+            resolvedLesson['_subjectLong'] =
+                (lesson['su'] as List?)?.firstOrNull?['longname'] ??
+                (lesson['su'] as List?)?.firstOrNull?['longName'] ??
+                _subjectLong[subId] ??
+                '';
+            resolvedLesson['_subjectShort'] =
+                (lesson['su'] as List?)?.firstOrNull?['name'] ??
+                _subjectShortMap[subId] ??
+                '';
+            resolvedLesson['_teacher'] =
+                _teacherMap[teId] ??
+                (lesson['te'] as List?)?.firstOrNull?['name'] ??
+                '';
+            resolvedLesson['_room'] =
+                (lesson['ro'] as List?)?.firstOrNull?['name'] ??
+                _roomMap[roId] ??
+                '';
 
             tempWeek[dayIndex]!.add(resolvedLesson);
           }
@@ -2281,14 +2518,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Future<String?> _authenticateAnonymous() async {
     try {
       final url = Uri.parse(
-          'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName');
-      final response = await http.post(url,
-          body: jsonEncode({
-            "id": "anon",
-            "method": "authenticate",
-            "params": {"user": "", "password": "", "client": "UntisPlus"},
-            "jsonrpc": "2.0",
-          }));
+        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+      );
+      final response = await http.post(
+        url,
+        body: jsonEncode({
+          "id": "anon",
+          "method": "authenticate",
+          "params": {"user": "", "password": "", "client": "UntisPlus"},
+          "jsonrpc": "2.0",
+        }),
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['result'] != null && data['result']['sessionId'] != null) {
@@ -2308,23 +2548,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     String? sid = await _authenticateAnonymous();
     
-    // We only fallback to sessionID if anon failed.
-    // If anon fails, we are likely not allowed to see classes anonymously.
-    // But checking with sessionID is fine if we have rights.
     sid ??= sessionID;
 
     List<dynamic> classes = [];
     try {
       final url = Uri.parse(
-          'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName');
-      final response = await http.post(url,
-          headers: {"Cookie": "JSESSIONID=$sid; schoolname=$schoolName"},
-          body: jsonEncode({
-            "id": "fe_kl",
-            "method": "getKlassen",
-            "params": {},
-            "jsonrpc": "2.0",
-          }),
+        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+      );
+      final response = await http.post(
+        url,
+        headers: {"Cookie": "JSESSIONID=$sid; schoolname=$schoolName"},
+        body: jsonEncode({
+          "id": "fe_kl",
+          "method": "getKlassen",
+          "params": {},
+          "jsonrpc": "2.0",
+        }),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -2339,148 +2578,162 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     try {
       if (classes.isNotEmpty) {
-        classes.sort((a, b) => (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? ''));
+        classes.sort(
+          (a, b) => (a['name']?.toString() ?? '').compareTo(
+            b['name']?.toString() ?? '',
+          ),
+        );
       }
     } catch (_) {}
 
     final l = AppL10n.of(appLocaleNotifier.value);
 
     showModalBottomSheet(
-        context: context,
-        useSafeArea: true,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) {
-          return DraggableScrollableSheet(
-              initialChildSize: 0.6,
-              minChildSize: 0.4,
-              maxChildSize: 0.9,
-              expand: false,
-              builder: (_, scrollController) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      context: context,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+              ),
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                children: [
+                  Text(
+                    l.timetableSelectClass,
+                    style: GoogleFonts.outfit(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
-                  child: ListView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-                    children: [
-                      Text(
-                        l.timetableSelectClass,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Wähle einen Stundenplan aus',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Card(
+                    elevation: 0,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.person,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      title: Text(
+                        l.timetableMyTimetable,
                         style: GoogleFonts.outfit(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Wähle einen Stundenplan aus',
+                      onTap: () {
+                        setState(() {
+                          _viewingClassId = null;
+                          _viewingClassName = null;
+                          _tempSessionId = null;
+                        });
+                        Navigator.pop(ctx);
+                        _fetchFullWeek();
+                      },
+                    ),
+                  ),
+                  if (classes.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 16),
+                        Text(
+                          'Andere Klassen',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...classes.map((c) {
+                          final name = c['name'] ?? c['longName'] ?? '?';
+                          final id = c['id'] as int?;
+                          if (id == null) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Card(
+                              elevation: 0,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHigh,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListTile(
+                                leading: Icon(
+                                  Icons.class_outlined,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                title: Text(
+                                  name,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                onTap: () {
+                                  setState(() {
+                                    _viewingClassId = id;
+                                    _viewingClassName = name;
+                                    _tempSessionId = sid;
+                                  });
+                                  Navigator.pop(ctx);
+                                  _fetchFullWeek();
+                                },
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        l.timetableNoClassesFound,
                         style: GoogleFonts.outfit(
                           fontSize: 14,
-                          fontWeight: FontWeight.w400,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Card(
-                        elevation: 0,
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: ListTile(
-                          leading: Icon(
-                            Icons.person,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          title: Text(
-                            l.timetableMyTimetable,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                          onTap: () {
-                            setState(() {
-                              _viewingClassId = null;
-                              _viewingClassName = null;
-                              _tempSessionId = null;
-                            });
-                            Navigator.pop(ctx);
-                            _fetchFullWeek();
-                          },
-                        ),
-                      ),
-                      if (classes.isNotEmpty)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 16),
-                            Text(
-                              'Andere Klassen',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            ...classes.map((c) {
-                              final name = c['name'] ?? c['longName'] ?? '?';
-                              final id = c['id'] as int?;
-                              if (id == null) return const SizedBox.shrink();
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: Card(
-                                  elevation: 0,
-                                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: ListTile(
-                                    leading: Icon(
-                                      Icons.class_outlined,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                    title: Text(
-                                      name,
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    onTap: () {
-                                      setState(() {
-                                        _viewingClassId = id;
-                                        _viewingClassName = name;
-                                        _tempSessionId = sid;
-                                      });
-                                      Navigator.pop(ctx);
-                                      _fetchFullWeek();
-                                    },
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            l.timetableNoClassesFound,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              });
-        });
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -2489,13 +2742,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: blurEnabledNotifier.value ? Theme.of(context).colorScheme.surface.withOpacity(0.5) : null,
-        flexibleSpace: blurEnabledNotifier.value ? ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(color: Colors.transparent),
-          ),
-        ) : null,
+        backgroundColor: blurEnabledNotifier.value
+            ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
+            : null,
+        flexibleSpace: blurEnabledNotifier.value
+            ? ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Container(color: Colors.transparent),
+                ),
+              )
+            : null,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
@@ -2516,7 +2773,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           },
           child: Text(
             _viewingClassName ?? l.timetableTitle,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 20),
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+            ),
           ),
         ),
         centerTitle: true,
@@ -2524,93 +2784,106 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              tooltip: _viewMode == 0 ? l.timetableWeekView : l.timetableDayGrid,
-              icon: Icon(_viewMode == 0
-                  ? Icons.calendar_view_week_rounded
-                  : Icons.calendar_view_day_rounded),
+              tooltip: _viewMode == 0
+                  ? l.timetableWeekView
+                  : l.timetableDayGrid,
+              icon: Icon(
+                _viewMode == 0
+                    ? Icons.calendar_view_week_rounded
+                    : Icons.calendar_view_day_rounded,
+              ),
               onPressed: _toggleView,
             ),
           ),
         ],
-        bottom: _viewMode == 1 ? null : TabBar(
-          controller: _tabController,
-          indicatorColor: Theme.of(context).colorScheme.primary,
-          indicatorWeight: 4,
-          labelStyle: GoogleFonts.outfit(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-          labelColor: Theme.of(context).colorScheme.primary,
-          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-          dividerColor: Colors.transparent,
-          tabs: List.generate(5, (i) {
-            final d = _currentMonday.add(Duration(days: i));
-            final isToday = d.year == DateTime.now().year &&
-                d.month == DateTime.now().month &&
-                d.day == DateTime.now().day;
-            return Tab(
-              child: Text(_dayShort[i]),
-            );
-          }),
-        ),
+        bottom: _viewMode == 1
+            ? null
+            : TabBar(
+                controller: _tabController,
+                indicatorColor: Theme.of(context).colorScheme.primary,
+                indicatorWeight: 4,
+                labelStyle: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant,
+                dividerColor: Colors.transparent,
+                tabs: List.generate(5, (i) {
+                  final d = _currentMonday.add(Duration(days: i));
+                  final isToday =
+                      d.year == DateTime.now().year &&
+                      d.month == DateTime.now().month &&
+                      d.day == DateTime.now().day;
+                  return Tab(child: Text(_dayShort[i]));
+                }),
+              ),
       ),
-      body: _AnimatedBackground(child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : (_loadError != null)
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.cloud_off_rounded,
-                      size: 80,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.35),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l.timetableNotLoaded,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      body: _AnimatedBackground(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : (_loadError != null)
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.cloud_off_rounded,
+                        size: 80,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withOpacity(0.35),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _loadError!,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      const SizedBox(height: 16),
+                      Text(
+                        l.timetableNotLoaded,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                    FilledButton.tonal(
-                      onPressed: _fetchFullWeek,
-                      child: Text(l.timetableReload),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        _loadError!,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      FilledButton.tonal(
+                        onPressed: _fetchFullWeek,
+                        child: Text(l.timetableReload),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : _viewMode == 1
+            ? _buildWeekView()
+            : GestureDetector(
+                onHorizontalDragEnd: (details) {
+                  final velocity = details.primaryVelocity ?? 0;
+                  if (velocity < -400) _onSwipeLeft();
+                  if (velocity > 400) _onSwipeRight();
+                },
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: List.generate(
+                    5,
+                    (dayIndex) => _buildGridView(dayIndex),
+                  ),
                 ),
               ),
-            )
-          : _viewMode == 1
-          ? _buildWeekView()
-          : GestureDetector(
-              onHorizontalDragEnd: (details) {
-                final velocity = details.primaryVelocity ?? 0;
-                if (velocity < -400) _onSwipeLeft();
-                if (velocity > 400) _onSwipeRight();
-              },
-              child: TabBarView(
-                controller: _tabController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: List.generate(5, (dayIndex) => _buildGridView(dayIndex)),
-              ),
-            ),
       ),
     );
   }
@@ -2657,13 +2930,16 @@ class _ExamsPageState extends State<ExamsPage> {
   Future<void> _loadCustomExams() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList('customExams') ?? [];
-    _customExams = raw.map((e) {
-      try {
-        return Map<String, dynamic>.from(jsonDecode(e) as Map);
-      } catch (_) {
-        return <String, dynamic>{};
-      }
-    }).where((e) => e.isNotEmpty).toList();
+    _customExams = raw
+        .map((e) {
+          try {
+            return Map<String, dynamic>.from(jsonDecode(e) as Map);
+          } catch (_) {
+            return <String, dynamic>{};
+          }
+        })
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   Future<void> _saveCustomExams() async {
@@ -2688,7 +2964,9 @@ class _ExamsPageState extends State<ExamsPage> {
 
     Future<List<Map<String, dynamic>>> tryEndpoint(String path) async {
       try {
-        final uri = Uri.parse('https://$schoolUrl$path?startDate=$startStr&endDate=$endStr');
+        final uri = Uri.parse(
+          'https://$schoolUrl$path?startDate=$startStr&endDate=$endStr',
+        );
         final res = await http.get(uri, headers: headers);
         if (res.statusCode == 200) {
           final decoded = jsonDecode(res.body);
@@ -2696,7 +2974,9 @@ class _ExamsPageState extends State<ExamsPage> {
           if (decoded is List) {
             list = decoded;
           } else if (decoded is Map) {
-            list = (decoded['data'] ?? decoded['exams'] ?? decoded['result'] ?? []) as List;
+            list =
+                (decoded['data'] ?? decoded['exams'] ?? decoded['result'] ?? [])
+                    as List;
           }
           return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
         }
@@ -2735,8 +3015,12 @@ class _ExamsPageState extends State<ExamsPage> {
     if (s.length == 8) {
       try {
         final d = DateTime.parse(
-            '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}');
-        return DateFormat('EEEE, dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(d);
+          '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
+        );
+        return DateFormat(
+          'EEEE, dd. MMMM yyyy',
+          _icuLocale(appLocaleNotifier.value),
+        ).format(d);
       } catch (_) {}
     }
     return s;
@@ -2748,20 +3032,26 @@ class _ExamsPageState extends State<ExamsPage> {
   String _examType(Map<String, dynamic> e) =>
       (e['examType'] ?? e['type'] ?? e['typeName'] ?? '').toString();
 
-  Future<void> _showAddExamDialog(
-      [Map<String, dynamic>? existing, int? editIndex]) async {
-    final subjectCtrl =
-        TextEditingController(text: existing?['subject']?.toString() ?? '');
-    final typeCtrl =
-        TextEditingController(text: existing?['examType']?.toString() ?? '');
+  Future<void> _showAddExamDialog([
+    Map<String, dynamic>? existing,
+    int? editIndex,
+  ]) async {
+    final subjectCtrl = TextEditingController(
+      text: existing?['subject']?.toString() ?? '',
+    );
+    final typeCtrl = TextEditingController(
+      text: existing?['examType']?.toString() ?? '',
+    );
     final descCtrl = TextEditingController(
-        text: existing?['description']?.toString() ?? '');
+      text: existing?['description']?.toString() ?? '',
+    );
     DateTime selectedDate = () {
       final s = existing?['date']?.toString() ?? '';
       if (s.length == 8) {
         try {
           return DateTime.parse(
-              '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}');
+            '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
+          );
         } catch (_) {}
       }
       return DateTime.now();
@@ -2771,13 +3061,17 @@ class _ExamsPageState extends State<ExamsPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
           title: Text(
             existing == null
                 ? AppL10n.of(appLocaleNotifier.value).examsAddTitle
                 : AppL10n.of(appLocaleNotifier.value).examsEditTitle,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+            ),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -2786,24 +3080,30 @@ class _ExamsPageState extends State<ExamsPage> {
                 TextField(
                   controller: subjectCtrl,
                   decoration: InputDecoration(
-                  labelText: AppL10n.of(appLocaleNotifier.value).examsSubjectLabel,
+                    labelText: AppL10n.of(
+                      appLocaleNotifier.value,
+                    ).examsSubjectLabel,
                     prefixIcon: const Icon(Icons.book_outlined),
                     filled: true,
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none),
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: typeCtrl,
                   decoration: InputDecoration(
-                  labelText: AppL10n.of(appLocaleNotifier.value).examsTypeLabel,
+                    labelText: AppL10n.of(
+                      appLocaleNotifier.value,
+                    ).examsTypeLabel,
                     prefixIcon: const Icon(Icons.label_outline),
                     filled: true,
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none),
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -2820,12 +3120,13 @@ class _ExamsPageState extends State<ExamsPage> {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
-                      color: Theme.of(ctx)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withOpacity(0.5),
+                      color: Theme.of(
+                        ctx,
+                      ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
@@ -2833,10 +3134,14 @@ class _ExamsPageState extends State<ExamsPage> {
                         const Icon(Icons.calendar_today_outlined, size: 20),
                         const SizedBox(width: 12),
                         Text(
-                          DateFormat('dd. MMM yyyy', _icuLocale(appLocaleNotifier.value))
-                              .format(selectedDate),
+                          DateFormat(
+                            'dd. MMM yyyy',
+                            _icuLocale(appLocaleNotifier.value),
+                          ).format(selectedDate),
                           style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w600, fontSize: 15),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
                         ),
                       ],
                     ),
@@ -2847,15 +3152,18 @@ class _ExamsPageState extends State<ExamsPage> {
                   controller: descCtrl,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    labelText: AppL10n.of(appLocaleNotifier.value).examsNotesLabel,
+                    labelText: AppL10n.of(
+                      appLocaleNotifier.value,
+                    ).examsNotesLabel,
                     prefixIcon: const Padding(
                       padding: EdgeInsets.only(bottom: 42),
                       child: Icon(Icons.notes_rounded),
                     ),
                     filled: true,
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none),
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ],
@@ -2879,15 +3187,18 @@ class _ExamsPageState extends State<ExamsPage> {
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(AppL10n.of(appLocaleNotifier.value).examsCancel,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+              child: Text(
+                AppL10n.of(appLocaleNotifier.value).examsCancel,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
             ),
             FilledButton(
               onPressed: () {
                 final subj = subjectCtrl.text.trim();
                 if (subj.isEmpty) return;
                 final dateInt = int.parse(
-                    DateFormat('yyyyMMdd').format(selectedDate));
+                  DateFormat('yyyyMMdd').format(selectedDate),
+                );
                 final newExam = <String, dynamic>{
                   'subject': subj,
                   'examType': typeCtrl.text.trim(),
@@ -2907,10 +3218,13 @@ class _ExamsPageState extends State<ExamsPage> {
               },
               style: FilledButton.styleFrom(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              child: Text(AppL10n.of(appLocaleNotifier.value).examsSave,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+              child: Text(
+                AppL10n.of(appLocaleNotifier.value).examsSave,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+              ),
             ),
           ],
         ),
@@ -2918,21 +3232,166 @@ class _ExamsPageState extends State<ExamsPage> {
     );
   }
 
+  Future<void> _importExamsWithAI() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    if (geminiApiKey.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.aiNoApiKey)));
+      return;
+    }
+
+    final cs = Theme.of(context).colorScheme;
+
+    // Choose source
+    final source = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(
+          l.examsImportTitle,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.camera_alt_rounded, color: cs.primary),
+              title: Text(l.examsImportCamera),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: Icon(Icons.image_rounded, color: cs.primary),
+              title: Text(l.examsImportGallery),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: Icon(Icons.picture_as_pdf_rounded, color: cs.primary),
+              title: Text(l.examsImportFile),
+              onTap: () => Navigator.pop(ctx, 'file'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    Uint8List? fileBytes;
+    String? mimeType;
+
+    if (source == 'camera' || source == 'gallery') {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+      );
+      if (picked == null) return;
+      fileBytes = await picked.readAsBytes();
+      mimeType = picked.path.toLowerCase().endsWith('.png')
+          ? 'image/png'
+          : 'image/jpeg';
+    } else {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+        withData: true,
+      );
+      if (picked == null || picked.files.isEmpty) return;
+      fileBytes = picked.files.first.bytes;
+      final ext = picked.files.first.extension?.toLowerCase() ?? '';
+      mimeType = ext == 'pdf'
+          ? 'application/pdf'
+          : (ext == 'png' ? 'image/png' : 'image/jpeg');
+    }
+
+    if (fileBytes == null) return;
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final model = GenerativeModel(
+        model: 'gemini-2.5-flash',
+        apiKey: geminiApiKey,
+      );
+      final prompt = TextPart(
+        '''Du bist ein Assistent, der Klausurpläne von Schulen strukturiert erfasst.
+Extrahiere alle relevanten Klausuren/Prüfungen aus dem angehängten Bild oder PDF.
+Antworte AUSSCHLIESSLICH im folgenden JSON Array Format (kein Markdown-Block, nur reines JSON, keine Grußformeln):
+[
+  {
+    "subject": "Mathe",
+    "examType": "Klausur",
+    "date": "20240325",
+    "description": "Ergänzende Infos oder leere Zeichenkette"
+  }
+]
+WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr, leiste es aus dem aktuellen Datum (${DateTime.now().year}) ab. Wenn die Datei keine Klausuren enthält, gib ein leeres Array [] zurück.''',
+      );
+      final dataPart = DataPart(mimeType, fileBytes);
+
+      final response = await model.generateContent([
+        Content.multi([prompt, dataPart]),
+      ]);
+
+      if (!mounted) return;
+      Navigator.pop(context); // hide loading
+
+      final text = response.text ?? '';
+      final jsonStart = text.indexOf('[');
+      final jsonEnd = text.lastIndexOf(']');
+      if (jsonStart != -1 && jsonEnd != -1) {
+        final jsonStr = text.substring(jsonStart, jsonEnd + 1);
+        final List<dynamic> exams = jsonDecode(jsonStr);
+
+        setState(() {
+          for (var e in exams) {
+            final newExam = <String, dynamic>{
+              'subject': e['subject']?.toString() ?? 'Unbekannt',
+              'examType': e['examType']?.toString() ?? 'Klausur',
+              'date': (e['date']?.toString() ?? '').replaceAll('-', ''),
+              'description': e['description']?.toString() ?? '',
+              '_custom': true,
+            };
+            _customExams.add(newExam);
+          }
+        });
+        _saveCustomExams();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.examsImportSuccess)));
+      } else {
+        throw Exception("Kein gültiges JSON gefunden.");
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // hide loading
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${l.examsImportError}$e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
     final exams = _allExams;
-    final todayInt =
-        int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+    final todayInt = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
 
     final upcoming = exams
-        .where((e) =>
-            (int.tryParse(e['date']?.toString() ?? '') ?? 0) >= todayInt)
+        .where(
+          (e) => (int.tryParse(e['date']?.toString() ?? '') ?? 0) >= todayInt,
+        )
         .toList();
     final past = exams
-        .where((e) =>
-            (int.tryParse(e['date']?.toString() ?? '') ?? 0) < todayInt)
+        .where(
+          (e) => (int.tryParse(e['date']?.toString() ?? '') ?? 0) < todayInt,
+        )
         .toList();
 
     return Scaffold(
@@ -2944,6 +3403,14 @@ class _ExamsPageState extends State<ExamsPage> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: l.examsImportTitle,
+            icon: const Icon(Icons.document_scanner_rounded),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              _importExamsWithAI();
+            },
+          ),
           IconButton(
             tooltip: l.examsReload,
             icon: const Icon(Icons.refresh_rounded),
@@ -2960,70 +3427,89 @@ class _ExamsPageState extends State<ExamsPage> {
           ),
         ],
       ),
-      body: _AnimatedBackground(child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : exams.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.assignment_outlined,
-                        size: 80,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.3),
+      body: _AnimatedBackground(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : exams.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.assignment_outlined,
+                      size: 80,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l.examsNone,
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        l.examsNone,
-                        style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l.examsNoneHint,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: () async {
+                  setState(() {
+                    _loading = true;
+                    _apiExams = [];
+                  });
+                  await _fetchApiExams();
+                  if (mounted) setState(() => _loading = false);
+                },
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  physics: const BouncingScrollPhysics(),
+                  children: [
+                    if (upcoming.isNotEmpty) ...[
+                      _sectionHeader(
+                        cs,
+                        l.examsUpcoming,
+                        Icons.upcoming_rounded,
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        l.examsNoneHint,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ...upcoming.asMap().entries.map(
+                        (e) => _animatedExamCard(
+                          e.key,
+                          context,
+                          cs,
+                          e.value,
+                          true,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (past.isNotEmpty) ...[
+                      _sectionHeader(cs, l.examsPast, Icons.history_rounded),
+                      const SizedBox(height: 8),
+                      ...past.asMap().entries.map(
+                        (e) => _animatedExamCard(
+                          e.key,
+                          context,
+                          cs,
+                          e.value,
+                          false,
+                        ),
                       ),
                     ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() {
-                      _loading = true;
-                      _apiExams = [];
-                    });
-                    await _fetchApiExams();
-                    if (mounted) setState(() => _loading = false);
-                  },
-                  child: ListView(
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                    physics: const BouncingScrollPhysics(),
-                    children: [
-                      if (upcoming.isNotEmpty) ...[
-                        _sectionHeader(
-                            cs, l.examsUpcoming, Icons.upcoming_rounded),
-                        const SizedBox(height: 8),
-                        ...upcoming.asMap().entries.map(
-                            (e) => _animatedExamCard(e.key, context, cs, e.value, true)),
-                        const SizedBox(height: 20),
-                      ],
-                      if (past.isNotEmpty) ...[
-                        _sectionHeader(
-                            cs, l.examsPast, Icons.history_rounded),
-                        const SizedBox(height: 8),
-                        ...past.asMap().entries.map(
-                            (e) => _animatedExamCard(e.key, context, cs, e.value, false)),
-                      ],
-                    ],
-                  ),
+                  ],
                 ),
+              ),
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 100),
@@ -3048,14 +3534,22 @@ class _ExamsPageState extends State<ExamsPage> {
         Text(
           title,
           style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w800, fontSize: 15, color: cs.primary),
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
+            color: cs.primary,
+          ),
         ),
       ],
     );
   }
 
-  Widget _animatedExamCard(int index, BuildContext context, ColorScheme cs,
-      Map<String, dynamic> exam, bool showCountdown) {
+  Widget _animatedExamCard(
+    int index,
+    BuildContext context,
+    ColorScheme cs,
+    Map<String, dynamic> exam,
+    bool showCountdown,
+  ) {
     return TweenAnimationBuilder<double>(
       key: ValueKey('exam_${exam['date']}_${exam['subject']}_$index'),
       duration: Duration(milliseconds: 350 + index * 70),
@@ -3063,23 +3557,23 @@ class _ExamsPageState extends State<ExamsPage> {
       tween: Tween<double>(begin: 0, end: 1),
       builder: (context, v, child) => Transform.translate(
         offset: Offset(0, 28 * (1 - v)),
-        child: Opacity(
-          opacity: v.clamp(0.0, 1.0),
-          child: child,
-        ),
+        child: Opacity(opacity: v.clamp(0.0, 1.0), child: child),
       ),
       child: _examCard(context, cs, exam, showCountdown),
     );
   }
 
-  Widget _examCard(BuildContext context, ColorScheme cs,
-      Map<String, dynamic> exam, bool showCountdown) {
+  Widget _examCard(
+    BuildContext context,
+    ColorScheme cs,
+    Map<String, dynamic> exam,
+    bool showCountdown,
+  ) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final isCustom = exam['_source'] == 'custom';
     final subject = _examSubject(exam);
     final type = _examType(exam);
-    final dateStr =
-        _formatExamDate(exam['date'] ?? exam['examDate'] ?? '');
+    final dateStr = _formatExamDate(exam['date'] ?? exam['examDate'] ?? '');
     final timeStart = exam['startTime'];
     final timeEnd = exam['endTime'];
     final timeStr = timeStart != null
@@ -3104,13 +3598,16 @@ class _ExamsPageState extends State<ExamsPage> {
     if (ds.length == 8) {
       try {
         final d = DateTime.parse(
-            '${ds.substring(0, 4)}-${ds.substring(4, 6)}-${ds.substring(6, 8)}');
+          '${ds.substring(0, 4)}-${ds.substring(4, 6)}-${ds.substring(6, 8)}',
+        );
         daysUntil = d
-            .difference(DateTime(
-              DateTime.now().year,
-              DateTime.now().month,
-              DateTime.now().day,
-            ))
+            .difference(
+              DateTime(
+                DateTime.now().year,
+                DateTime.now().month,
+                DateTime.now().day,
+              ),
+            )
             .inDays;
       } catch (_) {}
     }
@@ -3121,7 +3618,8 @@ class _ExamsPageState extends State<ExamsPage> {
     int? customIndex;
     if (isCustom) {
       customIndex = _customExams.indexWhere(
-          (e) => e['subject'] == exam['subject'] && e['date'] == exam['date']);
+        (e) => e['subject'] == exam['subject'] && e['date'] == exam['date'],
+      );
     }
 
     return Padding(
@@ -3132,8 +3630,9 @@ class _ExamsPageState extends State<ExamsPage> {
             ? () {
                 HapticFeedback.selectionClick();
                 _showAddExamDialog(
-                    Map<String, dynamic>.from(exam)..remove('_source'),
-                    customIndex);
+                  Map<String, dynamic>.from(exam)..remove('_source'),
+                  customIndex,
+                );
               }
             : null,
         child: Container(
@@ -3164,16 +3663,16 @@ class _ExamsPageState extends State<ExamsPage> {
                     Text(
                       subject.isNotEmpty ? subject : l.examsUnknown,
                       style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     _infoRow(Icons.calendar_today_rounded, dateStr),
                     if (timeStr.isNotEmpty)
                       _infoRow(Icons.access_time_rounded, timeStr),
-                    if (rooms.isNotEmpty)
-                      _infoRow(Icons.room_outlined, rooms),
+                    if (rooms.isNotEmpty) _infoRow(Icons.room_outlined, rooms),
                     if (teachers.isNotEmpty)
                       _infoRow(Icons.person_outline_rounded, teachers),
                     if (desc.isNotEmpty)
@@ -3182,7 +3681,11 @@ class _ExamsPageState extends State<ExamsPage> {
                         child: Text(
                           desc,
                           style: GoogleFonts.outfit(
-                              fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            fontSize: 13,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                   ],
@@ -3193,21 +3696,23 @@ class _ExamsPageState extends State<ExamsPage> {
                   padding: const EdgeInsets.only(left: 8),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: daysUntil == 0
                           ? cs.errorContainer
                           : daysUntil <= 3
-                              ? cs.errorContainer.withOpacity(0.6)
-                              : accent.withOpacity(0.15),
+                          ? cs.errorContainer.withOpacity(0.6)
+                          : accent.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       daysUntil == 0
                           ? l.examsToday
                           : daysUntil == 1
-                              ? l.examsTomorrow
-                              : l.examsInDays(daysUntil),
+                          ? l.examsTomorrow
+                          : l.examsInDays(daysUntil),
                       style: GoogleFonts.outfit(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -3224,40 +3729,48 @@ class _ExamsPageState extends State<ExamsPage> {
   }
 
   Widget _chip(String label, Color bg, Color fg) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration:
-            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-        child: Text(label,
-            style: GoogleFonts.outfit(
-                fontSize: 11, fontWeight: FontWeight.w800, color: fg)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      label,
+      style: GoogleFonts.outfit(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        color: fg,
+      ),
+    ),
+  );
 
   Widget _infoRow(IconData icon, String text) {
     final onVar = Theme.of(context).colorScheme.onSurfaceVariant;
     return Padding(
-        padding: const EdgeInsets.only(top: 2),
-        child: Row(
-          children: [
-            Icon(icon, size: 13, color: onVar),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                text,
-                style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: onVar),
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 13, color: onVar),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: onVar,
               ),
             ),
-          ],
-        ));
+          ),
+        ],
+      ),
+    );
   }
 }
 
 // --- KI-ASSISTENT HILFSFUNKTIONEN ---
 
-String _formatWeekForAi(
-    Map<int, List<dynamic>> weekData, DateTime monday) {
+String _formatWeekForAi(Map<int, List<dynamic>> weekData, DateTime monday) {
   final l = AppL10n.of(appLocaleNotifier.value);
   final days = l.weekDayFull;
   final buf = StringBuffer();
@@ -3302,8 +3815,7 @@ class _TimetableChatSheet extends StatefulWidget {
   });
 
   @override
-  State<_TimetableChatSheet> createState() =>
-      _TimetableChatSheetState();
+  State<_TimetableChatSheet> createState() => _TimetableChatSheetState();
 }
 
 class _TimetableChatSheetState extends State<_TimetableChatSheet> {
@@ -3335,10 +3847,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     if (geminiApiKey.isEmpty) {
       final l = AppL10n.of(appLocaleNotifier.value);
       setState(() {
-        _messages.add({
-          'role': 'assistant',
-          'content': l.aiNoApiKey,
-        });
+        _messages.add({'role': 'assistant', 'content': l.aiNoApiKey});
       });
       return;
     }
@@ -3356,7 +3865,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         return {
           'role': role,
           'parts': [
-            {'text': m['content'] ?? ''}
+            {'text': m['content'] ?? ''},
           ],
         };
       }).toList();
@@ -3364,23 +3873,18 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
       final body = jsonEncode({
         'systemInstruction': {
           'parts': [
-            {'text': _systemPrompt}
+            {'text': _systemPrompt},
           ],
         },
         'contents': contents,
-        'generationConfig': {
-          'maxOutputTokens': 2600,
-          'temperature': 0.2,
-        },
+        'generationConfig': {'maxOutputTokens': 2600, 'temperature': 0.2},
       });
 
       final response = await http.post(
         Uri.parse(
           'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$geminiApiKey',
         ),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
         body: body,
       );
 
@@ -3425,8 +3929,11 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
       }
     } catch (e) {
       setState(() {
-        _messages.add(
-            {'role': 'assistant', 'content': '${AppL10n.of(appLocaleNotifier.value).aiConnectionError} $e'});
+        _messages.add({
+          'role': 'assistant',
+          'content':
+              '${AppL10n.of(appLocaleNotifier.value).aiConnectionError} $e',
+        });
       });
     } finally {
       if (mounted) setState(() => _thinking = false);
@@ -3466,10 +3973,12 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
           height: MediaQuery.of(context).size.height * 0.82,
           decoration: BoxDecoration(
             color: cs.surface.withOpacity(0.95),
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(32)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             border: Border(
-              top: BorderSide(color: cs.outlineVariant.withOpacity(0.4), width: 1),
+              top: BorderSide(
+                color: cs.outlineVariant.withOpacity(0.4),
+                width: 1,
+              ),
             ),
           ),
           child: Column(
@@ -3497,8 +4006,11 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                             color: cs.primaryContainer,
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: Icon(Icons.auto_awesome_rounded,
-                              color: cs.primary, size: 22),
+                          child: Icon(
+                            Icons.auto_awesome_rounded,
+                            color: cs.primary,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Column(
@@ -3507,8 +4019,9 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                             Text(
                               AppL10n.of(appLocaleNotifier.value).aiTitle,
                               style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 20),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 20,
+                              ),
                             ),
                           ],
                         ),
@@ -3520,8 +4033,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Divider(
-                        color: cs.outlineVariant.withOpacity(0.5),),
+                    Divider(color: cs.outlineVariant.withOpacity(0.5)),
                   ],
                 ),
               ),
@@ -3532,16 +4044,14 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        itemCount:
-                            _messages.length + (_thinking ? 1 : 0),
+                        itemCount: _messages.length + (_thinking ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == _messages.length) {
                             return _buildTypingBubble(cs);
                           }
                           final msg = _messages[index];
                           final isUser = msg['role'] == 'user';
-                          return _buildBubble(
-                              cs, msg['content']!, isUser);
+                          return _buildBubble(cs, msg['content']!, isUser);
                         },
                       ),
               ),
@@ -3557,14 +4067,20 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                         onSubmitted: (_) => _send(),
                         style: GoogleFonts.outfit(fontSize: 15),
                         decoration: InputDecoration(
-                          hintText: AppL10n.of(appLocaleNotifier.value).aiInputHint,
-                          hintStyle:
-                              GoogleFonts.outfit(color: cs.onSurface.withOpacity(0.38)),
+                          hintText: AppL10n.of(
+                            appLocaleNotifier.value,
+                          ).aiInputHint,
+                          hintStyle: GoogleFonts.outfit(
+                            color: cs.onSurface.withOpacity(0.38),
+                          ),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest
-                              .withOpacity(0.5),
+                          fillColor: cs.surfaceContainerHighest.withOpacity(
+                            0.5,
+                          ),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 14),
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: BorderSide.none,
@@ -3603,19 +4119,23 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.tips_and_updates_rounded,
-              size: 40, color: cs.primary.withOpacity(0.5)),
+          Icon(
+            Icons.tips_and_updates_rounded,
+            size: 40,
+            color: cs.primary.withOpacity(0.5),
+          ),
           const SizedBox(height: 12),
           Text(
             l.aiKnowsSchedule,
             style: GoogleFonts.outfit(
-                fontWeight: FontWeight.w800, fontSize: 17),
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             l.aiAskAnything,
-            style: GoogleFonts.outfit(
-                fontSize: 14, color: cs.onSurfaceVariant),
+            style: GoogleFonts.outfit(fontSize: 14, color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
           Wrap(
@@ -3624,10 +4144,13 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
             children: suggestions
                 .map(
                   (s) => ActionChip(
-                    label: Text(s,
-                        style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13)),
+                    label: Text(
+                      s,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                     backgroundColor: cs.primaryContainer,
                     side: BorderSide.none,
                     onPressed: () {
@@ -3643,17 +4166,15 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     );
   }
 
-  Widget _buildBubble(
-      ColorScheme cs, String content, bool isUser) {
+  Widget _buildBubble(ColorScheme cs, String content, bool isUser) {
     return Align(
-      alignment:
-          isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.78),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          maxWidth: MediaQuery.of(context).size.width * 0.78,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isUser
               ? cs.primary
@@ -3678,37 +4199,37 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                 data: content,
                 styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
                     .copyWith(
-                  p: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: cs.onSurface,
-                    height: 1.25,
-                  ),
-                  strong: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
-                  em: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w500,
-                    color: cs.onSurface,
-                  ),
-                  code: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface,
-                  ),
-                  codeblockDecoration: BoxDecoration(
-                    color: cs.surface.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  blockquoteDecoration: BoxDecoration(
-                    color: cs.surface.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                      p: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurface,
+                        height: 1.25,
+                      ),
+                      strong: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurface,
+                      ),
+                      em: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurface,
+                      ),
+                      code: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurface,
+                      ),
+                      codeblockDecoration: BoxDecoration(
+                        color: cs.surface.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      blockquoteDecoration: BoxDecoration(
+                        color: cs.surface.withOpacity(0.55),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
               ),
       ),
     );
@@ -3719,8 +4240,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: cs.surfaceContainerHighest.withOpacity(0.6),
           borderRadius: const BorderRadius.only(
@@ -3752,8 +4272,7 @@ class _Dot extends StatefulWidget {
   State<_Dot> createState() => _DotState();
 }
 
-class _DotState extends State<_Dot>
-    with SingleTickerProviderStateMixin {
+class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
 
@@ -3761,11 +4280,16 @@ class _DotState extends State<_Dot>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
-    Future.delayed(Duration(milliseconds: widget.delay),
-        () => mounted ? _ctrl.repeat(reverse: true) : null);
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    Future.delayed(
+      Duration(milliseconds: widget.delay),
+      () => mounted ? _ctrl.repeat(reverse: true) : null,
+    );
     _anim = Tween(begin: 0.3, end: 1.0).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubicEmphasized));
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubicEmphasized),
+    );
   }
 
   @override
@@ -3796,16 +4320,19 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
   final subject = lesson['_subjectLong']?.toString().isNotEmpty == true
       ? lesson['_subjectLong'].toString()
       : (lesson['_subjectShort']?.toString().isNotEmpty == true
-          ? lesson['_subjectShort'].toString()
-          : '---');
+            ? lesson['_subjectShort'].toString()
+            : '---');
   final subjectShort = lesson['_subjectShort']?.toString() ?? '';
-  final room        = lesson['_room']?.toString().isNotEmpty == true ? lesson['_room'].toString() : '---';
-  final teacher     = lesson['_teacher']?.toString() ?? '';
-  final time        = '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
+  final room = lesson['_room']?.toString().isNotEmpty == true
+      ? lesson['_room'].toString()
+      : '---';
+  final teacher = lesson['_teacher']?.toString() ?? '';
+  final time =
+      '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
   final isCancelled = (lesson['code'] ?? '') == 'cancelled';
-  final info        = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
-  final lessonNr    = lesson['lsnumber']?.toString() ?? '';
-  final subjectKey  = lesson['_subjectShort']?.toString() ?? '';
+  final info = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
+  final lessonNr = lesson['lsnumber']?.toString() ?? '';
+  final subjectKey = lesson['_subjectShort']?.toString() ?? '';
 
   showModalBottomSheet(
     context: context,
@@ -3859,8 +4386,8 @@ class _AnimatedLessonCard extends StatelessWidget {
         subject: lesson['_subjectLong']?.toString().isNotEmpty == true
             ? lesson['_subjectLong'].toString()
             : (lesson['_subjectShort']?.toString().isNotEmpty == true
-                ? lesson['_subjectShort'].toString()
-                : "---"),
+                  ? lesson['_subjectShort'].toString()
+                  : "---"),
         subjectShort: lesson['_subjectShort']?.toString() ?? "",
         room: lesson['_room']?.toString().isNotEmpty == true
             ? lesson['_room'].toString()
@@ -3893,7 +4420,13 @@ class _LessonDetailSheet extends StatelessWidget {
     this.onHideSubject,
   });
 
-  Widget _row(BuildContext context, IconData icon, String label, String value, {Color? iconColor}) {
+  Widget _row(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value, {
+    Color? iconColor,
+  }) {
     if (value.isEmpty || value == '---') return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -3903,23 +4436,39 @@ class _LessonDetailSheet extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (iconColor ?? Theme.of(context).colorScheme.primary).withOpacity(0.12),
+              color: (iconColor ?? Theme.of(context).colorScheme.primary)
+                  .withOpacity(0.12),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, size: 20, color: iconColor ?? Theme.of(context).colorScheme.primary),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor ?? Theme.of(context).colorScheme.primary,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: GoogleFonts.outfit(
-                        fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5))),
+                Text(
+                  label,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value,
-                    style: GoogleFonts.outfit(
-                        fontSize: 17, fontWeight: FontWeight.w700)),
+                Text(
+                  value,
+                  style: GoogleFonts.outfit(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
@@ -3937,14 +4486,20 @@ class _LessonDetailSheet extends StatelessWidget {
         color: cs.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        16,
+        24,
+        MediaQuery.of(context).viewInsets.bottom + 32,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Center(
             child: Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: cs.onSurface.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(2),
@@ -3965,9 +4520,14 @@ class _LessonDetailSheet extends StatelessWidget {
                 children: [
                   Icon(Icons.cancel_outlined, size: 16, color: cs.error),
                   const SizedBox(width: 6),
-                  Text(l.detailCancelled,
-                      style: GoogleFonts.outfit(
-                          color: cs.error, fontWeight: FontWeight.w800, fontSize: 13)),
+                  Text(
+                    l.detailCancelled,
+                    style: GoogleFonts.outfit(
+                      color: cs.error,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             )
@@ -3981,28 +4541,43 @@ class _LessonDetailSheet extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_circle_outline,
-                      size: 16, color: cs.tertiary),
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 16,
+                    color: cs.tertiary,
+                  ),
                   const SizedBox(width: 6),
-                  Text(l.detailRegular,
-                      style: GoogleFonts.outfit(
-                          color: cs.tertiary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13)),
+                  Text(
+                    l.detailRegular,
+                    style: GoogleFonts.outfit(
+                      color: cs.tertiary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
 
           const SizedBox(height: 16),
 
-          Text(subject,
-              style: GoogleFonts.outfit(
-                  fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1)),
+          Text(
+            subject,
+            style: GoogleFonts.outfit(
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1,
+            ),
+          ),
           if (subjectShort.isNotEmpty)
-            Text(subjectShort,
-                style: GoogleFonts.outfit(
-                    fontSize: 15, fontWeight: FontWeight.w600,
-                    color: cs.primary.withOpacity(0.7))),
+            Text(
+              subjectShort,
+              style: GoogleFonts.outfit(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: cs.primary.withOpacity(0.7),
+              ),
+            ),
 
           const SizedBox(height: 24),
           Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
@@ -4014,8 +4589,13 @@ class _LessonDetailSheet extends StatelessWidget {
           if (lessonNr.isNotEmpty && lessonNr != '0')
             _row(context, Icons.tag_rounded, l.detailLesson, lessonNr),
           if (info.isNotEmpty)
-            _row(context, Icons.info_outline_rounded, l.detailInfo, info,
-                iconColor: cs.tertiary),
+            _row(
+              context,
+              Icons.info_outline_rounded,
+              l.detailInfo,
+              info,
+              iconColor: cs.tertiary,
+            ),
 
           const SizedBox(height: 16),
           Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
@@ -4033,7 +4613,8 @@ class _LessonDetailSheet extends StatelessWidget {
               side: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
               minimumSize: const Size(double.infinity, 48),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -4124,7 +4705,9 @@ class LessonCard extends StatelessWidget {
                           Text(
                             subjectShort,
                             style: GoogleFonts.outfit(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withOpacity(0.7),
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                             ),
@@ -4132,7 +4715,11 @@ class LessonCard extends StatelessWidget {
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            Icon(Icons.room_outlined, size: 15, color: cs.onSurfaceVariant),
+                            Icon(
+                              Icons.room_outlined,
+                              size: 15,
+                              color: cs.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               room,
@@ -4144,7 +4731,11 @@ class LessonCard extends StatelessWidget {
                             ),
                             if (teacher.isNotEmpty) ...[
                               const SizedBox(width: 12),
-                              Icon(Icons.person_outline_rounded, size: 15, color: cs.onSurfaceVariant),
+                              Icon(
+                                Icons.person_outline_rounded,
+                                size: 15,
+                                color: cs.onSurfaceVariant,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 teacher,
@@ -4162,7 +4753,11 @@ class LessonCard extends StatelessWidget {
                   ),
                   if (isCancelled)
                     Badge(
-                      label: Text(AppL10n.of(appLocaleNotifier.value).detailCancelledBadge),
+                      label: Text(
+                        AppL10n.of(
+                          appLocaleNotifier.value,
+                        ).detailCancelledBadge,
+                      ),
                       backgroundColor: Theme.of(context).colorScheme.error,
                       textColor: Theme.of(context).colorScheme.onError,
                     ),
@@ -4282,7 +4877,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
     try {
       final resp = await http.get(
-        Uri.parse('https://api.github.com/repos/ninocss/UntisPlus/releases/latest'),
+        Uri.parse(
+          'https://api.github.com/repos/ninocss/UntisPlus/releases/latest',
+        ),
         headers: const {'Accept': 'application/vnd.github+json'},
       );
 
@@ -4296,10 +4893,12 @@ class _SettingsPageState extends State<SettingsPage> {
       }
 
       final tag = (data['tag_name'] ?? '').toString().trim();
-      final htmlUrl = (data['html_url'] ??
-              'https://github.com/ninocss/UntisPlus/releases')
-          .toString();
-      final assets = (data['assets'] is List) ? data['assets'] as List<dynamic> : const <dynamic>[];
+      final htmlUrl =
+          (data['html_url'] ?? 'https://github.com/ninocss/UntisPlus/releases')
+              .toString();
+      final assets = (data['assets'] is List)
+          ? data['assets'] as List<dynamic>
+          : const <dynamic>[];
       final assetUrl = _pickGithubReleaseAssetUrl(assets);
       final shouldDownload = forceDownload || _githubDirectDownload;
       final targetUrl = assetUrl ?? htmlUrl;
@@ -4323,7 +4922,10 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                launched ? l.settingsGithubDownloadStarted : l.settingsGithubOpenFailed),
+              launched
+                  ? l.settingsGithubDownloadStarted
+                  : l.settingsGithubOpenFailed,
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -4331,9 +4933,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              l.settingsGithubUpdateFound(
-                tag.isEmpty ? 'latest' : tag,
-              ),
+              l.settingsGithubUpdateFound(tag.isEmpty ? 'latest' : tag),
             ),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 5),
@@ -4404,28 +5004,35 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(l.settingsLanguage,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-              color: Theme.of(context).colorScheme.onSurface,
-            )),
+        title: Text(
+          l.settingsLanguage,
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: _localeLabels.entries.map((e) {
             final selected = appLocaleNotifier.value == e.key;
             return ListTile(
-              title: Text(e.value,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  )),
+              title: Text(
+                e.value,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
               trailing: selected
-                  ? Icon(Icons.check_rounded,
-                      color: Theme.of(context).colorScheme.primary)
+                  ? Icon(
+                      Icons.check_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    )
                   : null,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
               onTap: () {
                 _setLocale(e.key);
                 Navigator.pop(context);
@@ -4444,15 +5051,20 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(l.settingsApiKeyDialogTitle,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18)),
+        title: Text(
+          l.settingsApiKeyDialogTitle,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               l.settingsApiKeyDialogDesc,
-              style: GoogleFonts.outfit(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -4463,8 +5075,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 hintText: 'AIza...',
                 filled: true,
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none),
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
               ),
             ),
           ],
@@ -4472,8 +5085,10 @@ class _SettingsPageState extends State<SettingsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(l.settingsApiKeyCancel,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+            child: Text(
+              l.settingsApiKeyCancel,
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+            ),
           ),
           if (_apiKeySet)
             TextButton(
@@ -4485,10 +5100,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 Navigator.pop(ctx);
                 _loadPrefs();
               },
-              child: Text(l.settingsApiKeyRemove,
-                  style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.error)),
+              child: Text(
+                l.settingsApiKeyRemove,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
             ),
           FilledButton(
             onPressed: () async {
@@ -4501,10 +5119,14 @@ class _SettingsPageState extends State<SettingsPage> {
               _loadPrefs();
             },
             style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14))),
-            child: Text(l.settingsApiKeySave,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Text(
+              l.settingsApiKeySave,
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -4524,8 +5146,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // ── Section card builder ───
   Widget _section(
-      String title, IconData icon, List<Widget> tiles, ColorScheme cs,
-      {bool isAbout = false}) {
+    String title,
+    IconData icon,
+    List<Widget> tiles,
+    ColorScheme cs, {
+    bool isAbout = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4626,22 +5252,26 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15.5,
-                        color: Theme.of(context).colorScheme.onSurface)),
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15.5,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: GoogleFonts.outfit(
-                          fontSize: 12.5,
-                            color: subtitleColor ??
-                              Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant
-                                .withOpacity(0.75)),
+                        fontSize: 12.5,
+                        color:
+                            subtitleColor ??
+                            Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant.withOpacity(0.75),
+                      ),
                     ),
                   ],
                 ],
@@ -4656,14 +5286,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // ── Rounded icon box for tile leading ─────
   Widget _tileIcon(IconData icon, Color color) => Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: color, size: 20),
-      );
+    width: 36,
+    height: 36,
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Icon(icon, color: color, size: 20),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -4672,322 +5302,386 @@ class _SettingsPageState extends State<SettingsPage> {
     final hidden = hiddenSubjectsNotifier.value.toList()..sort();
 
     return Scaffold(
-      body: _AnimatedBackground(child: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 96,
-            surfaceTintColor: Colors.transparent,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 14),
-              title: Text(
-                l.settingsTitle,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 23,
-                  color: cs.onSurface),
-              ),
-              collapseMode: CollapseMode.pin,
-              background: ValueListenableBuilder<bool>(
-                valueListenable: backgroundAnimationsNotifier,
-                builder: (context, enabled, _) => enabled
-                    ? const _AnimatedOrbs()
-                    : const SizedBox.shrink(),
+      body: _AnimatedBackground(
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              expandedHeight: 96,
+              surfaceTintColor: Colors.transparent,
+              flexibleSpace: FlexibleSpaceBar(
+                titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 14),
+                title: Text(
+                  l.settingsTitle,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 23,
+                    color: cs.onSurface,
+                  ),
+                ),
+                collapseMode: CollapseMode.pin,
+                background: ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, enabled, _) =>
+                      enabled ? const _AnimatedOrbs() : const SizedBox.shrink(),
+                ),
               ),
             ),
-          ),
 
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 44),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _SettingsAccountCard(
-                  username: _username,
-                  serverUrl: _serverDisplay,
-                  l: l,
-                  cs: cs,
-                  onLogout: () => _logout(context),
-                ),
-                const SizedBox(height: 32),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 44),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _SettingsAccountCard(
+                    username: _username,
+                    serverUrl: _serverDisplay,
+                    l: l,
+                    cs: cs,
+                    onLogout: () => _logout(context),
+                  ),
+                  const SizedBox(height: 32),
 
-                _section(l.settingsSectionGeneral, Icons.palette_outlined, [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          _tileIcon(Icons.contrast_rounded, cs.primary),
-                          const SizedBox(width: 14),
-                          Text(l.settingsThemeMode,
-                              style: GoogleFonts.outfit(
+                  _section(l.settingsSectionGeneral, Icons.palette_outlined, [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _tileIcon(Icons.contrast_rounded, cs.primary),
+                              const SizedBox(width: 14),
+                              Text(
+                                l.settingsThemeMode,
+                                style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.w600,
-                                fontSize: 15.5,
-                                color: cs.onSurface)),
-                        ]),
-                        const SizedBox(height: 10),
-                        SegmentedButton<ThemeMode>(
-                          style: SegmentedButton.styleFrom(
-                            textStyle: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600, fontSize: 13),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            minimumSize: const Size(0, 40),
+                                  fontSize: 15.5,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                            ],
                           ),
-                          segments: [
-                            ButtonSegment(
-                              value: ThemeMode.light,
-                              label: Text(l.settingsThemeLight),
-                              icon: const Icon(Icons.light_mode_rounded,
-                                  size: 17),
+                          const SizedBox(height: 10),
+                          SegmentedButton<ThemeMode>(
+                            style: SegmentedButton.styleFrom(
+                              textStyle: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              minimumSize: const Size(0, 40),
                             ),
-                            ButtonSegment(
-                              value: ThemeMode.system,
-                              label: Text(l.settingsThemeSystem),
-                              icon: const Icon(
+                            segments: [
+                              ButtonSegment(
+                                value: ThemeMode.light,
+                                label: Text(l.settingsThemeLight),
+                                icon: const Icon(
+                                  Icons.light_mode_rounded,
+                                  size: 17,
+                                ),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.system,
+                                label: Text(l.settingsThemeSystem),
+                                icon: const Icon(
                                   Icons.brightness_auto_rounded,
-                                  size: 17),
-                            ),
-                            ButtonSegment(
-                              value: ThemeMode.dark,
-                              label: Text(l.settingsThemeDark),
-                              icon: const Icon(Icons.dark_mode_rounded,
-                                  size: 17),
-                            ),
-                          ],
-                          selected: {themeModeNotifier.value},
-                          onSelectionChanged: (v) {
+                                  size: 17,
+                                ),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.dark,
+                                label: Text(l.settingsThemeDark),
+                                icon: const Icon(
+                                  Icons.dark_mode_rounded,
+                                  size: 17,
+                                ),
+                              ),
+                            ],
+                            selected: {themeModeNotifier.value},
+                            onSelectionChanged: (v) {
+                              HapticFeedback.selectionClick();
+                              _setThemeMode(v.first);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Language tile
+                    _tile(
+                      leading: _tileIcon(Icons.language_rounded, cs.primary),
+                      title: l.settingsLanguage,
+                      subtitle: _localeLabels[appLocaleNotifier.value],
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: cs.onSurface.withOpacity(0.4),
+                      ),
+                      onTap: _showLanguageDialog,
+                    ),
+                  ], cs),
+
+                  _section(
+                    l.settingsSectionTimetable,
+                    Icons.calendar_today_outlined,
+                    [
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.event_busy_rounded,
+                          showCancelledNotifier.value ? cs.outline : cs.error,
+                        ),
+                        title: l.settingsShowCancelled,
+                        subtitle: l.settingsShowCancelledDesc,
+                        trailing: Switch.adaptive(
+                          value: showCancelledNotifier.value,
+                          onChanged: (v) {
                             HapticFeedback.selectionClick();
-                            _setThemeMode(v.first);
+                            _setShowCancelled(v);
                           },
                         ),
-                      ],
-                    ),
-                  ),
-                  // Language tile
-                  _tile(
-                    leading:
-                        _tileIcon(Icons.language_rounded, cs.primary),
-                    title: l.settingsLanguage,
-                    subtitle: _localeLabels[appLocaleNotifier.value],
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        size: 20, color: cs.onSurface.withOpacity(0.4)),
-                    onTap: _showLanguageDialog,
-                  ),
-                ], cs),
-
-                _section(l.settingsSectionTimetable,
-                    Icons.calendar_today_outlined, [
-                  _tile(
-                    leading: _tileIcon(
-                      Icons.event_busy_rounded,
-                      showCancelledNotifier.value ? cs.outline : cs.error,
-                    ),
-                    title: l.settingsShowCancelled,
-                    subtitle: l.settingsShowCancelledDesc,
-                    trailing: Switch.adaptive(
-                      value: showCancelledNotifier.value,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        _setShowCancelled(v);
-                      },
-                    ),
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _setShowCancelled(!showCancelledNotifier.value);
-                    },
-                  ),
-                  _tile(
-                    leading: _tileIcon(
-                      Icons.auto_awesome_motion_outlined,
-                      backgroundAnimationsNotifier.value
-                          ? cs.tertiary
-                          : cs.outline,
-                    ),
-                    title: l.settingsBackgroundAnimations,
-                    subtitle: l.settingsBackgroundAnimationsDesc,
-                    trailing: Switch.adaptive(
-                      value: backgroundAnimationsNotifier.value,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        _setBackgroundAnimations(v);
-                      },
-                    ),
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _setBackgroundAnimations(
-                          !backgroundAnimationsNotifier.value);
-                    },
-                  ),
-                  _tile(
-                    leading: _tileIcon(
-                      Icons.notifications_active_rounded,
-                      progressivePushNotifier.value
-                          ? cs.primary
-                          : cs.outline,
-                    ),
-                    title: l.settingsProgressivePush,
-                    subtitle: l.settingsProgressivePushDesc,
-                    trailing: Switch.adaptive(
-                      value: progressivePushNotifier.value,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        _setProgressivePush(v);
-                      },
-                    ),
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _setProgressivePush(!progressivePushNotifier.value);
-                    },
-                  ),
-                  _tile(
-                    leading: _tileIcon(
-                      Icons.system_update_alt_rounded,
-                      cs.primary,
-                    ),
-                    title: l.settingsRefreshPushWidgetNow,
-                    subtitle: l.settingsRefreshPushWidgetNowDesc,
-                    trailing: Icon(Icons.chevron_right_rounded, size: 20, color: cs.onSurface.withOpacity(0.4)),
-                    onTap: () async {
-                      HapticFeedback.heavyImpact();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(l.settingsBackgroundLoading),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          duration: const Duration(seconds: 2),
-                        )
-                      );
-                      await updateUntisData();
-                    },
-                  ),
-                ], cs),
-
-                _section(l.settingsSectionAI, Icons.auto_awesome_outlined, [
-                  _tile(
-                    leading: _apiKeySet
-                        ? _tileIcon(
-                            Icons.auto_awesome_rounded, cs.tertiary)
-                        : _tileIcon(
-                            Icons.key_off_rounded, cs.error),
-                    title: l.settingsApiKey,
-                    subtitle:
-                        _apiKeySet ? _apiKeyDisplay : l.settingsApiKeyNotSet,
-                    subtitleColor: _apiKeySet ? null : cs.error,
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        size: 20, color: cs.onSurface.withOpacity(0.4)),
-                    onTap: _showApiKeyDialog,
-                  ),
-                ], cs),
-
-                // ── Subjects & Colors (merged) ───────────────────────────
-                _section(l.settingsSectionSubjects, Icons.tune_rounded, [
-                  _tile(
-                    leading: _tileIcon(Icons.palette_outlined, cs.primary),
-                    title: l.settingsSectionColors,
-                    subtitle: l.settingsColorsDesc, // "Customize the colors for your subjects"
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        size: 20, color: cs.onSurface.withOpacity(0.4)),
-                    onTap: () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const SubjectColorsPage()));
-                    },
-                  ),
-                  _tile(
-                    leading: _tileIcon(Icons.visibility_off_outlined, cs.secondary),
-                    title: l.settingsSectionHidden,
-                    subtitle: hidden.isEmpty 
-                        ? l.settingsNoHidden 
-                      : l.settingsHiddenCount(hidden.length),
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        size: 20, color: cs.onSurface.withOpacity(0.4)),
-                    onTap: () {
-                      Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const HiddenSubjectsPage()));
-                    },
-                  ),
-                ], cs),
-
-                // ── About ────────────────────────────────────────────────
-                _section(l.settingsSectionAbout, Icons.info_outline_rounded, [
-                  _tile(
-                    leading:
-                        _tileIcon(Icons.rocket_launch_outlined, cs.primary),
-                    title: 'Untis+',
-                    subtitle: '${l.settingsAppVersion} $APP_VERSION',
-                    trailing: Icon(
-                      Icons.auto_awesome_rounded,
-                      size: 16,
-                      color: cs.tertiary,
-                    ),
-                  ),
-                  _tile(
-                    leading: _tileIcon(
-                      Icons.system_update_alt_rounded,
-                      cs.primary,
-                    ),
-                    title: l.settingsGithubUpdateCheck,
-                    subtitle: l.settingsGithubUpdateCheckDesc,
-                    trailing: _checkingGithubUpdate
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
-                            ),
-                          )
-                        : Icon(
-                            Icons.chevron_right_rounded,
-                            size: 20,
-                            color: cs.onSurface.withOpacity(0.4),
-                          ),
-                    onTap: _checkingGithubUpdate
-                        ? null
-                        : () {
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _setShowCancelled(!showCancelledNotifier.value);
+                        },
+                      ),
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.auto_awesome_motion_outlined,
+                          backgroundAnimationsNotifier.value
+                              ? cs.tertiary
+                              : cs.outline,
+                        ),
+                        title: l.settingsBackgroundAnimations,
+                        subtitle: l.settingsBackgroundAnimationsDesc,
+                        trailing: Switch.adaptive(
+                          value: backgroundAnimationsNotifier.value,
+                          onChanged: (v) {
                             HapticFeedback.selectionClick();
-                            _checkGithubUpdate();
+                            _setBackgroundAnimations(v);
                           },
+                        ),
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _setBackgroundAnimations(
+                            !backgroundAnimationsNotifier.value,
+                          );
+                        },
+                      ),
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.notifications_active_rounded,
+                          progressivePushNotifier.value
+                              ? cs.primary
+                              : cs.outline,
+                        ),
+                        title: l.settingsProgressivePush,
+                        subtitle: l.settingsProgressivePushDesc,
+                        trailing: Switch.adaptive(
+                          value: progressivePushNotifier.value,
+                          onChanged: (v) {
+                            HapticFeedback.selectionClick();
+                            _setProgressivePush(v);
+                          },
+                        ),
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _setProgressivePush(!progressivePushNotifier.value);
+                        },
+                      ),
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.system_update_alt_rounded,
+                          cs.primary,
+                        ),
+                        title: l.settingsRefreshPushWidgetNow,
+                        subtitle: l.settingsRefreshPushWidgetNowDesc,
+                        trailing: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: cs.onSurface.withOpacity(0.4),
+                        ),
+                        onTap: () async {
+                          HapticFeedback.heavyImpact();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l.settingsBackgroundLoading),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                          await updateUntisData();
+                        },
+                      ),
+                    ],
+                    cs,
                   ),
-                  _tile(
-                    leading: _tileIcon(
-                      Icons.download_rounded,
-                      _githubDirectDownload ? cs.primary : cs.outline,
+
+                  _section(l.settingsSectionAI, Icons.auto_awesome_outlined, [
+                    _tile(
+                      leading: _apiKeySet
+                          ? _tileIcon(Icons.auto_awesome_rounded, cs.tertiary)
+                          : _tileIcon(Icons.key_off_rounded, cs.error),
+                      title: l.settingsApiKey,
+                      subtitle: _apiKeySet
+                          ? _apiKeyDisplay
+                          : l.settingsApiKeyNotSet,
+                      subtitleColor: _apiKeySet ? null : cs.error,
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: cs.onSurface.withOpacity(0.4),
+                      ),
+                      onTap: _showApiKeyDialog,
                     ),
-                    title: l.settingsGithubDirectDownload,
-                    subtitle: l.settingsGithubDirectDownloadDesc,
-                    trailing: Switch.adaptive(
-                      value: _githubDirectDownload,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        _setGithubDirectDownload(v);
+                  ], cs),
+
+                  // ── Subjects & Colors (merged) ───────────────────────────
+                  _section(l.settingsSectionSubjects, Icons.tune_rounded, [
+                    _tile(
+                      leading: _tileIcon(Icons.palette_outlined, cs.primary),
+                      title: l.settingsSectionColors,
+                      subtitle: l
+                          .settingsColorsDesc, // "Customize the colors for your subjects"
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: cs.onSurface.withOpacity(0.4),
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SubjectColorsPage(),
+                          ),
+                        );
                       },
                     ),
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _setGithubDirectDownload(!_githubDirectDownload);
-                    },
+                    _tile(
+                      leading: _tileIcon(
+                        Icons.visibility_off_outlined,
+                        cs.secondary,
+                      ),
+                      title: l.settingsSectionHidden,
+                      subtitle: hidden.isEmpty
+                          ? l.settingsNoHidden
+                          : l.settingsHiddenCount(hidden.length),
+                      trailing: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: cs.onSurface.withOpacity(0.4),
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const HiddenSubjectsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ], cs),
+
+                  // ── About ────────────────────────────────────────────────
+                  _section(
+                    l.settingsSectionAbout,
+                    Icons.info_outline_rounded,
+                    [
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.rocket_launch_outlined,
+                          cs.primary,
+                        ),
+                        title: 'Untis+',
+                        subtitle: '${l.settingsAppVersion} $APP_VERSION',
+                        trailing: Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 16,
+                          color: cs.tertiary,
+                        ),
+                      ),
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.system_update_alt_rounded,
+                          cs.primary,
+                        ),
+                        title: l.settingsGithubUpdateCheck,
+                        subtitle: l.settingsGithubUpdateCheckDesc,
+                        trailing: _checkingGithubUpdate
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    cs.primary,
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                Icons.chevron_right_rounded,
+                                size: 20,
+                                color: cs.onSurface.withOpacity(0.4),
+                              ),
+                        onTap: _checkingGithubUpdate
+                            ? null
+                            : () {
+                                HapticFeedback.selectionClick();
+                                _checkGithubUpdate();
+                              },
+                      ),
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.download_rounded,
+                          _githubDirectDownload ? cs.primary : cs.outline,
+                        ),
+                        title: l.settingsGithubDirectDownload,
+                        subtitle: l.settingsGithubDirectDownloadDesc,
+                        trailing: Switch.adaptive(
+                          value: _githubDirectDownload,
+                          onChanged: (v) {
+                            HapticFeedback.selectionClick();
+                            _setGithubDirectDownload(v);
+                          },
+                        ),
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _setGithubDirectDownload(!_githubDirectDownload);
+                        },
+                      ),
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.open_in_new_rounded,
+                          cs.secondary,
+                        ),
+                        title: l.settingsGithubOpenReleasePage,
+                        subtitle: 'github.com/ninocss/UntisPlus',
+                        trailing: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: cs.onSurface.withOpacity(0.4),
+                        ),
+                        onTap: () {
+                          url_launcher.launchUrlString(
+                            'https://github.com/ninocss/UntisPlus/releases',
+                            mode: url_launcher.LaunchMode.externalApplication,
+                          );
+                        },
+                      ),
+                    ],
+                    cs,
+                    isAbout: true,
                   ),
-                  _tile(
-                    leading: _tileIcon(Icons.open_in_new_rounded, cs.secondary),
-                    title: l.settingsGithubOpenReleasePage,
-                    subtitle: 'github.com/ninocss/UntisPlus',
-                    trailing: Icon(Icons.chevron_right_rounded,
-                        size: 20, color: cs.onSurface.withOpacity(0.4)),
-                    onTap: () {
-                      url_launcher.launchUrlString(
-                        'https://github.com/ninocss/UntisPlus/releases',
-                        mode: url_launcher.LaunchMode.externalApplication,
-                      );
-                    },
-                  ),
-                ], cs, isAbout: true),
-              ]),
+                ]),
+              ),
             ),
-          ),
-        ],
-      )),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -5090,13 +5784,10 @@ class _AnimatedOrbsState extends State<_AnimatedOrbs>
   }
 
   Widget _orb(double size, Color color) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color,
-        ),
-      );
+    width: size,
+    height: size,
+    decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+  );
 }
 
 // ── Standalone account card for settings ─────────────────────────────────────
@@ -5150,8 +5841,9 @@ class _SettingsAccountCard extends StatelessWidget {
                     username.isNotEmpty ? username[0].toUpperCase() : '?',
                     style: TextStyle(
                       color: cs.onPrimary,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -5173,7 +5865,8 @@ class _SettingsAccountCard extends StatelessWidget {
                       style: GoogleFonts.outfit(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        color: cs.onPrimaryContainer),
+                        color: cs.onPrimaryContainer,
+                      ),
                     ),
                     if (serverUrl.isNotEmpty)
                       Text(
@@ -5194,15 +5887,18 @@ class _SettingsAccountCard extends StatelessWidget {
           FilledButton.icon(
             onPressed: onLogout,
             icon: const Icon(Icons.logout_rounded, size: 18),
-            label: Text(l.settingsLogout,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            label: Text(
+              l.settingsLogout,
+              style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+            ),
             style: FilledButton.styleFrom(
               backgroundColor: cs.error.withOpacity(0.1),
               foregroundColor: cs.error,
               minimumSize: const Size(double.infinity, 46),
               elevation: 0,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
         ],
@@ -5211,10 +5907,119 @@ class _SettingsAccountCard extends StatelessWidget {
   }
 }
 
-
 // ── Subject Colors Page ──────────────────────────────────────────────────────
 class SubjectColorsPage extends StatelessWidget {
   const SubjectColorsPage({super.key});
+
+  void _showCustomColorPicker(
+    BuildContext context,
+    String subject,
+    Color? current,
+  ) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final cs = Theme.of(context).colorScheme;
+    final fallback = _autoLessonColor(
+      subject,
+      Theme.of(context).brightness == Brightness.dark,
+    );
+
+    double red = (current ?? fallback).red.toDouble();
+    double green = (current ?? fallback).green.toDouble();
+    double blue = (current ?? fallback).blue.toDouble();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setStateDialog) {
+          final preview = Color.fromARGB(
+            255,
+            red.round(),
+            green.round(),
+            blue.round(),
+          );
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            title: Text(
+              l.settingsColorFor(subject),
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 66,
+                  decoration: BoxDecoration(
+                    color: preview,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: cs.outlineVariant),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '${l.settingsColorRed}: ${red.round()}',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                Slider(
+                  value: red,
+                  min: 0,
+                  max: 255,
+                  activeColor: Colors.red,
+                  onChanged: (v) => setStateDialog(() => red = v),
+                ),
+                Text(
+                  '${l.settingsColorGreen}: ${green.round()}',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                Slider(
+                  value: green,
+                  min: 0,
+                  max: 255,
+                  activeColor: Colors.green,
+                  onChanged: (v) => setStateDialog(() => green = v),
+                ),
+                Text(
+                  '${l.settingsColorBlue}: ${blue.round()}',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                Slider(
+                  value: blue,
+                  min: 0,
+                  max: 255,
+                  activeColor: Colors.blue,
+                  onChanged: (v) => setStateDialog(() => blue = v),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(
+                  l.settingsApiKeyCancel,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+              ),
+              FilledButton(
+                onPressed: () {
+                  _setSubjectColor(subject, preview.value);
+                  Navigator.pop(ctx);
+                },
+                child: Text(
+                  l.settingsColorApply,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   void _showColorPicker(BuildContext context, String subject, Color? current) {
     final cs = Theme.of(context).colorScheme;
@@ -5248,16 +6053,27 @@ class SubjectColorsPage extends StatelessWidget {
                       color: c,
                       shape: BoxShape.circle,
                       border: isSelected
-                          ? Border.all(color: cs.onSurface.withOpacity(0.65), width: 3)
+                          ? Border.all(
+                              color: cs.onSurface.withOpacity(0.65),
+                              width: 3,
+                            )
                           : Border.all(color: Colors.transparent),
                       boxShadow: isSelected
-                          ? [BoxShadow(color: c.withOpacity(0.45), blurRadius: 8, spreadRadius: 1)]
+                          ? [
+                              BoxShadow(
+                                color: c.withOpacity(0.45),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
                           : null,
                     ),
                     child: isSelected
                         ? Icon(
                             Icons.check_rounded,
-                            color: ThemeData.estimateBrightnessForColor(c) == Brightness.dark
+                            color:
+                                ThemeData.estimateBrightnessForColor(c) ==
+                                    Brightness.dark
                                 ? Colors.white
                                 : Colors.black,
                             size: 22,
@@ -5267,6 +6083,24 @@ class SubjectColorsPage extends StatelessWidget {
                 );
               }).toList(),
             ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _showCustomColorPicker(context, subject, current);
+              },
+              icon: const Icon(Icons.tune_rounded, size: 18),
+              label: Text(
+                l.settingsColorCustomPicker,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
             if (current != null) ...[
               const SizedBox(height: 16),
               OutlinedButton.icon(
@@ -5275,10 +6109,15 @@ class SubjectColorsPage extends StatelessWidget {
                   _clearSubjectColor(subject);
                 },
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: Text(l.settingsColorReset, style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                label: Text(
+                  l.settingsColorReset,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
               ),
             ],
@@ -5293,7 +6132,10 @@ class SubjectColorsPage extends StatelessWidget {
     final l = AppL10n.of(appLocaleNotifier.value);
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.settingsSectionColors, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+        title: Text(
+          l.settingsSectionColors,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+        ),
         centerTitle: true,
       ),
       body: ValueListenableBuilder(
@@ -5305,9 +6147,19 @@ class SubjectColorsPage extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.palette_outlined, size: 64, color: Theme.of(context).colorScheme.outlineVariant),
+                  Icon(
+                    Icons.palette_outlined,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                   const SizedBox(height: 16),
-                  Text(l.settingsNoSubjectsLoaded, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
+                  Text(
+                    l.settingsNoSubjectsLoaded,
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   Text(
                     l.settingsNoSubjectsLoadedDesc,
                     style: GoogleFonts.outfit(
@@ -5327,26 +6179,48 @@ class SubjectColorsPage extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final subj = subjects[index];
                   final colorVal = colors[subj];
-                  final subjectColor = colorVal != null ? Color(colorVal) : null;
+                  final subjectColor = colorVal != null
+                      ? Color(colorVal)
+                      : null;
                   return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 4,
+                    ),
                     leading: Container(
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: subjectColor ?? Theme.of(context).colorScheme.primaryContainer,
+                        color:
+                            subjectColor ??
+                            Theme.of(context).colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(12),
                         border: subjectColor != null
-                            ? Border.all(color: subjectColor.withOpacity(0.35), width: 2)
+                            ? Border.all(
+                                color: subjectColor.withOpacity(0.35),
+                                width: 2,
+                              )
                             : null,
                       ),
                       child: subjectColor == null
-                          ? Icon(Icons.palette_outlined, color: Theme.of(context).colorScheme.primary, size: 20)
+                          ? Icon(
+                              Icons.palette_outlined,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            )
                           : null,
                     ),
-                    title: Text(subj, style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16)),
+                    title: Text(
+                      subj,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
                     subtitle: Text(
-                      subjectColor != null ? l.settingsCustomColor : l.settingsDefaultColor,
+                      subjectColor != null
+                          ? l.settingsCustomColor
+                          : l.settingsDefaultColor,
                       style: GoogleFonts.outfit(
                         fontSize: 13,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -5374,7 +6248,10 @@ class HiddenSubjectsPage extends StatelessWidget {
     final l = AppL10n.of(appLocaleNotifier.value);
     return Scaffold(
       appBar: AppBar(
-        title: Text(l.settingsSectionHidden, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+        title: Text(
+          l.settingsSectionHidden,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+        ),
         centerTitle: true,
       ),
       body: ValueListenableBuilder(
@@ -5386,9 +6263,19 @@ class HiddenSubjectsPage extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.visibility_off_outlined, size: 64, color: Theme.of(context).colorScheme.outlineVariant),
+                  Icon(
+                    Icons.visibility_off_outlined,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                   const SizedBox(height: 16),
-                  Text(l.settingsNoHidden, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
+                  Text(
+                    l.settingsNoHidden,
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   Text(
                     l.settingsNoHiddenDesc,
                     style: GoogleFonts.outfit(
@@ -5405,7 +6292,10 @@ class HiddenSubjectsPage extends StatelessWidget {
             itemBuilder: (context, index) {
               final subject = hidden[index];
               return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 4,
+                ),
                 leading: Container(
                   width: 40,
                   height: 40,
@@ -5416,11 +6306,21 @@ class HiddenSubjectsPage extends StatelessWidget {
                   child: Center(
                     child: Text(
                       subject.isNotEmpty ? subject[0].toUpperCase() : '?',
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18, color: Theme.of(context).colorScheme.secondary),
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
                     ),
                   ),
                 ),
-                title: Text(subject, style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16)),
+                title: Text(
+                  subject,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
                 trailing: FilledButton.tonal(
                   onPressed: () {
                     HapticFeedback.selectionClick();
@@ -5428,9 +6328,14 @@ class HiddenSubjectsPage extends StatelessWidget {
                   },
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: Text(l.settingsUnhide, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                  child: Text(
+                    l.settingsUnhide,
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                  ),
                 ),
               );
             },

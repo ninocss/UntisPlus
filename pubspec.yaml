@@ -26,6 +26,9 @@ dependencies:
   timezone: ^0.11.0
   workmanager: ^0.9.0+3
   url_launcher: ^6.3.2
+  file_picker: ^10.3.10
+  image_picker: ^1.2.1
+  google_generative_ai: ^0.4.7
 
 dev_dependencies:
   flutter_test:

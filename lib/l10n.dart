@@ -47,7 +47,8 @@ class AppL10n {
   String get onboardingThemeDark => _t('onboardingThemeDark');
   String get onboardingAnimationsHint => _t('onboardingAnimationsHint');
   String get onboardingSchoolLoginTitle => _t('onboardingSchoolLoginTitle');
-  String get onboardingSchoolLoginSubtitle => _t('onboardingSchoolLoginSubtitle');
+  String get onboardingSchoolLoginSubtitle =>
+      _t('onboardingSchoolLoginSubtitle');
   String get onboardingGeminiTitle => _t('onboardingGeminiTitle');
   String get onboardingGeminiSubtitle => _t('onboardingGeminiSubtitle');
   String get onboardingGeminiInfo => _t('onboardingGeminiInfo');
@@ -82,8 +83,10 @@ class AppL10n {
   String get timetableMyTimetable => _t('timetableMyTimetable');
   String get timetableSelectAnother => _t('timetableSelectAnother');
   String get timetableNoClassesFound => _t('timetableNoClassesFound');
-  List<String> get weekDayShort => List<String>.from(_strings[locale]!['weekDayShort'] as List);
-  List<String> get weekDayFull => List<String>.from(_strings[locale]!['weekDayFull'] as List);
+  List<String> get weekDayShort =>
+      List<String>.from(_strings[locale]!['weekDayShort'] as List);
+  List<String> get weekDayFull =>
+      List<String>.from(_strings[locale]!['weekDayFull'] as List);
   String get noLesson => _t('noLesson');
 
   // ── Lesson Detail ───────────────────────────────────────────────────────────
@@ -117,6 +120,12 @@ class AppL10n {
   String get examsTomorrow => _t('examsTomorrow');
   String get examsOwn => _t('examsOwn');
   String get examsUnknown => _t('examsUnknown');
+  String get examsImportTitle => _t('examsImportTitle');
+  String get examsImportCamera => _t('examsImportCamera');
+  String get examsImportGallery => _t('examsImportGallery');
+  String get examsImportFile => _t('examsImportFile');
+  String get examsImportSuccess => _t('examsImportSuccess');
+  String get examsImportError => _t('examsImportError');
   String examsInDays(int n) => _t('examsDaysIn').replaceAll('{n}', '$n');
 
   // ── AI Chat ─────────────────────────────────────────────────────────────────
@@ -162,6 +171,11 @@ class AppL10n {
   String settingsColorFor(String s) =>
       _t('settingsColorFor').replaceAll('{s}', s);
   String get settingsColorReset => _t('settingsColorReset');
+    String get settingsColorCustomPicker => _t('settingsColorCustomPicker');
+    String get settingsColorApply => _t('settingsColorApply');
+    String get settingsColorRed => _t('settingsColorRed');
+    String get settingsColorGreen => _t('settingsColorGreen');
+    String get settingsColorBlue => _t('settingsColorBlue');
   String get settingsThemeMode => _t('settingsThemeMode');
   String get settingsThemeLight => _t('settingsThemeLight');
   String get settingsThemeSystem => _t('settingsThemeSystem');
@@ -170,29 +184,35 @@ class AppL10n {
   String get settingsShowCancelled => _t('settingsShowCancelled');
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
   String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
-  String get settingsBackgroundAnimationsDesc => _t('settingsBackgroundAnimationsDesc');
-    String get settingsProgressivePush => _t('settingsProgressivePush');
-    String get settingsProgressivePushDesc => _t('settingsProgressivePushDesc');
-    String get settingsRefreshPushWidgetNow => _t('settingsRefreshPushWidgetNow');
-    String get settingsRefreshPushWidgetNowDesc =>
-            _t('settingsRefreshPushWidgetNowDesc');
-    String get settingsBackgroundLoading => _t('settingsBackgroundLoading');
+  String get settingsBackgroundAnimationsDesc =>
+      _t('settingsBackgroundAnimationsDesc');
+  String get settingsProgressivePush => _t('settingsProgressivePush');
+  String get settingsProgressivePushDesc => _t('settingsProgressivePushDesc');
+  String get settingsRefreshPushWidgetNow => _t('settingsRefreshPushWidgetNow');
+  String get settingsRefreshPushWidgetNowDesc =>
+      _t('settingsRefreshPushWidgetNowDesc');
+  String get settingsBackgroundLoading => _t('settingsBackgroundLoading');
   String get settingsSectionAbout => _t('settingsSectionAbout');
   String get settingsAppVersion => _t('settingsAppVersion');
   String get settingsSectionSubjects => _t('settingsSectionSubjects');
-    String get settingsGithubUpdateCheck => _t('settingsGithubUpdateCheck');
-    String get settingsGithubUpdateCheckDesc => _t('settingsGithubUpdateCheckDesc');
-    String get settingsGithubDirectDownload => _t('settingsGithubDirectDownload');
-    String get settingsGithubDirectDownloadDesc => _t('settingsGithubDirectDownloadDesc');
-    String get settingsGithubChecking => _t('settingsGithubChecking');
-    String settingsGithubUpdateFound(String v) =>
-            _t('settingsGithubUpdateFound').replaceAll('{v}', v);
-    String get settingsGithubDownloadNow => _t('settingsGithubDownloadNow');
-    String get settingsGithubNoDownloadAsset => _t('settingsGithubNoDownloadAsset');
-    String get settingsGithubDownloadStarted => _t('settingsGithubDownloadStarted');
-    String get settingsGithubOpenFailed => _t('settingsGithubOpenFailed');
-    String get settingsGithubCheckFailed => _t('settingsGithubCheckFailed');
-    String get settingsGithubOpenReleasePage => _t('settingsGithubOpenReleasePage');
+  String get settingsGithubUpdateCheck => _t('settingsGithubUpdateCheck');
+  String get settingsGithubUpdateCheckDesc =>
+      _t('settingsGithubUpdateCheckDesc');
+  String get settingsGithubDirectDownload => _t('settingsGithubDirectDownload');
+  String get settingsGithubDirectDownloadDesc =>
+      _t('settingsGithubDirectDownloadDesc');
+  String get settingsGithubChecking => _t('settingsGithubChecking');
+  String settingsGithubUpdateFound(String v) =>
+      _t('settingsGithubUpdateFound').replaceAll('{v}', v);
+  String get settingsGithubDownloadNow => _t('settingsGithubDownloadNow');
+  String get settingsGithubNoDownloadAsset =>
+      _t('settingsGithubNoDownloadAsset');
+  String get settingsGithubDownloadStarted =>
+      _t('settingsGithubDownloadStarted');
+  String get settingsGithubOpenFailed => _t('settingsGithubOpenFailed');
+  String get settingsGithubCheckFailed => _t('settingsGithubCheckFailed');
+  String get settingsGithubOpenReleasePage =>
+      _t('settingsGithubOpenReleasePage');
 
   // ── AI System Prompt ─────────────────────────────────────────────────────────
   String get aiSystemPersona => _t('aiSystemPersona');
@@ -230,8 +250,7 @@ class AppL10n {
       'onboardingThemeSystem': 'System',
       'onboardingThemeLight': 'Hell',
       'onboardingThemeDark': 'Dunkel',
-      'onboardingAnimationsHint':
-          'Schöne Hintergrundanimationen aktivieren',
+      'onboardingAnimationsHint': 'Schöne Hintergrundanimationen aktivieren',
       'onboardingSchoolLoginTitle': 'Schul-Login',
       'onboardingSchoolLoginSubtitle': 'Verbinde dein WebUntis-Konto',
       'onboardingGeminiTitle': 'Gemini KI',
@@ -245,8 +264,7 @@ class AppL10n {
       'onboardingGeminiEnterKeyOrSkip':
           'Bitte gib einen Schlüssel ein oder überspringe diesen Schritt',
       'onboardingReadyTitle': 'Bereit zum Start!',
-      'onboardingReadySubtitle':
-          'Das kannst du alles in Untis+ machen',
+      'onboardingReadySubtitle': 'Das kannst du alles in Untis+ machen',
       'onboardingFeatureTimetableTitle': 'Stundenplan & Kalender',
       'onboardingFeatureTimetableDesc':
           'Behalte deinen Stundenplan perfekt im Blick.',
@@ -271,9 +289,16 @@ class AppL10n {
       'timetableSelectClass': 'Klasse wählen',
       'timetableMyTimetable': 'Mein Stundenplan',
       'timetableSelectAnother': 'Andere Klasse',
-      'timetableNoClassesFound': 'Keine Klassen gefunden oder Zugriff verweigert.',
+      'timetableNoClassesFound':
+          'Keine Klassen gefunden oder Zugriff verweigert.',
       'weekDayShort': ['Mo', 'Di', 'Mi', 'Do', 'Fr'],
-      'weekDayFull': ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag'],
+      'weekDayFull': [
+        'Montag',
+        'Dienstag',
+        'Mittwoch',
+        'Donnerstag',
+        'Freitag',
+      ],
       'noLesson': '(kein Unterricht)',
 
       'detailTime': 'Zeit',
@@ -306,6 +331,12 @@ class AppL10n {
       'examsDaysIn': 'in {n} Tagen',
       'examsOwn': 'Eigene',
       'examsUnknown': '(unbekannt)',
+      'examsImportTitle': 'Klausurplan hochladen',
+      'examsImportCamera': 'Kamera',
+      'examsImportGallery': 'Galerie',
+      'examsImportFile': 'PDF / Datei',
+      'examsImportSuccess': 'Erfolgreich importiert!',
+      'examsImportError': 'Fehler beim Import: ',
 
       'aiTitle': 'KI-Assistent',
       'aiInputHint': 'Frage stellen…',
@@ -352,23 +383,29 @@ class AppL10n {
       'settingsDefaultColor': 'Standardfarbe',
       'settingsColorFor': 'Farbe für „{s}"',
       'settingsColorReset': 'Auf Standard zurücksetzen',
+    'settingsColorCustomPicker': 'Eigene Farbe wählen',
+    'settingsColorApply': 'Farbe übernehmen',
+    'settingsColorRed': 'Rot',
+    'settingsColorGreen': 'Grün',
+    'settingsColorBlue': 'Blau',
       'settingsThemeMode': 'Farbschema',
       'settingsThemeLight': 'Hell',
       'settingsThemeSystem': 'System',
       'settingsThemeDark': 'Dunkel',
       'settingsSectionTimetable': 'Stundenplan',
       'settingsShowCancelled': 'Ausgefallene Stunden anzeigen',
-      'settingsShowCancelledDesc': 'Ausgefallene Stunden werden im Stundenplan angezeigt',
+      'settingsShowCancelledDesc':
+          'Ausgefallene Stunden werden im Stundenplan angezeigt',
       'settingsBackgroundAnimations': 'Hintergrundanimationen',
-      'settingsBackgroundAnimationsDesc': 'Animierte Farbverläufe im Hintergrund anzeigen',
+      'settingsBackgroundAnimationsDesc':
+          'Animierte Farbverläufe im Hintergrund anzeigen',
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
       'settingsRefreshPushWidgetNow': 'Push & Widget jetzt aktualisieren',
       'settingsRefreshPushWidgetNowDesc':
           'Lädt sofort die neuesten Daten aus dem API-Cache und aktualisiert Widget und Push',
-      'settingsBackgroundLoading':
-          'Daten werden im Hintergrund geladen...',
+      'settingsBackgroundLoading': 'Daten werden im Hintergrund geladen...',
       'settingsSectionAbout': 'Über die App',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Fächer & Farben',
@@ -385,8 +422,7 @@ class AppL10n {
           'Kein direktes Download-Asset gefunden. Öffne Release-Seite...',
       'settingsGithubDownloadStarted':
           'Download/Release wurde im Browser geöffnet.',
-      'settingsGithubOpenFailed':
-          'Konnte den Download-Link nicht öffnen.',
+      'settingsGithubOpenFailed': 'Konnte den Download-Link nicht öffnen.',
       'settingsGithubCheckFailed':
           'Update-Prüfung fehlgeschlagen. Bitte später erneut versuchen.',
       'settingsGithubOpenReleasePage': 'GitHub Release-Seite öffnen',
@@ -429,8 +465,7 @@ class AppL10n {
       'onboardingWelcomeTitle': 'Welcome to Untis+',
       'onboardingChooseLanguageSubtitle': 'Choose your preferred language',
       'onboardingAppearanceTitle': 'Appearance',
-      'onboardingAppearanceSubtitle':
-          'Make Untis+ look exactly how you want',
+      'onboardingAppearanceSubtitle': 'Make Untis+ look exactly how you want',
       'onboardingThemeSystem': 'System',
       'onboardingThemeLight': 'Light',
       'onboardingThemeDark': 'Dark',
@@ -438,29 +473,24 @@ class AppL10n {
       'onboardingSchoolLoginTitle': 'School Login',
       'onboardingSchoolLoginSubtitle': 'Connect your WebUntis account',
       'onboardingGeminiTitle': 'Gemini AI',
-      'onboardingGeminiSubtitle':
-          'Chat with your schedule and homework',
+      'onboardingGeminiSubtitle': 'Chat with your schedule and homework',
       'onboardingGeminiInfo':
           'Get a free Gemini API key from Google AI Studio to unlock the powerful AI assistant in Untis+.',
       'onboardingGeminiGetApiKey': 'Get API Key',
       'onboardingSkip': 'Skip',
       'onboardingNext': 'Next',
-      'onboardingGeminiEnterKeyOrSkip':
-          'Please enter a key or skip this step',
+      'onboardingGeminiEnterKeyOrSkip': 'Please enter a key or skip this step',
       'onboardingReadyTitle': 'Ready to go!',
       'onboardingReadySubtitle': 'Here is what you can do in Untis+',
       'onboardingFeatureTimetableTitle': 'Timetable & Calendar',
-      'onboardingFeatureTimetableDesc':
-          'View your schedule flawlessly.',
+      'onboardingFeatureTimetableDesc': 'View your schedule flawlessly.',
       'onboardingFeatureExamsTitle': 'Exams & Homework',
-      'onboardingFeatureExamsDesc':
-          'Track performance and upcoming exams.',
+      'onboardingFeatureExamsDesc': 'Track performance and upcoming exams.',
       'onboardingFeatureAiTitle': 'AI Assistant',
       'onboardingFeatureAiDesc':
           'Ask Gemini about your day, homework or exams.',
       'onboardingFeatureNotifyTitle': 'Notifications & Widgets',
-      'onboardingFeatureNotifyDesc':
-          'Stay updated before school starts.',
+      'onboardingFeatureNotifyDesc': 'Stay updated before school starts.',
       'onboardingFinishSetup': 'Finish Setup',
 
       'timetableTitle': 'Timetable',
@@ -508,6 +538,12 @@ class AppL10n {
       'examsDaysIn': 'in {n} days',
       'examsOwn': 'Custom',
       'examsUnknown': '(unknown)',
+      'examsImportTitle': 'Upload exam schedule',
+      'examsImportCamera': 'Camera',
+      'examsImportGallery': 'Gallery',
+      'examsImportFile': 'PDF / File',
+      'examsImportSuccess': 'Successfully imported!',
+      'examsImportError': 'Import error: ',
 
       'aiTitle': 'AI Assistant',
       'aiInputHint': 'Ask a question…',
@@ -554,15 +590,22 @@ class AppL10n {
       'settingsDefaultColor': 'Default color',
       'settingsColorFor': 'Color for "{s}"',
       'settingsColorReset': 'Reset to default',
+    'settingsColorCustomPicker': 'Pick custom color',
+    'settingsColorApply': 'Apply color',
+    'settingsColorRed': 'Red',
+    'settingsColorGreen': 'Green',
+    'settingsColorBlue': 'Blue',
       'settingsThemeMode': 'Color scheme',
       'settingsThemeLight': 'Light',
       'settingsThemeSystem': 'System',
       'settingsThemeDark': 'Dark',
       'settingsSectionTimetable': 'Timetable',
       'settingsShowCancelled': 'Show cancelled lessons',
-      'settingsShowCancelledDesc': 'Cancelled lessons are shown in the timetable',
+      'settingsShowCancelledDesc':
+          'Cancelled lessons are shown in the timetable',
       'settingsBackgroundAnimations': 'Background Animations',
-      'settingsBackgroundAnimationsDesc': 'Show animated gradient effects in the background',
+      'settingsBackgroundAnimationsDesc':
+          'Show animated gradient effects in the background',
       'settingsProgressivePush': 'Progressive push notification',
       'settingsProgressivePushDesc':
           'Show the current lesson as a persistent notification',
@@ -637,8 +680,7 @@ class AppL10n {
       'onboardingAnimationsHint':
           'Activer de belles animations d\'arrière-plan',
       'onboardingSchoolLoginTitle': 'Connexion école',
-      'onboardingSchoolLoginSubtitle':
-          'Connecte ton compte WebUntis',
+      'onboardingSchoolLoginSubtitle': 'Connecte ton compte WebUntis',
       'onboardingGeminiTitle': 'Gemini IA',
       'onboardingGeminiSubtitle':
           'Discute avec ton emploi du temps et tes devoirs',
@@ -647,14 +689,11 @@ class AppL10n {
       'onboardingGeminiGetApiKey': 'Obtenir une clé API',
       'onboardingSkip': 'Passer',
       'onboardingNext': 'Suivant',
-      'onboardingGeminiEnterKeyOrSkip':
-          'Saisis une clé ou passe cette étape',
+      'onboardingGeminiEnterKeyOrSkip': 'Saisis une clé ou passe cette étape',
       'onboardingReadyTitle': 'Prêt à commencer !',
-      'onboardingReadySubtitle':
-          'Voici ce que tu peux faire dans Untis+',
+      'onboardingReadySubtitle': 'Voici ce que tu peux faire dans Untis+',
       'onboardingFeatureTimetableTitle': 'Emploi du temps & Calendrier',
-      'onboardingFeatureTimetableDesc':
-          'Consulte ton planning sans effort.',
+      'onboardingFeatureTimetableDesc': 'Consulte ton planning sans effort.',
       'onboardingFeatureExamsTitle': 'Examens & Devoirs',
       'onboardingFeatureExamsDesc':
           'Suis tes résultats et les examens à venir.',
@@ -662,8 +701,7 @@ class AppL10n {
       'onboardingFeatureAiDesc':
           'Demande à Gemini des infos sur ta journée, tes devoirs ou tes examens.',
       'onboardingFeatureNotifyTitle': 'Notifications & Widgets',
-      'onboardingFeatureNotifyDesc':
-          'Reste informé avant le début des cours.',
+      'onboardingFeatureNotifyDesc': 'Reste informé avant le début des cours.',
       'onboardingFinishSetup': 'Terminer la configuration',
 
       'timetableTitle': 'Emploi du temps',
@@ -711,13 +749,18 @@ class AppL10n {
       'examsDaysIn': 'dans {n} jours',
       'examsOwn': 'Personnel',
       'examsUnknown': '(inconnu)',
+      'examsImportTitle': 'Uploader le planning',
+      'examsImportCamera': 'Caméra',
+      'examsImportGallery': 'Galerie',
+      'examsImportFile': 'PDF / Fichier',
+      'examsImportSuccess': 'Importé avec succès !',
+      'examsImportError': 'Erreur lors de l\'import : ',
 
       'aiTitle': 'Assistant IA',
       'aiInputHint': 'Poser une question…',
       'aiKnowsSchedule': 'Je connais ton emploi du temps !',
       'aiAskAnything': 'Demande-moi tout sur ta semaine.',
-      'aiNoApiKey':
-          '⚠️ Saisis ta clé API Gemini dans Paramètres → Général.',
+      'aiNoApiKey': '⚠️ Saisis ta clé API Gemini dans Paramètres → Général.',
       'aiNoReply': '⚠️ Aucune réponse reçue.',
       'aiApiError': '⚠️ Erreur API :',
       'aiConnectionError': '⚠️ Erreur de connexion :',
@@ -757,29 +800,33 @@ class AppL10n {
       'settingsDefaultColor': 'Couleur par défaut',
       'settingsColorFor': 'Couleur pour « {s} »',
       'settingsColorReset': 'Réinitialiser par défaut',
+    'settingsColorCustomPicker': 'Choisir une couleur personnalisée',
+    'settingsColorApply': 'Appliquer la couleur',
+    'settingsColorRed': 'Rouge',
+    'settingsColorGreen': 'Vert',
+    'settingsColorBlue': 'Bleu',
       'settingsThemeMode': 'Schéma de couleurs',
       'settingsThemeLight': 'Clair',
       'settingsThemeSystem': 'Système',
       'settingsThemeDark': 'Sombre',
       'settingsSectionTimetable': 'Emploi du temps',
       'settingsShowCancelled': 'Afficher les cours annulés',
-      'settingsShowCancelledDesc': 'Les cours annulés sont visibles dans l\'emploi du temps',
+      'settingsShowCancelledDesc':
+          'Les cours annulés sont visibles dans l\'emploi du temps',
       'settingsBackgroundAnimations': 'Animations de fond',
-      'settingsBackgroundAnimationsDesc': 'Afficher des effets de dégradé animés en arrière-plan',
+      'settingsBackgroundAnimationsDesc':
+          'Afficher des effets de dégradé animés en arrière-plan',
       'settingsProgressivePush': 'Notification push progressive',
       'settingsProgressivePushDesc':
           'Afficher le cours actuel comme notification persistante',
-      'settingsRefreshPushWidgetNow':
-          'Actualiser push et widget maintenant',
+      'settingsRefreshPushWidgetNow': 'Actualiser push et widget maintenant',
       'settingsRefreshPushWidgetNowDesc':
           'Charge immédiatement les dernières données du cache API et met à jour widget et push',
-      'settingsBackgroundLoading':
-          'Les données se chargent en arrière-plan...',
+      'settingsBackgroundLoading': 'Les données se chargent en arrière-plan...',
       'settingsSectionAbout': 'À propos',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Matières & Couleurs',
-      'settingsGithubUpdateCheck':
-          'Rechercher des mises à jour sur GitHub',
+      'settingsGithubUpdateCheck': 'Rechercher des mises à jour sur GitHub',
       'settingsGithubUpdateCheckDesc':
           'Vérifie la dernière version de ninocss/UntisPlus.',
       'settingsGithubDirectDownload':
@@ -797,8 +844,7 @@ class AppL10n {
           'Impossible d\'ouvrir le lien de téléchargement.',
       'settingsGithubCheckFailed':
           'La vérification des mises à jour a échoué. Réessaie plus tard.',
-      'settingsGithubOpenReleasePage':
-          'Ouvrir la page des versions GitHub',
+      'settingsGithubOpenReleasePage': 'Ouvrir la page des versions GitHub',
 
       'aiSystemPersona':
           'Tu es "Assistant Planning", un assistant IA amical et motivant pour les élèves.',
@@ -843,24 +889,19 @@ class AppL10n {
       'onboardingThemeSystem': 'Sistema',
       'onboardingThemeLight': 'Claro',
       'onboardingThemeDark': 'Oscuro',
-      'onboardingAnimationsHint':
-          'Activar bonitas animaciones de fondo',
+      'onboardingAnimationsHint': 'Activar bonitas animaciones de fondo',
       'onboardingSchoolLoginTitle': 'Inicio de sesión escolar',
-      'onboardingSchoolLoginSubtitle':
-          'Conecta tu cuenta de WebUntis',
+      'onboardingSchoolLoginSubtitle': 'Conecta tu cuenta de WebUntis',
       'onboardingGeminiTitle': 'Gemini IA',
-      'onboardingGeminiSubtitle':
-          'Chatea con tu horario y tus deberes',
+      'onboardingGeminiSubtitle': 'Chatea con tu horario y tus deberes',
       'onboardingGeminiInfo':
           'Obtén una clave API gratuita de Gemini en Google AI Studio para desbloquear el potente asistente IA en Untis+.',
       'onboardingGeminiGetApiKey': 'Obtener clave API',
       'onboardingSkip': 'Saltar',
       'onboardingNext': 'Continuar',
-      'onboardingGeminiEnterKeyOrSkip':
-          'Introduce una clave o salta este paso',
+      'onboardingGeminiEnterKeyOrSkip': 'Introduce una clave o salta este paso',
       'onboardingReadyTitle': 'Listo para empezar',
-      'onboardingReadySubtitle':
-          'Esto es lo que puedes hacer en Untis+',
+      'onboardingReadySubtitle': 'Esto es lo que puedes hacer en Untis+',
       'onboardingFeatureTimetableTitle': 'Horario y Calendario',
       'onboardingFeatureTimetableDesc':
           'Consulta tu horario sin complicaciones.',
@@ -920,13 +961,18 @@ class AppL10n {
       'examsDaysIn': 'en {n} días',
       'examsOwn': 'Propio',
       'examsUnknown': '(desconocido)',
+      'examsImportTitle': 'Subir calendario',
+      'examsImportCamera': 'Cámara',
+      'examsImportGallery': 'Galería',
+      'examsImportFile': 'PDF / Archivo',
+      'examsImportSuccess': '¡Importado con éxito!',
+      'examsImportError': 'Error al importar: ',
 
       'aiTitle': 'Asistente IA',
       'aiInputHint': 'Hacer una pregunta…',
       'aiKnowsSchedule': '¡Conozco tu horario!',
       'aiAskAnything': 'Pregúntame lo que quieras sobre tu semana.',
-      'aiNoApiKey':
-          '⚠️ Introduce tu clave API de Gemini en Ajustes → General.',
+      'aiNoApiKey': '⚠️ Introduce tu clave API de Gemini en Ajustes → General.',
       'aiNoReply': '⚠️ No se recibió respuesta.',
       'aiApiError': '⚠️ Error de API:',
       'aiConnectionError': '⚠️ Error de conexión:',
@@ -966,15 +1012,22 @@ class AppL10n {
       'settingsDefaultColor': 'Color predeterminado',
       'settingsColorFor': 'Color para "{s}"',
       'settingsColorReset': 'Restablecer predeterminado',
+    'settingsColorCustomPicker': 'Elegir color personalizado',
+    'settingsColorApply': 'Aplicar color',
+    'settingsColorRed': 'Rojo',
+    'settingsColorGreen': 'Verde',
+    'settingsColorBlue': 'Azul',
       'settingsThemeMode': 'Esquema de colores',
       'settingsThemeLight': 'Claro',
       'settingsThemeSystem': 'Sistema',
       'settingsThemeDark': 'Oscuro',
       'settingsSectionTimetable': 'Horario',
       'settingsShowCancelled': 'Mostrar clases canceladas',
-      'settingsShowCancelledDesc': 'Las clases canceladas se muestran en el horario',
+      'settingsShowCancelledDesc':
+          'Las clases canceladas se muestran en el horario',
       'settingsBackgroundAnimations': 'Animaciones de fondo',
-      'settingsBackgroundAnimationsDesc': 'Mostrar efectos de degradado animados en el fondo',
+      'settingsBackgroundAnimationsDesc':
+          'Mostrar efectos de degradado animados en el fondo',
       'settingsProgressivePush': 'Notificación push progresiva',
       'settingsProgressivePushDesc':
           'Mostrar la clase actual como notificación persistente',
@@ -986,8 +1039,7 @@ class AppL10n {
       'settingsSectionAbout': 'Acerca de',
       'settingsAppVersion': 'Versión',
       'settingsSectionSubjects': 'Asignaturas & Colores',
-      'settingsGithubUpdateCheck':
-          'Buscar actualizaciones en GitHub',
+      'settingsGithubUpdateCheck': 'Buscar actualizaciones en GitHub',
       'settingsGithubUpdateCheckDesc':
           'Comprueba la última versión de ninocss/UntisPlus.',
       'settingsGithubDirectDownload':
@@ -1001,12 +1053,10 @@ class AppL10n {
           'No se encontró un archivo de descarga directa. Abriendo página de versiones...',
       'settingsGithubDownloadStarted':
           'La descarga/versión se abrió en el navegador.',
-      'settingsGithubOpenFailed':
-          'No se pudo abrir el enlace de descarga.',
+      'settingsGithubOpenFailed': 'No se pudo abrir el enlace de descarga.',
       'settingsGithubCheckFailed':
           'La comprobación de actualizaciones falló. Inténtalo de nuevo más tarde.',
-      'settingsGithubOpenReleasePage':
-          'Abrir página de versiones de GitHub',
+      'settingsGithubOpenReleasePage': 'Abrir página de versiones de GitHub',
 
       'aiSystemPersona':
           'Eres "Asistente de Horario", un ayudante IA amigable y motivador para estudiantes.',

@@ -1,125 +1,166 @@
+![Untis+ banner](assets/github/app_banner.png)
+
 # Untis+
 
-Untis+ is a Flutter app for WebUntis, focused on quick access to the timetable, exams, notifications, and widgets. Most settings are stored locally on the device, and the app can also use a Gemini API key for the AI assistant.
+Untis+ is a Flutter client for **WebUntis** that focuses on fast access to your **timetable**, **exams**, and useful **notifications/widgets**.
+Most settings are stored **locally on your device**. Optionally, you can enable a **Gemini-powered AI assistant** by providing your own API key.
+
+## Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [AI assistant (Gemini)](#ai-assistant-gemini)
+- [Notifications & widgets](#notifications--widgets)
+- [Privacy](#privacy)
+- [Requirements](#requirements)
+- [Development setup](#development-setup)
+- [Build & release](#build--release)
+- [Project structure](#project-structure)
+- [Contributing](#contributing)
+- [Disclaimer](#disclaimer)
+- [License](#license)
 
 ## Features
 
-- Log in against a WebUntis server
+- Login to a WebUntis server
 - Weekly and daily timetable views
 - Exam overview
-- Gemini-powered AI assistant
-- Persistent push notification for the current lesson
-- Home widgets for the current lesson and the daily schedule
-- Show or hide cancelled lessons
-- Customize subject colors
-- Hide subjects
-- Switch between German, English, French, and Spanish
+- Gemini-powered AI assistant (optional)
+- Persistent notification for the current lesson (optional)
+- Home widgets (current lesson & daily schedule)
+- Show/hide cancelled lessons
+- Customize subject colors, hide subjects
+- Languages: German, English, French, Spanish
 - Light, dark, and system themes
 
-## Set Up the Gemini API Key
+## Screenshots
 
-The Gemini API key is used for the AI assistant in the timetable view.
+<table>
+	<tr>
+		<td><img src="assets/github/timetable.png" width="260" alt="Timetable" /></td>
+		<td><img src="assets/github/exams.png" width="260" alt="Exams" /></td>
+		<td><img src="assets/github/settings.png" width="260" alt="Settings" /></td>
+	</tr>
+	<tr>
+		<td><img src="assets/github/ai_assistant.png" width="260" alt="AI assistant" /></td>
+		<td><img src="assets/github/ai_assistant_message.png" width="260" alt="AI assistant message" /></td>
+		<td><img src="assets/github/onboarding_ready.png" width="260" alt="Onboarding" /></td>
+	</tr>
+</table>
 
-### 1. Create an API key
+## AI assistant (Gemini)
+
+The AI assistant is available after you add a **Gemini API key**.
+
+### 1) Create an API key
 
 1. Open Google AI Studio.
-2. Create an API key there.
+2. Create an API key.
 3. Copy the key.
 
-Note: The app also shows the reference aistudio.google.com/app/apikey in the settings dialog.
+Tip: The app also shows the link `aistudio.google.com/app/apikey` in the settings dialog.
 
-### 2. Add it in the app
+### 2) Add it in the app
 
-1. Open **Settings** in the app.
-2. Open the **AI Assistant** section.
+1. Open **Settings**.
+2. Open **AI Assistant**.
 3. Tap **Gemini API Key**.
-4. Paste the key and save it.
+4. Paste the key and save.
 
-The key is stored locally. If you want to remove it, open the same dialog again and delete the key.
+### Notes
 
-### 3. Important notes
-
-- The AI assistant is not available without an API key.
+- The assistant is not available without an API key.
 - If you were using an older OpenAI key, the value is automatically migrated to `geminiApiKey`.
-- The key is stored only locally on the device.
+- Your API key is stored **only locally** on your device.
 
-## Notifications and Widgets
+## Notifications & widgets
 
-Untis+ can load data in the background to keep notifications and widgets up to date.
+Untis+ can refresh data in the background to keep widgets and notifications up to date.
 
-- The progressive push notification can be enabled or disabled in settings.
-- The app updates widgets and notifications automatically when possible.
-- After the first login, data is loaded once immediately so widgets can show content right away.
+- The “current lesson” persistent notification can be toggled in settings.
+- Widgets and notifications update automatically when the OS allows it.
+- After first login, data is loaded once immediately so widgets can show content right away.
 
-If Android or iOS asks for permissions, grant them so notifications work correctly.
+If Android or iOS asks for permissions, grant them so notifications and background updates can work correctly.
 
-## In-App Settings
+## Privacy
 
-Under **Settings**, you can adjust among other things:
-
-- Language
-- Color scheme
-- Display of cancelled lessons
-- Background animations
-- Progressive push notification
-- Gemini API key
-- Subject colors
-- Hidden subjects
-
-## Privacy and Storage
-
-The app stores configuration data **locally** on the device, including:
+Untis+ stores configuration data **locally** on your device, including:
 
 - Session ID
 - School server and school name
 - Username and password
 - App settings
-- Gemini API key
+- Gemini API key (if configured)
 
-No data is sent to any external server except the WebUntis server for authentication and timetable data, and the Gemini API for AI features if configured. The app does not use any analytics or tracking services. Everything is DsGVO compliant and made by a student for students.
+Data is sent only to:
+
+- Your WebUntis server (authentication and timetable/exam data)
+- Google Gemini API (only if you enable the AI assistant)
+
+The app does **not** use analytics or tracking.
 
 ## Requirements
 
 - Flutter SDK 3.11 or newer
 - A WebUntis account from your school
-- A Gemini API key if you want to use the AI assistant
-- Notification permissions on Android and iOS if you want push features to work
+- (Optional) A Gemini API key for AI features
+- Notification permissions on Android/iOS for push features
 
-## Set Up the Project
+## Development setup
 
-1. Install dependencies:
+Install dependencies:
 
 ```bash
 flutter pub get
 ```
 
-2. Start the app on a device or emulator:
+Run on a device/emulator:
 
 ```bash
 flutter run
 ```
 
-3. Optional: create a release build:
+## Build & release
+
+Android (APK):
 
 ```bash
-flutter build apk
+flutter build apk --release
 ```
 
+Android (App Bundle / Play Store):
 
-## Project Structure
+```bash
+flutter build appbundle --release
+```
 
-- [lib/main.dart](lib/main.dart) - Entry point and main UI
-- [lib/services/background_service.dart](lib/services/background_service.dart) - Background updates for widgets and notifications
-- [lib/services/notification_service.dart](lib/services/notification_service.dart) - Local notifications
-- [lib/services/widget_service.dart](lib/services/widget_service.dart) - Widget data and widget updates
+Other platforms (depending on your enabled targets):
 
-## Build Notes
+```bash
+flutter build ios --release
+flutter build windows --release
+flutter build macos --release
+flutter build linux --release
+flutter build web --release
+```
 
-The project uses Flutter and the packages defined in [pubspec.yaml](pubspec.yaml), including among others:
+Note: For store releases you usually need signing (Android keystore / iOS provisioning). Flutter’s official docs cover the platform-specific steps.
 
-- http
-- shared_preferences
-- flutter_local_notifications
-- workmanager
-- home_widget
-- dynamic_color
+## Project structure
+
+- [lib/main.dart](lib/main.dart) – entry point and main UI
+- [lib/services/background_service.dart](lib/services/background_service.dart) – background updates for widgets/notifications
+- [lib/services/notification_service.dart](lib/services/notification_service.dart) – local notifications
+- [lib/services/widget_service.dart](lib/services/widget_service.dart) – widget data and widget updates
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+- Please describe the expected/actual behavior and include screenshots if possible.
+- Keep changes focused and consistent with the existing code style.
+
+## Disclaimer
+
+Untis+ is **not affiliated with, endorsed by, or connected to WebUntis** or its respective owners.
