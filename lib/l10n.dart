@@ -180,6 +180,19 @@ class AppL10n {
   String get settingsSectionAbout => _t('settingsSectionAbout');
   String get settingsAppVersion => _t('settingsAppVersion');
   String get settingsSectionSubjects => _t('settingsSectionSubjects');
+    String get settingsGithubUpdateCheck => _t('settingsGithubUpdateCheck');
+    String get settingsGithubUpdateCheckDesc => _t('settingsGithubUpdateCheckDesc');
+    String get settingsGithubDirectDownload => _t('settingsGithubDirectDownload');
+    String get settingsGithubDirectDownloadDesc => _t('settingsGithubDirectDownloadDesc');
+    String get settingsGithubChecking => _t('settingsGithubChecking');
+    String settingsGithubUpdateFound(String v) =>
+            _t('settingsGithubUpdateFound').replaceAll('{v}', v);
+    String get settingsGithubDownloadNow => _t('settingsGithubDownloadNow');
+    String get settingsGithubNoDownloadAsset => _t('settingsGithubNoDownloadAsset');
+    String get settingsGithubDownloadStarted => _t('settingsGithubDownloadStarted');
+    String get settingsGithubOpenFailed => _t('settingsGithubOpenFailed');
+    String get settingsGithubCheckFailed => _t('settingsGithubCheckFailed');
+    String get settingsGithubOpenReleasePage => _t('settingsGithubOpenReleasePage');
 
   // ── AI System Prompt ─────────────────────────────────────────────────────────
   String get aiSystemPersona => _t('aiSystemPersona');
@@ -359,6 +372,24 @@ class AppL10n {
       'settingsSectionAbout': 'Über die App',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Fächer & Farben',
+      'settingsGithubUpdateCheck': 'Nach Updates im GitHub-Repo suchen',
+      'settingsGithubUpdateCheckDesc':
+          'Prüft das neueste Release von ninocss/UntisPlus.',
+      'settingsGithubDirectDownload': 'Neueste Version direkt herunterladen',
+      'settingsGithubDirectDownloadDesc':
+          'Beim Prüfen wird die neueste APK/Release-Datei sofort geöffnet.',
+      'settingsGithubChecking': 'Suche nach Updates...',
+      'settingsGithubUpdateFound': 'Neues Release gefunden: {v}',
+      'settingsGithubDownloadNow': 'Download',
+      'settingsGithubNoDownloadAsset':
+          'Kein direktes Download-Asset gefunden. Öffne Release-Seite...',
+      'settingsGithubDownloadStarted':
+          'Download/Release wurde im Browser geöffnet.',
+      'settingsGithubOpenFailed':
+          'Konnte den Download-Link nicht öffnen.',
+      'settingsGithubCheckFailed':
+          'Update-Prüfung fehlgeschlagen. Bitte später erneut versuchen.',
+      'settingsGithubOpenReleasePage': 'GitHub Release-Seite öffnen',
 
       'aiSystemPersona':
           'Du bist "Plan-Assistent", ein freundlicher und motivierender KI-Helfer für Schüler*innen.',
@@ -542,6 +573,23 @@ class AppL10n {
       'settingsSectionAbout': 'About',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Subjects & Colors',
+      'settingsGithubUpdateCheck': 'Check for updates on GitHub',
+      'settingsGithubUpdateCheckDesc':
+          'Checks the latest release from ninocss/UntisPlus.',
+      'settingsGithubDirectDownload': 'Download latest version directly',
+      'settingsGithubDirectDownloadDesc':
+          'When checking, immediately opens the newest APK/release file.',
+      'settingsGithubChecking': 'Checking for updates...',
+      'settingsGithubUpdateFound': 'New release found: {v}',
+      'settingsGithubDownloadNow': 'Download',
+      'settingsGithubNoDownloadAsset':
+          'No direct download asset found. Opening release page...',
+      'settingsGithubDownloadStarted':
+          'Download/release has been opened in your browser.',
+      'settingsGithubOpenFailed': 'Could not open the download link.',
+      'settingsGithubCheckFailed':
+          'Update check failed. Please try again later.',
+      'settingsGithubOpenReleasePage': 'Open GitHub release page',
 
       'aiSystemPersona':
           'You are "Schedule Assistant", a friendly and motivating AI helper for students.',
@@ -730,6 +778,27 @@ class AppL10n {
       'settingsSectionAbout': 'À propos',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Matières & Couleurs',
+      'settingsGithubUpdateCheck':
+          'Rechercher des mises à jour sur GitHub',
+      'settingsGithubUpdateCheckDesc':
+          'Vérifie la dernière version de ninocss/UntisPlus.',
+      'settingsGithubDirectDownload':
+          'Télécharger directement la dernière version',
+      'settingsGithubDirectDownloadDesc':
+          'Lors de la vérification, ouvre immédiatement le dernier APK/fichier de version.',
+      'settingsGithubChecking': 'Recherche des mises à jour...',
+      'settingsGithubUpdateFound': 'Nouvelle version trouvée : {v}',
+      'settingsGithubDownloadNow': 'Télécharger',
+      'settingsGithubNoDownloadAsset':
+          'Aucun fichier de téléchargement direct trouvé. Ouverture de la page de version...',
+      'settingsGithubDownloadStarted':
+          'Le téléchargement/la version a été ouvert(e) dans le navigateur.',
+      'settingsGithubOpenFailed':
+          'Impossible d\'ouvrir le lien de téléchargement.',
+      'settingsGithubCheckFailed':
+          'La vérification des mises à jour a échoué. Réessaie plus tard.',
+      'settingsGithubOpenReleasePage':
+          'Ouvrir la page des versions GitHub',
 
       'aiSystemPersona':
           'Tu es "Assistant Planning", un assistant IA amical et motivant pour les élèves.',
@@ -917,6 +986,27 @@ class AppL10n {
       'settingsSectionAbout': 'Acerca de',
       'settingsAppVersion': 'Versión',
       'settingsSectionSubjects': 'Asignaturas & Colores',
+      'settingsGithubUpdateCheck':
+          'Buscar actualizaciones en GitHub',
+      'settingsGithubUpdateCheckDesc':
+          'Comprueba la última versión de ninocss/UntisPlus.',
+      'settingsGithubDirectDownload':
+          'Descargar directamente la versión más reciente',
+      'settingsGithubDirectDownloadDesc':
+          'Al comprobar, abre inmediatamente el APK/archivo de versión más reciente.',
+      'settingsGithubChecking': 'Buscando actualizaciones...',
+      'settingsGithubUpdateFound': 'Nueva versión encontrada: {v}',
+      'settingsGithubDownloadNow': 'Descargar',
+      'settingsGithubNoDownloadAsset':
+          'No se encontró un archivo de descarga directa. Abriendo página de versiones...',
+      'settingsGithubDownloadStarted':
+          'La descarga/versión se abrió en el navegador.',
+      'settingsGithubOpenFailed':
+          'No se pudo abrir el enlace de descarga.',
+      'settingsGithubCheckFailed':
+          'La comprobación de actualizaciones falló. Inténtalo de nuevo más tarde.',
+      'settingsGithubOpenReleasePage':
+          'Abrir página de versiones de GitHub',
 
       'aiSystemPersona':
           'Eres "Asistente de Horario", un ayudante IA amigable y motivador para estudiantes.',

@@ -224,6 +224,10 @@ Color _autoLessonColor(String subjectKey, bool isDark) {
   return HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor();
 }
 
+// ── APP VERSION ────────────────────────────────────────────────────────────
+// Update this when releasing a new version
+const String APP_VERSION = '1.0.1';
+
 String sessionID = "";
 String schoolUrl = "";
 String schoolName = "";
@@ -4186,6 +4190,8 @@ class _SettingsPageState extends State<SettingsPage> {
   String _serverDisplay = '';
   String _apiKeyDisplay = '';
   bool _apiKeySet = false;
+  bool _githubDirectDownload = false;
+  bool _checkingGithubUpdate = false;
 
   static const Map<String, String> _localeLabels = {
     'de': 'Deutsch',
@@ -4234,7 +4240,126 @@ class _SettingsPageState extends State<SettingsPage> {
         _apiKeyDisplay = key.length > 8
             ? '${key.substring(0, 7)}••••${key.substring(key.length - 4)}'
             : (key.isNotEmpty ? '••••••••' : '');
+        _githubDirectDownload =
+            prefs.getBool('githubDirectUpdateDownload') ?? false;
       });
+    }
+  }
+
+  Future<void> _setGithubDirectDownload(bool enabled) async {
+    setState(() => _githubDirectDownload = enabled);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('githubDirectUpdateDownload', enabled);
+  }
+
+  String? _pickGithubReleaseAssetUrl(List<dynamic> assets) {
+    String? fallback;
+    for (final asset in assets) {
+      if (asset is! Map<String, dynamic>) continue;
+      final name = (asset['name'] ?? '').toString().toLowerCase();
+      final url = (asset['browser_download_url'] ?? '').toString();
+      if (url.isEmpty) continue;
+      fallback ??= url;
+      if (name.endsWith('.apk')) return url;
+    }
+    return fallback;
+  }
+
+  Future<void> _checkGithubUpdate({bool forceDownload = false}) async {
+    if (_checkingGithubUpdate) return;
+    final l = AppL10n.of(appLocaleNotifier.value);
+    setState(() => _checkingGithubUpdate = true);
+
+    if (!forceDownload) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.settingsGithubChecking),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
+    try {
+      final resp = await http.get(
+        Uri.parse('https://api.github.com/repos/ninocss/UntisPlus/releases/latest'),
+        headers: const {'Accept': 'application/vnd.github+json'},
+      );
+
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        throw Exception('GitHub API error ${resp.statusCode}');
+      }
+
+      final data = jsonDecode(resp.body);
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Invalid GitHub response');
+      }
+
+      final tag = (data['tag_name'] ?? '').toString().trim();
+      final htmlUrl = (data['html_url'] ??
+              'https://github.com/ninocss/UntisPlus/releases')
+          .toString();
+      final assets = (data['assets'] is List) ? data['assets'] as List<dynamic> : const <dynamic>[];
+      final assetUrl = _pickGithubReleaseAssetUrl(assets);
+      final shouldDownload = forceDownload || _githubDirectDownload;
+      final targetUrl = assetUrl ?? htmlUrl;
+
+      if (shouldDownload) {
+        if (assetUrl == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l.settingsGithubNoDownloadAsset),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+
+        final launched = await url_launcher.launchUrlString(
+          targetUrl,
+          mode: url_launcher.LaunchMode.externalApplication,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                launched ? l.settingsGithubDownloadStarted : l.settingsGithubOpenFailed),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              l.settingsGithubUpdateFound(
+                tag.isEmpty ? 'latest' : tag,
+              ),
+            ),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: l.settingsGithubDownloadNow,
+              onPressed: () {
+                url_launcher.launchUrlString(
+                  targetUrl,
+                  mode: url_launcher.LaunchMode.externalApplication,
+                );
+              },
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.settingsGithubCheckFailed),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _checkingGithubUpdate = false);
+      }
     }
   }
 
@@ -4399,7 +4524,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // ── Section card builder ───
   Widget _section(
-      String title, IconData icon, List<Widget> tiles, ColorScheme cs) {
+      String title, IconData icon, List<Widget> tiles, ColorScheme cs,
+      {bool isAbout = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4421,25 +4547,59 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
         ),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(22),
-          child: Material(
-            color: cs.surfaceContainerHighest.withOpacity(0.4),
-            child: Column(
-              children: [
-                for (int i = 0; i < tiles.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 0.5,
-                      thickness: 0.5,
-                      indent: 66,
-                      color: cs.outlineVariant.withOpacity(0.4),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (isAbout)
+              Positioned.fill(
+                left: -20,
+                right: -20,
+                top: -20,
+                bottom: -20,
+                child: Opacity(
+                  opacity: 0.25,
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFFE40303),
+                            Color(0xFFFF8C00),
+                            Color(0xFFFFED00),
+                            Color(0xFF008026),
+                            Color(0xFF24408E),
+                            Color(0xFF732982),
+                          ],
+                        ),
+                      ),
                     ),
-                  tiles[i],
-                ],
-              ],
+                  ),
+                ),
+              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Material(
+                color: cs.surfaceContainerHighest.withOpacity(0.4),
+                child: Column(
+                  children: [
+                    for (int i = 0; i < tiles.length; i++) ...[
+                      if (i > 0)
+                        Divider(
+                          height: 0.5,
+                          thickness: 0.5,
+                          indent: 66,
+                          color: cs.outlineVariant.withOpacity(0.4),
+                        ),
+                      tiles[i],
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 28),
       ],
@@ -4755,14 +4915,74 @@ class _SettingsPageState extends State<SettingsPage> {
                     leading:
                         _tileIcon(Icons.rocket_launch_outlined, cs.primary),
                     title: 'Untis+',
-                    subtitle: '${l.settingsAppVersion} 1.0.1',
+                    subtitle: '${l.settingsAppVersion} $APP_VERSION',
                     trailing: Icon(
                       Icons.auto_awesome_rounded,
                       size: 16,
                       color: cs.tertiary,
                     ),
                   ),
-                ], cs),
+                  _tile(
+                    leading: _tileIcon(
+                      Icons.system_update_alt_rounded,
+                      cs.primary,
+                    ),
+                    title: l.settingsGithubUpdateCheck,
+                    subtitle: l.settingsGithubUpdateCheckDesc,
+                    trailing: _checkingGithubUpdate
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                            ),
+                          )
+                        : Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                    onTap: _checkingGithubUpdate
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            _checkGithubUpdate();
+                          },
+                  ),
+                  _tile(
+                    leading: _tileIcon(
+                      Icons.download_rounded,
+                      _githubDirectDownload ? cs.primary : cs.outline,
+                    ),
+                    title: l.settingsGithubDirectDownload,
+                    subtitle: l.settingsGithubDirectDownloadDesc,
+                    trailing: Switch.adaptive(
+                      value: _githubDirectDownload,
+                      onChanged: (v) {
+                        HapticFeedback.selectionClick();
+                        _setGithubDirectDownload(v);
+                      },
+                    ),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _setGithubDirectDownload(!_githubDirectDownload);
+                    },
+                  ),
+                  _tile(
+                    leading: _tileIcon(Icons.open_in_new_rounded, cs.secondary),
+                    title: l.settingsGithubOpenReleasePage,
+                    subtitle: 'github.com/ninocss/UntisPlus',
+                    trailing: Icon(Icons.chevron_right_rounded,
+                        size: 20, color: cs.onSurface.withOpacity(0.4)),
+                    onTap: () {
+                      url_launcher.launchUrlString(
+                        'https://github.com/ninocss/UntisPlus/releases',
+                        mode: url_launcher.LaunchMode.externalApplication,
+                      );
+                    },
+                  ),
+                ], cs, isAbout: true),
               ]),
             ),
           ),

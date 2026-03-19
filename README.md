@@ -123,5 +123,3 @@ The project uses Flutter and the packages defined in [pubspec.yaml](pubspec.yaml
 - workmanager
 - home_widget
 - dynamic_color
-
-If you later need a short project description for a store listing or release file, I can also turn this README into a more compact marketing version.
