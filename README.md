@@ -120,32 +120,6 @@ Run on a device/emulator:
 flutter run
 ```
 
-## Build & release
-
-Android (APK):
-
-```bash
-flutter build apk --release
-```
-
-Android (App Bundle / Play Store):
-
-```bash
-flutter build appbundle --release
-```
-
-Other platforms (depending on your enabled targets):
-
-```bash
-flutter build ios --release
-flutter build windows --release
-flutter build macos --release
-flutter build linux --release
-flutter build web --release
-```
-
-Note: For store releases you usually need signing (Android keystore / iOS provisioning). Flutter’s official docs cover the platform-specific steps.
-
 ## Project structure
 
 - [lib/main.dart](lib/main.dart) – entry point and main UI
