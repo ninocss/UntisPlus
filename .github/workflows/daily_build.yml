@@ -1,0 +1,68 @@
+name: Daily Nightly Build
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Läuft jeden Tag um 00:00 UTC
+  workflow_dispatch: # Erlaubt dir, den Build jederzeit manuell zu starten
+
+jobs:
+  check_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.changed }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes in last 24h
+        id: check
+        run: |
+          # Prüft, ob es Commits in den letzten 24 Stunden gab
+          if [ $(git log --oneline --since="24 hours ago" | wc -l) -gt 0 ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  build_and_release:
+    needs: check_changes
+    if: needs.check_changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java & Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Build Android ABI-APK
+        run: flutter build apk --release --split-per-abi
+
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Create Nightly Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly-${{ steps.date.outputs.date }}
+          name: "Nightly Build: ${{ steps.date.outputs.date }}"
+          body: "Automatic nightly build for ${{ steps.date.outputs.date }}. This release includes the latest changes from the repository."
+          files: build/app/outputs/flutter-apk/*.apk
+          prerelease: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
