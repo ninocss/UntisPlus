@@ -18,7 +18,6 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'l10n.dart';
 import 'services/notification_service.dart';
 import 'services/background_service.dart';
-import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'widgets/rounded_blur_app_bar.dart';
 
 class SchoolSearchResult {
@@ -2103,6 +2102,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Widget _buildGridView(int dayIndex) {
+    final media = MediaQuery.of(context);
+    final topContentPadding =
+        media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
+
     final lessons = (_weekData[dayIndex] ?? [])
         .where(
           (l) => !hiddenSubjectsNotifier.value.contains(
@@ -2158,12 +2161,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return RefreshIndicator(
       onRefresh: _onRefresh,
       displacement: 40,
-      edgeOffset: 120,
+      edgeOffset: topContentPadding,
       color: csG.onPrimaryContainer,
       backgroundColor: csG.primaryContainer,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 32, top: 130),
+        padding: EdgeInsets.only(bottom: 32, top: topContentPadding),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2420,6 +2423,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Widget _buildWeekView() {
+    final media = MediaQuery.of(context);
+    final topContentPadding = media.padding.top + kToolbarHeight + 10;
+
     int globalMin = 480;
     int globalMax = 900;
     for (final day in _weekData.values) {
@@ -2466,13 +2472,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return RefreshIndicator(
       onRefresh: _onRefresh,
       displacement: 40, 
-      edgeOffset: 120,
+      edgeOffset: topContentPadding,
       color: csW.onPrimaryContainer,
       backgroundColor: csW.primaryContainer,
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 32, top: 100),
+        padding: EdgeInsets.only(bottom: 32, top: topContentPadding),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           scrollDirection: Axis.horizontal,

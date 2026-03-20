@@ -12,7 +12,7 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
   final PreferredSizeWidget? bottom;
 
   const RoundedBlurAppBar({
-    Key? key,
+    super.key,
     this.title,
     this.actions,
     this.leading,
@@ -21,7 +21,7 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.borderRadius = 12.0,
     this.useBlur = true,
     this.bottom,
-  }) : super(key: key);
+  });
 
   @override
   Size get preferredSize =>
