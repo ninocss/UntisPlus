@@ -16,35 +16,18 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'l10n.dart';
+import 'core/time_utils.dart';
 import 'services/notification_service.dart';
 import 'services/background_service.dart';
 import 'widgets/rounded_blur_app_bar.dart';
 
-class SchoolSearchResult {
-  final int id;
-  final String loginName;
-  final String displayName;
-  final String serverUrl;
-  final String address;
-
-  SchoolSearchResult({
-    required this.id,
-    required this.loginName,
-    required this.displayName,
-    required this.serverUrl,
-    required this.address,
-  });
-
-  factory SchoolSearchResult.fromJson(Map<String, dynamic> json) {
-    return SchoolSearchResult(
-      id: json['schoolId'] ?? 0,
-      loginName: json['loginName'] ?? '',
-      displayName: json['displayName'] ?? '',
-      address: json['address'] ?? '',
-      serverUrl: json['server'] ?? json['serverUrl'] ?? '',
-    );
-  }
-}
+part 'core/school_models.dart';
+part 'app/untis_plus_app.dart';
+part 'core/shared_ui.dart';
+part 'core/app_state.dart';
+part 'screens/onboarding_flow.dart';
+part 'screens/main_navigation_screen.dart';
+part 'widgets/animated_background.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,1434 +91,54 @@ void main() async {
   );
 }
 
-class UntisPlusApp extends StatelessWidget {
-  final Widget startScreen;
-  const UntisPlusApp({super.key, required this.startScreen});
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<String>(
-      valueListenable: appLocaleNotifier,
-      builder: (context, locale, _) {
-        return ValueListenableBuilder<ThemeMode>(
-          valueListenable: themeModeNotifier,
-          builder: (context, themeMode, _) {
-            return DynamicColorBuilder(
-              builder: (lightDynamic, darkDynamic) {
-                final lightScheme =
-                    lightDynamic ??
-                    ColorScheme.fromSeed(
-                      seedColor: const Color(0xFF4F378B),
-                      brightness: Brightness.light,
-                    );
-                final darkScheme =
-                    darkDynamic ??
-                    ColorScheme.fromSeed(
-                      seedColor: const Color(0xFF4F378B),
-                      brightness: Brightness.dark,
-                    );
-
-                ThemeData themeFrom(ColorScheme scheme) => ThemeData(
-                  useMaterial3: true,
-                  colorScheme: scheme,
-                  textTheme:
-                      GoogleFonts.outfitTextTheme(
-                        ThemeData(
-                          useMaterial3: true,
-                          colorScheme: scheme,
-                        ).textTheme,
-                      ).apply(
-                        bodyColor: scheme.onSurface,
-                        displayColor: scheme.onSurface,
-                      ),
-                  pageTransitionsTheme: const PageTransitionsTheme(
-                    builders: {
-                      TargetPlatform.android: ZoomPageTransitionsBuilder(),
-                      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                      TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-                      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-                      TargetPlatform.linux: ZoomPageTransitionsBuilder(),
-                    },
-                  ),
-                  navigationBarTheme: NavigationBarThemeData(
-                    labelBehavior:
-                        NavigationDestinationLabelBehavior.onlyShowSelected,
-                    height: 80,
-                    indicatorColor: scheme.secondaryContainer,
-                    indicatorShape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    labelTextStyle: WidgetStateProperty.all(
-                      GoogleFonts.outfit(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                );
-
-                return MaterialApp(
-                  debugShowCheckedModeBanner: false,
-                  title: 'Untis+',
-                  theme: themeFrom(lightScheme),
-                  darkTheme: themeFrom(darkScheme),
-                  themeMode: themeMode,
-                  builder: (context, child) {
-                    final isDark =
-                        Theme.of(context).brightness == Brightness.dark;
-                    final overlayStyle = SystemUiOverlayStyle(
-                      statusBarColor: Colors.transparent,
-                      statusBarIconBrightness: isDark
-                          ? Brightness.light
-                          : Brightness.dark,
-                      statusBarBrightness: isDark
-                          ? Brightness.dark
-                          : Brightness.light,
-                      systemNavigationBarColor: Colors.transparent,
-                      systemNavigationBarIconBrightness: isDark
-                          ? Brightness.light
-                          : Brightness.dark,
-                    );
-                    return AnnotatedRegion<SystemUiOverlayStyle>(
-                      value: overlayStyle,
-                      child: child ?? const SizedBox.shrink(),
-                    );
-                  },
-                  home: startScreen,
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-List<Color> _subjectColorPalette(ColorScheme cs) {
-  final candidates = <Color>[
-    cs.primary,
-    cs.secondary,
-    cs.tertiary,
-    cs.error,
-    cs.primaryContainer,
-    cs.secondaryContainer,
-    cs.tertiaryContainer,
-    cs.errorContainer,
-    cs.inversePrimary,
-    cs.surfaceTint,
-  ];
-  final seen = <int>{};
-  return [
-    for (final c in candidates)
-      if (seen.add(c.value)) c,
-  ];
-}
-
-Color _autoLessonColor(String subjectKey, bool isDark) {
-  if (subjectKey.isEmpty) {
-    return isDark ? const Color(0xFF9580FF) : const Color(0xFF6750A4);
-  }
-  var hash = 5381;
-  for (final c in subjectKey.codeUnits) {
-    hash = ((hash * 33) ^ c) & 0x7FFFFFFF;
-  }
-  final hue = (hash % 360).toDouble();
-  final lightness = isDark ? 0.68 : 0.42;
-  final saturation = isDark ? 0.52 : 0.62;
-  return HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor();
-}
-
-// ── APP VERSION ────────────────────────────────────────────────────────────
-const String APP_VERSION = '1.1.0';
-
-String sessionID = "";
-String schoolUrl = "";
-String schoolName = "";
-int personId = 0;
-int personType = 0;
-String geminiApiKey = "";
-
-final ValueNotifier<String> appLocaleNotifier = ValueNotifier('de');
-final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
-  ThemeMode.system,
-);
-final ValueNotifier<bool> showCancelledNotifier = ValueNotifier(true);
-final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
-final ValueNotifier<int> backgroundAnimationStyleNotifier = ValueNotifier(0);
-final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
-final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
-
-String _icuLocale(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'en_US';
-    case 'fr':
-      return 'fr_FR';
-    case 'es':
-      return 'es_ES';
-    default:
-      return 'de_DE';
-  }
-}
-
-final ValueNotifier<Set<String>> hiddenSubjectsNotifier = ValueNotifier({});
-
-Future<void> _hideSubject(String key) async {
-  if (key.isEmpty) return;
-  final updated = Set<String>.from(hiddenSubjectsNotifier.value)..add(key);
-  hiddenSubjectsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList('hiddenSubjects', updated.toList());
-}
-
-Future<void> _unhideSubject(String key) async {
-  final updated = Set<String>.from(hiddenSubjectsNotifier.value)..remove(key);
-  hiddenSubjectsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList('hiddenSubjects', updated.toList());
-}
-
-final ValueNotifier<Map<String, int>> subjectColorsNotifier = ValueNotifier({});
-
-final ValueNotifier<Set<String>> knownSubjectsNotifier = ValueNotifier({});
-
-Future<void> _setSubjectColor(String key, int colorValue) async {
-  if (key.isEmpty) return;
-  final updated = Map<String, int>.from(subjectColorsNotifier.value)
-    ..[key] = colorValue;
-  subjectColorsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(
-    'subjectColors',
-    jsonEncode(Map<String, dynamic>.from(updated)),
+Uri _webUntisRpcUri({String? serverUrl, String? school}) {
+  final resolvedServer = serverUrl ?? schoolUrl;
+  final resolvedSchool = school ?? schoolName;
+  return Uri.parse(
+    'https://$resolvedServer/WebUntis/jsonrpc.do?school=$resolvedSchool',
   );
 }
 
-Future<void> _clearSubjectColor(String key) async {
-  final updated = Map<String, int>.from(subjectColorsNotifier.value)
-    ..remove(key);
-  subjectColorsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(
-    'subjectColors',
-    jsonEncode(Map<String, dynamic>.from(updated)),
+Future<Map<String, dynamic>?> _authenticateUntis({
+  required String user,
+  required String password,
+  required String client,
+  String requestId = 'auth',
+  String? serverUrl,
+  String? school,
+}) async {
+  final response = await http.post(
+    _webUntisRpcUri(serverUrl: serverUrl, school: school),
+    body: jsonEncode({
+      'id': requestId,
+      'method': 'authenticate',
+      'params': {'user': user, 'password': password, 'client': client},
+      'jsonrpc': '2.0',
+    }),
   );
-}
 
-String _formatUntisTime(String time) {
-  if (time.length < 3) return time;
-  String formatted = time.padLeft(4, '0');
-  return "${formatted.substring(0, 2)}:${formatted.substring(2)}";
-}
-
-Future<bool> _reAuthenticate() async {
-  final prefs = await SharedPreferences.getInstance();
-  final user = prefs.getString('username') ?? '';
-  final pass = prefs.getString('password') ?? '';
-  if (user.isEmpty || pass.isEmpty) return false;
-
-  try {
-    final url = Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-    );
-    final response = await http.post(
-      url,
-      body: jsonEncode({
-        "id": "relogin",
-        "method": "authenticate",
-        "params": {"user": user, "password": pass, "client": "UntisPlus"},
-        "jsonrpc": "2.0",
-      }),
-    );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final newSession = data['result']?['sessionId']?.toString();
-      if (newSession != null && newSession.isNotEmpty) {
-        sessionID = newSession;
-        await prefs.setString('sessionId', sessionID);
-        return true;
-      }
-    }
-  } catch (_) {}
-  return false;
-}
-
-// --- LOGIN SEITE ---
-
-class OnboardingFlow extends StatefulWidget {
-  const OnboardingFlow({super.key});
-
-  @override
-  State<OnboardingFlow> createState() => _OnboardingFlowState();
-}
-
-class _OnboardingFlowState extends State<OnboardingFlow> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-
-  // Login controllers
-  final _serverController = TextEditingController();
-  final _schoolController = TextEditingController();
-  final _userController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLogginIn = false;
-
-  bool _manualSchoolEntry = false;
-  bool _isSearching = false;
-  List<SchoolSearchResult> _searchResults = [];
-  Timer? _debounce;
-  final _geminiController = TextEditingController();
-
-  void _nextPage() {
-    FocusScope.of(context).unfocus();
-    if (_currentPage < 4) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOutCubic,
-      );
-    } else {
-      _completeOnboarding();
-    }
+  if (response.statusCode != 200 || response.body.trim().isEmpty) {
+    return null;
   }
 
-  Future<void> _handleLogin() async {
-    HapticFeedback.heavyImpact();
-    setState(() => _isLogginIn = true);
-
-    schoolUrl = _serverController.text;
-    schoolName = _schoolController.text;
-
-    final url = Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-    );
-
-    try {
-      final response = await http.post(
-        url,
-        body: jsonEncode({
-          "id": "1",
-          "method": "authenticate",
-          "params": {
-            "user": _userController.text,
-            "password": _passwordController.text,
-            "client": "UntisPlus",
-          },
-          "jsonrpc": "2.0",
-        }),
-      );
-
-      final data = jsonDecode(response.body);
-      if (data['result'] != null) {
-        sessionID = data['result']['sessionId']?.toString() ?? "";
-
-        var rawId = data['result']['personId'];
-        var rawType = data['result']['personType'];
-
-        if (rawId != null && rawId.toString() != "0") {
-          personId = int.tryParse(rawId.toString()) ?? 0;
-          personType = int.tryParse(rawType.toString()) ?? 5;
-        } else if (data['result']['klasseId'] != null) {
-          personId = int.tryParse(data['result']['klasseId'].toString()) ?? 0;
-          personType = 1;
-        } else {
-          personId = 0;
-          personType = 5;
-        }
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('sessionId', sessionID);
-        await prefs.setString('schoolUrl', schoolUrl);
-        await prefs.setString('schoolName', schoolName);
-        await prefs.setString('username', _userController.text);
-        await prefs.setString('password', _passwordController.text);
-        await prefs.setInt('personType', personType);
-        await prefs.setInt('personId', personId);
-
-        updateUntisData().catchError((_) {});
-
-        if (mounted) _nextPage();
-      } else {
-        _showError(AppL10n.of(appLocaleNotifier.value).loginFailed);
-      }
-    } catch (e) {
-      final l = AppL10n.of(appLocaleNotifier.value);
-      _showError('${l.loginConnectionError}: $e');
-    } finally {
-      if (mounted) setState(() => _isLogginIn = false);
-    }
+  final decoded = jsonDecode(response.body);
+  if (decoded is! Map<String, dynamic>) {
+    return null;
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: Theme.of(context).colorScheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-    );
+  final result = decoded['result'];
+  if (result is Map<String, dynamic>) {
+    return result;
   }
-
-  void _completeOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_geminiController.text.isNotEmpty) {
-      geminiApiKey = _geminiController.text;
-      await prefs.setString('geminiApiKey', geminiApiKey);
-    }
-
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, anim1, anim2) => const MainNavigationScreen(),
-        transitionsBuilder: (context, anim1, anim2, child) =>
-            FadeTransition(opacity: anim1, child: child),
-        transitionDuration: const Duration(milliseconds: 800),
-      ),
-    );
+  if (result is Map) {
+    return Map<String, dynamic>.from(result);
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Dynamic Gradient Background
-          AnimatedContainer(
-            duration: const Duration(seconds: 1),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  _currentPage % 2 == 0
-                      ? colors.primaryContainer
-                      : colors.secondaryContainer,
-                  colors.surface,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-
-          ValueListenableBuilder<bool>(
-            valueListenable: backgroundAnimationsNotifier,
-            builder: (context, enabled, _) {
-              if (!enabled) return const SizedBox.shrink();
-              return ValueListenableBuilder<int>(
-                valueListenable: backgroundAnimationStyleNotifier,
-                builder: (context, style, _) =>
-                    _AnimatedBackgroundScene(style: style),
-              );
-            },
-          ),
-
-          SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                // Progress Indicator
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Row(
-                    children: List.generate(5, (index) {
-                      return Expanded(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: _currentPage >= index
-                                ? colors.primary
-                                : colors.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: (idx) => setState(() => _currentPage = idx),
-                    children: [
-                      _buildLanguageStep(),
-                      _buildThemeStep(),
-                      _buildLoginStep(),
-                      _buildGeminiStep(),
-                      _buildTutorialStep(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Step 1: Language ---
-  Widget _buildLanguageStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
-
-    return _StepWrapper(
-      icon: Icons.language,
-      title: l.onboardingWelcomeTitle,
-      subtitle: l.onboardingChooseLanguageSubtitle,
-      content: ValueListenableBuilder<String>(
-        valueListenable: appLocaleNotifier,
-        builder: (context, currentLang, _) {
-          return Column(
-            children: [
-              _buildLangBtn('de', 'Deutsch', '🇩🇪', currentLang),
-              const SizedBox(height: 12),
-              _buildLangBtn('en', 'English', '🇬🇧', currentLang),
-              const SizedBox(height: 12),
-              _buildLangBtn('fr', 'Français', '🇫🇷', currentLang),
-              const SizedBox(height: 12),
-              _buildLangBtn('es', 'Español', '🇪🇸', currentLang),
-              const Spacer(),
-              _buildNextBtn(),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildLangBtn(String code, String name, String flag, String current) {
-    final colors = Theme.of(context).colorScheme;
-    final isSel = current == code;
-    return InkWell(
-      onTap: () async {
-        appLocaleNotifier.value = code;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('appLocale', code);
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-        decoration: BoxDecoration(
-          color: isSel ? colors.primaryContainer : colors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSel ? colors.primary : colors.outlineVariant,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(flag, style: const TextStyle(fontSize: 24)),
-            const SizedBox(width: 16),
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
-                color: isSel ? colors.onPrimaryContainer : colors.onSurface,
-              ),
-            ),
-            const Spacer(),
-            if (isSel) Icon(Icons.check_circle, color: colors.primary),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- Step 2: Theme & Animations ---
-  Widget _buildThemeStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
-
-    return _StepWrapper(
-      icon: Icons.palette,
-      title: l.onboardingAppearanceTitle,
-      subtitle: l.onboardingAppearanceSubtitle,
-      content: Column(
-        children: [
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: themeModeNotifier,
-            builder: (context, val, _) => SegmentedButton<int>(
-              segments: [
-                ButtonSegment(
-                  value: 0,
-                  icon: const Icon(Icons.brightness_auto),
-                  label: Text(l.onboardingThemeSystem),
-                ),
-                ButtonSegment(
-                  value: 1,
-                  icon: const Icon(Icons.light_mode),
-                  label: Text(l.onboardingThemeLight),
-                ),
-                ButtonSegment(
-                  value: 2,
-                  icon: const Icon(Icons.dark_mode),
-                  label: Text(l.onboardingThemeDark),
-                ),
-              ],
-              selected: {val.index},
-              onSelectionChanged: (set) async {
-                final mode = ThemeMode.values[set.first];
-                themeModeNotifier.value = mode;
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setInt('themeMode', mode.index);
-              },
-            ),
-          ),
-          const SizedBox(height: 32),
-          ValueListenableBuilder<bool>(
-            valueListenable: backgroundAnimationsNotifier,
-            builder: (context, val, _) => SwitchListTile(
-              title: Text(l.settingsAppearance),
-              subtitle: Text(l.onboardingAnimationsHint),
-              value: val,
-              onChanged: (nv) async {
-                backgroundAnimationsNotifier.value = nv;
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('backgroundAnimations', nv);
-              },
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              tileColor: Theme.of(context).colorScheme.surface,
-            ),
-          ),
-          const Spacer(),
-          _buildNextBtn(),
-        ],
-      ),
-    );
-  }
-
-  // --- Step 3: School Login ---
-  Widget _buildLoginStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
-
-    Widget content;
-    if (!_manualSchoolEntry && _schoolController.text.isEmpty) {
-      content = Column(
-        children: [
-          TextField(
-            autofocus: true,
-            decoration: InputDecoration(
-              labelText: l.loginSearchHint,
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            onChanged: (val) {
-              if (_debounce?.isActive ?? false) _debounce!.cancel();
-              _debounce = Timer(const Duration(milliseconds: 800), () {
-                if (!mounted) return;
-                _searchSchool(val);
-              });
-            },
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: _isSearching
-                ? const Center(child: CircularProgressIndicator())
-                : _searchResults.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(height: 10),
-                        Text(l.loginNoSchoolsFound),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _searchResults.length,
-                    itemBuilder: (context, index) {
-                      final s = _searchResults[index];
-                      return ListTile(
-                        title: Text(s.displayName),
-                        subtitle: Text(
-                          s.address.isNotEmpty
-                              ? '${s.address}\n${s.loginName} • ${s.serverUrl}'
-                              : '${s.loginName} • ${s.serverUrl}',
-                        ),
-                        isThreeLine: s.address.isNotEmpty,
-                        onTap: () {
-                          setState(() {
-                            _schoolController.text = s.loginName;
-                            _serverController.text = s.serverUrl;
-                            _searchResults = [];
-                          });
-                        },
-                      );
-                    },
-                  ),
-          ),
-          const SizedBox(height: 10),
-          TextButton(
-            onPressed: () => setState(() => _manualSchoolEntry = true),
-            child: Text(l.loginManualEntry),
-          ),
-        ],
-      );
-    } else {
-      content = SingleChildScrollView(
-        child: Column(
-          children: [
-            if (!_manualSchoolEntry && _schoolController.text.isNotEmpty) ...[
-              Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ListTile(
-                  leading: const Icon(Icons.school),
-                  title: Text(_schoolController.text),
-                  subtitle: Text(_serverController.text),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                    tooltip: l.loginChangeSchool,
-                    onPressed: () {
-                      setState(() {
-                        _schoolController.clear();
-                        _serverController.clear();
-                      });
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ] else ...[
-              _buildField(_serverController, l.loginServer, Icons.dns),
-              const SizedBox(height: 12),
-              _buildField(
-                _schoolController,
-                l.loginSchool,
-                Icons.location_city,
-              ),
-              const SizedBox(height: 12),
-            ],
-            _buildField(_userController, l.loginUsername, Icons.person),
-            const SizedBox(height: 12),
-            _buildField(
-              _passwordController,
-              l.loginPassword,
-              Icons.key,
-              obscure: true,
-            ),
-            const SizedBox(height: 32),
-            _isLogginIn
-                ? const CircularProgressIndicator()
-                : FilledButton(
-                    onPressed: _handleLogin,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: Text(
-                      l.loginButton,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-            if (_manualSchoolEntry) ...[
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => setState(() {
-                  _manualSchoolEntry = false;
-                  _schoolController.clear();
-                  _serverController.clear();
-                }),
-                child: Text(l.loginSwitchToSearch),
-              ),
-            ],
-          ],
-        ),
-      );
-    }
-
-    return _StepWrapper(
-      icon: Icons.school_rounded,
-      title: l.onboardingSchoolLoginTitle,
-      subtitle: l.onboardingSchoolLoginSubtitle,
-      content: content,
-    );
-  }
-
-  // --- Step 4: Gemini AI ---
-  Widget _buildGeminiStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
-
-    return _StepWrapper(
-      icon: Icons.auto_awesome,
-      title: l.onboardingGeminiTitle,
-      subtitle: l.onboardingGeminiSubtitle,
-      content: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.secondaryContainer.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.info_outline, size: 32),
-                const SizedBox(height: 12),
-                Text(
-                  l.onboardingGeminiInfo,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15),
-                ),
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  icon: const Icon(Icons.open_in_new),
-                  label: Text(l.onboardingGeminiGetApiKey),
-                  onPressed: () => url_launcher.launchUrlString(
-                    'https://aistudio.google.com/app/apikey',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildField(_geminiController, l.settingsApiKey, Icons.key),
-          const Spacer(),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _nextPage,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: Text(
-                    l.onboardingSkip,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () {
-                    if (_geminiController.text.isNotEmpty) {
-                      _nextPage();
-                    } else {
-                      _showError(l.onboardingGeminiEnterKeyOrSkip);
-                    }
-                  },
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: Text(
-                    l.onboardingNext,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Step 5: Features Tutorial ---
-  Widget _buildTutorialStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
-
-    return _StepWrapper(
-      icon: Icons.rocket_launch,
-      title: l.onboardingReadyTitle,
-      subtitle: l.onboardingReadySubtitle,
-      content: Column(
-        children: [
-          _buildFeatureRow(
-            Icons.calendar_month,
-            l.onboardingFeatureTimetableTitle,
-            l.onboardingFeatureTimetableDesc,
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureRow(
-            Icons.draw,
-            l.onboardingFeatureExamsTitle,
-            l.onboardingFeatureExamsDesc,
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureRow(
-            Icons.auto_awesome,
-            l.onboardingFeatureAiTitle,
-            l.onboardingFeatureAiDesc,
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureRow(
-            Icons.notifications_active,
-            l.onboardingFeatureNotifyTitle,
-            l.onboardingFeatureNotifyDesc,
-          ),
-          const Spacer(),
-          FilledButton.icon(
-            onPressed: _completeOnboarding,
-            icon: const Icon(Icons.check),
-            label: Text(
-              l.onboardingFinishSetup,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 64),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureRow(IconData icon, String title, String desc) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              Text(
-                desc,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- Helpers ---
-  Widget _buildNextBtn([String? lbl, VoidCallback? onTap]) {
-    final l = AppL10n.of(appLocaleNotifier.value);
-
-    return FilledButton(
-      onPressed: onTap ?? _nextPage,
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(double.infinity, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-      child: Text(
-        lbl ?? l.onboardingNext,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Future<void> _searchSchool(String query) async {
-    if (query.length < 3) return;
-    setState(() {
-      _isSearching = true;
-      _searchResults = [];
-    });
-
-    try {
-      final url = Uri.parse('https://mobile.webuntis.com/ms/schoolquery2');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "id": "1",
-          "method": "searchSchool",
-          "params": [
-            {"search": query},
-          ],
-          "jsonrpc": "2.0",
-        }),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] != null && data['result']['schools'] != null) {
-          final list = (data['result']['schools'] as List)
-              .map((e) => SchoolSearchResult.fromJson(e))
-              .toList();
-          if (mounted) setState(() => _searchResults = list);
-        }
-      }
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _isSearching = false);
-    }
-  }
-
-  Widget _buildField(
-    TextEditingController c,
-    String l,
-    IconData i, {
-    bool obscure = false,
-    Widget? suffix,
-  }) {
-    return TextField(
-      controller: c,
-      obscureText: obscure,
-      decoration: InputDecoration(
-        labelText: l,
-        prefixIcon: Icon(i),
-        suffixIcon: suffix,
-        filled: true,
-        fillColor: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(0.7),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-}
-
-class _StepWrapper extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget content;
-
-  const _StepWrapper({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.content,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon, size: 80, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(height: 24),
-          Text(
-            title,
-            style: GoogleFonts.outfit(
-              fontSize: 36,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 16,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 48),
-          Expanded(child: content),
-        ],
-      ),
-    );
-  }
-}
-
-// --- HAUPT NAVIGATION ---
-class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
-
-  @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
-}
-
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _selectedIndex = 0;
-  final ValueNotifier<int> _chatRequest = ValueNotifier(0);
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPrefs();
-  }
-
-  Future<void> _loadPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      schoolUrl = prefs.getString('schoolUrl') ?? "";
-      schoolName = prefs.getString('schoolName') ?? "";
-      sessionID = prefs.getString('sessionId') ?? "";
-      personType = prefs.getInt('personType') ?? 0;
-      personId = prefs.getInt('personId') ?? 0;
-    });
-  }
-
-  List<Widget> get _pages => <Widget>[
-    WeeklyTimetablePage(key: ValueKey(sessionID), chatRequest: _chatRequest),
-    const ExamsPage(),
-    SettingsPage(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final cs = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      extendBody: true,
-      body: Stack(
-        children: [
-          MediaQuery(
-            data: mq.copyWith(
-              padding: mq.padding.copyWith(bottom: mq.padding.bottom + 104),
-            ),
-            child: IndexedStack(index: _selectedIndex, children: _pages),
-          ),
-          // Floating nav bar
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: mq.padding.bottom + 16,
-            child: ValueListenableBuilder<String>(
-              valueListenable: appLocaleNotifier,
-              builder: (context, locale, _) {
-                return _buildFloatingNavBar(context, cs);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFloatingNavBar(BuildContext context, ColorScheme cs) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 520),
-              curve: Curves.easeOutBack,
-              builder: (context, val, child) {
-                return Transform.translate(
-                  offset: Offset(0, (1 - val) * 26),
-                  child: Opacity(opacity: val.clamp(0, 1), child: child),
-                );
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(32),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 360),
-                    curve: Curves.easeOutCubic,
-                    height: 64,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainer.withOpacity(0.65),
-                      borderRadius: BorderRadius.circular(32),
-                      border: Border.all(
-                        color: cs.outlineVariant.withOpacity(0.2),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: cs.shadow.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _navIconBtn(
-                          cs: cs,
-                          icon: Icons.assignment_outlined,
-                          selectedIcon: Icons.assignment_rounded,
-                          selected: _selectedIndex == 1,
-                          onTap: () {
-                            if (_selectedIndex != 1) {
-                              setState(() => _selectedIndex = 1);
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 4),
-                        _navIconBtn(
-                          cs: cs,
-                          icon: Icons.auto_awesome_outlined,
-                          selectedIcon: Icons.auto_awesome_rounded,
-                          selected: false,
-                          onTap: () {
-                            if (_selectedIndex != 0) {
-                              setState(() => _selectedIndex = 0);
-                            }
-                            Future.delayed(
-                              const Duration(milliseconds: 50),
-                              () {
-                                _chatRequest.value++;
-                              },
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 4),
-                        _navIconBtn(
-                          cs: cs,
-                          icon: Icons.settings_outlined,
-                          selectedIcon: Icons.settings_rounded,
-                          selected: _selectedIndex == 2,
-                          onTap: () {
-                            if (_selectedIndex != 2) {
-                              setState(() => _selectedIndex = 2);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(width: 16),
-
-            AnimatedScale(
-              scale: _selectedIndex == 0 ? 1.05 : 0.95,
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.elasticOut,
-              child: _BouncyButton(
-                onTap: () {
-                  if (_selectedIndex != 0) {
-                    setState(() => _selectedIndex = 0);
-                  }
-                },
-                scaleTarget: 0.9,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 420),
-                  curve: Curves.easeOutBack,
-                  height: _selectedIndex == 0 ? 72 : 60,
-                  width: _selectedIndex == 0 ? 72 : 60,
-                  decoration: BoxDecoration(
-                    color: _selectedIndex == 0
-                        ? cs.primary
-                        : cs.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(
-                      _selectedIndex == 0 ? 24 : 30,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            (_selectedIndex == 0
-                                    ? cs.primary
-                                    : cs.surfaceContainerHighest)
-                                .withOpacity(0.4),
-                        blurRadius: _selectedIndex == 0 ? 24 : 12,
-                        offset: Offset(0, _selectedIndex == 0 ? 8 : 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      switchInCurve: Curves.elasticOut,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder: (child, anim) {
-                        return RotationTransition(
-                          turns: Tween(begin: 0.8, end: 1.0).animate(anim),
-                          child: ScaleTransition(scale: anim, child: child),
-                        );
-                      },
-                      child: Icon(
-                        _selectedIndex == 0
-                            ? Icons.watch_later_rounded
-                            : Icons.watch_later_outlined,
-                        key: ValueKey(_selectedIndex == 0),
-                        color: _selectedIndex == 0
-                            ? cs.onPrimary
-                            : cs.onSurfaceVariant,
-                        size: _selectedIndex == 0 ? 34 : 28,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _navIconBtn({
-    required ColorScheme cs,
-    required IconData icon,
-    required IconData selectedIcon,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return _BouncyButton(
-      onTap: onTap,
-      scaleTarget: 0.8,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutBack,
-        width: selected ? 64 : 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: selected ? cs.secondaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(22),
-          border: selected
-              ? Border.all(
-                  color: cs.secondaryContainer.withOpacity(0.5),
-                  width: 0,
-                )
-              : Border.all(color: Colors.transparent, width: 0),
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 260),
-          switchInCurve: Curves.elasticOut,
-          switchOutCurve: Curves.easeInCubic,
-          transitionBuilder: (child, anim) {
-            return ScaleTransition(scale: anim, child: child);
-          },
-          child: Icon(
-            selected ? selectedIcon : icon,
-            key: ValueKey(selected),
-            size: 24,
-            color: selected
-                ? cs.onSecondaryContainer
-                : cs.onSurfaceVariant.withOpacity(0.8),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BouncyButton extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-  final double scaleTarget;
-
-  const _BouncyButton({
-    required this.child,
-    required this.onTap,
-    this.scaleTarget = 0.9,
-  });
-
-  @override
-  State<_BouncyButton> createState() => _BouncyButtonState();
-}
-
-class _BouncyButtonState extends State<_BouncyButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  bool _tapLocked = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 90),
-      reverseDuration: const Duration(milliseconds: 260),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleTarget)
-        .animate(
-          CurvedAnimation(
-            parent: _controller,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.elasticOut,
-          ),
-        );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) {
-        if (_tapLocked) return;
-        _controller.forward();
-        HapticFeedback.lightImpact();
-      },
-      onTap: () {
-        if (_tapLocked) return;
-        _tapLocked = true;
-        widget.onTap();
-        _controller.reverse();
-        Future.delayed(const Duration(milliseconds: 140), () {
-          if (!mounted) return;
-          _tapLocked = false;
-        });
-      },
-      onTapCancel: () {
-        _controller.reverse();
-      },
-      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
-    );
-  }
+  return null;
 }
 
 // --- WOCHENPLAN (TAB VIEW) ---
 class WeeklyTimetablePage extends StatefulWidget {
-  final ValueNotifier<int> chatRequest;
-  const WeeklyTimetablePage({super.key, required this.chatRequest});
+  const WeeklyTimetablePage({super.key});
 
   @override
   State<WeeklyTimetablePage> createState() => _WeeklyTimetablePageState();
@@ -1583,12 +186,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Map<int, List<dynamic>> _weekData = {0: [], 1: [], 2: [], 3: [], 4: []};
   bool _loading = true;
   String? _loadError;
+  bool _showingCachedWeek = false;
   int _viewMode = 0;
 
   String? _tempSessionId;
   int? _viewingClassId;
   String? _viewingClassName;
-  String _classSessionSource = 'account';
 
   String get _currentSessionId =>
       (_viewingClassId != null && _tempSessionId != null)
@@ -1604,6 +207,106 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final Map<int, String> _subjectShortMap = {};
   final Map<int, String> _teacherMap = {};
   final Map<int, String> _roomMap = {};
+
+  String _weekCacheKey({
+    required int requestPersonId,
+    required int requestPersonType,
+  }) {
+    final monday = DateFormat('yyyyMMdd').format(_currentMonday);
+    return [
+      'weekCacheV1',
+      schoolUrl,
+      schoolName,
+      requestPersonType.toString(),
+      requestPersonId.toString(),
+      monday,
+    ].join('|');
+  }
+
+  Map<int, List<dynamic>> _emptyWeekData() => {
+    0: <dynamic>[],
+    1: <dynamic>[],
+    2: <dynamic>[],
+    3: <dynamic>[],
+    4: <dynamic>[],
+  };
+
+  void _applyKnownSubjectsFromWeek(Map<int, List<dynamic>> weekData) {
+    final allSubjects = <String>{};
+    for (final list in weekData.values) {
+      for (final l in list) {
+        final s = l['_subjectShort']?.toString() ?? '';
+        if (s.isNotEmpty) allSubjects.add(s);
+      }
+    }
+    knownSubjectsNotifier.value = allSubjects;
+  }
+
+  Future<Map<int, List<dynamic>>?> _loadWeekFromCache({
+    required int requestPersonId,
+    required int requestPersonType,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _weekCacheKey(
+        requestPersonId: requestPersonId,
+        requestPersonType: requestPersonType,
+      );
+      final raw = prefs.getString(key);
+      if (raw == null || raw.isEmpty) return null;
+
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final week = decoded['weekData'];
+      if (week is! Map) return null;
+
+      final tempWeek = _emptyWeekData();
+      for (var i = 0; i < 5; i++) {
+        final dayRaw = week['$i'];
+        if (dayRaw is! List) continue;
+        tempWeek[i] = dayRaw
+            .whereType<Map>()
+            .map(
+              (lesson) =>
+                  Map<String, dynamic>.from(lesson.cast<String, dynamic>()),
+            )
+            .toList();
+      }
+
+      tempWeek.forEach((_, list) {
+        list.sort((a, b) {
+          final aStart = (a['startTime'] as int?) ?? 0;
+          final bStart = (b['startTime'] as int?) ?? 0;
+          return aStart.compareTo(bStart);
+        });
+      });
+
+      return tempWeek;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _saveWeekToCache({
+    required int requestPersonId,
+    required int requestPersonType,
+    required Map<int, List<dynamic>> weekData,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _weekCacheKey(
+        requestPersonId: requestPersonId,
+        requestPersonType: requestPersonType,
+      );
+      final payload = {
+        'savedAt': DateTime.now().toIso8601String(),
+        'weekData': {
+          for (var i = 0; i < 5; i++) '$i': weekData[i] ?? const <dynamic>[],
+        },
+      };
+      await prefs.setString(key, jsonEncode(payload));
+    } catch (_) {}
+  }
 
   String _extractTeacherNamesFromLesson(Map<dynamic, dynamic> lesson) {
     final teacherEntries = ((lesson['te'] as List?) ?? const <dynamic>[])
@@ -1763,13 +466,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.addListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
-    widget.chatRequest.addListener(_onChatRequest);
     if (sessionID.isNotEmpty) _fetchFullWeek();
     _loadViewPref();
-  }
-
-  void _onChatRequest() {
-    _openGeminiChat();
   }
 
   Future<void> _loadViewPref() async {
@@ -1817,15 +515,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
   }
 
-  String get _weekRangeLabel {
-    final start = _currentMonday;
-    final end = _currentMonday.add(const Duration(days: 4));
-    final icu = _icuLocale(appLocaleNotifier.value);
-    final startFmt = DateFormat('dd. MMM', icu).format(start);
-    final endFmt = DateFormat('dd. MMM yyyy', icu).format(end);
-    return '$startFmt \u2013 $endFmt';
-  }
-
   Future<void> _toggleView() async {
     HapticFeedback.selectionClick();
     setState(() => _viewMode = (_viewMode + 1) % 2);
@@ -1842,17 +531,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.removeListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.removeListener(_onHiddenSubjectsChanged);
-    widget.chatRequest.removeListener(_onChatRequest);
     _tabController.dispose();
     super.dispose();
   }
 
   @override
   void didUpdateWidget(covariant WeeklyTimetablePage oldWidget) {
-    if (widget.chatRequest != oldWidget.chatRequest) {
-      oldWidget.chatRequest.removeListener(_onChatRequest);
-      widget.chatRequest.addListener(_onChatRequest);
-    }
     super.didUpdateWidget(oldWidget);
 
     if (sessionID.isNotEmpty && _loading) {
@@ -1979,6 +663,278 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return a.endMin.compareTo(b.endMin);
     });
     return ranges;
+  }
+
+  List<_TimeRangeLabel> _collectTimeRangesFromDay(int dayIndex) {
+    final dayLessons = _weekData[dayIndex] ?? const <dynamic>[];
+    final ranges = <_TimeRangeLabel>[];
+    final seen = <String>{};
+
+    for (final lesson in dayLessons.whereType<Map>()) {
+      final map = lesson.cast<dynamic, dynamic>();
+      if ((map['code'] ?? '') == 'cancelled') continue;
+      final start = _lessonStartMinutes(map);
+      final end = _lessonEndMinutes(map);
+      if (end <= start) continue;
+      final key = '$start-$end';
+      if (seen.add(key)) {
+        ranges.add(_TimeRangeLabel(startMin: start, endMin: end));
+      }
+    }
+
+    ranges.sort((a, b) {
+      final byStart = a.startMin.compareTo(b.startMin);
+      if (byStart != 0) return byStart;
+      return a.endMin.compareTo(b.endMin);
+    });
+    return ranges;
+  }
+
+  Set<int> _lessonRoomIds(Map<dynamic, dynamic> lesson) {
+    final ids = <int>{};
+    final ro = lesson['ro'];
+    if (ro is List) {
+      for (final entry in ro.whereType<Map>()) {
+        final id = entry['id'];
+        if (id is int) {
+          ids.add(id);
+        } else {
+          final parsed = int.tryParse(id?.toString() ?? '');
+          if (parsed != null) ids.add(parsed);
+        }
+      }
+    }
+
+    if (ids.isEmpty) {
+      final roomName = (lesson['_room'] ?? '').toString().trim();
+      if (roomName.isNotEmpty) {
+        _roomMap.forEach((id, name) {
+          if (name.trim().toLowerCase() == roomName.toLowerCase()) {
+            ids.add(id);
+          }
+        });
+      }
+    }
+
+    return ids;
+  }
+
+  List<String> _findFreeRooms({
+    required int dayIndex,
+    required int startMin,
+    required int endMin,
+  }) {
+    final occupiedIds = <int>{};
+    final lessons = _weekData[dayIndex] ?? const <dynamic>[];
+
+    for (final raw in lessons.whereType<Map>()) {
+      final lesson = raw.cast<dynamic, dynamic>();
+      if ((lesson['code'] ?? '') == 'cancelled') continue;
+
+      final lessonStart = _lessonStartMinutes(lesson);
+      final lessonEnd = _lessonEndMinutes(lesson);
+      final overlaps = lessonStart < endMin && lessonEnd > startMin;
+      if (!overlaps) continue;
+
+      occupiedIds.addAll(_lessonRoomIds(lesson));
+    }
+
+    final freeRooms = <String>[];
+    final seenNames = <String>{};
+    final sortedEntries = _roomMap.entries.toList()
+      ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
+
+    for (final entry in sortedEntries) {
+      if (occupiedIds.contains(entry.key)) continue;
+      final name = entry.value.trim();
+      if (name.isEmpty) continue;
+      final normalized = name.toLowerCase();
+      if (seenNames.add(normalized)) {
+        freeRooms.add(name);
+      }
+    }
+
+    return freeRooms;
+  }
+
+  Future<void> _showFreeRoomsDialog() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final dayIndex = _tabController.index.clamp(0, 4);
+    final ranges = _collectTimeRangesFromDay(dayIndex);
+
+    if (ranges.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.freeRoomsNoRangesHint),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    int selectedIndex = 0;
+    final dayDate = _currentMonday.add(Duration(days: dayIndex));
+    final now = DateTime.now();
+    final isToday =
+        dayDate.year == now.year &&
+        dayDate.month == now.month &&
+        dayDate.day == now.day;
+
+    if (isToday) {
+      final nowMin = now.hour * 60 + now.minute;
+      final idx = ranges.indexWhere(
+        (r) => nowMin >= r.startMin && nowMin < r.endMin,
+      );
+      if (idx >= 0) selectedIndex = idx;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      sheetAnimationStyle: _kBottomSheetAnimationStyle,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return StatefulBuilder(
+          builder: (ctx, setDlg) {
+            final selectedRange = ranges[selectedIndex];
+            final freeRooms = _findFreeRooms(
+              dayIndex: dayIndex,
+              startMin: selectedRange.startMin,
+              endMin: selectedRange.endMin,
+            );
+            final dayName = _dayShort[dayIndex];
+
+            return _glassContainer(
+              context: ctx,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                      children: [
+                        Text(
+                          l.freeRoomsTitle,
+                          style: GoogleFonts.outfit(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '$dayName • ${_formatMinutes(selectedRange.startMin)} - ${_formatMinutes(selectedRange.endMin)}',
+                          style: GoogleFonts.outfit(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          l.freeRoomsSelectTime,
+                          style: GoogleFonts.outfit(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (int i = 0; i < ranges.length; i++)
+                              ChoiceChip(
+                                selected: i == selectedIndex,
+                                label: Text(
+                                  '${_formatMinutes(ranges[i].startMin)} - ${_formatMinutes(ranges[i].endMin)}',
+                                ),
+                                onSelected: (_) {
+                                  setDlg(() => selectedIndex = i);
+                                },
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          l.freeRoomsCount(freeRooms.length),
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                            color: cs.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        if (freeRooms.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: cs.surfaceContainer,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              l.freeRoomsNoneFound,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        else
+                          ...freeRooms.asMap().entries.map((entry) {
+                            final i = entry.key;
+                            final room = entry.value;
+                            return _springEntry(
+                              duration: Duration(milliseconds: 300 + i * 50),
+                              offsetY: 16,
+                              startScale: 0.95,
+                              curve: _kSmoothBounce,
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: cs.surfaceContainerHigh,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: cs.outlineVariant.withOpacity(0.35),
+                                  ),
+                                ),
+                                child: ListTile(
+                                  leading: Icon(
+                                    Icons.meeting_room_outlined,
+                                    color: cs.primary,
+                                  ),
+                                  title: Text(
+                                    room,
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   static const List<double> _grayscaleMatrix = <double>[
@@ -2471,7 +1427,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final csW = Theme.of(context).colorScheme;
     return RefreshIndicator(
       onRefresh: _onRefresh,
-      displacement: 40, 
+      displacement: 40,
       edgeOffset: topContentPadding,
       color: csW.onPrimaryContainer,
       backgroundColor: csW.primaryContainer,
@@ -2849,12 +1805,53 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Future<void> _fetchFullWeek({bool silent = false}) async {
     if (personId == 0 && personType == 0) {}
 
+    int requestPersonId = _viewingClassId ?? personId;
+    int requestPersonType = _viewingClassId != null ? 1 : personType;
+
+    if (requestPersonId == 0) {
+      if (requestPersonType == 0) requestPersonType = 5;
+    }
+
     setState(() {
       if (!silent) _loading = true;
       _loadError = null;
     });
 
-    await _fetchMasterData();
+    final cachedWeek = await _loadWeekFromCache(
+      requestPersonId: requestPersonId,
+      requestPersonType: requestPersonType,
+    );
+    final hasCachedWeek = cachedWeek != null;
+    if (hasCachedWeek && mounted) {
+      _applyKnownSubjectsFromWeek(cachedWeek);
+      setState(() {
+        _weekData = cachedWeek;
+        _showingCachedWeek = true;
+        _loading = false;
+      });
+    }
+
+    try {
+      await _fetchMasterData();
+    } catch (e) {
+      if (hasCachedWeek) {
+        if (!mounted) return;
+        setState(() {
+          _loadError = null;
+          _showingCachedWeek = true;
+          _loading = false;
+        });
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString();
+        _weekData = _emptyWeekData();
+        _showingCachedWeek = false;
+        _loading = false;
+      });
+      return;
+    }
 
     DateTime friday = _currentMonday.add(const Duration(days: 4));
     int startDate = int.parse(DateFormat('yyyyMMdd').format(_currentMonday));
@@ -2863,13 +1860,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final url = Uri.parse(
       'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
     );
-
-    int requestPersonId = _viewingClassId ?? personId;
-    int requestPersonType = _viewingClassId != null ? 1 : personType;
-
-    if (requestPersonId == 0) {
-      if (requestPersonType == 0) requestPersonType = 5;
-    }
 
     try {
       final response = await http.post(
@@ -2893,11 +1883,21 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       );
 
       if (response.statusCode != 200) {
+        if (hasCachedWeek) {
+          if (!mounted) return;
+          setState(() {
+            _loadError = null;
+            _showingCachedWeek = true;
+            _loading = false;
+          });
+          return;
+        }
         if (!mounted) return;
         setState(() {
           _loadError =
               "HTTP ${response.statusCode}: Stundenplan konnte nicht geladen werden.";
-          _weekData = {0: [], 1: [], 2: [], 3: [], 4: []};
+          _weekData = _emptyWeekData();
+          _showingCachedWeek = false;
           _loading = false;
         });
         return;
@@ -2920,10 +1920,21 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           }
         }
 
+        if (hasCachedWeek) {
+          if (!mounted) return;
+          setState(() {
+            _loadError = null;
+            _showingCachedWeek = true;
+            _loading = false;
+          });
+          return;
+        }
+
         if (!mounted) return;
         setState(() {
           _loadError = apiMsg;
-          _weekData = {0: [], 1: [], 2: [], 3: [], 4: []};
+          _weekData = _emptyWeekData();
+          _showingCachedWeek = false;
           _loading = false;
         });
         return;
@@ -2936,7 +1947,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           (r['timetable'] as List<dynamic>),
         _ => <dynamic>[],
       };
-      Map<int, List<dynamic>> tempWeek = {0: [], 1: [], 2: [], 3: [], 4: []};
+      Map<int, List<dynamic>> tempWeek = _emptyWeekData();
       final classIdsInWeek = <int>{};
 
       for (var lesson in allLessons) {
@@ -3160,26 +2171,35 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         );
       });
 
-      final allSubjects = <String>{};
-      for (final list in tempWeek.values) {
-        for (final l in list) {
-          final s = l['_subjectShort']?.toString() ?? '';
-          if (s.isNotEmpty) allSubjects.add(s);
-        }
-      }
-      knownSubjectsNotifier.value = allSubjects;
+      _applyKnownSubjectsFromWeek(tempWeek);
+      await _saveWeekToCache(
+        requestPersonId: requestPersonId,
+        requestPersonType: requestPersonType,
+        weekData: tempWeek,
+      );
 
       if (!mounted) return;
       setState(() {
         _weekData = tempWeek;
+        _showingCachedWeek = false;
         _loading = false;
       });
     } catch (e) {
       print("Fehler beim Laden: $e");
+      if (hasCachedWeek) {
+        if (!mounted) return;
+        setState(() {
+          _loadError = null;
+          _showingCachedWeek = true;
+          _loading = false;
+        });
+        return;
+      }
       if (!mounted) return;
       setState(() {
         _loadError = e.toString();
-        _weekData = {0: [], 1: [], 2: [], 3: [], 4: []};
+        _weekData = _emptyWeekData();
+        _showingCachedWeek = false;
         _loading = false;
       });
     }
@@ -3288,6 +2308,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
+      sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) {
         return DraggableScrollableSheet(
           initialChildSize: 0.6,
@@ -3295,17 +2316,26 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           maxChildSize: 0.9,
           expand: false,
           builder: (_, scrollController) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(28),
-                ),
+            return _glassContainer(
+              context: ctx,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
               ),
               child: ListView(
                 controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                 children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Text(
                     l.timetableSelectClass,
                     style: GoogleFonts.outfit(
@@ -3349,7 +2379,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           _viewingClassId = null;
                           _viewingClassName = null;
                           _tempSessionId = null;
-                          _classSessionSource = 'account';
                         });
                         Navigator.pop(ctx);
                         _fetchFullWeek();
@@ -3372,47 +2401,54 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        ...classes.map((c) {
+                        ...classes.asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final c = entry.value;
                           final name = c['name'] ?? c['longName'] ?? '?';
                           final id = c['id'] as int?;
                           if (id == null) return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Card(
-                              elevation: 0,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHigh,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: ListTile(
-                                leading: Icon(
-                                  Icons.class_outlined,
-                                  color: Theme.of(context).colorScheme.primary,
+                          return _springEntry(
+                            duration: Duration(milliseconds: 300 + i * 45),
+                            offsetY: 16,
+                            startScale: 0.95,
+                            curve: _kSmoothBounce,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Card(
+                                elevation: 0,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHigh,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                title: Text(
-                                  name,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 16,
+                                child: ListTile(
+                                  leading: Icon(
+                                    Icons.class_outlined,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
+                                  title: Text(
+                                    name,
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      _viewingClassId = id;
+                                      _viewingClassName = name;
+                                      _tempSessionId =
+                                          (sid != null && sid != sessionID)
+                                          ? sid
+                                          : null;
+                                    });
+                                    Navigator.pop(ctx);
+                                    _fetchFullWeek();
+                                  },
                                 ),
-                                onTap: () {
-                                  setState(() {
-                                    _viewingClassId = id;
-                                    _viewingClassName = name;
-                                    _tempSessionId =
-                                        (sid != null && sid != sessionID)
-                                        ? sid
-                                        : null;
-                                    _classSessionSource = _tempSessionId != null
-                                        ? sidSource
-                                        : 'account';
-                                  });
-                                  Navigator.pop(ctx);
-                                  _fetchFullWeek();
-                                },
                               ),
                             ),
                           );
@@ -3462,16 +2498,44 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               _fetchFullWeek();
             }
           },
-          child: Text(
-            _viewingClassName ?? l.timetableTitle,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w900,
-              fontSize: 20,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _viewingClassName ?? l.timetableTitle,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                ),
+              ),
+              if (_showingCachedWeek)
+                Tooltip(
+                  message: 'Offline-Cache aktiv',
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(left: 8, top: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.tertiary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: l.aiTitle,
+            icon: const Icon(Icons.auto_awesome_rounded),
+            onPressed: _openGeminiChat,
+          ),
+          IconButton(
+            tooltip: l.freeRoomsTitle,
+            icon: const Icon(Icons.meeting_room_outlined),
+            onPressed: _showFreeRoomsDialog,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
@@ -3503,11 +2567,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 ).colorScheme.onSurfaceVariant,
                 dividerColor: Colors.transparent,
                 tabs: List.generate(5, (i) {
-                  final d = _currentMonday.add(Duration(days: i));
-                  final isToday =
-                      d.year == DateTime.now().year &&
-                      d.month == DateTime.now().month &&
-                      d.day == DateTime.now().day;
                   return Tab(child: Text(_dayShort[i]));
                 }),
               ),
@@ -3585,6 +2644,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (_) => _TimetableChatSheet(
         weekData: _weekData,
         currentMonday: _currentMonday,
@@ -3606,6 +2666,45 @@ class _ExamsPageState extends State<ExamsPage> {
   List<Map<String, dynamic>> _apiExams = [];
   List<Map<String, dynamic>> _customExams = [];
   bool _loading = true;
+
+  Future<void> _refreshExams() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _apiExams = [];
+      });
+    }
+    await _fetchApiExams();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _openExamActionsDropdown() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final selected = await _showUnifiedOptionSheet<String>(
+      context: context,
+      title: l.examsAddTitle,
+      options: const [
+        _SheetOption(
+          value: 'custom',
+          title: 'Custom',
+          subtitle: 'Eigene Prüfung erstellen',
+          icon: Icons.edit_note_rounded,
+        ),
+        _SheetOption(
+          value: 'scan',
+          title: 'Scan',
+          subtitle: 'Aus Datei oder Bild importieren',
+          icon: Icons.document_scanner_rounded,
+        ),
+      ],
+    );
+
+    if (selected == 'custom') {
+      _showAddExamDialog();
+    } else if (selected == 'scan') {
+      _importExamsWithAI();
+    }
+  }
 
   @override
   void initState() {
@@ -3748,177 +2847,229 @@ class _ExamsPageState extends State<ExamsPage> {
       return DateTime.now();
     }();
 
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          title: Text(
-            existing == null
-                ? AppL10n.of(appLocaleNotifier.value).examsAddTitle
-                : AppL10n.of(appLocaleNotifier.value).examsEditTitle,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
+        builder: (ctx, setDlg) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: subjectCtrl,
-                  decoration: InputDecoration(
-                    labelText: AppL10n.of(
-                      appLocaleNotifier.value,
-                    ).examsSubjectLabel,
-                    prefixIcon: const Icon(Icons.book_outlined),
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: typeCtrl,
-                  decoration: InputDecoration(
-                    labelText: AppL10n.of(
-                      appLocaleNotifier.value,
-                    ).examsTypeLabel,
-                    prefixIcon: const Icon(Icons.label_outline),
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: selectedDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2030),
-                    );
-                    if (picked != null) setDlg(() => selectedDate = picked);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        ctx,
-                      ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_today_outlined, size: 20),
-                        const SizedBox(width: 12),
-                        Text(
-                          DateFormat(
-                            'dd. MMM yyyy',
-                            _icuLocale(appLocaleNotifier.value),
-                          ).format(selectedDate),
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
+            child: _glassContainer(
+              context: ctx,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: cs.outlineVariant,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        existing == null
+                            ? AppL10n.of(appLocaleNotifier.value).examsAddTitle
+                            : AppL10n.of(
+                                appLocaleNotifier.value,
+                              ).examsEditTitle,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: subjectCtrl,
+                        decoration: InputDecoration(
+                          labelText: AppL10n.of(
+                            appLocaleNotifier.value,
+                          ).examsSubjectLabel,
+                          prefixIcon: const Icon(Icons.book_outlined),
+                          filled: true,
+                          fillColor: cs.surfaceContainerHighest.withOpacity(
+                            0.45,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: typeCtrl,
+                        decoration: InputDecoration(
+                          labelText: AppL10n.of(
+                            appLocaleNotifier.value,
+                          ).examsTypeLabel,
+                          prefixIcon: const Icon(Icons.label_outline),
+                          filled: true,
+                          fillColor: cs.surfaceContainerHighest.withOpacity(
+                            0.45,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: ctx,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2030),
+                          );
+                          if (picked != null)
+                            setDlg(() => selectedDate = picked);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(ctx)
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_today_outlined,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                DateFormat(
+                                  'dd. MMM yyyy',
+                                  _icuLocale(appLocaleNotifier.value),
+                                ).format(selectedDate),
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: descCtrl,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          labelText: AppL10n.of(
+                            appLocaleNotifier.value,
+                          ).examsNotesLabel,
+                          prefixIcon: const Padding(
+                            padding: EdgeInsets.only(bottom: 42),
+                            child: Icon(Icons.notes_rounded),
+                          ),
+                          filled: true,
+                          fillColor: cs.surfaceContainerHighest.withOpacity(
+                            0.45,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (existing != null && editIndex != null)
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                setState(
+                                  () => _customExams.removeAt(editIndex),
+                                );
+                                _saveCustomExams();
+                              },
+                              child: Text(
+                                AppL10n.of(appLocaleNotifier.value).examsDelete,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text(
+                              AppL10n.of(appLocaleNotifier.value).examsCancel,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          FilledButton(
+                            onPressed: () {
+                              final subj = subjectCtrl.text.trim();
+                              if (subj.isEmpty) return;
+                              final dateInt = int.parse(
+                                DateFormat('yyyyMMdd').format(selectedDate),
+                              );
+                              final newExam = <String, dynamic>{
+                                'subject': subj,
+                                'examType': typeCtrl.text.trim(),
+                                'date': dateInt,
+                                'description': descCtrl.text.trim(),
+                                '_custom': true,
+                              };
+                              setState(() {
+                                if (editIndex != null) {
+                                  _customExams[editIndex] = newExam;
+                                } else {
+                                  _customExams.add(newExam);
+                                }
+                              });
+                              _saveCustomExams();
+                              Navigator.pop(ctx);
+                            },
+                            style: FilledButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              AppL10n.of(appLocaleNotifier.value).examsSave,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descCtrl,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: AppL10n.of(
-                      appLocaleNotifier.value,
-                    ).examsNotesLabel,
-                    prefixIcon: const Padding(
-                      padding: EdgeInsets.only(bottom: 42),
-                      child: Icon(Icons.notes_rounded),
-                    ),
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            if (existing != null && editIndex != null)
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  setState(() => _customExams.removeAt(editIndex));
-                  _saveCustomExams();
-                },
-                child: Text(
-                  AppL10n.of(appLocaleNotifier.value).examsDelete,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-              ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                AppL10n.of(appLocaleNotifier.value).examsCancel,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
               ),
             ),
-            FilledButton(
-              onPressed: () {
-                final subj = subjectCtrl.text.trim();
-                if (subj.isEmpty) return;
-                final dateInt = int.parse(
-                  DateFormat('yyyyMMdd').format(selectedDate),
-                );
-                final newExam = <String, dynamic>{
-                  'subject': subj,
-                  'examType': typeCtrl.text.trim(),
-                  'date': dateInt,
-                  'description': descCtrl.text.trim(),
-                  '_custom': true,
-                };
-                setState(() {
-                  if (editIndex != null) {
-                    _customExams[editIndex] = newExam;
-                  } else {
-                    _customExams.add(newExam);
-                  }
-                });
-                _saveCustomExams();
-                Navigator.pop(ctx);
-              },
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: Text(
-                AppL10n.of(appLocaleNotifier.value).examsSave,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -3932,38 +3083,27 @@ class _ExamsPageState extends State<ExamsPage> {
       return;
     }
 
-    final cs = Theme.of(context).colorScheme;
-
     // Choose source
-    final source = await showDialog<String>(
+    final source = await _showUnifiedOptionSheet<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(
-          l.examsImportTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
+      title: l.examsImportTitle,
+      options: [
+        _SheetOption(
+          value: 'camera',
+          title: l.examsImportCamera,
+          icon: Icons.camera_alt_rounded,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.camera_alt_rounded, color: cs.primary),
-              title: Text(l.examsImportCamera),
-              onTap: () => Navigator.pop(ctx, 'camera'),
-            ),
-            ListTile(
-              leading: Icon(Icons.image_rounded, color: cs.primary),
-              title: Text(l.examsImportGallery),
-              onTap: () => Navigator.pop(ctx, 'gallery'),
-            ),
-            ListTile(
-              leading: Icon(Icons.picture_as_pdf_rounded, color: cs.primary),
-              title: Text(l.examsImportFile),
-              onTap: () => Navigator.pop(ctx, 'file'),
-            ),
-          ],
+        _SheetOption(
+          value: 'gallery',
+          title: l.examsImportGallery,
+          icon: Icons.image_rounded,
         ),
-      ),
+        _SheetOption(
+          value: 'file',
+          title: l.examsImportFile,
+          icon: Icons.picture_as_pdf_rounded,
+        ),
+      ],
     );
 
     if (source == null) return;
@@ -4094,124 +3234,91 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            tooltip: l.examsImportTitle,
-            icon: const Icon(Icons.document_scanner_rounded),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              _importExamsWithAI();
-            },
-          ),
-          IconButton(
-            tooltip: l.examsReload,
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              setState(() {
-                _loading = true;
-                _apiExams = [];
-              });
-              _fetchApiExams().then((_) {
-                if (mounted) setState(() => _loading = false);
-              });
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              tooltip: l.examsAddTitle,
+              icon: const Icon(Icons.add_rounded),
+              onPressed: _openExamActionsDropdown,
+            ),
           ),
         ],
       ),
       body: _AnimatedBackground(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : exams.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.assignment_outlined,
-                      size: 80,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant.withOpacity(0.3),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l.examsNone,
-                      style: GoogleFonts.outfit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      l.examsNoneHint,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : RefreshIndicator(
-                onRefresh: () async {
-                  setState(() {
-                    _loading = true;
-                    _apiExams = [];
-                  });
-                  await _fetchApiExams();
-                  if (mounted) setState(() => _loading = false);
-                },
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    if (upcoming.isNotEmpty) ...[
-                      _sectionHeader(
-                        cs,
-                        l.examsUpcoming,
-                        Icons.upcoming_rounded,
-                      ),
-                      const SizedBox(height: 8),
-                      ...upcoming.asMap().entries.map(
-                        (e) => _animatedExamCard(
-                          e.key,
+        child: RefreshIndicator(
+          onRefresh: _refreshExams,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            children: [
+              if (_loading) ...[
+                const SizedBox(height: 140),
+                const Center(child: CircularProgressIndicator()),
+              ] else if (exams.isEmpty) ...[
+                const SizedBox(height: 80),
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.assignment_outlined,
+                        size: 80,
+                        color: Theme.of(
                           context,
-                          cs,
-                          e.value,
-                          true,
+                        ).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        l.examsNone,
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                    ],
-                    if (past.isNotEmpty) ...[
-                      _sectionHeader(cs, l.examsPast, Icons.history_rounded),
                       const SizedBox(height: 8),
-                      ...past.asMap().entries.map(
-                        (e) => _animatedExamCard(
-                          e.key,
-                          context,
-                          cs,
-                          e.value,
-                          false,
+                      Text(
+                        l.examsNoneHint,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        l.examsReload,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: cs.primary,
                         ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-      ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 100),
-        child: FloatingActionButton(
-          onPressed: () {
-            HapticFeedback.mediumImpact();
-            _showAddExamDialog();
-          },
-          backgroundColor: cs.primaryContainer,
-          foregroundColor: cs.primary,
-          child: const Icon(Icons.add_rounded),
+              ] else ...[
+                if (upcoming.isNotEmpty) ...[
+                  _sectionHeader(cs, l.examsUpcoming, Icons.upcoming_rounded),
+                  const SizedBox(height: 8),
+                  ...upcoming.asMap().entries.map(
+                    (e) => _animatedExamCard(e.key, context, cs, e.value, true),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                if (past.isNotEmpty) ...[
+                  _sectionHeader(cs, l.examsPast, Icons.history_rounded),
+                  const SizedBox(height: 8),
+                  ...past.asMap().entries.map(
+                    (e) =>
+                        _animatedExamCard(e.key, context, cs, e.value, false),
+                  ),
+                ],
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -4241,15 +3348,12 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
     Map<String, dynamic> exam,
     bool showCountdown,
   ) {
-    return TweenAnimationBuilder<double>(
+    return _springEntry(
       key: ValueKey('exam_${exam['date']}_${exam['subject']}_$index'),
-      duration: Duration(milliseconds: 350 + index * 70),
-      curve: Curves.easeInOutCubicEmphasized,
-      tween: Tween<double>(begin: 0, end: 1),
-      builder: (context, v, child) => Transform.translate(
-        offset: Offset(0, 28 * (1 - v)),
-        child: Opacity(opacity: v.clamp(0.0, 1.0), child: child),
-      ),
+      duration: Duration(milliseconds: 420 + index * 75),
+      offsetY: 28,
+      startScale: 0.93,
+      curve: _kSmoothBounce,
       child: _examCard(context, cs, exam, showCountdown),
     );
   }
@@ -4513,7 +3617,120 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [];
+  List<Map<String, dynamic>> _exams = [];
   bool _thinking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExams();
+  }
+
+  Future<void> _loadExams() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList('customExams') ?? [];
+    final customExams = raw
+        .map((e) {
+          try {
+            return jsonDecode(e) as Map<String, dynamic>;
+          } catch (_) {
+            return <String, dynamic>{};
+          }
+        })
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    List<Map<String, dynamic>> apiExams = [];
+    if (sessionID.isNotEmpty) {
+      final now = DateTime.now();
+      final startStr = DateFormat(
+        'yyyyMMdd',
+      ).format(now.subtract(const Duration(days: 14)));
+      final endStr = DateFormat(
+        'yyyyMMdd',
+      ).format(now.add(const Duration(days: 90)));
+      final headers = {
+        'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
+        'Accept': 'application/json',
+      };
+
+      Future<List<Map<String, dynamic>>> tryEndpoint(String path) async {
+        try {
+          final uri = Uri.parse(
+            'https://$schoolUrl$path?startDate=$startStr&endDate=$endStr',
+          );
+          final res = await http.get(uri, headers: headers);
+          if (res.statusCode == 200) {
+            final decoded = jsonDecode(res.body);
+            List<dynamic> list = [];
+            if (decoded is List) {
+              list = decoded;
+            } else if (decoded is Map) {
+              list =
+                  (decoded['data'] ??
+                          decoded['exams'] ??
+                          decoded['result'] ??
+                          [])
+                      as List;
+            }
+            return list
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList();
+          }
+        } catch (_) {}
+        return [];
+      }
+
+      apiExams = await tryEndpoint('/WebUntis/api/exams');
+      if (apiExams.isEmpty)
+        apiExams = await tryEndpoint('/WebUntis/api/classreg/exams');
+      if (apiExams.isEmpty && personId != 0)
+        apiExams = await tryEndpoint('/WebUntis/api/exams/student/$personId');
+    }
+
+    if (mounted) {
+      setState(() {
+        _exams = [
+          ...apiExams.map((e) => {...e, '_source': 'api'}),
+          ...customExams.map((e) => {...e, '_source': 'custom'}),
+        ];
+        _exams.sort((a, b) {
+          final da =
+              int.tryParse(
+                (a['date'] ?? a['examDate'] ?? a['startDate'] ?? 0).toString(),
+              ) ??
+              0;
+          final db =
+              int.tryParse(
+                (b['date'] ?? b['examDate'] ?? b['startDate'] ?? 0).toString(),
+              ) ??
+              0;
+          return da.compareTo(db);
+        });
+      });
+    }
+  }
+
+  String _formatExamsForAi() {
+    if (_exams.isEmpty) return 'Keine Prüfungen eingetragen.';
+    final buf = StringBuffer();
+    for (var ex in _exams) {
+      final subject = ex['subject'] ?? ex['subjectName'] ?? '?';
+      final type = ex['type'] ?? 'Klausur';
+      final dateRaw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
+          .toString();
+      String dateStr = dateRaw;
+      if (dateRaw.length == 8) {
+        dateStr =
+            '${dateRaw.substring(6, 8)}.${dateRaw.substring(4, 6)}.${dateRaw.substring(0, 4)}';
+      }
+      final name = ex['name'] ?? ex['text'] ?? '';
+      buf.write('- $dateStr ($type): $subject');
+      if (name.isNotEmpty) buf.write(' "$name"');
+      buf.writeln();
+    }
+    return buf.toString();
+  }
 
   String get _systemPrompt {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -4521,12 +3738,17 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     final icu = _icuLocale(appLocaleNotifier.value);
     final todayStr = DateFormat('EEEE, dd. MMMM yyyy', icu).format(today);
     final schedule = _formatWeekForAi(widget.weekData, widget.currentMonday);
+    final examsStr = _formatExamsForAi();
     return '''
       ${l.aiSystemPersona}
       Heute ist: $todayStr
 
       STUNDENPLAN DIESE WOCHE:
       $schedule
+
+      GEPLANTE KLAUSUREN / PRÜFUNGEN:
+      $examsStr
+
       ${l.aiSystemRules}
     ''';
   }
@@ -4658,12 +3880,24 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
+      child: _withOptionalBackdropBlur(
+        sigmaX: 24,
+        sigmaY: 24,
+        child: const SizedBox.shrink(),
+        childBuilder: (enabled) => Container(
           height: MediaQuery.of(context).size.height * 0.82,
           decoration: BoxDecoration(
-            color: cs.surface.withOpacity(0.95),
+            color: enabled ? cs.surface.withOpacity(0.72) : cs.surface,
+            gradient: enabled
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      cs.surface.withOpacity(0.78),
+                      cs.surfaceContainerHigh.withOpacity(0.62),
+                    ],
+                  )
+                : null,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             border: Border(
               top: BorderSide(
@@ -5029,6 +4263,7 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    sheetAnimationStyle: _kBottomSheetAnimationStyle,
     builder: (_) => _LessonDetailSheet(
       subject: subject,
       subjectShort: subjectShort,
@@ -5057,22 +4292,11 @@ class _AnimatedLessonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder(
-      duration: Duration(milliseconds: 800 + (index * 150)),
-      curve: Curves.easeInOutCubicEmphasized,
-      tween: Tween<double>(begin: 0, end: 1),
-      builder: (context, double value, child) {
-        return Transform.scale(
-          scale: 0.9 + (0.1 * value),
-          child: Opacity(
-            opacity: value.clamp(0.0, 1.0),
-            child: Transform.translate(
-              offset: Offset(0, 60 * (1 - value)),
-              child: child,
-            ),
-          ),
-        );
-      },
+    return _springEntry(
+      duration: Duration(milliseconds: 760 + (index * 140)),
+      offsetY: 60,
+      startScale: 0.9,
+      curve: _kSmoothBounce,
       child: LessonCard(
         subject: lesson['_subjectLong']?.toString().isNotEmpty == true
             ? lesson['_subjectLong'].toString()
@@ -5172,144 +4396,150 @@ class _LessonDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        24,
-        16,
-        24,
-        MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: cs.onSurface.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(2),
+    return _sheetSurface(
+      context: context,
+      blur: blurEnabledNotifier.value,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          16,
+          24,
+          MediaQuery.of(context).viewInsets.bottom + 32,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.onSurface.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          if (isCancelled)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: cs.errorContainer,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.cancel_outlined, size: 16, color: cs.error),
-                  const SizedBox(width: 6),
-                  Text(
-                    l.detailCancelled,
-                    style: GoogleFonts.outfit(
-                      color: cs.error,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
+            if (isCancelled)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: cs.errorContainer,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cancel_outlined, size: 16, color: cs.error),
+                    const SizedBox(width: 6),
+                    Text(
+                      l.detailCancelled,
+                      style: GoogleFonts.outfit(
+                        color: cs.error,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: cs.tertiaryContainer,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    size: 16,
-                    color: cs.tertiary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    l.detailRegular,
-                    style: GoogleFonts.outfit(
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: cs.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 16,
                       color: cs.tertiary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      l.detailRegular,
+                      style: GoogleFonts.outfit(
+                        color: cs.tertiary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          Text(
-            subject,
-            style: GoogleFonts.outfit(
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1,
-            ),
-          ),
-          if (subjectShort.isNotEmpty)
             Text(
-              subjectShort,
+              subject,
               style: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: cs.primary.withOpacity(0.7),
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1,
               ),
             ),
+            if (subjectShort.isNotEmpty)
+              Text(
+                subjectShort,
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: cs.primary.withOpacity(0.7),
+                ),
+              ),
 
-          const SizedBox(height: 24),
-          Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
-          const SizedBox(height: 16),
+            const SizedBox(height: 24),
+            Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
+            const SizedBox(height: 16),
 
-          _row(context, Icons.access_time_rounded, l.detailTime, time),
-          _row(context, Icons.person_rounded, l.detailTeacher, teacher),
-          _row(context, Icons.room_rounded, l.detailRoom, room),
-          if (lessonNr.isNotEmpty && lessonNr != '0')
-            _row(context, Icons.tag_rounded, l.detailLesson, lessonNr),
-          if (info.isNotEmpty)
-            _row(
-              context,
-              Icons.info_outline_rounded,
-              l.detailInfo,
-              info,
-              iconColor: cs.tertiary,
-            ),
+            _row(context, Icons.access_time_rounded, l.detailTime, time),
+            _row(context, Icons.person_rounded, l.detailTeacher, teacher),
+            _row(context, Icons.room_rounded, l.detailRoom, room),
+            if (lessonNr.isNotEmpty && lessonNr != '0')
+              _row(context, Icons.tag_rounded, l.detailLesson, lessonNr),
+            if (info.isNotEmpty)
+              _row(
+                context,
+                Icons.info_outline_rounded,
+                l.detailInfo,
+                info,
+                iconColor: cs.tertiary,
+              ),
 
-          const SizedBox(height: 16),
-          Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
-          const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
+            const SizedBox(height: 12),
 
-          OutlinedButton.icon(
-            onPressed: onHideSubject,
-            icon: const Icon(Icons.visibility_off_outlined, size: 18),
-            label: Text(
-              l.detailHideSubject,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: cs.onSurface.withOpacity(0.6),
-              side: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
-              minimumSize: const Size(double.infinity, 48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+            OutlinedButton.icon(
+              onPressed: onHideSubject,
+              icon: const Icon(Icons.visibility_off_outlined, size: 18),
+              label: Text(
+                l.detailHideSubject,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: cs.onSurface.withOpacity(0.6),
+                side: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-        ],
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -5354,16 +4584,24 @@ class LessonCard extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
+          child: _withOptionalBackdropBlur(
+            sigmaX: 12,
+            sigmaY: 12,
+            child: const SizedBox.shrink(),
+            childBuilder: (enabled) => Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: isCancelled
-                    ? Theme.of(
-                        context,
-                      ).colorScheme.errorContainer.withOpacity(0.9)
-                    : Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                    ? (enabled
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.errorContainer.withOpacity(0.9)
+                          : Theme.of(context).colorScheme.errorContainer)
+                    : (enabled
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.surface.withOpacity(0.85)
+                          : Theme.of(context).colorScheme.surface),
                 border: Border.all(
                   color: cs.outlineVariant.withOpacity(0.45),
                   width: 1.5,
@@ -5462,6 +4700,534 @@ class LessonCard extends StatelessWidget {
   }
 }
 
+class _SchoolNotificationItem {
+  final String id;
+  final String title;
+  final String body;
+  final DateTime? date;
+  final String? author;
+  final String? url;
+
+  const _SchoolNotificationItem({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.date,
+    this.author,
+    this.url,
+  });
+
+  int get sortValue => date?.millisecondsSinceEpoch ?? 0;
+}
+
+// --- INFO / SCHUL-BENACHRICHTIGUNGEN ---
+class SchoolNotificationsPage extends StatefulWidget {
+  const SchoolNotificationsPage({super.key});
+
+  @override
+  State<SchoolNotificationsPage> createState() =>
+      _SchoolNotificationsPageState();
+}
+
+class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
+  List<_SchoolNotificationItem> _items = const [];
+  bool _loading = true;
+  String? _error;
+  DateTime? _lastUpdated;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  Future<void> _reload() async {
+    if (sessionID.isEmpty || schoolUrl.isEmpty || schoolName.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _items = const [];
+        _loading = false;
+        _error = null;
+        _lastUpdated = DateTime.now();
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+
+    try {
+      final fetched = await _fetchSchoolNotifications();
+      if (!mounted) return;
+      setState(() {
+        _items = fetched;
+        _loading = false;
+        _error = null;
+        _lastUpdated = DateTime.now();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = AppL10n.of(appLocaleNotifier.value).infoFetchError;
+        _lastUpdated = DateTime.now();
+      });
+    }
+  }
+
+  Future<List<_SchoolNotificationItem>> _fetchSchoolNotifications() async {
+    final start = DateTime.now().subtract(const Duration(days: 45));
+    final end = DateTime.now().add(const Duration(days: 90));
+    final startStr = DateFormat('yyyyMMdd').format(start);
+    final endStr = DateFormat('yyyyMMdd').format(end);
+
+    final headers = {
+      'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
+      'Accept': 'application/json',
+    };
+
+    List<dynamic> extractList(dynamic decoded) {
+      if (decoded is List) return decoded;
+      if (decoded is Map) {
+        final keys = [
+          'messages',
+          'notifications',
+          'items',
+          'data',
+          'result',
+          'results',
+          'entries',
+        ];
+        for (final key in keys) {
+          final value = decoded[key];
+          if (value is List) return value;
+          if (value is Map) {
+            for (final nested in keys) {
+              final nestedValue = value[nested];
+              if (nestedValue is List) return nestedValue;
+            }
+          }
+        }
+      }
+      return const [];
+    }
+
+    Future<List<dynamic>> tryGet(String path) async {
+      try {
+        final uri = Uri.parse('https://$schoolUrl$path');
+        final res = await http.get(uri, headers: headers);
+        if (res.statusCode == 200 && res.body.trim().isNotEmpty) {
+          return extractList(jsonDecode(res.body));
+        }
+      } catch (_) {}
+      return const [];
+    }
+
+    Future<List<dynamic>> tryJsonRpc(
+      String method,
+      Map<String, dynamic> params,
+    ) async {
+      try {
+        final uri = Uri.parse(
+          'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+        );
+        final res = await http.post(
+          uri,
+          headers: {...headers, 'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'id': 'school-info',
+            'method': method,
+            'params': params,
+            'jsonrpc': '2.0',
+          }),
+        );
+        if (res.statusCode == 200 && res.body.trim().isNotEmpty) {
+          final decoded = jsonDecode(res.body);
+          if (decoded is Map && decoded['error'] != null) {
+            return const [];
+          }
+          if (decoded is Map) {
+            return extractList(decoded['result'] ?? decoded);
+          }
+          return extractList(decoded);
+        }
+      } catch (_) {}
+      return const [];
+    }
+
+    final candidates = <List<dynamic>>[
+      await tryGet(
+        '/WebUntis/api/public/messages?startDate=$startStr&endDate=$endStr',
+      ),
+      await tryGet(
+        '/WebUntis/api/messages?startDate=$startStr&endDate=$endStr',
+      ),
+      await tryGet(
+        '/WebUntis/api/public/notifications?startDate=$startStr&endDate=$endStr',
+      ),
+      await tryGet(
+        '/WebUntis/api/public/notices?startDate=$startStr&endDate=$endStr',
+      ),
+      await tryJsonRpc('getMessagesOfDay', {
+        'date': DateFormat('yyyyMMdd').format(DateTime.now()),
+      }),
+      await tryJsonRpc('getMessages', {
+        'startDate': startStr,
+        'endDate': endStr,
+      }),
+    ];
+
+    final raw = candidates.firstWhere(
+      (entry) => entry.isNotEmpty,
+      orElse: () => const [],
+    );
+    final seen = <String>{};
+    final items = <_SchoolNotificationItem>[];
+
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final map = Map<String, dynamic>.from(entry);
+
+      final title =
+          (map['title'] ??
+                  map['subject'] ??
+                  map['headline'] ??
+                  map['name'] ??
+                  '')
+              .toString()
+              .trim();
+      final body =
+          (map['message'] ??
+                  map['text'] ??
+                  map['content'] ??
+                  map['description'] ??
+                  '')
+              .toString()
+              .trim();
+      if (title.isEmpty && body.isEmpty) continue;
+
+      final id =
+          (map['id'] ?? map['messageId'] ?? map['uuid'] ?? '$title-$body')
+              .toString();
+      if (seen.contains(id)) continue;
+      seen.add(id);
+
+      final dt = _parseNotificationDate(
+        map['date'] ??
+            map['startDate'] ??
+            map['publishDate'] ??
+            map['timestamp'] ??
+            map['created'] ??
+            map['createdAt'] ??
+            map['lastModified'],
+      );
+
+      items.add(
+        _SchoolNotificationItem(
+          id: id,
+          title: title.isEmpty
+              ? AppL10n.of(appLocaleNotifier.value).infoTitle
+              : title,
+          body: body,
+          date: dt,
+          author:
+              (map['author'] ?? map['createdBy'] ?? map['publisher'] ?? '')
+                  .toString()
+                  .trim()
+                  .isEmpty
+              ? null
+              : (map['author'] ?? map['createdBy'] ?? map['publisher'])
+                    .toString()
+                    .trim(),
+          url: _pickNotificationUrl(map),
+        ),
+      );
+    }
+
+    items.sort((a, b) => b.sortValue.compareTo(a.sortValue));
+    return items;
+  }
+
+  DateTime? _parseNotificationDate(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) {
+      if (raw > 1000000000000) {
+        return DateTime.fromMillisecondsSinceEpoch(raw);
+      }
+      if (raw > 1000000000) {
+        return DateTime.fromMillisecondsSinceEpoch(raw * 1000);
+      }
+      final s = raw.toString();
+      if (s.length == 8) {
+        try {
+          return DateTime.parse(
+            '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
+          );
+        } catch (_) {
+          return null;
+        }
+      }
+    }
+
+    final value = raw.toString().trim();
+    if (value.isEmpty) return null;
+    if (RegExp(r'^\d{8}$').hasMatch(value)) {
+      try {
+        return DateTime.parse(
+          '${value.substring(0, 4)}-${value.substring(4, 6)}-${value.substring(6, 8)}',
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+    try {
+      return DateTime.parse(value);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _pickNotificationUrl(Map<String, dynamic> map) {
+    final candidates = [
+      map['url'],
+      map['link'],
+      map['href'],
+      map['targetUrl'],
+      map['attachmentUrl'],
+    ];
+    for (final candidate in candidates) {
+      final text = candidate?.toString().trim() ?? '';
+      if (text.startsWith('http://') || text.startsWith('https://')) {
+        return text;
+      }
+    }
+    return null;
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return DateFormat(
+      'dd.MM.yyyy, HH:mm',
+      _icuLocale(appLocaleNotifier.value),
+    ).format(date);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final cs = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: RoundedBlurAppBar(
+        title: Text(
+          l.infoTitle,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 22),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _reload,
+        child: _loading
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 140),
+                  Center(child: CircularProgressIndicator()),
+                ],
+              )
+            : ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 150),
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _lastUpdated == null
+                              ? l.infoTitle
+                              : '${l.infoUpdated}: ${_formatDate(_lastUpdated)}',
+                          style: GoogleFonts.outfit(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: l.infoReload,
+                        onPressed: _reload,
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                    ],
+                  ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, bottom: 8),
+                      child: Text(
+                        _error!,
+                        style: GoogleFonts.outfit(
+                          color: cs.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 6),
+                  if (_items.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainer,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l.infoEmpty,
+                            style: GoogleFonts.outfit(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            l.infoEmptyHint,
+                            style: GoogleFonts.outfit(
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._items.map((item) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainer,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: cs.outlineVariant.withOpacity(0.35),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.campaign_rounded,
+                                  size: 18,
+                                  color: cs.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    item.title,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (item.body.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                item.body,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  color: cs.onSurfaceVariant,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                if (item.date != null)
+                                  _infoChip(
+                                    context,
+                                    _formatDate(item.date),
+                                    Icons.schedule_rounded,
+                                  ),
+                                if ((item.author ?? '').isNotEmpty)
+                                  _infoChip(
+                                    context,
+                                    item.author!,
+                                    Icons.person_outline_rounded,
+                                  ),
+                              ],
+                            ),
+                            if (item.url != null) ...[
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: () async {
+                                  final ok = await url_launcher.launchUrlString(
+                                    item.url!,
+                                    mode: url_launcher
+                                        .LaunchMode
+                                        .externalApplication,
+                                  );
+                                  if (!ok && mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          l.settingsGithubOpenFailed,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.open_in_new_rounded),
+                                label: Text(l.infoOpenLink),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    }),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _infoChip(BuildContext context, String text, IconData icon) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: cs.primary),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // --- EINSTELLUNGEN ---
 
 class SettingsPage extends StatefulWidget {
@@ -5473,7 +5239,6 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   String _username = '';
-  String _serverDisplay = '';
   String _apiKeyDisplay = '';
   bool _apiKeySet = false;
   bool _githubDirectDownload = false;
@@ -5525,7 +5290,6 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) {
       setState(() {
         _username = prefs.getString('username') ?? '';
-        _serverDisplay = prefs.getString('schoolUrl') ?? '';
         _apiKeySet = key.isNotEmpty;
         _apiKeyDisplay = key.length > 8
             ? '${key.substring(0, 7)}••••${key.substring(key.length - 4)}'
@@ -5708,48 +5472,24 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showLanguageDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    showDialog(
+    _showUnifiedOptionSheet<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(
-          l.settingsLanguage,
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _localeLabels.entries.map((e) {
-            final selected = appLocaleNotifier.value == e.key;
-            return ListTile(
-              title: Text(
-                e.value,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-              trailing: selected
-                  ? Icon(
-                      Icons.check_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                    )
-                  : null,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              onTap: () {
-                _setLocale(e.key);
-                Navigator.pop(context);
-              },
-            );
-          }).toList(),
-        ),
-      ),
-    );
+      title: l.settingsLanguage,
+      options: _localeLabels.entries
+          .map(
+            (e) => _SheetOption(
+              value: e.key,
+              title: e.value,
+              icon: Icons.language_rounded,
+              selected: appLocaleNotifier.value == e.key,
+            ),
+          )
+          .toList(),
+    ).then((val) {
+      if (val != null) {
+        _setLocale(val);
+      }
+    });
   }
 
   String _backgroundStyleLabel(AppL10n l, int style) {
@@ -5788,139 +5528,143 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showBackgroundStyleDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final cs = Theme.of(context).colorScheme;
     final styleOptions = List<int>.generate(6, (index) => index);
 
-    showDialog(
+    _showUnifiedOptionSheet<int>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(
-          l.settingsBackgroundStyle,
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-            color: cs.onSurface,
-          ),
-        ),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: styleOptions.map((style) {
-              final selected = backgroundAnimationStyleNotifier.value == style;
-              return ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                leading: Icon(
-                  _backgroundStyleIcon(style),
-                  color: selected ? cs.primary : cs.onSurfaceVariant,
-                ),
-                title: Text(
-                  _backgroundStyleLabel(l, style),
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-                trailing: selected
-                    ? Icon(Icons.check_rounded, color: cs.primary)
-                    : null,
-                onTap: () {
-                  _setBackgroundAnimationStyle(style);
-                  Navigator.pop(context);
-                },
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
+      title: l.settingsBackgroundStyle,
+      options: styleOptions
+          .map(
+            (style) => _SheetOption(
+              value: style,
+              title: _backgroundStyleLabel(l, style),
+              icon: _backgroundStyleIcon(style),
+              selected: backgroundAnimationStyleNotifier.value == style,
+            ),
+          )
+          .toList(),
+    ).then((style) {
+      if (style != null) {
+        _setBackgroundAnimationStyle(style);
+      }
+    });
   }
 
   void _showApiKeyDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
     final ctrl = TextEditingController(text: geminiApiKey);
-    showDialog(
+    _showUnifiedSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(
-          l.settingsApiKeyDialogTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l.settingsApiKeyDialogDesc,
-              style: GoogleFonts.outfit(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+      isScrollControlled: true,
+      child: Builder(
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              MediaQuery.of(ctx).viewInsets.bottom + 16,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ctrl,
-              obscureText: true,
-              style: GoogleFonts.outfit(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'AIza...',
-                filled: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              l.settingsApiKeyCancel,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-            ),
-          ),
-          if (_apiKeySet)
-            TextButton(
-              onPressed: () async {
-                geminiApiKey = '';
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.remove('geminiApiKey');
-                await prefs.remove('openAiApiKey');
-                Navigator.pop(ctx);
-                _loadPrefs();
-              },
-              child: Text(
-                l.settingsApiKeyRemove,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.error,
+                const SizedBox(height: 14),
+                Text(
+                  l.settingsApiKeyDialogTitle,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  l.settingsApiKeyDialogDesc,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: ctrl,
+                  obscureText: true,
+                  style: GoogleFonts.outfit(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'AIza...',
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(
+                        l.settingsApiKeyCancel,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    if (_apiKeySet)
+                      TextButton(
+                        onPressed: () async {
+                          geminiApiKey = '';
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.remove('geminiApiKey');
+                          await prefs.remove('openAiApiKey');
+                          Navigator.pop(ctx);
+                          _loadPrefs();
+                        },
+                        child: Text(
+                          l.settingsApiKeyRemove,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    FilledButton(
+                      onPressed: () async {
+                        final val = ctrl.text.trim();
+                        geminiApiKey = val;
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('geminiApiKey', val);
+                        await prefs.remove('openAiApiKey');
+                        Navigator.pop(ctx);
+                        _loadPrefs();
+                      },
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        l.settingsApiKeySave,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          FilledButton(
-            onPressed: () async {
-              final val = ctrl.text.trim();
-              geminiApiKey = val;
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('geminiApiKey', val);
-              await prefs.remove('openAiApiKey');
-              Navigator.pop(ctx);
-              _loadPrefs();
-            },
-            style: FilledButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Text(
-              l.settingsApiKeySave,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -6106,15 +5850,23 @@ class _SettingsPageState extends State<SettingsPage> {
               scrolledUnderElevation: 0,
               surfaceTintColor: Colors.transparent,
               shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(12),
+                ),
               ),
               flexibleSpace: ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(12),
+                ),
                 child: Stack(
                   children: [
-                    BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: Container(color: Colors.transparent),
+                    _withOptionalBackdropBlur(
+                      sigmaX: 16,
+                      sigmaY: 16,
+                      child: const SizedBox.shrink(),
+                      childBuilder: (enabled) => Container(
+                        color: enabled ? Colors.transparent : cs.surface,
+                      ),
                     ),
                     FlexibleSpaceBar(
                       titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 14),
@@ -6202,7 +5954,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         child: Center(
                           child: Text(
-                            _username.isNotEmpty ? _username[0].toUpperCase() : '?',
+                            _username.isNotEmpty
+                                ? _username[0].toUpperCase()
+                                : '?',
                             style: TextStyle(
                               color: cs.onPrimary,
                               fontWeight: FontWeight.bold,
@@ -6563,413 +6317,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-// ── Reusable animated background wrapper ───────────────────────────────────────
-class _AnimatedBackground extends StatelessWidget {
-  final Widget child;
-  const _AnimatedBackground({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: backgroundAnimationsNotifier,
-      builder: (context, enabled, _) {
-        if (!enabled) return child;
-        return ValueListenableBuilder<int>(
-          valueListenable: backgroundAnimationStyleNotifier,
-          builder: (context, style, _) {
-            return Stack(
-              children: [
-                Positioned.fill(child: _AnimatedBackgroundScene(style: style)),
-                child,
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _AnimatedBackgroundScene extends StatefulWidget {
-  final int style;
-  const _AnimatedBackgroundScene({required this.style});
-
-  @override
-  State<_AnimatedBackgroundScene> createState() =>
-      _AnimatedBackgroundSceneState();
-}
-
-class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 16),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, _) => _buildStyle(cs, _ctrl.value),
-    );
-  }
-
-  Widget _buildStyle(ColorScheme cs, double t) {
-    final style = widget.style.clamp(0, 5);
-    switch (style) {
-      case 1:
-        return _SpaceLayer(t: t, cs: cs);
-      case 2:
-        return _BubblesLayer(t: t, cs: cs);
-      case 3:
-        return _LinesLayer(t: t, cs: cs);
-      case 4:
-        return _ThreeDLayer(t: t, cs: cs);
-      case 5:
-        return _AuroraLayer(t: t, cs: cs);
-      default:
-        return _OrbsLayer(t: t, cs: cs);
-    }
-  }
-}
-
-class _OrbsLayer extends StatelessWidget {
-  final double t;
-  final ColorScheme cs;
-  const _OrbsLayer({required this.t, required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    final t2 = Curves.easeInOutCubicEmphasized.transform(t);
-    final t3 = Curves.slowMiddle.transform(1.0 - t);
-    return Stack(
-      clipBehavior: Clip.hardEdge,
-      children: [
-        Positioned(
-          top: -80 + t * 65,
-          right: -40 + t2 * 50,
-          child: _orb(240, cs.primaryContainer.withOpacity(0.38)),
-        ),
-        Positioned(
-          bottom: -70 + t2 * 55,
-          left: -45 + t * 40,
-          child: _orb(210, cs.secondaryContainer.withOpacity(0.34)),
-        ),
-        Positioned(
-          top: 85 + t3 * 90,
-          right: 15 - t2 * 30,
-          child: _orb(150, cs.tertiaryContainer.withOpacity(0.27)),
-        ),
-        Positioned(
-          top: 175 + t2 * 80,
-          left: 8 + t * 45,
-          child: _orb(170, cs.primaryContainer.withOpacity(0.20)),
-        ),
-        Positioned(
-          bottom: 55 - t3 * 35,
-          right: 35 + t * 60,
-          child: _orb(125, cs.secondaryContainer.withOpacity(0.22)),
-        ),
-      ],
-    );
-  }
-
-  Widget _orb(double size, Color color) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-  );
-}
-
-class _SpaceLayer extends StatelessWidget {
-  final double t;
-  final ColorScheme cs;
-  const _SpaceLayer({required this.t, required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(-0.3, -0.8),
-                radius: 1.35,
-                colors: [
-                  cs.primaryContainer.withOpacity(0.24),
-                  cs.surface.withOpacity(0.04),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned.fill(
-          child: CustomPaint(
-            painter: _StarfieldPainter(t: t, cs: cs),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BubblesLayer extends StatelessWidget {
-  final double t;
-  final ColorScheme cs;
-  const _BubblesLayer({required this.t, required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    final bubbles = List<Widget>.generate(18, (i) {
-      final f = (i + 1) / 19;
-      final drift = math.sin((t * math.pi * 2) + i) * 0.06;
-      final x = ((i * 0.13) % 1.0).clamp(0.04, 0.96) - 0.5 + drift;
-      final y = 0.6 - (((t + f) % 1.0) * 1.4);
-      final size = 18.0 + (i % 5) * 11.0;
-      final color = Color.lerp(
-        cs.secondaryContainer,
-        cs.tertiaryContainer,
-        (i % 7) / 6,
-      )!.withOpacity(0.22);
-      return Align(
-        alignment: Alignment(x * 2, y * 2),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                color.withOpacity(0.92),
-                color.withOpacity(0.45),
-                color.withOpacity(0.12),
-              ],
-            ),
-          ),
-        ),
-      );
-    });
-
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  cs.tertiaryContainer.withOpacity(0.20),
-                  cs.primaryContainer.withOpacity(0.10),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-        ...bubbles,
-      ],
-    );
-  }
-}
-
-class _LinesLayer extends StatelessWidget {
-  final double t;
-  final ColorScheme cs;
-  const _LinesLayer({required this.t, required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _LinesPainter(t: t, cs: cs),
-    );
-  }
-}
-
-class _ThreeDLayer extends StatelessWidget {
-  final double t;
-  final ColorScheme cs;
-  const _ThreeDLayer({required this.t, required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    final layers = List<Widget>.generate(6, (i) {
-      final p = (t + i * 0.13) % 1.0;
-      final size = 120.0 + i * 32.0;
-      final x = math.sin((p * math.pi * 2) + i) * 90;
-      final y = math.cos((p * math.pi * 2 * 0.7) + i) * 70;
-      final color = Color.lerp(
-        cs.primaryContainer,
-        cs.secondaryContainer,
-        i / 5,
-      )!.withOpacity(0.12 + i * 0.02);
-      return Positioned.fill(
-        child: Transform.translate(
-          offset: Offset(x, y),
-          child: Center(
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.001)
-                ..rotateX((p * math.pi) / 3)
-                ..rotateZ((p * math.pi) / 2),
-              child: Container(
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: cs.onSurface.withOpacity(0.08),
-                    width: 1,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    });
-    return Stack(children: layers);
-  }
-}
-
-class _AuroraLayer extends StatelessWidget {
-  final double t;
-  final ColorScheme cs;
-  const _AuroraLayer({required this.t, required this.cs});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _AuroraPainter(t: t, cs: cs),
-    );
-  }
-}
-
-class _StarfieldPainter extends CustomPainter {
-  final double t;
-  final ColorScheme cs;
-  _StarfieldPainter({required this.t, required this.cs});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final starPaint = Paint()..style = PaintingStyle.fill;
-    for (int i = 0; i < 120; i++) {
-      final seed = i * 0.6180339;
-      final x = ((seed * 9973) % 1.0) * size.width;
-      final yBase = ((seed * 6967) % 1.0) * size.height;
-      final y = (yBase + (t * (10 + (i % 7)))) % size.height;
-      final twinkle =
-          0.25 + 0.75 * (0.5 + 0.5 * math.sin((t * 8 + i) * math.pi));
-      final r = 0.5 + (i % 3) * 0.5;
-      starPaint.color = Color.lerp(
-        cs.onSurface,
-        cs.primary,
-        (i % 5) / 4,
-      )!.withOpacity(0.08 + 0.20 * twinkle);
-      canvas.drawCircle(Offset(x, y), r, starPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _StarfieldPainter oldDelegate) => true;
-}
-
-class _LinesPainter extends CustomPainter {
-  final double t;
-  final ColorScheme cs;
-  _LinesPainter({required this.t, required this.cs});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round;
-
-    for (int i = -2; i < 15; i++) {
-      final y = i * 52.0 + (t * 120.0);
-      final path = Path()
-        ..moveTo(-40, y)
-        ..lineTo(size.width + 40, y - 70);
-      paint.color = Color.lerp(
-        cs.primary,
-        cs.tertiary,
-        ((i + 2) % 6) / 5,
-      )!.withOpacity(0.12 + ((i + 2) % 3) * 0.05);
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _LinesPainter oldDelegate) => true;
-}
-
-class _AuroraPainter extends CustomPainter {
-  final double t;
-  final ColorScheme cs;
-  _AuroraPainter({required this.t, required this.cs});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final base = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          cs.primaryContainer.withOpacity(0.15),
-          cs.secondaryContainer.withOpacity(0.10),
-          Colors.transparent,
-        ],
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, base);
-
-    for (int i = 0; i < 4; i++) {
-      final path = Path();
-      final phase = t * math.pi * 2 + i * 0.8;
-      final top = 60.0 + i * 65.0;
-      path.moveTo(0, top + math.sin(phase) * 18);
-      for (double x = 0; x <= size.width; x += 20) {
-        final y =
-            top +
-            math.sin((x / size.width) * math.pi * 2 + phase) * (20 + i * 4);
-        path.lineTo(x, y);
-      }
-      path.lineTo(size.width, size.height);
-      path.lineTo(0, size.height);
-      path.close();
-
-      final fill = Paint()
-        ..style = PaintingStyle.fill
-        ..color = Color.lerp(
-          cs.primary,
-          cs.tertiary,
-          i / 3,
-        )!.withOpacity(0.09 + i * 0.03);
-      canvas.drawPath(path, fill);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _AuroraPainter oldDelegate) => true;
-}
-
 // ── Standalone account card for settings ─────────────────────────────────────
+// ignore: unused_element
 class _SettingsAccountCard extends StatelessWidget {
   final String username;
   final String serverUrl;
@@ -7106,9 +6455,10 @@ class SubjectColorsPage extends StatelessWidget {
     double green = (current ?? fallback).green.toDouble();
     double blue = (current ?? fallback).blue.toDouble();
 
-    showDialog(
+    _showUnifiedSheet<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      isScrollControlled: true,
+      child: StatefulBuilder(
         builder: (ctx, setStateDialog) {
           final preview = Color.fromARGB(
             255,
@@ -7116,21 +6466,36 @@ class SubjectColorsPage extends StatelessWidget {
             green.round(),
             blue.round(),
           );
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              MediaQuery.of(ctx).viewInsets.bottom + 16,
             ),
-            title: Text(
-              l.settingsColorFor(subject),
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-              ),
-            ),
-            content: Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  l.settingsColorFor(subject),
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Container(
                   height: 66,
                   decoration: BoxDecoration(
@@ -7173,27 +6538,30 @@ class SubjectColorsPage extends StatelessWidget {
                   activeColor: Colors.blue,
                   onChanged: (v) => setStateDialog(() => blue = v),
                 ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(
+                        l.settingsApiKeyCancel,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        _setSubjectColor(subject, preview.value);
+                        Navigator.pop(ctx);
+                      },
+                      child: Text(
+                        l.settingsColorApply,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  l.settingsApiKeyCancel,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-              ),
-              FilledButton(
-                onPressed: () {
-                  _setSubjectColor(subject, preview.value);
-                  Navigator.pop(ctx);
-                },
-                child: Text(
-                  l.settingsColorApply,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
           );
         },
       ),
@@ -7204,92 +6572,88 @@ class SubjectColorsPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
     final palette = _subjectColorPalette(cs);
-    showDialog(
+    _showUnifiedSheet<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        title: Text(
-          l.settingsColorFor(subject),
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: palette.map((c) {
-                final isSelected = current != null && current.value == c.value;
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    _setSubjectColor(subject, c.value);
-                  },
-                  child: Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: c,
-                      shape: BoxShape.circle,
-                      border: isSelected
-                          ? Border.all(
-                              color: cs.onSurface.withOpacity(0.65),
-                              width: 3,
-                            )
-                          : Border.all(color: Colors.transparent),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: c.withOpacity(0.45),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: isSelected
-                        ? Icon(
-                            Icons.check_rounded,
-                            color:
-                                ThemeData.estimateBrightnessForColor(c) ==
-                                    Brightness.dark
-                                ? Colors.white
-                                : Colors.black,
-                            size: 22,
-                          )
-                        : null,
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                _showCustomColorPicker(context, subject, current);
-              },
-              icon: const Icon(Icons.tune_rounded, size: 18),
-              label: Text(
-                l.settingsColorCustomPicker,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-              ),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+      child: Builder(
+        builder: (ctx) => Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(999),
                 ),
               ),
-            ),
-            if (current != null) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+              Text(
+                l.settingsColorFor(subject),
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: palette.map((c) {
+                  final isSelected =
+                      current != null && current.value == c.value;
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _setSubjectColor(subject, c.value);
+                    },
+                    child: Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: c,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(
+                                color: cs.onSurface.withOpacity(0.65),
+                                width: 3,
+                              )
+                            : Border.all(color: Colors.transparent),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: c.withOpacity(0.45),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: isSelected
+                          ? Icon(
+                              Icons.check_rounded,
+                              color:
+                                  ThemeData.estimateBrightnessForColor(c) ==
+                                      Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black,
+                              size: 22,
+                            )
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
               OutlinedButton.icon(
                 onPressed: () {
-                  Navigator.pop(context);
-                  _clearSubjectColor(subject);
+                  Navigator.pop(ctx);
+                  _showCustomColorPicker(context, subject, current);
                 },
-                icon: const Icon(Icons.refresh_rounded, size: 18),
+                icon: const Icon(Icons.tune_rounded, size: 18),
                 label: Text(
-                  l.settingsColorReset,
+                  l.settingsColorCustomPicker,
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
                 style: OutlinedButton.styleFrom(
@@ -7299,8 +6663,28 @@ class SubjectColorsPage extends StatelessWidget {
                   ),
                 ),
               ),
+              if (current != null) ...[
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _clearSubjectColor(subject);
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: Text(
+                    l.settingsColorReset,
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -7317,102 +6701,113 @@ class SubjectColorsPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: ValueListenableBuilder(
-        valueListenable: knownSubjectsNotifier,
-        builder: (context, subjectsSet, _) {
-          final subjects = subjectsSet.toList()..sort();
-          if (subjects.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.palette_outlined,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l.settingsNoSubjectsLoaded,
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+      body: _AnimatedBackground(
+        child: ValueListenableBuilder(
+          valueListenable: knownSubjectsNotifier,
+          builder: (context, subjectsSet, _) {
+            final subjects = subjectsSet.toList()..sort();
+            if (subjects.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.palette_outlined,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.outlineVariant,
                     ),
-                  ),
-                  Text(
-                    l.settingsNoSubjectsLoadedDesc,
-                    style: GoogleFonts.outfit(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return ValueListenableBuilder(
-            valueListenable: subjectColorsNotifier,
-            builder: (context, colors, _) {
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                itemCount: subjects.length,
-                itemBuilder: (context, index) {
-                  final subj = subjects[index];
-                  final colorVal = colors[subj];
-                  final subjectColor = colorVal != null
-                      ? Color(colorVal)
-                      : null;
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 4,
-                    ),
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color:
-                            subjectColor ??
-                            Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                        border: subjectColor != null
-                            ? Border.all(
-                                color: subjectColor.withOpacity(0.35),
-                                width: 2,
-                              )
-                            : null,
-                      ),
-                      child: subjectColor == null
-                          ? Icon(
-                              Icons.palette_outlined,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 20,
-                            )
-                          : null,
-                    ),
-                    title: Text(
-                      subj,
+                    const SizedBox(height: 16),
+                    Text(
+                      l.settingsNoSubjectsLoaded,
                       style: GoogleFonts.outfit(
+                        fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        fontSize: 16,
                       ),
                     ),
-                    subtitle: Text(
-                      subjectColor != null
-                          ? l.settingsCustomColor
-                          : l.settingsDefaultColor,
+                    Text(
+                      l.settingsNoSubjectsLoadedDesc,
                       style: GoogleFonts.outfit(
-                        fontSize: 13,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => _showColorPicker(context, subj, subjectColor),
-                  );
-                },
+                  ],
+                ),
               );
-            },
-          );
-        },
+            }
+            return ValueListenableBuilder(
+              valueListenable: subjectColorsNotifier,
+              builder: (context, colors, _) {
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  itemCount: subjects.length,
+                  itemBuilder: (context, index) {
+                    final subj = subjects[index];
+                    final colorVal = colors[subj];
+                    final subjectColor = colorVal != null
+                        ? Color(colorVal)
+                        : null;
+                    return _springEntry(
+                      duration: Duration(milliseconds: 280 + index * 36),
+                      offsetY: 14,
+                      startScale: 0.95,
+                      curve: _kSmoothBounce,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 4,
+                        ),
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color:
+                                subjectColor ??
+                                Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                            border: subjectColor != null
+                                ? Border.all(
+                                    color: subjectColor.withOpacity(0.35),
+                                    width: 2,
+                                  )
+                                : null,
+                          ),
+                          child: subjectColor == null
+                              ? Icon(
+                                  Icons.palette_outlined,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 20,
+                                )
+                              : null,
+                        ),
+                        title: Text(
+                          subj,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                        subtitle: Text(
+                          subjectColor != null
+                              ? l.settingsCustomColor
+                              : l.settingsDefaultColor,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () =>
+                            _showColorPicker(context, subj, subjectColor),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -7433,93 +6828,94 @@ class HiddenSubjectsPage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: ValueListenableBuilder(
-        valueListenable: hiddenSubjectsNotifier,
-        builder: (context, hiddenSet, _) {
-          final hidden = hiddenSet.toList()..sort();
-          if (hidden.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.visibility_off_outlined,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l.settingsNoHidden,
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+      body: _AnimatedBackground(
+        child: ValueListenableBuilder(
+          valueListenable: hiddenSubjectsNotifier,
+          builder: (context, hiddenSet, _) {
+            final hidden = hiddenSet.toList()..sort();
+            if (hidden.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.visibility_off_outlined,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.outlineVariant,
                     ),
-                  ),
-                  Text(
-                    l.settingsNoHiddenDesc,
-                    style: GoogleFonts.outfit(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            itemCount: hidden.length,
-            itemBuilder: (context, index) {
-              final subject = hidden[index];
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 4,
-                ),
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(
-                      subject.isNotEmpty ? subject[0].toUpperCase() : '?',
+                    const SizedBox(height: 16),
+                    Text(
+                      l.settingsNoHidden,
                       style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w800,
                         fontSize: 18,
-                        color: Theme.of(context).colorScheme.secondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      l.settingsNoHiddenDesc,
+                      style: GoogleFonts.outfit(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              itemCount: hidden.length,
+              itemBuilder: (context, index) {
+                final subject = hidden[index];
+                return _springEntry(
+                  duration: Duration(milliseconds: 280 + index * 36),
+                  offsetY: 14,
+                  startScale: 0.95,
+                  curve: _kSmoothBounce,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 4,
+                    ),
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          subject.isNotEmpty ? subject[0].toUpperCase() : '?',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: Theme.of(context).colorScheme.secondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      subject,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    trailing: FilledButton.tonal(
+                      onPressed: () {
+                        _unhideSubject(subject);
+                      },
+                      child: Text(
+                        l.settingsUnhide,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
-                ),
-                title: Text(
-                  subject,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                trailing: FilledButton.tonal(
-                  onPressed: () {
-                    HapticFeedback.selectionClick();
-                    _unhideSubject(subject);
-                  },
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    l.settingsUnhide,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              );
-            },
-          );
-        },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

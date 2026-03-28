@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
+import '../core/time_utils.dart';
 
 import 'notification_service.dart';
 import 'widget_service.dart';
@@ -148,8 +149,8 @@ Future<void> updateUntisData() async {
       name = l['su'][0]['name'] ?? "Unbekannt";
     }
 
-    String startStr = _formatUntisTime(start.toString());
-    String endStr = _formatUntisTime(end.toString());
+    String startStr = formatUntisTime(start.toString());
+    String endStr = formatUntisTime(end.toString());
 
     dailyScheduleBuffer.writeln("$startStr - $endStr: $name");
 
@@ -216,8 +217,3 @@ Future<void> updateUntisData() async {
   }
 }
 
-String _formatUntisTime(String time) {
-  if (time.length < 3) return time;
-  String formatted = time.padLeft(4, '0');
-  return "${formatted.substring(0, 2)}:${formatted.substring(2)}";
-}

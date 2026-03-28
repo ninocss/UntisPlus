@@ -17,6 +17,7 @@ class AppL10n {
   // ── Navigation ──────────────────────────────────────────────────────────────
   String get navWeek => _t('navWeek');
   String get navExams => _t('navExams');
+  String get navInfo => _t('navInfo');
   String get navMenu => _t('navMenu');
 
   // ── Login ───────────────────────────────────────────────────────────────────
@@ -83,6 +84,11 @@ class AppL10n {
   String get timetableMyTimetable => _t('timetableMyTimetable');
   String get timetableSelectAnother => _t('timetableSelectAnother');
   String get timetableNoClassesFound => _t('timetableNoClassesFound');
+  String get freeRoomsTitle => _t('freeRoomsTitle');
+  String get freeRoomsSelectTime => _t('freeRoomsSelectTime');
+  String get freeRoomsNoneFound => _t('freeRoomsNoneFound');
+  String get freeRoomsNoRangesHint => _t('freeRoomsNoRangesHint');
+  String freeRoomsCount(int n) => _t('freeRoomsCount').replaceAll('{n}', '$n');
   List<String> get weekDayShort =>
       List<String>.from(_strings[locale]!['weekDayShort'] as List);
   List<String> get weekDayFull =>
@@ -127,6 +133,15 @@ class AppL10n {
   String get examsImportSuccess => _t('examsImportSuccess');
   String get examsImportError => _t('examsImportError');
   String examsInDays(int n) => _t('examsDaysIn').replaceAll('{n}', '$n');
+
+  // ── School Info / Notifications ────────────────────────────────────────────
+  String get infoTitle => _t('infoTitle');
+  String get infoReload => _t('infoReload');
+  String get infoUpdated => _t('infoUpdated');
+  String get infoEmpty => _t('infoEmpty');
+  String get infoEmptyHint => _t('infoEmptyHint');
+  String get infoFetchError => _t('infoFetchError');
+  String get infoOpenLink => _t('infoOpenLink');
 
   // ── AI Chat ─────────────────────────────────────────────────────────────────
   String get aiTitle => _t('aiTitle');
@@ -238,6 +253,7 @@ class AppL10n {
     'de': {
       'navWeek': 'Woche',
       'navExams': 'Prüfungen',
+      'navInfo': 'Info',
       'navMenu': 'Menü',
 
       'loginServer': 'Server URL',
@@ -305,6 +321,12 @@ class AppL10n {
       'timetableSelectAnother': 'Andere Klasse',
       'timetableNoClassesFound':
           'Keine Klassen gefunden oder Zugriff verweigert.',
+      'freeRoomsTitle': 'Freie Räume',
+      'freeRoomsSelectTime': 'Zeitraum wählen',
+      'freeRoomsNoneFound': 'Keine freien Räume in diesem Zeitraum gefunden.',
+      'freeRoomsNoRangesHint':
+          'Keine passenden Zeitfenster im aktuellen Tag gefunden.',
+      'freeRoomsCount': '{n} freie Räume',
       'weekDayShort': ['Mo', 'Di', 'Mi', 'Do', 'Fr'],
       'weekDayFull': [
         'Montag',
@@ -351,6 +373,16 @@ class AppL10n {
       'examsImportFile': 'PDF / Datei',
       'examsImportSuccess': 'Erfolgreich importiert!',
       'examsImportError': 'Fehler beim Import: ',
+
+      'infoTitle': 'Schulinfos',
+      'infoReload': 'Neu laden',
+      'infoUpdated': 'Aktualisiert',
+      'infoEmpty': 'Keine aktuellen Benachrichtigungen',
+      'infoEmptyHint':
+          'Falls deine Schule derzeit nichts veröffentlicht hat, erscheint hier keine Meldung.',
+      'infoFetchError':
+          'Benachrichtigungen konnten nicht geladen werden. Bitte später erneut versuchen.',
+      'infoOpenLink': 'Link öffnen',
 
       'aiTitle': 'KI-Assistent',
       'aiInputHint': 'Frage stellen…',
@@ -456,12 +488,13 @@ class AppL10n {
       'aiSystemPersona':
           'Du bist "Plan-Assistent", ein freundlicher und motivierender KI-Helfer für Schüler*innen.',
       'aiSystemRules': '''REGELN:
-- Antworte AUSSCHLIEßLICH basierend auf den obigen Stundenplandaten.
+- Antworte basierend auf den obigen Stundenplan- und Klausurendaten.
 - Erfinde KEINE Fächer, Zeiten, Lehrer oder sonstige Informationen.
+- Berücksichtige Prüfungen/Klausuren in deinen Antworten, wenn es thematisch passt.
 - Wenn etwas aus den Daten nicht ableitbar ist, sage es offen.
 - Beachte [FÄLLT AUS]-Markierungen (diese Stunden finden nicht statt).
 - "Freistunden" = Lücken zwischen zwei Unterrichtsstunden.
-- Antworte auf Deutsch, freundlich, kurz.
+- Antworte auf Deutsch, sei hilfreich, motivierend und auf den Punkt.
 - Beginne nicht automatisch mit "Ja," – antworte direkt.
 - Du darfst Markdown zur Formatierung verwenden (z.B. Listen, **fett**).''',
     },
@@ -470,6 +503,7 @@ class AppL10n {
     'en': {
       'navWeek': 'Week',
       'navExams': 'Exams',
+      'navInfo': 'Info',
       'navMenu': 'Menu',
 
       'loginServer': 'Server URL',
@@ -530,6 +564,12 @@ class AppL10n {
       'timetableMyTimetable': 'My timetable',
       'timetableSelectAnother': 'Another class',
       'timetableNoClassesFound': 'No classes found or access denied.',
+      'freeRoomsTitle': 'Free Rooms',
+      'freeRoomsSelectTime': 'Select time range',
+      'freeRoomsNoneFound': 'No free rooms found for this time range.',
+      'freeRoomsNoRangesHint':
+          'No suitable time ranges found for the current day.',
+      'freeRoomsCount': '{n} free rooms',
       'weekDayShort': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
       'weekDayFull': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
       'noLesson': '(no lessons)',
@@ -570,6 +610,15 @@ class AppL10n {
       'examsImportFile': 'PDF / File',
       'examsImportSuccess': 'Successfully imported!',
       'examsImportError': 'Import error: ',
+
+      'infoTitle': 'School Info',
+      'infoReload': 'Reload',
+      'infoUpdated': 'Updated',
+      'infoEmpty': 'No current notifications',
+      'infoEmptyHint':
+          'If your school has not published anything at the moment, nothing is shown here.',
+      'infoFetchError': 'Could not load notifications. Please try again later.',
+      'infoOpenLink': 'Open link',
 
       'aiTitle': 'AI Assistant',
       'aiInputHint': 'Ask a question…',
@@ -675,12 +724,13 @@ class AppL10n {
       'aiSystemPersona':
           'You are "Schedule Assistant", a friendly and motivating AI helper for students.',
       'aiSystemRules': '''RULES:
-- Answer EXCLUSIVELY based on the timetable data above.
+- Answer based on the timetable and exam data above.
 - Do NOT invent subjects, times, teachers or other information.
+- Consider exams/tests in your answers if applicable.
 - If something cannot be derived from the data, say so openly.
 - Respect [CANCELLED] markers (those lessons do not take place).
 - "Free periods" = gaps between two lessons.
-- Answer in English, friendly and concise.
+- Answer in English, be helpful, motivating, and concise.
 - Do not start automatically with "Yes," – answer directly.
 - You may use Markdown for formatting (e.g. lists, **bold**).''',
     },
@@ -689,6 +739,7 @@ class AppL10n {
     'fr': {
       'navWeek': 'Semaine',
       'navExams': 'Examens',
+      'navInfo': 'Infos',
       'navMenu': 'Menu',
 
       'loginServer': 'URL du serveur',
@@ -753,6 +804,13 @@ class AppL10n {
       'timetableMyTimetable': 'Mon emploi du temps',
       'timetableSelectAnother': 'Autre classe',
       'timetableNoClassesFound': 'Aucune classe trouvée ou accès refusé.',
+      'freeRoomsTitle': 'Salles libres',
+      'freeRoomsSelectTime': 'Choisir une plage horaire',
+      'freeRoomsNoneFound':
+          'Aucune salle libre trouvée pour cette plage horaire.',
+      'freeRoomsNoRangesHint':
+          'Aucune plage horaire adaptée trouvée pour ce jour.',
+      'freeRoomsCount': '{n} salles libres',
       'weekDayShort': ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'],
       'weekDayFull': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'],
       'noLesson': '(pas de cours)',
@@ -793,6 +851,16 @@ class AppL10n {
       'examsImportFile': 'PDF / Fichier',
       'examsImportSuccess': 'Importé avec succès !',
       'examsImportError': 'Erreur lors de l\'import : ',
+
+      'infoTitle': 'Infos école',
+      'infoReload': 'Recharger',
+      'infoUpdated': 'Mis à jour',
+      'infoEmpty': 'Aucune notification actuelle',
+      'infoEmptyHint':
+          'Si ton école ne publie rien actuellement, aucune information n\'apparaît ici.',
+      'infoFetchError':
+          'Impossible de charger les notifications. Réessaie plus tard.',
+      'infoOpenLink': 'Ouvrir le lien',
 
       'aiTitle': 'Assistant IA',
       'aiInputHint': 'Poser une question…',
@@ -894,12 +962,13 @@ class AppL10n {
       'aiSystemPersona':
           'Tu es "Assistant Planning", un assistant IA amical et motivant pour les élèves.',
       'aiSystemRules': '''RÈGLES :
-- Répondre EXCLUSIVEMENT sur la base des données d'emploi du temps ci-dessus.
+- Répondre sur la base des données d'emploi du temps et d'examens ci-dessus.
 - Ne PAS inventer de matières, d'horaires, d'enseignants ou d'autres informations.
+- Tenir compte des examens/contrôles dans les réponses si pertinent.
 - Si quelque chose ne peut pas être déduit des données, dis-le ouvertement.
 - Respecter les marqueurs [ANNULÉ] (ces cours n'ont pas lieu).
 - "Heures libres" = pauses entre deux cours.
-- Répondre en français, de manière amicale et concise.
+- Répondre en français, de manière amicale, utile et concise.
 - Ne pas commencer automatiquement par "Oui," – répondre directement.
 - Tu peux utiliser Markdown pour la mise en forme (ex. listes, **gras**).''',
     },
@@ -908,6 +977,7 @@ class AppL10n {
     'es': {
       'navWeek': 'Semana',
       'navExams': 'Exámenes',
+      'navInfo': 'Info',
       'navMenu': 'Menú',
 
       'loginServer': 'URL del servidor',
@@ -972,6 +1042,13 @@ class AppL10n {
       'timetableMyTimetable': 'Mi horario',
       'timetableSelectAnother': 'Otra clase',
       'timetableNoClassesFound': 'No se encontraron clases o acceso denegado.',
+      'freeRoomsTitle': 'Aulas libres',
+      'freeRoomsSelectTime': 'Elegir franja horaria',
+      'freeRoomsNoneFound':
+          'No se encontraron aulas libres para esta franja horaria.',
+      'freeRoomsNoRangesHint':
+          'No se encontraron franjas horarias adecuadas para el día actual.',
+      'freeRoomsCount': '{n} aulas libres',
       'weekDayShort': ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'],
       'weekDayFull': ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
       'noLesson': '(sin clases)',
@@ -1012,6 +1089,16 @@ class AppL10n {
       'examsImportFile': 'PDF / Archivo',
       'examsImportSuccess': '¡Importado con éxito!',
       'examsImportError': 'Error al importar: ',
+
+      'infoTitle': 'Info escolar',
+      'infoReload': 'Recargar',
+      'infoUpdated': 'Actualizado',
+      'infoEmpty': 'No hay notificaciones actuales',
+      'infoEmptyHint':
+          'Si tu escuela no ha publicado nada por ahora, no se mostrará nada aquí.',
+      'infoFetchError':
+          'No se pudieron cargar las notificaciones. Inténtalo más tarde.',
+      'infoOpenLink': 'Abrir enlace',
 
       'aiTitle': 'Asistente IA',
       'aiInputHint': 'Hacer una pregunta…',
@@ -1113,12 +1200,13 @@ class AppL10n {
       'aiSystemPersona':
           'Eres "Asistente de Horario", un ayudante IA amigable y motivador para estudiantes.',
       'aiSystemRules': '''REGLAS:
-- Responde EXCLUSIVAMENTE basándote en los datos del horario anteriores.
+- Responde basándote en los datos del horario y exámenes anteriores.
 - NO inventes asignaturas, horarios, profesores ni otra información.
+- Considera exámenes/pruebas en tus respuestas si aplica.
 - Si algo no se puede deducir de los datos, dilo abiertamente.
 - Respeta los marcadores [CANCELADO] (esas clases no tienen lugar).
 - "Horas libres" = huecos entre dos clases.
-- Responde en español, de forma amigable y concisa.
+- Responde en español, de forma amigable, útil y concisa.
 - No empieces automáticamente con "Sí," – responde directamente.
 - Puedes usar Markdown para el formato (ej. listas, **negrita**).''',
     },
