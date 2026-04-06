@@ -1,10 +1,41 @@
-name: Flutter Build & Release
+name: Manual Flutter Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (z. B. v2.0.1)'
+        required: true
+        type: string
+      release_name:
+        description: 'Optionaler Release-Name (leer = Tag wird verwendet)'
+        required: false
+        type: string
+      prerelease:
+        description: 'Als Pre-Release markieren'
+        required: true
+        default: false
+        type: boolean
+      draft:
+        description: 'Als Draft erstellen'
+        required: true
+        default: false
+        type: boolean
+      run_tests:
+        description: 'flutter analyze und flutter test ausfuehren'
+        required: true
+        default: true
+        type: boolean
+      build_apk:
+        description: 'Release-APK bauen'
+        required: true
+        default: true
+        type: boolean
+      build_aab:
+        description: 'Release-AAB bauen'
+        required: true
+        default: true
+        type: boolean
 
 jobs:
   build:
@@ -34,19 +65,30 @@ jobs:
         run: flutter pub get
 
       - name: Analyze & Test
+        if: ${{ inputs.run_tests }}
         run: |
           flutter analyze
           flutter test
 
       - name: Build Android APK
+        if: ${{ inputs.build_apk }}
         run: flutter build apk --release
+
+      - name: Build Android AAB
+        if: ${{ inputs.build_aab }}
+        run: flutter build appbundle --release
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.release_name != '' && inputs.release_name || inputs.tag }}
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          fail_on_unmatched_files: false
           generate_release_notes: true
-          draft: false
-          prerelease: false
+          draft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
