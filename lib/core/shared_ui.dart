@@ -247,6 +247,7 @@ Future<T?> _showUnifiedOptionSheet<T>({
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         final blurOn = blurEnabledNotifier.value;
+        final isLightMode = Theme.of(ctx).brightness == Brightness.light;
         final maxSheetHeight = MediaQuery.of(ctx).size.height * 0.72;
         return Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
@@ -271,7 +272,7 @@ Future<T?> _showUnifiedOptionSheet<T>({
                   title,
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w900,
-                    fontSize: 20,
+                    fontSize: 22,
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -281,7 +282,7 @@ Future<T?> _showUnifiedOptionSheet<T>({
                     subtitle,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
-                      fontSize: 13,
+                      fontSize: 12.5,
                       color: cs.onSurfaceVariant,
                       fontWeight: FontWeight.w500,
                     ),
@@ -299,27 +300,66 @@ Future<T?> _showUnifiedOptionSheet<T>({
                         final opt = entry.value;
                         final color = opt.destructive ? cs.error : cs.primary;
                         final iconBackground = opt.selected
-                            ? color.withOpacity(blurOn ? 0.22 : 0.3)
-                            : color.withOpacity(blurOn ? 0.12 : 0.2);
-                        final tileGradient = opt.selected
-                            ? LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  color.withOpacity(blurOn ? 0.24 : 0.32),
-                                  cs.surface.withOpacity(blurOn ? 0.54 : 0.9),
-                                ],
+                            ? color.withOpacity(isLightMode ? 0.16 : 0.2)
+                            : color.withOpacity(isLightMode ? 0.08 : 0.12);
+                        final backgroundColor = opt.selected
+                            ? color.withOpacity(
+                                isLightMode
+                                    ? (blurOn ? 0.14 : 0.1)
+                                    : (blurOn ? 0.2 : 0.24),
                               )
-                            : LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  cs.surfaceContainerHighest.withOpacity(
-                                    blurOn ? 0.28 : 0.92,
-                                  ),
-                                  cs.surface.withOpacity(blurOn ? 0.18 : 0.88),
-                                ],
+                            : (isLightMode
+                                  ? cs.surfaceContainerHigh.withOpacity(
+                                      blurOn ? 0.72 : 0.8,
+                                    )
+                                  : cs.surfaceContainerHighest.withOpacity(
+                                      blurOn ? 0.7 : 0.8,
+                                    ));
+                        final borderColor = opt.selected
+                            ? color.withOpacity(
+                                isLightMode
+                                    ? (blurOn ? 0.32 : 0.24)
+                                    : (blurOn ? 0.52 : 0.42),
+                              )
+                            : cs.outlineVariant.withOpacity(
+                                isLightMode
+                                    ? (blurOn ? 0.48 : 0.36)
+                                    : (blurOn ? 0.52 : 0.45),
                               );
+                        final titleColor = opt.selected
+                          ? (opt.destructive
+                              ? cs.error
+                              : (isLightMode
+                                ? cs.primary.withOpacity(0.98)
+                                : cs.onSurface.withOpacity(0.98)))
+                          : cs.onSurface.withOpacity(isLightMode ? 0.96 : 0.98);
+                        final subtitleColor = opt.selected
+                          ? cs.onSurface.withOpacity(isLightMode ? 0.82 : 0.86)
+                          : cs.onSurfaceVariant.withOpacity(
+                            isLightMode ? 0.9 : 0.86,
+                            );
+                        final leadingIconColor = opt.selected
+                          ? (opt.destructive
+                              ? cs.error
+                              : (isLightMode
+                                ? cs.primary.withOpacity(0.95)
+                                : cs.primary.withOpacity(0.92)))
+                          : cs.onSurface.withOpacity(isLightMode ? 0.86 : 0.9);
+                        final trailingIconColor = opt.selected
+                          ? leadingIconColor
+                          : cs.onSurfaceVariant.withOpacity(
+                            isLightMode ? 0.82 : 0.76,
+                            );
+                        final shadowColor = (opt.selected ? color : cs.shadow)
+                            .withOpacity(
+                              isLightMode
+                                  ? (opt.selected
+                                        ? (blurOn ? 0.08 : 0.06)
+                                        : (blurOn ? 0.04 : 0.03))
+                                  : (blurOn
+                                        ? (opt.selected ? 0.14 : 0.09)
+                                        : (opt.selected ? 0.1 : 0.06)),
+                            );
 
                         return _springEntry(
                           duration: Duration(milliseconds: 240 + idx * 50),
@@ -346,32 +386,17 @@ Future<T?> _showUnifiedOptionSheet<T>({
                                     borderRadius: BorderRadius.circular(18),
                                     child: Ink(
                                       decoration: BoxDecoration(
-                                        gradient: tileGradient,
+                                        color: backgroundColor,
                                         borderRadius: BorderRadius.circular(18),
                                         border: Border.all(
-                                          color: opt.selected
-                                              ? color.withOpacity(0.52)
-                                              : cs.outlineVariant.withOpacity(
-                                                  blurOn ? 0.34 : 0.45,
-                                                ),
-                                          width: opt.selected ? 1.4 : 1,
+                                          color: borderColor,
+                                          width: 1,
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: (opt.selected
-                                                    ? color
-                                                    : cs.shadow)
-                                                .withOpacity(
-                                                  blurOn
-                                                      ? (opt.selected
-                                                            ? 0.14
-                                                            : 0.08)
-                                                      : (opt.selected
-                                                            ? 0.1
-                                                            : 0.06),
-                                                ),
-                                            blurRadius: opt.selected ? 14 : 10,
-                                            offset: const Offset(0, 6),
+                                            color: shadowColor,
+                                            blurRadius: opt.selected ? 12 : 8,
+                                            offset: Offset(0, blurOn ? 4 : 3),
                                           ),
                                         ],
                                       ),
@@ -388,19 +413,29 @@ Future<T?> _showUnifiedOptionSheet<T>({
                                                 height: 36,
                                                 decoration: BoxDecoration(
                                                   color: iconBackground,
+                                                  border: Border.all(
+                                                    color: borderColor.withOpacity(
+                                                      isLightMode ? 0.9 : 0.75,
+                                                    ),
+                                                  ),
                                                   borderRadius:
                                                       BorderRadius.circular(11),
                                                 ),
                                                 child: Icon(
                                                   opt.icon,
-                                                  color: color,
+                                                  color: leadingIconColor,
                                                   size: 18,
                                                 ),
                                               ),
                                         title: Text(
                                           opt.title,
                                           style: GoogleFonts.outfit(
-                                            fontWeight: FontWeight.w800,
+                                            fontWeight: opt.selected
+                                                ? FontWeight.w700
+                                                : FontWeight.w600,
+                                            fontSize: 15.5,
+                                            letterSpacing: 0.08,
+                                            color: titleColor,
                                           ),
                                         ),
                                         subtitle: opt.subtitle == null
@@ -408,9 +443,10 @@ Future<T?> _showUnifiedOptionSheet<T>({
                                             : Text(
                                                 opt.subtitle!,
                                                 style: GoogleFonts.outfit(
-                                                  color: cs.onSurfaceVariant,
+                                                  color: subtitleColor,
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w500,
+                                                  letterSpacing: 0.05,
                                                 ),
                                               ),
                                         trailing: AnimatedSwitcher(
@@ -433,15 +469,14 @@ Future<T?> _showUnifiedOptionSheet<T>({
                                                   key: ValueKey(
                                                     '${opt.title}_selected',
                                                   ),
-                                                  color: color,
+                                                  color: trailingIconColor,
                                                 )
                                               : Icon(
                                                   Icons.chevron_right_rounded,
                                                   key: ValueKey(
                                                     '${opt.title}_arrow',
                                                   ),
-                                                  color: cs.onSurfaceVariant
-                                                      .withOpacity(0.65),
+                                                  color: trailingIconColor,
                                                 ),
                                         ),
                                       ),

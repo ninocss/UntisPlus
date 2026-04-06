@@ -238,6 +238,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   String? _loadError;
   bool _showingCachedWeek = false;
   int _viewMode = 0;
+  int _weekAnimationDirection = 1;
 
   String? _tempSessionId;
   int? _viewingClassId;
@@ -527,9 +528,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
   }
 
+  bool _isNoAllowedDateError(String message) {
+    final m = message.toLowerCase();
+    return m.contains('no allowed date') ||
+        m.contains('no allowed dates') ||
+        m.contains('nicht erlaubtes datum');
+  }
+
   void _prevWeek() {
     HapticFeedback.selectionClick();
     setState(() {
+      _weekAnimationDirection = -1;
       _currentMonday = _currentMonday.subtract(const Duration(days: 7));
     });
     _fetchFullWeek();
@@ -538,6 +547,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   void _nextWeek() {
     HapticFeedback.selectionClick();
     setState(() {
+      _weekAnimationDirection = 1;
       _currentMonday = _currentMonday.add(const Duration(days: 7));
     });
     _fetchFullWeek();
@@ -1453,7 +1463,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     const double timeColWidth = 52.0;
-    const double dayColWidth = 72.0;
+    const double minDayColWidth = 56.0;
     const double dayColGap = 4.0;
     final timeRanges = _collectTimeRangesFromWeek();
     final cs = Theme.of(context).colorScheme;
@@ -1484,369 +1494,383 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.only(bottom: 32, top: topContentPadding),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: timeColWidth + 6,
-                  bottom: 6,
-                ),
-                child: Row(
-                  children: List.generate(5, (i) {
-                    final d = _currentMonday.add(Duration(days: i));
-                    final isToday =
-                        d.year == today.year &&
-                        d.month == today.month &&
-                        d.day == today.day;
-                    return SizedBox(
-                      width: dayColWidth + dayColGap,
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Text(
-                              _dayShort[i],
-                              style: GoogleFonts.outfit(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: isToday
-                                    ? cs.primary
-                                    : cs.onSurfaceVariant.withOpacity(0.8),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: isToday
-                                    ? cs.primary
-                                    : Colors.transparent,
-                                shape: BoxShape.circle,
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '${d.day}',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: isToday ? cs.onPrimary : cs.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: timeColWidth,
-                    height: totalHeight,
-                    child: Stack(
-                      children: timeRanges.isNotEmpty
-                          ? timeRanges.map((range) {
-                              final top = (range.startMin - globalMin) * _ppm;
-                              final blockHeight =
-                                  ((range.endMin - range.startMin) * _ppm)
-                                      .clamp(16.0, 9999.0);
-                              return Positioned(
-                                top: top,
-                                left: 0,
-                                right: 0,
-                                height: blockHeight,
-                                child: Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      _formatMinutes(range.startMin),
-                                      textAlign: TextAlign.right,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: cs.onSurfaceVariant.withOpacity(
-                                          0.8,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatMinutes(range.endMin),
-                                      textAlign: TextAlign.right,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                        color: cs.onSurfaceVariant.withOpacity(
-                                          0.7,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList()
-                          : ticks.map((tick) {
-                              final top = (tick - globalMin) * _ppm - 9;
-                              return Positioned(
-                                top: top,
-                                left: 0,
-                                right: 0,
-                                child: Text(
-                                  _formatMinutes(tick),
-                                  textAlign: TextAlign.right,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: cs.onSurfaceVariant.withOpacity(0.7),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                    ),
+        padding: EdgeInsets.only(
+          left: 12,
+          right: 12,
+          bottom: 32,
+          top: topContentPadding,
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableForDays = math.max(
+              5 * minDayColWidth,
+              constraints.maxWidth - timeColWidth - 6 - (dayColGap * 4),
+            );
+            final dayColWidth = availableForDays / 5;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: timeColWidth + 6,
+                    bottom: 6,
                   ),
-                  const SizedBox(width: 6),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(5, (dayIndex) {
-                      final lessons = (_weekData[dayIndex] ?? [])
-                          .where(
-                            (l) => !hiddenSubjectsNotifier.value.contains(
-                              l['_subjectShort']?.toString() ?? '',
-                            ),
-                          )
-                          .toList();
-                      final visibleLessons = lessons
-                          .where(
-                            (l) =>
-                                showCancelledNotifier.value ||
-                                (l['code'] ?? '') != 'cancelled',
-                          )
-                          .toList();
-                      final mergedLessons = _mergeConsecutiveLessons(
-                        visibleLessons,
-                      );
-                      final lessonSlots = _computeLessonSlots(mergedLessons);
-                      return Container(
-                        width: dayColWidth,
-                        height: totalHeight,
-                        margin: const EdgeInsets.only(right: dayColGap),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Stack(
-                              children: [
-                                ...ticks.map((tick) {
-                                  final top = (tick - globalMin) * _ppm;
-                                  return Positioned(
-                                    top: top,
-                                    left: 0,
-                                    right: 0,
-                                    child: Container(
-                                      height: 0.5,
-                                      color: cs.outlineVariant.withOpacity(0.6),
-                                    ),
-                                  );
-                                }),
-                                ...lessonSlots.map((slot) {
-                                  final l = slot.lesson;
-                                  final startMin = slot.startMin;
-                                  final endMin = slot.endMin;
-                                  final top = (startMin - globalMin) * _ppm;
-                                  final height = ((endMin - startMin) * _ppm)
-                                      .clamp(24.0, 9999.0);
-                                  final dim =
-                                      (dayIndex == todayIndex) &&
-                                      endMin <= nowMin;
-                                  final isCancelled =
-                                      (l['code'] ?? '') == 'cancelled';
-                                  final subject =
-                                      l['_subjectShort']
-                                              ?.toString()
-                                              .isNotEmpty ==
-                                          true
-                                      ? l['_subjectShort'].toString()
-                                      : (l['_subjectLong']
-                                                    ?.toString()
-                                                    .isNotEmpty ==
-                                                true
-                                            ? l['_subjectLong'].toString()
-                                            : '?');
-                                  final room = l['_room']?.toString() ?? '';
-                                  final teacher =
-                                      l['_teacher']?.toString() ?? '';
-
-                                  const horizontalInset = 1.0;
-                                  const columnGap = 2.0;
-                                  final columns = slot.columnCount;
-                                  final availableWidth =
-                                      constraints.maxWidth -
-                                      (horizontalInset * 2);
-                                  final totalGap = (columns - 1) * columnGap;
-                                  final rawCardWidth =
-                                      (availableWidth - totalGap) / columns;
-                                  final cardWidth = rawCardWidth > 6
-                                      ? rawCardWidth
-                                      : 6.0;
-                                  final left =
-                                      horizontalInset +
-                                      (slot.column * (cardWidth + columnGap));
-
-                                  final sk2 =
-                                      l['_subjectShort']?.toString() ?? '';
-                                  final cv2 = isCancelled
-                                      ? null
-                                      : subjectColorsNotifier.value[sk2];
-                                  final isDark2 =
-                                      Theme.of(context).brightness ==
-                                      Brightness.dark;
-                                  final fgColor = isCancelled
-                                      ? cs.error
-                                      : cv2 != null
-                                      ? Color(cv2)
-                                      : _autoLessonColor(sk2, isDark2);
-                                  final bgColor = isCancelled
-                                      ? cs.errorContainer
-                                      : fgColor.withOpacity(
-                                          isDark2 ? 0.28 : 0.20,
-                                        );
-                                  return Positioned(
-                                    top: top,
-                                    left: left,
-                                    width: cardWidth,
-                                    height: height,
-                                    child: _dimPastLesson(
-                                      dim: dim,
-                                      child: GestureDetector(
-                                        onTap: () =>
-                                            _showLessonDetail(context, l),
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: bgColor,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border(
-                                              left: BorderSide(
-                                                color: fgColor,
-                                                width: 3,
-                                              ),
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.fromLTRB(
-                                            5,
-                                            3,
-                                            3,
-                                            3,
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                subject,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: GoogleFonts.outfit(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: fgColor,
-                                                  decoration: isCancelled
-                                                      ? TextDecoration
-                                                            .lineThrough
-                                                      : null,
-                                                  decorationColor: fgColor,
-                                                  decorationThickness: 2.0,
-                                                ),
-                                              ),
-                                              if (height >= 30 &&
-                                                  teacher.isNotEmpty)
-                                                Text(
-                                                  teacher,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: GoogleFonts.outfit(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w500,
-                                                    color: fgColor.withOpacity(
-                                                      0.6,
-                                                    ),
-                                                  ),
-                                                ),
-                                              if (height >= 45 &&
-                                                  room.isNotEmpty)
-                                                Text(
-                                                  room,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: GoogleFonts.outfit(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: fgColor.withOpacity(
-                                                      0.75,
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                                if (showNowLine && dayIndex == todayIndex)
-                                  Positioned(
-                                    top: nowTop - 1,
-                                    left: 0,
-                                    right: 0,
-                                    child: IgnorePointer(
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 6,
-                                            height: 6,
-                                            decoration: BoxDecoration(
-                                              color: cs.error,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Container(
-                                              height: 2,
-                                              decoration: BoxDecoration(
-                                                color: cs.error,
-                                                borderRadius:
-                                                    BorderRadius.circular(2),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                  child: Row(
+                    children: List.generate(5, (i) {
+                      final d = _currentMonday.add(Duration(days: i));
+                      final isToday =
+                          d.year == today.year &&
+                          d.month == today.month &&
+                          d.day == today.day;
+                      return SizedBox(
+                        width: dayColWidth + dayColGap,
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                _dayShort[i],
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isToday
+                                      ? cs.primary
+                                      : cs.onSurfaceVariant.withOpacity(0.8),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: isToday
+                                      ? cs.primary
+                                      : Colors.transparent,
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${d.day}',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: isToday
+                                        ? cs.onPrimary
+                                        : cs.onSurface,
                                   ),
-                              ],
-                            );
-                          },
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: timeColWidth,
+                      height: totalHeight,
+                      child: Stack(
+                        children: timeRanges.isNotEmpty
+                            ? timeRanges.map((range) {
+                                final top = (range.startMin - globalMin) * _ppm;
+                                final blockHeight =
+                                    ((range.endMin - range.startMin) * _ppm)
+                                        .clamp(16.0, 9999.0);
+                                return Positioned(
+                                  top: top,
+                                  left: 0,
+                                  right: 0,
+                                  height: blockHeight,
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        _formatMinutes(range.startMin),
+                                        textAlign: TextAlign.right,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: cs.onSurfaceVariant
+                                              .withOpacity(0.8),
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatMinutes(range.endMin),
+                                        textAlign: TextAlign.right,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                          color: cs.onSurfaceVariant
+                                              .withOpacity(0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList()
+                            : ticks.map((tick) {
+                                final top = (tick - globalMin) * _ppm - 9;
+                                return Positioned(
+                                  top: top,
+                                  left: 0,
+                                  right: 0,
+                                  child: Text(
+                                    _formatMinutes(tick),
+                                    textAlign: TextAlign.right,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: cs.onSurfaceVariant.withOpacity(
+                                        0.7,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List.generate(5, (dayIndex) {
+                        final lessons = (_weekData[dayIndex] ?? [])
+                            .where(
+                              (l) => !hiddenSubjectsNotifier.value.contains(
+                                l['_subjectShort']?.toString() ?? '',
+                              ),
+                            )
+                            .toList();
+                        final visibleLessons = lessons
+                            .where(
+                              (l) =>
+                                  showCancelledNotifier.value ||
+                                  (l['code'] ?? '') != 'cancelled',
+                            )
+                            .toList();
+                        final mergedLessons = _mergeConsecutiveLessons(
+                          visibleLessons,
+                        );
+                        final lessonSlots = _computeLessonSlots(mergedLessons);
+                        return Container(
+                          width: dayColWidth,
+                          height: totalHeight,
+                          margin: const EdgeInsets.only(right: dayColGap),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return Stack(
+                                children: [
+                                  ...ticks.map((tick) {
+                                    final top = (tick - globalMin) * _ppm;
+                                    return Positioned(
+                                      top: top,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        height: 0.5,
+                                        color: cs.outlineVariant.withOpacity(
+                                          0.6,
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                  ...lessonSlots.map((slot) {
+                                    final l = slot.lesson;
+                                    final startMin = slot.startMin;
+                                    final endMin = slot.endMin;
+                                    final top = (startMin - globalMin) * _ppm;
+                                    final height = ((endMin - startMin) * _ppm)
+                                        .clamp(24.0, 9999.0);
+                                    final dim =
+                                        (dayIndex == todayIndex) &&
+                                        endMin <= nowMin;
+                                    final isCancelled =
+                                        (l['code'] ?? '') == 'cancelled';
+                                    final subject =
+                                        l['_subjectShort']
+                                                ?.toString()
+                                                .isNotEmpty ==
+                                            true
+                                        ? l['_subjectShort'].toString()
+                                        : (l['_subjectLong']
+                                                      ?.toString()
+                                                      .isNotEmpty ==
+                                                  true
+                                              ? l['_subjectLong'].toString()
+                                              : '?');
+                                    final room = l['_room']?.toString() ?? '';
+                                    final teacher =
+                                        l['_teacher']?.toString() ?? '';
+
+                                    const horizontalInset = 1.0;
+                                    const columnGap = 2.0;
+                                    final columns = slot.columnCount;
+                                    final availableWidth =
+                                        constraints.maxWidth -
+                                        (horizontalInset * 2);
+                                    final totalGap = (columns - 1) * columnGap;
+                                    final rawCardWidth =
+                                        (availableWidth - totalGap) / columns;
+                                    final cardWidth = rawCardWidth > 6
+                                        ? rawCardWidth
+                                        : 6.0;
+                                    final left =
+                                        horizontalInset +
+                                        (slot.column * (cardWidth + columnGap));
+
+                                    final sk2 =
+                                        l['_subjectShort']?.toString() ?? '';
+                                    final cv2 = isCancelled
+                                        ? null
+                                        : subjectColorsNotifier.value[sk2];
+                                    final isDark2 =
+                                        Theme.of(context).brightness ==
+                                        Brightness.dark;
+                                    final fgColor = isCancelled
+                                        ? cs.error
+                                        : cv2 != null
+                                        ? Color(cv2)
+                                        : _autoLessonColor(sk2, isDark2);
+                                    final bgColor = isCancelled
+                                        ? cs.errorContainer
+                                        : fgColor.withOpacity(
+                                            isDark2 ? 0.28 : 0.20,
+                                          );
+                                    return Positioned(
+                                      top: top,
+                                      left: left,
+                                      width: cardWidth,
+                                      height: height,
+                                      child: _dimPastLesson(
+                                        dim: dim,
+                                        child: GestureDetector(
+                                          onTap: () =>
+                                              _showLessonDetail(context, l),
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: bgColor,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border(
+                                                left: BorderSide(
+                                                  color: fgColor,
+                                                  width: 3,
+                                                ),
+                                              ),
+                                            ),
+                                            padding: const EdgeInsets.fromLTRB(
+                                              5,
+                                              3,
+                                              3,
+                                              3,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  subject,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: GoogleFonts.outfit(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: fgColor,
+                                                    decoration: isCancelled
+                                                        ? TextDecoration
+                                                              .lineThrough
+                                                        : null,
+                                                    decorationColor: fgColor,
+                                                    decorationThickness: 2.0,
+                                                  ),
+                                                ),
+                                                if (height >= 30 &&
+                                                    teacher.isNotEmpty)
+                                                  Text(
+                                                    teacher,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: GoogleFonts.outfit(
+                                                      fontSize: 9,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: fgColor
+                                                          .withOpacity(0.6),
+                                                    ),
+                                                  ),
+                                                if (height >= 45 &&
+                                                    room.isNotEmpty)
+                                                  Text(
+                                                    room,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: GoogleFonts.outfit(
+                                                      fontSize: 9,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: fgColor
+                                                          .withOpacity(0.75),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                  if (showNowLine && dayIndex == todayIndex)
+                                    Positioned(
+                                      top: nowTop - 1,
+                                      left: 0,
+                                      right: 0,
+                                      child: IgnorePointer(
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 6,
+                                              height: 6,
+                                              decoration: BoxDecoration(
+                                                color: cs.error,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Container(
+                                                height: 2,
+                                                decoration: BoxDecoration(
+                                                  color: cs.error,
+                                                  borderRadius:
+                                                      BorderRadius.circular(2),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -1975,6 +1999,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           setState(() {
             _loadError = null;
             _showingCachedWeek = true;
+            _loading = false;
+          });
+          return;
+        }
+
+        if (_isNoAllowedDateError(apiMsg)) {
+          if (!mounted) return;
+          setState(() {
+            _loadError = null;
+            _weekData = _emptyWeekData();
+            _showingCachedWeek = false;
             _loading = false;
           });
           return;
@@ -2245,9 +2280,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         });
         return;
       }
+
+      final errMsg = e.toString();
+      if (_isNoAllowedDateError(errMsg)) {
+        if (!mounted) return;
+        setState(() {
+          _loadError = null;
+          _weekData = _emptyWeekData();
+          _showingCachedWeek = false;
+          _loading = false;
+        });
+        return;
+      }
+
       if (!mounted) return;
       setState(() {
-        _loadError = e.toString();
+        _loadError = errMsg;
         _weekData = _emptyWeekData();
         _showingCachedWeek = false;
         _loading = false;
@@ -2665,7 +2713,41 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 ),
               )
             : _viewMode == 1
-            ? _buildWeekView()
+            ? GestureDetector(
+                onHorizontalDragEnd: (details) {
+                  final velocity = details.primaryVelocity ?? 0;
+                  if (velocity < -350) _nextWeek();
+                  if (velocity > 350) _prevWeek();
+                },
+                // Animates between week changes while keeping the week view fixed.
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 320),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    final beginOffset = Offset(
+                      _weekAnimationDirection > 0 ? 0.16 : -0.16,
+                      0,
+                    );
+                    final slide = Tween<Offset>(
+                      begin: beginOffset,
+                      end: Offset.zero,
+                    ).animate(animation);
+                    return ClipRect(
+                      child: FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(position: slide, child: child),
+                      ),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey(
+                      '${DateFormat('yyyyMMdd').format(_currentMonday)}-$_viewMode',
+                    ),
+                    child: _buildWeekView(),
+                  ),
+                ),
+              )
             : GestureDetector(
                 onHorizontalDragEnd: (details) {
                   final velocity = details.primaryVelocity ?? 0;
@@ -2734,13 +2816,11 @@ class _ExamsPageState extends State<ExamsPage> {
         _SheetOption(
           value: 'custom',
           title: 'Custom',
-          subtitle: 'Eigene Prüfung erstellen',
           icon: Icons.edit_note_rounded,
         ),
         _SheetOption(
           value: 'scan',
           title: 'Scan',
-          subtitle: 'Aus Datei oder Bild importieren',
           icon: Icons.document_scanner_rounded,
         ),
       ],
@@ -3058,7 +3138,8 @@ class _ExamsPageState extends State<ExamsPage> {
                               child: Text(
                                 AppL10n.of(appLocaleNotifier.value).examsDelete,
                                 style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.08,
                                   color: Theme.of(context).colorScheme.error,
                                 ),
                               ),
@@ -3068,7 +3149,8 @@ class _ExamsPageState extends State<ExamsPage> {
                             child: Text(
                               AppL10n.of(appLocaleNotifier.value).examsCancel,
                               style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.08,
                               ),
                             ),
                           ),
@@ -4259,9 +4341,10 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
       Duration(milliseconds: widget.delay),
       () => mounted ? _ctrl.repeat(reverse: true) : null,
     );
-    _anim = Tween(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: _kSmoothBounce),
-    );
+    _anim = Tween(
+      begin: 0.3,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: _kSmoothBounce));
   }
 
   @override
@@ -5665,7 +5748,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
                         l.settingsApiKeyCancel,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.08,
+                        ),
                       ),
                     ),
                     if (_apiKeySet)
@@ -5681,7 +5767,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: Text(
                           l.settingsApiKeyRemove,
                           style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.08,
                             color: Theme.of(context).colorScheme.error,
                           ),
                         ),
@@ -5992,224 +6079,239 @@ class _SettingsPageState extends State<SettingsPage> {
                     duration: const Duration(milliseconds: 380),
                     offsetY: 18,
                     startScale: 0.97,
-                    child: _section(l.settingsSectionQuick, Icons.bolt_rounded, [
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.event_busy_rounded,
-                          showCancelledNotifier.value ? cs.outline : cs.error,
-                        ),
-                        title: l.settingsShowCancelled,
-                        subtitle: l.settingsShowCancelledDesc,
-                        trailing: Switch.adaptive(
-                          value: showCancelledNotifier.value,
-                          onChanged: (v) {
+                    child: _section(
+                      l.settingsSectionQuick,
+                      Icons.bolt_rounded,
+                      [
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.event_busy_rounded,
+                            showCancelledNotifier.value ? cs.outline : cs.error,
+                          ),
+                          title: l.settingsShowCancelled,
+                          subtitle: l.settingsShowCancelledDesc,
+                          trailing: Switch.adaptive(
+                            value: showCancelledNotifier.value,
+                            onChanged: (v) {
+                              HapticFeedback.selectionClick();
+                              _setShowCancelled(v);
+                            },
+                          ),
+                          onTap: () {
                             HapticFeedback.selectionClick();
-                            _setShowCancelled(v);
+                            _setShowCancelled(!showCancelledNotifier.value);
                           },
                         ),
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          _setShowCancelled(!showCancelledNotifier.value);
-                        },
-                      ),
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.notifications_active_rounded,
-                          progressivePushNotifier.value
-                              ? cs.primary
-                              : cs.outline,
-                        ),
-                        title: l.settingsProgressivePush,
-                        subtitle: l.settingsProgressivePushDesc,
-                        trailing: Switch.adaptive(
-                          value: progressivePushNotifier.value,
-                          onChanged: (v) {
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.notifications_active_rounded,
+                            progressivePushNotifier.value
+                                ? cs.primary
+                                : cs.outline,
+                          ),
+                          title: l.settingsProgressivePush,
+                          subtitle: l.settingsProgressivePushDesc,
+                          trailing: Switch.adaptive(
+                            value: progressivePushNotifier.value,
+                            onChanged: (v) {
+                              HapticFeedback.selectionClick();
+                              _setProgressivePush(v);
+                            },
+                          ),
+                          onTap: () {
                             HapticFeedback.selectionClick();
-                            _setProgressivePush(v);
+                            _setProgressivePush(!progressivePushNotifier.value);
                           },
                         ),
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          _setProgressivePush(!progressivePushNotifier.value);
-                        },
-                      ),
-                    ], cs, accent: cs.tertiary),
+                      ],
+                      cs,
+                      accent: cs.tertiary,
+                    ),
                   ),
 
                   _springEntry(
                     duration: const Duration(milliseconds: 430),
                     offsetY: 20,
                     startScale: 0.97,
-                    child: _section(l.settingsSectionGeneral, Icons.tune_rounded, [
-                    _tile(
-                      leading: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: cs.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            _username.isNotEmpty
-                                ? _username[0].toUpperCase()
-                                : '?',
-                            style: TextStyle(
-                              color: cs.onPrimary,
-                              fontWeight: FontWeight.bold,
+                    child: _section(
+                      l.settingsSectionGeneral,
+                      Icons.tune_rounded,
+                      [
+                        _tile(
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: cs.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                _username.isNotEmpty
+                                    ? _username[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  color: cs.onPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
+                          title: l.settingsLoggedInAs,
+                          subtitle: _username.isNotEmpty ? _username : '…',
+                          trailing: IconButton(
+                            tooltip: l.settingsLogout,
+                            icon: Icon(Icons.logout_rounded, color: cs.error),
+                            onPressed: () => _logout(context),
+                          ),
                         ),
-                      ),
-                      title: l.settingsLoggedInAs,
-                      subtitle: _username.isNotEmpty ? _username : '…',
-                      trailing: IconButton(
-                        tooltip: l.settingsLogout,
-                        icon: Icon(Icons.logout_rounded, color: cs.error),
-                        onPressed: () => _logout(context),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _tileIcon(Icons.contrast_rounded, cs.primary),
-                              const SizedBox(width: 14),
-                              Text(
-                                l.settingsThemeMode,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15.5,
-                                  color: cs.onSurface,
+                              Row(
+                                children: [
+                                  _tileIcon(Icons.contrast_rounded, cs.primary),
+                                  const SizedBox(width: 14),
+                                  Text(
+                                    l.settingsThemeMode,
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15.5,
+                                      color: cs.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              SegmentedButton<ThemeMode>(
+                                style: SegmentedButton.styleFrom(
+                                  textStyle: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  minimumSize: const Size(0, 40),
                                 ),
+                                segments: [
+                                  ButtonSegment(
+                                    value: ThemeMode.light,
+                                    label: Text(l.settingsThemeLight),
+                                    icon: const Icon(
+                                      Icons.light_mode_rounded,
+                                      size: 17,
+                                    ),
+                                  ),
+                                  ButtonSegment(
+                                    value: ThemeMode.system,
+                                    label: Text(l.settingsThemeSystem),
+                                    icon: const Icon(
+                                      Icons.brightness_auto_rounded,
+                                      size: 17,
+                                    ),
+                                  ),
+                                  ButtonSegment(
+                                    value: ThemeMode.dark,
+                                    label: Text(l.settingsThemeDark),
+                                    icon: const Icon(
+                                      Icons.dark_mode_rounded,
+                                      size: 17,
+                                    ),
+                                  ),
+                                ],
+                                selected: {themeModeNotifier.value},
+                                onSelectionChanged: (v) {
+                                  HapticFeedback.selectionClick();
+                                  _setThemeMode(v.first);
+                                },
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          SegmentedButton<ThemeMode>(
-                            style: SegmentedButton.styleFrom(
-                              textStyle: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              minimumSize: const Size(0, 40),
-                            ),
-                            segments: [
-                              ButtonSegment(
-                                value: ThemeMode.light,
-                                label: Text(l.settingsThemeLight),
-                                icon: const Icon(
-                                  Icons.light_mode_rounded,
-                                  size: 17,
-                                ),
-                              ),
-                              ButtonSegment(
-                                value: ThemeMode.system,
-                                label: Text(l.settingsThemeSystem),
-                                icon: const Icon(
-                                  Icons.brightness_auto_rounded,
-                                  size: 17,
-                                ),
-                              ),
-                              ButtonSegment(
-                                value: ThemeMode.dark,
-                                label: Text(l.settingsThemeDark),
-                                icon: const Icon(
-                                  Icons.dark_mode_rounded,
-                                  size: 17,
-                                ),
-                              ),
-                            ],
-                            selected: {themeModeNotifier.value},
-                            onSelectionChanged: (v) {
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.auto_awesome_motion_outlined,
+                            backgroundAnimationsNotifier.value
+                                ? cs.tertiary
+                                : cs.outline,
+                          ),
+                          title: l.settingsBackgroundAnimations,
+                          subtitle: l.settingsBackgroundAnimationsDesc,
+                          trailing: Switch.adaptive(
+                            value: backgroundAnimationsNotifier.value,
+                            onChanged: (v) {
                               HapticFeedback.selectionClick();
-                              _setThemeMode(v.first);
+                              _setBackgroundAnimations(v);
                             },
                           ),
-                        ],
-                      ),
-                    ),
-                    _tile(
-                      leading: _tileIcon(
-                        Icons.auto_awesome_motion_outlined,
-                        backgroundAnimationsNotifier.value
-                            ? cs.tertiary
-                            : cs.outline,
-                      ),
-                      title: l.settingsBackgroundAnimations,
-                      subtitle: l.settingsBackgroundAnimationsDesc,
-                      trailing: Switch.adaptive(
-                        value: backgroundAnimationsNotifier.value,
-                        onChanged: (v) {
-                          HapticFeedback.selectionClick();
-                          _setBackgroundAnimations(v);
-                        },
-                      ),
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _setBackgroundAnimations(
-                          !backgroundAnimationsNotifier.value,
-                        );
-                      },
-                    ),
-                    _tile(
-                      leading: _tileIcon(
-                        _backgroundStyleIcon(
-                          backgroundAnimationStyleNotifier.value,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _setBackgroundAnimations(
+                              !backgroundAnimationsNotifier.value,
+                            );
+                          },
                         ),
-                        cs.secondary,
-                      ),
-                      title: l.settingsBackgroundStyle,
-                      subtitle: _backgroundStyleLabel(
-                        l,
-                        backgroundAnimationStyleNotifier.value,
-                      ),
-                      trailing: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: cs.onSurface.withOpacity(0.4),
-                      ),
-                      onTap: _showBackgroundStyleDialog,
+                        _tile(
+                          leading: _tileIcon(
+                            _backgroundStyleIcon(
+                              backgroundAnimationStyleNotifier.value,
+                            ),
+                            cs.secondary,
+                          ),
+                          title: l.settingsBackgroundStyle,
+                          subtitle: _backgroundStyleLabel(
+                            l,
+                            backgroundAnimationStyleNotifier.value,
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                          onTap: _showBackgroundStyleDialog,
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.blur_on_rounded,
+                            blurEnabledNotifier.value ? cs.primary : cs.outline,
+                          ),
+                          title: l.settingsGlassEffect,
+                          subtitle: l.settingsGlassEffectDesc,
+                          trailing: Switch.adaptive(
+                            value: blurEnabledNotifier.value,
+                            onChanged: (v) {
+                              HapticFeedback.selectionClick();
+                              _setBlurEnabled(v);
+                            },
+                          ),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _setBlurEnabled(!blurEnabledNotifier.value);
+                          },
+                        ),
+                        // Language tile
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.language_rounded,
+                            cs.primary,
+                          ),
+                          title: l.settingsLanguage,
+                          subtitle: _localeLabels[appLocaleNotifier.value],
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                          onTap: _showLanguageDialog,
+                        ),
+                      ],
+                      cs,
+                      accent: cs.primary,
                     ),
-                    _tile(
-                      leading: _tileIcon(
-                        Icons.blur_on_rounded,
-                        blurEnabledNotifier.value ? cs.primary : cs.outline,
-                      ),
-                      title: l.settingsGlassEffect,
-                      subtitle: l.settingsGlassEffectDesc,
-                      trailing: Switch.adaptive(
-                        value: blurEnabledNotifier.value,
-                        onChanged: (v) {
-                          HapticFeedback.selectionClick();
-                          _setBlurEnabled(v);
-                        },
-                      ),
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _setBlurEnabled(!blurEnabledNotifier.value);
-                      },
-                    ),
-                    // Language tile
-                    _tile(
-                      leading: _tileIcon(Icons.language_rounded, cs.primary),
-                      title: l.settingsLanguage,
-                      subtitle: _localeLabels[appLocaleNotifier.value],
-                      trailing: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: cs.onSurface.withOpacity(0.4),
-                      ),
-                      onTap: _showLanguageDialog,
-                    ),
-                  ], cs, accent: cs.primary),
                   ),
 
                   _springEntry(
@@ -6257,24 +6359,33 @@ class _SettingsPageState extends State<SettingsPage> {
                     duration: const Duration(milliseconds: 530),
                     offsetY: 24,
                     startScale: 0.97,
-                    child: _section(l.settingsSectionAI, Icons.smart_toy_rounded, [
-                      _tile(
-                        leading: _apiKeySet
-                            ? _tileIcon(Icons.auto_awesome_rounded, cs.tertiary)
-                            : _tileIcon(Icons.key_off_rounded, cs.error),
-                        title: l.settingsApiKey,
-                        subtitle: _apiKeySet
-                            ? _apiKeyDisplay
-                            : l.settingsApiKeyNotSet,
-                        subtitleColor: _apiKeySet ? null : cs.error,
-                        trailing: Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: cs.onSurface.withOpacity(0.4),
+                    child: _section(
+                      l.settingsSectionAI,
+                      Icons.smart_toy_rounded,
+                      [
+                        _tile(
+                          leading: _apiKeySet
+                              ? _tileIcon(
+                                  Icons.auto_awesome_rounded,
+                                  cs.tertiary,
+                                )
+                              : _tileIcon(Icons.key_off_rounded, cs.error),
+                          title: l.settingsApiKey,
+                          subtitle: _apiKeySet
+                              ? _apiKeyDisplay
+                              : l.settingsApiKeyNotSet,
+                          subtitleColor: _apiKeySet ? null : cs.error,
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                          onTap: _showApiKeyDialog,
                         ),
-                        onTap: _showApiKeyDialog,
-                      ),
-                    ], cs, accent: cs.tertiary),
+                      ],
+                      cs,
+                      accent: cs.tertiary,
+                    ),
                   ),
 
                   // ── Subjects & Colors (merged) ───────────────────────────
@@ -6282,122 +6393,137 @@ class _SettingsPageState extends State<SettingsPage> {
                     duration: const Duration(milliseconds: 580),
                     offsetY: 26,
                     startScale: 0.97,
-                    child: _section(l.settingsSectionSubjects, Icons.palette_rounded, [
-                      _tile(
-                        leading: _tileIcon(Icons.palette_outlined, cs.primary),
-                        title: l.settingsSectionColors,
-                        subtitle: l
-                            .settingsColorsDesc, // "Customize the colors for your subjects"
-                        trailing: Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: cs.onSurface.withOpacity(0.4),
+                    child: _section(
+                      l.settingsSectionSubjects,
+                      Icons.palette_rounded,
+                      [
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.palette_outlined,
+                            cs.primary,
+                          ),
+                          title: l.settingsSectionColors,
+                          subtitle: l
+                              .settingsColorsDesc, // "Customize the colors for your subjects"
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              _buildBouncyRoute(const SubjectColorsPage()),
+                            );
+                          },
                         ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            _buildBouncyRoute(const SubjectColorsPage()),
-                          );
-                        },
-                      ),
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.visibility_off_outlined,
-                          cs.secondary,
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.visibility_off_outlined,
+                            cs.secondary,
+                          ),
+                          title: l.settingsSectionHidden,
+                          subtitle: hidden.isEmpty
+                              ? l.settingsNoHidden
+                              : l.settingsHiddenCount(hidden.length),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              _buildBouncyRoute(const HiddenSubjectsPage()),
+                            );
+                          },
                         ),
-                        title: l.settingsSectionHidden,
-                        subtitle: hidden.isEmpty
-                            ? l.settingsNoHidden
-                            : l.settingsHiddenCount(hidden.length),
-                        trailing: Icon(
-                          Icons.chevron_right_rounded,
-                          size: 20,
-                          color: cs.onSurface.withOpacity(0.4),
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            _buildBouncyRoute(const HiddenSubjectsPage()),
-                          );
-                        },
-                      ),
-                    ], cs, accent: cs.primary),
+                      ],
+                      cs,
+                      accent: cs.primary,
+                    ),
                   ),
 
                   _springEntry(
                     duration: const Duration(milliseconds: 630),
                     offsetY: 28,
                     startScale: 0.97,
-                    child: _section(l.settingsSectionUpdates, Icons.system_update_alt_rounded, [
-                    _tile(
-                      leading: _tileIcon(
-                        Icons.system_update_alt_rounded,
-                        cs.primary,
-                      ),
-                      title: l.settingsGithubUpdateCheck,
-                      subtitle: l.settingsGithubUpdateCheckDesc,
-                      trailing: _checkingGithubUpdate
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  cs.primary,
+                    child: _section(
+                      l.settingsSectionUpdates,
+                      Icons.system_update_alt_rounded,
+                      [
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.system_update_alt_rounded,
+                            cs.primary,
+                          ),
+                          title: l.settingsGithubUpdateCheck,
+                          subtitle: l.settingsGithubUpdateCheckDesc,
+                          trailing: _checkingGithubUpdate
+                              ? SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      cs.primary,
+                                    ),
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 20,
+                                  color: cs.onSurface.withOpacity(0.4),
                                 ),
-                              ),
-                            )
-                          : Icon(
-                              Icons.chevron_right_rounded,
-                              size: 20,
-                              color: cs.onSurface.withOpacity(0.4),
-                            ),
-                      onTap: _checkingGithubUpdate
-                          ? null
-                          : () {
+                          onTap: _checkingGithubUpdate
+                              ? null
+                              : () {
+                                  HapticFeedback.selectionClick();
+                                  _checkGithubUpdate();
+                                },
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.download_rounded,
+                            _githubDirectDownload ? cs.primary : cs.outline,
+                          ),
+                          title: l.settingsGithubDirectDownload,
+                          subtitle: l.settingsGithubDirectDownloadDesc,
+                          trailing: Switch.adaptive(
+                            value: _githubDirectDownload,
+                            onChanged: (v) {
                               HapticFeedback.selectionClick();
-                              _checkGithubUpdate();
+                              _setGithubDirectDownload(v);
                             },
+                          ),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _setGithubDirectDownload(!_githubDirectDownload);
+                          },
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.open_in_new_rounded,
+                            cs.secondary,
+                          ),
+                          title: l.settingsGithubOpenReleasePage,
+                          subtitle: 'github.com/ninocss/UntisPlus',
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                          onTap: () {
+                            url_launcher.launchUrlString(
+                              'https://github.com/ninocss/UntisPlus/releases',
+                              mode: url_launcher.LaunchMode.externalApplication,
+                            );
+                          },
+                        ),
+                      ],
+                      cs,
+                      accent: cs.secondary,
                     ),
-                    _tile(
-                      leading: _tileIcon(
-                        Icons.download_rounded,
-                        _githubDirectDownload ? cs.primary : cs.outline,
-                      ),
-                      title: l.settingsGithubDirectDownload,
-                      subtitle: l.settingsGithubDirectDownloadDesc,
-                      trailing: Switch.adaptive(
-                        value: _githubDirectDownload,
-                        onChanged: (v) {
-                          HapticFeedback.selectionClick();
-                          _setGithubDirectDownload(v);
-                        },
-                      ),
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _setGithubDirectDownload(!_githubDirectDownload);
-                      },
-                    ),
-                    _tile(
-                      leading: _tileIcon(
-                        Icons.open_in_new_rounded,
-                        cs.secondary,
-                      ),
-                      title: l.settingsGithubOpenReleasePage,
-                      subtitle: 'github.com/ninocss/UntisPlus',
-                      trailing: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: cs.onSurface.withOpacity(0.4),
-                      ),
-                      onTap: () {
-                        url_launcher.launchUrlString(
-                          'https://github.com/ninocss/UntisPlus/releases',
-                          mode: url_launcher.LaunchMode.externalApplication,
-                        );
-                      },
-                    ),
-                  ], cs, accent: cs.secondary),
                   ),
 
                   // ── About ────────────────────────────────────────────────
