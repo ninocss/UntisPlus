@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (z. B. v2.0.1)'
+        description: 'Release tag'
         required: true
         type: string
       release_name:
@@ -78,7 +78,100 @@ jobs:
         if: ${{ inputs.build_aab }}
         run: flutter build appbundle --release
 
-      - name: Create GitHub Release
+      - name: Generate Gemini Release Notes
+        id: ai_notes
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.0-flash
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "No GEMINI_API_KEY configured. Falling back to GitHub generated notes."
+            echo "has_ai_notes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log "$PREV_TAG"..HEAD --pretty=format:'- %s (%h)' | head -n 120)
+          else
+            COMMITS=$(git log --pretty=format:'- %s (%h)' | head -n 120)
+          fi
+
+          if [ -z "$COMMITS" ]; then
+            COMMITS='- No commit messages found.'
+          fi
+
+          PROMPT=$(cat <<'EOF'
+          You are a release manager for a Flutter app.
+          Create concise, user-friendly release notes in Markdown.
+          Requirements:
+          - Output in English.
+          - Start with a short summary paragraph.
+          - Then sections: "Highlights", "Improvements", "Fixes", "Technical Notes".
+          - Use bullet points and include only changes that are inferable from commits.
+          - If uncertain, phrase cautiously and do not invent details.
+          - Keep it compact and readable for end users.
+          EOF
+          )
+
+          PAYLOAD=$(jq -n \
+            --arg prompt "$PROMPT" \
+            --arg tag "$RELEASE_TAG" \
+            --arg commits "$COMMITS" \
+            '{
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      text: ($prompt + "\n\nRelease tag: " + $tag + "\n\nCommits:\n" + $commits)
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.2
+              }
+            }')
+
+          RESPONSE=$(curl -sS "https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          BODY=$(echo "$RESPONSE" | jq -r '(.candidates[0].content.parts // []) | map(.text // empty) | join("\n")')
+
+          if [ -z "$BODY" ]; then
+            echo "AI note generation failed. Falling back to GitHub generated notes."
+            echo "has_ai_notes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          {
+            echo 'release_body<<EOF'
+            echo "$BODY"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+          echo "has_ai_notes=true" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release (AI Notes)
+        if: ${{ steps.ai_notes.outputs.has_ai_notes == 'true' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: ${{ inputs.release_name != '' && inputs.release_name || inputs.tag }}
+          body: ${{ steps.ai_notes.outputs.release_body }}
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          fail_on_unmatched_files: false
+          draft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release (Fallback)
+        if: ${{ steps.ai_notes.outputs.has_ai_notes != 'true' }}
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ inputs.tag }}
