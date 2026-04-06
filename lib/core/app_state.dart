@@ -19,6 +19,7 @@ final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
 final ValueNotifier<int> backgroundAnimationStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
+final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
 
 String _icuLocale(String locale) {
   switch (locale) {
@@ -28,6 +29,8 @@ String _icuLocale(String locale) {
       return 'fr_FR';
     case 'es':
       return 'es_ES';
+    case 'el':
+      return 'el_GR';
     default:
       return 'de_DE';
   }
@@ -103,4 +106,3 @@ Future<bool> _reAuthenticate() async {
   } catch (_) {}
   return false;
 }
-

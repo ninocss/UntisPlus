@@ -20,6 +20,7 @@ import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'services/notification_service.dart';
 import 'services/background_service.dart';
+import 'services/demo_mode_service.dart';
 import 'widgets/rounded_blur_app_bar.dart';
 
 part 'core/school_models.dart';
@@ -40,12 +41,17 @@ void main() async {
     initializeDateFormatting('en_US', null),
     initializeDateFormatting('fr_FR', null),
     initializeDateFormatting('es_ES', null),
+    initializeDateFormatting('el_GR', null),
   ]);
 
   final prefs = await SharedPreferences.getInstance();
   final packageInfo = await PackageInfo.fromPlatform();
   appVersion = packageInfo.version;
+  demoModeNotifier.value = prefs.getBool('demoMode') ?? false;
   final bool isLoggedIn = prefs.containsKey('sessionId');
+  final bool onboardingCompleted =
+      prefs.getBool('onboardingCompleted') ?? false;
+  final bool tutorialCompleted = prefs.getBool('tutorialCompleted') ?? false;
 
   if (isLoggedIn) {
     sessionID = prefs.getString('sessionId') ?? "";
@@ -87,8 +93,10 @@ void main() async {
 
   runApp(
     UntisPlusApp(
-      startScreen: isLoggedIn
-          ? const MainNavigationScreen()
+      startScreen: (isLoggedIn || demoModeNotifier.value)
+          ? MainNavigationScreen(
+              showTutorialOnStart: onboardingCompleted && !tutorialCompleted,
+            )
           : const OnboardingFlow(),
     ),
   );
@@ -520,7 +528,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.addListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
-    if (sessionID.isNotEmpty) _fetchFullWeek();
+    demoModeNotifier.addListener(_onDemoModeChanged);
+    if (sessionID.isNotEmpty || demoModeNotifier.value) _fetchFullWeek();
     _loadViewPref();
   }
 
@@ -589,11 +598,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   void _onHiddenSubjectsChanged() => setState(() {});
 
+  void _onDemoModeChanged() {
+    if (!mounted) return;
+    if (demoModeNotifier.value) {
+      _viewingClassId = null;
+      _viewingClassName = null;
+      _tempSessionId = null;
+    }
+    _fetchFullWeek();
+  }
+
   @override
   void dispose() {
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.removeListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.removeListener(_onHiddenSubjectsChanged);
+    demoModeNotifier.removeListener(_onDemoModeChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -1882,8 +1902,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Future<void> _fetchFullWeek({bool silent = false}) async {
     if (personId == 0 && personType == 0) {}
 
+    final isDemoMode = demoModeNotifier.value;
+
     int requestPersonId = _viewingClassId ?? personId;
     int requestPersonType = _viewingClassId != null ? 1 : personType;
+
+    if (isDemoMode) {
+      requestPersonId = DemoModeService.demoPersonId;
+      requestPersonType = DemoModeService.demoPersonType;
+    }
 
     if (requestPersonId == 0) {
       if (requestPersonType == 0) requestPersonType = 5;
@@ -1893,6 +1920,27 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (!silent) _loading = true;
       _loadError = null;
     });
+
+    if (isDemoMode) {
+      final tempWeek = DemoModeService.buildWeek(
+        _currentMonday,
+        locale: appLocaleNotifier.value,
+      );
+      _applyKnownSubjectsFromWeek(tempWeek);
+      await _saveWeekToCache(
+        requestPersonId: requestPersonId,
+        requestPersonType: requestPersonType,
+        weekData: tempWeek,
+      );
+      if (!mounted) return;
+      setState(() {
+        _weekData = tempWeek;
+        _showingCachedWeek = false;
+        _loading = false;
+        _loadError = null;
+      });
+      return;
+    }
 
     final cachedWeek = await _loadWeekFromCache(
       requestPersonId: requestPersonId,
@@ -2815,15 +2863,15 @@ class _ExamsPageState extends State<ExamsPage> {
     final selected = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.examsAddTitle,
-      options: const [
+      options: [
         _SheetOption(
           value: 'custom',
-          title: 'Custom',
+          title: l.examsActionCustom,
           icon: Icons.edit_note_rounded,
         ),
         _SheetOption(
           value: 'scan',
-          title: 'Scan',
+          title: l.examsActionScan,
           icon: Icons.document_scanner_rounded,
         ),
       ],
@@ -2871,6 +2919,10 @@ class _ExamsPageState extends State<ExamsPage> {
   }
 
   Future<void> _fetchApiExams() async {
+    if (demoModeNotifier.value) {
+      _apiExams = DemoModeService.demoExams();
+      return;
+    }
     if (sessionID.isEmpty) return;
     final now = DateTime.now();
     final start = now.subtract(const Duration(days: 14));
@@ -3328,7 +3380,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           context,
         ).showSnackBar(SnackBar(content: Text(l.examsImportSuccess)));
       } else {
-        throw Exception("Kein gültiges JSON gefunden.");
+        throw Exception(l.examsImportInvalidJson);
       }
     } catch (e) {
       if (!mounted) return;
@@ -3771,6 +3823,34 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         })
         .where((e) => e.isNotEmpty)
         .toList();
+
+    if (demoModeNotifier.value) {
+      final demoExams = DemoModeService.demoExams();
+      if (mounted) {
+        setState(() {
+          _exams = [
+            ...demoExams.map((e) => {...e, '_source': 'demo'}),
+            ...customExams.map((e) => {...e, '_source': 'custom'}),
+          ];
+          _exams.sort((a, b) {
+            final da =
+                int.tryParse(
+                  (a['date'] ?? a['examDate'] ?? a['startDate'] ?? 0)
+                      .toString(),
+                ) ??
+                0;
+            final db =
+                int.tryParse(
+                  (b['date'] ?? b['examDate'] ?? b['startDate'] ?? 0)
+                      .toString(),
+                ) ??
+                0;
+            return da.compareTo(db);
+          });
+        });
+      }
+      return;
+    }
 
     List<Map<String, dynamic>> apiExams = [];
     if (sessionID.isNotEmpty) {
@@ -5382,6 +5462,7 @@ class _SettingsPageState extends State<SettingsPage> {
     'en': 'English',
     'fr': 'Français',
     'es': 'Español',
+    'el': 'Ελληνικά',
   };
 
   @override
@@ -5398,6 +5479,7 @@ class _SettingsPageState extends State<SettingsPage> {
     backgroundAnimationStyleNotifier.addListener(_onChanged);
     progressivePushNotifier.addListener(_onChanged);
     blurEnabledNotifier.addListener(_onChanged);
+    demoModeNotifier.addListener(_onChanged);
   }
 
   void _onChanged() => setState(() {});
@@ -5414,6 +5496,7 @@ class _SettingsPageState extends State<SettingsPage> {
     backgroundAnimationStyleNotifier.removeListener(_onChanged);
     progressivePushNotifier.removeListener(_onChanged);
     blurEnabledNotifier.removeListener(_onChanged);
+    demoModeNotifier.removeListener(_onChanged);
     super.dispose();
   }
 
@@ -5600,6 +5683,31 @@ class _SettingsPageState extends State<SettingsPage> {
       await NotificationService().cancelNotification(1);
     } else {
       updateUntisData().catchError((_) {});
+    }
+  }
+
+  Future<void> _setDemoMode(bool enabled) async {
+    demoModeNotifier.value = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('demoMode', enabled);
+
+    if (enabled) {
+      if (schoolName.isEmpty) schoolName = 'demo.school';
+      if (schoolUrl.isEmpty) schoolUrl = 'demo.school';
+      if (personType == 0) personType = DemoModeService.demoPersonType;
+      if (personId == 0) personId = DemoModeService.demoPersonId;
+      await prefs.setString('schoolName', schoolName);
+      await prefs.setString('schoolUrl', schoolUrl);
+      await prefs.setInt('personType', personType);
+      await prefs.setInt('personId', personId);
+      return;
+    }
+
+    if (sessionID.isEmpty && mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        _buildBouncyRoute(const OnboardingFlow()),
+        (route) => false,
+      );
     }
   }
 
@@ -6107,6 +6215,25 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         _tile(
                           leading: _tileIcon(
+                            Icons.science_rounded,
+                            demoModeNotifier.value ? cs.tertiary : cs.outline,
+                          ),
+                          title: l.settingsDemoMode,
+                          subtitle: l.settingsDemoModeDesc,
+                          trailing: Switch.adaptive(
+                            value: demoModeNotifier.value,
+                            onChanged: (v) {
+                              HapticFeedback.selectionClick();
+                              _setDemoMode(v);
+                            },
+                          ),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _setDemoMode(!demoModeNotifier.value);
+                          },
+                        ),
+                        _tile(
+                          leading: _tileIcon(
                             Icons.notifications_active_rounded,
                             progressivePushNotifier.value
                                 ? cs.primary
@@ -6510,7 +6637,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             cs.secondary,
                           ),
                           title: l.settingsGithubOpenReleasePage,
-                          subtitle: 'github.com/ninocss/UntisPlus',
+                          subtitle: l.settingsGithubRepoLabel,
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
@@ -6543,7 +6670,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             Icons.rocket_launch_outlined,
                             cs.primary,
                           ),
-                          title: 'Untis+',
+                          title: l.appName,
                           subtitle: '${l.settingsAppVersion} $appVersion',
                           trailing: Icon(
                             Icons.auto_awesome_rounded,

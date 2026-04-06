@@ -1,13 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Untis+ App Localization
-// Supported locales: de (German), en (English), fr (French), es (Spanish)
+// Supported locales: de (German), en (English), fr (French), es (Spanish), el (Greek)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AppL10n {
   final String locale;
   const AppL10n._(this.locale);
 
-  static const supportedLocales = ['de', 'en', 'fr', 'es'];
+  static const supportedLocales = ['de', 'en', 'fr', 'es', 'el'];
 
   static AppL10n of(String locale) =>
       AppL10n._(supportedLocales.contains(locale) ? locale : 'de');
@@ -36,11 +36,11 @@ class AppL10n {
   String get loginManualEntry => _t('loginManualEntry');
   String get loginSwitchToSearch => _t('loginSwitchToSearch');
   String get loginChangeSchool => _t('loginChangeSchool');
-    String get loginTwoFactorCode => _t('loginTwoFactorCode');
-    String get loginTwoFactorHint => _t('loginTwoFactorHint');
-    String get loginTwoFactorRequired => _t('loginTwoFactorRequired');
-    String get loginTwoFactorInvalid => _t('loginTwoFactorInvalid');
-    String get loginVerifyButton => _t('loginVerifyButton');
+  String get loginTwoFactorCode => _t('loginTwoFactorCode');
+  String get loginTwoFactorHint => _t('loginTwoFactorHint');
+  String get loginTwoFactorRequired => _t('loginTwoFactorRequired');
+  String get loginTwoFactorInvalid => _t('loginTwoFactorInvalid');
+  String get loginVerifyButton => _t('loginVerifyButton');
 
   // ── Onboarding ─────────────────────────────────────────────────────────────
   String get onboardingWelcomeTitle => _t('onboardingWelcomeTitle');
@@ -76,6 +76,21 @@ class AppL10n {
   String get onboardingFeatureNotifyTitle => _t('onboardingFeatureNotifyTitle');
   String get onboardingFeatureNotifyDesc => _t('onboardingFeatureNotifyDesc');
   String get onboardingFinishSetup => _t('onboardingFinishSetup');
+  String get onboardingUseDemoMode => _t('onboardingUseDemoMode');
+  String get onboardingUseDemoModeDesc => _t('onboardingUseDemoModeDesc');
+  String get tutorialTitle => _t('tutorialTitle');
+  String get tutorialSkip => _t('tutorialSkip');
+  String get tutorialDone => _t('tutorialDone');
+  String get tutorialStepWeekTitle => _t('tutorialStepWeekTitle');
+  String get tutorialStepWeekDesc => _t('tutorialStepWeekDesc');
+  String get tutorialStepExamsTitle => _t('tutorialStepExamsTitle');
+  String get tutorialStepExamsDesc => _t('tutorialStepExamsDesc');
+  String get tutorialStepInfoTitle => _t('tutorialStepInfoTitle');
+  String get tutorialStepInfoDesc => _t('tutorialStepInfoDesc');
+  String get tutorialStepSettingsTitle => _t('tutorialStepSettingsTitle');
+  String get tutorialStepSettingsDesc => _t('tutorialStepSettingsDesc');
+  String get tutorialStepFinishTitle => _t('tutorialStepFinishTitle');
+  String get tutorialStepFinishDesc => _t('tutorialStepFinishDesc');
 
   // ── Timetable ───────────────────────────────────────────────────────────────
   String get timetableTitle => _t('timetableTitle');
@@ -137,6 +152,9 @@ class AppL10n {
   String get examsImportFile => _t('examsImportFile');
   String get examsImportSuccess => _t('examsImportSuccess');
   String get examsImportError => _t('examsImportError');
+  String get examsImportInvalidJson => _t('examsImportInvalidJson');
+  String get examsActionCustom => _t('examsActionCustom');
+  String get examsActionScan => _t('examsActionScan');
   String examsInDays(int n) => _t('examsDaysIn').replaceAll('{n}', '$n');
 
   // ── School Info / Notifications ────────────────────────────────────────────
@@ -204,6 +222,8 @@ class AppL10n {
   String get settingsSectionTimetable => _t('settingsSectionTimetable');
   String get settingsShowCancelled => _t('settingsShowCancelled');
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
+  String get settingsDemoMode => _t('settingsDemoMode');
+  String get settingsDemoModeDesc => _t('settingsDemoModeDesc');
   String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
   String get settingsBackgroundAnimationsDesc =>
       _t('settingsBackgroundAnimationsDesc');
@@ -227,8 +247,10 @@ class AppL10n {
   String get settingsBackgroundLoading => _t('settingsBackgroundLoading');
   String get settingsSectionUpdates => _t('settingsSectionUpdates');
   String get settingsSectionAbout => _t('settingsSectionAbout');
+  String get appName => _t('appName');
   String get settingsAppVersion => _t('settingsAppVersion');
   String get settingsSectionSubjects => _t('settingsSectionSubjects');
+  String get settingsGithubRepoLabel => _t('settingsGithubRepoLabel');
   String get settingsGithubUpdateCheck => _t('settingsGithubUpdateCheck');
   String get settingsGithubUpdateCheckDesc =>
       _t('settingsGithubUpdateCheckDesc');
@@ -321,6 +343,27 @@ class AppL10n {
       'onboardingFeatureNotifyDesc':
           'Bleib auf dem Laufenden, bevor die Schule startet.',
       'onboardingFinishSetup': 'Einrichtung abschließen',
+      'onboardingUseDemoMode': 'Demo-Modus starten',
+      'onboardingUseDemoModeDesc':
+          'Teste Untis+ ohne Schul-Login mit realistisch gefullten Beispieldaten.',
+      'tutorialTitle': 'Kurzes App-Tutorial',
+      'tutorialSkip': 'Tutorial überspringen',
+      'tutorialDone': 'Tutorial beenden',
+      'tutorialStepWeekTitle': '1. Stundenplan',
+      'tutorialStepWeekDesc':
+          'Tippe auf den großen Uhren-Button, um zur Wochenansicht zu wechseln.',
+      'tutorialStepExamsTitle': '2. Prüfungen',
+      'tutorialStepExamsDesc':
+          'Tippe auf den Prüfungs-Button, um bevorstehende Klausuren und Aufgaben zu sehen.',
+      'tutorialStepInfoTitle': '3. Schul-Info',
+      'tutorialStepInfoDesc':
+          'Tippe auf den Info-Button für aktuelle Mitteilungen deiner Schule.',
+      'tutorialStepSettingsTitle': '4. Einstellungen',
+      'tutorialStepSettingsDesc':
+          'Tippe auf den Einstellungs-Button, um Sprache, Design und Benachrichtigungen anzupassen.',
+      'tutorialStepFinishTitle': 'Fertig!',
+      'tutorialStepFinishDesc':
+          'Du kennst jetzt alle Hauptbereiche der App. Viel Spaß mit Untis+!',
 
       'timetableTitle': 'Stundenplan',
       'timetablePrevWeek': 'Vorherige Woche',
@@ -386,6 +429,9 @@ class AppL10n {
       'examsImportFile': 'PDF / Datei',
       'examsImportSuccess': 'Erfolgreich importiert!',
       'examsImportError': 'Fehler beim Import: ',
+      'examsImportInvalidJson': 'Kein gültiges JSON gefunden.',
+      'examsActionCustom': 'Manuell',
+      'examsActionScan': 'Scannen',
 
       'infoTitle': 'Schulinfos',
       'infoReload': 'Neu laden',
@@ -456,6 +502,9 @@ class AppL10n {
       'settingsShowCancelled': 'Ausgefallene Stunden anzeigen',
       'settingsShowCancelledDesc':
           'Ausgefallene Stunden werden im Stundenplan angezeigt',
+      'settingsDemoMode': 'Demo-Modus',
+      'settingsDemoModeDesc':
+          'Verwendet lokale Demo-Daten statt Schulserver (sofort aktiv).',
       'settingsBackgroundAnimations': 'Hintergrundanimationen',
       'settingsBackgroundAnimationsDesc':
           'Animierte Farbverläufe im Hintergrund anzeigen',
@@ -478,8 +527,10 @@ class AppL10n {
       'settingsBackgroundLoading': 'Daten werden im Hintergrund geladen...',
       'settingsSectionUpdates': 'Updates',
       'settingsSectionAbout': 'Über die App',
+      'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Fächer & Farben',
+      'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Nach Updates im GitHub-Repo suchen',
       'settingsGithubUpdateCheckDesc':
           'Prüft das neueste Release von ninocss/UntisPlus.',
@@ -535,8 +586,7 @@ class AppL10n {
       'loginSwitchToSearch': 'Back to search',
       'loginChangeSchool': 'Change school',
       'loginTwoFactorCode': '2FA code',
-      'loginTwoFactorHint':
-          'Enter the 2FA code from your authenticator app.',
+      'loginTwoFactorHint': 'Enter the 2FA code from your authenticator app.',
       'loginTwoFactorRequired':
           '2FA is enabled. Please enter your verification code.',
       'loginTwoFactorInvalid':
@@ -573,6 +623,27 @@ class AppL10n {
       'onboardingFeatureNotifyTitle': 'Notifications & Widgets',
       'onboardingFeatureNotifyDesc': 'Stay updated before school starts.',
       'onboardingFinishSetup': 'Finish Setup',
+      'onboardingUseDemoMode': 'Start demo mode',
+      'onboardingUseDemoModeDesc':
+          'Try Untis+ without school login using realistic sample data.',
+      'tutorialTitle': 'Quick app tutorial',
+      'tutorialSkip': 'Skip tutorial',
+      'tutorialDone': 'Finish tutorial',
+      'tutorialStepWeekTitle': '1. Timetable',
+      'tutorialStepWeekDesc':
+          'Tap the large clock button to switch to your weekly timetable.',
+      'tutorialStepExamsTitle': '2. Exams',
+      'tutorialStepExamsDesc':
+          'Tap the exams button to see upcoming exams and homework.',
+      'tutorialStepInfoTitle': '3. School info',
+      'tutorialStepInfoDesc':
+          'Tap the info button to view current announcements from your school.',
+      'tutorialStepSettingsTitle': '4. Settings',
+      'tutorialStepSettingsDesc':
+          'Tap the settings button to customize language, design and notifications.',
+      'tutorialStepFinishTitle': 'Done!',
+      'tutorialStepFinishDesc':
+          'You now know all core sections of the app. Have fun with Untis+!',
 
       'timetableTitle': 'Timetable',
       'timetablePrevWeek': 'Previous week',
@@ -631,6 +702,9 @@ class AppL10n {
       'examsImportFile': 'PDF / File',
       'examsImportSuccess': 'Successfully imported!',
       'examsImportError': 'Import error: ',
+      'examsImportInvalidJson': 'No valid JSON found.',
+      'examsActionCustom': 'Manual',
+      'examsActionScan': 'Scan',
 
       'infoTitle': 'School Info',
       'infoReload': 'Reload',
@@ -700,6 +774,9 @@ class AppL10n {
       'settingsShowCancelled': 'Show cancelled lessons',
       'settingsShowCancelledDesc':
           'Cancelled lessons are shown in the timetable',
+      'settingsDemoMode': 'Demo mode',
+      'settingsDemoModeDesc':
+          'Uses local demo data instead of school servers (active instantly).',
       'settingsBackgroundAnimations': 'Background Animations',
       'settingsBackgroundAnimationsDesc':
           'Show animated gradient effects in the background',
@@ -722,8 +799,10 @@ class AppL10n {
       'settingsBackgroundLoading': 'Data is loading in the background...',
       'settingsSectionUpdates': 'Updates',
       'settingsSectionAbout': 'About',
+      'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Subjects & Colors',
+      'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Check for updates on GitHub',
       'settingsGithubUpdateCheckDesc':
           'Checks the latest release from ninocss/UntisPlus.',
@@ -783,8 +862,7 @@ class AppL10n {
           'Saisis le code 2FA depuis ton application d\'authentification.',
       'loginTwoFactorRequired':
           'Le 2FA est activé. Veuillez saisir votre code de vérification.',
-      'loginTwoFactorInvalid':
-          'Le code 2FA est invalide ou expiré. Réessaie.',
+      'loginTwoFactorInvalid': 'Le code 2FA est invalide ou expiré. Réessaie.',
       'loginVerifyButton': 'Vérifier',
 
       'onboardingWelcomeTitle': 'Bienvenue sur Untis+',
@@ -821,6 +899,27 @@ class AppL10n {
       'onboardingFeatureNotifyTitle': 'Notifications & Widgets',
       'onboardingFeatureNotifyDesc': 'Reste informé avant le début des cours.',
       'onboardingFinishSetup': 'Terminer la configuration',
+      'onboardingUseDemoMode': 'Lancer le mode démo',
+      'onboardingUseDemoModeDesc':
+          'Teste Untis+ sans connexion école avec des données réalistes.',
+      'tutorialTitle': 'Tutoriel rapide de l\'app',
+      'tutorialSkip': 'Passer le tutoriel',
+      'tutorialDone': 'Terminer le tutoriel',
+      'tutorialStepWeekTitle': '1. Emploi du temps',
+      'tutorialStepWeekDesc':
+          'Appuie sur le grand bouton horloge pour ouvrir la vue semaine.',
+      'tutorialStepExamsTitle': '2. Examens',
+      'tutorialStepExamsDesc':
+          'Appuie sur le bouton examens pour voir les prochains contrôles et devoirs.',
+      'tutorialStepInfoTitle': '3. Infos école',
+      'tutorialStepInfoDesc':
+          'Appuie sur le bouton infos pour lire les annonces de ton école.',
+      'tutorialStepSettingsTitle': '4. Paramètres',
+      'tutorialStepSettingsDesc':
+          'Appuie sur le bouton paramètres pour ajuster la langue, le design et les notifications.',
+      'tutorialStepFinishTitle': 'Terminé !',
+      'tutorialStepFinishDesc':
+          'Tu connais maintenant toutes les zones principales de l\'app. Amuse-toi avec Untis+ !',
 
       'timetableTitle': 'Emploi du temps',
       'timetablePrevWeek': 'Semaine précédente',
@@ -880,6 +979,9 @@ class AppL10n {
       'examsImportFile': 'PDF / Fichier',
       'examsImportSuccess': 'Importé avec succès !',
       'examsImportError': 'Erreur lors de l\'import : ',
+      'examsImportInvalidJson': 'Aucun JSON valide trouvé.',
+      'examsActionCustom': 'Manuel',
+      'examsActionScan': 'Scanner',
 
       'infoTitle': 'Infos école',
       'infoReload': 'Recharger',
@@ -909,6 +1011,7 @@ class AppL10n {
       'settingsTitle': 'Paramètres',
       'settingsLoggedInAs': 'Connecté en tant que',
       'settingsLogout': 'Se déconnecter',
+      'settingsSectionQuick': 'Accès rapide',
       'settingsSectionGeneral': 'Application',
       'settingsAppearance': 'Apparence',
       'settingsAppearanceDesc': 'Système (Clair/Sombre)',
@@ -948,6 +1051,9 @@ class AppL10n {
       'settingsShowCancelled': 'Afficher les cours annulés',
       'settingsShowCancelledDesc':
           'Les cours annulés sont visibles dans l\'emploi du temps',
+      'settingsDemoMode': 'Mode démo',
+      'settingsDemoModeDesc':
+          'Utilise des données de démonstration locales au lieu du serveur école (immédiat).',
       'settingsBackgroundAnimations': 'Animations de fond',
       'settingsBackgroundAnimationsDesc':
           'Afficher des effets de dégradé animés en arrière-plan',
@@ -966,8 +1072,10 @@ class AppL10n {
           'Charge immédiatement les dernières données du cache API et met à jour widget et push',
       'settingsBackgroundLoading': 'Les données se chargent en arrière-plan...',
       'settingsSectionAbout': 'À propos',
+      'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsSectionSubjects': 'Matières & Couleurs',
+      'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Rechercher des mises à jour sur GitHub',
       'settingsGithubUpdateCheckDesc':
           'Vérifie la dernière version de ninocss/UntisPlus.',
@@ -1016,8 +1124,8 @@ class AppL10n {
       'loginButton': 'Empezar',
       'loginFailed': 'Error de inicio de sesión. Verifica tus datos.',
       'loginConnectionError': 'Error de conexión',
-      'loginSearchSchool': 'Buscar escuela',
-      'loginSelectSchool': 'Seleccionar escuela',
+      'loginSearchSchool': 'Busca escuela',
+      'loginSelectSchool': 'Selecciona escuela',
       'loginSearchHint': 'Nombre o ciudad...',
       'loginNoSchoolsFound': 'No se encontraron escuelas.',
       'loginChangeLanguage': 'Idioma',
@@ -1065,8 +1173,29 @@ class AppL10n {
           'Pregunta a Gemini sobre tu día, deberes o exámenes.',
       'onboardingFeatureNotifyTitle': 'Notificaciones y Widgets',
       'onboardingFeatureNotifyDesc':
-          'Mantente al día antes de que empiece la escuela.',
+          'Mantente al día antes de que empieza la escuela.',
       'onboardingFinishSetup': 'Finalizar configuración',
+      'onboardingUseDemoMode': 'Iniciar modo demo',
+      'onboardingUseDemoModeDesc':
+          'Prueba Untis+ sin inicio escolar con datos de ejemplo realistas.',
+      'tutorialTitle': 'Tutorial rápido de la app',
+      'tutorialSkip': 'Saltar tutorial',
+      'tutorialDone': 'Finalizar tutorial',
+      'tutorialStepWeekTitle': '1. Horario',
+      'tutorialStepWeekDesc':
+          'Toca el botón grande del reloj para abrir la vista semanal.',
+      'tutorialStepExamsTitle': '2. Exámenes',
+      'tutorialStepExamsDesc':
+          'Toca el botón de exámenes para ver próximos exámenes y tareas.',
+      'tutorialStepInfoTitle': '3. Info escolar',
+      'tutorialStepInfoDesc':
+          'Toca el botón de info para leer avisos actuales de tu escuela.',
+      'tutorialStepSettingsTitle': '4. Configuración',
+      'tutorialStepSettingsDesc':
+          'Toca el botón de configuración para ajustar idioma, diseño y notificaciones.',
+      'tutorialStepFinishTitle': '¡Listo!',
+      'tutorialStepFinishDesc':
+          'Ya conoces todas las áreas principales de la app. ¡Disfruta Untis+!',
 
       'timetableTitle': 'Horario',
       'timetablePrevWeek': 'Semana anterior',
@@ -1126,6 +1255,9 @@ class AppL10n {
       'examsImportFile': 'PDF / Archivo',
       'examsImportSuccess': '¡Importado con éxito!',
       'examsImportError': 'Error al importar: ',
+      'examsImportInvalidJson': 'No se encontró un JSON válido.',
+      'examsActionCustom': 'Manual',
+      'examsActionScan': 'Escanear',
 
       'infoTitle': 'Info escolar',
       'infoReload': 'Recargar',
@@ -1155,6 +1287,7 @@ class AppL10n {
       'settingsTitle': 'Configuración',
       'settingsLoggedInAs': 'Conectado como',
       'settingsLogout': 'Cerrar sesión',
+      'settingsSectionQuick': 'Acceso rápido',
       'settingsSectionGeneral': 'Aplicación',
       'settingsAppearance': 'Apariencia',
       'settingsAppearanceDesc': 'Sistema (Claro/Oscuro)',
@@ -1194,6 +1327,9 @@ class AppL10n {
       'settingsShowCancelled': 'Mostrar clases canceladas',
       'settingsShowCancelledDesc':
           'Las clases canceladas se muestran en el horario',
+      'settingsDemoMode': 'Modo demo',
+      'settingsDemoModeDesc':
+          'Usa datos de demostración locales en lugar del servidor escolar (inmediato).',
       'settingsBackgroundAnimations': 'Animaciones de fondo',
       'settingsBackgroundAnimationsDesc':
           'Mostrar efectos de degradado animados en el fondo',
@@ -1213,8 +1349,10 @@ class AppL10n {
       'settingsBackgroundLoading':
           'Los datos se están cargando en segundo plano...',
       'settingsSectionAbout': 'Acerca de',
+      'appName': 'Untis+',
       'settingsAppVersion': 'Versión',
       'settingsSectionSubjects': 'Asignaturas & Colores',
+      'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Buscar actualizaciones en GitHub',
       'settingsGithubUpdateCheckDesc':
           'Comprueba la última versión de ninocss/UntisPlus.',
@@ -1246,6 +1384,289 @@ class AppL10n {
 - Responde en español, de forma amigable, útil y concisa.
 - No empieces automáticamente con "Sí," – responde directamente.
 - Puedes usar Markdown para el formato (ej. listas, **negrita**).''',
+    },
+
+    // ── GREEK ────────────────────────────────────────────────────────────────
+    'el': {
+      'navWeek': 'Εβδομάδα',
+      'navExams': 'Εξετάσεις',
+      'navInfo': 'Πληροφορίες',
+      'navMenu': 'Μενού',
+
+      'loginServer': 'Διεύθυνση διακομιστή',
+      'loginSchool': 'Σχολείο',
+      'loginUsername': 'Όνομα χρήστη',
+      'loginPassword': 'Κωδικός πρόσβασης',
+      'loginButton': 'Πάμε',
+      'loginFailed': 'Η σύνδεση απέτυχε. Έλεγξε τα στοιχεία σου.',
+      'loginConnectionError': 'Σφάλμα σύνδεσης',
+      'loginSearchSchool': 'Αναζήτηση σχολείου',
+      'loginSelectSchool': 'Επιλογή σχολείου',
+      'loginSearchHint': 'Όνομα σχολείου ή πόλη...',
+      'loginNoSchoolsFound': 'Δεν βρέθηκαν σχολεία.',
+      'loginChangeLanguage': 'Γλώσσα',
+      'loginManualEntry': 'Χειροκίνητη εισαγωγή',
+      'loginSwitchToSearch': 'Πίσω στην αναζήτηση',
+      'loginChangeSchool': 'Αλλαγή σχολείου',
+      'loginTwoFactorCode': 'Κωδικός 2FA',
+      'loginTwoFactorHint': 'Εισήγαγε τον κωδικό 2FA από την εφαρμογή σου.',
+      'loginTwoFactorRequired':
+          'Το 2FA είναι ενεργό. Εισήγαγε τον κωδικό επαλήθευσης.',
+      'loginTwoFactorInvalid':
+          'Ο κωδικός 2FA δεν είναι έγκυρος ή έχει λήξει. Δοκίμασε ξανά.',
+      'loginVerifyButton': 'Επαλήθευση',
+
+      'onboardingWelcomeTitle': 'Καλώς ήρθες στο Untis+',
+      'onboardingChooseLanguageSubtitle': 'Επίλεξε τη γλώσσα που προτιμάς',
+      'onboardingAppearanceTitle': 'Εμφάνιση',
+      'onboardingAppearanceSubtitle':
+          'Κάνε το Untis+ να μοιάζει ακριβώς όπως θέλεις',
+      'onboardingThemeSystem': 'Σύστημα',
+      'onboardingThemeLight': 'Φωτεινό',
+      'onboardingThemeDark': 'Σκοτεινό',
+      'onboardingAnimationsHint': 'Ενεργοποίηση όμορφων κινούμενων φόντων',
+      'onboardingSchoolLoginTitle': 'Σύνδεση σχολείου',
+      'onboardingSchoolLoginSubtitle':
+          'Σύνδεσε τον λογαριασμό σου στο WebUntis',
+      'onboardingGeminiTitle': 'Gemini AI',
+      'onboardingGeminiSubtitle':
+          'Συζήτησε με το ωρολόγιό σου και τις εργασίες σου',
+      'onboardingGeminiInfo':
+          'Πάρε ένα δωρεάν κλειδί Gemini API από το Google AI Studio για να ξεκλειδώσεις τον ισχυρό βοηθό AI στο Untis+.',
+      'onboardingGeminiGetApiKey': 'Λήψη κλειδιού API',
+      'onboardingSkip': 'Παράλειψη',
+      'onboardingNext': 'Επόμενο',
+      'onboardingGeminiEnterKeyOrSkip':
+          'Εισήγαγε ένα κλειδί ή παράλειψε αυτό το βήμα',
+      'onboardingReadyTitle': 'Έτοιμο για εκκίνηση!',
+      'onboardingReadySubtitle': 'Να τι μπορείς να κάνεις στο Untis+',
+      'onboardingFeatureTimetableTitle': 'Ωρολόγιο & Ημερολόγιο',
+      'onboardingFeatureTimetableDesc':
+          'Παρακολούθησε το πρόγραμμα σου χωρίς κόπο.',
+      'onboardingFeatureExamsTitle': 'Εξετάσεις & Εργασίες',
+      'onboardingFeatureExamsDesc':
+          'Παρακολούθησε την πρόοδό σου και τις επερχόμενες εξετάσεις.',
+      'onboardingFeatureAiTitle': 'Βοηθός AI',
+      'onboardingFeatureAiDesc':
+          'Ρώτησε το Gemini για τη μέρα σου, τις εργασίες ή τις εξετάσεις.',
+      'onboardingFeatureNotifyTitle': 'Ειδοποιήσεις & Widgets',
+      'onboardingFeatureNotifyDesc':
+          'Μείνε ενημερωμένος πριν ξεκινήσει το σχολείο.',
+      'onboardingFinishSetup': 'Ολοκλήρωση ρύθμισης',
+      'onboardingUseDemoMode': 'Εκκίνηση demo mode',
+      'onboardingUseDemoModeDesc':
+          'Δοκίμασε το Untis+ χωρίς σύνδεση σχολείου με ρεαλιστικά δείγματα δεδομένων.',
+      'tutorialTitle': 'Σύντομο tutorial εφαρμογής',
+      'tutorialSkip': 'Παράλειψη tutorial',
+      'tutorialDone': 'Ολοκλήρωση tutorial',
+      'tutorialStepWeekTitle': '1. Ωρολόγιο',
+      'tutorialStepWeekDesc':
+          'Πάτησε το μεγάλο κουμπί με το ρολόι για να ανοίξεις την εβδομαδιαία προβολή.',
+      'tutorialStepExamsTitle': '2. Εξετάσεις',
+      'tutorialStepExamsDesc':
+          'Πάτησε το κουμπί εξετάσεων για να δεις επερχόμενες εξετάσεις και εργασίες.',
+      'tutorialStepInfoTitle': '3. Σχολικές πληροφορίες',
+      'tutorialStepInfoDesc':
+          'Πάτησε το κουμπί πληροφοριών για τις τρέχουσες ανακοινώσεις του σχολείου σου.',
+      'tutorialStepSettingsTitle': '4. Ρυθμίσεις',
+      'tutorialStepSettingsDesc':
+          'Πάτησε το κουμπί ρυθμίσεων για να προσαρμόσεις γλώσσα, εμφάνιση και ειδοποιήσεις.',
+      'tutorialStepFinishTitle': 'Έτοιμο!',
+      'tutorialStepFinishDesc':
+          'Γνωρίζεις πλέον όλα τα βασικά μέρη της εφαρμογής. Καλή χρήση του Untis+!',
+
+      'timetableTitle': 'Ωρολόγιο',
+      'timetablePrevWeek': 'Προηγούμενη εβδομάδα',
+      'timetableNextWeek': 'Επόμενη εβδομάδα',
+      'timetableWeekView': 'Προβολή εβδομάδας',
+      'timetableDayGrid': 'Πλέγμα ημέρας',
+      'timetableNotLoaded': 'Το ωρολόγιο δεν φορτώθηκε',
+      'timetableReload': 'Επαναφόρτωση',
+      'timetableSelectClass': 'Επιλογή τάξης',
+      'timetableMyTimetable': 'Το ωρολόγιό μου',
+      'timetableSelectAnother': 'Άλλη τάξη',
+      'timetableNoClassesFound':
+          'Δεν βρέθηκαν τάξεις ή η πρόσβαση απορρίφθηκε.',
+      'freeRoomsTitle': 'Ελεύθερες αίθουσες',
+      'freeRoomsSelectTime': 'Επιλογή χρονικού διαστήματος',
+      'freeRoomsNoneFound':
+          'Δεν βρέθηκαν ελεύθερες αίθουσες για αυτό το χρονικό διάστημα.',
+      'freeRoomsNoRangesHint':
+          'Δεν βρέθηκαν κατάλληλα χρονικά διαστήματα για τη σημερινή ημέρα.',
+      'freeRoomsCount': '{n} ελεύθερες αίθουσες',
+      'weekDayShort': ['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ'],
+      'weekDayFull': ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή'],
+      'noLesson': '(χωρίς μάθημα)',
+
+      'detailTime': 'Ώρα',
+      'detailTeacher': 'Καθηγητής',
+      'detailRoom': 'Αίθουσα',
+      'detailLesson': 'Μάθημα',
+      'detailInfo': 'Σημείωση',
+      'detailCancelled': 'ΑΚΥΡΩΘΗΚΕ',
+      'detailRegular': 'Κανονικό μάθημα',
+      'detailHideSubject': 'Μόνιμη απόκρυψη μαθήματος',
+      'detailCancelledBadge': 'ΑΚΥΡΩΘΗΚΕ',
+
+      'examsTitle': 'Εξετάσεις',
+      'examsReload': 'Επαναφόρτωση',
+      'examsNone': 'Δεν βρέθηκαν εξετάσεις',
+      'examsNoneHint': 'Άγγιξε + για να προσθέσεις εξέταση.',
+      'examsUpcoming': 'Επερχόμενες',
+      'examsPast': 'Παλαιότερες',
+      'examsAdd': 'Προσθήκη',
+      'examsAddTitle': 'Προσθήκη εξέτασης',
+      'examsEditTitle': 'Επεξεργασία εξέτασης',
+      'examsSubjectLabel': 'Μάθημα / Τίτλος *',
+      'examsTypeLabel': 'Τύπος (π.χ. διαγώνισμα, τεστ)',
+      'examsNotesLabel': 'Σημειώσεις / Θέματα',
+      'examsSave': 'Αποθήκευση',
+      'examsCancel': 'Ακύρωση',
+      'examsDelete': 'Διαγραφή',
+      'examsToday': 'Σήμερα',
+      'examsTomorrow': 'Αύριο',
+      'examsDaysIn': 'σε {n} ημέρες',
+      'examsOwn': 'Προσωπικό',
+      'examsUnknown': '(άγνωστο)',
+      'examsImportTitle': 'Μεταφόρτωση προγράμματος εξετάσεων',
+      'examsImportCamera': 'Κάμερα',
+      'examsImportGallery': 'Συλλογή',
+      'examsImportFile': 'PDF / Αρχείο',
+      'examsImportSuccess': 'Η εισαγωγή ολοκληρώθηκε με επιτυχία!',
+      'examsImportError': 'Σφάλμα εισαγωγής: ',
+      'examsImportInvalidJson': 'Δεν βρέθηκε έγκυρο JSON.',
+      'examsActionCustom': 'Χειροκίνητα',
+      'examsActionScan': 'Σάρωση',
+
+      'infoTitle': 'Σχολικές ειδοποιήσεις',
+      'infoReload': 'Επαναφόρτωση',
+      'infoUpdated': 'Ενημερώθηκε',
+      'infoEmpty': 'Δεν υπάρχουν τρέχουσες ειδοποιήσεις',
+      'infoEmptyHint':
+          'Αν το σχολείο σου δεν έχει δημοσιεύσει κάτι προς το παρόν, δεν εμφανίζεται τίποτα εδώ.',
+      'infoFetchError':
+          'Δεν ήταν δυνατή η φόρτωση των ειδοποιήσεων. Προσπάθησε ξανά αργότερα.',
+      'infoOpenLink': 'Άνοιγμα συνδέσμου',
+
+      'aiTitle': 'Βοηθός AI',
+      'aiInputHint': 'Κάνε μια ερώτηση…',
+      'aiKnowsSchedule': 'Ξέρω το ωρολόγιό σου!',
+      'aiAskAnything': 'Ρώτησέ με ό,τι θέλεις για την εβδομάδα σου.',
+      'aiNoApiKey': '⚠️ Εισήγαγε το κλειδί Gemini API στις Ρυθμίσεις → Γενικά.',
+      'aiNoReply': '⚠️ Δεν ελήφθη απάντηση.',
+      'aiApiError': '⚠️ Σφάλμα API:',
+      'aiConnectionError': '⚠️ Σφάλμα σύνδεσης:',
+      'aiSuggestions': [
+        'Τι έχω αύριο;',
+        'Έχω κενή ώρα σήμερα;',
+        'Τι ώρα τελειώνει το σχολείο αύριο;',
+        'Ακυρώνεται κάτι σήμερα;',
+      ],
+
+      'settingsTitle': 'Ρυθμίσεις',
+      'settingsLoggedInAs': 'Συνδεδεμένος ως',
+      'settingsLogout': 'Αποσύνδεση',
+      'settingsSectionQuick': 'Γρήγορη πρόσβαση',
+      'settingsSectionGeneral': 'Γενικά',
+      'settingsAppearance': 'Εμφάνιση',
+      'settingsAppearanceDesc': 'Σύστημα (Φωτεινό/Σκοτεινό)',
+      'settingsLanguage': 'Γλώσσα',
+      'settingsSectionAI': 'Βοηθός AI',
+      'settingsApiKey': 'Κλειδί Gemini API',
+      'settingsApiKeyNotSet': 'Δεν έχει ρυθμιστεί — πάτησε για ρύθμιση',
+      'settingsApiKeyDialogTitle': 'Κλειδί Gemini API',
+      'settingsApiKeyDialogDesc':
+          'Απαιτείται για τον βοηθό AI. Βρες το κλειδί σου στο aistudio.google.com/app/apikey.',
+      'settingsApiKeySave': 'Αποθήκευση',
+      'settingsApiKeyRemove': 'Αφαίρεση',
+      'settingsApiKeyCancel': 'Ακύρωση',
+      'settingsSectionHidden': 'Κρυμμένα μαθήματα',
+      'settingsNoHidden': 'Δεν υπάρχουν κρυμμένα μαθήματα',
+      'settingsNoHiddenDesc': 'Άγγιξε ένα μάθημα για να το αποκρύψεις.',
+      'settingsUnhide': 'Εμφάνιση',
+      'settingsHiddenCount': '{n} μάθημα(τα) κρυμμένα',
+      'settingsSectionColors': 'Χρώματα μαθημάτων',
+      'settingsColorsDesc': 'Άγγιξε ένα μάθημα για να διαλέξεις χρώμα.',
+      'settingsNoSubjectsLoaded': 'Δεν έχουν φορτωθεί μαθήματα',
+      'settingsNoSubjectsLoadedDesc': 'Άνοιξε πρώτα το ωρολόγιό σου.',
+      'settingsCustomColor': 'Προσαρμοσμένο',
+      'settingsDefaultColor': 'Προεπιλεγμένο χρώμα',
+      'settingsColorFor': 'Χρώμα για "{s}"',
+      'settingsColorReset': 'Επαναφορά στην προεπιλογή',
+      'settingsColorCustomPicker': 'Επιλογή προσαρμοσμένου χρώματος',
+      'settingsColorApply': 'Εφαρμογή χρώματος',
+      'settingsColorRed': 'Κόκκινο',
+      'settingsColorGreen': 'Πράσινο',
+      'settingsColorBlue': 'Μπλε',
+      'settingsThemeMode': 'Συνδυασμός χρωμάτων',
+      'settingsThemeLight': 'Φωτεινό',
+      'settingsThemeSystem': 'Σύστημα',
+      'settingsThemeDark': 'Σκοτεινό',
+      'settingsSectionTimetable': 'Ωρολόγιο',
+      'settingsShowCancelled': 'Εμφάνιση ακυρωμένων μαθημάτων',
+      'settingsShowCancelledDesc':
+          'Τα ακυρωμένα μαθήματα εμφανίζονται στο ωρολόγιο',
+      'settingsDemoMode': 'Λειτουργία demo',
+      'settingsDemoModeDesc':
+          'Χρησιμοποιεί τοπικά δεδομένα demo αντί για τους διακομιστές του σχολείου (άμεση ενεργοποίηση).',
+      'settingsBackgroundAnimations': 'Κινούμενα στοιχεία φόντου',
+      'settingsBackgroundAnimationsDesc':
+          'Εμφάνιση κινούμενων εφέ διαβάθμισης στο φόντο',
+      'settingsBackgroundStyle': 'Στυλ κίνησης',
+      'settingsBackgroundStyleOrbs': 'Σφαίρες',
+      'settingsBackgroundStyleSpace': 'Διάστημα',
+      'settingsBackgroundStyleBubbles': 'Φυσαλίδες',
+      'settingsBackgroundStyleLines': 'Γραμμές',
+      'settingsBackgroundStyleThreeD': '3D σχήματα',
+      'settingsBackgroundStyleAurora': 'Σέλας',
+      'settingsGlassEffect': 'Εφέ γυαλιού (θόλωση)',
+      'settingsGlassEffectDesc':
+          'Ενεργοποιεί ήπια εφέ γυαλιού/θόλωσης σε όλο το περιβάλλον',
+      'settingsProgressivePush': 'Σταδιακή ειδοποίηση push',
+      'settingsProgressivePushDesc':
+          'Εμφανίζει το τρέχον μάθημα ως μόνιμη ειδοποίηση',
+      'settingsRefreshPushWidgetNow': 'Ανανέωση push και widget τώρα',
+      'settingsRefreshPushWidgetNowDesc':
+          'Φορτώνει αμέσως τα πιο πρόσφατα δεδομένα από την προσωρινή μνήμη του API και ενημερώνει το widget και το push',
+      'settingsBackgroundLoading': 'Τα δεδομένα φορτώνονται στο παρασκήνιο...',
+      'settingsSectionUpdates': 'Ενημερώσεις',
+      'settingsSectionAbout': 'Σχετικά',
+      'appName': 'Untis+',
+      'settingsAppVersion': 'Έκδοση',
+      'settingsSectionSubjects': 'Μαθήματα & Χρώματα',
+      'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
+      'settingsGithubUpdateCheck': 'Έλεγχος για ενημερώσεις στο GitHub',
+      'settingsGithubUpdateCheckDesc':
+          'Ελέγχει την πιο πρόσφατη έκδοση από το ninocss/UntisPlus.',
+      'settingsGithubDirectDownload':
+          'Λήψη της πιο πρόσφατης έκδοσης απευθείας',
+      'settingsGithubDirectDownloadDesc':
+          'Κατά τον έλεγχο ανοίγει αμέσως το νεότερο APK/αρχείο έκδοσης.',
+      'settingsGithubChecking': 'Έλεγχος για ενημερώσεις...',
+      'settingsGithubUpdateFound': 'Βρέθηκε νέα έκδοση: {v}',
+      'settingsGithubDownloadNow': 'Λήψη',
+      'settingsGithubNoDownloadAsset':
+          'Δεν βρέθηκε άμεσο αρχείο λήψης. Άνοιγμα σελίδας έκδοσης...',
+      'settingsGithubDownloadStarted':
+          'Η λήψη/η έκδοση άνοιξε στον περιηγητή σου.',
+      'settingsGithubOpenFailed':
+          'Δεν ήταν δυνατό να ανοίξει ο σύνδεσμος λήψης.',
+      'settingsGithubCheckFailed':
+          'Ο έλεγχος ενημερώσεων απέτυχε. Δοκίμασε ξανά αργότερα.',
+      'settingsGithubOpenReleasePage': 'Άνοιγμα σελίδας έκδοσης στο GitHub',
+
+      'aiSystemPersona':
+          'Είσαι ο "Βοηθός Προγράμματος", ένας φιλικός και ενθαρρυντικός βοηθός AI για μαθητές.',
+      'aiSystemRules': '''ΚΑΝΟΝΕΣ:
+- Απάντησε με βάση τα δεδομένα του ωρολογίου και των εξετάσεων παραπάνω.
+- ΜΗΝ επινοείς μαθήματα, ώρες, καθηγητές ή άλλες πληροφορίες.
+- Λάβε υπόψη σου εξετάσεις/τεστ στις απαντήσεις σου, αν χρειάζεται.
+- Αν κάτι δεν μπορεί να προκύψει από τα δεδομένα, πες το ανοιχτά.
+- Σεβάσου τις ενδείξεις [ΑΚΥΡΩΘΗΚΕ] (αυτά τα μαθήματα δεν γίνονται).
+- "Ελεύθερες ώρες" = τα κενά ανάμεσα σε δύο μαθήματα.
+- Απάντησε στα ελληνικά, με φιλικό, χρήσιμο και σύντομο τρόπο.
+- Μην ξεκινάς αυτόματα με «Ναι,» - απάντησε απευθείας.
+- Μπορείς να χρησιμοποιήσεις Markdown για μορφοποίηση (π.χ. λίστες, **έντονα**).''',
     },
   };
 }

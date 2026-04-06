@@ -104,6 +104,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         await prefs.setString('password', _passwordController.text);
         await prefs.setInt('personType', personType);
         await prefs.setInt('personId', personId);
+        await prefs.setBool('demoMode', false);
+        demoModeNotifier.value = false;
 
         updateUntisData().catchError((_) {});
 
@@ -116,6 +118,26 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     } finally {
       if (mounted) setState(() => _isLogginIn = false);
     }
+  }
+
+  Future<void> _activateDemoMode() async {
+    HapticFeedback.mediumImpact();
+    final prefs = await SharedPreferences.getInstance();
+    demoModeNotifier.value = true;
+    schoolName = 'demo.school';
+    schoolUrl = 'demo.school';
+    personType = DemoModeService.demoPersonType;
+    personId = DemoModeService.demoPersonId;
+    sessionID = '';
+
+    await prefs.setBool('demoMode', true);
+    await prefs.setString('schoolName', schoolName);
+    await prefs.setString('schoolUrl', schoolUrl);
+    await prefs.setInt('personType', personType);
+    await prefs.setInt('personId', personId);
+    await prefs.remove('sessionId');
+
+    if (mounted) _nextPage();
   }
 
   void _showError(String msg) {
@@ -135,10 +157,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       geminiApiKey = _geminiController.text;
       await prefs.setString('geminiApiKey', geminiApiKey);
     }
+    await prefs.setBool('onboardingCompleted', true);
+    await prefs.setBool('tutorialCompleted', false);
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      _buildBouncyRoute(const MainNavigationScreen()),
+      _buildBouncyRoute(const MainNavigationScreen(showTutorialOnStart: true)),
     );
   }
 
@@ -339,6 +363,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               _buildLangBtn('fr', 'Français', '🇫🇷', currentLang),
               const SizedBox(height: 12),
               _buildLangBtn('es', 'Español', '🇪🇸', currentLang),
+              const SizedBox(height: 12),
+              _buildLangBtn('el', 'Ελληνικά', '🇬🇷', currentLang),
               const Spacer(),
               _buildNextBtn(),
             ],
@@ -639,6 +665,27 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             onPressed: () => setState(() => _manualSchoolEntry = true),
             child: Text(l.loginManualEntry),
           ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _isLogginIn ? null : _activateDemoMode,
+            icon: const Icon(Icons.science_rounded),
+            label: Text(l.onboardingUseDemoMode),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l.onboardingUseDemoModeDesc,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       );
     } else {
@@ -719,6 +766,27 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       ),
                     ),
                   ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _isLogginIn ? null : _activateDemoMode,
+              icon: const Icon(Icons.science_rounded),
+              label: Text(l.onboardingUseDemoMode),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              l.onboardingUseDemoModeDesc,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
             if (_manualSchoolEntry) ...[
               const SizedBox(height: 16),
               TextButton(
@@ -1091,4 +1159,3 @@ class _StepWrapper extends StatelessWidget {
     );
   }
 }
-

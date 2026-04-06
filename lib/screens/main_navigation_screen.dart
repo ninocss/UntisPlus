@@ -2,7 +2,9 @@ part of '../main.dart';
 
 // --- HAUPT NAVIGATION ---
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+  final bool showTutorialOnStart;
+
+  const MainNavigationScreen({super.key, this.showTutorialOnStart = false});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
@@ -10,11 +12,92 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
+  bool _showTutorial = false;
+  int _tutorialStep = 0;
+
+  static const List<int> _tutorialTargets = [0, 1, 2, 3];
 
   @override
   void initState() {
     super.initState();
     _loadPrefs();
+    if (widget.showTutorialOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _showTutorial = true;
+          _tutorialStep = 0;
+          _selectedIndex = 0;
+        });
+      });
+    }
+  }
+
+  Future<void> _finishTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('tutorialCompleted', true);
+    if (!mounted) return;
+    setState(() {
+      _showTutorial = false;
+      _tutorialStep = 0;
+    });
+  }
+
+  Future<void> _skipTutorial() async {
+    await _finishTutorial();
+  }
+
+  bool _isTutorialTarget(int index) {
+    if (!_showTutorial || _tutorialStep >= _tutorialTargets.length)
+      return false;
+    return _tutorialTargets[_tutorialStep] == index;
+  }
+
+  void _onNavTap(int index) {
+    if (_selectedIndex != index) {
+      setState(() => _selectedIndex = index);
+    }
+
+    if (!_showTutorial) return;
+    if (_tutorialStep >= _tutorialTargets.length) return;
+    if (_tutorialTargets[_tutorialStep] != index) return;
+
+    if (_tutorialStep == _tutorialTargets.length - 1) {
+      setState(() => _tutorialStep = _tutorialTargets.length);
+      return;
+    }
+
+    setState(() => _tutorialStep += 1);
+  }
+
+  String _tutorialTitle(AppL10n l) {
+    switch (_tutorialStep) {
+      case 0:
+        return l.tutorialStepWeekTitle;
+      case 1:
+        return l.tutorialStepExamsTitle;
+      case 2:
+        return l.tutorialStepInfoTitle;
+      case 3:
+        return l.tutorialStepSettingsTitle;
+      default:
+        return l.tutorialStepFinishTitle;
+    }
+  }
+
+  String _tutorialDesc(AppL10n l) {
+    switch (_tutorialStep) {
+      case 0:
+        return l.tutorialStepWeekDesc;
+      case 1:
+        return l.tutorialStepExamsDesc;
+      case 2:
+        return l.tutorialStepInfoDesc;
+      case 3:
+        return l.tutorialStepSettingsDesc;
+      default:
+        return l.tutorialStepFinishDesc;
+    }
   }
 
   Future<void> _loadPrefs() async {
@@ -40,6 +123,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final mq = MediaQuery.of(context);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l = AppL10n.of(appLocaleNotifier.value);
 
     return Scaffold(
       extendBody: true,
@@ -116,6 +200,81 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               },
             ),
           ),
+          if (_showTutorial)
+            Positioned(
+              left: 16,
+              right: 16,
+              top: mq.padding.top + 10,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  decoration: BoxDecoration(
+                    color: cs.surface.withOpacity(0.94),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: cs.primary.withOpacity(0.35)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cs.shadow.withOpacity(0.22),
+                        blurRadius: 22,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.school_rounded, color: cs.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l.tutorialTitle,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _skipTutorial,
+                            child: Text(l.tutorialSkip),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _tutorialTitle(l),
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _tutorialDesc(l),
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: cs.onSurface.withOpacity(0.8),
+                        ),
+                      ),
+                      if (_tutorialStep >= _tutorialTargets.length) ...[
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: FilledButton.icon(
+                            onPressed: _finishTutorial,
+                            icon: const Icon(Icons.check_rounded),
+                            label: Text(l.tutorialDone),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -176,11 +335,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           icon: Icons.assignment_outlined,
                           selectedIcon: Icons.assignment_rounded,
                           selected: _selectedIndex == 1,
-                          onTap: () {
-                            if (_selectedIndex != 1) {
-                              setState(() => _selectedIndex = 1);
-                            }
-                          },
+                          onTap: () => _onNavTap(1),
+                          tutorialHighlight: _isTutorialTarget(1),
                         ),
                         const SizedBox(width: 4),
                         _navIconBtn(
@@ -188,11 +344,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           icon: Icons.campaign_outlined,
                           selectedIcon: Icons.campaign_rounded,
                           selected: _selectedIndex == 2,
-                          onTap: () {
-                            if (_selectedIndex != 2) {
-                              setState(() => _selectedIndex = 2);
-                            }
-                          },
+                          onTap: () => _onNavTap(2),
+                          tutorialHighlight: _isTutorialTarget(2),
                         ),
                         const SizedBox(width: 4),
                         _navIconBtn(
@@ -200,11 +353,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           icon: Icons.settings_outlined,
                           selectedIcon: Icons.settings_rounded,
                           selected: _selectedIndex == 3,
-                          onTap: () {
-                            if (_selectedIndex != 3) {
-                              setState(() => _selectedIndex = 3);
-                            }
-                          },
+                          onTap: () => _onNavTap(3),
+                          tutorialHighlight: _isTutorialTarget(3),
                         ),
                       ],
                     ),
@@ -233,11 +383,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 duration: const Duration(milliseconds: 360),
                 curve: _kSmoothBounce,
                 child: _BouncyButton(
-                  onTap: () {
-                    if (_selectedIndex != 0) {
-                      setState(() => _selectedIndex = 0);
-                    }
-                  },
+                  onTap: () => _onNavTap(0),
                   scaleTarget: 0.9,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 420),
@@ -252,10 +398,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         timetableSelected ? 24 : 20,
                       ),
                       border: Border.all(
-                        color: timetableSelected
+                        color: _isTutorialTarget(0)
+                            ? cs.tertiary
+                            : timetableSelected
                             ? cs.primary.withOpacity(0.44)
                             : cs.outlineVariant.withOpacity(0.36),
-                        width: 1,
+                        width: _isTutorialTarget(0) ? 2.0 : 1,
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -326,6 +474,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     required IconData selectedIcon,
     required bool selected,
     required VoidCallback onTap,
+    bool tutorialHighlight = false,
   }) {
     return _BouncyButton(
       onTap: onTap,
@@ -338,9 +487,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         decoration: BoxDecoration(
           color: selected ? cs.primaryContainer : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
-          border: selected
+          border: tutorialHighlight
+              ? Border.all(color: cs.tertiary, width: 2)
+              : selected
               ? Border.all(color: cs.primary.withOpacity(0.22), width: 1)
               : Border.all(color: Colors.transparent, width: 0),
+          boxShadow: tutorialHighlight
+              ? [
+                  BoxShadow(
+                    color: cs.tertiary.withOpacity(0.35),
+                    blurRadius: 14,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
         ),
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
