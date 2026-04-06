@@ -18,9 +18,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final _schoolController = TextEditingController();
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _twoFactorController = TextEditingController();
   final _geminiController = TextEditingController();
 
   bool _isLogginIn = false;
+  bool _requiresTwoFactor = false;
   bool _manualSchoolEntry = false;
   bool _isSearching = false;
   List<SchoolSearchResult> _searchResults = [];
@@ -30,8 +32,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     FocusScope.of(context).unfocus();
     if (_currentPage < _totalOnboardingSteps - 1) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOutCubic,
+        duration: const Duration(milliseconds: 560),
+        curve: _kSmoothBounce,
       );
     } else {
       _completeOnboarding();
@@ -42,8 +44,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     FocusScope.of(context).unfocus();
     if (_currentPage > 0) {
       _pageController.previousPage(
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 480),
+        curve: _kSoftBounce,
       );
     }
   }
@@ -51,6 +53,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Future<void> _handleLogin() async {
     HapticFeedback.heavyImpact();
     setState(() => _isLogginIn = true);
+    final l = AppL10n.of(appLocaleNotifier.value);
 
     schoolUrl = _serverController.text;
     schoolName = _schoolController.text;
@@ -61,9 +64,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         password: _passwordController.text,
         client: 'UntisPlus',
         requestId: '1',
+        otp: _requiresTwoFactor ? _twoFactorController.text.trim() : null,
       );
 
       if (authResult != null) {
+        if (authResult['requires2fa'] == true) {
+          if (mounted) setState(() => _requiresTwoFactor = true);
+          _showError(l.loginTwoFactorRequired);
+          return;
+        }
+
+        if (authResult['otpInvalid'] == true) {
+          if (mounted) setState(() => _requiresTwoFactor = true);
+          _showError(l.loginTwoFactorInvalid);
+          return;
+        }
+
         sessionID = authResult['sessionId']?.toString() ?? "";
 
         var rawId = authResult['personId'];
@@ -93,10 +109,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
         if (mounted) _nextPage();
       } else {
-        _showError(AppL10n.of(appLocaleNotifier.value).loginFailed);
+        _showError(l.loginFailed);
       }
     } catch (e) {
-      final l = AppL10n.of(appLocaleNotifier.value);
       _showError('${l.loginConnectionError}: $e');
     } finally {
       if (mounted) setState(() => _isLogginIn = false);
@@ -123,12 +138,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, anim1, anim2) => const MainNavigationScreen(),
-        transitionsBuilder: (context, anim1, anim2, child) =>
-            FadeTransition(opacity: anim1, child: child),
-        transitionDuration: const Duration(milliseconds: 800),
-      ),
+      _buildBouncyRoute(const MainNavigationScreen()),
     );
   }
 
@@ -677,6 +687,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               Icons.key,
               obscure: true,
             ),
+            if (_requiresTwoFactor) ...[
+              const SizedBox(height: 12),
+              _buildField(
+                _twoFactorController,
+                l.loginTwoFactorCode,
+                Icons.verified_user,
+                keyboardType: TextInputType.number,
+                helperText: l.loginTwoFactorHint,
+                autofillHints: const [AutofillHints.oneTimeCode],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                maxLength: 8,
+              ),
+            ],
             const SizedBox(height: 32),
             _isLogginIn
                 ? const CircularProgressIndicator()
@@ -689,7 +712,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       ),
                     ),
                     child: Text(
-                      l.loginButton,
+                      _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -959,12 +982,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     IconData i, {
     bool obscure = false,
     Widget? suffix,
+    TextInputType? keyboardType,
+    String? helperText,
+    Iterable<String>? autofillHints,
+    List<TextInputFormatter>? inputFormatters,
+    int? maxLength,
   }) {
     return TextField(
       controller: c,
       obscureText: obscure,
+      keyboardType: keyboardType,
+      autofillHints: autofillHints,
+      inputFormatters: inputFormatters,
+      maxLength: maxLength,
       decoration: InputDecoration(
         labelText: l,
+        helperText: helperText,
+        counterText: '',
         prefixIcon: Icon(i),
         suffixIcon: suffix,
         filled: true,

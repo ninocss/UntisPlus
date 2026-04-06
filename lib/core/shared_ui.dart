@@ -1,60 +1,96 @@
+
 part of '../main.dart';
 
+const Curve _kSmoothBounce = Cubic(0.16, 0.94, 0.22, 1.24);
+const Curve _kSoftBounce = Cubic(0.18, 0.9, 0.26, 1.14);
+
+Widget _withOptionalBackdropBlur({
+  required double sigmaX,
+  required double sigmaY,
+  required Widget child,
+  required Widget Function(bool enabled) childBuilder,
+}) {
+  if (!blurEnabledNotifier.value) {
+    return childBuilder(false);
+  }
+
+  return ClipRect(
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: sigmaX, sigmaY: sigmaY),
+      child: childBuilder(true),
+    ),
+  );
+}
+
 List<Color> _subjectColorPalette(ColorScheme cs) {
-  final candidates = <Color>[
+  return <Color>[
     cs.primary,
     cs.secondary,
     cs.tertiary,
     cs.error,
-    cs.primaryContainer,
-    cs.secondaryContainer,
-    cs.tertiaryContainer,
-    cs.errorContainer,
-    cs.inversePrimary,
-    cs.surfaceTint,
-  ];
-  final seen = <int>{};
-  return [
-    for (final c in candidates)
-      if (seen.add(c.value)) c,
+    const Color(0xFF4F7CFF),
+    const Color(0xFF00B8D4),
+    const Color(0xFF00C853),
+    const Color(0xFFFFA000),
+    const Color(0xFFE91E63),
+    const Color(0xFF7C4DFF),
+    const Color(0xFF6D4C41),
+    const Color(0xFF009688),
   ];
 }
 
-Color _autoLessonColor(String subjectKey, bool isDark) {
-  if (subjectKey.isEmpty) {
-    return isDark ? const Color(0xFF9580FF) : const Color(0xFF6750A4);
-  }
-  var hash = 5381;
-  for (final c in subjectKey.codeUnits) {
-    hash = ((hash * 33) ^ c) & 0x7FFFFFFF;
-  }
-  final hue = (hash % 360).toDouble();
-  final lightness = isDark ? 0.68 : 0.42;
-  final saturation = isDark ? 0.52 : 0.62;
-  return HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor();
+Color _autoLessonColor(String subject, bool isDark) {
+  final normalized = subject.trim().toLowerCase();
+  final palette = <Color>[
+    const Color(0xFF4F7CFF),
+    const Color(0xFF00B8D4),
+    const Color(0xFF00C853),
+    const Color(0xFFFFA000),
+    const Color(0xFFFF5252),
+    const Color(0xFF7C4DFF),
+    const Color(0xFFE91E63),
+    const Color(0xFF009688),
+  ];
+
+  final base = palette[normalized.hashCode.abs() % palette.length];
+  final hsl = HSLColor.fromColor(base);
+  final adjusted = hsl.withLightness(
+    isDark
+        ? (hsl.lightness + 0.05).clamp(0.0, 1.0)
+        : (hsl.lightness - 0.04).clamp(0.0, 1.0),
+  );
+  return adjusted.toColor();
 }
 
-Widget _withOptionalBackdropBlur({
-  required Widget child,
-  required double sigmaX,
-  required double sigmaY,
-  Widget Function(bool enabled)? childBuilder,
+Route<T> _buildBouncyRoute<T>(
+  Widget page, {
+  Duration duration = const Duration(milliseconds: 520),
+  Duration reverseDuration = const Duration(milliseconds: 360),
 }) {
-  return ValueListenableBuilder<bool>(
-    valueListenable: blurEnabledNotifier,
-    builder: (context, enabled, _) {
-      final content = childBuilder?.call(enabled) ?? child;
-      if (!enabled) return content;
-      return BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: sigmaX, sigmaY: sigmaY),
-        child: content,
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionDuration: duration,
+    reverseTransitionDuration: reverseDuration,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final opacity = CurvedAnimation(parent: animation, curve: _kSoftBounce);
+      final scale = Tween<double>(begin: 0.96, end: 1.0).animate(
+        CurvedAnimation(parent: animation, curve: _kSmoothBounce),
+      );
+      final slide = Tween<Offset>(
+        begin: const Offset(0.0, 0.03),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce));
+
+      return FadeTransition(
+        opacity: opacity,
+        child: SlideTransition(
+          position: slide,
+          child: ScaleTransition(scale: scale, child: child),
+        ),
       );
     },
   );
 }
-
-const Curve _kSmoothBounce = Cubic(0.2, 0.9, 0.26, 1.2);
-const Curve _kSoftBounce = Cubic(0.2, 0.88, 0.28, 1.1);
 
 Widget _springEntry({
   Key? key,
@@ -124,63 +160,6 @@ Widget _glassContainer({
               Border.all(color: cs.outlineVariant.withOpacity(0.4), width: 1),
         ),
         child: child,
-      ),
-    ),
-  );
-}
-
-Widget _glassFab({
-  required BuildContext context,
-  required IconData icon,
-  required VoidCallback onPressed,
-  String? tooltip,
-}) {
-  final cs = Theme.of(context).colorScheme;
-  return _springEntry(
-    duration: const Duration(milliseconds: 420),
-    offsetY: 18,
-    startScale: 0.94,
-    curve: _kSmoothBounce,
-    child: Tooltip(
-      message: tooltip,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: _withOptionalBackdropBlur(
-          sigmaX: 16,
-          sigmaY: 16,
-          child: const SizedBox.shrink(),
-          childBuilder: (enabled) => Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                onPressed();
-              },
-              child: Ink(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: enabled
-                      ? cs.primaryContainer.withOpacity(0.92)
-                      : cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: cs.primary.withOpacity(0.2),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.shadow.withOpacity(0.18),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Icon(icon, color: cs.primary, size: 26),
-              ),
-            ),
-          ),
-        ),
       ),
     ),
   );

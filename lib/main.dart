@@ -106,13 +106,24 @@ Future<Map<String, dynamic>?> _authenticateUntis({
   String requestId = 'auth',
   String? serverUrl,
   String? school,
+  String? otp,
 }) async {
+  final otpCode = otp?.trim();
+  final params = <String, dynamic>{
+    'user': user,
+    'password': password,
+    'client': client,
+  };
+  if (otpCode != null && otpCode.isNotEmpty) {
+    params['otp'] = otpCode;
+  }
+
   final response = await http.post(
     _webUntisRpcUri(serverUrl: serverUrl, school: school),
     body: jsonEncode({
       'id': requestId,
       'method': 'authenticate',
-      'params': {'user': user, 'password': password, 'client': client},
+      'params': params,
       'jsonrpc': '2.0',
     }),
   );
@@ -133,6 +144,45 @@ Future<Map<String, dynamic>?> _authenticateUntis({
   if (result is Map) {
     return Map<String, dynamic>.from(result);
   }
+
+  final error = decoded['error'];
+  if (error is Map) {
+    final err = Map<String, dynamic>.from(error);
+    final message = (err['message'] ?? '').toString();
+    final data = (err['data'] ?? '').toString();
+    final combined = '${message.toLowerCase()} ${data.toLowerCase()}';
+    final contains2faHint =
+        combined.contains('2fa') ||
+        combined.contains('two factor') ||
+        combined.contains('mfa') ||
+        combined.contains('otp') ||
+        combined.contains('one-time') ||
+        combined.contains('verification code') ||
+        combined.contains('authenticator');
+
+    if (contains2faHint && (otpCode == null || otpCode.isEmpty)) {
+      return {
+        'requires2fa': true,
+        'errorCode': err['code'],
+        'errorMessage': message,
+      };
+    }
+
+    final invalidOtp =
+        combined.contains('invalid otp') ||
+        combined.contains('invalid verification') ||
+        combined.contains('wrong otp') ||
+        combined.contains('otp invalid') ||
+        (contains2faHint && otpCode != null && otpCode.isNotEmpty);
+    if (invalidOtp) {
+      return {
+        'otpInvalid': true,
+        'errorCode': err['code'],
+        'errorMessage': message,
+      };
+    }
+  }
+
   return null;
 }
 
@@ -2260,7 +2310,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     String? sid;
-    String sidSource = 'account';
     List<dynamic> classes = [];
 
     if (sessionID.isNotEmpty) {
@@ -2268,7 +2317,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         classes = await fetchClassesForSession(sessionID);
         if (classes.isNotEmpty) {
           sid = sessionID;
-          sidSource = 'account';
         }
       } catch (_) {}
     }
@@ -2281,7 +2329,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           if (anonClasses.isNotEmpty) {
             classes = anonClasses;
             sid = anonSid;
-            sidSource = 'anonymous';
           }
         }
       } catch (_) {}
@@ -3860,7 +3907,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 320),
-          curve: Curves.easeInOutCubicEmphasized,
+          curve: _kSoftBounce,
         );
       }
     });
@@ -4213,7 +4260,7 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
       () => mounted ? _ctrl.repeat(reverse: true) : null,
     );
     _anim = Tween(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubicEmphasized),
+      CurvedAnimation(parent: _ctrl, curve: _kSmoothBounce),
     );
   }
 
@@ -5675,7 +5722,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.clear();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+      _buildBouncyRoute(const OnboardingFlow()),
       (route) => false,
     );
   }
@@ -5686,23 +5733,40 @@ class _SettingsPageState extends State<SettingsPage> {
     IconData icon,
     List<Widget> tiles,
     ColorScheme cs, {
+    required Color accent,
     bool isAbout = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
           child: Row(
             children: [
-              Icon(icon, size: 13, color: cs.primary),
-              const SizedBox(width: 6),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      accent.withOpacity(0.34),
+                      accent.withOpacity(0.14),
+                    ],
+                  ),
+                  border: Border.all(color: accent.withOpacity(0.35), width: 1),
+                ),
+                child: Icon(icon, size: 14, color: accent),
+              ),
+              const SizedBox(width: 8),
               Text(
                 title.toUpperCase(),
                 style: GoogleFonts.outfit(
                   fontWeight: FontWeight.w700,
-                  fontSize: 11.5,
-                  color: cs.primary,
+                  fontSize: 11.8,
+                  color: accent,
                   letterSpacing: 0.9,
                 ),
               ),
@@ -5741,24 +5805,34 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: Material(
-                color: cs.surfaceContainerHighest.withOpacity(0.4),
-                child: Column(
-                  children: [
-                    for (int i = 0; i < tiles.length; i++) ...[
-                      if (i > 0)
-                        Divider(
-                          height: 0.5,
-                          thickness: 0.5,
-                          indent: 66,
-                          color: cs.outlineVariant.withOpacity(0.4),
-                        ),
-                      tiles[i],
-                    ],
+            _glassContainer(
+              context: context,
+              borderRadius: BorderRadius.circular(24),
+              sigmaX: 18,
+              sigmaY: 18,
+              color: cs.surface.withOpacity(0.52),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  accent.withOpacity(0.08),
+                  cs.surfaceContainerHighest.withOpacity(0.46),
+                ],
+              ),
+              border: Border.all(color: accent.withOpacity(0.24), width: 1),
+              child: Column(
+                children: [
+                  for (int i = 0; i < tiles.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 0.5,
+                        thickness: 0.5,
+                        indent: 66,
+                        color: accent.withOpacity(0.2),
+                      ),
+                    tiles[i],
                   ],
-                ),
+                ],
               ),
             ),
           ],
@@ -5822,11 +5896,23 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // ── Rounded icon box for tile leading ─────
   Widget _tileIcon(IconData icon, Color color) => Container(
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     decoration: BoxDecoration(
-      color: color.withOpacity(0.15),
-      borderRadius: BorderRadius.circular(10),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [color.withOpacity(0.26), color.withOpacity(0.12)],
+      ),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: color.withOpacity(0.3), width: 1),
+      boxShadow: [
+        BoxShadow(
+          color: color.withOpacity(0.16),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
     ),
     child: Icon(icon, color: color, size: 20),
   );
@@ -5902,48 +5988,59 @@ class _SettingsPageState extends State<SettingsPage> {
                 delegate: SliverChildListDelegate([
                   const SizedBox(height: 8),
 
-                  _section(l.settingsSectionQuick, Icons.tune_rounded, [
-                    _tile(
-                      leading: _tileIcon(
-                        Icons.event_busy_rounded,
-                        showCancelledNotifier.value ? cs.outline : cs.error,
-                      ),
-                      title: l.settingsShowCancelled,
-                      subtitle: l.settingsShowCancelledDesc,
-                      trailing: Switch.adaptive(
-                        value: showCancelledNotifier.value,
-                        onChanged: (v) {
+                  _springEntry(
+                    duration: const Duration(milliseconds: 380),
+                    offsetY: 18,
+                    startScale: 0.97,
+                    child: _section(l.settingsSectionQuick, Icons.bolt_rounded, [
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.event_busy_rounded,
+                          showCancelledNotifier.value ? cs.outline : cs.error,
+                        ),
+                        title: l.settingsShowCancelled,
+                        subtitle: l.settingsShowCancelledDesc,
+                        trailing: Switch.adaptive(
+                          value: showCancelledNotifier.value,
+                          onChanged: (v) {
+                            HapticFeedback.selectionClick();
+                            _setShowCancelled(v);
+                          },
+                        ),
+                        onTap: () {
                           HapticFeedback.selectionClick();
-                          _setShowCancelled(v);
+                          _setShowCancelled(!showCancelledNotifier.value);
                         },
                       ),
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _setShowCancelled(!showCancelledNotifier.value);
-                      },
-                    ),
-                    _tile(
-                      leading: _tileIcon(
-                        Icons.notifications_active_rounded,
-                        progressivePushNotifier.value ? cs.primary : cs.outline,
-                      ),
-                      title: l.settingsProgressivePush,
-                      subtitle: l.settingsProgressivePushDesc,
-                      trailing: Switch.adaptive(
-                        value: progressivePushNotifier.value,
-                        onChanged: (v) {
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.notifications_active_rounded,
+                          progressivePushNotifier.value
+                              ? cs.primary
+                              : cs.outline,
+                        ),
+                        title: l.settingsProgressivePush,
+                        subtitle: l.settingsProgressivePushDesc,
+                        trailing: Switch.adaptive(
+                          value: progressivePushNotifier.value,
+                          onChanged: (v) {
+                            HapticFeedback.selectionClick();
+                            _setProgressivePush(v);
+                          },
+                        ),
+                        onTap: () {
                           HapticFeedback.selectionClick();
-                          _setProgressivePush(v);
+                          _setProgressivePush(!progressivePushNotifier.value);
                         },
                       ),
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _setProgressivePush(!progressivePushNotifier.value);
-                      },
-                    ),
-                  ], cs),
+                    ], cs, accent: cs.tertiary),
+                  ),
 
-                  _section(l.settingsSectionGeneral, Icons.palette_outlined, [
+                  _springEntry(
+                    duration: const Duration(milliseconds: 430),
+                    offsetY: 20,
+                    startScale: 0.97,
+                    child: _section(l.settingsSectionGeneral, Icons.tune_rounded, [
                     _tile(
                       leading: Container(
                         width: 44,
@@ -6112,109 +6209,126 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       onTap: _showLanguageDialog,
                     ),
-                  ], cs),
+                  ], cs, accent: cs.primary),
+                  ),
 
-                  _section(
-                    l.settingsSectionTimetable,
-                    Icons.calendar_today_outlined,
-                    [
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.system_update_alt_rounded,
-                          cs.primary,
+                  _springEntry(
+                    duration: const Duration(milliseconds: 480),
+                    offsetY: 22,
+                    startScale: 0.97,
+                    child: _section(
+                      l.settingsSectionTimetable,
+                      Icons.schedule_rounded,
+                      [
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.system_update_alt_rounded,
+                            cs.primary,
+                          ),
+                          title: l.settingsRefreshPushWidgetNow,
+                          subtitle: l.settingsRefreshPushWidgetNowDesc,
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                          onTap: () async {
+                            HapticFeedback.heavyImpact();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(l.settingsBackgroundLoading),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                            await updateUntisData();
+                          },
                         ),
-                        title: l.settingsRefreshPushWidgetNow,
-                        subtitle: l.settingsRefreshPushWidgetNowDesc,
+                      ],
+                      cs,
+                      accent: cs.secondary,
+                    ),
+                  ),
+
+                  _springEntry(
+                    duration: const Duration(milliseconds: 530),
+                    offsetY: 24,
+                    startScale: 0.97,
+                    child: _section(l.settingsSectionAI, Icons.smart_toy_rounded, [
+                      _tile(
+                        leading: _apiKeySet
+                            ? _tileIcon(Icons.auto_awesome_rounded, cs.tertiary)
+                            : _tileIcon(Icons.key_off_rounded, cs.error),
+                        title: l.settingsApiKey,
+                        subtitle: _apiKeySet
+                            ? _apiKeyDisplay
+                            : l.settingsApiKeyNotSet,
+                        subtitleColor: _apiKeySet ? null : cs.error,
                         trailing: Icon(
                           Icons.chevron_right_rounded,
                           size: 20,
                           color: cs.onSurface.withOpacity(0.4),
                         ),
-                        onTap: () async {
-                          HapticFeedback.heavyImpact();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(l.settingsBackgroundLoading),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                          await updateUntisData();
-                        },
+                        onTap: _showApiKeyDialog,
                       ),
-                    ],
-                    cs,
+                    ], cs, accent: cs.tertiary),
                   ),
 
-                  _section(l.settingsSectionAI, Icons.auto_awesome_outlined, [
-                    _tile(
-                      leading: _apiKeySet
-                          ? _tileIcon(Icons.auto_awesome_rounded, cs.tertiary)
-                          : _tileIcon(Icons.key_off_rounded, cs.error),
-                      title: l.settingsApiKey,
-                      subtitle: _apiKeySet
-                          ? _apiKeyDisplay
-                          : l.settingsApiKeyNotSet,
-                      subtitleColor: _apiKeySet ? null : cs.error,
-                      trailing: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: cs.onSurface.withOpacity(0.4),
-                      ),
-                      onTap: _showApiKeyDialog,
-                    ),
-                  ], cs),
-
                   // ── Subjects & Colors (merged) ───────────────────────────
-                  _section(l.settingsSectionSubjects, Icons.tune_rounded, [
-                    _tile(
-                      leading: _tileIcon(Icons.palette_outlined, cs.primary),
-                      title: l.settingsSectionColors,
-                      subtitle: l
-                          .settingsColorsDesc, // "Customize the colors for your subjects"
-                      trailing: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: cs.onSurface.withOpacity(0.4),
+                  _springEntry(
+                    duration: const Duration(milliseconds: 580),
+                    offsetY: 26,
+                    startScale: 0.97,
+                    child: _section(l.settingsSectionSubjects, Icons.palette_rounded, [
+                      _tile(
+                        leading: _tileIcon(Icons.palette_outlined, cs.primary),
+                        title: l.settingsSectionColors,
+                        subtitle: l
+                            .settingsColorsDesc, // "Customize the colors for your subjects"
+                        trailing: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: cs.onSurface.withOpacity(0.4),
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            _buildBouncyRoute(const SubjectColorsPage()),
+                          );
+                        },
                       ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SubjectColorsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _tile(
-                      leading: _tileIcon(
-                        Icons.visibility_off_outlined,
-                        cs.secondary,
+                      _tile(
+                        leading: _tileIcon(
+                          Icons.visibility_off_outlined,
+                          cs.secondary,
+                        ),
+                        title: l.settingsSectionHidden,
+                        subtitle: hidden.isEmpty
+                            ? l.settingsNoHidden
+                            : l.settingsHiddenCount(hidden.length),
+                        trailing: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: cs.onSurface.withOpacity(0.4),
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            _buildBouncyRoute(const HiddenSubjectsPage()),
+                          );
+                        },
                       ),
-                      title: l.settingsSectionHidden,
-                      subtitle: hidden.isEmpty
-                          ? l.settingsNoHidden
-                          : l.settingsHiddenCount(hidden.length),
-                      trailing: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: cs.onSurface.withOpacity(0.4),
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const HiddenSubjectsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                  ], cs),
+                    ], cs, accent: cs.primary),
+                  ),
 
-                  _section(l.settingsSectionUpdates, Icons.download_rounded, [
+                  _springEntry(
+                    duration: const Duration(milliseconds: 630),
+                    offsetY: 28,
+                    startScale: 0.97,
+                    child: _section(l.settingsSectionUpdates, Icons.system_update_alt_rounded, [
                     _tile(
                       leading: _tileIcon(
                         Icons.system_update_alt_rounded,
@@ -6283,29 +6397,36 @@ class _SettingsPageState extends State<SettingsPage> {
                         );
                       },
                     ),
-                  ], cs),
+                  ], cs, accent: cs.secondary),
+                  ),
 
                   // ── About ────────────────────────────────────────────────
-                  _section(
-                    l.settingsSectionAbout,
-                    Icons.info_outline_rounded,
-                    [
-                      _tile(
-                        leading: _tileIcon(
-                          Icons.rocket_launch_outlined,
-                          cs.primary,
+                  _springEntry(
+                    duration: const Duration(milliseconds: 680),
+                    offsetY: 30,
+                    startScale: 0.97,
+                    child: _section(
+                      l.settingsSectionAbout,
+                      Icons.info_rounded,
+                      [
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.rocket_launch_outlined,
+                            cs.primary,
+                          ),
+                          title: 'Untis+',
+                          subtitle: '${l.settingsAppVersion} $APP_VERSION',
+                          trailing: Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 16,
+                            color: cs.tertiary,
+                          ),
                         ),
-                        title: 'Untis+',
-                        subtitle: '${l.settingsAppVersion} $APP_VERSION',
-                        trailing: Icon(
-                          Icons.auto_awesome_rounded,
-                          size: 16,
-                          color: cs.tertiary,
-                        ),
-                      ),
-                    ],
-                    cs,
-                    isAbout: true,
+                      ],
+                      cs,
+                      accent: cs.tertiary,
+                      isAbout: true,
+                    ),
                   ),
                 ]),
               ),

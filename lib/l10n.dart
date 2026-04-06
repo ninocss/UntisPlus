@@ -36,6 +36,11 @@ class AppL10n {
   String get loginManualEntry => _t('loginManualEntry');
   String get loginSwitchToSearch => _t('loginSwitchToSearch');
   String get loginChangeSchool => _t('loginChangeSchool');
+    String get loginTwoFactorCode => _t('loginTwoFactorCode');
+    String get loginTwoFactorHint => _t('loginTwoFactorHint');
+    String get loginTwoFactorRequired => _t('loginTwoFactorRequired');
+    String get loginTwoFactorInvalid => _t('loginTwoFactorInvalid');
+    String get loginVerifyButton => _t('loginVerifyButton');
 
   // ── Onboarding ─────────────────────────────────────────────────────────────
   String get onboardingWelcomeTitle => _t('onboardingWelcomeTitle');
@@ -271,6 +276,14 @@ class AppL10n {
       'loginManualEntry': 'Manuelle Eingabe',
       'loginSwitchToSearch': 'Zurück zur Suche',
       'loginChangeSchool': 'Schule ändern',
+      'loginTwoFactorCode': '2FA-Code',
+      'loginTwoFactorHint':
+          'Gib den 2FA-Code aus deiner Authenticator-App ein.',
+      'loginTwoFactorRequired':
+          '2FA ist aktiviert. Bitte gib deinen Verifizierungscode ein.',
+      'loginTwoFactorInvalid':
+          'Der 2FA-Code ist ungültig oder abgelaufen. Bitte versuche es erneut.',
+      'loginVerifyButton': 'Verifizieren',
 
       'onboardingWelcomeTitle': 'Willkommen bei Untis+',
       'onboardingChooseLanguageSubtitle': 'Wähle deine bevorzugte Sprache',
@@ -521,6 +534,14 @@ class AppL10n {
       'loginManualEntry': 'Manual Entry',
       'loginSwitchToSearch': 'Back to search',
       'loginChangeSchool': 'Change school',
+      'loginTwoFactorCode': '2FA code',
+      'loginTwoFactorHint':
+          'Enter the 2FA code from your authenticator app.',
+      'loginTwoFactorRequired':
+          '2FA is enabled. Please enter your verification code.',
+      'loginTwoFactorInvalid':
+          'The 2FA code is invalid or expired. Please try again.',
+      'loginVerifyButton': 'Verify',
 
       'onboardingWelcomeTitle': 'Welcome to Untis+',
       'onboardingChooseLanguageSubtitle': 'Choose your preferred language',
@@ -757,6 +778,14 @@ class AppL10n {
       'loginManualEntry': 'Saisie manuelle',
       'loginSwitchToSearch': 'Retour à la recherche',
       'loginChangeSchool': 'Changer d\'école',
+      'loginTwoFactorCode': 'Code 2FA',
+      'loginTwoFactorHint':
+          'Saisis le code 2FA depuis ton application d\'authentification.',
+      'loginTwoFactorRequired':
+          'Le 2FA est activé. Veuillez saisir votre code de vérification.',
+      'loginTwoFactorInvalid':
+          'Le code 2FA est invalide ou expiré. Réessaie.',
+      'loginVerifyButton': 'Vérifier',
 
       'onboardingWelcomeTitle': 'Bienvenue sur Untis+',
       'onboardingChooseLanguageSubtitle': 'Choisis ta langue préférée',
@@ -995,6 +1024,14 @@ class AppL10n {
       'loginManualEntry': 'Entrada manual',
       'loginSwitchToSearch': 'Volver a buscar',
       'loginChangeSchool': 'Cambiar escuela',
+      'loginTwoFactorCode': 'Código 2FA',
+      'loginTwoFactorHint':
+          'Introduce el código 2FA de tu aplicación de autenticación.',
+      'loginTwoFactorRequired':
+          '2FA está activado. Introduce tu código de verificación.',
+      'loginTwoFactorInvalid':
+          'El código 2FA no es válido o ha caducado. Inténtalo de nuevo.',
+      'loginVerifyButton': 'Verificar',
 
       'onboardingWelcomeTitle': 'Bienvenido a Untis+',
       'onboardingChooseLanguageSubtitle': 'Elige tu idioma preferido',

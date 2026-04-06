@@ -273,7 +273,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 380),
                         switchInCurve: _kSmoothBounce,
-                        switchOutCurve: Curves.easeInCubic,
+                        switchOutCurve: _kSoftBounce,
                         transitionBuilder: (child, anim) {
                           final slide = Tween<Offset>(
                             begin: const Offset(0, 0.2),
@@ -345,7 +345,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           switchInCurve: _kSmoothBounce,
-          switchOutCurve: Curves.easeInCubic,
+          switchOutCurve: _kSoftBounce,
           transitionBuilder: (child, anim) {
             return ScaleTransition(scale: anim, child: child);
           },
@@ -396,7 +396,7 @@ class _BouncyButtonState extends State<_BouncyButton>
         .animate(
           CurvedAnimation(
             parent: _controller,
-            curve: Curves.easeOutQuad,
+            curve: _kSoftBounce,
             reverseCurve: _kSmoothBounce,
           ),
         );

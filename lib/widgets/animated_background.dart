@@ -98,8 +98,8 @@ class _OrbsLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t2 = Curves.easeInOutCubicEmphasized.transform(t);
-    final t3 = Curves.slowMiddle.transform(1.0 - t);
+    final t2 = _kSmoothBounce.transform(t.clamp(0.0, 1.0));
+    final t3 = _kSoftBounce.transform((1.0 - t).clamp(0.0, 1.0));
     return Stack(
       clipBehavior: Clip.hardEdge,
       children: [

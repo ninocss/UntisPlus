@@ -61,11 +61,11 @@ class UntisPlusApp extends StatelessWidget {
                     ),
                     pageTransitionsTheme: const PageTransitionsTheme(
                       builders: {
-                        TargetPlatform.android: ZoomPageTransitionsBuilder(),
-                        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                        TargetPlatform.windows: ZoomPageTransitionsBuilder(),
-                        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-                        TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+                        TargetPlatform.android: _BouncyPageTransitionsBuilder(),
+                        TargetPlatform.iOS: _BouncyPageTransitionsBuilder(),
+                        TargetPlatform.windows: _BouncyPageTransitionsBuilder(),
+                        TargetPlatform.macOS: _BouncyPageTransitionsBuilder(),
+                        TargetPlatform.linux: _BouncyPageTransitionsBuilder(),
                       },
                     ),
                     appBarTheme: AppBarTheme(
@@ -169,6 +169,36 @@ class UntisPlusApp extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _BouncyPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _BouncyPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final fade = CurvedAnimation(parent: animation, curve: _kSoftBounce);
+    final scale = Tween<double>(begin: 0.965, end: 1.0).animate(
+      CurvedAnimation(parent: animation, curve: _kSmoothBounce),
+    );
+    final slide = Tween<Offset>(
+      begin: const Offset(0, 0.028),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce));
+
+    return FadeTransition(
+      opacity: fade,
+      child: SlideTransition(
+        position: slide,
+        child: ScaleTransition(scale: scale, child: child),
+      ),
     );
   }
 }
