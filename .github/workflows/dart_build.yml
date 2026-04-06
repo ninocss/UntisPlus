@@ -38,12 +38,9 @@ on:
         type: boolean
 
 jobs:
-  build:
-    name: Build & Release
+  prepare:
+    name: Vorbereitung
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -64,19 +61,103 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
+  quality_checks:
+    name: Analyse & Tests
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: ${{ inputs.run_tests }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Install Dependencies
+        run: flutter pub get
       - name: Analyze & Test
-        if: ${{ inputs.run_tests }}
         run: |
           flutter analyze
           flutter test
 
+  build_apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    needs: [prepare, quality_checks]
+    if: ${{ always() && inputs.build_apk && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Install Dependencies
+        run: flutter pub get
       - name: Build Android APK
-        if: ${{ inputs.build_apk }}
         run: flutter build apk --release
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
 
+  build_aab:
+    name: Build AAB
+    runs-on: ubuntu-latest
+    needs: [prepare, quality_checks]
+    if: ${{ always() && inputs.build_aab && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Install Dependencies
+        run: flutter pub get
       - name: Build Android AAB
-        if: ${{ inputs.build_aab }}
         run: flutter build appbundle --release
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+  release_notes:
+    name: Gemini Release Notes
+    runs-on: ubuntu-latest
+    needs: [prepare, quality_checks]
+    if: ${{ always() && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    outputs:
+      has_ai_notes: ${{ steps.ai_notes.outputs.has_ai_notes }}
+      ai_reason: ${{ steps.ai_notes.outputs.ai_reason }}
+      gemini_used_model: ${{ steps.ai_notes.outputs.gemini_used_model }}
+      gemini_block_reason: ${{ steps.ai_notes.outputs.gemini_block_reason }}
+      gemini_finish_reason: ${{ steps.ai_notes.outputs.gemini_finish_reason }}
+      gemini_response_snippet: ${{ steps.ai_notes.outputs.gemini_response_snippet }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Generate Gemini Release Notes
         id: ai_notes
@@ -200,10 +281,17 @@ jobs:
           printf '%s\n' "$BODY" > gemini_release_notes.md
 
           {
-            echo "release_notes_path=gemini_release_notes.md"
             echo "ai_reason=success"
+            echo "has_ai_notes=true"
           } >> $GITHUB_OUTPUT
-          echo "has_ai_notes=true" >> $GITHUB_OUTPUT
+
+      - name: Upload Gemini Notes Artifact
+        if: ${{ steps.ai_notes.outputs.has_ai_notes == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemini-release-notes
+          path: gemini_release_notes.md
+          if-no-files-found: error
 
       - name: Release Notes Summary
         if: always()
@@ -223,24 +311,45 @@ jobs:
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "${{ steps.ai_notes.outputs.has_ai_notes }}" = "true" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Preview:" >> $GITHUB_STEP_SUMMARY
-            echo '```markdown' >> $GITHUB_STEP_SUMMARY
-            sed -n '1,30p' "${{ steps.ai_notes.outputs.release_notes_path }}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: [prepare, quality_checks, build_apk, build_aab, release_notes]
+    if: ${{ always() && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.build_apk.result == 'success' || needs.build_apk.result == 'skipped') && (needs.build_aab.result == 'success' || needs.build_aab.result == 'skipped') && (needs.release_notes.result == 'success' || needs.release_notes.result == 'skipped') }}
+    steps:
+      - name: Download APK Artifact
+        if: ${{ inputs.build_apk }}
+        uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+          path: release_assets
+
+      - name: Download AAB Artifact
+        if: ${{ inputs.build_aab }}
+        uses: actions/download-artifact@v4
+        with:
+          name: release-aab
+          path: release_assets
+
+      - name: Download Gemini Notes Artifact
+        if: ${{ needs.release_notes.outputs.has_ai_notes == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: gemini-release-notes
+          path: release_assets
 
       - name: Create GitHub Release (AI Notes)
-        if: ${{ steps.ai_notes.outputs.has_ai_notes == 'true' }}
+        if: ${{ needs.release_notes.outputs.has_ai_notes == 'true' }}
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ inputs.tag }}
           name: ${{ inputs.release_name != '' && inputs.release_name || inputs.tag }}
-          body_path: ${{ steps.ai_notes.outputs.release_notes_path }}
+          body_path: release_assets/gemini_release_notes.md
           files: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            release_assets/app-release.apk
+            release_assets/app-release.aab
           fail_on_unmatched_files: false
           draft: ${{ inputs.draft }}
           prerelease: ${{ inputs.prerelease }}
@@ -248,14 +357,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release (Fallback)
-        if: ${{ steps.ai_notes.outputs.has_ai_notes != 'true' }}
+        if: ${{ needs.release_notes.outputs.has_ai_notes != 'true' }}
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ inputs.tag }}
           name: ${{ inputs.release_name != '' && inputs.release_name || inputs.tag }}
           files: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            release_assets/app-release.apk
+            release_assets/app-release.aab
           fail_on_unmatched_files: false
           generate_release_notes: true
           draft: ${{ inputs.draft }}
