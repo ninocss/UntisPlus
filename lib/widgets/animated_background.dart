@@ -106,37 +106,37 @@ class _OrbsLayer extends StatelessWidget {
         Positioned(
           top: -80 + t * 65,
           right: -40 + t2 * 50,
-          child: _orb(240, cs.primaryContainer.withOpacity(0.38)),
+          child: _orb(240, cs.primaryContainer.withValues(alpha: 0.38)),
         ),
         Positioned(
           bottom: -70 + t2 * 55,
           left: -45 + t * 40,
-          child: _orb(210, cs.secondaryContainer.withOpacity(0.34)),
+          child: _orb(210, cs.secondaryContainer.withValues(alpha: 0.34)),
         ),
         Positioned(
           top: 85 + t3 * 90,
           right: 15 - t2 * 30,
-          child: _orb(150, cs.tertiaryContainer.withOpacity(0.27)),
+          child: _orb(150, cs.tertiaryContainer.withValues(alpha: 0.27)),
         ),
         Positioned(
           top: 175 + t2 * 80,
           left: 8 + t * 45,
-          child: _orb(170, cs.primaryContainer.withOpacity(0.20)),
+          child: _orb(170, cs.primaryContainer.withValues(alpha: 0.20)),
         ),
         Positioned(
           bottom: 55 - t3 * 35,
           right: 35 + t * 60,
-          child: _orb(125, cs.secondaryContainer.withOpacity(0.22)),
+          child: _orb(125, cs.secondaryContainer.withValues(alpha: 0.22)),
         ),
         Positioned(
           top: 18 + t2 * 45,
           left: -24 + t3 * 52,
-          child: _orb(108, cs.tertiaryContainer.withOpacity(0.2)),
+          child: _orb(108, cs.tertiaryContainer.withValues(alpha: 0.2)),
         ),
         Positioned(
           bottom: -32 + t * 34,
           left: 95 + t2 * 26,
-          child: _orb(92, cs.primary.withOpacity(0.12)),
+          child: _orb(92, cs.primary.withValues(alpha: 0.12)),
         ),
       ],
     );
@@ -165,8 +165,8 @@ class _SpaceLayer extends StatelessWidget {
                 center: const Alignment(-0.3, -0.8),
                 radius: 1.35,
                 colors: [
-                  cs.primaryContainer.withOpacity(0.24),
-                  cs.surface.withOpacity(0.04),
+                  cs.primaryContainer.withValues(alpha: 0.24),
+                  cs.surface.withValues(alpha: 0.04),
                 ],
               ),
             ),
@@ -199,7 +199,7 @@ class _BubblesLayer extends StatelessWidget {
         cs.secondaryContainer,
         cs.tertiaryContainer,
         (i % 7) / 6,
-      )!.withOpacity(0.22);
+      )!.withValues(alpha: 0.22);
       return Align(
         alignment: Alignment(x * 2, y * 2),
         child: Container(
@@ -209,9 +209,9 @@ class _BubblesLayer extends StatelessWidget {
             shape: BoxShape.circle,
             gradient: RadialGradient(
               colors: [
-                color.withOpacity(0.92),
-                color.withOpacity(0.45),
-                color.withOpacity(0.12),
+                color.withValues(alpha: 0.92),
+                color.withValues(alpha: 0.45),
+                color.withValues(alpha: 0.12),
               ],
             ),
           ),
@@ -228,8 +228,8 @@ class _BubblesLayer extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  cs.tertiaryContainer.withOpacity(0.20),
-                  cs.primaryContainer.withOpacity(0.10),
+                  cs.tertiaryContainer.withValues(alpha: 0.20),
+                  cs.primaryContainer.withValues(alpha: 0.10),
                   Colors.transparent,
                 ],
               ),
@@ -271,7 +271,7 @@ class _ThreeDLayer extends StatelessWidget {
         cs.primaryContainer,
         cs.secondaryContainer,
         i / 5,
-      )!.withOpacity(0.12 + i * 0.02);
+      )!.withValues(alpha: 0.12 + i * 0.02);
       return Positioned.fill(
         child: Transform.translate(
           offset: Offset(x, y),
@@ -289,7 +289,7 @@ class _ThreeDLayer extends StatelessWidget {
                   color: color,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: cs.onSurface.withOpacity(0.08),
+                    color: cs.onSurface.withValues(alpha: 0.08),
                     width: 1,
                   ),
                 ),
@@ -336,7 +336,7 @@ class _StarfieldPainter extends CustomPainter {
         cs.onSurface,
         cs.primary,
         (i % 5) / 4,
-      )!.withOpacity(0.08 + 0.20 * twinkle);
+      )!.withValues(alpha: 0.08 + 0.20 * twinkle);
       canvas.drawCircle(Offset(x, y), r, starPaint);
     }
   }
@@ -366,7 +366,7 @@ class _LinesPainter extends CustomPainter {
         cs.primary,
         cs.tertiary,
         ((i + 2) % 6) / 5,
-      )!.withOpacity(0.12 + ((i + 2) % 3) * 0.05);
+      )!.withValues(alpha: 0.12 + ((i + 2) % 3) * 0.05);
       canvas.drawPath(path, paint);
     }
   }
@@ -387,8 +387,8 @@ class _AuroraPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          cs.primaryContainer.withOpacity(0.15),
-          cs.secondaryContainer.withOpacity(0.10),
+          cs.primaryContainer.withValues(alpha: 0.15),
+          cs.secondaryContainer.withValues(alpha: 0.10),
           Colors.transparent,
         ],
       ).createShader(Offset.zero & size);
@@ -415,7 +415,7 @@ class _AuroraPainter extends CustomPainter {
           cs.primary,
           cs.tertiary,
           i / 3,
-        )!.withOpacity(0.09 + i * 0.03);
+        )!.withValues(alpha: 0.09 + i * 0.03);
       canvas.drawPath(path, fill);
     }
   }

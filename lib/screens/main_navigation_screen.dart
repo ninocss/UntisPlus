@@ -138,22 +138,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   colors: isDark
                       ? [
                           Color.alphaBlend(
-                            cs.primary.withOpacity(0.18),
+                            cs.primary.withValues(alpha: 0.18),
                             cs.surface,
                           ),
                           Color.alphaBlend(
-                            cs.tertiary.withOpacity(0.14),
+                            cs.tertiary.withValues(alpha: 0.14),
                             cs.surface,
                           ),
                           cs.surface,
                         ]
                       : [
                           Color.alphaBlend(
-                            cs.primary.withOpacity(0.08),
+                            cs.primary.withValues(alpha: 0.08),
                             cs.surface,
                           ),
                           Color.alphaBlend(
-                            cs.secondary.withOpacity(0.07),
+                            cs.secondary.withValues(alpha: 0.07),
                             cs.surface,
                           ),
                           cs.surface,
@@ -210,12 +210,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                   decoration: BoxDecoration(
-                    color: cs.surface.withOpacity(0.94),
+                    color: cs.surface.withValues(alpha: 0.94),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: cs.primary.withOpacity(0.35)),
+                    border: Border.all(color: cs.primary.withValues(alpha: 0.35)),
                     boxShadow: [
                       BoxShadow(
-                        color: cs.shadow.withOpacity(0.22),
+                        color: cs.shadow.withValues(alpha: 0.22),
                         blurRadius: 22,
                         offset: const Offset(0, 8),
                       ),
@@ -256,7 +256,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         _tutorialDesc(l),
                         style: GoogleFonts.outfit(
                           fontSize: 13,
-                          color: cs.onSurface.withOpacity(0.8),
+                          color: cs.onSurface.withValues(alpha: 0.8),
                         ),
                       ),
                       if (_tutorialStep >= _tutorialTargets.length) ...[
@@ -312,16 +312,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       color: enabled
-                          ? cs.surface.withOpacity(0.72)
+                          ? cs.surface.withValues(alpha: 0.72)
                           : cs.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(
-                        color: cs.outlineVariant.withOpacity(0.42),
+                        color: cs.outlineVariant.withValues(alpha: 0.42),
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: cs.shadow.withOpacity(0.12),
+                          color: cs.shadow.withValues(alpha: 0.12),
                           blurRadius: 24,
                           offset: const Offset(0, 9),
                         ),
@@ -393,7 +393,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     decoration: BoxDecoration(
                       color: timetableSelected
                           ? cs.primary
-                          : cs.surfaceContainerHigh.withOpacity(0.95),
+                          : cs.surfaceContainerHigh.withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(
                         timetableSelected ? 24 : 20,
                       ),
@@ -401,8 +401,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         color: _isTutorialTarget(0)
                             ? cs.tertiary
                             : timetableSelected
-                            ? cs.primary.withOpacity(0.44)
-                            : cs.outlineVariant.withOpacity(0.36),
+                            ? cs.primary.withValues(alpha: 0.44)
+                            : cs.outlineVariant.withValues(alpha: 0.36),
                         width: _isTutorialTarget(0) ? 2.0 : 1,
                       ),
                       boxShadow: [
@@ -411,7 +411,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                               (timetableSelected
                                       ? cs.primary
                                       : cs.surfaceContainerHigh)
-                                  .withOpacity(0.38),
+                                  .withValues(alpha: 0.38),
                           blurRadius: timetableSelected ? 22 : 14,
                           offset: Offset(0, timetableSelected ? 8 : 5),
                         ),
@@ -490,12 +490,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           border: tutorialHighlight
               ? Border.all(color: cs.tertiary, width: 2)
               : selected
-              ? Border.all(color: cs.primary.withOpacity(0.22), width: 1)
+              ? Border.all(color: cs.primary.withValues(alpha: 0.22), width: 1)
               : Border.all(color: Colors.transparent, width: 0),
           boxShadow: tutorialHighlight
               ? [
                   BoxShadow(
-                    color: cs.tertiary.withOpacity(0.35),
+                    color: cs.tertiary.withValues(alpha: 0.35),
                     blurRadius: 14,
                     spreadRadius: 1,
                   ),
@@ -515,7 +515,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             size: selected ? 27 : 25,
             color: selected
                 ? cs.onPrimaryContainer
-                : cs.onSurfaceVariant.withOpacity(0.8),
+                : cs.onSurfaceVariant.withValues(alpha: 0.8),
           ),
         ),
       ),

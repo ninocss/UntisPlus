@@ -990,7 +990,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   color: cs.surfaceContainerHigh,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: cs.outlineVariant.withOpacity(0.35),
+                                    color: cs.outlineVariant.withValues(alpha: 0.35),
                                   ),
                                 ),
                                 child: ListTile(
@@ -1236,7 +1236,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 style: GoogleFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: csG.onSurfaceVariant.withOpacity(0.8),
+                                  color: csG.onSurfaceVariant.withValues(alpha: 0.8),
                                 ),
                               ),
                               Text(
@@ -1245,7 +1245,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 style: GoogleFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
-                                  color: csG.onSurfaceVariant.withOpacity(0.7),
+                                  color: csG.onSurfaceVariant.withValues(alpha: 0.7),
                                 ),
                               ),
                             ],
@@ -1264,7 +1264,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             style: GoogleFonts.outfit(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: csG.onSurfaceVariant.withOpacity(0.7),
+                              color: csG.onSurfaceVariant.withValues(alpha: 0.7),
                             ),
                           ),
                         );
@@ -1287,7 +1287,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             right: 0,
                             child: Container(
                               height: 0.5,
-                              color: csG.outlineVariant.withOpacity(0.6),
+                              color: csG.outlineVariant.withValues(alpha: 0.6),
                             ),
                           );
                         }),
@@ -1341,7 +1341,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               : _autoLessonColor(sk, isDark);
                           final bgColor = isCancelled
                               ? cs.errorContainer
-                              : fgColor.withOpacity(isDark ? 0.28 : 0.20);
+                              : fgColor.withValues(alpha: isDark ? 0.28 : 0.20);
 
                           return Positioned(
                             top: top,
@@ -1397,7 +1397,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           style: GoogleFonts.outfit(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w500,
-                                            color: fgColor.withOpacity(0.6),
+                                            color: fgColor.withValues(alpha: 0.6),
                                           ),
                                         ),
                                       if (height >= 52 && room.isNotEmpty)
@@ -1408,7 +1408,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           style: GoogleFonts.outfit(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w600,
-                                            color: fgColor.withOpacity(0.75),
+                                            color: fgColor.withValues(alpha: 0.75),
                                           ),
                                         ),
                                     ],
@@ -1558,7 +1558,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   fontWeight: FontWeight.w700,
                                   color: isToday
                                       ? cs.primary
-                                      : cs.onSurfaceVariant.withOpacity(0.8),
+                                      : cs.onSurfaceVariant.withValues(alpha: 0.8),
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -1620,7 +1620,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           fontSize: 10,
                                           fontWeight: FontWeight.w700,
                                           color: cs.onSurfaceVariant
-                                              .withOpacity(0.8),
+                                              .withValues(alpha: 0.8),
                                         ),
                                       ),
                                       Text(
@@ -1630,7 +1630,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           fontSize: 10,
                                           fontWeight: FontWeight.w500,
                                           color: cs.onSurfaceVariant
-                                              .withOpacity(0.7),
+                                              .withValues(alpha: 0.7),
                                         ),
                                       ),
                                     ],
@@ -1649,7 +1649,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     style: GoogleFonts.outfit(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: cs.onSurfaceVariant.withOpacity(
+                                      color: cs.onSurfaceVariant.withValues(alpha: 
                                         0.7,
                                       ),
                                     ),
@@ -1696,7 +1696,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       right: 0,
                                       child: Container(
                                         height: 0.5,
-                                        color: cs.outlineVariant.withOpacity(
+                                        color: cs.outlineVariant.withValues(alpha: 
                                           0.6,
                                         ),
                                       ),
@@ -1761,7 +1761,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         : _autoLessonColor(sk2, isDark2);
                                     final bgColor = isCancelled
                                         ? cs.errorContainer
-                                        : fgColor.withOpacity(
+                                        : fgColor.withValues(alpha: 
                                             isDark2 ? 0.28 : 0.20,
                                           );
                                     return Positioned(
@@ -1826,7 +1826,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                       fontWeight:
                                                           FontWeight.w500,
                                                       color: fgColor
-                                                          .withOpacity(0.6),
+                                                          .withValues(alpha: 0.6),
                                                     ),
                                                   ),
                                                 if (height >= 45 &&
@@ -1841,7 +1841,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       color: fgColor
-                                                          .withOpacity(0.75),
+                                                          .withValues(alpha: 0.75),
                                                     ),
                                                   ),
                                               ],
@@ -2732,7 +2732,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         size: 80,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurfaceVariant.withOpacity(0.35),
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -3082,7 +3082,7 @@ class _ExamsPageState extends State<ExamsPage> {
                           ).examsSubjectLabel,
                           prefixIcon: const Icon(Icons.book_outlined),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withOpacity(
+                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 
                             0.45,
                           ),
                           border: OutlineInputBorder(
@@ -3100,7 +3100,7 @@ class _ExamsPageState extends State<ExamsPage> {
                           ).examsTypeLabel,
                           prefixIcon: const Icon(Icons.label_outline),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withOpacity(
+                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 
                             0.45,
                           ),
                           border: OutlineInputBorder(
@@ -3131,7 +3131,7 @@ class _ExamsPageState extends State<ExamsPage> {
                             color: Theme.of(ctx)
                                 .colorScheme
                                 .surfaceContainerHighest
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
@@ -3168,7 +3168,7 @@ class _ExamsPageState extends State<ExamsPage> {
                             child: Icon(Icons.notes_rounded),
                           ),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withOpacity(
+                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 
                             0.45,
                           ),
                           border: OutlineInputBorder(
@@ -3451,7 +3451,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                         size: 80,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -3616,7 +3616,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
             : null,
         child: Container(
           decoration: BoxDecoration(
-            color: accent.withOpacity(isDark ? 0.18 : 0.12),
+            color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
             borderRadius: BorderRadius.circular(20),
             border: Border(left: BorderSide(color: accent, width: 4)),
           ),
@@ -3633,7 +3633,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                       runSpacing: 4,
                       children: [
                         if (type.isNotEmpty)
-                          _chip(type, accent.withOpacity(0.2), accent),
+                          _chip(type, accent.withValues(alpha: 0.2), accent),
                         if (isCustom)
                           _chip(l.examsOwn, cs.tertiaryContainer, cs.tertiary),
                       ],
@@ -3682,8 +3682,8 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                       color: daysUntil == 0
                           ? cs.errorContainer
                           : daysUntil <= 3
-                          ? cs.errorContainer.withOpacity(0.6)
-                          : accent.withOpacity(0.15),
+                          ? cs.errorContainer.withValues(alpha: 0.6)
+                          : accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -4099,21 +4099,21 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         childBuilder: (enabled) => Container(
           height: MediaQuery.of(context).size.height * 0.82,
           decoration: BoxDecoration(
-            color: enabled ? cs.surface.withOpacity(0.72) : cs.surface,
+            color: enabled ? cs.surface.withValues(alpha: 0.72) : cs.surface,
             gradient: enabled
                 ? LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      cs.surface.withOpacity(0.78),
-                      cs.surfaceContainerHigh.withOpacity(0.62),
+                      cs.surface.withValues(alpha: 0.78),
+                      cs.surfaceContainerHigh.withValues(alpha: 0.62),
                     ],
                   )
                 : null,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             border: Border(
               top: BorderSide(
-                color: cs.outlineVariant.withOpacity(0.4),
+                color: cs.outlineVariant.withValues(alpha: 0.4),
                 width: 1,
               ),
             ),
@@ -4129,7 +4129,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: cs.onSurface.withOpacity(0.12),
+                          color: cs.onSurface.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -4170,7 +4170,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Divider(color: cs.outlineVariant.withOpacity(0.5)),
+                    Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
                   ],
                 ),
               ),
@@ -4208,10 +4208,10 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                             appLocaleNotifier.value,
                           ).aiInputHint,
                           hintStyle: GoogleFonts.outfit(
-                            color: cs.onSurface.withOpacity(0.38),
+                            color: cs.onSurface.withValues(alpha: 0.38),
                           ),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withOpacity(
+                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 
                             0.5,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -4259,7 +4259,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
           Icon(
             Icons.tips_and_updates_rounded,
             size: 40,
-            color: cs.primary.withOpacity(0.5),
+            color: cs.primary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 12),
           Text(
@@ -4315,7 +4315,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         decoration: BoxDecoration(
           color: isUser
               ? cs.primary
-              : cs.surfaceContainerHighest.withOpacity(0.6),
+              : cs.surfaceContainerHighest.withValues(alpha: 0.6),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
@@ -4359,11 +4359,11 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                         color: cs.onSurface,
                       ),
                       codeblockDecoration: BoxDecoration(
-                        color: cs.surface.withOpacity(0.7),
+                        color: cs.surface.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       blockquoteDecoration: BoxDecoration(
-                        color: cs.surface.withOpacity(0.55),
+                        color: cs.surface.withValues(alpha: 0.55),
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
@@ -4379,7 +4379,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withOpacity(0.6),
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
@@ -4444,7 +4444,7 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
         width: 8,
         height: 8,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           shape: BoxShape.circle,
         ),
       ),
@@ -4565,7 +4565,7 @@ class _LessonDetailSheet extends StatelessWidget {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: (iconColor ?? Theme.of(context).colorScheme.primary)
-                  .withOpacity(0.12),
+                  .withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
@@ -4586,7 +4586,7 @@ class _LessonDetailSheet extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withOpacity(0.5),
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -4628,7 +4628,7 @@ class _LessonDetailSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: cs.onSurface.withOpacity(0.12),
+                  color: cs.onSurface.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -4708,12 +4708,12 @@ class _LessonDetailSheet extends StatelessWidget {
                 style: GoogleFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: cs.primary.withOpacity(0.7),
+                  color: cs.primary.withValues(alpha: 0.7),
                 ),
               ),
 
             const SizedBox(height: 24),
-            Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
+            Divider(color: cs.outlineVariant.withValues(alpha: 0.5), height: 1),
             const SizedBox(height: 16),
 
             _row(context, Icons.access_time_rounded, l.detailTime, time),
@@ -4731,7 +4731,7 @@ class _LessonDetailSheet extends StatelessWidget {
               ),
 
             const SizedBox(height: 16),
-            Divider(color: cs.outlineVariant.withOpacity(0.5), height: 1),
+            Divider(color: cs.outlineVariant.withValues(alpha: 0.5), height: 1),
             const SizedBox(height: 12),
 
             OutlinedButton.icon(
@@ -4742,8 +4742,8 @@ class _LessonDetailSheet extends StatelessWidget {
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: cs.onSurface.withOpacity(0.6),
-                side: BorderSide(color: cs.outlineVariant.withOpacity(0.5)),
+                foregroundColor: cs.onSurface.withValues(alpha: 0.6),
+                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -4789,7 +4789,7 @@ class LessonCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
+              color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -4808,15 +4808,15 @@ class LessonCard extends StatelessWidget {
                     ? (enabled
                           ? Theme.of(
                               context,
-                            ).colorScheme.errorContainer.withOpacity(0.9)
+                            ).colorScheme.errorContainer.withValues(alpha: 0.9)
                           : Theme.of(context).colorScheme.errorContainer)
                     : (enabled
                           ? Theme.of(
                               context,
-                            ).colorScheme.surface.withOpacity(0.85)
+                            ).colorScheme.surface.withValues(alpha: 0.85)
                           : Theme.of(context).colorScheme.surface),
                 border: Border.all(
-                  color: cs.outlineVariant.withOpacity(0.45),
+                  color: cs.outlineVariant.withValues(alpha: 0.45),
                   width: 1.5,
                 ),
               ),
@@ -4849,7 +4849,7 @@ class LessonCard extends StatelessWidget {
                             style: GoogleFonts.outfit(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.primary.withOpacity(0.7),
+                              ).colorScheme.primary.withValues(alpha: 0.7),
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                             ),
@@ -5325,7 +5325,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                           color: cs.surfaceContainer,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: cs.outlineVariant.withOpacity(0.35),
+                            color: cs.outlineVariant.withValues(alpha: 0.35),
                           ),
                         ),
                         child: Column(
@@ -5950,11 +5950,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      accent.withOpacity(0.34),
-                      accent.withOpacity(0.14),
+                      accent.withValues(alpha: 0.34),
+                      accent.withValues(alpha: 0.14),
                     ],
                   ),
-                  border: Border.all(color: accent.withOpacity(0.35), width: 1),
+                  border: Border.all(color: accent.withValues(alpha: 0.35), width: 1),
                 ),
                 child: Icon(icon, size: 14, color: accent),
               ),
@@ -6008,16 +6008,16 @@ class _SettingsPageState extends State<SettingsPage> {
               borderRadius: BorderRadius.circular(24),
               sigmaX: 18,
               sigmaY: 18,
-              color: cs.surface.withOpacity(0.52),
+              color: cs.surface.withValues(alpha: 0.52),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  accent.withOpacity(0.08),
-                  cs.surfaceContainerHighest.withOpacity(0.46),
+                  accent.withValues(alpha: 0.08),
+                  cs.surfaceContainerHighest.withValues(alpha: 0.46),
                 ],
               ),
-              border: Border.all(color: accent.withOpacity(0.24), width: 1),
+              border: Border.all(color: accent.withValues(alpha: 0.24), width: 1),
               child: Column(
                 children: [
                   for (int i = 0; i < tiles.length; i++) ...[
@@ -6026,7 +6026,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         height: 0.5,
                         thickness: 0.5,
                         indent: 66,
-                        color: accent.withOpacity(0.2),
+                        color: accent.withValues(alpha: 0.2),
                       ),
                     tiles[i],
                   ],
@@ -6078,7 +6078,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             subtitleColor ??
                             Theme.of(
                               context,
-                            ).colorScheme.onSurfaceVariant.withOpacity(0.75),
+                            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
                       ),
                     ),
                   ],
@@ -6100,13 +6100,13 @@ class _SettingsPageState extends State<SettingsPage> {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [color.withOpacity(0.26), color.withOpacity(0.12)],
+        colors: [color.withValues(alpha: 0.26), color.withValues(alpha: 0.12)],
       ),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: color.withOpacity(0.3), width: 1),
+      border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       boxShadow: [
         BoxShadow(
-          color: color.withOpacity(0.16),
+          color: color.withValues(alpha: 0.16),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
@@ -6400,7 +6400,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: cs.onSurface.withOpacity(0.4),
+                            color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: _showBackgroundStyleDialog,
                         ),
@@ -6434,7 +6434,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: cs.onSurface.withOpacity(0.4),
+                            color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: _showLanguageDialog,
                         ),
@@ -6462,7 +6462,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: cs.onSurface.withOpacity(0.4),
+                            color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: () async {
                             HapticFeedback.heavyImpact();
@@ -6508,7 +6508,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: cs.onSurface.withOpacity(0.4),
+                            color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: _showApiKeyDialog,
                         ),
@@ -6538,7 +6538,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: cs.onSurface.withOpacity(0.4),
+                            color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: () {
                             Navigator.push(
@@ -6559,7 +6559,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: cs.onSurface.withOpacity(0.4),
+                            color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: () {
                             Navigator.push(
@@ -6603,7 +6603,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               : Icon(
                                   Icons.chevron_right_rounded,
                                   size: 20,
-                                  color: cs.onSurface.withOpacity(0.4),
+                                  color: cs.onSurface.withValues(alpha: 0.4),
                                 ),
                           onTap: _checkingGithubUpdate
                               ? null
@@ -6641,7 +6641,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,
-                            color: cs.onSurface.withOpacity(0.4),
+                            color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: () {
                             url_launcher.launchUrlString(
@@ -6735,7 +6735,7 @@ class _SettingsAccountCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: cs.primary.withOpacity(0.30),
+                      color: cs.primary.withValues(alpha: 0.30),
                       blurRadius: 14,
                       offset: const Offset(0, 5),
                     ),
@@ -6760,7 +6760,7 @@ class _SettingsAccountCard extends StatelessWidget {
                     Text(
                       l.settingsLoggedInAs,
                       style: GoogleFonts.outfit(
-                        color: cs.onPrimaryContainer.withOpacity(0.55),
+                        color: cs.onPrimaryContainer.withValues(alpha: 0.55),
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -6780,7 +6780,7 @@ class _SettingsAccountCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
                           fontSize: 11.5,
-                          color: cs.onPrimaryContainer.withOpacity(0.45),
+                          color: cs.onPrimaryContainer.withValues(alpha: 0.45),
                         ),
                       ),
                   ],
@@ -6797,7 +6797,7 @@ class _SettingsAccountCard extends StatelessWidget {
               style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
             ),
             style: FilledButton.styleFrom(
-              backgroundColor: cs.error.withOpacity(0.1),
+              backgroundColor: cs.error.withValues(alpha: 0.1),
               foregroundColor: cs.error,
               minimumSize: const Size(double.infinity, 46),
               elevation: 0,
@@ -6993,14 +6993,14 @@ class SubjectColorsPage extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: isSelected
                             ? Border.all(
-                                color: cs.onSurface.withOpacity(0.65),
+                                color: cs.onSurface.withValues(alpha: 0.65),
                                 width: 3,
                               )
                             : Border.all(color: Colors.transparent),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: c.withOpacity(0.45),
+                                  color: c.withValues(alpha: 0.45),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 ),
@@ -7143,7 +7143,7 @@ class SubjectColorsPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                             border: subjectColor != null
                                 ? Border.all(
-                                    color: subjectColor.withOpacity(0.35),
+                                    color: subjectColor.withValues(alpha: 0.35),
                                     width: 2,
                                   )
                                 : null,

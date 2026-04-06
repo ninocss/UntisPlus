@@ -143,21 +143,21 @@ Widget _glassContainer({
       childBuilder: (enabled) => Container(
         decoration: BoxDecoration(
           borderRadius: borderRadius,
-          color: color ?? (enabled ? cs.surface.withOpacity(0.72) : cs.surface),
+          color: color ?? (enabled ? cs.surface.withValues(alpha: 0.72) : cs.surface),
           gradient: enabled
               ? (gradient ??
                     LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        cs.surface.withOpacity(0.78),
-                        cs.surfaceContainerHigh.withOpacity(0.62),
+                        cs.surface.withValues(alpha: 0.78),
+                        cs.surfaceContainerHigh.withValues(alpha: 0.62),
                       ],
                     ))
               : null,
           border:
               border ??
-              Border.all(color: cs.outlineVariant.withOpacity(0.4), width: 1),
+              Border.all(color: cs.outlineVariant.withValues(alpha: 0.4), width: 1),
         ),
         child: child,
       ),
@@ -209,7 +209,7 @@ Widget _sheetSurface({
     decoration: BoxDecoration(
       color: cs.surface,
       borderRadius: borderRadius,
-      border: Border.all(color: cs.outlineVariant.withOpacity(0.35)),
+      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
     ),
     child: child,
   );
@@ -263,7 +263,7 @@ Future<T?> _showUnifiedOptionSheet<T>({
                   width: 46,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: cs.onSurfaceVariant.withOpacity(0.35),
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -300,28 +300,28 @@ Future<T?> _showUnifiedOptionSheet<T>({
                         final opt = entry.value;
                         final color = opt.destructive ? cs.error : cs.primary;
                         final iconBackground = opt.selected
-                            ? color.withOpacity(isLightMode ? 0.16 : 0.2)
-                            : color.withOpacity(isLightMode ? 0.08 : 0.12);
+                            ? color.withValues(alpha: isLightMode ? 0.16 : 0.2)
+                            : color.withValues(alpha: isLightMode ? 0.08 : 0.12);
                         final backgroundColor = opt.selected
-                            ? color.withOpacity(
+                            ? color.withValues(alpha: 
                                 isLightMode
                                     ? (blurOn ? 0.14 : 0.1)
                                     : (blurOn ? 0.2 : 0.24),
                               )
                             : (isLightMode
-                                  ? cs.surfaceContainerHigh.withOpacity(
+                                  ? cs.surfaceContainerHigh.withValues(alpha: 
                                       blurOn ? 0.72 : 0.8,
                                     )
-                                  : cs.surfaceContainerHighest.withOpacity(
+                                  : cs.surfaceContainerHighest.withValues(alpha: 
                                       blurOn ? 0.7 : 0.8,
                                     ));
                         final borderColor = opt.selected
-                            ? color.withOpacity(
+                            ? color.withValues(alpha: 
                                 isLightMode
                                     ? (blurOn ? 0.32 : 0.24)
                                     : (blurOn ? 0.52 : 0.42),
                               )
-                            : cs.outlineVariant.withOpacity(
+                            : cs.outlineVariant.withValues(alpha: 
                                 isLightMode
                                     ? (blurOn ? 0.48 : 0.36)
                                     : (blurOn ? 0.52 : 0.45),
@@ -330,28 +330,28 @@ Future<T?> _showUnifiedOptionSheet<T>({
                           ? (opt.destructive
                               ? cs.error
                               : (isLightMode
-                                ? cs.primary.withOpacity(0.98)
-                                : cs.onSurface.withOpacity(0.98)))
-                          : cs.onSurface.withOpacity(isLightMode ? 0.96 : 0.98);
+                                ? cs.primary.withValues(alpha: 0.98)
+                                : cs.onSurface.withValues(alpha: 0.98)))
+                          : cs.onSurface.withValues(alpha: isLightMode ? 0.96 : 0.98);
                         final subtitleColor = opt.selected
-                          ? cs.onSurface.withOpacity(isLightMode ? 0.82 : 0.86)
-                          : cs.onSurfaceVariant.withOpacity(
+                          ? cs.onSurface.withValues(alpha: isLightMode ? 0.82 : 0.86)
+                          : cs.onSurfaceVariant.withValues(alpha: 
                             isLightMode ? 0.9 : 0.86,
                             );
                         final leadingIconColor = opt.selected
                           ? (opt.destructive
                               ? cs.error
                               : (isLightMode
-                                ? cs.primary.withOpacity(0.95)
-                                : cs.primary.withOpacity(0.92)))
-                          : cs.onSurface.withOpacity(isLightMode ? 0.86 : 0.9);
+                                ? cs.primary.withValues(alpha: 0.95)
+                                : cs.primary.withValues(alpha: 0.92)))
+                          : cs.onSurface.withValues(alpha: isLightMode ? 0.86 : 0.9);
                         final trailingIconColor = opt.selected
                           ? leadingIconColor
-                          : cs.onSurfaceVariant.withOpacity(
+                          : cs.onSurfaceVariant.withValues(alpha: 
                             isLightMode ? 0.82 : 0.76,
                             );
                         final shadowColor = (opt.selected ? color : cs.shadow)
-                            .withOpacity(
+                            .withValues(alpha: 
                               isLightMode
                                   ? (opt.selected
                                         ? (blurOn ? 0.08 : 0.06)
@@ -414,7 +414,7 @@ Future<T?> _showUnifiedOptionSheet<T>({
                                                 decoration: BoxDecoration(
                                                   color: iconBackground,
                                                   border: Border.all(
-                                                    color: borderColor.withOpacity(
+                                                    color: borderColor.withValues(alpha: 
                                                       isLightMode ? 0.9 : 0.75,
                                                     ),
                                                   ),

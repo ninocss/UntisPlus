@@ -43,7 +43,7 @@ class UntisPlusApp extends StatelessWidget {
                     useMaterial3: true,
                     colorScheme: scheme,
                     scaffoldBackgroundColor: Color.alphaBlend(
-                      scheme.primary.withOpacity(0.04),
+                      scheme.primary.withValues(alpha: 0.04),
                       scheme.surface,
                     ),
                     textTheme: baseText.copyWith(
@@ -88,25 +88,25 @@ class UntisPlusApp extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
-                          color: scheme.outlineVariant.withOpacity(0.35),
+                          color: scheme.outlineVariant.withValues(alpha: 0.35),
                         ),
                       ),
                     ),
                     inputDecorationTheme: InputDecorationTheme(
                       filled: true,
-                      fillColor: scheme.surfaceContainerHighest.withOpacity(
+                      fillColor: scheme.surfaceContainerHighest.withValues(alpha: 
                         0.6,
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide(
-                          color: scheme.outlineVariant.withOpacity(0.45),
+                          color: scheme.outlineVariant.withValues(alpha: 0.45),
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide(
-                          color: scheme.outlineVariant.withOpacity(0.45),
+                          color: scheme.outlineVariant.withValues(alpha: 0.45),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(

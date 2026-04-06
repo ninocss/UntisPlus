@@ -260,10 +260,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: colors.surface.withOpacity(0.84),
+                      color: colors.surface.withValues(alpha: 0.84),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: colors.outlineVariant.withOpacity(0.65),
+                        color: colors.outlineVariant.withValues(alpha: 0.65),
                       ),
                     ),
                     child: Column(
@@ -429,9 +429,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             decoration: BoxDecoration(
-              color: colors.surface.withOpacity(0.75),
+              color: colors.surface.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: colors.outlineVariant.withOpacity(0.7)),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.7)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,7 +504,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
-              tileColor: colors.surface.withOpacity(0.75),
+              tileColor: colors.surface.withValues(alpha: 0.75),
             ),
           ),
           const SizedBox(height: 12),
@@ -519,10 +519,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     valueListenable: backgroundAnimationStyleNotifier,
                     builder: (context, style, _) => Container(
                       decoration: BoxDecoration(
-                        color: colors.surface.withOpacity(0.75),
+                        color: colors.surface.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: colors.outlineVariant.withOpacity(0.7),
+                          color: colors.outlineVariant.withValues(alpha: 0.7),
                         ),
                       ),
                       child: ListTile(
@@ -584,7 +584,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
-              tileColor: colors.surface.withOpacity(0.75),
+              tileColor: colors.surface.withValues(alpha: 0.75),
             ),
           ),
           const Spacer(),
@@ -825,7 +825,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
-              ).colorScheme.secondaryContainer.withOpacity(0.5),
+              ).colorScheme.secondaryContainer.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -1072,7 +1072,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         filled: true,
         fillColor: Theme.of(
           context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(0.7),
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
@@ -1114,7 +1114,7 @@ class _StepWrapper extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
-              border: Border.all(color: cs.outlineVariant.withOpacity(0.6)),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
             ),
             child: Icon(icon, size: 36, color: cs.onPrimaryContainer),
           ),
@@ -1123,9 +1123,9 @@ class _StepWrapper extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             decoration: BoxDecoration(
-              color: cs.surface.withOpacity(0.78),
+              color: cs.surface.withValues(alpha: 0.78),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: cs.outlineVariant.withOpacity(0.7)),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
             ),
             child: Column(
               children: [
