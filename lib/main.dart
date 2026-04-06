@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'services/notification_service.dart';
@@ -42,6 +43,8 @@ void main() async {
   ]);
 
   final prefs = await SharedPreferences.getInstance();
+  final packageInfo = await PackageInfo.fromPlatform();
+  appVersion = packageInfo.version;
   final bool isLoggedIn = prefs.containsKey('sessionId');
 
   if (isLoggedIn) {
@@ -6541,7 +6544,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             cs.primary,
                           ),
                           title: 'Untis+',
-                          subtitle: '${l.settingsAppVersion} $APP_VERSION',
+                          subtitle: '${l.settingsAppVersion} $appVersion',
                           trailing: Icon(
                             Icons.auto_awesome_rounded,
                             size: 16,

@@ -1,7 +1,7 @@
 part of '../main.dart';
 
 // ── APP VERSION ────────────────────────────────────────────────────────────
-const String APP_VERSION = '1.1.0';
+String appVersion = '0.0.0';
 
 String sessionID = "";
 String schoolUrl = "";
