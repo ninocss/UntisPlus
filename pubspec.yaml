@@ -15,7 +15,6 @@ dependencies:
   google_fonts: ^8.0.2
   intl: ^0.20.2
   shared_preferences: ^2.2.2
-  flutter_markdown: ^0.7.1
   dynamic_color: ^1.8.1
   flutter_launcher_icons: ^0.14.4
   
@@ -26,11 +25,12 @@ dependencies:
   timezone: ^0.11.0
   workmanager: ^0.9.0+3
   url_launcher: ^6.3.2
-  file_picker: ^10.3.10
+  file_picker: ^11.0.2
   image_picker: ^1.2.1
   google_generative_ai: ^0.4.7
-  custom_refresh_indicator: ^3.0.0
-  package_info_plus: ^8.3.0
+  custom_refresh_indicator: ^4.0.1
+  package_info_plus: ^9.0.1
+  flutter_markdown_plus: ^1.0.7
 
 dev_dependencies:
   flutter_test:
