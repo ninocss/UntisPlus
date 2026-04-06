@@ -12,7 +12,7 @@ jobs:
       has_changes: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Java & Flutter
         uses: subosito/flutter-action@v2

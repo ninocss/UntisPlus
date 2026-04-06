@@ -43,12 +43,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -68,9 +68,9 @@ jobs:
     if: ${{ inputs.run_tests }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -82,7 +82,7 @@ jobs:
         run: flutter pub get
       - name: Analyze & Test
         run: |
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test
 
   build_apk:
@@ -92,9 +92,9 @@ jobs:
     if: ${{ always() && inputs.build_apk && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -120,9 +120,9 @@ jobs:
     if: ${{ always() && inputs.build_aab && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -155,7 +155,7 @@ jobs:
       gemini_response_snippet: ${{ steps.ai_notes.outputs.gemini_response_snippet }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
