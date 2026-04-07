@@ -2384,7 +2384,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _loading = false;
       });
     } catch (e) {
-      print("Fehler beim Laden: $e");
+      debugPrint("Fehler beim Laden: $e");
       if (hasCachedWeek) {
         if (!mounted) return;
         setState(() {
@@ -3193,8 +3193,9 @@ class _ExamsPageState extends State<ExamsPage> {
                             firstDate: DateTime(2020),
                             lastDate: DateTime(2030),
                           );
-                          if (picked != null)
+                          if (picked != null) {
                             setDlg(() => selectedDate = picked);
+                          }
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -3968,10 +3969,12 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
       }
 
       apiExams = await tryEndpoint('/WebUntis/api/exams');
-      if (apiExams.isEmpty)
+      if (apiExams.isEmpty) {
         apiExams = await tryEndpoint('/WebUntis/api/classreg/exams');
-      if (apiExams.isEmpty && personId != 0)
+      }
+      if (apiExams.isEmpty && personId != 0) {
         apiExams = await tryEndpoint('/WebUntis/api/exams/student/$personId');
+      }
     }
 
     if (mounted) {
@@ -5469,7 +5472,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                                         .LaunchMode
                                         .externalApplication,
                                   );
-                                  if (!ok && mounted) {
+                                  if (!ok && context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
@@ -5641,6 +5644,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         throw Exception('GitHub API error ${resp.statusCode}');
       }
+      if (!mounted) return;
 
       final data = jsonDecode(resp.body);
       if (data is! Map<String, dynamic>) {
@@ -5673,6 +5677,7 @@ class _SettingsPageState extends State<SettingsPage> {
           targetUrl,
           mode: url_launcher.LaunchMode.externalApplication,
         );
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -5705,6 +5710,7 @@ class _SettingsPageState extends State<SettingsPage> {
         );
       }
     } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l.settingsGithubCheckFailed),
@@ -5974,6 +5980,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.remove('geminiApiKey');
                           await prefs.remove('openAiApiKey');
+                          if (!ctx.mounted) return;
                           Navigator.pop(ctx);
                           _loadPrefs();
                         },
@@ -5993,6 +6000,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         final prefs = await SharedPreferences.getInstance();
                         await prefs.setString('geminiApiKey', val);
                         await prefs.remove('openAiApiKey');
+                        if (!ctx.mounted) return;
                         Navigator.pop(ctx);
                         _loadPrefs();
                       },
@@ -6020,7 +6028,7 @@ class _SettingsPageState extends State<SettingsPage> {
     HapticFeedback.heavyImpact();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    if (!mounted) return;
+    if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       _buildBouncyRoute(const OnboardingFlow()),
       (route) => false,
@@ -6962,9 +6970,9 @@ class SubjectColorsPage extends StatelessWidget {
       Theme.of(context).brightness == Brightness.dark,
     );
 
-    double red = (current ?? fallback).red.toDouble();
-    double green = (current ?? fallback).green.toDouble();
-    double blue = (current ?? fallback).blue.toDouble();
+    double red = (current ?? fallback).r * 255.0;
+    double green = (current ?? fallback).g * 255.0;
+    double blue = (current ?? fallback).b * 255.0;
 
     _showUnifiedSheet<void>(
       context: context,
