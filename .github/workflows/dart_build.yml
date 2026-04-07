@@ -197,10 +197,10 @@ jobs:
           - Use bullet points and include only changes that are inferable from commits.
           - If uncertain, phrase cautiously and do not invent details.
           - Keep it compact and readable for end users.
-          EOF
           - Only return the final Release Notes. No Comments from you.
           - I'm a sole developer
           - Don't write like I'm a company, I'm just a hobby-dev.
+          EOF
           )
 
           PAYLOAD=$(jq -n \
