@@ -265,10 +265,9 @@ Future<T?> _showUnifiedOptionSheet<T>({
             12 + 16 + 5 + 16 + (subtitle == null ? 58 : 86) + 14;
         final maxListHeight =
             (safeViewportHeight - staticChromeHeight).clamp(
-                  220.0,
-                  safeViewportHeight * 0.82,
-                )
-                as double;
+              220.0,
+              safeViewportHeight * 0.82,
+            );
         final estimatedContentHeight =
             (options.length * 56.0) +
             ((options.length - 1).clamp(0, options.length) * 10.0);
