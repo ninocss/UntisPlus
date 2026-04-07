@@ -34,7 +34,7 @@ on:
       build_aab:
         description: 'Release-AAB bauen'
         required: true
-        default: true
+        default: false
         type: boolean
 
 jobs:
@@ -163,8 +163,8 @@ jobs:
         id: ai_notes
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-2.5-flash-lite
-          GEMINI_FALLBACK_MODEL: gemini-2.0-flash
+          GEMINI_MODEL: gemini-2.5-flash
+          GEMINI_FALLBACK_MODEL: gemini-2.5-flash-lite
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
@@ -189,7 +189,7 @@ jobs:
 
           PROMPT=$(cat <<'EOF'
           You are a release manager for a Flutter app.
-          Create concise, user-friendly release notes in Markdown.
+          Create concise, user-friendly release notes in Markdown. You can Use some Emojis, but keep it professional.
           Requirements:
           - Output in English.
           - Start with a short summary paragraph.

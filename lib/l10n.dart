@@ -227,6 +227,9 @@ class AppL10n {
   String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
   String get settingsBackgroundAnimationsDesc =>
       _t('settingsBackgroundAnimationsDesc');
+  String get settingsBackgroundGyroscope => _t('settingsBackgroundGyroscope');
+  String get settingsBackgroundGyroscopeDesc =>
+      _t('settingsBackgroundGyroscopeDesc');
   String get settingsBackgroundStyle => _t('settingsBackgroundStyle');
   String get settingsBackgroundStyleOrbs => _t('settingsBackgroundStyleOrbs');
   String get settingsBackgroundStyleSpace => _t('settingsBackgroundStyleSpace');
@@ -235,8 +238,12 @@ class AppL10n {
   String get settingsBackgroundStyleLines => _t('settingsBackgroundStyleLines');
   String get settingsBackgroundStyleThreeD =>
       _t('settingsBackgroundStyleThreeD');
-  String get settingsBackgroundStyleAurora =>
-      _t('settingsBackgroundStyleAurora');
+  String get settingsBackgroundStyleNebula =>
+      _t('settingsBackgroundStyleNebula');
+  String get settingsBackgroundStylePrism => _t('settingsBackgroundStylePrism');
+  String get settingsBackgroundStyleWaves => _t('settingsBackgroundStyleWaves');
+  String get settingsBackgroundStyleGrid => _t('settingsBackgroundStyleGrid');
+  String get settingsBackgroundStyleRings => _t('settingsBackgroundStyleRings');
   String get settingsGlassEffect => _t('settingsGlassEffect');
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
   String get settingsProgressivePush => _t('settingsProgressivePush');
@@ -508,13 +515,20 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Hintergrundanimationen',
       'settingsBackgroundAnimationsDesc':
           'Animierte Farbverläufe im Hintergrund anzeigen',
+      'settingsBackgroundGyroscope': 'Gyroskop-Reaktion',
+      'settingsBackgroundGyroscopeDesc':
+          'Lässt den Hintergrund auf die Gerätebewegung reagieren',
       'settingsBackgroundStyle': 'Animationsstil',
       'settingsBackgroundStyleOrbs': 'Orbs',
       'settingsBackgroundStyleSpace': 'Space',
       'settingsBackgroundStyleBubbles': 'Blasen',
       'settingsBackgroundStyleLines': 'Linien',
       'settingsBackgroundStyleThreeD': '3D-Formen',
-      'settingsBackgroundStyleAurora': 'Aurora',
+      'settingsBackgroundStyleNebula': 'Nebel',
+      'settingsBackgroundStylePrism': 'Prisma',
+      'settingsBackgroundStyleWaves': 'Wellen',
+      'settingsBackgroundStyleGrid': 'Gitter',
+      'settingsBackgroundStyleRings': 'Ringe',
       'settingsGlassEffect': 'Glaseffekt (Blur)',
       'settingsGlassEffectDesc':
           'Aktiviert weiche Glas-/Unschärfeeffekte in der Oberfläche',
@@ -780,13 +794,20 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Background Animations',
       'settingsBackgroundAnimationsDesc':
           'Show animated gradient effects in the background',
+      'settingsBackgroundGyroscope': 'Gyroscope reaction',
+      'settingsBackgroundGyroscopeDesc':
+          'Lets backgrounds react to device movement',
       'settingsBackgroundStyle': 'Animation Style',
       'settingsBackgroundStyleOrbs': 'Orbs',
       'settingsBackgroundStyleSpace': 'Space',
       'settingsBackgroundStyleBubbles': 'Bubbles',
       'settingsBackgroundStyleLines': 'Lines',
       'settingsBackgroundStyleThreeD': '3D Forms',
-      'settingsBackgroundStyleAurora': 'Aurora',
+      'settingsBackgroundStyleNebula': 'Nebula',
+      'settingsBackgroundStylePrism': 'Prism',
+      'settingsBackgroundStyleWaves': 'Waves',
+      'settingsBackgroundStyleGrid': 'Grid',
+      'settingsBackgroundStyleRings': 'Rings',
       'settingsGlassEffect': 'Glass Effect (Blur)',
       'settingsGlassEffectDesc':
           'Enables soft glass/blur effects across the interface',
@@ -1057,13 +1078,20 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Animations de fond',
       'settingsBackgroundAnimationsDesc':
           'Afficher des effets de dégradé animés en arrière-plan',
+      'settingsBackgroundGyroscope': 'Réaction gyroscopique',
+      'settingsBackgroundGyroscopeDesc':
+          'Permet au fond de réagir aux mouvements de l\'appareil',
       'settingsBackgroundStyle': 'Style d\'animation',
       'settingsBackgroundStyleOrbs': 'Orbes',
       'settingsBackgroundStyleSpace': 'Espace',
       'settingsBackgroundStyleBubbles': 'Bulles',
       'settingsBackgroundStyleLines': 'Lignes',
       'settingsBackgroundStyleThreeD': 'Formes 3D',
-      'settingsBackgroundStyleAurora': 'Aurore',
+      'settingsBackgroundStyleNebula': 'Nebuleuse',
+      'settingsBackgroundStylePrism': 'Prisme',
+      'settingsBackgroundStyleWaves': 'Vagues',
+      'settingsBackgroundStyleGrid': 'Grille',
+      'settingsBackgroundStyleRings': 'Anneaux',
       'settingsProgressivePush': 'Notification push progressive',
       'settingsProgressivePushDesc':
           'Afficher le cours actuel comme notification persistante',
@@ -1333,13 +1361,20 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Animaciones de fondo',
       'settingsBackgroundAnimationsDesc':
           'Mostrar efectos de degradado animados en el fondo',
+      'settingsBackgroundGyroscope': 'Respuesta del giroscopio',
+      'settingsBackgroundGyroscopeDesc':
+          'Hace que el fondo reaccione al movimiento del dispositivo',
       'settingsBackgroundStyle': 'Estilo de animación',
       'settingsBackgroundStyleOrbs': 'Orbes',
       'settingsBackgroundStyleSpace': 'Espacio',
       'settingsBackgroundStyleBubbles': 'Burbujas',
       'settingsBackgroundStyleLines': 'Líneas',
       'settingsBackgroundStyleThreeD': 'Formas 3D',
-      'settingsBackgroundStyleAurora': 'Aurora',
+      'settingsBackgroundStyleNebula': 'Nebulosa',
+      'settingsBackgroundStylePrism': 'Prisma',
+      'settingsBackgroundStyleWaves': 'Ondas',
+      'settingsBackgroundStyleGrid': 'Cuadrícula',
+      'settingsBackgroundStyleRings': 'Anillos',
       'settingsProgressivePush': 'Notificación push progresiva',
       'settingsProgressivePushDesc':
           'Mostrar la clase actual como notificación persistente',
@@ -1612,13 +1647,20 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Κινούμενα στοιχεία φόντου',
       'settingsBackgroundAnimationsDesc':
           'Εμφάνιση κινούμενων εφέ διαβάθμισης στο φόντο',
+      'settingsBackgroundGyroscope': 'Αντίδραση γυροσκοπίου',
+      'settingsBackgroundGyroscopeDesc':
+          'Κάνει το φόντο να αντιδρά στην κίνηση της συσκευής',
       'settingsBackgroundStyle': 'Στυλ κίνησης',
       'settingsBackgroundStyleOrbs': 'Σφαίρες',
       'settingsBackgroundStyleSpace': 'Διάστημα',
       'settingsBackgroundStyleBubbles': 'Φυσαλίδες',
       'settingsBackgroundStyleLines': 'Γραμμές',
       'settingsBackgroundStyleThreeD': '3D σχήματα',
-      'settingsBackgroundStyleAurora': 'Σέλας',
+      'settingsBackgroundStyleNebula': 'Νεφέλωμα',
+      'settingsBackgroundStylePrism': 'Πρίσμα',
+      'settingsBackgroundStyleWaves': 'Κύματα',
+      'settingsBackgroundStyleGrid': 'Πλέγμα',
+      'settingsBackgroundStyleRings': 'Δακτύλιοι',
       'settingsGlassEffect': 'Εφέ γυαλιού (θόλωση)',
       'settingsGlassEffectDesc':
           'Ενεργοποιεί ήπια εφέ γυαλιού/θόλωσης σε όλο το περιβάλλον',

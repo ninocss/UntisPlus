@@ -16,6 +16,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'services/notification_service.dart';
@@ -66,7 +67,9 @@ void main() async {
   backgroundAnimationsNotifier.value =
       prefs.getBool('backgroundAnimations') ?? true;
   backgroundAnimationStyleNotifier.value =
-      (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 5);
+      (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 9);
+  backgroundGyroscopeNotifier.value =
+      prefs.getBool('backgroundGyroscope') ?? false;
   blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
 
   hiddenSubjectsNotifier.value = (prefs.getStringList('hiddenSubjects') ?? [])
@@ -942,8 +945,37 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             for (int i = 0; i < ranges.length; i++)
                               ChoiceChip(
                                 selected: i == selectedIndex,
+                                showCheckmark: true,
+                                side: BorderSide(
+                                  color:
+                                      (i == selectedIndex
+                                              ? cs.primary
+                                              : cs.outlineVariant)
+                                          .withValues(
+                                            alpha: i == selectedIndex
+                                                ? 0.48
+                                                : 0.65,
+                                          ),
+                                ),
+                                backgroundColor: cs.surfaceContainerHigh
+                                    .withValues(
+                                      alpha: blurEnabledNotifier.value
+                                          ? 0.86
+                                          : 0.92,
+                                    ),
+                                selectedColor: cs.primaryContainer.withValues(
+                                  alpha: 0.92,
+                                ),
                                 label: Text(
                                   '${_formatMinutes(ranges[i].startMin)} - ${_formatMinutes(ranges[i].endMin)}',
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: i == selectedIndex
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                    color: i == selectedIndex
+                                        ? cs.onPrimaryContainer
+                                        : cs.onSurface.withValues(alpha: 0.98),
+                                  ),
                                 ),
                                 onSelected: (_) {
                                   setDlg(() => selectedIndex = i);
@@ -964,14 +996,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: cs.surfaceContainer,
+                              color: cs.surfaceContainerHigh.withValues(
+                                alpha: blurEnabledNotifier.value ? 0.88 : 0.94,
+                              ),
                               borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(
+                                  alpha: 0.55,
+                                ),
+                              ),
                             ),
                             child: Text(
                               l.freeRoomsNoneFound,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w600,
-                                color: cs.onSurfaceVariant,
+                                color: cs.onSurfaceVariant.withValues(
+                                  alpha: 0.96,
+                                ),
                               ),
                             ),
                           )
@@ -987,10 +1028,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 decoration: BoxDecoration(
-                                  color: cs.surfaceContainerHigh,
+                                  color: cs.surfaceContainerHigh.withValues(
+                                    alpha: blurEnabledNotifier.value
+                                        ? 0.86
+                                        : 0.92,
+                                  ),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: cs.outlineVariant.withValues(alpha: 0.35),
+                                    color: cs.outlineVariant.withValues(
+                                      alpha: 0.56,
+                                    ),
                                   ),
                                 ),
                                 child: ListTile(
@@ -1236,7 +1283,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 style: GoogleFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: csG.onSurfaceVariant.withValues(alpha: 0.8),
+                                  color: csG.onSurfaceVariant.withValues(
+                                    alpha: 0.8,
+                                  ),
                                 ),
                               ),
                               Text(
@@ -1245,7 +1294,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 style: GoogleFonts.outfit(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
-                                  color: csG.onSurfaceVariant.withValues(alpha: 0.7),
+                                  color: csG.onSurfaceVariant.withValues(
+                                    alpha: 0.7,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1264,7 +1315,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             style: GoogleFonts.outfit(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: csG.onSurfaceVariant.withValues(alpha: 0.7),
+                              color: csG.onSurfaceVariant.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ),
                         );
@@ -1397,7 +1450,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           style: GoogleFonts.outfit(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w500,
-                                            color: fgColor.withValues(alpha: 0.6),
+                                            color: fgColor.withValues(
+                                              alpha: 0.6,
+                                            ),
                                           ),
                                         ),
                                       if (height >= 52 && room.isNotEmpty)
@@ -1408,7 +1463,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           style: GoogleFonts.outfit(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w600,
-                                            color: fgColor.withValues(alpha: 0.75),
+                                            color: fgColor.withValues(
+                                              alpha: 0.75,
+                                            ),
                                           ),
                                         ),
                                     ],
@@ -1558,7 +1615,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   fontWeight: FontWeight.w700,
                                   color: isToday
                                       ? cs.primary
-                                      : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                                      : cs.onSurfaceVariant.withValues(
+                                          alpha: 0.8,
+                                        ),
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -1619,8 +1678,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         style: GoogleFonts.outfit(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w700,
-                                          color: cs.onSurfaceVariant
-                                              .withValues(alpha: 0.8),
+                                          color: cs.onSurfaceVariant.withValues(
+                                            alpha: 0.8,
+                                          ),
                                         ),
                                       ),
                                       Text(
@@ -1629,8 +1689,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         style: GoogleFonts.outfit(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w500,
-                                          color: cs.onSurfaceVariant
-                                              .withValues(alpha: 0.7),
+                                          color: cs.onSurfaceVariant.withValues(
+                                            alpha: 0.7,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1649,8 +1710,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     style: GoogleFonts.outfit(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: cs.onSurfaceVariant.withValues(alpha: 
-                                        0.7,
+                                      color: cs.onSurfaceVariant.withValues(
+                                        alpha: 0.7,
                                       ),
                                     ),
                                   ),
@@ -1696,8 +1757,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       right: 0,
                                       child: Container(
                                         height: 0.5,
-                                        color: cs.outlineVariant.withValues(alpha: 
-                                          0.6,
+                                        color: cs.outlineVariant.withValues(
+                                          alpha: 0.6,
                                         ),
                                       ),
                                     );
@@ -1761,8 +1822,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         : _autoLessonColor(sk2, isDark2);
                                     final bgColor = isCancelled
                                         ? cs.errorContainer
-                                        : fgColor.withValues(alpha: 
-                                            isDark2 ? 0.28 : 0.20,
+                                        : fgColor.withValues(
+                                            alpha: isDark2 ? 0.28 : 0.20,
                                           );
                                     return Positioned(
                                       top: top,
@@ -1825,8 +1886,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                       fontSize: 9,
                                                       fontWeight:
                                                           FontWeight.w500,
-                                                      color: fgColor
-                                                          .withValues(alpha: 0.6),
+                                                      color: fgColor.withValues(
+                                                        alpha: 0.6,
+                                                      ),
                                                     ),
                                                   ),
                                                 if (height >= 45 &&
@@ -1840,8 +1902,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                       fontSize: 9,
                                                       fontWeight:
                                                           FontWeight.w600,
-                                                      color: fgColor
-                                                          .withValues(alpha: 0.75),
+                                                      color: fgColor.withValues(
+                                                        alpha: 0.75,
+                                                      ),
                                                     ),
                                                   ),
                                               ],
@@ -2456,6 +2519,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       backgroundColor: Colors.transparent,
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
         return DraggableScrollableSheet(
           initialChildSize: 0.6,
           minChildSize: 0.4,
@@ -2476,7 +2540,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       width: 42,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.outlineVariant,
+                        color: cs.outlineVariant,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -2487,7 +2551,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     style: GoogleFonts.outfit(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: cs.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -2496,28 +2560,32 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.96),
                     ),
                   ),
                   const SizedBox(height: 20),
                   Card(
                     elevation: 0,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
+                    color: cs.surfaceContainerHighest.withValues(
+                      alpha: blurEnabledNotifier.value ? 0.88 : 0.94,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.58),
+                      ),
                     ),
                     child: ListTile(
                       leading: Icon(
                         Icons.person,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: cs.primary.withValues(alpha: 0.95),
                       ),
                       title: Text(
                         l.timetableMyTimetable,
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
+                          color: cs.onSurface.withValues(alpha: 0.99),
                         ),
                       ),
                       onTap: () {
@@ -2541,9 +2609,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           style: GoogleFonts.outfit(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.94),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -2562,24 +2628,32 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               padding: const EdgeInsets.only(bottom: 8),
                               child: Card(
                                 elevation: 0,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHigh,
+                                color: cs.surfaceContainerHigh.withValues(
+                                  alpha: blurEnabledNotifier.value
+                                      ? 0.86
+                                      : 0.92,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(
+                                    color: cs.outlineVariant.withValues(
+                                      alpha: 0.54,
+                                    ),
+                                  ),
                                 ),
                                 child: ListTile(
                                   leading: Icon(
                                     Icons.class_outlined,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                                    color: cs.primary.withValues(alpha: 0.95),
                                   ),
                                   title: Text(
                                     name,
                                     style: GoogleFonts.outfit(
                                       fontWeight: FontWeight.w500,
                                       fontSize: 16,
+                                      color: cs.onSurface.withValues(
+                                        alpha: 0.99,
+                                      ),
                                     ),
                                   ),
                                   onTap: () {
@@ -3082,8 +3156,8 @@ class _ExamsPageState extends State<ExamsPage> {
                           ).examsSubjectLabel,
                           prefixIcon: const Icon(Icons.book_outlined),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 
-                            0.45,
+                          fillColor: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.45,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -3100,8 +3174,8 @@ class _ExamsPageState extends State<ExamsPage> {
                           ).examsTypeLabel,
                           prefixIcon: const Icon(Icons.label_outline),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 
-                            0.45,
+                          fillColor: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.45,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -3168,8 +3242,8 @@ class _ExamsPageState extends State<ExamsPage> {
                             child: Icon(Icons.notes_rounded),
                           ),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 
-                            0.45,
+                          fillColor: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.45,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -4211,8 +4285,8 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                             color: cs.onSurface.withValues(alpha: 0.38),
                           ),
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 
-                            0.5,
+                          fillColor: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.5,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 20,
@@ -4743,7 +4817,9 @@ class _LessonDetailSheet extends StatelessWidget {
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: cs.onSurface.withValues(alpha: 0.6),
-                side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                side: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -4789,7 +4865,9 @@ class LessonCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
+              color: Theme.of(
+                context,
+              ).colorScheme.shadow.withValues(alpha: 0.05),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -5477,6 +5555,7 @@ class _SettingsPageState extends State<SettingsPage> {
     themeModeNotifier.addListener(_onChanged);
     backgroundAnimationsNotifier.addListener(_onChanged);
     backgroundAnimationStyleNotifier.addListener(_onChanged);
+    backgroundGyroscopeNotifier.addListener(_onChanged);
     progressivePushNotifier.addListener(_onChanged);
     blurEnabledNotifier.addListener(_onChanged);
     demoModeNotifier.addListener(_onChanged);
@@ -5494,6 +5573,7 @@ class _SettingsPageState extends State<SettingsPage> {
     themeModeNotifier.removeListener(_onChanged);
     backgroundAnimationsNotifier.removeListener(_onChanged);
     backgroundAnimationStyleNotifier.removeListener(_onChanged);
+    backgroundGyroscopeNotifier.removeListener(_onChanged);
     progressivePushNotifier.removeListener(_onChanged);
     blurEnabledNotifier.removeListener(_onChanged);
     demoModeNotifier.removeListener(_onChanged);
@@ -5663,10 +5743,16 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _setBackgroundAnimationStyle(int style) async {
-    final normalized = style.clamp(0, 5);
+    final normalized = style.clamp(0, 9);
     backgroundAnimationStyleNotifier.value = normalized;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('backgroundAnimationStyle', normalized);
+  }
+
+  Future<void> _setBackgroundGyroscope(bool v) async {
+    backgroundGyroscopeNotifier.value = v;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('backgroundGyroscope', v);
   }
 
   Future<void> _setBlurEnabled(bool v) async {
@@ -5744,7 +5830,15 @@ class _SettingsPageState extends State<SettingsPage> {
       case 4:
         return l.settingsBackgroundStyleThreeD;
       case 5:
-        return l.settingsBackgroundStyleAurora;
+        return l.settingsBackgroundStyleNebula;
+      case 6:
+        return l.settingsBackgroundStylePrism;
+      case 7:
+        return l.settingsBackgroundStyleWaves;
+      case 8:
+        return l.settingsBackgroundStyleGrid;
+      case 9:
+        return l.settingsBackgroundStyleRings;
       default:
         return l.settingsBackgroundStyleOrbs;
     }
@@ -5761,7 +5855,15 @@ class _SettingsPageState extends State<SettingsPage> {
       case 4:
         return Icons.view_in_ar_rounded;
       case 5:
-        return Icons.water_drop_rounded;
+        return Icons.cloud_rounded;
+      case 6:
+        return Icons.change_history_rounded;
+      case 7:
+        return Icons.waves_rounded;
+      case 8:
+        return Icons.grid_on_rounded;
+      case 9:
+        return Icons.radio_button_checked_rounded;
       default:
         return Icons.blur_circular_rounded;
     }
@@ -5769,7 +5871,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showBackgroundStyleDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final styleOptions = List<int>.generate(6, (index) => index);
+    final styleOptions = List<int>.generate(10, (index) => index);
 
     _showUnifiedOptionSheet<int>(
       context: context,
@@ -5954,7 +6056,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       accent.withValues(alpha: 0.14),
                     ],
                   ),
-                  border: Border.all(color: accent.withValues(alpha: 0.35), width: 1),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
                 ),
                 child: Icon(icon, size: 14, color: accent),
               ),
@@ -6017,7 +6122,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   cs.surfaceContainerHighest.withValues(alpha: 0.46),
                 ],
               ),
-              border: Border.all(color: accent.withValues(alpha: 0.24), width: 1),
+              border: Border.all(
+                color: accent.withValues(alpha: 0.24),
+                width: 1,
+              ),
               child: Column(
                 children: [
                   for (int i = 0; i < tiles.length; i++) ...[
@@ -6076,9 +6184,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         fontSize: 12.5,
                         color:
                             subtitleColor ??
-                            Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+                            Theme.of(context).colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.75),
                       ),
                     ),
                   ],
@@ -6384,6 +6491,33 @@ class _SettingsPageState extends State<SettingsPage> {
                               !backgroundAnimationsNotifier.value,
                             );
                           },
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.screen_rotation_alt_rounded,
+                            backgroundGyroscopeNotifier.value
+                                ? cs.secondary
+                                : cs.outline,
+                          ),
+                          title: l.settingsBackgroundGyroscope,
+                          subtitle: l.settingsBackgroundGyroscopeDesc,
+                          trailing: Switch.adaptive(
+                            value: backgroundGyroscopeNotifier.value,
+                            onChanged: backgroundAnimationsNotifier.value
+                                ? (v) {
+                                    HapticFeedback.selectionClick();
+                                    _setBackgroundGyroscope(v);
+                                  }
+                                : null,
+                          ),
+                          onTap: backgroundAnimationsNotifier.value
+                              ? () {
+                                  HapticFeedback.selectionClick();
+                                  _setBackgroundGyroscope(
+                                    !backgroundGyroscopeNotifier.value,
+                                  );
+                                }
+                              : null,
                         ),
                         _tile(
                           leading: _tileIcon(

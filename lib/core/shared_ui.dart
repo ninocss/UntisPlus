@@ -1,4 +1,3 @@
-
 part of '../main.dart';
 
 const Curve _kSmoothBounce = Cubic(0.16, 0.94, 0.22, 1.24);
@@ -73,9 +72,10 @@ Route<T> _buildBouncyRoute<T>(
     reverseTransitionDuration: reverseDuration,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final opacity = CurvedAnimation(parent: animation, curve: _kSoftBounce);
-      final scale = Tween<double>(begin: 0.96, end: 1.0).animate(
-        CurvedAnimation(parent: animation, curve: _kSmoothBounce),
-      );
+      final scale = Tween<double>(
+        begin: 0.96,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce));
       final slide = Tween<Offset>(
         begin: const Offset(0.0, 0.03),
         end: Offset.zero,
@@ -143,7 +143,9 @@ Widget _glassContainer({
       childBuilder: (enabled) => Container(
         decoration: BoxDecoration(
           borderRadius: borderRadius,
-          color: color ?? (enabled ? cs.surface.withValues(alpha: 0.72) : cs.surface),
+          color:
+              color ??
+              (enabled ? cs.surface.withValues(alpha: 0.72) : cs.surface),
           gradient: enabled
               ? (gradient ??
                     LinearGradient(
@@ -157,7 +159,10 @@ Widget _glassContainer({
               : null,
           border:
               border ??
-              Border.all(color: cs.outlineVariant.withValues(alpha: 0.4), width: 1),
+              Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.4),
+                width: 1,
+              ),
         ),
         child: child,
       ),
@@ -248,7 +253,28 @@ Future<T?> _showUnifiedOptionSheet<T>({
         final cs = Theme.of(ctx).colorScheme;
         final blurOn = blurEnabledNotifier.value;
         final isLightMode = Theme.of(ctx).brightness == Brightness.light;
-        final maxSheetHeight = MediaQuery.of(ctx).size.height * 0.72;
+        final mq = MediaQuery.of(ctx);
+
+        // Keep enough room for handle/header/padding and clamp option list height.
+        final safeViewportHeight =
+            mq.size.height -
+            mq.padding.top -
+            mq.padding.bottom -
+            mq.viewInsets.bottom;
+        final staticChromeHeight =
+            12 + 16 + 5 + 16 + (subtitle == null ? 58 : 86) + 14;
+        final maxListHeight =
+            (safeViewportHeight - staticChromeHeight).clamp(
+                  220.0,
+                  safeViewportHeight * 0.82,
+                )
+                as double;
+        final estimatedContentHeight =
+            (options.length * 56.0) +
+            ((options.length - 1).clamp(0, options.length) * 10.0);
+        final maxSheetHeight = estimatedContentHeight < maxListHeight
+            ? estimatedContentHeight
+            : maxListHeight;
         return Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
           child: _springEntry(
@@ -300,64 +326,70 @@ Future<T?> _showUnifiedOptionSheet<T>({
                         final opt = entry.value;
                         final color = opt.destructive ? cs.error : cs.primary;
                         final iconBackground = opt.selected
-                            ? color.withValues(alpha: isLightMode ? 0.16 : 0.2)
-                            : color.withValues(alpha: isLightMode ? 0.08 : 0.12);
+                            ? color.withValues(alpha: isLightMode ? 0.22 : 0.26)
+                            : color.withValues(alpha: isLightMode ? 0.1 : 0.14);
                         final backgroundColor = opt.selected
-                            ? color.withValues(alpha: 
-                                isLightMode
-                                    ? (blurOn ? 0.14 : 0.1)
-                                    : (blurOn ? 0.2 : 0.24),
+                            ? color.withValues(
+                                alpha: isLightMode
+                                    ? (blurOn ? 0.2 : 0.14)
+                                    : (blurOn ? 0.24 : 0.28),
                               )
                             : (isLightMode
-                                  ? cs.surfaceContainerHigh.withValues(alpha: 
-                                      blurOn ? 0.72 : 0.8,
+                                  ? cs.surfaceContainerHigh.withValues(
+                                      alpha: blurOn ? 0.82 : 0.88,
                                     )
-                                  : cs.surfaceContainerHighest.withValues(alpha: 
-                                      blurOn ? 0.7 : 0.8,
+                                  : cs.surfaceContainerHighest.withValues(
+                                      alpha: blurOn ? 0.76 : 0.84,
                                     ));
                         final borderColor = opt.selected
-                            ? color.withValues(alpha: 
-                                isLightMode
-                                    ? (blurOn ? 0.32 : 0.24)
-                                    : (blurOn ? 0.52 : 0.42),
+                            ? color.withValues(
+                                alpha: isLightMode
+                                    ? (blurOn ? 0.42 : 0.3)
+                                    : (blurOn ? 0.58 : 0.48),
                               )
-                            : cs.outlineVariant.withValues(alpha: 
-                                isLightMode
-                                    ? (blurOn ? 0.48 : 0.36)
-                                    : (blurOn ? 0.52 : 0.45),
+                            : cs.outlineVariant.withValues(
+                                alpha: isLightMode
+                                    ? (blurOn ? 0.58 : 0.44)
+                                    : (blurOn ? 0.58 : 0.5),
                               );
                         final titleColor = opt.selected
-                          ? (opt.destructive
-                              ? cs.error
-                              : (isLightMode
-                                ? cs.primary.withValues(alpha: 0.98)
-                                : cs.onSurface.withValues(alpha: 0.98)))
-                          : cs.onSurface.withValues(alpha: isLightMode ? 0.96 : 0.98);
+                            ? (opt.destructive
+                                  ? cs.error
+                                  : (isLightMode
+                                        ? cs.primary.withValues(alpha: 1)
+                                        : cs.onSurface.withValues(alpha: 1)))
+                            : cs.onSurface.withValues(
+                                alpha: isLightMode ? 0.99 : 1,
+                              );
                         final subtitleColor = opt.selected
-                          ? cs.onSurface.withValues(alpha: isLightMode ? 0.82 : 0.86)
-                          : cs.onSurfaceVariant.withValues(alpha: 
-                            isLightMode ? 0.9 : 0.86,
-                            );
+                            ? cs.onSurface.withValues(
+                                alpha: isLightMode ? 0.88 : 0.9,
+                              )
+                            : cs.onSurfaceVariant.withValues(
+                                alpha: isLightMode ? 0.94 : 0.9,
+                              );
                         final leadingIconColor = opt.selected
-                          ? (opt.destructive
-                              ? cs.error
-                              : (isLightMode
-                                ? cs.primary.withValues(alpha: 0.95)
-                                : cs.primary.withValues(alpha: 0.92)))
-                          : cs.onSurface.withValues(alpha: isLightMode ? 0.86 : 0.9);
+                            ? (opt.destructive
+                                  ? cs.error
+                                  : (isLightMode
+                                        ? cs.primary.withValues(alpha: 1)
+                                        : cs.primary.withValues(alpha: 0.95)))
+                            : cs.onSurface.withValues(
+                                alpha: isLightMode ? 0.9 : 0.94,
+                              );
                         final trailingIconColor = opt.selected
-                          ? leadingIconColor
-                          : cs.onSurfaceVariant.withValues(alpha: 
-                            isLightMode ? 0.82 : 0.76,
-                            );
+                            ? leadingIconColor
+                            : cs.onSurfaceVariant.withValues(
+                                alpha: isLightMode ? 0.88 : 0.82,
+                              );
                         final shadowColor = (opt.selected ? color : cs.shadow)
-                            .withValues(alpha: 
-                              isLightMode
+                            .withValues(
+                              alpha: isLightMode
                                   ? (opt.selected
-                                        ? (blurOn ? 0.08 : 0.06)
+                                        ? (blurOn ? 0.11 : 0.08)
                                         : (blurOn ? 0.04 : 0.03))
                                   : (blurOn
-                                        ? (opt.selected ? 0.14 : 0.09)
+                                        ? (opt.selected ? 0.16 : 0.1)
                                         : (opt.selected ? 0.1 : 0.06)),
                             );
 
@@ -373,8 +405,8 @@ Future<T?> _showUnifiedOptionSheet<T>({
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(18),
                               child: _withOptionalBackdropBlur(
-                                sigmaX: 12,
-                                sigmaY: 12,
+                                sigmaX: 10,
+                                sigmaY: 10,
                                 child: const SizedBox.shrink(),
                                 childBuilder: (_) => Material(
                                   color: Colors.transparent,
@@ -401,10 +433,11 @@ Future<T?> _showUnifiedOptionSheet<T>({
                                         ],
                                       ),
                                       child: ListTile(
+                                        minTileHeight: 52,
                                         contentPadding:
                                             const EdgeInsets.symmetric(
                                               horizontal: 13,
-                                              vertical: 3,
+                                              vertical: 2,
                                             ),
                                         leading: opt.icon == null
                                             ? null
@@ -414,9 +447,12 @@ Future<T?> _showUnifiedOptionSheet<T>({
                                                 decoration: BoxDecoration(
                                                   color: iconBackground,
                                                   border: Border.all(
-                                                    color: borderColor.withValues(alpha: 
-                                                      isLightMode ? 0.9 : 0.75,
-                                                    ),
+                                                    color: borderColor
+                                                        .withValues(
+                                                          alpha: isLightMode
+                                                              ? 0.9
+                                                              : 0.75,
+                                                        ),
                                                   ),
                                                   borderRadius:
                                                       BorderRadius.circular(11),
@@ -499,4 +535,3 @@ Future<T?> _showUnifiedOptionSheet<T>({
     ),
   );
 }
-

@@ -177,7 +177,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       case 4:
         return l.settingsBackgroundStyleThreeD;
       case 5:
-        return l.settingsBackgroundStyleAurora;
+        return l.settingsBackgroundStyleNebula;
+      case 6:
+        return l.settingsBackgroundStylePrism;
+      case 7:
+        return l.settingsBackgroundStyleWaves;
+      case 8:
+        return l.settingsBackgroundStyleGrid;
+      case 9:
+        return l.settingsBackgroundStyleRings;
       default:
         return l.settingsBackgroundStyleOrbs;
     }
@@ -194,14 +202,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       case 4:
         return Icons.view_in_ar_rounded;
       case 5:
-        return Icons.water_drop_rounded;
+        return Icons.cloud_rounded;
+      case 6:
+        return Icons.change_history_rounded;
+      case 7:
+        return Icons.waves_rounded;
+      case 8:
+        return Icons.grid_on_rounded;
+      case 9:
+        return Icons.radio_button_checked_rounded;
       default:
         return Icons.blur_circular_rounded;
     }
   }
 
   Future<void> _setBackgroundAnimationStyle(int style) async {
-    final normalized = style.clamp(0, 5);
+    final normalized = style.clamp(0, 9);
     backgroundAnimationStyleNotifier.value = normalized;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('backgroundAnimationStyle', normalized);
@@ -211,6 +227,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     blurEnabledNotifier.value = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('blurEnabled', enabled);
+  }
+
+  Future<void> _setBackgroundGyroscopeEnabled(bool enabled) async {
+    backgroundGyroscopeNotifier.value = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('backgroundGyroscope', enabled);
   }
 
   @override
@@ -388,12 +410,25 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
         decoration: BoxDecoration(
-          color: isSel ? colors.primaryContainer : colors.surface,
+          color: isSel
+              ? colors.primaryContainer.withValues(alpha: 0.96)
+              : colors.surfaceContainerHigh.withValues(alpha: 0.88),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSel ? colors.primary : colors.outlineVariant,
+            color: isSel
+                ? colors.primary.withValues(alpha: 0.92)
+                : colors.outlineVariant.withValues(alpha: 0.72),
             width: 2,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: (isSel ? colors.primary : colors.shadow).withValues(
+                alpha: isSel ? 0.12 : 0.05,
+              ),
+              blurRadius: isSel ? 14 : 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -401,7 +436,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             const SizedBox(width: 16),
             Text(
               name,
-              style: TextStyle(
+              style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
                 color: isSel ? colors.onPrimaryContainer : colors.onSurface,
@@ -423,173 +458,250 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       icon: Icons.palette,
       title: l.onboardingAppearanceTitle,
       subtitle: l.onboardingAppearanceSubtitle,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            decoration: BoxDecoration(
-              color: colors.surface.withValues(alpha: 0.75),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.7)),
-            ),
+      content: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  l.settingsThemeMode,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14.5,
-                    color: colors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ValueListenableBuilder<ThemeMode>(
-                  valueListenable: themeModeNotifier,
-                  builder: (context, val, _) => SegmentedButton<ThemeMode>(
-                    style: SegmentedButton.styleFrom(
-                      textStyle: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    color: colors.surface.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: colors.outlineVariant.withValues(alpha: 0.7),
                     ),
-                    segments: [
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        icon: const Icon(Icons.light_mode_rounded, size: 17),
-                        label: Text(l.settingsThemeLight),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        icon: const Icon(
-                          Icons.brightness_auto_rounded,
-                          size: 17,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.settingsThemeMode,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                          color: colors.onSurface,
                         ),
-                        label: Text(l.settingsThemeSystem),
                       ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        icon: const Icon(Icons.dark_mode_rounded, size: 17),
-                        label: Text(l.settingsThemeDark),
+                      const SizedBox(height: 10),
+                      ValueListenableBuilder<ThemeMode>(
+                        valueListenable: themeModeNotifier,
+                        builder: (context, val, _) =>
+                            SegmentedButton<ThemeMode>(
+                              style: SegmentedButton.styleFrom(
+                                textStyle: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              segments: [
+                                ButtonSegment(
+                                  value: ThemeMode.light,
+                                  icon: const Icon(
+                                    Icons.light_mode_rounded,
+                                    size: 17,
+                                  ),
+                                  label: Text(l.settingsThemeLight),
+                                ),
+                                ButtonSegment(
+                                  value: ThemeMode.system,
+                                  icon: const Icon(
+                                    Icons.brightness_auto_rounded,
+                                    size: 17,
+                                  ),
+                                  label: Text(l.settingsThemeSystem),
+                                ),
+                                ButtonSegment(
+                                  value: ThemeMode.dark,
+                                  icon: const Icon(
+                                    Icons.dark_mode_rounded,
+                                    size: 17,
+                                  ),
+                                  label: Text(l.settingsThemeDark),
+                                ),
+                              ],
+                              selected: {val},
+                              onSelectionChanged: (set) async {
+                                final mode = set.first;
+                                themeModeNotifier.value = mode;
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                await prefs.setInt('themeMode', mode.index);
+                              },
+                            ),
                       ),
                     ],
-                    selected: {val},
-                    onSelectionChanged: (set) async {
-                      final mode = set.first;
-                      themeModeNotifier.value = mode;
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setInt('themeMode', mode.index);
-                    },
                   ),
                 ),
+                const SizedBox(height: 12),
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, val, _) => SwitchListTile(
+                    title: Text(
+                      l.settingsBackgroundAnimations,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(l.settingsBackgroundAnimationsDesc),
+                    value: val,
+                    onChanged: (nv) async {
+                      backgroundAnimationsNotifier.value = nv;
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('backgroundAnimations', nv);
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    tileColor: colors.surface.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, animationsEnabled, _) {
+                    return Opacity(
+                      opacity: animationsEnabled ? 1 : 0.55,
+                      child: AbsorbPointer(
+                        absorbing: !animationsEnabled,
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: backgroundAnimationStyleNotifier,
+                          builder: (context, style, _) => Container(
+                            decoration: BoxDecoration(
+                              color: colors.surfaceContainerHigh.withValues(
+                                alpha: 0.84,
+                              ),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: colors.outlineVariant.withValues(
+                                  alpha: 0.78,
+                                ),
+                              ),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 4,
+                              ),
+                              leading: Icon(
+                                _backgroundStyleIcon(style),
+                                color: colors.primary.withValues(alpha: 0.95),
+                              ),
+                              title: Text(
+                                l.settingsBackgroundStyle,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.onSurface.withValues(
+                                    alpha: 0.98,
+                                  ),
+                                ),
+                              ),
+                              subtitle: Text(
+                                _backgroundStyleLabel(l, style),
+                                style: GoogleFonts.outfit(
+                                  color: colors.onSurfaceVariant.withValues(
+                                    alpha: 0.92,
+                                  ),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.chevron_right_rounded,
+                                color: colors.onSurfaceVariant.withValues(
+                                  alpha: 0.88,
+                                ),
+                              ),
+                              onTap: () async {
+                                final selected =
+                                    await _showUnifiedOptionSheet<int>(
+                                      context: context,
+                                      title: l.settingsBackgroundStyle,
+                                      options:
+                                          List<int>.generate(10, (idx) => idx)
+                                              .map(
+                                                (styleOption) => _SheetOption(
+                                                  value: styleOption,
+                                                  title: _backgroundStyleLabel(
+                                                    l,
+                                                    styleOption,
+                                                  ),
+                                                  icon: _backgroundStyleIcon(
+                                                    styleOption,
+                                                  ),
+                                                  selected:
+                                                      style == styleOption,
+                                                ),
+                                              )
+                                              .toList(),
+                                    );
+                                if (selected != null) {
+                                  await _setBackgroundAnimationStyle(selected);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, animationsEnabled, _) {
+                    return Opacity(
+                      opacity: animationsEnabled ? 1 : 0.55,
+                      child: AbsorbPointer(
+                        absorbing: !animationsEnabled,
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: backgroundGyroscopeNotifier,
+                          builder: (context, val, _) => SwitchListTile(
+                            title: Text(
+                              l.settingsBackgroundGyroscope,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(l.settingsBackgroundGyroscopeDesc),
+                            value: val,
+                            onChanged: (nv) async {
+                              await _setBackgroundGyroscopeEnabled(nv);
+                            },
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            tileColor: colors.surface.withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                ValueListenableBuilder<bool>(
+                  valueListenable: blurEnabledNotifier,
+                  builder: (context, val, _) => SwitchListTile(
+                    title: Text(
+                      l.settingsGlassEffect,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(l.settingsGlassEffectDesc),
+                    value: val,
+                    onChanged: (nv) async {
+                      await _setBlurEnabled(nv);
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    tileColor: colors.surface.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _buildNextBtn(),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          ValueListenableBuilder<bool>(
-            valueListenable: backgroundAnimationsNotifier,
-            builder: (context, val, _) => SwitchListTile(
-              title: Text(
-                l.settingsBackgroundAnimations,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(l.settingsBackgroundAnimationsDesc),
-              value: val,
-              onChanged: (nv) async {
-                backgroundAnimationsNotifier.value = nv;
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('backgroundAnimations', nv);
-              },
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              tileColor: colors.surface.withValues(alpha: 0.75),
-            ),
-          ),
-          const SizedBox(height: 12),
-          ValueListenableBuilder<bool>(
-            valueListenable: backgroundAnimationsNotifier,
-            builder: (context, animationsEnabled, _) {
-              return Opacity(
-                opacity: animationsEnabled ? 1 : 0.55,
-                child: AbsorbPointer(
-                  absorbing: !animationsEnabled,
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: backgroundAnimationStyleNotifier,
-                    builder: (context, style, _) => Container(
-                      decoration: BoxDecoration(
-                        color: colors.surface.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: colors.outlineVariant.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 4,
-                        ),
-                        leading: Icon(_backgroundStyleIcon(style)),
-                        title: Text(
-                          l.settingsBackgroundStyle,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(_backgroundStyleLabel(l, style)),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () async {
-                          final selected = await _showUnifiedOptionSheet<int>(
-                            context: context,
-                            title: l.settingsBackgroundStyle,
-                            options: List<int>.generate(6, (idx) => idx)
-                                .map(
-                                  (styleOption) => _SheetOption(
-                                    value: styleOption,
-                                    title: _backgroundStyleLabel(
-                                      l,
-                                      styleOption,
-                                    ),
-                                    icon: _backgroundStyleIcon(styleOption),
-                                    selected: style == styleOption,
-                                  ),
-                                )
-                                .toList(),
-                          );
-                          if (selected != null) {
-                            await _setBackgroundAnimationStyle(selected);
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          ValueListenableBuilder<bool>(
-            valueListenable: blurEnabledNotifier,
-            builder: (context, val, _) => SwitchListTile(
-              title: Text(
-                l.settingsGlassEffect,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(l.settingsGlassEffectDesc),
-              value: val,
-              onChanged: (nv) async {
-                await _setBlurEnabled(nv);
-              },
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              tileColor: colors.surface.withValues(alpha: 0.75),
-            ),
-          ),
-          const Spacer(),
-          _buildNextBtn(),
-        ],
+        ),
       ),
     );
   }
@@ -1114,7 +1226,9 @@ class _StepWrapper extends StatelessWidget {
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.6),
+              ),
             ),
             child: Icon(icon, size: 36, color: cs.onPrimaryContainer),
           ),
@@ -1125,7 +1239,9 @@ class _StepWrapper extends StatelessWidget {
             decoration: BoxDecoration(
               color: cs.surface.withValues(alpha: 0.78),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.7),
+              ),
             ),
             child: Column(
               children: [

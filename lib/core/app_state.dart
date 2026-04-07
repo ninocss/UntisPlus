@@ -17,6 +17,7 @@ final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
 final ValueNotifier<bool> showCancelledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
 final ValueNotifier<int> backgroundAnimationStyleNotifier = ValueNotifier(0);
+final ValueNotifier<bool> backgroundGyroscopeNotifier = ValueNotifier(false);
 final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
