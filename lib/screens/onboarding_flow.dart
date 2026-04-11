@@ -803,7 +803,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     } else {
       content = SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (!_manualSchoolEntry && _schoolController.text.isNotEmpty) ...[
               Card(
