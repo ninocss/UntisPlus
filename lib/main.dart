@@ -182,24 +182,16 @@ Future<Map<String, dynamic>?> _authenticateUntis({
       };
     }
 
+    // Treat any server error as an invalid OTP when a code was provided, so
+    // the caller can show the 2FA-specific error instead of the generic
+    // "check your credentials" message.
     final invalidOtp =
         combined.contains('invalid otp') ||
         combined.contains('invalid verification') ||
         combined.contains('wrong otp') ||
         combined.contains('otp invalid') ||
-        (contains2faHint && otpCode != null && otpCode.isNotEmpty);
+        (otpCode != null && otpCode.isNotEmpty);
     if (invalidOtp) {
-      return {
-        'otpInvalid': true,
-        'errorCode': err['code'],
-        'errorMessage': message,
-      };
-    }
-
-    // If an OTP was provided, any server error means the code is wrong or
-    // expired – surface it as an invalid-OTP result instead of returning null
-    // (which would show the generic "check your credentials" error).
-    if (otpCode != null && otpCode.isNotEmpty) {
       return {
         'otpInvalid': true,
         'errorCode': err['code'],
