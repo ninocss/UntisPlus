@@ -376,23 +376,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       content: ValueListenableBuilder<String>(
         valueListenable: appLocaleNotifier,
         builder: (context, currentLang, _) {
-          return Column(
-            children: [
-              _buildLangBtn('de', 'Deutsch', '🇩🇪', currentLang),
-              const SizedBox(height: 12),
-              _buildLangBtn('en', 'English', '🇬🇧', currentLang),
-              const SizedBox(height: 12),
-              _buildLangBtn('fr', 'Français', '🇫🇷', currentLang),
-              const SizedBox(height: 12),
-              _buildLangBtn('es', 'Español', '🇪🇸', currentLang),
-              const SizedBox(height: 12),
-              _buildLangBtn('el', 'Ελληνικά', '🇬🇷', currentLang),
-              const Spacer(),
-              _buildNextBtn(),
-            ],
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildLangBtn('de', 'Deutsch', '🇩🇪', currentLang),
+                const SizedBox(height: 12),
+                _buildLangBtn('en', 'English', '🇬🇧', currentLang),
+                const SizedBox(height: 12),
+                _buildLangBtn('fr', 'Français', '🇫🇷', currentLang),
+                const SizedBox(height: 12),
+                _buildLangBtn('es', 'Español', '🇪🇸', currentLang),
+                const SizedBox(height: 12),
+                _buildLangBtn('el', 'Ελληνικά', '🇬🇷', currentLang),
+              ],
+            ),
           );
         },
       ),
+      footer: _buildNextBtn(),
     );
   }
 
@@ -458,251 +459,245 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       icon: Icons.palette,
       title: l.onboardingAppearanceTitle,
       subtitle: l.onboardingAppearanceSubtitle,
-      content: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  decoration: BoxDecoration(
-                    color: colors.surface.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: colors.outlineVariant.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l.settingsThemeMode,
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14.5,
-                          color: colors.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ValueListenableBuilder<ThemeMode>(
-                        valueListenable: themeModeNotifier,
-                        builder: (context, val, _) =>
-                            SegmentedButton<ThemeMode>(
-                              style: SegmentedButton.styleFrom(
-                                textStyle: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              segments: [
-                                ButtonSegment(
-                                  value: ThemeMode.light,
-                                  icon: const Icon(
-                                    Icons.light_mode_rounded,
-                                    size: 17,
-                                  ),
-                                  label: Text(l.settingsThemeLight),
-                                ),
-                                ButtonSegment(
-                                  value: ThemeMode.system,
-                                  icon: const Icon(
-                                    Icons.brightness_auto_rounded,
-                                    size: 17,
-                                  ),
-                                  label: Text(l.settingsThemeSystem),
-                                ),
-                                ButtonSegment(
-                                  value: ThemeMode.dark,
-                                  icon: const Icon(
-                                    Icons.dark_mode_rounded,
-                                    size: 17,
-                                  ),
-                                  label: Text(l.settingsThemeDark),
-                                ),
-                              ],
-                              selected: {val},
-                              onSelectionChanged: (set) async {
-                                final mode = set.first;
-                                themeModeNotifier.value = mode;
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                await prefs.setInt('themeMode', mode.index);
-                              },
-                            ),
-                      ),
-                    ],
-                  ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              decoration: BoxDecoration(
+                color: colors.surface.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: colors.outlineVariant.withValues(alpha: 0.7),
                 ),
-                const SizedBox(height: 12),
-                ValueListenableBuilder<bool>(
-                  valueListenable: backgroundAnimationsNotifier,
-                  builder: (context, val, _) => SwitchListTile(
-                    title: Text(
-                      l.settingsBackgroundAnimations,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.settingsThemeMode,
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                      color: colors.onSurface,
                     ),
-                    subtitle: Text(l.settingsBackgroundAnimationsDesc),
-                    value: val,
-                    onChanged: (nv) async {
-                      backgroundAnimationsNotifier.value = nv;
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setBool('backgroundAnimations', nv);
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    tileColor: colors.surface.withValues(alpha: 0.75),
                   ),
-                ),
-                const SizedBox(height: 12),
-                ValueListenableBuilder<bool>(
-                  valueListenable: backgroundAnimationsNotifier,
-                  builder: (context, animationsEnabled, _) {
-                    return Opacity(
-                      opacity: animationsEnabled ? 1 : 0.55,
-                      child: AbsorbPointer(
-                        absorbing: !animationsEnabled,
-                        child: ValueListenableBuilder<int>(
-                          valueListenable: backgroundAnimationStyleNotifier,
-                          builder: (context, style, _) => Container(
-                            decoration: BoxDecoration(
-                              color: colors.surfaceContainerHigh.withValues(
-                                alpha: 0.84,
-                              ),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: colors.outlineVariant.withValues(
-                                  alpha: 0.78,
-                                ),
-                              ),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 4,
-                              ),
-                              leading: Icon(
-                                _backgroundStyleIcon(style),
-                                color: colors.primary.withValues(alpha: 0.95),
-                              ),
-                              title: Text(
-                                l.settingsBackgroundStyle,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.onSurface.withValues(
-                                    alpha: 0.98,
-                                  ),
-                                ),
-                              ),
-                              subtitle: Text(
-                                _backgroundStyleLabel(l, style),
-                                style: GoogleFonts.outfit(
-                                  color: colors.onSurfaceVariant.withValues(
-                                    alpha: 0.92,
-                                  ),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              trailing: Icon(
-                                Icons.chevron_right_rounded,
-                                color: colors.onSurfaceVariant.withValues(
-                                  alpha: 0.88,
-                                ),
-                              ),
-                              onTap: () async {
-                                final selected =
-                                    await _showUnifiedOptionSheet<int>(
-                                      context: context,
-                                      title: l.settingsBackgroundStyle,
-                                      options:
-                                          List<int>.generate(10, (idx) => idx)
-                                              .map(
-                                                (styleOption) => _SheetOption(
-                                                  value: styleOption,
-                                                  title: _backgroundStyleLabel(
-                                                    l,
-                                                    styleOption,
-                                                  ),
-                                                  icon: _backgroundStyleIcon(
-                                                    styleOption,
-                                                  ),
-                                                  selected:
-                                                      style == styleOption,
-                                                ),
-                                              )
-                                              .toList(),
-                                    );
-                                if (selected != null) {
-                                  await _setBackgroundAnimationStyle(selected);
-                                }
-                              },
+                  const SizedBox(height: 10),
+                  ValueListenableBuilder<ThemeMode>(
+                    valueListenable: themeModeNotifier,
+                    builder: (context, val, _) =>
+                        SegmentedButton<ThemeMode>(
+                          style: SegmentedButton.styleFrom(
+                            textStyle: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
                           ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                ValueListenableBuilder<bool>(
-                  valueListenable: backgroundAnimationsNotifier,
-                  builder: (context, animationsEnabled, _) {
-                    return Opacity(
-                      opacity: animationsEnabled ? 1 : 0.55,
-                      child: AbsorbPointer(
-                        absorbing: !animationsEnabled,
-                        child: ValueListenableBuilder<bool>(
-                          valueListenable: backgroundGyroscopeNotifier,
-                          builder: (context, val, _) => SwitchListTile(
-                            title: Text(
-                              l.settingsBackgroundGyroscope,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600,
+                          segments: [
+                            ButtonSegment(
+                              value: ThemeMode.light,
+                              icon: const Icon(
+                                Icons.light_mode_rounded,
+                                size: 17,
                               ),
+                              label: Text(l.settingsThemeLight),
                             ),
-                            subtitle: Text(l.settingsBackgroundGyroscopeDesc),
-                            value: val,
-                            onChanged: (nv) async {
-                              await _setBackgroundGyroscopeEnabled(nv);
-                            },
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                            ButtonSegment(
+                              value: ThemeMode.system,
+                              icon: const Icon(
+                                Icons.brightness_auto_rounded,
+                                size: 17,
+                              ),
+                              label: Text(l.settingsThemeSystem),
                             ),
-                            tileColor: colors.surface.withValues(alpha: 0.75),
-                          ),
+                            ButtonSegment(
+                              value: ThemeMode.dark,
+                              icon: const Icon(
+                                Icons.dark_mode_rounded,
+                                size: 17,
+                              ),
+                              label: Text(l.settingsThemeDark),
+                            ),
+                          ],
+                          selected: {val},
+                          onSelectionChanged: (set) async {
+                            final mode = set.first;
+                            themeModeNotifier.value = mode;
+                            final prefs =
+                                await SharedPreferences.getInstance();
+                            await prefs.setInt('themeMode', mode.index);
+                          },
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                ValueListenableBuilder<bool>(
-                  valueListenable: blurEnabledNotifier,
-                  builder: (context, val, _) => SwitchListTile(
-                    title: Text(
-                      l.settingsGlassEffect,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(l.settingsGlassEffectDesc),
-                    value: val,
-                    onChanged: (nv) async {
-                      await _setBlurEnabled(nv);
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    tileColor: colors.surface.withValues(alpha: 0.75),
                   ),
-                ),
-                const SizedBox(height: 14),
-                _buildNextBtn(),
-              ],
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<bool>(
+              valueListenable: backgroundAnimationsNotifier,
+              builder: (context, val, _) => SwitchListTile(
+                title: Text(
+                  l.settingsBackgroundAnimations,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(l.settingsBackgroundAnimationsDesc),
+                value: val,
+                onChanged: (nv) async {
+                  backgroundAnimationsNotifier.value = nv;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('backgroundAnimations', nv);
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                tileColor: colors.surface.withValues(alpha: 0.75),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<bool>(
+              valueListenable: backgroundAnimationsNotifier,
+              builder: (context, animationsEnabled, _) {
+                return Opacity(
+                  opacity: animationsEnabled ? 1 : 0.55,
+                  child: AbsorbPointer(
+                    absorbing: !animationsEnabled,
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: backgroundAnimationStyleNotifier,
+                      builder: (context, style, _) => Container(
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainerHigh.withValues(
+                            alpha: 0.84,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: colors.outlineVariant.withValues(
+                              alpha: 0.78,
+                            ),
+                          ),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 4,
+                          ),
+                          leading: Icon(
+                            _backgroundStyleIcon(style),
+                            color: colors.primary.withValues(alpha: 0.95),
+                          ),
+                          title: Text(
+                            l.settingsBackgroundStyle,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              color: colors.onSurface.withValues(
+                                alpha: 0.98,
+                              ),
+                            ),
+                          ),
+                          subtitle: Text(
+                            _backgroundStyleLabel(l, style),
+                            style: GoogleFonts.outfit(
+                              color: colors.onSurfaceVariant.withValues(
+                                alpha: 0.92,
+                              ),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            color: colors.onSurfaceVariant.withValues(
+                              alpha: 0.88,
+                            ),
+                          ),
+                          onTap: () async {
+                            final selected =
+                                await _showUnifiedOptionSheet<int>(
+                                  context: context,
+                                  title: l.settingsBackgroundStyle,
+                                  options:
+                                      List<int>.generate(10, (idx) => idx)
+                                          .map(
+                                            (styleOption) => _SheetOption(
+                                              value: styleOption,
+                                              title: _backgroundStyleLabel(
+                                                l,
+                                                styleOption,
+                                              ),
+                                              icon: _backgroundStyleIcon(
+                                                styleOption,
+                                              ),
+                                              selected:
+                                                  style == styleOption,
+                                            ),
+                                          )
+                                          .toList(),
+                                );
+                            if (selected != null) {
+                              await _setBackgroundAnimationStyle(selected);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<bool>(
+              valueListenable: backgroundAnimationsNotifier,
+              builder: (context, animationsEnabled, _) {
+                return Opacity(
+                  opacity: animationsEnabled ? 1 : 0.55,
+                  child: AbsorbPointer(
+                    absorbing: !animationsEnabled,
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: backgroundGyroscopeNotifier,
+                      builder: (context, val, _) => SwitchListTile(
+                        title: Text(
+                          l.settingsBackgroundGyroscope,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(l.settingsBackgroundGyroscopeDesc),
+                        value: val,
+                        onChanged: (nv) async {
+                          await _setBackgroundGyroscopeEnabled(nv);
+                        },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        tileColor: colors.surface.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<bool>(
+              valueListenable: blurEnabledNotifier,
+              builder: (context, val, _) => SwitchListTile(
+                title: Text(
+                  l.settingsGlassEffect,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(l.settingsGlassEffectDesc),
+                value: val,
+                onChanged: (nv) async {
+                  await _setBlurEnabled(nv);
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                tileColor: colors.surface.withValues(alpha: 0.75),
+              ),
+            ),
+          ],
         ),
       ),
+      footer: _buildNextBtn(),
     );
   }
 
@@ -710,6 +705,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final l = AppL10n.of(appLocaleNotifier.value);
 
     Widget content;
+    Widget footer;
     if (!_manualSchoolEntry && _schoolController.text.isEmpty) {
       content = Column(
         children: [
@@ -772,7 +768,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     },
                   ),
           ),
-          const SizedBox(height: 10),
+        ],
+      );
+      footer = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           TextButton(
             onPressed: () => setState(() => _manualSchoolEntry = true),
             child: Text(l.loginManualEntry),
@@ -859,59 +859,64 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 maxLength: 8,
               ),
             ],
-            const SizedBox(height: 32),
-            _isLogginIn
-                ? const CircularProgressIndicator()
-                : FilledButton(
-                    onPressed: _handleLogin,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: Text(
-                      _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _isLogginIn ? null : _activateDemoMode,
-              icon: const Icon(Icons.science_rounded),
-              label: Text(l.onboardingUseDemoMode),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              l.onboardingUseDemoModeDesc,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            if (_manualSchoolEntry) ...[
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => setState(() {
-                  _manualSchoolEntry = false;
-                  _schoolController.clear();
-                  _serverController.clear();
-                }),
-                child: Text(l.loginSwitchToSearch),
-              ),
-            ],
           ],
         ),
+      );
+      footer = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 8),
+          _isLogginIn
+              ? const CircularProgressIndicator()
+              : FilledButton(
+                  onPressed: _handleLogin,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _isLogginIn ? null : _activateDemoMode,
+            icon: const Icon(Icons.science_rounded),
+            label: Text(l.onboardingUseDemoMode),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l.onboardingUseDemoModeDesc,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (_manualSchoolEntry) ...[
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => setState(() {
+                _manualSchoolEntry = false;
+                _schoolController.clear();
+                _serverController.clear();
+              }),
+              child: Text(l.loginSwitchToSearch),
+            ),
+          ],
+        ],
       );
     }
 
@@ -920,6 +925,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       title: l.onboardingSchoolLoginTitle,
       subtitle: l.onboardingSchoolLoginSubtitle,
       content: content,
+      footer: footer,
     );
   }
 
@@ -930,82 +936,83 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       icon: Icons.auto_awesome,
       title: l.onboardingGeminiTitle,
       subtitle: l.onboardingGeminiSubtitle,
-      content: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.secondaryContainer.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.info_outline, size: 32),
-                const SizedBox(height: 12),
-                Text(
-                  l.onboardingGeminiInfo,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15),
-                ),
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  icon: const Icon(Icons.open_in_new),
-                  label: Text(l.onboardingGeminiGetApiKey),
-                  onPressed: () => url_launcher.launchUrlString(
-                    'https://aistudio.google.com/app/apikey',
+      content: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.secondaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.info_outline, size: 32),
+                  const SizedBox(height: 12),
+                  Text(
+                    l.onboardingGeminiInfo,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 15),
                   ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    icon: const Icon(Icons.open_in_new),
+                    label: Text(l.onboardingGeminiGetApiKey),
+                    onPressed: () => url_launcher.launchUrlString(
+                      'https://aistudio.google.com/app/apikey',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildField(_geminiController, l.settingsApiKey, Icons.key),
+          ],
+        ),
+      ),
+      footer: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _nextPage,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
+              ),
+              child: Text(
+                l.onboardingSkip,
+                style: const TextStyle(fontSize: 16),
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-          _buildField(_geminiController, l.settingsApiKey, Icons.key),
-          const Spacer(),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _nextPage,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: Text(
-                    l.onboardingSkip,
-                    style: const TextStyle(fontSize: 16),
-                  ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton(
+              onPressed: () {
+                if (_geminiController.text.isNotEmpty) {
+                  _nextPage();
+                } else {
+                  _showError(l.onboardingGeminiEnterKeyOrSkip);
+                }
+              },
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () {
-                    if (_geminiController.text.isNotEmpty) {
-                      _nextPage();
-                    } else {
-                      _showError(l.onboardingGeminiEnterKeyOrSkip);
-                    }
-                  },
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: Text(
-                    l.onboardingNext,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              child: Text(
+                l.onboardingNext,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -1019,47 +1026,48 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       icon: Icons.rocket_launch,
       title: l.onboardingReadyTitle,
       subtitle: l.onboardingReadySubtitle,
-      content: Column(
-        children: [
-          _buildFeatureRow(
-            Icons.calendar_month,
-            l.onboardingFeatureTimetableTitle,
-            l.onboardingFeatureTimetableDesc,
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureRow(
-            Icons.draw,
-            l.onboardingFeatureExamsTitle,
-            l.onboardingFeatureExamsDesc,
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureRow(
-            Icons.auto_awesome,
-            l.onboardingFeatureAiTitle,
-            l.onboardingFeatureAiDesc,
-          ),
-          const SizedBox(height: 16),
-          _buildFeatureRow(
-            Icons.notifications_active,
-            l.onboardingFeatureNotifyTitle,
-            l.onboardingFeatureNotifyDesc,
-          ),
-          const Spacer(),
-          FilledButton.icon(
-            onPressed: _completeOnboarding,
-            icon: const Icon(Icons.check),
-            label: Text(
-              l.onboardingFinishSetup,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      content: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildFeatureRow(
+              Icons.calendar_month,
+              l.onboardingFeatureTimetableTitle,
+              l.onboardingFeatureTimetableDesc,
             ),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 64),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
+            const SizedBox(height: 16),
+            _buildFeatureRow(
+              Icons.draw,
+              l.onboardingFeatureExamsTitle,
+              l.onboardingFeatureExamsDesc,
             ),
+            const SizedBox(height: 16),
+            _buildFeatureRow(
+              Icons.auto_awesome,
+              l.onboardingFeatureAiTitle,
+              l.onboardingFeatureAiDesc,
+            ),
+            const SizedBox(height: 16),
+            _buildFeatureRow(
+              Icons.notifications_active,
+              l.onboardingFeatureNotifyTitle,
+              l.onboardingFeatureNotifyDesc,
+            ),
+          ],
+        ),
+      ),
+      footer: FilledButton.icon(
+        onPressed: _completeOnboarding,
+        icon: const Icon(Icons.check),
+        label: Text(
+          l.onboardingFinishSetup,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(double.infinity, 64),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1199,12 +1207,14 @@ class _StepWrapper extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget content;
+  final Widget? footer;
 
   const _StepWrapper({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.content,
+    this.footer,
   });
 
   @override
@@ -1270,6 +1280,10 @@ class _StepWrapper extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Expanded(child: content),
+          if (footer != null) ...[
+            const SizedBox(height: 12),
+            footer!,
+          ],
         ],
       ),
     );
