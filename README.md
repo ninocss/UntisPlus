@@ -5,23 +5,29 @@
 <h1 align="center">Untis+</h1>
 
 <p align="center">
-	A Flutter client for WebUntis with a clean timetable, exam overview, room search, AI assistant, widgets, and background updates.
+	A Flutter client for WebUntis with a clean timetable, exam overview, free room search, school announcements, AI assistant, home widgets, and background updates.
 </p>
 
 <p align="center">
-	<strong>Private by default.</strong> Most settings stay on your device. Optional AI features use your own Gemini API key.
+	<strong>Private by default.</strong> All data stays on your device. Optional AI features use your own Gemini API key.
 </p>
+
+## Installation
+
+Download the latest APK from [GitHub Releases](https://github.com/ninocss/UntisPlus/releases) and install it on your Android device.
 
 ## Features
 
-- Weekly and daily timetable views
-- Exam overview and free room search
-- School information and class selection flows
+- Weekly and daily timetable views with free room search
+- Exam overview with the ability to add custom exams
+- School announcements feed
 - Optional Gemini-powered AI assistant
-- Persistent lesson notification and home widgets
-- Cancelled lesson visibility, subject colors, and hidden subjects
-- German, English, French, and Spanish
-- Light, dark, and system themes
+- Persistent current-lesson notification and home screen widgets
+- Background data refresh to keep widgets and notifications up to date
+- Cancelled lesson visibility, custom subject colors, and hidden subjects
+- Demo mode to explore the app without a WebUntis account
+- German, English, French, Spanish, and Greek
+- Light, dark, and system themes with animated backgrounds
 
 ## Screenshots
 
@@ -50,8 +56,8 @@
 		<td align="center"><img src="assets/github/free_rooms_dark_mode.png" width="320" alt="Free rooms in dark mode" /><br />Free rooms, dark mode</td>
 	</tr>
 	<tr>
-		<td align="center"><img src="assets/github/school_info.png" width="320" alt="School info" /><br />School info</td>
-		<td align="center"><img src="assets/github/school_info_dark_mode.png" width="320" alt="School info in dark mode" /><br />School info, dark mode</td>
+		<td align="center"><img src="assets/github/school_info.png" width="320" alt="School announcements" /><br />School announcements</td>
+		<td align="center"><img src="assets/github/school_info_dark_mode.png" width="320" alt="School announcements in dark mode" /><br />School announcements, dark mode</td>
 	</tr>
 	<tr>
 		<td align="center"><img src="assets/github/select_class.png" width="320" alt="Select class" /><br />Select class</td>
@@ -76,25 +82,25 @@
 
 The AI assistant becomes available after you add your own Gemini API key.
 
-1. Open Google AI Studio.
+1. Open [Google AI Studio](https://aistudio.google.com/).
 2. Create a new API key.
 3. Copy the key into the app under **Settings > AI Assistant > Gemini API Key**.
 
-The key is stored locally on your device. If you previously used an older OpenAI key, Untis+ migrates it automatically to `geminiApiKey` on startup.
+The key is stored locally on your device.
 
 ## Notifications and widgets
 
 Untis+ can refresh data in the background to keep widgets and notifications up to date.
 
-- The current lesson notification can be enabled in settings.
+- Enable the persistent current-lesson notification in **Settings > Progressive push notification**.
 - Widgets and notifications update automatically when the OS allows it.
-- After the first login, data is loaded once immediately so widgets can show content right away.
+- After the first login, data is fetched immediately so widgets can show content right away.
 
-If Android or iOS requests notification or background permissions, allow them so these features can work correctly.
+If Android requests notification or background permissions, allow them so these features work correctly.
 
 ## Privacy
 
-Untis+ stores configuration data locally, including:
+Untis+ stores all data locally on your device, including:
 
 - Session ID
 - School server and school name
@@ -107,14 +113,13 @@ Data is sent only to:
 - Your WebUntis server for authentication and timetable/exam data
 - Google Gemini API, only if you enable the AI assistant
 
-Untis+ does not use analytics or tracking.
+Untis+ does not use analytics or tracking of any kind.
 
 ## Requirements
 
 - Flutter SDK 3.11 or newer
 - A WebUntis account from your school
 - Optional: a Gemini API key for AI features
-- Notification permissions on Android or iOS for push features
 
 ## Development setup
 
@@ -130,12 +135,22 @@ Run the app on a device or emulator:
 flutter run
 ```
 
+Build a release APK:
+
+```bash
+flutter build apk --release
+```
+
 ## Project structure
 
-- [lib/main.dart](lib/main.dart) - entry point and main UI
-- [lib/services/background_service.dart](lib/services/background_service.dart) - background updates for widgets and notifications
-- [lib/services/notification_service.dart](lib/services/notification_service.dart) - local notifications
-- [lib/services/widget_service.dart](lib/services/widget_service.dart) - widget data and widget updates
+- [lib/main.dart](lib/main.dart) – all screen logic (timetable, exams, school announcements, AI assistant, settings)
+- [lib/l10n.dart](lib/l10n.dart) – localization strings (German, English, French, Spanish, Greek)
+- [lib/screens/main_navigation_screen.dart](lib/screens/main_navigation_screen.dart) – bottom navigation and app shell
+- [lib/screens/onboarding_flow.dart](lib/screens/onboarding_flow.dart) – login and school setup
+- [lib/services/background_service.dart](lib/services/background_service.dart) – background data refresh for widgets and notifications
+- [lib/services/notification_service.dart](lib/services/notification_service.dart) – persistent lesson notification
+- [lib/services/widget_service.dart](lib/services/widget_service.dart) – home screen widget updates
+- [lib/services/demo_mode_service.dart](lib/services/demo_mode_service.dart) – demo timetable and exam data
 
 ## Contributing
 
