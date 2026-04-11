@@ -703,6 +703,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Widget _buildLoginStep() {
     final l = AppL10n.of(appLocaleNotifier.value);
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     Widget content;
     Widget? footer;
@@ -910,7 +911,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 child: Text(l.loginSwitchToSearch),
               ),
             ],
-            SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+            SizedBox(height: keyboardHeight),
           ],
         ),
       );
