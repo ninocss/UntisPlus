@@ -28,7 +28,6 @@ Download the latest APK from [GitHub Releases](https://github.com/ninocss/UntisP
 - Demo mode to explore the app without a WebUntis account
 - German, English, French, Spanish, and Greek
 - Light, dark, and system themes with animated backgrounds
-- You can hide subjects and Change their color
 
 ## Screenshots
 
