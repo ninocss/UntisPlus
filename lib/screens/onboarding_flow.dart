@@ -705,7 +705,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final l = AppL10n.of(appLocaleNotifier.value);
 
     Widget content;
-    Widget footer;
+    Widget? footer;
     if (!_manualSchoolEntry && _schoolController.text.isEmpty) {
       content = Column(
         children: [
@@ -859,64 +859,60 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 maxLength: 8,
               ),
             ],
-          ],
-        ),
-      );
-      footer = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 8),
-          _isLogginIn
-              ? const CircularProgressIndicator()
-              : FilledButton(
-                  onPressed: _handleLogin,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+            const SizedBox(height: 20),
+            _isLogginIn
+                ? const CircularProgressIndicator()
+                : FilledButton(
+                    onPressed: _handleLogin,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: Text(
+                      _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _isLogginIn ? null : _activateDemoMode,
+              icon: const Icon(Icons.science_rounded),
+              label: Text(l.onboardingUseDemoMode),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
                 ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: _isLogginIn ? null : _activateDemoMode,
-            icon: const Icon(Icons.science_rounded),
-            label: Text(l.onboardingUseDemoMode),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l.onboardingUseDemoModeDesc,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            const SizedBox(height: 6),
+            Text(
+              l.onboardingUseDemoModeDesc,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          if (_manualSchoolEntry) ...[
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => setState(() {
-                _manualSchoolEntry = false;
-                _schoolController.clear();
-                _serverController.clear();
-              }),
-              child: Text(l.loginSwitchToSearch),
-            ),
+            if (_manualSchoolEntry) ...[
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => setState(() {
+                  _manualSchoolEntry = false;
+                  _schoolController.clear();
+                  _serverController.clear();
+                }),
+                child: Text(l.loginSwitchToSearch),
+              ),
+            ],
+            SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
           ],
-        ],
+        ),
       );
     }
 
