@@ -195,6 +195,17 @@ Future<Map<String, dynamic>?> _authenticateUntis({
         'errorMessage': message,
       };
     }
+
+    // If an OTP was provided, any server error means the code is wrong or
+    // expired – surface it as an invalid-OTP result instead of returning null
+    // (which would show the generic "check your credentials" error).
+    if (otpCode != null && otpCode.isNotEmpty) {
+      return {
+        'otpInvalid': true,
+        'errorCode': err['code'],
+        'errorMessage': message,
+      };
+    }
   }
 
   return null;
