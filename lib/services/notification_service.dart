@@ -81,4 +81,29 @@ class NotificationService {
   Future<void> cancelNotification(int id) async {
     await _flutterLocalNotificationsPlugin.cancel(id: id);
   }
+
+  Future<void> showUpdateNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    const android = AndroidNotificationDetails(
+      'updates_channel',
+      'App Updates',
+      channelDescription: 'Informiert über neue App-Versionen.',
+      importance: Importance.high,
+      priority: Priority.high,
+      category: AndroidNotificationCategory.recommendation,
+      autoCancel: true,
+      ongoing: false,
+    );
+
+    const details = NotificationDetails(android: android);
+    await _flutterLocalNotificationsPlugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: details,
+    );
+  }
 }

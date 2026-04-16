@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,11 +9,20 @@ import '../core/time_utils.dart';
 import 'notification_service.dart';
 import 'widget_service.dart';
 
+const String kTimetableUpdateTask = 'update_timetable_task';
+const String kGithubUpdateCheckTask = 'check_github_updates_task';
+const int kUpdateNotificationId = 2;
+
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
-      await updateUntisData();
+      await NotificationService().init();
+      if (task == kGithubUpdateCheckTask) {
+        await checkGithubUpdateAndNotify();
+      } else {
+        await updateUntisData();
+      }
     } catch (e) {
       print("Background Task Error: $e");
     }
@@ -25,12 +35,119 @@ class BackgroundService {
     Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
     Workmanager().registerPeriodicTask(
       "untis_widget_update",
-      "update_timetable_task",
+      kTimetableUpdateTask,
       frequency: const Duration(minutes: 15),
       constraints: Constraints(
         networkType: NetworkType.connected,
       ),
     );
+
+    Workmanager().registerPeriodicTask(
+      'untis_github_update_check',
+      kGithubUpdateCheckTask,
+      frequency: const Duration(hours: 6),
+      constraints: Constraints(networkType: NetworkType.connected),
+    );
+  }
+}
+
+List<int> _extractVersionParts(String input) {
+  final cleaned = input.trim().replaceFirst(RegExp(r'^[vV]'), '');
+  final matches = RegExp(r'\d+').allMatches(cleaned);
+  if (matches.isEmpty) return const [0];
+  return matches
+      .map((m) => int.tryParse(m.group(0) ?? '0') ?? 0)
+      .toList(growable: false);
+}
+
+int _compareVersionStrings(String current, String latest) {
+  final currentParts = _extractVersionParts(current);
+  final latestParts = _extractVersionParts(latest);
+  final maxLen = math.max(currentParts.length, latestParts.length);
+  for (var i = 0; i < maxLen; i++) {
+    final a = i < currentParts.length ? currentParts[i] : 0;
+    final b = i < latestParts.length ? latestParts[i] : 0;
+    if (a == b) continue;
+    return a.compareTo(b);
+  }
+  return 0;
+}
+
+String _localizedUpdateTitle(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'Untis+ Update available';
+    case 'fr':
+      return 'Mise a jour Untis+ disponible';
+    case 'es':
+      return 'Actualizacion de Untis+ disponible';
+    case 'el':
+      return 'Διαθεσιμη ενημερωση Untis+';
+    case 'de':
+    default:
+      return 'Untis+ Update verfugbar';
+  }
+}
+
+String _localizedUpdateBody(String locale, String latestVersion) {
+  switch (locale) {
+    case 'en':
+      return 'Version $latestVersion is available on GitHub Releases.';
+    case 'fr':
+      return 'La version $latestVersion est disponible sur GitHub Releases.';
+    case 'es':
+      return 'La version $latestVersion esta disponible en GitHub Releases.';
+    case 'el':
+      return 'Η εκδοση $latestVersion ειναι διαθεσιμη στα GitHub Releases.';
+    case 'de':
+    default:
+      return 'Version $latestVersion ist in den GitHub Releases verfugbar.';
+  }
+}
+
+Future<void> checkGithubUpdateAndNotify() async {
+  final prefs = await SharedPreferences.getInstance();
+  final installedVersion = prefs.getString('installedAppVersion') ?? '0.0.0';
+  final locale = prefs.getString('appLocale') ?? 'de';
+
+  try {
+    final resp = await http.get(
+      Uri.parse('https://api.github.com/repos/ninocss/UntisPlus/releases/latest'),
+      headers: const {'Accept': 'application/vnd.github+json'},
+    );
+
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      return;
+    }
+
+    final data = jsonDecode(resp.body);
+    if (data is! Map<String, dynamic>) {
+      return;
+    }
+
+    final tag = (data['tag_name'] ?? '').toString().trim();
+    final latestVersion = tag.isEmpty
+        ? (data['name'] ?? '').toString().trim()
+        : tag;
+    final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersion);
+
+    final hasUpdate = latestVersion.isNotEmpty &&
+        (hasComparableVersion
+            ? _compareVersionStrings(installedVersion, latestVersion) < 0
+            : true);
+
+    if (!hasUpdate) {
+      await NotificationService().cancelNotification(kUpdateNotificationId);
+      return;
+    }
+
+    await NotificationService().showUpdateNotification(
+      id: kUpdateNotificationId,
+      title: _localizedUpdateTitle(locale),
+      body: _localizedUpdateBody(locale, latestVersion),
+    );
+  } catch (_) {
+    // Keep silent in background; no user-facing error notification needed.
   }
 }
 

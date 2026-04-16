@@ -225,6 +225,7 @@ Future<T?> _showUnifiedSheet<T>({
   required Widget child,
   bool isScrollControlled = false,
   bool useSafeArea = true,
+  EdgeInsetsGeometry? outerPadding,
 }) {
   return showModalBottomSheet<T>(
     context: context,
@@ -232,11 +233,17 @@ Future<T?> _showUnifiedSheet<T>({
     useSafeArea: useSafeArea,
     backgroundColor: Colors.transparent,
     sheetAnimationStyle: _kBottomSheetAnimationStyle,
-    builder: (ctx) => _sheetSurface(
-      context: ctx,
-      blur: blurEnabledNotifier.value,
-      child: child,
-    ),
+    builder: (ctx) {
+      final content = _sheetSurface(
+        context: ctx,
+        blur: blurEnabledNotifier.value,
+        child: child,
+      );
+      if (outerPadding == null) {
+        return content;
+      }
+      return Padding(padding: outerPadding, child: content);
+    },
   );
 }
 
@@ -245,10 +252,15 @@ Future<T?> _showUnifiedOptionSheet<T>({
   required String title,
   String? subtitle,
   required List<_SheetOption<T>> options,
+  bool fitContentHeight = false,
+  double bottomMargin = 0,
 }) {
   return _showUnifiedSheet<T>(
     context: context,
     isScrollControlled: true,
+    outerPadding: bottomMargin > 0
+        ? EdgeInsets.only(bottom: bottomMargin)
+        : null,
     child: Builder(
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
@@ -309,10 +321,13 @@ Future<T?> _showUnifiedOptionSheet<T>({
                 ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: maxListHeight),
                   child: ListView.builder(
+                    shrinkWrap: fitContentHeight,
                     primary: false,
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: ClampingScrollPhysics(),
-                    ),
+                    physics: fitContentHeight
+                        ? const ClampingScrollPhysics()
+                        : const AlwaysScrollableScrollPhysics(
+                            parent: ClampingScrollPhysics(),
+                          ),
                     padding: EdgeInsets.only(bottom: mq.padding.bottom + 12),
                     itemCount: options.length,
                     itemBuilder: (listCtx, idx) {

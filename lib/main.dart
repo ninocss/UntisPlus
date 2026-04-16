@@ -47,6 +47,8 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final packageInfo = await PackageInfo.fromPlatform();
   appVersion = packageInfo.version;
+  appBuildNumber = packageInfo.buildNumber;
+  await prefs.setString('installedAppVersion', appVersion);
   demoModeNotifier.value = prefs.getBool('demoMode') ?? false;
   final bool isLoggedIn = prefs.containsKey('sessionId');
   final bool onboardingCompleted =
@@ -132,6 +134,8 @@ void main() async {
           : const OnboardingFlow(),
     ),
   );
+
+  unawaited(checkGithubUpdateAndNotify());
 }
 
 Uri _webUntisRpcUri({String? serverUrl, String? school}) {
@@ -2969,6 +2973,8 @@ class _ExamsPageState extends State<ExamsPage> {
     final selected = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.examsAddTitle,
+      fitContentHeight: true,
+      bottomMargin: 0,
       options: [
         _SheetOption(
           value: 'custom',
@@ -6333,7 +6339,6 @@ class _SettingsPageState extends State<SettingsPage> {
   String _username = '';
   String _apiKeyDisplay = '';
   bool _apiKeySet = false;
-  bool _githubDirectDownload = false;
   bool _checkingGithubUpdate = false;
 
   static const Map<String, String> _localeLabels = {
@@ -6414,8 +6419,6 @@ class _SettingsPageState extends State<SettingsPage> {
         _username = prefs.getString('username') ?? '';
         _apiKeySet = key.isNotEmpty;
         _apiKeyDisplay = _maskKey(key);
-        _githubDirectDownload =
-            prefs.getBool('githubDirectUpdateDownload') ?? false;
       });
     }
   }
@@ -6588,6 +6591,8 @@ class _SettingsPageState extends State<SettingsPage> {
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiProvider,
+      fitContentHeight: true,
+      bottomMargin: 0,
       options: kSupportedAiProviders
           .map(
             (provider) => _SheetOption(
@@ -6618,6 +6623,8 @@ class _SettingsPageState extends State<SettingsPage> {
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiModel,
+      fitContentHeight: true,
+      bottomMargin: 0,
       options: models
           .map(
             (model) => _SheetOption(
@@ -6939,12 +6946,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Future<void> _setGithubDirectDownload(bool enabled) async {
-    setState(() => _githubDirectDownload = enabled);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('githubDirectUpdateDownload', enabled);
-  }
-
   String? _pickGithubReleaseAssetUrl(List<dynamic> assets) {
     String? fallback;
     for (final asset in assets) {
@@ -6958,20 +6959,93 @@ class _SettingsPageState extends State<SettingsPage> {
     return fallback;
   }
 
-  Future<void> _checkGithubUpdate({bool forceDownload = false}) async {
+  List<int> _extractVersionParts(String input) {
+    final cleaned = input.trim().replaceFirst(RegExp(r'^[vV]'), '');
+    final matches = RegExp(r'\d+').allMatches(cleaned);
+    if (matches.isEmpty) return const [0];
+    return matches
+        .map((m) => int.tryParse(m.group(0) ?? '0') ?? 0)
+        .toList(growable: false);
+  }
+
+  int _compareVersionStrings(String current, String latest) {
+    final currentParts = _extractVersionParts(current);
+    final latestParts = _extractVersionParts(latest);
+    final maxLen = math.max(currentParts.length, latestParts.length);
+    for (var i = 0; i < maxLen; i++) {
+      final a = i < currentParts.length ? currentParts[i] : 0;
+      final b = i < latestParts.length ? latestParts[i] : 0;
+      if (a == b) continue;
+      return a.compareTo(b);
+    }
+    return 0;
+  }
+
+  Future<bool> _confirmGithubInstall({
+    required AppL10n l,
+    required String current,
+    required String latest,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          title: Text(
+            l.settingsGithubUpdateFound(latest),
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${l.settingsGithubCurrentVersion}: $current',
+                style: GoogleFonts.outfit(),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${l.settingsGithubLatestVersion}: $latest',
+                style: GoogleFonts.outfit(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l.settingsGithubInstallQuestion,
+                style: GoogleFonts.outfit(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l.settingsGithubInstallLater),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l.settingsGithubInstallNow),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
+  }
+
+  Future<void> _checkGithubUpdate() async {
     if (_checkingGithubUpdate) return;
     final l = AppL10n.of(appLocaleNotifier.value);
     setState(() => _checkingGithubUpdate = true);
 
-    if (!forceDownload) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.settingsGithubChecking),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l.settingsGithubChecking),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
 
     try {
       final resp = await http.get(
@@ -6998,52 +7072,59 @@ class _SettingsPageState extends State<SettingsPage> {
           ? data['assets'] as List<dynamic>
           : const <dynamic>[];
       final assetUrl = _pickGithubReleaseAssetUrl(assets);
-      final shouldDownload = forceDownload || _githubDirectDownload;
       final targetUrl = assetUrl ?? htmlUrl;
+      final latestVersionRaw = tag.isEmpty ? (data['name'] ?? '').toString() : tag;
+        final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersionRaw);
+      final hasUpdate =
+          hasComparableVersion
+            ? _compareVersionStrings(appVersion, latestVersionRaw) < 0
+            : true;
 
-      if (shouldDownload) {
-        if (assetUrl == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l.settingsGithubNoDownloadAsset),
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-
-        final launched = await url_launcher.launchUrlString(
-          targetUrl,
-          mode: url_launcher.LaunchMode.externalApplication,
-        );
-
+      if (!hasUpdate) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              launched
-                  ? l.settingsGithubDownloadStarted
-                  : l.settingsGithubOpenFailed,
-            ),
+            content: Text(l.settingsGithubNoUpdate),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      final confirm = await _confirmGithubInstall(
+        l: l,
+        current: appVersion,
+        latest: latestVersionRaw,
+      );
+      if (!confirm) return;
+
+      if (assetUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.settingsGithubNoDownloadAsset),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+      final launched = await url_launcher.launchUrlString(
+        targetUrl,
+        mode: url_launcher.LaunchMode.externalApplication,
+      );
+
+      if (launched) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.settingsGithubInstallPrompted),
             behavior: SnackBarBehavior.floating,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              l.settingsGithubUpdateFound(tag.isEmpty ? 'latest' : tag),
-            ),
+            content: Text(l.settingsGithubOpenFailed),
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: l.settingsGithubDownloadNow,
-              onPressed: () {
-                url_launcher.launchUrlString(
-                  targetUrl,
-                  mode: url_launcher.LaunchMode.externalApplication,
-                );
-              },
-            ),
           ),
         );
       }
@@ -7145,6 +7226,8 @@ class _SettingsPageState extends State<SettingsPage> {
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsLanguage,
+      fitContentHeight: true,
+      bottomMargin: 0,
       options: _localeLabels.entries
           .map(
             (e) => _SheetOption(
@@ -8234,25 +8317,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         _tile(
                           leading: _tileIcon(
-                            Icons.download_rounded,
-                            _githubDirectDownload ? cs.primary : cs.outline,
-                          ),
-                          title: l.settingsGithubDirectDownload,
-                          subtitle: l.settingsGithubDirectDownloadDesc,
-                          trailing: Switch.adaptive(
-                            value: _githubDirectDownload,
-                            onChanged: (v) {
-                              HapticFeedback.selectionClick();
-                              _setGithubDirectDownload(v);
-                            },
-                          ),
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            _setGithubDirectDownload(!_githubDirectDownload);
-                          },
-                        ),
-                        _tile(
-                          leading: _tileIcon(
                             Icons.open_in_new_rounded,
                             cs.secondary,
                           ),
@@ -8291,7 +8355,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             cs.primary,
                           ),
                           title: l.appName,
-                          subtitle: '${l.settingsAppVersion} $appVersion',
+                          subtitle:
+                              '${l.settingsAppVersion} $appVersion (${l.settingsBuild} ${appBuildNumber.isEmpty ? '-' : appBuildNumber})',
                           trailing: Icon(
                             Icons.auto_awesome_rounded,
                             size: 16,

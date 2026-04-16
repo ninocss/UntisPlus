@@ -287,6 +287,7 @@ class AppL10n {
   String get settingsSectionAbout => _t('settingsSectionAbout');
   String get appName => _t('appName');
   String get settingsAppVersion => _t('settingsAppVersion');
+    String get settingsBuild => _t('settingsBuild');
   String get settingsSectionSubjects => _t('settingsSectionSubjects');
   String get settingsGithubRepoLabel => _t('settingsGithubRepoLabel');
   String get settingsGithubUpdateCheck => _t('settingsGithubUpdateCheck');
@@ -305,6 +306,15 @@ class AppL10n {
       _t('settingsGithubDownloadStarted');
   String get settingsGithubOpenFailed => _t('settingsGithubOpenFailed');
   String get settingsGithubCheckFailed => _t('settingsGithubCheckFailed');
+  String get settingsGithubNoUpdate => _t('settingsGithubNoUpdate');
+  String get settingsGithubCurrentVersion => _t('settingsGithubCurrentVersion');
+  String get settingsGithubLatestVersion => _t('settingsGithubLatestVersion');
+  String get settingsGithubInstallQuestion =>
+      _t('settingsGithubInstallQuestion');
+  String get settingsGithubInstallNow => _t('settingsGithubInstallNow');
+  String get settingsGithubInstallLater => _t('settingsGithubInstallLater');
+  String get settingsGithubInstallPrompted =>
+      _t('settingsGithubInstallPrompted');
   String get settingsGithubOpenReleasePage =>
       _t('settingsGithubOpenReleasePage');
 
@@ -610,6 +620,7 @@ class AppL10n {
       'settingsSectionAbout': 'Über die App',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
+      'settingsBuild': 'Build',
       'settingsSectionSubjects': 'Fächer & Farben',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Nach Updates im GitHub-Repo suchen',
@@ -628,6 +639,15 @@ class AppL10n {
       'settingsGithubOpenFailed': 'Konnte den Download-Link nicht öffnen.',
       'settingsGithubCheckFailed':
           'Update-Prüfung fehlgeschlagen. Bitte später erneut versuchen.',
+      'settingsGithubNoUpdate': 'Du hast bereits die neueste Version.',
+      'settingsGithubCurrentVersion': 'Installierte Version',
+      'settingsGithubLatestVersion': 'Neueste Version',
+      'settingsGithubInstallQuestion':
+          'Möchtest du das Update jetzt herunterladen und installieren?',
+      'settingsGithubInstallNow': 'Jetzt installieren',
+      'settingsGithubInstallLater': 'Später',
+      'settingsGithubInstallPrompted':
+          'Download gestartet. Nach dem Download erscheint der Installationsdialog.',
       'settingsGithubOpenReleasePage': 'GitHub Release-Seite öffnen',
 
       'aiSystemPersona':
@@ -924,6 +944,7 @@ class AppL10n {
       'settingsSectionAbout': 'About',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
+      'settingsBuild': 'Build',
       'settingsSectionSubjects': 'Subjects & Colors',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Check for updates on GitHub',
@@ -942,6 +963,15 @@ class AppL10n {
       'settingsGithubOpenFailed': 'Could not open the download link.',
       'settingsGithubCheckFailed':
           'Update check failed. Please try again later.',
+      'settingsGithubNoUpdate': 'You already have the latest version.',
+      'settingsGithubCurrentVersion': 'Installed version',
+      'settingsGithubLatestVersion': 'Latest version',
+      'settingsGithubInstallQuestion':
+          'Do you want to download and install this update now?',
+      'settingsGithubInstallNow': 'Install now',
+      'settingsGithubInstallLater': 'Later',
+      'settingsGithubInstallPrompted':
+          'Download started. The installation prompt appears after download.',
       'settingsGithubOpenReleasePage': 'Open GitHub release page',
 
       'aiSystemPersona':
@@ -1209,6 +1239,7 @@ class AppL10n {
       'settingsSectionAbout': 'À propos',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
+      'settingsBuild': 'Build',
       'settingsSectionSubjects': 'Matières & Couleurs',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Rechercher des mises à jour sur GitHub',
@@ -1229,6 +1260,16 @@ class AppL10n {
           'Impossible d\'ouvrir le lien de téléchargement.',
       'settingsGithubCheckFailed':
           'La vérification des mises à jour a échoué. Réessaie plus tard.',
+      'settingsGithubNoUpdate':
+          'Tu as déjà la version la plus récente.',
+      'settingsGithubCurrentVersion': 'Version installée',
+      'settingsGithubLatestVersion': 'Dernière version',
+      'settingsGithubInstallQuestion':
+          'Veux-tu télécharger et installer cette mise à jour maintenant ?',
+      'settingsGithubInstallNow': 'Installer maintenant',
+      'settingsGithubInstallLater': 'Plus tard',
+      'settingsGithubInstallPrompted':
+          'Téléchargement démarré. La demande d\'installation apparaît après le téléchargement.',
       'settingsGithubOpenReleasePage': 'Ouvrir la page des versions GitHub',
 
       'aiSystemPersona':
@@ -1497,6 +1538,7 @@ class AppL10n {
       'settingsSectionAbout': 'Acerca de',
       'appName': 'Untis+',
       'settingsAppVersion': 'Versión',
+      'settingsBuild': 'Build',
       'settingsSectionSubjects': 'Asignaturas & Colores',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Buscar actualizaciones en GitHub',
@@ -1516,6 +1558,15 @@ class AppL10n {
       'settingsGithubOpenFailed': 'No se pudo abrir el enlace de descarga.',
       'settingsGithubCheckFailed':
           'La comprobación de actualizaciones falló. Inténtalo de nuevo más tarde.',
+      'settingsGithubNoUpdate': 'Ya tienes la versión más reciente.',
+      'settingsGithubCurrentVersion': 'Versión instalada',
+      'settingsGithubLatestVersion': 'Última versión',
+      'settingsGithubInstallQuestion':
+          '¿Quieres descargar e instalar esta actualización ahora?',
+      'settingsGithubInstallNow': 'Instalar ahora',
+      'settingsGithubInstallLater': 'Más tarde',
+      'settingsGithubInstallPrompted':
+          'Descarga iniciada. El aviso de instalación aparece al terminar la descarga.',
       'settingsGithubOpenReleasePage': 'Abrir página de versiones de GitHub',
 
       'aiSystemPersona':
@@ -1792,6 +1843,7 @@ class AppL10n {
       'settingsSectionAbout': 'Σχετικά',
       'appName': 'Untis+',
       'settingsAppVersion': 'Έκδοση',
+      'settingsBuild': 'Build',
       'settingsSectionSubjects': 'Μαθήματα & Χρώματα',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Έλεγχος για ενημερώσεις στο GitHub',
@@ -1812,6 +1864,16 @@ class AppL10n {
           'Δεν ήταν δυνατό να ανοίξει ο σύνδεσμος λήψης.',
       'settingsGithubCheckFailed':
           'Ο έλεγχος ενημερώσεων απέτυχε. Δοκίμασε ξανά αργότερα.',
+      'settingsGithubNoUpdate':
+          'Έχεις ήδη την πιο πρόσφατη έκδοση.',
+      'settingsGithubCurrentVersion': 'Εγκατεστημένη έκδοση',
+      'settingsGithubLatestVersion': 'Τελευταία έκδοση',
+      'settingsGithubInstallQuestion':
+          'Θέλεις να κατεβάσεις και να εγκαταστήσεις αυτήν την ενημέρωση τώρα;',
+      'settingsGithubInstallNow': 'Εγκατάσταση τώρα',
+      'settingsGithubInstallLater': 'Αργότερα',
+      'settingsGithubInstallPrompted':
+          'Η λήψη ξεκίνησε. Η προτροπή εγκατάστασης εμφανίζεται μετά τη λήψη.',
       'settingsGithubOpenReleasePage': 'Άνοιγμα σελίδας έκδοσης στο GitHub',
 
       'aiSystemPersona':

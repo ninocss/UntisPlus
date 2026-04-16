@@ -1,9 +1,9 @@
 name: untisplus
-description: "A Flutter application for displaying school schedules and related information, designed to provide a user-friendly interface for students and teachers to access their timetables, homework, and other school-related data."
+description: "A Flutter application for managing and viewing school schedules, homework, and other related information. It provides features such as timetable management, homework tracking, and notifications to help students stay organized and on top of their academic responsibilities."
 
-publish_to: 'none' 
+publish_to: 'none'
 
-version: 2.0.0+1
+version: 3.0.0+1
 
 environment:
   sdk: ^3.11.0

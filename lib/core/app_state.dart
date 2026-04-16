@@ -2,6 +2,7 @@ part of '../main.dart';
 
 // ── APP VERSION ────────────────────────────────────────────────────────────
 String appVersion = '0.0.0';
+String appBuildNumber = '0';
 
 String sessionID = "";
 String schoolUrl = "";
