@@ -5,8 +5,8 @@
 <h1 align="center">Untis+</h1>
 
 <p align="center">
-	Moderner Flutter-Client fur WebUntis mit Stundenplan, Prufungen, freien Raumen,
-	Schulinfos, Widgets und optionalem KI-Assistenten.
+	Modern Flutter client for WebUntis with timetable, exams, free room search,
+	school announcements, widgets, and an optional AI assistant.
 </p>
 
 <p align="center">
@@ -17,188 +17,189 @@
 </p>
 
 <p align="center">
-	<strong>Privacy by default:</strong> Deine Daten bleiben auf deinem Gerat.
-	KI-Funktionen sind optional und nutzen deinen eigenen Gemini API-Key.
+	<strong>Privacy by default:</strong> Your data stays on your device.
+	AI features are optional and use your own Gemini API key.
 </p>
 
-## Inhaltsverzeichnis
+## Table of Contents
 
-- [Warum Untis+?](#warum-untis)
+- [Why Untis+?](#why-untis)
 - [Installation](#installation)
 - [Features](#features)
 - [Screenshots](#screenshots)
-- [KI-Assistent (Gemini)](#ki-assistent-gemini)
-- [Widgets und Benachrichtigungen](#widgets-und-benachrichtigungen)
-- [Datenschutz](#datenschutz)
-- [Voraussetzungen](#voraussetzungen)
+- [AI Assistant (Gemini)](#ai-assistant-gemini)
+- [Widgets and Notifications](#widgets-and-notifications)
+- [Privacy](#privacy)
+- [Requirements](#requirements)
 - [Development Setup](#development-setup)
-- [Projektstruktur](#projektstruktur)
+- [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [Disclaimer](#disclaimer)
 
-## Warum Untis+?
+## Why Untis+?
 
-Untis+ fokussiert sich auf eine schnelle, ubersichtliche und alltagstaugliche Nutzung:
+Untis+ is designed for a fast, clean, and practical school experience:
 
-- Saubere Tages- und Wochenansicht fur den Stundenplan
-- Prufungen inklusive eigener Eintrage sowie Import/Export
-- Freie-Raume-Suche und Schulinfos in einer App
-- Zuverlassige Widgets und Hintergrund-Updates
-- Optionaler KI-Assistent fur schnelle Fragen im Schulalltag
+- Clean daily and weekly timetable views
+- Exam overview with custom entries and import/export
+- Free room search and school announcements in one app
+- Reliable widgets with background refresh
+- Optional AI assistant for quick school-related questions
 
 ## Installation
 
-1. Lade die aktuelle APK aus den [GitHub Releases](https://github.com/ninocss/UntisPlus/releases) herunter.
-2. Installiere die APK auf deinem Android-Gerat.
-3. Melde dich mit deinem WebUntis-Konto an oder starte im Demo-Modus.
+1. Download the latest APK from [GitHub Releases](https://github.com/ninocss/UntisPlus/releases).
+2. Install the APK on your Android device.
+3. Sign in with your WebUntis account or start in demo mode.
 
 ## Features
 
-| Bereich | Beschreibung |
+| Area | Description |
 | --- | --- |
-| Stundenplan | Tages- und Wochenansicht, Abwesenheiten, Ausfalle, Farbanpassungen |
-| Prufungen | Prufungsubersicht, eigene Prufungen, Import/Export |
-| Freie Raume | Schnell sehen, welche Raume aktuell frei sind |
-| Schulinfos | Feed fur schulische Mitteilungen |
-| Widgets | Homescreen-Widgets mit aktuellen Daten |
-| Benachrichtigungen | Persistente "Aktuelle Stunde"-Benachrichtigung |
-| KI (optional) | Gemini-Integration mit eigenem API-Key |
-| Demo-Modus | App testen ohne WebUntis-Login |
-| Sprachen | Deutsch, Englisch, Franzosisch, Spanisch, Griechisch |
-| Themes | Hell, Dunkel, System + animierte Hintergrunde |
+| Timetable | Daily and weekly view, absences, cancellations, custom colors |
+| Exams | Exam overview, custom exams, import/export |
+| Free Rooms | Quickly see which rooms are currently available |
+| School Announcements | Feed for school updates |
+| Widgets | Home screen widgets with current data |
+| Notifications | Persistent "Current lesson" notification |
+| AI (optional) | Gemini integration with your own API key |
+| Demo Mode | Try the app without a WebUntis login |
+| Languages | German, English, French, Spanish, Greek |
+| Themes | Light, dark, system + animated backgrounds |
 
 ## Screenshots
 
-### Stundenplan
+### Timetable
 
 <table>
 	<tr>
-		<td align="center"><img src="assets/github/timetable_weekly.png" width="320" alt="Wochenansicht" /><br />Wochenansicht</td>
-		<td align="center"><img src="assets/github/timetable_daily.png" width="320" alt="Tagesansicht" /><br />Tagesansicht</td>
+		<td align="center"><img src="assets/github/timetable_weekly.png" width="320" alt="Weekly timetable" /><br />Weekly timetable</td>
+		<td align="center"><img src="assets/github/timetable_daily.png" width="320" alt="Daily timetable" /><br />Daily timetable</td>
 	</tr>
 	<tr>
-		<td align="center"><img src="assets/github/timetable_daily_dark_mode.png" width="320" alt="Tagesansicht Dunkel" /><br />Tagesansicht, Dark Mode</td>
+		<td align="center"><img src="assets/github/timetable_daily_dark_mode.png" width="320" alt="Daily timetable dark mode" /><br />Daily timetable, dark mode</td>
 		<td align="center"></td>
 	</tr>
 </table>
 
-### Prufungen, freie Raume und Schulsetup
+### Exams, free rooms, and school setup
 
 <table>
 	<tr>
-		<td align="center"><img src="assets/github/exams.png" width="320" alt="Prufungen" /><br />Prufungen</td>
-		<td align="center"><img src="assets/github/exams_dark_mode.png" width="320" alt="Prufungen Dunkel" /><br />Prufungen, Dark Mode</td>
+		<td align="center"><img src="assets/github/exams.png" width="320" alt="Exams" /><br />Exams</td>
+		<td align="center"><img src="assets/github/exams_dark_mode.png" width="320" alt="Exams dark mode" /><br />Exams, dark mode</td>
 	</tr>
 	<tr>
-		<td align="center"><img src="assets/github/free_rooms.png" width="320" alt="Freie Raume" /><br />Freie Raume</td>
-		<td align="center"><img src="assets/github/free_rooms_dark_mode.png" width="320" alt="Freie Raume Dunkel" /><br />Freie Raume, Dark Mode</td>
+		<td align="center"><img src="assets/github/free_rooms.png" width="320" alt="Free rooms" /><br />Free rooms</td>
+		<td align="center"><img src="assets/github/free_rooms_dark_mode.png" width="320" alt="Free rooms dark mode" /><br />Free rooms, dark mode</td>
 	</tr>
 	<tr>
-		<td align="center"><img src="assets/github/school_info.png" width="320" alt="Schulinfos" /><br />Schulinfos</td>
-		<td align="center"><img src="assets/github/school_info_dark_mode.png" width="320" alt="Schulinfos Dunkel" /><br />Schulinfos, Dark Mode</td>
+		<td align="center"><img src="assets/github/school_info.png" width="320" alt="School announcements" /><br />School announcements</td>
+		<td align="center"><img src="assets/github/school_info_dark_mode.png" width="320" alt="School announcements dark mode" /><br />School announcements, dark mode</td>
 	</tr>
 	<tr>
-		<td align="center"><img src="assets/github/select_class.png" width="320" alt="Klasse auswahlen" /><br />Klasse auswahlen</td>
-		<td align="center"><img src="assets/github/select_class_dark_mode.png" width="320" alt="Klasse auswahlen Dunkel" /><br />Klasse auswahlen, Dark Mode</td>
+		<td align="center"><img src="assets/github/select_class.png" width="320" alt="Select class" /><br />Select class</td>
+		<td align="center"><img src="assets/github/select_class_dark_mode.png" width="320" alt="Select class dark mode" /><br />Select class, dark mode</td>
 	</tr>
 </table>
 
-### KI-Assistent
+### AI Assistant
 
 <table>
 	<tr>
-		<td align="center"><img src="assets/github/ai_assistant.png" width="320" alt="KI-Assistent" /><br />KI-Assistent</td>
-		<td align="center"><img src="assets/github/ai_assistant_dark_mode.png" width="320" alt="KI-Assistent Dunkel" /><br />KI-Assistent, Dark Mode</td>
+		<td align="center"><img src="assets/github/ai_assistant.png" width="320" alt="AI assistant" /><br />AI assistant</td>
+		<td align="center"><img src="assets/github/ai_assistant_dark_mode.png" width="320" alt="AI assistant dark mode" /><br />AI assistant, dark mode</td>
 	</tr>
 	<tr>
-		<td align="center"><img src="assets/github/details_dark_mode.png" width="320" alt="Details Dunkel" /><br />Details, Dark Mode</td>
+		<td align="center"><img src="assets/github/details_dark_mode.png" width="320" alt="Details dark mode" /><br />Details, dark mode</td>
 		<td align="center"></td>
 	</tr>
 </table>
 
-## KI-Assistent (Gemini)
+## AI Assistant (Gemini)
 
-Der KI-Assistent wird aktiv, sobald du deinen eigenen Gemini API-Key hinterlegst:
+The AI assistant becomes available after you add your own Gemini API key:
 
-1. Offne [Google AI Studio](https://aistudio.google.com/).
-2. Erstelle einen neuen API-Key.
-3. Trage den Key in der App unter **Einstellungen > KI-Assistent > Gemini API-Key** ein.
+1. Open [Google AI Studio](https://aistudio.google.com/).
+2. Create a new API key.
+3. Add the key in the app under **Settings > AI Assistant > Gemini API Key**.
 
-Der API-Key wird nur lokal auf deinem Gerat gespeichert.
+The API key is stored locally on your device.
 
-## Widgets und Benachrichtigungen
+## Widgets and Notifications
 
-Untis+ kann Daten im Hintergrund aktualisieren, damit Widgets und Benachrichtigungen aktuell bleiben.
+Untis+ can refresh data in the background to keep widgets and notifications up to date.
 
-- Aktiviere die persistente "Aktuelle Stunde"-Benachrichtigung in **Einstellungen > Progressive Push Notification**.
-- Widgets und Benachrichtigungen aktualisieren sich automatisch, sobald Android Hintergrundaktualisierungen erlaubt.
-- Nach dem ersten Login werden Daten direkt geladen, damit Widgets sofort Inhalte anzeigen konnen.
+- Enable the persistent "Current lesson" notification in **Settings > Progressive push notification**.
+- Widgets and notifications update automatically when Android allows background updates.
+- After the first login, data is fetched immediately so widgets can show content right away.
 
-Wenn Android Berechtigungen fur Benachrichtigungen oder Hintergrundaktivitaten abfragt, sollten diese erlaubt werden.
+If Android asks for notification or background permissions, allow them so these features work correctly.
 
-## Datenschutz
+## Privacy
 
-Untis+ speichert Daten lokal auf deinem Gerat, unter anderem:
+Untis+ stores data locally on your device, including:
 
 - Session-ID
-- Schulserver und Schulname
-- Benutzername und Passwort
-- App-Einstellungen
-- Gemini API-Key (falls konfiguriert)
+- Session ID
+- School server and school name
+- Username and password
+- App settings
+- Gemini API key (if configured)
 
-Daten werden nur an folgende Dienste ubertragen:
+Data is sent only to:
 
-- Deinen WebUntis-Server fur Login, Stundenplan- und Prufungsdaten
-- Google Gemini API, ausschliesslich wenn der KI-Assistent aktiviert ist
+- Your WebUntis server for authentication and timetable/exam data
+- Google Gemini API, only if the AI assistant is enabled
 
-Untis+ verwendet kein Tracking und keine Analytics.
+Untis+ does not use analytics or tracking.
 
-## Voraussetzungen
+## Requirements
 
-- Flutter SDK 3.11 oder neuer
-- WebUntis-Konto deiner Schule
-- Optional: Gemini API-Key fur KI-Funktionen
+- Flutter SDK 3.11 or newer
+- A WebUntis account from your school
+- Optional: Gemini API key for AI features
 
 ## Development Setup
 
-Abhangigkeiten installieren:
+Install dependencies:
 
 ```bash
 flutter pub get
 ```
 
-App auf Emulator oder Gerat starten:
+Run the app on a device or emulator:
 
 ```bash
 flutter run
 ```
 
-Release-APK bauen:
+Build a release APK:
 
 ```bash
 flutter build apk --release
 ```
 
-## Projektstruktur
+## Project Structure
 
-- [lib/main.dart](lib/main.dart) - App-Einstiegspunkt
-- [lib/l10n.dart](lib/l10n.dart) - Lokalisierung (DE, EN, FR, ES, EL)
-- [lib/app/untis_plus_app.dart](lib/app/untis_plus_app.dart) - App-Shell und Theme-Konfiguration
-- [lib/screens/main_navigation_screen.dart](lib/screens/main_navigation_screen.dart) - Hauptnavigation
-- [lib/screens/onboarding_flow.dart](lib/screens/onboarding_flow.dart) - Login und Schulsetup
-- [lib/services/background_service.dart](lib/services/background_service.dart) - Hintergrundaktualisierung
-- [lib/services/notification_service.dart](lib/services/notification_service.dart) - Persistente Benachrichtigungen
-- [lib/services/widget_service.dart](lib/services/widget_service.dart) - Homescreen-Widgets
-- [lib/services/demo_mode_service.dart](lib/services/demo_mode_service.dart) - Demo-Daten
+- [lib/main.dart](lib/main.dart) - App entry point
+- [lib/l10n.dart](lib/l10n.dart) - Localization strings (DE, EN, FR, ES, EL)
+- [lib/app/untis_plus_app.dart](lib/app/untis_plus_app.dart) - App shell and theme setup
+- [lib/screens/main_navigation_screen.dart](lib/screens/main_navigation_screen.dart) - Main navigation
+- [lib/screens/onboarding_flow.dart](lib/screens/onboarding_flow.dart) - Login and school setup
+- [lib/services/background_service.dart](lib/services/background_service.dart) - Background refresh
+- [lib/services/notification_service.dart](lib/services/notification_service.dart) - Persistent notifications
+- [lib/services/widget_service.dart](lib/services/widget_service.dart) - Home screen widgets
+- [lib/services/demo_mode_service.dart](lib/services/demo_mode_service.dart) - Demo data
 
 ## Contributing
 
-Issues und Pull Requests sind willkommen.
+Issues and pull requests are welcome.
 
-- Beschreibe erwartetes und tatsachliches Verhalten.
-- Fuge Screenshots hinzu, wenn sich UI-Verhalten andert.
-- Halte Anderungen klein, fokussiert und konsistent mit dem Stil des Projekts.
+- Describe expected and actual behavior.
+- Include screenshots when UI behavior changes.
+- Keep changes focused and consistent with the existing code style.
 
 ## Disclaimer
 
-Untis+ ist nicht mit WebUntis oder dessen Rechteinhabern verbunden und wird von diesen weder unterstutzt noch empfohlen.
+Untis+ is not affiliated with, endorsed by, or connected to WebUntis or its respective owners.
