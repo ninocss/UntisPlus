@@ -7,11 +7,9 @@ import 'package:workmanager/workmanager.dart';
 import '../core/time_utils.dart';
 
 import 'notification_service.dart';
-import 'widget_service.dart';
 
 const String kTimetableUpdateTask = 'update_timetable_task';
 const String kGithubUpdateCheckTask = 'check_github_updates_task';
-const int kUpdateNotificationId = 2;
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -34,12 +32,10 @@ class BackgroundService {
   static void initialize() {
     Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
     Workmanager().registerPeriodicTask(
-      "untis_widget_update",
+      "untis_school_notification_update",
       kTimetableUpdateTask,
       frequency: const Duration(minutes: 15),
-      constraints: Constraints(
-        networkType: NetworkType.connected,
-      ),
+      constraints: Constraints(networkType: NetworkType.connected),
     );
 
     Workmanager().registerPeriodicTask(
@@ -89,6 +85,373 @@ String _localizedUpdateTitle(String locale) {
   }
 }
 
+String _localizedDailyBriefingTitle(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'Your school day at a glance';
+    case 'fr':
+      return 'Ton apercu de la journee';
+    case 'es':
+      return 'Resumen de tu dia escolar';
+    case 'el':
+      return 'Η ημερα σου με μια ματια';
+    case 'de':
+    default:
+      return 'Dein Schultag auf einen Blick';
+  }
+}
+
+String _localizedDailyBriefingBody(
+  String locale, {
+  required String firstStart,
+  required String lastEnd,
+  required int lessonCount,
+  required int breakCount,
+}) {
+  switch (locale) {
+    case 'en':
+      return '$firstStart-$lastEnd, $lessonCount lessons, $breakCount breaks';
+    case 'fr':
+      return '$firstStart-$lastEnd, $lessonCount cours, $breakCount pauses';
+    case 'es':
+      return '$firstStart-$lastEnd, $lessonCount clases, $breakCount descansos';
+    case 'el':
+      return '$firstStart-$lastEnd, $lessonCount μαθηματα, $breakCount διαλειμματα';
+    case 'de':
+    default:
+      return '$firstStart-$lastEnd, $lessonCount Stunden, $breakCount Pausen';
+  }
+}
+
+String _localizedDailyBriefingExpanded(
+  String locale, {
+  required String firstStart,
+  required String lastEnd,
+  required int lessonCount,
+  required int breakCount,
+  required String nextLesson,
+}) {
+  switch (locale) {
+    case 'en':
+      return 'Start: $firstStart\nEnd: $lastEnd\nLessons: $lessonCount\nBreaks: $breakCount\nNext: $nextLesson';
+    case 'fr':
+      return 'Debut: $firstStart\nFin: $lastEnd\nCours: $lessonCount\nPauses: $breakCount\nSuivant: $nextLesson';
+    case 'es':
+      return 'Inicio: $firstStart\nFin: $lastEnd\nClases: $lessonCount\nDescansos: $breakCount\nSiguiente: $nextLesson';
+    case 'el':
+      return 'Εναρξη: $firstStart\nΛηξη: $lastEnd\nΜαθηματα: $lessonCount\nΔιαλειμματα: $breakCount\nΕπομενο: $nextLesson';
+    case 'de':
+    default:
+      return 'Start: $firstStart\nEnde: $lastEnd\nStunden: $lessonCount\nPausen: $breakCount\nNächste Stunde: $nextLesson';
+  }
+}
+
+String _localizedImportantChangesTitle(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'Timetable updated';
+    case 'fr':
+      return 'Emploi du temps mis a jour';
+    case 'es':
+      return 'Horario actualizado';
+    case 'el':
+      return 'Το προγραμμα ενημερωθηκε';
+    case 'de':
+    default:
+      return 'Stundenplan aktualisiert';
+  }
+}
+
+String _localizedImportantChangesBody(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'There are new changes today. Tap to open your timetable.';
+    case 'fr':
+      return 'Il y a de nouveaux changements aujourd’hui. Ouvre ton emploi du temps.';
+    case 'es':
+      return 'Hay cambios nuevos hoy. Toca para abrir tu horario.';
+    case 'el':
+      return 'Υπαρχουν νεες αλλαγες σημερα. Πατησε για να ανοιξεις το προγραμμα.';
+    case 'de':
+    default:
+      return 'Es gibt neue Änderungen heute. Tippe, um den Stundenplan zu öffnen.';
+  }
+}
+
+String _localizedStatusCurrentLesson(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'Current lesson';
+    case 'fr':
+      return 'Cours actuel';
+    case 'es':
+      return 'Clase actual';
+    case 'el':
+      return 'Τρεχον μαθημα';
+    case 'de':
+    default:
+      return 'Aktuelle Stunde';
+  }
+}
+
+String _localizedStatusNextLesson(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'Next lesson';
+    case 'fr':
+      return 'Cours suivant';
+    case 'es':
+      return 'Siguiente clase';
+    case 'el':
+      return 'Επομενο μαθημα';
+    case 'de':
+    default:
+      return 'Nächste Stunde';
+  }
+}
+
+String _localizedStatusNoClasses(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'No more classes';
+    case 'fr':
+      return 'Plus de cours';
+    case 'es':
+      return 'No hay más clases';
+    case 'el':
+      return 'Δεν υπαρχουν αλλα μαθηματα';
+    case 'de':
+    default:
+      return 'Kein Unterricht mehr';
+  }
+}
+
+String _localizedLessonStartsAt(String locale, String start) {
+  switch (locale) {
+    case 'en':
+      return 'Starts at $start';
+    case 'fr':
+      return 'Debut a $start';
+    case 'es':
+      return 'Empieza a las $start';
+    case 'el':
+      return 'Ξεκινα στις $start';
+    case 'de':
+    default:
+      return 'Start um $start';
+  }
+}
+
+String _localizedUntilTime(String locale, String end) {
+  switch (locale) {
+    case 'en':
+      return 'Until $end';
+    case 'fr':
+      return 'Jusqu’a $end';
+    case 'es':
+      return 'Hasta las $end';
+    case 'el':
+      return 'Μεχρι τις $end';
+    case 'de':
+    default:
+      return 'Bis $end Uhr';
+  }
+}
+
+String _localizedThen(String locale, String nextLesson) {
+  switch (locale) {
+    case 'en':
+      return 'Then: $nextLesson';
+    case 'fr':
+      return 'Ensuite: $nextLesson';
+    case 'es':
+      return 'Luego: $nextLesson';
+    case 'el':
+      return 'Μετα: $nextLesson';
+    case 'de':
+    default:
+      return 'Danach: $nextLesson';
+  }
+}
+
+String _localizedClosedLabel(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'Finished';
+    case 'fr':
+      return 'Termine';
+    case 'es':
+      return 'Fin';
+    case 'el':
+      return 'Τελος';
+    case 'de':
+    default:
+      return 'Schluss';
+  }
+}
+
+String _localizedFreeLabel(String locale) {
+  switch (locale) {
+    case 'en':
+      return 'Free period';
+    case 'fr':
+      return 'Heure libre';
+    case 'es':
+      return 'Hora libre';
+    case 'el':
+      return 'Κενο';
+    case 'de':
+    default:
+      return 'Frei';
+  }
+}
+
+String _localizedFallbackLessonName(String locale, String start, String end) {
+  switch (locale) {
+    case 'en':
+      return 'Lesson $start - $end';
+    case 'fr':
+      return 'Cours $start - $end';
+    case 'es':
+      return 'Clase $start - $end';
+    case 'el':
+      return 'Μαθημα $start - $end';
+    case 'de':
+    default:
+      return 'Stunde $start - $end';
+  }
+}
+
+Map<String, int> _detectChangeCounts({
+  required String previousSignature,
+  required String currentSignature,
+}) {
+  if (previousSignature.trim().isEmpty) {
+    return const {'cancelled': 0, 'room': 0, 'substitution': 0, 'other': 0};
+  }
+
+  List<dynamic> previousLessons;
+  List<dynamic> currentLessons;
+  try {
+    previousLessons = jsonDecode(previousSignature) as List<dynamic>;
+    currentLessons = jsonDecode(currentSignature) as List<dynamic>;
+  } catch (_) {
+    return const {'cancelled': 0, 'room': 0, 'substitution': 0, 'other': 1};
+  }
+
+  String keyFor(Map<dynamic, dynamic> lesson) {
+    final start = lesson['startTime']?.toString() ?? '';
+    final end = lesson['endTime']?.toString() ?? '';
+    final su = lesson['su']?.toString() ?? '';
+    return '$start|$end|$su';
+  }
+
+  final previousMap = <String, Map<dynamic, dynamic>>{};
+  for (final lesson in previousLessons) {
+    if (lesson is Map) {
+      previousMap[keyFor(lesson)] = lesson;
+    }
+  }
+
+  var cancelled = 0;
+  var room = 0;
+  var substitution = 0;
+  var other = 0;
+
+  for (final lesson in currentLessons) {
+    if (lesson is! Map) continue;
+    final key = keyFor(lesson);
+    final prev = previousMap[key];
+    if (prev == null) {
+      other++;
+      continue;
+    }
+
+    final prevCode = (prev['code'] ?? '').toString().toLowerCase();
+    final nextCode = (lesson['code'] ?? '').toString().toLowerCase();
+    if (prevCode != nextCode &&
+        (nextCode.contains('cancel') || nextCode == 'cancelled')) {
+      cancelled++;
+      continue;
+    }
+
+    final prevRoom = (prev['ro'] ?? '').toString();
+    final nextRoom = (lesson['ro'] ?? '').toString();
+    if (prevRoom != nextRoom) {
+      room++;
+      continue;
+    }
+
+    final prevTeacher = (prev['te'] ?? '').toString();
+    final nextTeacher = (lesson['te'] ?? '').toString();
+    if (prevTeacher != nextTeacher) {
+      substitution++;
+      continue;
+    }
+  }
+
+  return {
+    'cancelled': cancelled,
+    'room': room,
+    'substitution': substitution,
+    'other': other,
+  };
+}
+
+String _localizedChangeSummary(String locale, Map<String, int> counts) {
+  final cancelled = counts['cancelled'] ?? 0;
+  final room = counts['room'] ?? 0;
+  final substitution = counts['substitution'] ?? 0;
+  final other = counts['other'] ?? 0;
+
+  if (locale == 'de') {
+    final parts = <String>[];
+    if (cancelled > 0) parts.add('$cancelled Ausfälle');
+    if (room > 0) parts.add('$room Raumwechsel');
+    if (substitution > 0) parts.add('$substitution Vertretungen');
+    if (other > 0 || parts.isEmpty)
+      parts.add('${other > 0 ? other : 1} Änderungen');
+    return parts.join(' · ');
+  }
+
+  if (locale == 'en') {
+    final parts = <String>[];
+    if (cancelled > 0) parts.add('$cancelled cancellations');
+    if (room > 0) parts.add('$room room changes');
+    if (substitution > 0) parts.add('$substitution substitutions');
+    if (other > 0 || parts.isEmpty)
+      parts.add('${other > 0 ? other : 1} updates');
+    return parts.join(' · ');
+  }
+
+  if (locale == 'fr') {
+    final parts = <String>[];
+    if (cancelled > 0) parts.add('$cancelled annulations');
+    if (room > 0) parts.add('$room changements de salle');
+    if (substitution > 0) parts.add('$substitution remplacements');
+    if (other > 0 || parts.isEmpty)
+      parts.add('${other > 0 ? other : 1} changements');
+    return parts.join(' · ');
+  }
+
+  if (locale == 'es') {
+    final parts = <String>[];
+    if (cancelled > 0) parts.add('$cancelled cancelaciones');
+    if (room > 0) parts.add('$room cambios de aula');
+    if (substitution > 0) parts.add('$substitution sustituciones');
+    if (other > 0 || parts.isEmpty)
+      parts.add('${other > 0 ? other : 1} cambios');
+    return parts.join(' · ');
+  }
+
+  final parts = <String>[];
+  if (cancelled > 0) parts.add('$cancelled ακυρωσεις');
+  if (room > 0) parts.add('$room αλλαγες αιθουσας');
+  if (substitution > 0) parts.add('$substitution αναπληρωσεις');
+  if (other > 0 || parts.isEmpty) parts.add('${other > 0 ? other : 1} αλλαγες');
+  return parts.join(' · ');
+}
+
 String _localizedUpdateBody(String locale, String latestVersion) {
   switch (locale) {
     case 'en':
@@ -112,7 +475,9 @@ Future<void> checkGithubUpdateAndNotify() async {
 
   try {
     final resp = await http.get(
-      Uri.parse('https://api.github.com/repos/ninocss/UntisPlus/releases/latest'),
+      Uri.parse(
+        'https://api.github.com/repos/ninocss/UntisPlus/releases/latest',
+      ),
       headers: const {'Accept': 'application/vnd.github+json'},
     );
 
@@ -131,7 +496,8 @@ Future<void> checkGithubUpdateAndNotify() async {
         : tag;
     final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersion);
 
-    final hasUpdate = latestVersion.isNotEmpty &&
+    final hasUpdate =
+        latestVersion.isNotEmpty &&
         (hasComparableVersion
             ? _compareVersionStrings(installedVersion, latestVersion) < 0
             : true);
@@ -153,82 +519,88 @@ Future<void> checkGithubUpdateAndNotify() async {
 
 Future<void> updateUntisData() async {
   final prefs = await SharedPreferences.getInstance();
+  final isDemoMode = prefs.getBool('demoMode') ?? false;
   final schoolUrl = prefs.getString('schoolUrl') ?? '';
   final schoolName = prefs.getString('schoolName') ?? '';
   final user = prefs.getString('username') ?? '';
   final pass = prefs.getString('password') ?? '';
+  final locale = prefs.getString('appLocale') ?? 'de';
 
-  if (schoolUrl.isEmpty || schoolName.isEmpty || user.isEmpty || pass.isEmpty) {
+  if (!isDemoMode &&
+      (schoolUrl.isEmpty ||
+          schoolName.isEmpty ||
+          user.isEmpty ||
+          pass.isEmpty)) {
     return;
   }
 
-  String sessionId = "";
-  final authUrl = Uri.parse(
-    'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-  );
-  final authRes = await http.post(
-    authUrl,
-    body: jsonEncode({
-      "id": "bg_login",
-      "method": "authenticate",
-      "params": {"user": user, "password": pass, "client": "UntisPlusWidget"},
-      "jsonrpc": "2.0",
-    }),
-  );
-
-  if (authRes.statusCode == 200) {
-    final data = jsonDecode(authRes.body);
-    sessionId = data['result']?['sessionId']?.toString() ?? "";
-  }
-
-  if (sessionId.isEmpty) return;
-
-  int personId = prefs.getInt('personId') ?? 0;
-  int personType = prefs.getInt('personType') ?? 5;
-
-  if (personId == 0) return;
-
   final now = DateTime.now();
-  int todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
-
-  final timetableRes = await http.post(
-    authUrl,
-    headers: {
-      "Cookie": "JSESSIONID=$sessionId; schoolname=$schoolName",
-      "Content-Type": "application/json",
-    },
-    body: jsonEncode({
-      "id": "bg_req",
-      "method": "getTimetable",
-      "params": {
-        "id": personId,
-        "type": personType,
-        "startDate": todayDate,
-        "endDate": todayDate,
-      },
-      "jsonrpc": "2.0",
-    }),
-  );
-
-  if (timetableRes.statusCode != 200) return;
-
-  final decoded = jsonDecode(timetableRes.body);
-  final dynamic result = decoded['result'];
   List<dynamic> lessons = [];
-  if (result is List) {
-    lessons = result;
-  } else if (result is Map && result['timetable'] is List) {
-    lessons = result['timetable'];
+  if (isDemoMode) {
+    lessons = _buildDemoLessons24x7(now, locale);
+  } else {
+    String sessionId = "";
+    final authUrl = Uri.parse(
+      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+    );
+    final authRes = await http.post(
+      authUrl,
+      body: jsonEncode({
+        "id": "bg_login",
+        "method": "authenticate",
+        "params": {"user": user, "password": pass, "client": "UntisPlusWidget"},
+        "jsonrpc": "2.0",
+      }),
+    );
+
+    if (authRes.statusCode == 200) {
+      final data = jsonDecode(authRes.body);
+      sessionId = data['result']?['sessionId']?.toString() ?? "";
+    }
+
+    if (sessionId.isEmpty) return;
+
+    final personId = prefs.getInt('personId') ?? 0;
+    final personType = prefs.getInt('personType') ?? 5;
+
+    if (personId == 0) return;
+
+    final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
+
+    final timetableRes = await http.post(
+      authUrl,
+      headers: {
+        "Cookie": "JSESSIONID=$sessionId; schoolname=$schoolName",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "id": "bg_req",
+        "method": "getTimetable",
+        "params": {
+          "id": personId,
+          "type": personType,
+          "startDate": todayDate,
+          "endDate": todayDate,
+        },
+        "jsonrpc": "2.0",
+      }),
+    );
+
+    if (timetableRes.statusCode != 200) return;
+
+    final decoded = jsonDecode(timetableRes.body);
+    final dynamic result = decoded['result'];
+    if (result is List) {
+      lessons = result;
+    } else if (result is Map && result['timetable'] is List) {
+      lessons = result['timetable'];
+    }
   }
 
   if (lessons.isEmpty) {
-    await WidgetService.updateWidgets(
-      currentLesson: "Kein Unterricht heute",
-      nextLesson: "-",
-      timeRemaining: "",
-      dailySchedule: "Kein Unterricht heute",
+    await NotificationService().cancelNotification(
+      kCurrentLessonNotificationId,
     );
-    await NotificationService().cancelNotification(1);
     return;
   }
 
@@ -236,11 +608,27 @@ Future<void> updateUntisData() async {
     (a, b) => (a['startTime'] as int).compareTo(b['startTime'] as int),
   );
 
-  String currentLessonName = "Frei";
+  final lessonSignature = jsonEncode(
+    lessons
+        .whereType<Map>()
+        .map(
+          (lesson) => {
+            'startTime': lesson['startTime'],
+            'endTime': lesson['endTime'],
+            'code': lesson['code'],
+            'lstype': lesson['lstype'],
+            'su': lesson['su'],
+            'ro': lesson['ro'],
+            'te': lesson['te'],
+            'kl': lesson['kl'],
+          },
+        )
+        .toList(growable: false),
+  );
+
+  String currentLessonName = _localizedFreeLabel(locale);
   String nextLessonName = "-";
   String timeRemaining = "";
-
-  StringBuffer dailyScheduleBuffer = StringBuffer();
 
   final currentTimeInt = now.hour * 100 + now.minute;
   bool foundCurrent = false;
@@ -248,7 +636,19 @@ Future<void> updateUntisData() async {
   int? currentProgress;
   int? maxProgress;
   int? endTimeMs;
-  String subTextInfo = "Stundenplan";
+  String subTextInfo = _localizedStatusCurrentLesson(locale);
+
+  int _breakCount(List<dynamic> dayLessons) {
+    var breaks = 0;
+    for (var i = 0; i < dayLessons.length - 1; i++) {
+      final currentEnd = dayLessons[i]['endTime'];
+      final nextStart = dayLessons[i + 1]['startTime'];
+      if (currentEnd is int && nextStart is int && nextStart > currentEnd) {
+        breaks++;
+      }
+    }
+    return breaks;
+  }
 
   DateTime untisTimeToDate(int timeStr) {
     final hour = timeStr ~/ 100;
@@ -273,10 +673,10 @@ Future<void> updateUntisData() async {
     if (start is int && end is int) {
       final startStr = formatUntisTime(start.toString());
       final endStr = formatUntisTime(end.toString());
-      return "Stunde $startStr - $endStr";
+      return _localizedFallbackLessonName(locale, startStr, endStr);
     }
 
-    return "Stunde";
+    return _localizedStatusCurrentLesson(locale);
   }
 
   for (int i = 0; i < lessons.length; i++) {
@@ -289,14 +689,12 @@ Future<void> updateUntisData() async {
     String startStr = formatUntisTime(start.toString());
     String endStr = formatUntisTime(end.toString());
 
-    dailyScheduleBuffer.writeln("$startStr - $endStr: $name");
-
     if (!foundCurrent) {
       if (currentTimeInt >= start && currentTimeInt <= end) {
         currentLessonName = name;
-        timeRemaining = "Bis $endStr Uhr";
+        timeRemaining = _localizedUntilTime(locale, endStr);
         foundCurrent = true;
-        subTextInfo = "Aktuelle Stunde";
+        subTextInfo = _localizedStatusCurrentLesson(locale);
 
         DateTime startTimeDate = untisTimeToDate(start);
         DateTime endTimeDate = untisTimeToDate(end);
@@ -309,56 +707,155 @@ Future<void> updateUntisData() async {
           var nextL = lessons[i + 1];
           nextLessonName = lessonDisplayName(nextL);
         } else {
-          nextLessonName = "Schluss";
+          nextLessonName = _localizedClosedLabel(locale);
         }
       } else if (currentTimeInt < start) {
-        timeRemaining = "Start um $startStr";
+        timeRemaining = _localizedLessonStartsAt(locale, startStr);
         nextLessonName = name;
         foundCurrent = true;
-        subTextInfo = "Nächste Stunde";
+        subTextInfo = _localizedStatusNextLesson(locale);
         endTimeMs = untisTimeToDate(start).millisecondsSinceEpoch;
       }
     }
   }
 
+  final firstLesson = lessons.first;
+  final lastLesson = lessons.last;
+  final firstStart = formatUntisTime(
+    (firstLesson['startTime'] as int).toString(),
+  );
+  final lastEnd = formatUntisTime((lastLesson['endTime'] as int).toString());
+  final breakCount = _breakCount(lessons);
+
   if (!foundCurrent && currentTimeInt > (lessons.last['endTime'] as int)) {
     currentLessonName = "Schluss";
+    currentLessonName = _localizedClosedLabel(locale);
     nextLessonName = "-";
     timeRemaining = "";
-    subTextInfo = "Kein Unterricht mehr";
-
-    await WidgetService.updateWidgets(
-      currentLesson: currentLessonName,
-      nextLesson: nextLessonName,
-      timeRemaining: timeRemaining,
-      dailySchedule: dailyScheduleBuffer.toString(),
+    subTextInfo = _localizedStatusNoClasses(locale);
+    await NotificationService().cancelNotification(
+      kCurrentLessonNotificationId,
     );
-    await NotificationService().cancelNotification(1);
     return;
   }
 
-  await WidgetService.updateWidgets(
-    currentLesson: currentLessonName,
-    nextLesson: nextLessonName,
-    timeRemaining: timeRemaining,
-    dailySchedule: dailyScheduleBuffer.toString(),
+  final isProgressivePushEnabled = prefs.getBool('progressivePush') ?? true;
+  final isDailyBriefingEnabled = prefs.getBool('dailyBriefingPush') ?? true;
+  final isImportantChangesEnabled =
+      prefs.getBool('importantChangesPush') ?? true;
+  await NotificationService().init();
+
+  final todayKey = DateFormat('yyyyMMdd').format(now);
+  final lastBriefingDate = prefs.getString('lastDailyBriefingDate') ?? '';
+  final firstStartInt = firstLesson['startTime'] as int;
+  final canSendBriefingNow = currentTimeInt <= firstStartInt && now.hour < 12;
+
+  if (isDailyBriefingEnabled &&
+      lastBriefingDate != todayKey &&
+      canSendBriefingNow) {
+    await NotificationService().showDailyBriefingNotification(
+      title: _localizedDailyBriefingTitle(locale),
+      body: _localizedDailyBriefingBody(
+        locale,
+        firstStart: firstStart,
+        lastEnd: lastEnd,
+        lessonCount: lessons.length,
+        breakCount: breakCount,
+      ),
+      expandedBody: _localizedDailyBriefingExpanded(
+        locale,
+        firstStart: firstStart,
+        lastEnd: lastEnd,
+        lessonCount: lessons.length,
+        breakCount: breakCount,
+        nextLesson: nextLessonName,
+      ),
+      locale: locale,
+      currentLesson: currentLessonName,
+      nextLesson: nextLessonName,
+    );
+    await prefs.setString('lastDailyBriefingDate', todayKey);
+  }
+
+  final signatureKey = 'lastLessonSignature_$todayKey';
+  final previousSignature = prefs.getString(signatureKey) ?? '';
+  final hasMeaningfulChange =
+      previousSignature.isNotEmpty && previousSignature != lessonSignature;
+  final changeCounts = _detectChangeCounts(
+    previousSignature: previousSignature,
+    currentSignature: lessonSignature,
   );
 
-  final isProgressivePushEnabled = prefs.getBool('progressivePush') ?? true;
-  await NotificationService().init();
+  if (isImportantChangesEnabled && hasMeaningfulChange) {
+    await NotificationService().showImportantChangeNotification(
+      title: _localizedImportantChangesTitle(locale),
+      body:
+          '${_localizedImportantChangesBody(locale)} (${_localizedChangeSummary(locale, changeCounts)}) · ${_localizedStatusCurrentLesson(locale)}: $currentLessonName',
+      locale: locale,
+      currentLesson: currentLessonName,
+      nextLesson: nextLessonName,
+    );
+  }
+  await prefs.setString(signatureKey, lessonSignature);
+
   if (isProgressivePushEnabled) {
     await NotificationService().showProgressiveNotification(
-      id: 1,
+      id: kCurrentLessonNotificationId,
       title: currentLessonName,
       body:
-          "${timeRemaining.isNotEmpty ? "$timeRemaining  |  " : ""}Danach: $nextLessonName",
+          '${timeRemaining.isNotEmpty ? '$timeRemaining  |  ' : ''}${_localizedThen(locale, nextLessonName)}',
       subText: subTextInfo,
       currentProgress: currentProgress,
       maxProgress: maxProgress,
       endTimeMs: endTimeMs,
+      locale: locale,
+      nextLesson: nextLessonName,
     );
   } else {
-    await NotificationService().cancelNotification(1);
+    await NotificationService().cancelNotification(
+      kCurrentLessonNotificationId,
+    );
   }
 }
 
+List<Map<String, dynamic>> _buildDemoLessons24x7(DateTime now, String locale) {
+  final date = int.parse(DateFormat('yyyyMMdd').format(now));
+  final blocks = <Map<String, dynamic>>[];
+
+  // 8 x 3h Bloecke decken den ganzen Tag ab (00:00-23:59).
+  const starts = <int>[0, 300, 600, 900, 1200, 1500, 1800, 2100];
+  const ends = <int>[259, 559, 859, 1159, 1459, 1759, 2059, 2359];
+  const codes = <String>['DM', 'MA', 'EN', 'IF', 'PH', 'CH', 'GE', 'SP'];
+
+  for (var i = 0; i < starts.length; i++) {
+    final short = codes[i % codes.length];
+    blocks.add({
+      'date': date,
+      'startTime': starts[i],
+      'endTime': ends[i],
+      '_subjectShort': short,
+      '_subjectLong': _demoSubjectName(short, locale),
+      '_teacher': 'Demo',
+      '_room': 'D${(i + 1).toString().padLeft(2, '0')}',
+      'code': '',
+    });
+  }
+
+  return blocks;
+}
+
+String _demoSubjectName(String code, String locale) {
+  switch (locale) {
+    case 'en':
+      return 'Demo Lesson $code';
+    case 'fr':
+      return 'Cours demo $code';
+    case 'es':
+      return 'Clase demo $code';
+    case 'el':
+      return 'Μαθημα demo $code';
+    case 'de':
+    default:
+      return 'Demo-Stunde $code';
+  }
+}

@@ -72,6 +72,9 @@ void main() async {
   backgroundGyroscopeNotifier.value =
       prefs.getBool('backgroundGyroscope') ?? false;
   blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
+  dailyBriefingPushNotifier.value = prefs.getBool('dailyBriefingPush') ?? true;
+  importantChangesPushNotifier.value =
+      prefs.getBool('importantChangesPush') ?? true;
 
   hiddenSubjectsNotifier.value = (prefs.getStringList('hiddenSubjects') ?? [])
       .toSet();
@@ -568,8 +571,50 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     subjectColorsNotifier.addListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
     demoModeNotifier.addListener(_onDemoModeChanged);
+    pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     if (sessionID.isNotEmpty || demoModeNotifier.value) _fetchFullWeek();
     _loadViewPref();
+  }
+
+  void _onPendingTimetableAction() {
+    if (!mounted) return;
+    final action = pendingTimetableActionNotifier.value;
+    if (action == null || action.isEmpty) return;
+
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final current = (pendingTimetableCurrentLessonNotifier.value ?? '').trim();
+    final next = (pendingTimetableNextLessonNotifier.value ?? '').trim();
+
+    pendingTimetableActionNotifier.value = null;
+
+    if (action == 'open_free_rooms') {
+      _showFreeRoomsDialog();
+      return;
+    }
+
+    if (action == 'open_next_lesson') {
+      final text = next.isNotEmpty
+          ? l.notificationActionNextLesson(next)
+          : l.notificationActionNoNextLesson;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(text),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    if (current.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.notificationActionCurrentLesson(current)),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   Future<void> _loadViewPref() async {
@@ -653,6 +698,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     subjectColorsNotifier.removeListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.removeListener(_onHiddenSubjectsChanged);
     demoModeNotifier.removeListener(_onDemoModeChanged);
+    pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
     _tabController.dispose();
     super.dispose();
   }
@@ -3149,7 +3195,10 @@ class _ExamsPageState extends State<ExamsPage> {
     return '$base/v1/chat/completions';
   }
 
-  String _geminiCompatibleEndpointForExamImport(String rawBaseUrl, String model) {
+  String _geminiCompatibleEndpointForExamImport(
+    String rawBaseUrl,
+    String model,
+  ) {
     final base = _normalizedAiBaseUrl(rawBaseUrl);
     if (base.isEmpty) return '';
     if (base.contains('/models/')) return base;
@@ -3158,10 +3207,7 @@ class _ExamsPageState extends State<ExamsPage> {
     return '$base/v1beta/models/$model:generateContent';
   }
 
-  String _extractOpenAiCompatibleText(
-    Map<String, dynamic> payload,
-    AppL10n l,
-  ) {
+  String _extractOpenAiCompatibleText(Map<String, dynamic> payload, AppL10n l) {
     final choices = payload['choices'];
     if (choices is! List || choices.isEmpty) {
       throw Exception('API: ${l.aiNoReply}');
@@ -3213,7 +3259,10 @@ class _ExamsPageState extends State<ExamsPage> {
     final body = jsonEncode({
       'systemInstruction': {
         'parts': [
-          {'text': 'Extrahiere strukturierte Prüfungsdaten und antworte nur mit JSON.'},
+          {
+            'text':
+                'Extrahiere strukturierte Prüfungsdaten und antworte nur mit JSON.',
+          },
         ],
       },
       'contents': [
@@ -3230,18 +3279,12 @@ class _ExamsPageState extends State<ExamsPage> {
           ],
         },
       ],
-      'generationConfig': {
-        'temperature': 0.1,
-        'maxOutputTokens': 2200,
-      },
+      'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 2200},
     });
 
     final response = await http.post(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
+      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
       body: body,
     );
 
@@ -3262,14 +3305,12 @@ class _ExamsPageState extends State<ExamsPage> {
       final content = candidates.first['content'];
       final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
       if (parts is List) {
-        reply = parts
-            .map((part) {
-              if (part is Map<String, dynamic>) {
-                return part['text']?.toString() ?? '';
-              }
-              return '';
-            })
-            .join();
+        reply = parts.map((part) {
+          if (part is Map<String, dynamic>) {
+            return part['text']?.toString() ?? '';
+          }
+          return '';
+        }).join();
       }
     }
 
@@ -3289,7 +3330,9 @@ class _ExamsPageState extends State<ExamsPage> {
     required String mimeType,
   }) async {
     if (!mimeType.startsWith('image/')) {
-      throw Exception('API: Unsupported file type for this provider: $mimeType');
+      throw Exception(
+        'API: Unsupported file type for this provider: $mimeType',
+      );
     }
     final l = AppL10n.of(appLocaleNotifier.value);
     final dataUrl = 'data:$mimeType;base64,${base64Encode(fileBytes)}';
@@ -3673,9 +3716,7 @@ class _ExamsPageState extends State<ExamsPage> {
     final providerUsesGeminiProtocol = _providerUsesGeminiProtocol();
     final provider = _normalizeAiProvider(aiProvider);
     if (_activeAiApiKey().trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_providerAwareMissingApiKeyMessage(l, provider)),
         ),
@@ -4302,11 +4343,9 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
   bool _thinking = false;
 
   List<String> get _quickPrompts {
-    final suggestions =
-        AppL10n.of(appLocaleNotifier.value).aiSuggestions
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
-            .toList();
+    final suggestions = AppL10n.of(
+      appLocaleNotifier.value,
+    ).aiSuggestions.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
     if (suggestions.isEmpty) return const [];
 
     final primary = suggestions.take(4).toList();
@@ -4317,8 +4356,8 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         todayIdx < 5 &&
         (widget.weekData[todayIdx] ?? const []).isNotEmpty;
     final hasUpcomingExams = _exams.any((ex) {
-      final raw =
-          (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '').toString();
+      final raw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
+          .toString();
       return raw.length == 8 &&
           (int.tryParse(raw) ?? 0) >=
               int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
@@ -4637,10 +4676,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
 
     final response = await http.post(
       uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
+      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
       body: body,
     );
 
@@ -4993,10 +5029,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                           itemBuilder: (context, index) {
                             final prompt = _quickPrompts[index];
                             return ActionChip(
-                              avatar: const Icon(
-                                Icons.bolt_rounded,
-                                size: 15,
-                              ),
+                              avatar: const Icon(Icons.bolt_rounded, size: 15),
                               label: Text(
                                 prompt,
                                 maxLines: 1,
@@ -5177,10 +5210,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
               ? LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    cs.primary,
-                    cs.secondary,
-                  ],
+                  colors: [cs.primary, cs.secondary],
                 )
               : LinearGradient(
                   begin: Alignment.topLeft,
@@ -5840,7 +5870,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   }
 
   Future<void> _reload() async {
-    if (sessionID.isEmpty || schoolUrl.isEmpty || schoolName.isEmpty) {
+    if (demoModeNotifier.value) {
       if (!mounted) return;
       setState(() {
         _items = const [];
@@ -5849,6 +5879,23 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         _lastUpdated = DateTime.now();
       });
       return;
+    }
+
+    if (sessionID.isEmpty || schoolUrl.isEmpty || schoolName.isEmpty) {
+      final reAuthenticated = await _reAuthenticate();
+      if (!reAuthenticated ||
+          sessionID.isEmpty ||
+          schoolUrl.isEmpty ||
+          schoolName.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _items = const [];
+          _loading = false;
+          _error = null;
+          _lastUpdated = DateTime.now();
+        });
+        return;
+      }
     }
 
     if (mounted) {
@@ -5883,57 +5930,198 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     final startStr = DateFormat('yyyyMMdd').format(start);
     final endStr = DateFormat('yyyyMMdd').format(end);
 
-    final headers = {
-      'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
-      'Accept': 'application/json',
-    };
+    String encodedSchoolName() {
+      try {
+        return '_${base64Encode(utf8.encode(schoolName))}';
+      } catch (_) {
+        return schoolName;
+      }
+    }
+
+    final schoolCookieCandidates = <String>{
+      encodedSchoolName(),
+      schoolName,
+    }.where((e) => e.isNotEmpty).toList(growable: false);
+
+    Map<String, String> buildHeaders(
+      String schoolCookie, {
+      Map<String, String>? extra,
+    }) {
+      return {
+        'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolCookie',
+        'Accept': 'application/json',
+        ...?extra,
+      };
+    }
+
+    Future<http.Response?> requestWithCookieFallback(
+      Future<http.Response> Function(Map<String, String> headers) sender, {
+      bool retry = true,
+    }) async {
+      for (final schoolCookie in schoolCookieCandidates) {
+        try {
+          final response = await sender(buildHeaders(schoolCookie));
+          if (response.statusCode == 200) return response;
+          if ((response.statusCode == 401 || response.statusCode == 403) &&
+              retry &&
+              await _reAuthenticate()) {
+            return requestWithCookieFallback(sender, retry: false);
+          }
+        } catch (_) {}
+      }
+      return null;
+    }
 
     List<dynamic> extractList(dynamic decoded) {
       if (decoded is List) return decoded;
       if (decoded is Map) {
-        final keys = [
-          'messages',
-          'notifications',
-          'items',
-          'data',
-          'result',
-          'results',
-          'entries',
-        ];
-        for (final key in keys) {
-          final value = decoded[key];
-          if (value is List) return value;
-          if (value is Map) {
-            for (final nested in keys) {
-              final nestedValue = value[nested];
-              if (nestedValue is List) return nestedValue;
-            }
-          }
+        for (final value in decoded.values) {
+          final nested = extractList(value);
+          if (nested.isNotEmpty) return nested;
         }
       }
       return const [];
     }
 
-    Future<List<dynamic>> tryGet(String path) async {
+    Future<String?> fetchJwtToken() async {
+      final uri = Uri.parse('https://$schoolUrl/WebUntis/api/token/new');
+      final response = await requestWithCookieFallback(
+        (headers) => http.get(uri, headers: headers),
+      );
+      if (response == null || response.body.trim().isEmpty) return null;
+
+      final raw = response.body.trim();
+      if (!raw.startsWith('{') && raw.isNotEmpty) {
+        return raw.replaceAll('"', '').trim();
+      }
+
       try {
-        final uri = Uri.parse('https://$schoolUrl$path');
-        final res = await http.get(uri, headers: headers);
-        if (res.statusCode == 200 && res.body.trim().isNotEmpty) {
-          return extractList(jsonDecode(res.body));
+        final decoded = jsonDecode(raw);
+        if (decoded is String && decoded.trim().isNotEmpty) {
+          return decoded.trim();
         }
+        if (decoded is Map) {
+          final candidate =
+              decoded['token'] ??
+              decoded['jwt'] ??
+              decoded['jwt_token'] ??
+              decoded['accessToken'];
+          if (candidate != null && candidate.toString().trim().isNotEmpty) {
+            return candidate.toString().trim();
+          }
+        }
+      } catch (_) {}
+
+      return null;
+    }
+
+    Future<List<Map<String, dynamic>>> fetchNewsWidgetMessages() async {
+      final out = <Map<String, dynamic>>[];
+      final days = List.generate(
+        4,
+        (index) => DateTime.now().subtract(Duration(days: index)),
+      );
+
+      for (final day in days) {
+        final untisDate = DateFormat('yyyyMMdd').format(day);
+        final uri = Uri.parse(
+          'https://$schoolUrl/WebUntis/api/public/news/newsWidgetData?date=$untisDate',
+        );
+        final response = await requestWithCookieFallback(
+          (headers) => http.get(uri, headers: headers),
+        );
+        if (response == null || response.body.trim().isEmpty) continue;
+
+        try {
+          final decoded = jsonDecode(response.body);
+          final data = decoded is Map ? decoded['data'] : null;
+          final messagesOfDay = data is Map ? data['messagesOfDay'] : null;
+          if (messagesOfDay is! List) continue;
+
+          for (final entry in messagesOfDay) {
+            if (entry is! Map) continue;
+            final map = Map<String, dynamic>.from(entry);
+            out.add({
+              ...map,
+              'date': map['date'] ?? untisDate,
+              'message': map['text'] ?? map['message'] ?? '',
+            });
+          }
+        } catch (_) {}
+      }
+
+      return out;
+    }
+
+    Future<List<Map<String, dynamic>>> fetchInboxMessages() async {
+      final token = await fetchJwtToken();
+      if (token == null || token.isEmpty) return const [];
+
+      final uri = Uri.parse(
+        'https://$schoolUrl/WebUntis/api/rest/view/v1/messages',
+      );
+      final response = await requestWithCookieFallback(
+        (headers) => http.get(
+          uri,
+          headers: {...headers, 'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      if (response == null || response.body.trim().isEmpty) return const [];
+
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map) return const [];
+        final incoming = decoded['incomingMessages'];
+        if (incoming is! List) return const [];
+
+        return incoming
+            .whereType<Map>()
+            .map((raw) {
+              final map = Map<String, dynamic>.from(raw);
+              final sender = map['sender'];
+              return {
+                ...map,
+                'message': map['contentPreview'] ?? map['message'] ?? '',
+                'author': sender is Map
+                    ? sender['displayName'] ?? sender['name']
+                    : null,
+                'date': map['sentDateTime'] ?? map['date'],
+              };
+            })
+            .toList(growable: false);
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    Future<List<dynamic>> tryGet(String path, {bool retry = true}) async {
+      final uri = Uri.parse('https://$schoolUrl$path');
+      final response = await requestWithCookieFallback(
+        (headers) => http.get(uri, headers: headers),
+        retry: retry,
+      );
+
+      if (response == null || response.body.trim().isEmpty) {
+        return const [];
+      }
+
+      try {
+        return extractList(jsonDecode(response.body));
       } catch (_) {}
       return const [];
     }
 
     Future<List<dynamic>> tryJsonRpc(
       String method,
-      Map<String, dynamic> params,
-    ) async {
-      try {
-        final uri = Uri.parse(
-          'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-        );
-        final res = await http.post(
+      Map<String, dynamic> params, {
+      bool retry = true,
+    }) async {
+      final uri = Uri.parse(
+        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+      );
+      final response = await requestWithCookieFallback(
+        (headers) => http.post(
           uri,
           headers: {...headers, 'Content-Type': 'application/json'},
           body: jsonEncode({
@@ -5942,22 +6130,37 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
             'params': params,
             'jsonrpc': '2.0',
           }),
-        );
-        if (res.statusCode == 200 && res.body.trim().isNotEmpty) {
-          final decoded = jsonDecode(res.body);
-          if (decoded is Map && decoded['error'] != null) {
-            return const [];
-          }
-          if (decoded is Map) {
-            return extractList(decoded['result'] ?? decoded);
-          }
-          return extractList(decoded);
+        ),
+        retry: retry,
+      );
+
+      if (response == null || response.body.trim().isEmpty) {
+        return const [];
+      }
+
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['error'] != null) {
+          return const [];
         }
+        if (decoded is Map) {
+          return extractList(decoded['result'] ?? decoded);
+        }
+        return extractList(decoded);
       } catch (_) {}
       return const [];
     }
 
+    final documentedCandidates = <List<dynamic>>[
+      await fetchNewsWidgetMessages(),
+      await fetchInboxMessages(),
+    ];
+
     final candidates = <List<dynamic>>[
+      ...documentedCandidates,
+      await tryJsonRpc('getMessagesOfDay2017', {
+        'date': DateFormat('yyyyMMdd').format(DateTime.now()),
+      }),
       await tryGet(
         '/WebUntis/api/public/messages?startDate=$startStr&endDate=$endStr',
       ),
@@ -6363,6 +6566,8 @@ class _SettingsPageState extends State<SettingsPage> {
     backgroundAnimationStyleNotifier.addListener(_onChanged);
     backgroundGyroscopeNotifier.addListener(_onChanged);
     progressivePushNotifier.addListener(_onChanged);
+    dailyBriefingPushNotifier.addListener(_onChanged);
+    importantChangesPushNotifier.addListener(_onChanged);
     blurEnabledNotifier.addListener(_onChanged);
     demoModeNotifier.addListener(_onChanged);
   }
@@ -6381,6 +6586,8 @@ class _SettingsPageState extends State<SettingsPage> {
     backgroundAnimationStyleNotifier.removeListener(_onChanged);
     backgroundGyroscopeNotifier.removeListener(_onChanged);
     progressivePushNotifier.removeListener(_onChanged);
+    dailyBriefingPushNotifier.removeListener(_onChanged);
+    importantChangesPushNotifier.removeListener(_onChanged);
     blurEnabledNotifier.removeListener(_onChanged);
     demoModeNotifier.removeListener(_onChanged);
     super.dispose();
@@ -6388,7 +6595,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    aiProvider = _normalizeAiProvider(prefs.getString('aiProvider') ?? aiProvider);
+    aiProvider = _normalizeAiProvider(
+      prefs.getString('aiProvider') ?? aiProvider,
+    );
     aiCustomCompatibility = _normalizeAiCustomCompatibility(
       prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
     );
@@ -6729,9 +6938,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
                         l.settingsApiKeyCancel,
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       ),
                     ),
                     FilledButton(
@@ -7073,12 +7280,13 @@ class _SettingsPageState extends State<SettingsPage> {
           : const <dynamic>[];
       final assetUrl = _pickGithubReleaseAssetUrl(assets);
       final targetUrl = assetUrl ?? htmlUrl;
-      final latestVersionRaw = tag.isEmpty ? (data['name'] ?? '').toString() : tag;
-        final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersionRaw);
-      final hasUpdate =
-          hasComparableVersion
-            ? _compareVersionStrings(appVersion, latestVersionRaw) < 0
-            : true;
+      final latestVersionRaw = tag.isEmpty
+          ? (data['name'] ?? '').toString()
+          : tag;
+      final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersionRaw);
+      final hasUpdate = hasComparableVersion
+          ? _compareVersionStrings(appVersion, latestVersionRaw) < 0
+          : true;
 
       if (!hasUpdate) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -7190,10 +7398,31 @@ class _SettingsPageState extends State<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('progressivePush', v);
     if (!v) {
-      await NotificationService().cancelNotification(1);
+      await NotificationService().cancelNotification(
+        kCurrentLessonNotificationId,
+      );
     } else {
       updateUntisData().catchError((_) {});
     }
+  }
+
+  Future<void> _setDailyBriefingPush(bool v) async {
+    dailyBriefingPushNotifier.value = v;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dailyBriefingPush', v);
+    if (!v) {
+      await NotificationService().cancelNotification(
+        kDailyBriefingNotificationId,
+      );
+    } else {
+      updateUntisData().catchError((_) {});
+    }
+  }
+
+  Future<void> _setImportantChangesPush(bool v) async {
+    importantChangesPushNotifier.value = v;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('importantChangesPush', v);
   }
 
   Future<void> _setDemoMode(bool enabled) async {
@@ -7426,34 +7655,33 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                     ),
-                    if (_apiKeySet)
-                      ...[
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () async {
-                              await _setProviderApiKey('');
-                              Navigator.pop(ctx);
-                              _loadPrefs();
-                            },
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 50),
-                              side: BorderSide(color: cs.error),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                    if (_apiKeySet) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            await _setProviderApiKey('');
+                            Navigator.pop(ctx);
+                            _loadPrefs();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(0, 50),
+                            side: BorderSide(color: cs.error),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            child: Text(
-                              l.settingsApiKeyRemove,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.08,
-                                color: cs.error,
-                              ),
+                          ),
+                          child: Text(
+                            l.settingsApiKeyRemove,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.08,
+                              color: cs.error,
                             ),
                           ),
                         ),
-                      ],
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     Expanded(
                       child: FilledButton.icon(
@@ -7472,7 +7700,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         label: Text(
                           l.settingsApiKeySave,
-                          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -7830,6 +8060,52 @@ class _SettingsPageState extends State<SettingsPage> {
                             _setProgressivePush(!progressivePushNotifier.value);
                           },
                         ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.wb_sunny_rounded,
+                            dailyBriefingPushNotifier.value
+                                ? cs.tertiary
+                                : cs.outline,
+                          ),
+                          title: l.settingsDailyBriefingPush,
+                          subtitle: l.settingsDailyBriefingPushDesc,
+                          trailing: Switch.adaptive(
+                            value: dailyBriefingPushNotifier.value,
+                            onChanged: (v) {
+                              HapticFeedback.selectionClick();
+                              _setDailyBriefingPush(v);
+                            },
+                          ),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _setDailyBriefingPush(
+                              !dailyBriefingPushNotifier.value,
+                            );
+                          },
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.warning_amber_rounded,
+                            importantChangesPushNotifier.value
+                                ? cs.error
+                                : cs.outline,
+                          ),
+                          title: l.settingsImportantChangesPush,
+                          subtitle: l.settingsImportantChangesPushDesc,
+                          trailing: Switch.adaptive(
+                            value: importantChangesPushNotifier.value,
+                            onChanged: (v) {
+                              HapticFeedback.selectionClick();
+                              _setImportantChangesPush(v);
+                            },
+                          ),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _setImportantChangesPush(
+                              !importantChangesPushNotifier.value,
+                            );
+                          },
+                        ),
                       ],
                       cs,
                       accent: cs.tertiary,
@@ -8098,10 +8374,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       Icons.smart_toy_rounded,
                       [
                         _tile(
-                          leading: _tileIcon(
-                            Icons.hub_rounded,
-                            cs.tertiary,
-                          ),
+                          leading: _tileIcon(Icons.hub_rounded, cs.tertiary),
                           title: l.settingsAiProvider,
                           subtitle: _providerLabel(l, aiProvider),
                           trailing: Icon(
@@ -8145,10 +8418,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                         if (aiProvider == 'custom')
                           _tile(
-                            leading: _tileIcon(
-                              Icons.link_rounded,
-                              cs.primary,
-                            ),
+                            leading: _tileIcon(Icons.link_rounded, cs.primary),
                             title: l.settingsAiCustomBaseUrl,
                             subtitle: aiCustomBaseUrl.isEmpty
                                 ? l.settingsAiCustomBaseUrlHint
@@ -8190,10 +8460,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           title: l.settingsAiPrompt,
                           subtitle: aiSystemPromptTemplate.trim().isEmpty
                               ? l.settingsAiPromptDesc
-                              : aiSystemPromptTemplate
-                                    .trim()
-                                    .split('\n')
-                                    .first,
+                              : aiSystemPromptTemplate.trim().split('\n').first,
                           trailing: Icon(
                             Icons.chevron_right_rounded,
                             size: 20,

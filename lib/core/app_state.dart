@@ -132,6 +132,16 @@ final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
 final ValueNotifier<int> backgroundAnimationStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> backgroundGyroscopeNotifier = ValueNotifier(false);
 final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
+final ValueNotifier<bool> dailyBriefingPushNotifier = ValueNotifier(true);
+final ValueNotifier<bool> importantChangesPushNotifier = ValueNotifier(true);
+final ValueNotifier<String?> pendingTimetableActionNotifier = ValueNotifier(
+  null,
+);
+final ValueNotifier<String?> pendingTimetableCurrentLessonNotifier =
+    ValueNotifier(null);
+final ValueNotifier<String?> pendingTimetableNextLessonNotifier = ValueNotifier(
+  null,
+);
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
 

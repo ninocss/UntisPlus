@@ -153,11 +153,11 @@ class AppL10n {
   String get examsImportSuccess => _t('examsImportSuccess');
   String get examsImportError => _t('examsImportError');
   String get examsImportInvalidJson => _t('examsImportInvalidJson');
-    String get examsExportSuccess => _t('examsExportSuccess');
-    String get examsExportEmpty => _t('examsExportEmpty');
+  String get examsExportSuccess => _t('examsExportSuccess');
+  String get examsExportEmpty => _t('examsExportEmpty');
   String get examsActionCustom => _t('examsActionCustom');
-    String get examsActionImport => _t('examsActionImport');
-    String get examsActionExport => _t('examsActionExport');
+  String get examsActionImport => _t('examsActionImport');
+  String get examsActionExport => _t('examsActionExport');
   String get examsActionScan => _t('examsActionScan');
   String examsInDays(int n) => _t('examsDaysIn').replaceAll('{n}', '$n');
 
@@ -169,6 +169,12 @@ class AppL10n {
   String get infoEmptyHint => _t('infoEmptyHint');
   String get infoFetchError => _t('infoFetchError');
   String get infoOpenLink => _t('infoOpenLink');
+  String notificationActionCurrentLesson(String lesson) =>
+      _t('notificationActionCurrentLesson').replaceAll('{lesson}', lesson);
+  String notificationActionNextLesson(String lesson) =>
+      _t('notificationActionNextLesson').replaceAll('{lesson}', lesson);
+  String get notificationActionNoNextLesson =>
+      _t('notificationActionNoNextLesson');
 
   // ── AI Chat ─────────────────────────────────────────────────────────────────
   String get aiTitle => _t('aiTitle');
@@ -179,7 +185,7 @@ class AppL10n {
   String get aiNoReply => _t('aiNoReply');
   String get aiApiError => _t('aiApiError');
   String get aiConnectionError => _t('aiConnectionError');
-    String get aiCustomBaseUrlMissing => _t('aiCustomBaseUrlMissing');
+  String get aiCustomBaseUrlMissing => _t('aiCustomBaseUrlMissing');
   List<String> get aiSuggestions =>
       List<String>.from(_strings[locale]!['aiSuggestions'] as List);
 
@@ -201,9 +207,9 @@ class AppL10n {
   String get settingsAiModel => _t('settingsAiModel');
   String get settingsAiApiKey => _t('settingsAiApiKey');
   String get settingsAiApiKeyNotSet => _t('settingsAiApiKeyNotSet');
-    String get settingsAiApiKeyDialogDesc => _t('settingsAiApiKeyDialogDesc');
-    String get settingsAiApiKeyGet => _t('settingsAiApiKeyGet');
-    String get settingsAiApiKeyOpenFailed => _t('settingsAiApiKeyOpenFailed');
+  String get settingsAiApiKeyDialogDesc => _t('settingsAiApiKeyDialogDesc');
+  String get settingsAiApiKeyGet => _t('settingsAiApiKeyGet');
+  String get settingsAiApiKeyOpenFailed => _t('settingsAiApiKeyOpenFailed');
   String get settingsAiPrompt => _t('settingsAiPrompt');
   String get settingsAiPromptDesc => _t('settingsAiPromptDesc');
   String get settingsAiPromptEditTitle => _t('settingsAiPromptEditTitle');
@@ -279,6 +285,12 @@ class AppL10n {
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
   String get settingsProgressivePush => _t('settingsProgressivePush');
   String get settingsProgressivePushDesc => _t('settingsProgressivePushDesc');
+  String get settingsDailyBriefingPush => _t('settingsDailyBriefingPush');
+  String get settingsDailyBriefingPushDesc =>
+      _t('settingsDailyBriefingPushDesc');
+  String get settingsImportantChangesPush => _t('settingsImportantChangesPush');
+  String get settingsImportantChangesPushDesc =>
+      _t('settingsImportantChangesPushDesc');
   String get settingsRefreshPushWidgetNow => _t('settingsRefreshPushWidgetNow');
   String get settingsRefreshPushWidgetNowDesc =>
       _t('settingsRefreshPushWidgetNowDesc');
@@ -287,7 +299,7 @@ class AppL10n {
   String get settingsSectionAbout => _t('settingsSectionAbout');
   String get appName => _t('appName');
   String get settingsAppVersion => _t('settingsAppVersion');
-    String get settingsBuild => _t('settingsBuild');
+  String get settingsBuild => _t('settingsBuild');
   String get settingsSectionSubjects => _t('settingsSectionSubjects');
   String get settingsGithubRepoLabel => _t('settingsGithubRepoLabel');
   String get settingsGithubUpdateCheck => _t('settingsGithubUpdateCheck');
@@ -478,8 +490,7 @@ class AppL10n {
       'examsImportSuccess': 'Erfolgreich importiert!',
       'examsImportError': 'Fehler beim Import: ',
       'examsImportInvalidJson': 'Kein gültiges JSON gefunden.',
-      'examsExportSuccess':
-          'Klausuren als JSON in die Zwischenablage kopiert.',
+      'examsExportSuccess': 'Klausuren als JSON in die Zwischenablage kopiert.',
       'examsExportEmpty': 'Keine eigenen Klausuren zum Exportieren.',
       'examsActionCustom': 'Manuell',
       'examsActionImport': 'Importieren (Scan/PDF)',
@@ -495,6 +506,10 @@ class AppL10n {
       'infoFetchError':
           'Benachrichtigungen konnten nicht geladen werden. Bitte später erneut versuchen.',
       'infoOpenLink': 'Link öffnen',
+      'notificationActionCurrentLesson': 'Aktuelle Stunde: {lesson}',
+      'notificationActionNextLesson': 'Nächste Stunde: {lesson}',
+      'notificationActionNoNextLesson':
+          'Keine nächste Stunde für heute gefunden',
 
       'aiTitle': 'KI-Assistent',
       'aiInputHint': 'Frage stellen…',
@@ -530,13 +545,11 @@ class AppL10n {
       'settingsAiProviderCustom': 'Custom Anbieter',
       'settingsAiModel': 'Modell',
       'settingsAiApiKey': 'API-Schlüssel',
-      'settingsAiApiKeyNotSet':
-          'Nicht konfiguriert — Tippen zum Einrichten',
+      'settingsAiApiKeyNotSet': 'Nicht konfiguriert — Tippen zum Einrichten',
       'settingsAiApiKeyDialogDesc':
           'Erforderlich für den KI-Assistenten. Über „API-Key holen“ öffnest du die passende Seite für den ausgewählten Anbieter.',
       'settingsAiApiKeyGet': 'API-Key holen',
-      'settingsAiApiKeyOpenFailed':
-          'Konnte die API-Key-Seite nicht öffnen.',
+      'settingsAiApiKeyOpenFailed': 'Konnte die API-Key-Seite nicht öffnen.',
       'settingsAiPrompt': 'System-Prompt',
       'settingsAiPromptDesc':
           'Bearbeite den vorgefertigten Prompt und nutze Variablen wie [timetable].',
@@ -612,6 +625,12 @@ class AppL10n {
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
+      'settingsDailyBriefingPush': 'Tagesbriefing-Benachrichtigung',
+      'settingsDailyBriefingPushDesc':
+          'Zeigt morgens eine kompakte Vorschau auf deinen Schultag',
+      'settingsImportantChangesPush': 'Wichtige Änderungen',
+      'settingsImportantChangesPushDesc':
+          'Benachrichtigt bei Ausfällen, Raumwechseln und Vertretungen',
       'settingsRefreshPushWidgetNow': 'Push & Widget jetzt aktualisieren',
       'settingsRefreshPushWidgetNowDesc':
           'Lädt sofort die neuesten Daten aus dem API-Cache und aktualisiert Widget und Push',
@@ -805,11 +824,11 @@ class AppL10n {
       'examsImportSuccess': 'Successfully imported!',
       'examsImportError': 'Import error: ',
       'examsImportInvalidJson': 'No valid JSON found.',
-    'examsExportSuccess': 'Exams copied as JSON to clipboard.',
-    'examsExportEmpty': 'No custom exams to export.',
+      'examsExportSuccess': 'Exams copied as JSON to clipboard.',
+      'examsExportEmpty': 'No custom exams to export.',
       'examsActionCustom': 'Manual',
-    'examsActionImport': 'Import (Scan/PDF)',
-    'examsActionExport': 'Export (JSON)',
+      'examsActionImport': 'Import (Scan/PDF)',
+      'examsActionExport': 'Export (JSON)',
       'examsActionScan': 'Scan',
 
       'infoTitle': 'School Info',
@@ -820,6 +839,9 @@ class AppL10n {
           'If your school has not published anything at the moment, nothing is shown here.',
       'infoFetchError': 'Could not load notifications. Please try again later.',
       'infoOpenLink': 'Open link',
+      'notificationActionCurrentLesson': 'Current lesson: {lesson}',
+      'notificationActionNextLesson': 'Next lesson: {lesson}',
+      'notificationActionNoNextLesson': 'No next lesson found for today',
 
       'aiTitle': 'AI Assistant',
       'aiInputHint': 'Ask a question…',
@@ -859,8 +881,7 @@ class AppL10n {
       'settingsAiApiKeyDialogDesc':
           'Required for the AI assistant. Use “Get API Key” to open the correct page for the selected provider.',
       'settingsAiApiKeyGet': 'Get API Key',
-      'settingsAiApiKeyOpenFailed':
-          'Could not open the API key page.',
+      'settingsAiApiKeyOpenFailed': 'Could not open the API key page.',
       'settingsAiPrompt': 'System Prompt',
       'settingsAiPromptDesc':
           'Edit the default prompt and use variables like [timetable].',
@@ -936,6 +957,12 @@ class AppL10n {
       'settingsProgressivePush': 'Progressive push notification',
       'settingsProgressivePushDesc':
           'Show the current lesson as a persistent notification',
+      'settingsDailyBriefingPush': 'Daily briefing notification',
+      'settingsDailyBriefingPushDesc':
+          'Shows a compact preview of your school day in the morning',
+      'settingsImportantChangesPush': 'Important changes',
+      'settingsImportantChangesPushDesc':
+          'Notifies you about cancellations, room changes, and substitutions',
       'settingsRefreshPushWidgetNow': 'Refresh push & widget now',
       'settingsRefreshPushWidgetNowDesc':
           'Immediately loads the newest data from the API cache and updates widget and push',
@@ -1133,8 +1160,7 @@ class AppL10n {
       'examsImportSuccess': 'Importé avec succès !',
       'examsImportError': 'Erreur lors de l\'import : ',
       'examsImportInvalidJson': 'Aucun JSON valide trouvé.',
-      'examsExportSuccess':
-          'Examens copiés en JSON dans le presse-papiers.',
+      'examsExportSuccess': 'Examens copiés en JSON dans le presse-papiers.',
       'examsExportEmpty': 'Aucun examen personnel à exporter.',
       'examsActionCustom': 'Manuel',
       'examsActionImport': 'Importer (Scan/PDF)',
@@ -1150,6 +1176,10 @@ class AppL10n {
       'infoFetchError':
           'Impossible de charger les notifications. Réessaie plus tard.',
       'infoOpenLink': 'Ouvrir le lien',
+      'notificationActionCurrentLesson': 'Cours actuel : {lesson}',
+      'notificationActionNextLesson': 'Cours suivant : {lesson}',
+      'notificationActionNoNextLesson':
+          'Aucun cours suivant trouvé pour aujourd’hui',
 
       'aiTitle': 'Assistant IA',
       'aiInputHint': 'Poser une question…',
@@ -1232,6 +1262,12 @@ class AppL10n {
       'settingsProgressivePush': 'Notification push progressive',
       'settingsProgressivePushDesc':
           'Afficher le cours actuel comme notification persistante',
+      'settingsDailyBriefingPush': 'Notification de briefing quotidien',
+      'settingsDailyBriefingPushDesc':
+          'Affiche le matin un aperçu compact de ta journée scolaire',
+      'settingsImportantChangesPush': 'Changements importants',
+      'settingsImportantChangesPushDesc':
+          'Alerte en cas d’annulations, de changement de salle ou de remplacements',
       'settingsRefreshPushWidgetNow': 'Actualiser push et widget maintenant',
       'settingsRefreshPushWidgetNowDesc':
           'Charge immédiatement les dernières données du cache API et met à jour widget et push',
@@ -1260,8 +1296,7 @@ class AppL10n {
           'Impossible d\'ouvrir le lien de téléchargement.',
       'settingsGithubCheckFailed':
           'La vérification des mises à jour a échoué. Réessaie plus tard.',
-      'settingsGithubNoUpdate':
-          'Tu as déjà la version la plus récente.',
+      'settingsGithubNoUpdate': 'Tu as déjà la version la plus récente.',
       'settingsGithubCurrentVersion': 'Version installée',
       'settingsGithubLatestVersion': 'Dernière version',
       'settingsGithubInstallQuestion':
@@ -1432,11 +1467,11 @@ class AppL10n {
       'examsImportSuccess': '¡Importado con éxito!',
       'examsImportError': 'Error al importar: ',
       'examsImportInvalidJson': 'No se encontró un JSON válido.',
-    'examsExportSuccess': 'Exámenes copiados como JSON al portapapeles.',
-    'examsExportEmpty': 'No hay exámenes propios para exportar.',
+      'examsExportSuccess': 'Exámenes copiados como JSON al portapapeles.',
+      'examsExportEmpty': 'No hay exámenes propios para exportar.',
       'examsActionCustom': 'Manual',
-    'examsActionImport': 'Importar (Escaneo/PDF)',
-    'examsActionExport': 'Exportar (JSON)',
+      'examsActionImport': 'Importar (Escaneo/PDF)',
+      'examsActionExport': 'Exportar (JSON)',
       'examsActionScan': 'Escanear',
 
       'infoTitle': 'Info escolar',
@@ -1448,6 +1483,10 @@ class AppL10n {
       'infoFetchError':
           'No se pudieron cargar las notificaciones. Inténtalo más tarde.',
       'infoOpenLink': 'Abrir enlace',
+      'notificationActionCurrentLesson': 'Clase actual: {lesson}',
+      'notificationActionNextLesson': 'Siguiente clase: {lesson}',
+      'notificationActionNoNextLesson':
+          'No se encontró una siguiente clase para hoy',
 
       'aiTitle': 'Asistente IA',
       'aiInputHint': 'Hacer una pregunta…',
@@ -1530,6 +1569,12 @@ class AppL10n {
       'settingsProgressivePush': 'Notificación push progresiva',
       'settingsProgressivePushDesc':
           'Mostrar la clase actual como notificación persistente',
+      'settingsDailyBriefingPush': 'Notificación de resumen diario',
+      'settingsDailyBriefingPushDesc':
+          'Muestra por la mañana una vista compacta de tu día escolar',
+      'settingsImportantChangesPush': 'Cambios importantes',
+      'settingsImportantChangesPushDesc':
+          'Avisa sobre cancelaciones, cambios de aula y sustituciones',
       'settingsRefreshPushWidgetNow': 'Actualizar push y widget ahora',
       'settingsRefreshPushWidgetNowDesc':
           'Carga inmediatamente los datos más recientes de la caché API y actualiza widget y push',
@@ -1732,10 +1777,8 @@ class AppL10n {
       'examsImportSuccess': 'Η εισαγωγή ολοκληρώθηκε με επιτυχία!',
       'examsImportError': 'Σφάλμα εισαγωγής: ',
       'examsImportInvalidJson': 'Δεν βρέθηκε έγκυρο JSON.',
-      'examsExportSuccess':
-          'Οι εξετάσεις αντιγράφηκαν ως JSON στο πρόχειρο.',
-      'examsExportEmpty':
-          'Δεν υπάρχουν προσωπικές εξετάσεις για εξαγωγή.',
+      'examsExportSuccess': 'Οι εξετάσεις αντιγράφηκαν ως JSON στο πρόχειρο.',
+      'examsExportEmpty': 'Δεν υπάρχουν προσωπικές εξετάσεις για εξαγωγή.',
       'examsActionCustom': 'Χειροκίνητα',
       'examsActionImport': 'Εισαγωγή (Σάρωση/PDF)',
       'examsActionExport': 'Εξαγωγή (JSON)',
@@ -1750,6 +1793,9 @@ class AppL10n {
       'infoFetchError':
           'Δεν ήταν δυνατή η φόρτωση των ειδοποιήσεων. Προσπάθησε ξανά αργότερα.',
       'infoOpenLink': 'Άνοιγμα συνδέσμου',
+      'notificationActionCurrentLesson': 'Τρεχον μαθημα: {lesson}',
+      'notificationActionNextLesson': 'Επομενο μαθημα: {lesson}',
+      'notificationActionNoNextLesson': 'Δεν βρεθηκε επομενο μαθημα για σημερα',
 
       'aiTitle': 'Βοηθός AI',
       'aiInputHint': 'Κάνε μια ερώτηση…',
@@ -1835,6 +1881,12 @@ class AppL10n {
       'settingsProgressivePush': 'Σταδιακή ειδοποίηση push',
       'settingsProgressivePushDesc':
           'Εμφανίζει το τρέχον μάθημα ως μόνιμη ειδοποίηση',
+      'settingsDailyBriefingPush': 'Ειδοποίηση ημερήσιας σύνοψης',
+      'settingsDailyBriefingPushDesc':
+          'Εμφανίζει το πρωί μια σύντομη προεπισκόπηση της σχολικής ημέρας',
+      'settingsImportantChangesPush': 'Σημαντικές αλλαγές',
+      'settingsImportantChangesPushDesc':
+          'Ειδοποιεί για ακυρώσεις, αλλαγές αιθουσών και αναπληρώσεις',
       'settingsRefreshPushWidgetNow': 'Ανανέωση push και widget τώρα',
       'settingsRefreshPushWidgetNowDesc':
           'Φορτώνει αμέσως τα πιο πρόσφατα δεδομένα από την προσωρινή μνήμη του API και ενημερώνει το widget και το push',
@@ -1864,8 +1916,7 @@ class AppL10n {
           'Δεν ήταν δυνατό να ανοίξει ο σύνδεσμος λήψης.',
       'settingsGithubCheckFailed':
           'Ο έλεγχος ενημερώσεων απέτυχε. Δοκίμασε ξανά αργότερα.',
-      'settingsGithubNoUpdate':
-          'Έχεις ήδη την πιο πρόσφατη έκδοση.',
+      'settingsGithubNoUpdate': 'Έχεις ήδη την πιο πρόσφατη έκδοση.',
       'settingsGithubCurrentVersion': 'Εγκατεστημένη έκδοση',
       'settingsGithubLatestVersion': 'Τελευταία έκδοση',
       'settingsGithubInstallQuestion':

@@ -14,6 +14,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
   bool _showTutorial = false;
   int _tutorialStep = 0;
+  StreamSubscription<NotificationActionEvent>? _notificationActionSub;
 
   static const List<int> _tutorialTargets = [0, 1, 2, 3];
 
@@ -21,6 +22,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void initState() {
     super.initState();
     _loadPrefs();
+    _notificationActionSub = NotificationService().actionEvents.listen(
+      _handleNotificationAction,
+    );
+    final pending = NotificationService().consumePendingActionEvent();
+    if (pending != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _handleNotificationAction(pending);
+      });
+    }
     if (widget.showTutorialOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -31,6 +42,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         });
       });
     }
+  }
+
+  void _handleNotificationAction(NotificationActionEvent event) {
+    if (!mounted) return;
+
+    final actionId = event.actionId.trim().isEmpty
+        ? 'open_timetable'
+        : event.actionId.trim();
+
+    pendingTimetableCurrentLessonNotifier.value = event.currentLesson;
+    pendingTimetableNextLessonNotifier.value = event.nextLesson;
+
+    if (actionId == 'open_free_rooms' || actionId == 'open_next_lesson') {
+      _onNavTap(0);
+      pendingTimetableActionNotifier.value = actionId;
+      return;
+    }
+
+    _onNavTap(0);
+    pendingTimetableActionNotifier.value = 'open_timetable';
   }
 
   Future<void> _finishTutorial() async {
@@ -117,6 +148,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const SchoolNotificationsPage(),
     SettingsPage(),
   ];
+
+  @override
+  void dispose() {
+    _notificationActionSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +249,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   decoration: BoxDecoration(
                     color: cs.surface.withValues(alpha: 0.94),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: cs.primary.withValues(alpha: 0.35)),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: 0.35),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: cs.shadow.withValues(alpha: 0.22),
