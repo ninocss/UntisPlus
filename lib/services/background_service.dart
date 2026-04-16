@@ -139,15 +139,35 @@ Future<void> updateUntisData() async {
     return DateTime(now.year, now.month, now.day, hour, minute);
   }
 
+  String lessonDisplayName(Map<dynamic, dynamic> lesson) {
+    final subjectList = lesson['su'];
+    if (subjectList is List && subjectList.isNotEmpty) {
+      final first = subjectList.first;
+      if (first is Map) {
+        final raw =
+            first['longName'] ?? first['longname'] ?? first['name'] ?? '';
+        final label = raw.toString().trim();
+        if (label.isNotEmpty) return label;
+      }
+    }
+
+    final start = lesson['startTime'];
+    final end = lesson['endTime'];
+    if (start is int && end is int) {
+      final startStr = formatUntisTime(start.toString());
+      final endStr = formatUntisTime(end.toString());
+      return "Stunde $startStr - $endStr";
+    }
+
+    return "Stunde";
+  }
+
   for (int i = 0; i < lessons.length; i++) {
     var l = lessons[i];
     int start = l['startTime'] as int;
     int end = l['endTime'] as int;
 
-    String name = "Unbekannt";
-    if (l['su'] != null && (l['su'] as List).isNotEmpty) {
-      name = l['su'][0]['name'] ?? "Unbekannt";
-    }
+    final name = lessonDisplayName(l);
 
     String startStr = formatUntisTime(start.toString());
     String endStr = formatUntisTime(end.toString());
@@ -170,9 +190,7 @@ Future<void> updateUntisData() async {
 
         if (i + 1 < lessons.length) {
           var nextL = lessons[i + 1];
-          if (nextL['su'] != null && (nextL['su'] as List).isNotEmpty) {
-            nextLessonName = nextL['su'][0]['name'] ?? "Unbekannt";
-          }
+          nextLessonName = lessonDisplayName(nextL);
         } else {
           nextLessonName = "Schluss";
         }
@@ -188,8 +206,18 @@ Future<void> updateUntisData() async {
 
   if (!foundCurrent && currentTimeInt > (lessons.last['endTime'] as int)) {
     currentLessonName = "Schluss";
-    timeRemaining = "-";
-    subTextInfo = "-";
+    nextLessonName = "-";
+    timeRemaining = "";
+    subTextInfo = "Kein Unterricht mehr";
+
+    await WidgetService.updateWidgets(
+      currentLesson: currentLessonName,
+      nextLesson: nextLessonName,
+      timeRemaining: timeRemaining,
+      dailySchedule: dailyScheduleBuffer.toString(),
+    );
+    await NotificationService().cancelNotification(1);
+    return;
   }
 
   await WidgetService.updateWidgets(

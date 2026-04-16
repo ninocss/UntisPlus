@@ -248,6 +248,7 @@ Future<T?> _showUnifiedOptionSheet<T>({
 }) {
   return _showUnifiedSheet<T>(
     context: context,
+    isScrollControlled: true,
     child: Builder(
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
@@ -255,26 +256,16 @@ Future<T?> _showUnifiedOptionSheet<T>({
         final isLightMode = Theme.of(ctx).brightness == Brightness.light;
         final mq = MediaQuery.of(ctx);
 
-        // Keep enough room for handle/header/padding and clamp option list height.
+        // Reserve enough vertical space for header chrome and keep menu list scrollable.
         final safeViewportHeight =
             mq.size.height -
             mq.padding.top -
             mq.padding.bottom -
             mq.viewInsets.bottom;
-        final staticChromeHeight =
-            12 + 16 + 5 + 16 + (subtitle == null ? 58 : 86) + 14;
-        final maxListHeight =
-            (safeViewportHeight - staticChromeHeight).clamp(
-                  220.0,
-                  safeViewportHeight * 0.82,
-                )
-                as double;
-        final estimatedContentHeight =
-            (options.length * 56.0) +
-            ((options.length - 1).clamp(0, options.length) * 10.0);
-        final maxSheetHeight = estimatedContentHeight < maxListHeight
-            ? estimatedContentHeight
-            : maxListHeight;
+        final maxListHeight = (safeViewportHeight *
+            (subtitle == null ? 0.74 : 0.68))
+          .clamp(220.0, 520.0)
+          .toDouble();
         return Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
           child: _springEntry(
@@ -316,14 +307,16 @@ Future<T?> _showUnifiedOptionSheet<T>({
                 ],
                 const SizedBox(height: 14),
                 ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: maxSheetHeight),
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: options.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final opt = entry.value;
+                  constraints: BoxConstraints(maxHeight: maxListHeight),
+                  child: ListView.builder(
+                    primary: false,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: ClampingScrollPhysics(),
+                    ),
+                    padding: EdgeInsets.only(bottom: mq.padding.bottom + 12),
+                    itemCount: options.length,
+                    itemBuilder: (listCtx, idx) {
+                        final opt = options[idx];
                         final color = opt.destructive ? cs.error : cs.primary;
                         final iconBackground = opt.selected
                             ? color.withValues(alpha: isLightMode ? 0.22 : 0.26)
@@ -393,128 +386,137 @@ Future<T?> _showUnifiedOptionSheet<T>({
                                         : (opt.selected ? 0.1 : 0.06)),
                             );
 
-                        return _springEntry(
-                          duration: Duration(milliseconds: 240 + idx * 50),
-                          offsetY: 16,
-                          startScale: 0.95,
-                          curve: _kSmoothBounce,
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              bottom: idx == options.length - 1 ? 0 : 10,
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: _withOptionalBackdropBlur(
-                                sigmaX: 10,
-                                sigmaY: 10,
-                                child: const SizedBox.shrink(),
-                                childBuilder: (_) => Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      Navigator.pop(ctx, opt.value);
-                                    },
-                                    borderRadius: BorderRadius.circular(18),
-                                    child: Ink(
-                                      decoration: BoxDecoration(
-                                        color: backgroundColor,
-                                        borderRadius: BorderRadius.circular(18),
-                                        border: Border.all(
-                                          color: borderColor,
-                                          width: 1,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: shadowColor,
-                                            blurRadius: opt.selected ? 12 : 8,
-                                            offset: Offset(0, blurOn ? 4 : 3),
-                                          ),
-                                        ],
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: _withOptionalBackdropBlur(
+                              sigmaX: 10,
+                              sigmaY: 10,
+                              child: const SizedBox.shrink(),
+                              childBuilder: (_) => Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    Navigator.pop(ctx, opt.value);
+                                  },
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: Ink(
+                                    decoration: BoxDecoration(
+                                      gradient: opt.selected
+                                          ? LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                backgroundColor,
+                                                color.withValues(
+                                                  alpha: isLightMode
+                                                      ? 0.12
+                                                      : 0.18,
+                                                ),
+                                              ],
+                                            )
+                                          : null,
+                                      color: opt.selected
+                                          ? null
+                                          : backgroundColor,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: borderColor,
+                                        width: opt.selected ? 1.4 : 1,
                                       ),
-                                      child: ListTile(
-                                        minTileHeight: 52,
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 13,
-                                              vertical: 2,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: shadowColor,
+                                          blurRadius: opt.selected ? 15 : 9,
+                                          offset: Offset(0, blurOn ? 6 : 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ListTile(
+                                      minTileHeight: 56,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 2,
+                                          ),
+                                      leading: opt.icon == null
+                                          ? null
+                                          : Container(
+                                              width: 38,
+                                              height: 38,
+                                              decoration: BoxDecoration(
+                                                color: iconBackground,
+                                                border: Border.all(
+                                                  color: borderColor.withValues(
+                                                    alpha: isLightMode
+                                                        ? 0.9
+                                                        : 0.75,
+                                                  ),
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(11),
+                                              ),
+                                              child: Icon(
+                                                opt.icon,
+                                                color: leadingIconColor,
+                                                size: 19,
+                                              ),
                                             ),
-                                        leading: opt.icon == null
-                                            ? null
-                                            : Container(
-                                                width: 36,
-                                                height: 36,
-                                                decoration: BoxDecoration(
-                                                  color: iconBackground,
-                                                  border: Border.all(
-                                                    color: borderColor
-                                                        .withValues(
-                                                          alpha: isLightMode
-                                                              ? 0.9
-                                                              : 0.75,
-                                                        ),
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(11),
-                                                ),
-                                                child: Icon(
-                                                  opt.icon,
-                                                  color: leadingIconColor,
-                                                  size: 18,
-                                                ),
-                                              ),
-                                        title: Text(
-                                          opt.title,
-                                          style: GoogleFonts.outfit(
-                                            fontWeight: opt.selected
-                                                ? FontWeight.w700
-                                                : FontWeight.w600,
-                                            fontSize: 15.5,
-                                            letterSpacing: 0.08,
-                                            color: titleColor,
-                                          ),
+                                      title: Text(
+                                        opt.title,
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: opt.selected
+                                              ? FontWeight.w700
+                                              : FontWeight.w600,
+                                          fontSize: 15.4,
+                                          letterSpacing: 0.08,
+                                          color: titleColor,
                                         ),
-                                        subtitle: opt.subtitle == null
-                                            ? null
-                                            : Text(
-                                                opt.subtitle!,
-                                                style: GoogleFonts.outfit(
-                                                  color: subtitleColor,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  letterSpacing: 0.05,
-                                                ),
+                                      ),
+                                      subtitle: opt.subtitle == null
+                                          ? null
+                                          : Text(
+                                              opt.subtitle!,
+                                              style: GoogleFonts.outfit(
+                                                color: subtitleColor,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                letterSpacing: 0.05,
                                               ),
-                                        trailing: AnimatedSwitcher(
-                                          duration: const Duration(
-                                            milliseconds: 220,
-                                          ),
-                                          transitionBuilder:
-                                              (child, animation) {
-                                                return ScaleTransition(
-                                                  scale: animation,
-                                                  child: FadeTransition(
-                                                    opacity: animation,
-                                                    child: child,
-                                                  ),
-                                                );
-                                              },
-                                          child: opt.selected
-                                              ? Icon(
-                                                  Icons.check_circle_rounded,
-                                                  key: ValueKey(
-                                                    '${opt.title}_selected',
-                                                  ),
-                                                  color: trailingIconColor,
-                                                )
-                                              : Icon(
-                                                  Icons.chevron_right_rounded,
-                                                  key: ValueKey(
-                                                    '${opt.title}_arrow',
-                                                  ),
-                                                  color: trailingIconColor,
-                                                ),
+                                            ),
+                                      trailing: AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 220,
                                         ),
+                                        transitionBuilder:
+                                            (child, animation) {
+                                              return ScaleTransition(
+                                                scale: animation,
+                                                child: FadeTransition(
+                                                  opacity: animation,
+                                                  child: child,
+                                                ),
+                                              );
+                                            },
+                                        child: opt.selected
+                                            ? Icon(
+                                                Icons.check_circle_rounded,
+                                                key: ValueKey(
+                                                  '${opt.title}_selected',
+                                                ),
+                                                color: trailingIconColor,
+                                                size: 22,
+                                              )
+                                            : Icon(
+                                                Icons.chevron_right_rounded,
+                                                key: ValueKey(
+                                                  '${opt.title}_arrow',
+                                                ),
+                                                color: trailingIconColor,
+                                                size: 20,
+                                              ),
                                       ),
                                     ),
                                   ),
@@ -523,8 +525,7 @@ Future<T?> _showUnifiedOptionSheet<T>({
                             ),
                           ),
                         );
-                      }).toList(),
-                    ),
+                    },
                   ),
                 ),
               ],

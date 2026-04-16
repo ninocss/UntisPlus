@@ -9,6 +9,118 @@ String schoolName = "";
 int personId = 0;
 int personType = 0;
 String geminiApiKey = "";
+String openAiApiKey = "";
+String mistralApiKey = "";
+String customAiApiKey = "";
+
+String aiProvider = 'gemini';
+String aiModel = 'gemini-2.5-flash';
+String aiSystemPromptTemplate = '';
+String aiCustomBaseUrl = '';
+String aiCustomCompatibility = 'openai';
+
+const List<String> kSupportedAiProviders = [
+  'gemini',
+  'openai',
+  'mistral',
+  'custom',
+];
+
+const List<String> kSupportedAiCustomCompatibilities = ['openai', 'gemini'];
+
+String _normalizeAiProvider(String value) {
+  return kSupportedAiProviders.contains(value) ? value : 'gemini';
+}
+
+String _normalizeAiCustomCompatibility(String value) {
+  return kSupportedAiCustomCompatibilities.contains(value) ? value : 'openai';
+}
+
+List<String> _modelsForProvider(
+  String provider, {
+  String? customCompatibility,
+}) {
+  switch (_normalizeAiProvider(provider)) {
+    case 'openai':
+      return const ['gpt-4o-mini', 'gpt-4o', 'o4-mini', 'o3-mini'];
+    case 'mistral':
+      return const [
+        'mistral-small-latest',
+        'mistral-medium-latest',
+        'ministral-8b-latest',
+      ];
+    case 'custom':
+      if (_normalizeAiCustomCompatibility(customCompatibility ?? 'openai') ==
+          'gemini') {
+        return const ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+      }
+      return const ['gpt-4o-mini', 'gpt-4o', 'mistral-small-latest'];
+    case 'gemini':
+    default:
+      return const ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+  }
+}
+
+String _defaultModelForProvider(
+  String provider, {
+  String? customCompatibility,
+}) {
+  return _modelsForProvider(
+    provider,
+    customCompatibility: customCompatibility,
+  ).first;
+}
+
+String _activeAiApiKey() {
+  switch (_normalizeAiProvider(aiProvider)) {
+    case 'openai':
+      return openAiApiKey;
+    case 'mistral':
+      return mistralApiKey;
+    case 'custom':
+      return customAiApiKey;
+    case 'gemini':
+    default:
+      return geminiApiKey;
+  }
+}
+
+String _localizedAiProviderLabel(AppL10n l, String provider) {
+  switch (_normalizeAiProvider(provider)) {
+    case 'openai':
+      return l.settingsAiProviderOpenAi;
+    case 'mistral':
+      return l.settingsAiProviderMistral;
+    case 'custom':
+      return l.settingsAiProviderCustom;
+    case 'gemini':
+    default:
+      return l.settingsAiProviderGemini;
+  }
+}
+
+String _providerAwareMissingApiKeyMessage(AppL10n l, String provider) {
+  return '${l.aiNoApiKey} (${_localizedAiProviderLabel(l, provider)})';
+}
+
+const Map<String, String> aiPromptVariableDescriptions = {
+  '[today]': 'Heutiges Datum in lokaler Schreibweise',
+  '[today_iso]': 'Heutiges Datum im Format YYYY-MM-DD',
+  '[locale]': 'Aktive App-Sprache (z.B. de, en)',
+  '[school_name]': 'Name der Schule',
+  '[school_url]': 'Server/Domain der Schule',
+  '[person_type]': 'WebUntis Personentyp als Zahl',
+  '[person_id]': 'WebUntis Personen-ID',
+  '[demo_mode]': 'true, wenn Demo-Modus aktiv ist',
+  '[current_monday]': 'Montag der geladenen Woche (DD.MM.YYYY)',
+  '[current_friday]': 'Freitag der geladenen Woche (DD.MM.YYYY)',
+  '[day_summary_today]': 'Kurzuebersicht fuer heute',
+  '[day_summary_tomorrow]': 'Kurzuebersicht fuer morgen',
+  '[timetable]': 'Formatierter Stundenplan der aktuellen Woche',
+  '[timetable_json]': 'Rohdaten des Stundenplans als JSON',
+  '[exams]': 'Formatierte Liste geplanter Pruefungen',
+  '[exams_json]': 'Pruefungsdaten als JSON',
+};
 
 final ValueNotifier<String> appLocaleNotifier = ValueNotifier('de');
 final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(

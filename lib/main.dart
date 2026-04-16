@@ -14,7 +14,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'l10n.dart';
@@ -85,13 +84,43 @@ void main() async {
   } catch (_) {}
 
   geminiApiKey = prefs.getString('geminiApiKey') ?? '';
-  if (geminiApiKey.isEmpty) {
+  final hasProviderConfig = prefs.containsKey('aiProvider');
+  if (!hasProviderConfig && geminiApiKey.isEmpty) {
+    // Legacy migration: old versions stored the Gemini key under openAiApiKey.
     final legacy = prefs.getString('openAiApiKey') ?? '';
     if (legacy.isNotEmpty) {
       geminiApiKey = legacy;
       await prefs.setString('geminiApiKey', legacy);
       await prefs.remove('openAiApiKey');
     }
+  }
+
+  openAiApiKey = prefs.getString('openAiApiKey') ?? '';
+  mistralApiKey = prefs.getString('mistralApiKey') ?? '';
+  customAiApiKey = prefs.getString('customAiApiKey') ?? '';
+  aiProvider = _normalizeAiProvider(prefs.getString('aiProvider') ?? 'gemini');
+  aiCustomCompatibility = _normalizeAiCustomCompatibility(
+    prefs.getString('aiCustomCompatibility') ?? 'openai',
+  );
+  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? '';
+  aiSystemPromptTemplate = prefs.getString('aiSystemPromptTemplate') ?? '';
+  final savedModel = prefs.getString('aiModel') ?? '';
+  final availableModels = _modelsForProvider(
+    aiProvider,
+    customCompatibility: aiCustomCompatibility,
+  );
+  aiModel = savedModel.isNotEmpty
+      ? savedModel
+      : _defaultModelForProvider(
+          aiProvider,
+          customCompatibility: aiCustomCompatibility,
+        );
+  if (!availableModels.contains(aiModel)) {
+    aiModel = _defaultModelForProvider(
+      aiProvider,
+      customCompatibility: aiCustomCompatibility,
+    );
+    await prefs.setString('aiModel', aiModel);
   }
 
   runApp(
@@ -2947,17 +2976,24 @@ class _ExamsPageState extends State<ExamsPage> {
           icon: Icons.edit_note_rounded,
         ),
         _SheetOption(
-          value: 'scan',
-          title: l.examsActionScan,
-          icon: Icons.document_scanner_rounded,
+          value: 'import',
+          title: l.examsActionImport,
+          icon: Icons.upload_file_rounded,
+        ),
+        _SheetOption(
+          value: 'export',
+          title: l.examsActionExport,
+          icon: Icons.ios_share_rounded,
         ),
       ],
     );
 
     if (selected == 'custom') {
       _showAddExamDialog();
-    } else if (selected == 'scan') {
+    } else if (selected == 'import') {
       _importExamsWithAI();
+    } else if (selected == 'export') {
+      _exportCustomExams();
     }
   }
 
@@ -3080,6 +3116,297 @@ class _ExamsPageState extends State<ExamsPage> {
 
   String _examType(Map<String, dynamic> e) =>
       (e['examType'] ?? e['type'] ?? e['typeName'] ?? '').toString();
+
+  bool _providerUsesGeminiProtocol() {
+    final provider = _normalizeAiProvider(aiProvider);
+    if (provider == 'gemini') return true;
+    if (provider == 'custom') {
+      return _normalizeAiCustomCompatibility(aiCustomCompatibility) == 'gemini';
+    }
+    return false;
+  }
+
+  String _normalizedAiBaseUrl(String value) {
+    var out = value.trim();
+    while (out.endsWith('/')) {
+      out = out.substring(0, out.length - 1);
+    }
+    return out;
+  }
+
+  String _openAiCompatibleEndpointForExamImport(String rawBaseUrl) {
+    final base = _normalizedAiBaseUrl(rawBaseUrl);
+    if (base.isEmpty) return '';
+    if (base.endsWith('/chat/completions')) return base;
+    if (base.endsWith('/v1')) return '$base/chat/completions';
+    if (base.endsWith('/v1/chat')) return '$base/completions';
+    return '$base/v1/chat/completions';
+  }
+
+  String _geminiCompatibleEndpointForExamImport(String rawBaseUrl, String model) {
+    final base = _normalizedAiBaseUrl(rawBaseUrl);
+    if (base.isEmpty) return '';
+    if (base.contains('/models/')) return base;
+    if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
+    if (base.contains('/v1')) return '$base/models/$model:generateContent';
+    return '$base/v1beta/models/$model:generateContent';
+  }
+
+  String _extractOpenAiCompatibleText(
+    Map<String, dynamic> payload,
+    AppL10n l,
+  ) {
+    final choices = payload['choices'];
+    if (choices is! List || choices.isEmpty) {
+      throw Exception('API: ${l.aiNoReply}');
+    }
+
+    final first = choices.first;
+    if (first is! Map<String, dynamic>) {
+      throw Exception('API: ${l.aiNoReply}');
+    }
+
+    final message = first['message'];
+    if (message is Map<String, dynamic>) {
+      final content = message['content'];
+      if (content is String && content.trim().isNotEmpty) {
+        return content.trim();
+      }
+      if (content is List) {
+        final text = content
+            .map((part) {
+              if (part is Map<String, dynamic>) {
+                return part['text']?.toString() ?? '';
+              }
+              return '';
+            })
+            .join()
+            .trim();
+        if (text.isNotEmpty) return text;
+      }
+    }
+
+    final legacyText = first['text']?.toString().trim() ?? '';
+    if (legacyText.isNotEmpty) return legacyText;
+    throw Exception('API: ${l.aiNoReply}');
+  }
+
+  Future<String> _requestExamImportWithGemini({
+    required String endpoint,
+    required String apiKey,
+    required String prompt,
+    required Uint8List fileBytes,
+    required String mimeType,
+  }) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final endpointUri = Uri.parse(endpoint);
+    final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
+      ..putIfAbsent('key', () => apiKey);
+    final uri = endpointUri.replace(queryParameters: mergedParams);
+
+    final body = jsonEncode({
+      'systemInstruction': {
+        'parts': [
+          {'text': 'Extrahiere strukturierte Prüfungsdaten und antworte nur mit JSON.'},
+        ],
+      },
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [
+            {'text': prompt},
+            {
+              'inline_data': {
+                'mime_type': mimeType,
+                'data': base64Encode(fileBytes),
+              },
+            },
+          ],
+        },
+      ],
+      'generationConfig': {
+        'temperature': 0.1,
+        'maxOutputTokens': 2200,
+      },
+    });
+
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: body,
+    );
+
+    Map<String, dynamic>? payload;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) payload = decoded;
+    } catch (_) {}
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = payload?['error']?['message'] ?? response.statusCode;
+      throw Exception('API: $message');
+    }
+
+    var reply = '';
+    final candidates = payload?['candidates'];
+    if (candidates is List && candidates.isNotEmpty) {
+      final content = candidates.first['content'];
+      final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
+      if (parts is List) {
+        reply = parts
+            .map((part) {
+              if (part is Map<String, dynamic>) {
+                return part['text']?.toString() ?? '';
+              }
+              return '';
+            })
+            .join();
+      }
+    }
+
+    reply = reply.trim();
+    if (reply.isEmpty) {
+      throw Exception('API: ${l.aiNoReply}');
+    }
+    return reply;
+  }
+
+  Future<String> _requestExamImportWithOpenAiCompatible({
+    required String endpoint,
+    required String apiKey,
+    required String model,
+    required String prompt,
+    required Uint8List fileBytes,
+    required String mimeType,
+  }) async {
+    if (!mimeType.startsWith('image/')) {
+      throw Exception('API: Unsupported file type for this provider: $mimeType');
+    }
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final dataUrl = 'data:$mimeType;base64,${base64Encode(fileBytes)}';
+    final body = jsonEncode({
+      'model': model,
+      'messages': [
+        {
+          'role': 'system',
+          'content':
+              'Extrahiere strukturierte Prüfungsdaten aus dem Bild. Antworte ausschließlich als JSON-Array.',
+        },
+        {
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': prompt},
+            {
+              'type': 'image_url',
+              'image_url': {'url': dataUrl},
+            },
+          ],
+        },
+      ],
+      'temperature': 0.1,
+    });
+
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      },
+      body: body,
+    );
+
+    Map<String, dynamic>? payload;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) payload = decoded;
+    } catch (_) {}
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = payload?['error']?['message'] ?? response.statusCode;
+      throw Exception('API: $message');
+    }
+
+    return _extractOpenAiCompatibleText(payload ?? const {}, l);
+  }
+
+  Future<String> _requestExamImportResponse({
+    required String prompt,
+    required Uint8List fileBytes,
+    required String mimeType,
+  }) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final provider = _normalizeAiProvider(aiProvider);
+    final apiKey = _activeAiApiKey().trim();
+    if (apiKey.isEmpty) {
+      throw Exception(
+        'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
+      );
+    }
+
+    final model = aiModel.trim().isNotEmpty
+        ? aiModel.trim()
+        : _defaultModelForProvider(
+            provider,
+            customCompatibility: aiCustomCompatibility,
+          );
+
+    switch (provider) {
+      case 'openai':
+        return _requestExamImportWithOpenAiCompatible(
+          endpoint: 'https://api.openai.com/v1/chat/completions',
+          apiKey: apiKey,
+          model: model,
+          prompt: prompt,
+          fileBytes: fileBytes,
+          mimeType: mimeType,
+        );
+      case 'mistral':
+        return _requestExamImportWithOpenAiCompatible(
+          endpoint: 'https://api.mistral.ai/v1/chat/completions',
+          apiKey: apiKey,
+          model: model,
+          prompt: prompt,
+          fileBytes: fileBytes,
+          mimeType: mimeType,
+        );
+      case 'custom':
+        final baseUrl = aiCustomBaseUrl.trim();
+        if (baseUrl.isEmpty) {
+          throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
+        }
+        final compat = _normalizeAiCustomCompatibility(aiCustomCompatibility);
+        if (compat == 'gemini') {
+          return _requestExamImportWithGemini(
+            endpoint: _geminiCompatibleEndpointForExamImport(baseUrl, model),
+            apiKey: apiKey,
+            prompt: prompt,
+            fileBytes: fileBytes,
+            mimeType: mimeType,
+          );
+        }
+        return _requestExamImportWithOpenAiCompatible(
+          endpoint: _openAiCompatibleEndpointForExamImport(baseUrl),
+          apiKey: apiKey,
+          model: model,
+          prompt: prompt,
+          fileBytes: fileBytes,
+          mimeType: mimeType,
+        );
+      case 'gemini':
+      default:
+        return _requestExamImportWithGemini(
+          endpoint:
+              'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
+          apiKey: apiKey,
+          prompt: prompt,
+          fileBytes: fileBytes,
+          mimeType: mimeType,
+        );
+    }
+  }
 
   Future<void> _showAddExamDialog([
     Map<String, dynamic>? existing,
@@ -3337,10 +3664,16 @@ class _ExamsPageState extends State<ExamsPage> {
 
   Future<void> _importExamsWithAI() async {
     final l = AppL10n.of(appLocaleNotifier.value);
-    if (geminiApiKey.isEmpty) {
+    final providerUsesGeminiProtocol = _providerUsesGeminiProtocol();
+    final provider = _normalizeAiProvider(aiProvider);
+    if (_activeAiApiKey().trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(l.aiNoApiKey)));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(_providerAwareMissingApiKeyMessage(l, provider)),
+        ),
+      );
       return;
     }
 
@@ -3385,7 +3718,9 @@ class _ExamsPageState extends State<ExamsPage> {
     } else {
       final picked = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+        allowedExtensions: providerUsesGeminiProtocol
+            ? ['pdf', 'png', 'jpg', 'jpeg']
+            : ['png', 'jpg', 'jpeg'],
         withData: true,
       );
       if (picked == null || picked.files.isEmpty) return;
@@ -3399,6 +3734,7 @@ class _ExamsPageState extends State<ExamsPage> {
     if (fileBytes == null) return;
     if (!mounted) return;
 
+    var loadingVisible = true;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -3406,13 +3742,9 @@ class _ExamsPageState extends State<ExamsPage> {
     );
 
     try {
-      final model = GenerativeModel(
-        model: 'gemini-2.5-flash',
-        apiKey: geminiApiKey,
-      );
-      final prompt = TextPart(
-        '''Du bist ein Assistent, der Klausurpläne von Schulen strukturiert erfasst.
-Extrahiere alle relevanten Klausuren/Prüfungen aus dem angehängten Bild oder PDF.
+      final prompt =
+          '''Du bist ein Assistent, der Klausurpläne von Schulen strukturiert erfasst.
+Extrahiere alle relevanten Klausuren/Prüfungen aus dem angehängten Bild${providerUsesGeminiProtocol ? ' oder PDF' : ''}.
 Antworte AUSSCHLIESSLICH im folgenden JSON Array Format (kein Markdown-Block, nur reines JSON, keine Grußformeln):
 [
   {
@@ -3422,23 +3754,32 @@ Antworte AUSSCHLIESSLICH im folgenden JSON Array Format (kein Markdown-Block, nu
     "description": "Ergänzende Infos oder leere Zeichenkette"
   }
 ]
-WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr, leiste es aus dem aktuellen Datum (${DateTime.now().year}) ab. Wenn die Datei keine Klausuren enthält, gib ein leeres Array [] zurück.''',
-      );
-      final dataPart = DataPart(mimeType, fileBytes);
+WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr, leite es aus dem aktuellen Datum (${DateTime.now().year}) ab. Wenn die Datei keine Klausuren enthält, gib ein leeres Array [] zurück.''';
 
-      final response = await model.generateContent([
-        Content.multi([prompt, dataPart]),
-      ]);
+      final text = await _requestExamImportResponse(
+        prompt: prompt,
+        fileBytes: fileBytes,
+        mimeType: mimeType,
+      );
 
       if (!mounted) return;
-      Navigator.pop(context); // hide loading
+      if (loadingVisible) {
+        Navigator.pop(context);
+        loadingVisible = false;
+      }
 
-      final text = response.text ?? '';
       final jsonStart = text.indexOf('[');
       final jsonEnd = text.lastIndexOf(']');
       if (jsonStart != -1 && jsonEnd != -1) {
         final jsonStr = text.substring(jsonStart, jsonEnd + 1);
-        final List<dynamic> exams = jsonDecode(jsonStr);
+        final decoded = jsonDecode(jsonStr);
+        if (decoded is! List) {
+          throw Exception('API: ${l.examsImportInvalidJson}');
+        }
+        final exams = decoded
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
 
         setState(() {
           for (var e in exams) {
@@ -3461,11 +3802,51 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // hide loading
+      if (loadingVisible) {
+        Navigator.pop(context);
+        loadingVisible = false;
+      }
+      final message = e.toString();
+      final isApiError = message.contains('API:');
+      final isConfigError = message.contains('CONFIG:');
+      final detail = isConfigError
+          ? message.replaceFirst('Exception: CONFIG: ', '')
+          : isApiError
+          ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
+          : '${l.aiConnectionError} $e';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('${l.examsImportError}$e')));
+      ).showSnackBar(SnackBar(content: Text('${l.examsImportError}$detail')));
     }
+  }
+
+  Future<void> _exportCustomExams() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    if (_customExams.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.examsExportEmpty)));
+      return;
+    }
+
+    final exportPayload = _customExams
+        .map(
+          (e) => <String, dynamic>{
+            'subject': _examSubject(e),
+            'examType': _examType(e),
+            'date': (e['date'] ?? e['examDate'] ?? e['startDate'] ?? '')
+                .toString(),
+            'description': (e['description'] ?? '').toString(),
+          },
+        )
+        .toList();
+
+    final jsonText = const JsonEncoder.withIndent('  ').convert(exportPayload);
+    await Clipboard.setData(ClipboardData(text: jsonText));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l.examsExportSuccess)));
   }
 
   @override
@@ -3859,6 +4240,39 @@ String _formatWeekForAi(Map<int, List<dynamic>> weekData, DateTime monday) {
   return buf.toString();
 }
 
+String _buildDefaultAiPromptTemplate(AppL10n l) {
+  return '''${l.aiSystemPersona}
+Heute: [today]
+Heute (ISO): [today_iso]
+Sprache: [locale]
+Schule: [school_name]
+Server: [school_url]
+Demo-Modus: [demo_mode]
+Personentyp: [person_type]
+Personen-ID: [person_id]
+Wochenbereich: [current_monday] bis [current_friday]
+
+HEUTE:
+[day_summary_today]
+
+MORGEN:
+[day_summary_tomorrow]
+
+STUNDENPLAN DIESE WOCHE:
+[timetable]
+
+PRUEFUNGEN:
+[exams]
+
+ROHDATEN STUNDENPLAN (JSON):
+[timetable_json]
+
+ROHDATEN PRUEFUNGEN (JSON):
+[exams_json]
+
+${l.aiSystemRules}''';
+}
+
 // --- KI-ASSISTENT CHAT ---
 
 class _TimetableChatSheet extends StatefulWidget {
@@ -3880,6 +4294,39 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
   final List<Map<String, String>> _messages = [];
   List<Map<String, dynamic>> _exams = [];
   bool _thinking = false;
+
+  List<String> get _quickPrompts {
+    final suggestions =
+        AppL10n.of(appLocaleNotifier.value).aiSuggestions
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+    if (suggestions.isEmpty) return const [];
+
+    final primary = suggestions.take(4).toList();
+
+    final todayIdx = DateTime.now().weekday - 1;
+    final hasTodayLessons =
+        todayIdx >= 0 &&
+        todayIdx < 5 &&
+        (widget.weekData[todayIdx] ?? const []).isNotEmpty;
+    final hasUpcomingExams = _exams.any((ex) {
+      final raw =
+          (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '').toString();
+      return raw.length == 8 &&
+          (int.tryParse(raw) ?? 0) >=
+              int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+    });
+
+    if (hasTodayLessons && suggestions.length > 4) {
+      primary.add(suggestions[4]);
+    }
+    if (hasUpcomingExams && suggestions.length > 5) {
+      primary.add(suggestions[5]);
+    }
+
+    return primary.toSet().take(6).toList();
+  }
 
   @override
   void initState() {
@@ -4021,35 +4468,353 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     return buf.toString();
   }
 
-  String get _systemPrompt {
+  String _defaultPromptTemplate(AppL10n l) {
+    return _buildDefaultAiPromptTemplate(l);
+  }
+
+  String _daySummaryForPrompt(DateTime date) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final today = DateTime.now();
+    final index = date.difference(widget.currentMonday).inDays;
+    final dateLabel = DateFormat('dd.MM.yyyy').format(date);
+    if (index < 0 || index > 4) {
+      return '$dateLabel: ${l.noLesson}';
+    }
+
+    final lessons = widget.weekData[index] ?? const [];
+    if (lessons.isEmpty) {
+      return '$dateLabel: ${l.noLesson}';
+    }
+
+    final buf = StringBuffer('$dateLabel:\n');
+    for (final lsn in lessons) {
+      final start = _formatUntisTime(lsn['startTime'].toString());
+      final end = _formatUntisTime(lsn['endTime'].toString());
+      final subj = lsn['_subjectLong']?.toString().isNotEmpty == true
+          ? lsn['_subjectLong'].toString()
+          : lsn['_subjectShort']?.toString() ?? '?';
+      final room = lsn['_room']?.toString() ?? '';
+      final cancelled = (lsn['code'] ?? '') == 'cancelled';
+      buf.write('- $start-$end $subj');
+      if (room.isNotEmpty) buf.write(' (${l.detailRoom} $room)');
+      if (cancelled) buf.write(' [${l.detailCancelled}]');
+      buf.writeln();
+    }
+    return buf.toString().trimRight();
+  }
+
+  Object? _jsonSafeValue(Object? value) {
+    if (value == null || value is String || value is num || value is bool) {
+      return value;
+    }
+    if (value is DateTime) return value.toIso8601String();
+    if (value is List) {
+      return value.map(_jsonSafeValue).toList();
+    }
+    if (value is Map) {
+      final out = <String, Object?>{};
+      value.forEach((key, entryValue) {
+        out[key.toString()] = _jsonSafeValue(entryValue);
+      });
+      return out;
+    }
+    return value.toString();
+  }
+
+  Map<String, String> _promptVariables() {
+    final now = DateTime.now();
     final icu = _icuLocale(appLocaleNotifier.value);
-    final todayStr = DateFormat('EEEE, dd. MMMM yyyy', icu).format(today);
     final schedule = _formatWeekForAi(widget.weekData, widget.currentMonday);
     final examsStr = _formatExamsForAi();
-    return '''
-      ${l.aiSystemPersona}
-      Heute ist: $todayStr
+    final friday = widget.currentMonday.add(const Duration(days: 4));
+    return {
+      '[today]': DateFormat('EEEE, dd. MMMM yyyy', icu).format(now),
+      '[today_iso]': DateFormat('yyyy-MM-dd').format(now),
+      '[locale]': appLocaleNotifier.value,
+      '[school_name]': schoolName.isEmpty ? '-' : schoolName,
+      '[school_url]': schoolUrl.isEmpty ? '-' : schoolUrl,
+      '[person_type]': '$personType',
+      '[person_id]': '$personId',
+      '[demo_mode]': '${demoModeNotifier.value}',
+      '[current_monday]': DateFormat('dd.MM.yyyy').format(widget.currentMonday),
+      '[current_friday]': DateFormat('dd.MM.yyyy').format(friday),
+      '[day_summary_today]': _daySummaryForPrompt(now),
+      '[day_summary_tomorrow]': _daySummaryForPrompt(
+        now.add(const Duration(days: 1)),
+      ),
+      '[timetable]': schedule,
+      '[timetable_json]': jsonEncode(_jsonSafeValue(widget.weekData)),
+      '[exams]': examsStr,
+      '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
+    };
+  }
 
-      STUNDENPLAN DIESE WOCHE:
-      $schedule
+  String _resolvedSystemPrompt() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final template = aiSystemPromptTemplate.trim().isNotEmpty
+        ? aiSystemPromptTemplate
+        : _defaultPromptTemplate(l);
+    final vars = _promptVariables().entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+    var resolved = template;
+    for (final entry in vars) {
+      resolved = resolved.replaceAll(entry.key, entry.value);
+    }
+    return resolved;
+  }
 
-      GEPLANTE KLAUSUREN / PRÜFUNGEN:
-      $examsStr
+  String _normalizedBaseUrl(String value) {
+    var out = value.trim();
+    while (out.endsWith('/')) {
+      out = out.substring(0, out.length - 1);
+    }
+    return out;
+  }
 
-      ${l.aiSystemRules}
-    ''';
+  String _openAiCompatibleEndpoint(String rawBaseUrl) {
+    final base = _normalizedBaseUrl(rawBaseUrl);
+    if (base.isEmpty) return '';
+    if (base.endsWith('/chat/completions')) return base;
+    if (base.endsWith('/v1')) return '$base/chat/completions';
+    if (base.endsWith('/v1/chat')) return '$base/completions';
+    return '$base/v1/chat/completions';
+  }
+
+  String _geminiCompatibleEndpoint(String rawBaseUrl, String model) {
+    final base = _normalizedBaseUrl(rawBaseUrl);
+    if (base.isEmpty) return '';
+    if (base.contains('/models/')) return base;
+    if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
+    if (base.contains('/v1')) return '$base/models/$model:generateContent';
+    return '$base/v1beta/models/$model:generateContent';
+  }
+
+  List<Map<String, String>> _historyForProvider() {
+    return _messages
+        .map(
+          (m) => {
+            'role': m['role'] == 'user' ? 'user' : 'assistant',
+            'content': m['content'] ?? '',
+          },
+        )
+        .toList();
+  }
+
+  Future<String> _requestGeminiResponse({
+    required String endpoint,
+    required String apiKey,
+    required String systemPrompt,
+  }) async {
+    final contents = _messages.map((m) {
+      final role = (m['role'] == 'user') ? 'user' : 'model';
+      return {
+        'role': role,
+        'parts': [
+          {'text': m['content'] ?? ''},
+        ],
+      };
+    }).toList();
+
+    final body = jsonEncode({
+      'systemInstruction': {
+        'parts': [
+          {'text': systemPrompt},
+        ],
+      },
+      'contents': contents,
+      'generationConfig': {'maxOutputTokens': 2600, 'temperature': 0.2},
+    });
+
+    final endpointUri = Uri.parse(endpoint);
+    final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
+      ..putIfAbsent('key', () => apiKey);
+    final uri = endpointUri.replace(queryParameters: mergedParams);
+
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: body,
+    );
+
+    Map<String, dynamic>? payload;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) payload = decoded;
+    } catch (_) {}
+
+    if (response.statusCode != 200) {
+      final message = payload?['error']?['message'] ?? response.statusCode;
+      throw Exception('API: $message');
+    }
+
+    var reply = '';
+    final candidates = payload?['candidates'];
+    if (candidates is List && candidates.isNotEmpty) {
+      final content = candidates.first['content'];
+      final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
+      if (parts is List) {
+        reply = parts
+            .map((p) => (p is Map<String, dynamic>) ? p['text'] : null)
+            .whereType<String>()
+            .join();
+      }
+    }
+
+    reply = reply.trim();
+    if (reply.isEmpty) {
+      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+    }
+    return reply;
+  }
+
+  Future<String> _requestOpenAiCompatibleResponse({
+    required String endpoint,
+    required String apiKey,
+    required String model,
+    required String systemPrompt,
+  }) async {
+    final messages = [
+      {'role': 'system', 'content': systemPrompt},
+      ..._historyForProvider(),
+    ];
+
+    final body = jsonEncode({
+      'model': model,
+      'messages': messages,
+      'temperature': 0.2,
+    });
+
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $apiKey',
+      },
+      body: body,
+    );
+
+    Map<String, dynamic>? payload;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) payload = decoded;
+    } catch (_) {}
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = payload?['error']?['message'] ?? response.statusCode;
+      throw Exception('API: $message');
+    }
+
+    final choices = payload?['choices'];
+    if (choices is! List || choices.isEmpty) {
+      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+    }
+
+    final first = choices.first;
+    if (first is! Map<String, dynamic>) {
+      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+    }
+
+    final message = first['message'];
+    if (message is Map<String, dynamic>) {
+      final content = message['content'];
+      if (content is String && content.trim().isNotEmpty) {
+        return content.trim();
+      }
+      if (content is List) {
+        final text = content
+            .map((part) {
+              if (part is Map<String, dynamic>) {
+                return part['text']?.toString() ?? '';
+              }
+              return '';
+            })
+            .join()
+            .trim();
+        if (text.isNotEmpty) return text;
+      }
+    }
+
+    final legacyText = first['text']?.toString().trim() ?? '';
+    if (legacyText.isNotEmpty) return legacyText;
+    throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+  }
+
+  Future<String> _requestProviderResponse(String systemPrompt) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final provider = _normalizeAiProvider(aiProvider);
+    final apiKey = _activeAiApiKey().trim();
+    if (apiKey.isEmpty) {
+      throw Exception(
+        'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
+      );
+    }
+
+    final model = aiModel.trim().isNotEmpty
+        ? aiModel.trim()
+        : _defaultModelForProvider(
+            provider,
+            customCompatibility: aiCustomCompatibility,
+          );
+
+    switch (provider) {
+      case 'openai':
+        return _requestOpenAiCompatibleResponse(
+          endpoint: 'https://api.openai.com/v1/chat/completions',
+          apiKey: apiKey,
+          model: model,
+          systemPrompt: systemPrompt,
+        );
+      case 'mistral':
+        return _requestOpenAiCompatibleResponse(
+          endpoint: 'https://api.mistral.ai/v1/chat/completions',
+          apiKey: apiKey,
+          model: model,
+          systemPrompt: systemPrompt,
+        );
+      case 'custom':
+        final baseUrl = aiCustomBaseUrl.trim();
+        if (baseUrl.isEmpty) {
+          throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
+        }
+        final compat = _normalizeAiCustomCompatibility(aiCustomCompatibility);
+        if (compat == 'gemini') {
+          return _requestGeminiResponse(
+            endpoint: _geminiCompatibleEndpoint(baseUrl, model),
+            apiKey: apiKey,
+            systemPrompt: systemPrompt,
+          );
+        }
+        return _requestOpenAiCompatibleResponse(
+          endpoint: _openAiCompatibleEndpoint(baseUrl),
+          apiKey: apiKey,
+          model: model,
+          systemPrompt: systemPrompt,
+        );
+      case 'gemini':
+      default:
+        return _requestGeminiResponse(
+          endpoint:
+              'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
+          apiKey: apiKey,
+          systemPrompt: systemPrompt,
+        );
+    }
   }
 
   Future<void> _send() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _thinking) return;
 
-    if (geminiApiKey.isEmpty) {
+    if (_activeAiApiKey().trim().isEmpty) {
       final l = AppL10n.of(appLocaleNotifier.value);
+      final provider = _normalizeAiProvider(aiProvider);
       setState(() {
-        _messages.add({'role': 'assistant', 'content': l.aiNoApiKey});
+        _messages.add({
+          'role': 'assistant',
+          'content': _providerAwareMissingApiKeyMessage(l, provider),
+        });
       });
       return;
     }
@@ -4062,85 +4827,35 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     _scrollToBottom();
 
     try {
-      final contents = _messages.map((m) {
-        final role = (m['role'] == 'user') ? 'user' : 'model';
-        return {
-          'role': role,
-          'parts': [
-            {'text': m['content'] ?? ''},
-          ],
-        };
-      }).toList();
-
-      final body = jsonEncode({
-        'systemInstruction': {
-          'parts': [
-            {'text': _systemPrompt},
-          ],
-        },
-        'contents': contents,
-        'generationConfig': {'maxOutputTokens': 2600, 'temperature': 0.2},
+      final reply = await _requestProviderResponse(_resolvedSystemPrompt());
+      setState(() {
+        _messages.add({'role': 'assistant', 'content': reply});
       });
-
-      final response = await http.post(
-        Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$geminiApiKey',
-        ),
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String reply = '';
-        final candidates = (data is Map<String, dynamic>)
-            ? data['candidates']
-            : null;
-        if (candidates is List && candidates.isNotEmpty) {
-          final content = candidates.first['content'];
-          final parts = (content is Map<String, dynamic>)
-              ? content['parts']
-              : null;
-          if (parts is List) {
-            reply = parts
-                .map((p) => (p is Map<String, dynamic>) ? p['text'] : null)
-                .whereType<String>()
-                .join();
-          }
-        }
-        reply = reply.trim();
-        if (reply.isEmpty) {
-          reply = AppL10n.of(appLocaleNotifier.value).aiNoReply;
-        }
-        setState(() {
-          _messages.add({'role': 'assistant', 'content': reply});
-        });
-      } else {
-        Map<String, dynamic>? err;
-        try {
-          final decoded = jsonDecode(response.body);
-          if (decoded is Map<String, dynamic>) err = decoded;
-        } catch (_) {}
-        setState(() {
-          _messages.add({
-            'role': 'assistant',
-            'content':
-                '${AppL10n.of(appLocaleNotifier.value).aiApiError} ${err?['error']?['message'] ?? response.statusCode}',
-          });
-        });
-      }
     } catch (e) {
+      final message = e.toString();
+      final l = AppL10n.of(appLocaleNotifier.value);
+      final isApiError = message.contains('API:');
+      final isConfigError = message.contains('CONFIG:');
       setState(() {
         _messages.add({
           'role': 'assistant',
-          'content':
-              '${AppL10n.of(appLocaleNotifier.value).aiConnectionError} $e',
+          'content': isConfigError
+              ? message.replaceFirst('Exception: CONFIG: ', '')
+              : isApiError
+              ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
+              : '${l.aiConnectionError} $e',
         });
       });
     } finally {
       if (mounted) setState(() => _thinking = false);
       _scrollToBottom();
     }
+  }
+
+  Future<void> _sendQuickPrompt(String prompt) async {
+    if (_thinking) return;
+    _inputController.text = prompt;
+    await _send();
   }
 
   void _scrollToBottom() {
@@ -4182,8 +4897,8 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      cs.surface.withValues(alpha: 0.78),
-                      cs.surfaceContainerHigh.withValues(alpha: 0.62),
+                      cs.surface.withValues(alpha: 0.8),
+                      cs.surfaceContainerHigh.withValues(alpha: 0.66),
                     ],
                   )
                 : null,
@@ -4215,10 +4930,15 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: cs.primaryContainer,
-                            borderRadius: BorderRadius.circular(14),
+                            gradient: LinearGradient(
+                              colors: [
+                                cs.primaryContainer,
+                                cs.tertiaryContainer,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Icon(
                             Icons.auto_awesome_rounded,
@@ -4237,6 +4957,14 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                                 fontSize: 20,
                               ),
                             ),
+                            Text(
+                              AppL10n.of(appLocaleNotifier.value).aiAskAnything,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
                           ],
                         ),
                         const Spacer(),
@@ -4248,6 +4976,42 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                     ),
                     const SizedBox(height: 12),
                     Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
+                    if (_quickPrompts.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 38,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _quickPrompts.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final prompt = _quickPrompts[index];
+                            return ActionChip(
+                              avatar: const Icon(
+                                Icons.bolt_rounded,
+                                size: 15,
+                              ),
+                              label: Text(
+                                prompt,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              backgroundColor: cs.primaryContainer.withValues(
+                                alpha: 0.7,
+                              ),
+                              side: BorderSide.none,
+                              onPressed: _thinking
+                                  ? null
+                                  : () => _sendQuickPrompt(prompt),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -4272,50 +5036,63 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
 
               Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, bottom + 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _inputController,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _send(),
-                        style: GoogleFonts.outfit(fontSize: 15),
-                        decoration: InputDecoration(
-                          hintText: AppL10n.of(
-                            appLocaleNotifier.value,
-                          ).aiInputHint,
-                          hintStyle: GoogleFonts.outfit(
-                            color: cs.onSurface.withValues(alpha: 0.38),
-                          ),
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.5,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 14,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        cs.surfaceContainerHigh.withValues(alpha: 0.72),
+                        cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _inputController,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _send(),
+                          style: GoogleFonts.outfit(fontSize: 15),
+                          decoration: InputDecoration(
+                            hintText: AppL10n.of(
+                              appLocaleNotifier.value,
+                            ).aiInputHint,
+                            hintStyle: GoogleFonts.outfit(
+                              color: cs.onSurface.withValues(alpha: 0.38),
+                            ),
+                            filled: true,
+                            fillColor: Colors.transparent,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(22),
+                              borderSide: BorderSide.none,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    AnimatedOpacity(
-                      opacity: _thinking ? 0.4 : 1.0,
-                      duration: const Duration(milliseconds: 200),
-                      child: FilledButton(
-                        onPressed: _thinking ? null : _send,
-                        style: FilledButton.styleFrom(
-                          shape: const CircleBorder(),
-                          padding: const EdgeInsets.all(14),
+                      const SizedBox(width: 8),
+                      AnimatedOpacity(
+                        opacity: _thinking ? 0.4 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: FilledButton(
+                          onPressed: _thinking ? null : _send,
+                          style: FilledButton.styleFrom(
+                            shape: const CircleBorder(),
+                            padding: const EdgeInsets.all(14),
+                          ),
+                          child: const Icon(Icons.send_rounded, size: 20),
                         ),
-                        child: const Icon(Icons.send_rounded, size: 20),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -4390,15 +5167,36 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isUser
-              ? cs.primary
-              : cs.surfaceContainerHighest.withValues(alpha: 0.6),
+          gradient: isUser
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cs.primary,
+                    cs.secondary,
+                  ],
+                )
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cs.surfaceContainerHigh.withValues(alpha: 0.72),
+                    cs.surfaceContainerHighest.withValues(alpha: 0.58),
+                  ],
+                ),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
             bottomLeft: Radius.circular(isUser ? 20 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 20),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: isUser
             ? Text(
@@ -5585,18 +6383,560 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final key = prefs.getString('geminiApiKey') ?? '';
+    aiProvider = _normalizeAiProvider(prefs.getString('aiProvider') ?? aiProvider);
+    aiCustomCompatibility = _normalizeAiCustomCompatibility(
+      prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
+    );
+    aiModel = prefs.getString('aiModel') ?? aiModel;
+    aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
+    aiSystemPromptTemplate =
+        prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
+    geminiApiKey = prefs.getString('geminiApiKey') ?? geminiApiKey;
+    openAiApiKey = prefs.getString('openAiApiKey') ?? openAiApiKey;
+    mistralApiKey = prefs.getString('mistralApiKey') ?? mistralApiKey;
+    customAiApiKey = prefs.getString('customAiApiKey') ?? customAiApiKey;
+
+    final validModels = _modelsForProvider(
+      aiProvider,
+      customCompatibility: aiCustomCompatibility,
+    );
+    if (!validModels.contains(aiModel)) {
+      aiModel = _defaultModelForProvider(
+        aiProvider,
+        customCompatibility: aiCustomCompatibility,
+      );
+      await prefs.setString('aiModel', aiModel);
+    }
+
+    final key = _activeProviderApiKey();
     if (mounted) {
       setState(() {
         _username = prefs.getString('username') ?? '';
         _apiKeySet = key.isNotEmpty;
-        _apiKeyDisplay = key.length > 8
-            ? '${key.substring(0, 7)}••••${key.substring(key.length - 4)}'
-            : (key.isNotEmpty ? '••••••••' : '');
+        _apiKeyDisplay = _maskKey(key);
         _githubDirectDownload =
             prefs.getBool('githubDirectUpdateDownload') ?? false;
       });
     }
+  }
+
+  String _maskKey(String key) {
+    if (key.isEmpty) return '';
+    return key.length > 8
+        ? '${key.substring(0, 7)}••••${key.substring(key.length - 4)}'
+        : '••••••••';
+  }
+
+  String _activeProviderApiKey() {
+    switch (_normalizeAiProvider(aiProvider)) {
+      case 'openai':
+        return openAiApiKey;
+      case 'mistral':
+        return mistralApiKey;
+      case 'custom':
+        return customAiApiKey;
+      case 'gemini':
+      default:
+        return geminiApiKey;
+    }
+  }
+
+  Future<void> _setProviderApiKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    switch (_normalizeAiProvider(aiProvider)) {
+      case 'openai':
+        openAiApiKey = key;
+        await prefs.setString('openAiApiKey', key);
+        break;
+      case 'mistral':
+        mistralApiKey = key;
+        await prefs.setString('mistralApiKey', key);
+        break;
+      case 'custom':
+        customAiApiKey = key;
+        await prefs.setString('customAiApiKey', key);
+        break;
+      case 'gemini':
+      default:
+        geminiApiKey = key;
+        await prefs.setString('geminiApiKey', key);
+        break;
+    }
+  }
+
+  String _providerLabel(AppL10n l, String provider) {
+    switch (_normalizeAiProvider(provider)) {
+      case 'openai':
+        return l.settingsAiProviderOpenAi;
+      case 'mistral':
+        return l.settingsAiProviderMistral;
+      case 'custom':
+        return l.settingsAiProviderCustom;
+      case 'gemini':
+      default:
+        return l.settingsAiProviderGemini;
+    }
+  }
+
+  String _compatibilityLabel(AppL10n l, String value) {
+    return _normalizeAiCustomCompatibility(value) == 'gemini'
+        ? l.settingsAiCompatibilityGemini
+        : l.settingsAiCompatibilityOpenAi;
+  }
+
+  String _apiKeyHintForProvider(String provider) {
+    switch (_normalizeAiProvider(provider)) {
+      case 'openai':
+        return 'sk-...';
+      case 'mistral':
+        return 'mistral-...';
+      case 'custom':
+        return 'token-...';
+      case 'gemini':
+      default:
+        return 'AIza...';
+    }
+  }
+
+  String _apiKeyPortalUrlForProvider(String provider) {
+    switch (_normalizeAiProvider(provider)) {
+      case 'openai':
+        return 'https://platform.openai.com/api-keys';
+      case 'mistral':
+        return 'https://console.mistral.ai/api-keys/';
+      case 'gemini':
+        return 'https://aistudio.google.com/app/apikey';
+      case 'custom':
+      default:
+        return '';
+    }
+  }
+
+  Future<void> _openApiKeyPortal(BuildContext context) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final url = _apiKeyPortalUrlForProvider(aiProvider);
+    if (url.isEmpty) return;
+    final ok = await url_launcher.launchUrlString(
+      url,
+      mode: url_launcher.LaunchMode.externalApplication,
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.settingsAiApiKeyOpenFailed),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _setAiProvider(String provider) async {
+    aiProvider = _normalizeAiProvider(provider);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('aiProvider', aiProvider);
+
+    final models = _modelsForProvider(
+      aiProvider,
+      customCompatibility: aiCustomCompatibility,
+    );
+    if (!models.contains(aiModel)) {
+      aiModel = models.first;
+      await prefs.setString('aiModel', aiModel);
+    }
+    await _loadPrefs();
+  }
+
+  Future<void> _setAiModel(String model) async {
+    aiModel = model;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('aiModel', aiModel);
+    await _loadPrefs();
+  }
+
+  Future<void> _setAiCustomCompatibility(String compatibility) async {
+    aiCustomCompatibility = _normalizeAiCustomCompatibility(compatibility);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('aiCustomCompatibility', aiCustomCompatibility);
+
+    final models = _modelsForProvider(
+      aiProvider,
+      customCompatibility: aiCustomCompatibility,
+    );
+    if (!models.contains(aiModel)) {
+      aiModel = models.first;
+      await prefs.setString('aiModel', aiModel);
+    }
+    await _loadPrefs();
+  }
+
+  Future<void> _setAiCustomBaseUrl(String value) async {
+    aiCustomBaseUrl = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('aiCustomBaseUrl', value);
+    await _loadPrefs();
+  }
+
+  Future<void> _setAiSystemPromptTemplate(String value) async {
+    aiSystemPromptTemplate = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('aiSystemPromptTemplate', value);
+    await _loadPrefs();
+  }
+
+  void _showAiProviderDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    _showUnifiedOptionSheet<String>(
+      context: context,
+      title: l.settingsAiProvider,
+      options: kSupportedAiProviders
+          .map(
+            (provider) => _SheetOption(
+              value: provider,
+              title: _providerLabel(l, provider),
+              icon: provider == 'gemini'
+                  ? Icons.auto_awesome_rounded
+                  : provider == 'openai'
+                  ? Icons.chat_bubble_outline_rounded
+                  : provider == 'mistral'
+                  ? Icons.cloud_rounded
+                  : Icons.settings_ethernet_rounded,
+              selected: aiProvider == provider,
+            ),
+          )
+          .toList(),
+    ).then((value) {
+      if (value != null) _setAiProvider(value);
+    });
+  }
+
+  void _showAiModelDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final models = _modelsForProvider(
+      aiProvider,
+      customCompatibility: aiCustomCompatibility,
+    );
+    _showUnifiedOptionSheet<String>(
+      context: context,
+      title: l.settingsAiModel,
+      options: models
+          .map(
+            (model) => _SheetOption(
+              value: model,
+              title: model,
+              icon: Icons.memory_rounded,
+              selected: aiModel == model,
+            ),
+          )
+          .toList(),
+    ).then((value) {
+      if (value != null) _setAiModel(value);
+    });
+  }
+
+  void _showAiCompatibilityDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    _showUnifiedOptionSheet<String>(
+      context: context,
+      title: l.settingsAiCompatibility,
+      options: kSupportedAiCustomCompatibilities
+          .map(
+            (compat) => _SheetOption(
+              value: compat,
+              title: _compatibilityLabel(l, compat),
+              icon: compat == 'gemini'
+                  ? Icons.auto_awesome_rounded
+                  : Icons.chat_rounded,
+              selected: aiCustomCompatibility == compat,
+            ),
+          )
+          .toList(),
+    ).then((value) {
+      if (value != null) _setAiCustomCompatibility(value);
+    });
+  }
+
+  void _showAiCustomBaseUrlDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final ctrl = TextEditingController(text: aiCustomBaseUrl);
+    _showUnifiedSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      child: Builder(
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  l.settingsAiCustomBaseUrl,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l.settingsAiCustomBaseUrlDesc,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: ctrl,
+                  style: GoogleFonts.outfit(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: l.settingsAiCustomBaseUrlHint,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(
+                        l.settingsApiKeyCancel,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: () async {
+                        await _setAiCustomBaseUrl(ctrl.text.trim());
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      child: Text(
+                        l.settingsApiKeySave,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAiPromptDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final defaultTemplate = _buildDefaultAiPromptTemplate(l);
+    final ctrl = TextEditingController(
+      text: aiSystemPromptTemplate.isEmpty
+          ? defaultTemplate
+          : aiSystemPromptTemplate,
+    );
+
+    _showUnifiedSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      child: Builder(
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  l.settingsAiPromptEditTitle,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l.settingsAiPromptDesc,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 260,
+                  child: TextField(
+                    controller: ctrl,
+                    minLines: 10,
+                    maxLines: 18,
+                    style: GoogleFonts.jetBrainsMono(fontSize: 12.5),
+                    decoration: InputDecoration(
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(
+                        l.settingsApiKeyCancel,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        ctrl.text = defaultTemplate;
+                      },
+                      child: Text(
+                        l.settingsAiPromptReset,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: () async {
+                        await _setAiSystemPromptTemplate(ctrl.text.trim());
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      child: Text(
+                        l.settingsApiKeySave,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAiVariablesDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    _showUnifiedSheet<void>(
+      context: context,
+      child: Builder(
+        builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(ctx).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  l.settingsAiPromptVariables,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l.settingsAiPromptVariablesDesc,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 380),
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: aiPromptVariableDescriptions.entries
+                        .map(
+                          (entry) => ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.label_important_outline),
+                            title: Text(
+                              entry.key,
+                              style: GoogleFonts.jetBrainsMono(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            subtitle: Text(
+                              entry.value,
+                              style: GoogleFonts.outfit(fontSize: 12.5),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                      l.settingsApiKeyCancel,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _setGithubDirectDownload(bool enabled) async {
@@ -5898,7 +7238,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showApiKeyDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final ctrl = TextEditingController(text: geminiApiKey);
+    final providerLabel = _providerLabel(l, aiProvider);
+    final providerPortalUrl = _apiKeyPortalUrlForProvider(aiProvider);
+    final ctrl = TextEditingController(text: _activeProviderApiKey());
     _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -5928,7 +7270,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  l.settingsApiKeyDialogTitle,
+                  '${l.settingsAiApiKey} ($providerLabel)',
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
@@ -5936,19 +7278,42 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  l.settingsApiKeyDialogDesc,
+                  l.settingsAiApiKeyDialogDesc,
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     color: cs.onSurfaceVariant,
                   ),
                 ),
+                if (providerPortalUrl.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => _openApiKeyPortal(ctx),
+                      icon: const Icon(Icons.open_in_new_rounded),
+                      label: Text(
+                        l.settingsAiApiKeyGet,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(17),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 TextField(
                   controller: ctrl,
                   obscureText: true,
                   style: GoogleFonts.outfit(fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'AIza...',
+                    hintText: _apiKeyHintForProvider(aiProvider),
                     filled: true,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -5960,53 +7325,72 @@ class _SettingsPageState extends State<SettingsPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(
-                        l.settingsApiKeyCancel,
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.08,
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          l.settingsApiKeyCancel,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.08,
+                          ),
                         ),
                       ),
                     ),
                     if (_apiKeySet)
-                      TextButton(
+                      ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () async {
+                              await _setProviderApiKey('');
+                              Navigator.pop(ctx);
+                              _loadPrefs();
+                            },
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 50),
+                              side: BorderSide(color: cs.error),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              l.settingsApiKeyRemove,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.08,
+                                color: cs.error,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
                         onPressed: () async {
-                          geminiApiKey = '';
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.remove('geminiApiKey');
-                          await prefs.remove('openAiApiKey');
+                          final val = ctrl.text.trim();
+                          await _setProviderApiKey(val);
                           Navigator.pop(ctx);
                           _loadPrefs();
                         },
-                        child: Text(
-                          l.settingsApiKeyRemove,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.08,
-                            color: Theme.of(context).colorScheme.error,
+                        icon: const Icon(Icons.check_rounded, size: 18),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                      ),
-                    FilledButton(
-                      onPressed: () async {
-                        final val = ctrl.text.trim();
-                        geminiApiKey = val;
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.setString('geminiApiKey', val);
-                        await prefs.remove('openAiApiKey');
-                        Navigator.pop(ctx);
-                        _loadPrefs();
-                      },
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                        label: Text(
+                          l.settingsApiKeySave,
+                          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                         ),
-                      ),
-                      child: Text(
-                        l.settingsApiKeySave,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],
@@ -6631,16 +8015,82 @@ class _SettingsPageState extends State<SettingsPage> {
                       Icons.smart_toy_rounded,
                       [
                         _tile(
+                          leading: _tileIcon(
+                            Icons.hub_rounded,
+                            cs.tertiary,
+                          ),
+                          title: l.settingsAiProvider,
+                          subtitle: _providerLabel(l, aiProvider),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withValues(alpha: 0.4),
+                          ),
+                          onTap: _showAiProviderDialog,
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.memory_rounded,
+                            cs.secondary,
+                          ),
+                          title: l.settingsAiModel,
+                          subtitle: aiModel,
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withValues(alpha: 0.4),
+                          ),
+                          onTap: _showAiModelDialog,
+                        ),
+                        if (aiProvider == 'custom')
+                          _tile(
+                            leading: _tileIcon(
+                              Icons.compare_arrows_rounded,
+                              cs.primary,
+                            ),
+                            title: l.settingsAiCompatibility,
+                            subtitle: _compatibilityLabel(
+                              l,
+                              aiCustomCompatibility,
+                            ),
+                            trailing: Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: cs.onSurface.withValues(alpha: 0.4),
+                            ),
+                            onTap: _showAiCompatibilityDialog,
+                          ),
+                        if (aiProvider == 'custom')
+                          _tile(
+                            leading: _tileIcon(
+                              Icons.link_rounded,
+                              cs.primary,
+                            ),
+                            title: l.settingsAiCustomBaseUrl,
+                            subtitle: aiCustomBaseUrl.isEmpty
+                                ? l.settingsAiCustomBaseUrlHint
+                                : aiCustomBaseUrl,
+                            subtitleColor: aiCustomBaseUrl.isEmpty
+                                ? cs.error
+                                : null,
+                            trailing: Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: cs.onSurface.withValues(alpha: 0.4),
+                            ),
+                            onTap: _showAiCustomBaseUrlDialog,
+                          ),
+                        _tile(
                           leading: _apiKeySet
                               ? _tileIcon(
                                   Icons.auto_awesome_rounded,
                                   cs.tertiary,
                                 )
                               : _tileIcon(Icons.key_off_rounded, cs.error),
-                          title: l.settingsApiKey,
+                          title: l.settingsAiApiKey,
                           subtitle: _apiKeySet
                               ? _apiKeyDisplay
-                              : l.settingsApiKeyNotSet,
+                              : l.settingsAiApiKeyNotSet,
                           subtitleColor: _apiKeySet ? null : cs.error,
                           trailing: Icon(
                             Icons.chevron_right_rounded,
@@ -6648,6 +8098,39 @@ class _SettingsPageState extends State<SettingsPage> {
                             color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: _showApiKeyDialog,
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.edit_note_rounded,
+                            cs.tertiary,
+                          ),
+                          title: l.settingsAiPrompt,
+                          subtitle: aiSystemPromptTemplate.trim().isEmpty
+                              ? l.settingsAiPromptDesc
+                              : aiSystemPromptTemplate
+                                    .trim()
+                                    .split('\n')
+                                    .first,
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withValues(alpha: 0.4),
+                          ),
+                          onTap: _showAiPromptDialog,
+                        ),
+                        _tile(
+                          leading: _tileIcon(
+                            Icons.data_object_rounded,
+                            cs.secondary,
+                          ),
+                          title: l.settingsAiPromptVariables,
+                          subtitle: l.settingsAiPromptVariablesDesc,
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withValues(alpha: 0.4),
+                          ),
+                          onTap: _showAiVariablesDialog,
                         ),
                       ],
                       cs,

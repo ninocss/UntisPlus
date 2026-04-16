@@ -19,7 +19,7 @@ Download the latest APK from [GitHub Releases](https://github.com/ninocss/UntisP
 ## Features
 
 - Weekly and daily timetable views with free room search
-- Exam overview with the ability to add custom exams
+- Exam overview with custom exams plus import and export support
 - School announcements feed
 - Optional Gemini-powered AI assistant
 - Persistent current-lesson notification and home screen widgets

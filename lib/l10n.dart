@@ -153,7 +153,11 @@ class AppL10n {
   String get examsImportSuccess => _t('examsImportSuccess');
   String get examsImportError => _t('examsImportError');
   String get examsImportInvalidJson => _t('examsImportInvalidJson');
+    String get examsExportSuccess => _t('examsExportSuccess');
+    String get examsExportEmpty => _t('examsExportEmpty');
   String get examsActionCustom => _t('examsActionCustom');
+    String get examsActionImport => _t('examsActionImport');
+    String get examsActionExport => _t('examsActionExport');
   String get examsActionScan => _t('examsActionScan');
   String examsInDays(int n) => _t('examsDaysIn').replaceAll('{n}', '$n');
 
@@ -175,6 +179,7 @@ class AppL10n {
   String get aiNoReply => _t('aiNoReply');
   String get aiApiError => _t('aiApiError');
   String get aiConnectionError => _t('aiConnectionError');
+    String get aiCustomBaseUrlMissing => _t('aiCustomBaseUrlMissing');
   List<String> get aiSuggestions =>
       List<String>.from(_strings[locale]!['aiSuggestions'] as List);
 
@@ -188,6 +193,32 @@ class AppL10n {
   String get settingsAppearanceDesc => _t('settingsAppearanceDesc');
   String get settingsLanguage => _t('settingsLanguage');
   String get settingsSectionAI => _t('settingsSectionAI');
+  String get settingsAiProvider => _t('settingsAiProvider');
+  String get settingsAiProviderGemini => _t('settingsAiProviderGemini');
+  String get settingsAiProviderOpenAi => _t('settingsAiProviderOpenAi');
+  String get settingsAiProviderMistral => _t('settingsAiProviderMistral');
+  String get settingsAiProviderCustom => _t('settingsAiProviderCustom');
+  String get settingsAiModel => _t('settingsAiModel');
+  String get settingsAiApiKey => _t('settingsAiApiKey');
+  String get settingsAiApiKeyNotSet => _t('settingsAiApiKeyNotSet');
+    String get settingsAiApiKeyDialogDesc => _t('settingsAiApiKeyDialogDesc');
+    String get settingsAiApiKeyGet => _t('settingsAiApiKeyGet');
+    String get settingsAiApiKeyOpenFailed => _t('settingsAiApiKeyOpenFailed');
+  String get settingsAiPrompt => _t('settingsAiPrompt');
+  String get settingsAiPromptDesc => _t('settingsAiPromptDesc');
+  String get settingsAiPromptEditTitle => _t('settingsAiPromptEditTitle');
+  String get settingsAiPromptReset => _t('settingsAiPromptReset');
+  String get settingsAiPromptVariables => _t('settingsAiPromptVariables');
+  String get settingsAiPromptVariablesDesc =>
+      _t('settingsAiPromptVariablesDesc');
+  String get settingsAiCustomBaseUrl => _t('settingsAiCustomBaseUrl');
+  String get settingsAiCustomBaseUrlDesc => _t('settingsAiCustomBaseUrlDesc');
+  String get settingsAiCustomBaseUrlHint => _t('settingsAiCustomBaseUrlHint');
+  String get settingsAiCompatibility => _t('settingsAiCompatibility');
+  String get settingsAiCompatibilityOpenAi =>
+      _t('settingsAiCompatibilityOpenAi');
+  String get settingsAiCompatibilityGemini =>
+      _t('settingsAiCompatibilityGemini');
   String get settingsApiKey => _t('settingsApiKey');
   String get settingsApiKeyNotSet => _t('settingsApiKeyNotSet');
   String get settingsApiKeyDialogTitle => _t('settingsApiKeyDialogTitle');
@@ -342,7 +373,7 @@ class AppL10n {
           'Behalte deinen Stundenplan perfekt im Blick.',
       'onboardingFeatureExamsTitle': 'Prüfungen & Hausaufgaben',
       'onboardingFeatureExamsDesc':
-          'Verfolge deinen Lernstand und kommende Prüfungen.',
+          'Verfolge deinen Lernstand, importiere Klausuren und exportiere sie als JSON.',
       'onboardingFeatureAiTitle': 'KI-Assistent',
       'onboardingFeatureAiDesc':
           'Frag Gemini nach deinem Tag, Hausaufgaben oder Prüfungen.',
@@ -361,7 +392,7 @@ class AppL10n {
           'Tippe auf den großen Uhren-Button, um zur Wochenansicht zu wechseln.',
       'tutorialStepExamsTitle': '2. Prüfungen',
       'tutorialStepExamsDesc':
-          'Tippe auf den Prüfungs-Button, um bevorstehende Klausuren und Aufgaben zu sehen.',
+          'Tippe auf den Prüfungs-Button, um Klausuren zu sehen sowie zu importieren und zu exportieren.',
       'tutorialStepInfoTitle': '3. Schul-Info',
       'tutorialStepInfoDesc':
           'Tippe auf den Info-Button für aktuelle Mitteilungen deiner Schule.',
@@ -437,7 +468,12 @@ class AppL10n {
       'examsImportSuccess': 'Erfolgreich importiert!',
       'examsImportError': 'Fehler beim Import: ',
       'examsImportInvalidJson': 'Kein gültiges JSON gefunden.',
+      'examsExportSuccess':
+          'Klausuren als JSON in die Zwischenablage kopiert.',
+      'examsExportEmpty': 'Keine eigenen Klausuren zum Exportieren.',
       'examsActionCustom': 'Manuell',
+      'examsActionImport': 'Importieren (Scan/PDF)',
+      'examsActionExport': 'Exportieren (JSON)',
       'examsActionScan': 'Scannen',
 
       'infoTitle': 'Schulinfos',
@@ -455,10 +491,12 @@ class AppL10n {
       'aiKnowsSchedule': 'Ich kenne deinen Stundenplan!',
       'aiAskAnything': 'Frag mich alles über deine Woche.',
       'aiNoApiKey':
-          '⚠️ Bitte trage deinen Gemini API-Schlüssel unter Einstellungen → Allgemein ein.',
+          '⚠️ Bitte trage deinen API-Schlüssel unter Einstellungen → KI-Assistent ein.',
       'aiNoReply': '⚠️ Keine Antwort erhalten.',
       'aiApiError': '⚠️ API-Fehler:',
       'aiConnectionError': '⚠️ Verbindungsfehler:',
+      'aiCustomBaseUrlMissing':
+          '⚠️ Bitte setze zuerst die Custom Base URL in den KI-Einstellungen.',
       'aiSuggestions': [
         'Was hab ich morgen?',
         'Hab ich heute eine Freistunde?',
@@ -475,6 +513,35 @@ class AppL10n {
       'settingsAppearanceDesc': 'System (Hell/Dunkel)',
       'settingsLanguage': 'Sprache',
       'settingsSectionAI': 'KI-Assistent',
+      'settingsAiProvider': 'Anbieter',
+      'settingsAiProviderGemini': 'Google Gemini',
+      'settingsAiProviderOpenAi': 'OpenAI',
+      'settingsAiProviderMistral': 'Mistral AI',
+      'settingsAiProviderCustom': 'Custom Anbieter',
+      'settingsAiModel': 'Modell',
+      'settingsAiApiKey': 'API-Schlüssel',
+      'settingsAiApiKeyNotSet':
+          'Nicht konfiguriert — Tippen zum Einrichten',
+      'settingsAiApiKeyDialogDesc':
+          'Erforderlich für den KI-Assistenten. Über „API-Key holen“ öffnest du die passende Seite für den ausgewählten Anbieter.',
+      'settingsAiApiKeyGet': 'API-Key holen',
+      'settingsAiApiKeyOpenFailed':
+          'Konnte die API-Key-Seite nicht öffnen.',
+      'settingsAiPrompt': 'System-Prompt',
+      'settingsAiPromptDesc':
+          'Bearbeite den vorgefertigten Prompt und nutze Variablen wie [timetable].',
+      'settingsAiPromptEditTitle': 'System-Prompt bearbeiten',
+      'settingsAiPromptReset': 'Standard wiederherstellen',
+      'settingsAiPromptVariables': 'Prompt-Variablen',
+      'settingsAiPromptVariablesDesc':
+          'Liste aller Platzhalter, die automatisch mit Daten ersetzt werden.',
+      'settingsAiCustomBaseUrl': 'Custom Base URL',
+      'settingsAiCustomBaseUrlDesc':
+          'Basis-URL deines eigenen Anbieters (OpenAI- oder Gemini-kompatibel).',
+      'settingsAiCustomBaseUrlHint': 'https://api.dein-anbieter.tld/v1',
+      'settingsAiCompatibility': 'Custom Kompatibilität',
+      'settingsAiCompatibilityOpenAi': 'OpenAI-kompatibel',
+      'settingsAiCompatibilityGemini': 'Gemini-kompatibel',
       'settingsApiKey': 'Gemini API-Schlüssel',
       'settingsApiKeyNotSet': 'Nicht konfiguriert — Tippen zum Einrichten',
       'settingsApiKeyDialogTitle': 'Gemini API-Schlüssel',
@@ -630,7 +697,8 @@ class AppL10n {
       'onboardingFeatureTimetableTitle': 'Timetable & Calendar',
       'onboardingFeatureTimetableDesc': 'View your schedule flawlessly.',
       'onboardingFeatureExamsTitle': 'Exams & Homework',
-      'onboardingFeatureExamsDesc': 'Track performance and upcoming exams.',
+      'onboardingFeatureExamsDesc':
+          'Track progress, import exams, and export them as JSON.',
       'onboardingFeatureAiTitle': 'AI Assistant',
       'onboardingFeatureAiDesc':
           'Ask Gemini about your day, homework or exams.',
@@ -648,7 +716,7 @@ class AppL10n {
           'Tap the large clock button to switch to your weekly timetable.',
       'tutorialStepExamsTitle': '2. Exams',
       'tutorialStepExamsDesc':
-          'Tap the exams button to see upcoming exams and homework.',
+          'Tap the exams button to view, import, and export exams.',
       'tutorialStepInfoTitle': '3. School info',
       'tutorialStepInfoDesc':
           'Tap the info button to view current announcements from your school.',
@@ -717,7 +785,11 @@ class AppL10n {
       'examsImportSuccess': 'Successfully imported!',
       'examsImportError': 'Import error: ',
       'examsImportInvalidJson': 'No valid JSON found.',
+    'examsExportSuccess': 'Exams copied as JSON to clipboard.',
+    'examsExportEmpty': 'No custom exams to export.',
       'examsActionCustom': 'Manual',
+    'examsActionImport': 'Import (Scan/PDF)',
+    'examsActionExport': 'Export (JSON)',
       'examsActionScan': 'Scan',
 
       'infoTitle': 'School Info',
@@ -734,10 +806,12 @@ class AppL10n {
       'aiKnowsSchedule': 'I know your timetable!',
       'aiAskAnything': 'Ask me anything about your week.',
       'aiNoApiKey':
-          '⚠️ Please enter your Gemini API key under Settings → General.',
+          '⚠️ Please enter your API key under Settings → AI Assistant.',
       'aiNoReply': '⚠️ No reply received.',
       'aiApiError': '⚠️ API error:',
       'aiConnectionError': '⚠️ Connection error:',
+      'aiCustomBaseUrlMissing':
+          '⚠️ Please configure the custom base URL in AI settings first.',
       'aiSuggestions': [
         "What do I have tomorrow?",
         "Do I have a free period today?",
@@ -754,6 +828,34 @@ class AppL10n {
       'settingsAppearanceDesc': 'System (Light/Dark)',
       'settingsLanguage': 'Language',
       'settingsSectionAI': 'AI Assistant',
+      'settingsAiProvider': 'Provider',
+      'settingsAiProviderGemini': 'Google Gemini',
+      'settingsAiProviderOpenAi': 'OpenAI',
+      'settingsAiProviderMistral': 'Mistral AI',
+      'settingsAiProviderCustom': 'Custom Provider',
+      'settingsAiModel': 'Model',
+      'settingsAiApiKey': 'API Key',
+      'settingsAiApiKeyNotSet': 'Not configured - tap to set up',
+      'settingsAiApiKeyDialogDesc':
+          'Required for the AI assistant. Use “Get API Key” to open the correct page for the selected provider.',
+      'settingsAiApiKeyGet': 'Get API Key',
+      'settingsAiApiKeyOpenFailed':
+          'Could not open the API key page.',
+      'settingsAiPrompt': 'System Prompt',
+      'settingsAiPromptDesc':
+          'Edit the default prompt and use variables like [timetable].',
+      'settingsAiPromptEditTitle': 'Edit system prompt',
+      'settingsAiPromptReset': 'Reset to default',
+      'settingsAiPromptVariables': 'Prompt Variables',
+      'settingsAiPromptVariablesDesc':
+          'All placeholders that are automatically replaced with app data.',
+      'settingsAiCustomBaseUrl': 'Custom Base URL',
+      'settingsAiCustomBaseUrlDesc':
+          'Base URL of your own provider (OpenAI-compatible or Gemini-compatible).',
+      'settingsAiCustomBaseUrlHint': 'https://api.your-provider.tld/v1',
+      'settingsAiCompatibility': 'Custom compatibility',
+      'settingsAiCompatibilityOpenAi': 'OpenAI-compatible',
+      'settingsAiCompatibilityGemini': 'Gemini-compatible',
       'settingsApiKey': 'Gemini API Key',
       'settingsApiKeyNotSet': 'Not configured — Tap to set up',
       'settingsApiKeyDialogTitle': 'Gemini API Key',
@@ -913,7 +1015,7 @@ class AppL10n {
       'onboardingFeatureTimetableDesc': 'Consulte ton planning sans effort.',
       'onboardingFeatureExamsTitle': 'Examens & Devoirs',
       'onboardingFeatureExamsDesc':
-          'Suis tes résultats et les examens à venir.',
+          'Suis ta progression, importe des examens et exporte-les en JSON.',
       'onboardingFeatureAiTitle': 'Assistant IA',
       'onboardingFeatureAiDesc':
           'Demande à Gemini des infos sur ta journée, tes devoirs ou tes examens.',
@@ -931,7 +1033,7 @@ class AppL10n {
           'Appuie sur le grand bouton horloge pour ouvrir la vue semaine.',
       'tutorialStepExamsTitle': '2. Examens',
       'tutorialStepExamsDesc':
-          'Appuie sur le bouton examens pour voir les prochains contrôles et devoirs.',
+          'Appuie sur le bouton examens pour voir, importer et exporter des examens.',
       'tutorialStepInfoTitle': '3. Infos école',
       'tutorialStepInfoDesc':
           'Appuie sur le bouton infos pour lire les annonces de ton école.',
@@ -1001,7 +1103,12 @@ class AppL10n {
       'examsImportSuccess': 'Importé avec succès !',
       'examsImportError': 'Erreur lors de l\'import : ',
       'examsImportInvalidJson': 'Aucun JSON valide trouvé.',
+      'examsExportSuccess':
+          'Examens copiés en JSON dans le presse-papiers.',
+      'examsExportEmpty': 'Aucun examen personnel à exporter.',
       'examsActionCustom': 'Manuel',
+      'examsActionImport': 'Importer (Scan/PDF)',
+      'examsActionExport': 'Exporter (JSON)',
       'examsActionScan': 'Scanner',
 
       'infoTitle': 'Infos école',
@@ -1195,7 +1302,7 @@ class AppL10n {
           'Consulta tu horario sin complicaciones.',
       'onboardingFeatureExamsTitle': 'Exámenes y Deberes',
       'onboardingFeatureExamsDesc':
-          'Sigue tu progreso y los próximos exámenes.',
+          'Sigue tu progreso, importa exámenes y expórtalos en JSON.',
       'onboardingFeatureAiTitle': 'Asistente IA',
       'onboardingFeatureAiDesc':
           'Pregunta a Gemini sobre tu día, deberes o exámenes.',
@@ -1214,7 +1321,7 @@ class AppL10n {
           'Toca el botón grande del reloj para abrir la vista semanal.',
       'tutorialStepExamsTitle': '2. Exámenes',
       'tutorialStepExamsDesc':
-          'Toca el botón de exámenes para ver próximos exámenes y tareas.',
+          'Toca el botón de exámenes para ver, importar y exportar exámenes.',
       'tutorialStepInfoTitle': '3. Info escolar',
       'tutorialStepInfoDesc':
           'Toca el botón de info para leer avisos actuales de tu escuela.',
@@ -1284,7 +1391,11 @@ class AppL10n {
       'examsImportSuccess': '¡Importado con éxito!',
       'examsImportError': 'Error al importar: ',
       'examsImportInvalidJson': 'No se encontró un JSON válido.',
+    'examsExportSuccess': 'Exámenes copiados como JSON al portapapeles.',
+    'examsExportEmpty': 'No hay exámenes propios para exportar.',
       'examsActionCustom': 'Manual',
+    'examsActionImport': 'Importar (Escaneo/PDF)',
+    'examsActionExport': 'Exportar (JSON)',
       'examsActionScan': 'Escanear',
 
       'infoTitle': 'Info escolar',
@@ -1480,7 +1591,7 @@ class AppL10n {
           'Παρακολούθησε το πρόγραμμα σου χωρίς κόπο.',
       'onboardingFeatureExamsTitle': 'Εξετάσεις & Εργασίες',
       'onboardingFeatureExamsDesc':
-          'Παρακολούθησε την πρόοδό σου και τις επερχόμενες εξετάσεις.',
+          'Παρακολούθησε την πρόοδό σου, εισήγαγε εξετάσεις και εξήγαγέ τες σε JSON.',
       'onboardingFeatureAiTitle': 'Βοηθός AI',
       'onboardingFeatureAiDesc':
           'Ρώτησε το Gemini για τη μέρα σου, τις εργασίες ή τις εξετάσεις.',
@@ -1499,7 +1610,7 @@ class AppL10n {
           'Πάτησε το μεγάλο κουμπί με το ρολόι για να ανοίξεις την εβδομαδιαία προβολή.',
       'tutorialStepExamsTitle': '2. Εξετάσεις',
       'tutorialStepExamsDesc':
-          'Πάτησε το κουμπί εξετάσεων για να δεις επερχόμενες εξετάσεις και εργασίες.',
+          'Πάτησε το κουμπί εξετάσεων για να δεις, να εισάγεις και να εξάγεις εξετάσεις.',
       'tutorialStepInfoTitle': '3. Σχολικές πληροφορίες',
       'tutorialStepInfoDesc':
           'Πάτησε το κουμπί πληροφοριών για τις τρέχουσες ανακοινώσεις του σχολείου σου.',
@@ -1570,7 +1681,13 @@ class AppL10n {
       'examsImportSuccess': 'Η εισαγωγή ολοκληρώθηκε με επιτυχία!',
       'examsImportError': 'Σφάλμα εισαγωγής: ',
       'examsImportInvalidJson': 'Δεν βρέθηκε έγκυρο JSON.',
+      'examsExportSuccess':
+          'Οι εξετάσεις αντιγράφηκαν ως JSON στο πρόχειρο.',
+      'examsExportEmpty':
+          'Δεν υπάρχουν προσωπικές εξετάσεις για εξαγωγή.',
       'examsActionCustom': 'Χειροκίνητα',
+      'examsActionImport': 'Εισαγωγή (Σάρωση/PDF)',
+      'examsActionExport': 'Εξαγωγή (JSON)',
       'examsActionScan': 'Σάρωση',
 
       'infoTitle': 'Σχολικές ειδοποιήσεις',
