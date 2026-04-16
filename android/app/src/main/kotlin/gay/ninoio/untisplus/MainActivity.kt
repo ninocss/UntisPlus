@@ -45,18 +45,19 @@ class MainActivity : FlutterActivity() {
 	}
 
 	private fun forwardIntentActionIfPresent(intent: Intent?) {
-		val actionId = intent?.getStringExtra(ACTION_EXTRA_KEY)?.trim().orEmpty()
+		val safeIntent = intent ?: return
+		val actionId = safeIntent.getStringExtra(ACTION_EXTRA_KEY)?.trim().orEmpty()
 		if (actionId.isEmpty()) return
 
 		val payload = mapOf(
 			"actionId" to actionId,
-			"currentLesson" to intent.getStringExtra(CURRENT_LESSON_EXTRA_KEY).orEmpty(),
-			"nextLesson" to intent.getStringExtra(NEXT_LESSON_EXTRA_KEY).orEmpty(),
+			"currentLesson" to safeIntent.getStringExtra(CURRENT_LESSON_EXTRA_KEY).orEmpty(),
+			"nextLesson" to safeIntent.getStringExtra(NEXT_LESSON_EXTRA_KEY).orEmpty(),
 		)
 		methodChannel?.invokeMethod("onNotificationAction", payload)
-		intent.removeExtra(ACTION_EXTRA_KEY)
-		intent.removeExtra(CURRENT_LESSON_EXTRA_KEY)
-		intent.removeExtra(NEXT_LESSON_EXTRA_KEY)
+		safeIntent.removeExtra(ACTION_EXTRA_KEY)
+		safeIntent.removeExtra(CURRENT_LESSON_EXTRA_KEY)
+		safeIntent.removeExtra(NEXT_LESSON_EXTRA_KEY)
 	}
 
 	private fun showProgressCentricNotification(args: Map<String, Any?>?): Boolean {
