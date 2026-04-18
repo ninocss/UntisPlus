@@ -1,11 +1,12 @@
-name: Manual Flutter Release
+name: Flutter Release
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag'
-        required: true
+        description: 'Release tag (leer = automatisch naechstes Minor, z.B. 3.1.0 -> 3.2.0)'
+        required: false
+        default: ''
         type: string
       release_name:
         description: 'Optionaler Release-Name (leer = Tag wird verwendet)'
@@ -26,58 +27,157 @@ on:
         required: true
         default: true
         type: boolean
-      build_apk:
-        description: 'Release-APK bauen'
+      build_artifacts:
+        description: 'Welche Android Artefakte bauen?'
         required: true
-        default: true
-        type: boolean
-      build_aab:
-        description: 'Release-AAB bauen'
-        required: true
-        default: false
-        type: boolean
+        default: 'apk'
+        type: choice
+        options:
+          - apk
+          - aab
+          - apk+aab
+          - none
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  prepare:
-    name: Vorbereitung
+  meta:
+    name: Metadata
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.meta.outputs.release_tag }}
+      release_name: ${{ steps.meta.outputs.release_name }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+      draft: ${{ steps.meta.outputs.draft }}
+      run_tests: ${{ steps.meta.outputs.run_tests }}
+      build_apk: ${{ steps.meta.outputs.build_apk }}
+      build_aab: ${{ steps.meta.outputs.build_aab }}
+      last_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version: '17'
+      - name: Resolve Release Metadata
+        id: meta
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_RELEASE_NAME: ${{ github.event.inputs.release_name }}
+          INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
+          INPUT_DRAFT: ${{ github.event.inputs.draft }}
+          INPUT_RUN_TESTS: ${{ github.event.inputs.run_tests }}
+          INPUT_BUILD_ARTIFACTS: ${{ github.event.inputs.build_artifacts }}
+        run: |
+          set -euo pipefail
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
+          normalize_bool() {
+            local v="${1:-}"
+            local fallback="${2:-false}"
+            if [ "$v" = "true" ] || [ "$v" = "false" ]; then
+              echo "$v"
+            else
+              echo "$fallback"
+            fi
+          }
 
-      - name: Install Dependencies
-        run: flutter pub get
+          input_tag="$(echo "${INPUT_TAG:-}" | tr -d '[:space:]')"
+
+          last_tag="$(git tag --list | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          prefix=""
+          base="0.0.0"
+          if [ -n "$last_tag" ]; then
+            if [[ "$last_tag" == v* ]]; then
+              prefix="v"
+            fi
+            base="${last_tag#v}"
+          fi
+
+          resolved_tag="$input_tag"
+          if [ -z "$resolved_tag" ]; then
+            IFS='.' read -r major minor patch <<<"$base"
+            : "${major:=0}" "${minor:=0}" "${patch:=0}"
+            minor=$((minor + 1))
+            resolved_tag="${prefix}${major}.${minor}.0"
+          fi
+
+          resolved_name="$(echo "${INPUT_RELEASE_NAME:-}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          if [ -z "$resolved_name" ]; then
+            resolved_name="$resolved_tag"
+          fi
+
+          prerelease="$(normalize_bool "${INPUT_PRERELEASE:-}" "false")"
+          draft="$(normalize_bool "${INPUT_DRAFT:-}" "false")"
+          run_tests="$(normalize_bool "${INPUT_RUN_TESTS:-}" "true")"
+
+          build_artifacts="$(echo "${INPUT_BUILD_ARTIFACTS:-apk}" | tr -d '[:space:]')"
+          build_apk="false"
+          build_aab="false"
+          case "$build_artifacts" in
+            apk)
+              build_apk="true"
+              ;;
+            aab)
+              build_aab="true"
+              ;;
+            apk+aab)
+              build_apk="true"
+              build_aab="true"
+              ;;
+            none)
+              ;;
+            *)
+              build_apk="true"
+              ;;
+          esac
+
+          {
+            echo "release_tag=$resolved_tag"
+            echo "release_name=$resolved_name"
+            echo "prerelease=$prerelease"
+            echo "draft=$draft"
+            echo "run_tests=$run_tests"
+            echo "build_apk=$build_apk"
+            echo "build_aab=$build_aab"
+            echo "last_semver_tag=$last_tag"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Resolved tag: $resolved_tag"
+          echo "Previous semver tag: ${last_tag:-none}"
+
+      - name: Summary
+        run: |
+          echo "### Release Metadata" >> $GITHUB_STEP_SUMMARY
+          echo "- tag: ${{ steps.meta.outputs.release_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- name: ${{ steps.meta.outputs.release_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- prerelease: ${{ steps.meta.outputs.prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "- draft: ${{ steps.meta.outputs.draft }}" >> $GITHUB_STEP_SUMMARY
+          echo "- run_tests: ${{ steps.meta.outputs.run_tests }}" >> $GITHUB_STEP_SUMMARY
+          echo "- build_apk: ${{ steps.meta.outputs.build_apk }}" >> $GITHUB_STEP_SUMMARY
+          echo "- build_aab: ${{ steps.meta.outputs.build_aab }}" >> $GITHUB_STEP_SUMMARY
+          echo "- latest_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}" >> $GITHUB_STEP_SUMMARY
 
   quality_checks:
     name: Analyse & Tests
     runs-on: ubuntu-latest
-    needs: prepare
-    if: ${{ inputs.run_tests }}
+    needs: meta
+    if: ${{ needs.meta.outputs.run_tests == 'true' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version: '17'
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
       - name: Install Dependencies
         run: flutter pub get
       - name: Analyze & Test
@@ -88,8 +188,8 @@ jobs:
   build_apk:
     name: Build APK
     runs-on: ubuntu-latest
-    needs: [prepare, quality_checks]
-    if: ${{ always() && inputs.build_apk && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    needs: [meta, quality_checks]
+    if: ${{ always() && needs.meta.outputs.build_apk == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -102,12 +202,13 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
       - name: Install Dependencies
         run: flutter pub get
       - name: Build Android APK
         run: flutter build apk --release
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -116,8 +217,8 @@ jobs:
   build_aab:
     name: Build AAB
     runs-on: ubuntu-latest
-    needs: [prepare, quality_checks]
-    if: ${{ always() && inputs.build_aab && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    needs: [meta, quality_checks]
+    if: ${{ always() && needs.meta.outputs.build_aab == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -130,12 +231,13 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
       - name: Install Dependencies
         run: flutter pub get
       - name: Build Android AAB
         run: flutter build appbundle --release
       - name: Upload AAB Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-aab
           path: build/app/outputs/bundle/release/app-release.aab
@@ -144,8 +246,8 @@ jobs:
   release_notes:
     name: Gemini Release Notes
     runs-on: ubuntu-latest
-    needs: [prepare, quality_checks]
-    if: ${{ always() && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    needs: [meta, quality_checks]
+    if: ${{ always() && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
     outputs:
       has_ai_notes: ${{ steps.ai_notes.outputs.has_ai_notes }}
       ai_reason: ${{ steps.ai_notes.outputs.ai_reason }}
@@ -165,7 +267,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-2.5-flash
           GEMINI_FALLBACK_MODEL: gemini-2.5-flash-lite
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
         run: |
           set -euo pipefail
 
@@ -355,7 +457,7 @@ jobs:
 
       - name: Upload Gemini Notes Artifact
         if: ${{ steps.ai_notes.outputs.has_ai_notes == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: gemini-release-notes
           path: gemini_release_notes.md
@@ -384,58 +486,58 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    needs: [prepare, quality_checks, build_apk, build_aab, release_notes]
-    if: ${{ always() && needs.prepare.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.build_apk.result == 'success' || needs.build_apk.result == 'skipped') && (needs.build_aab.result == 'success' || needs.build_aab.result == 'skipped') && (needs.release_notes.result == 'success' || needs.release_notes.result == 'skipped') }}
+    needs: [meta, quality_checks, build_apk, build_aab, release_notes]
+    if: ${{ always() && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.build_apk.result == 'success' || needs.build_apk.result == 'skipped') && (needs.build_aab.result == 'success' || needs.build_aab.result == 'skipped') && (needs.release_notes.result == 'success' || needs.release_notes.result == 'skipped') }}
     steps:
       - name: Download APK Artifact
-        if: ${{ inputs.build_apk }}
-        uses: actions/download-artifact@v4
+        if: ${{ needs.meta.outputs.build_apk == 'true' }}
+        uses: actions/download-artifact@v7
         with:
           name: release-apk
           path: release_assets
 
       - name: Download AAB Artifact
-        if: ${{ inputs.build_aab }}
-        uses: actions/download-artifact@v4
+        if: ${{ needs.meta.outputs.build_aab == 'true' }}
+        uses: actions/download-artifact@v7
         with:
           name: release-aab
           path: release_assets
 
       - name: Download Gemini Notes Artifact
         if: ${{ needs.release_notes.outputs.has_ai_notes == 'true' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: gemini-release-notes
           path: release_assets
 
       - name: Create GitHub Release (AI Notes)
         if: ${{ needs.release_notes.outputs.has_ai_notes == 'true' }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ inputs.tag }}
-          name: ${{ inputs.release_name != '' && inputs.release_name || inputs.tag }}
+          tag_name: ${{ needs.meta.outputs.release_tag }}
+          name: ${{ needs.meta.outputs.release_name }}
           body_path: release_assets/gemini_release_notes.md
           files: |
             release_assets/app-release.apk
             release_assets/app-release.aab
           fail_on_unmatched_files: false
-          draft: ${{ inputs.draft }}
-          prerelease: ${{ inputs.prerelease }}
+          draft: ${{ needs.meta.outputs.draft == 'true' }}
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release (Fallback)
         if: ${{ needs.release_notes.outputs.has_ai_notes != 'true' }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ inputs.tag }}
-          name: ${{ inputs.release_name != '' && inputs.release_name || inputs.tag }}
+          tag_name: ${{ needs.meta.outputs.release_tag }}
+          name: ${{ needs.meta.outputs.release_name }}
           files: |
             release_assets/app-release.apk
             release_assets/app-release.aab
           fail_on_unmatched_files: false
           generate_release_notes: true
-          draft: ${{ inputs.draft }}
-          prerelease: ${{ inputs.prerelease }}
+          draft: ${{ needs.meta.outputs.draft == 'true' }}
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
