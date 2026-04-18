@@ -858,6 +858,39 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return ranges;
   }
 
+  List<_TimeRangeLabel> _compressTimeRangesForDisplay(
+    List<_TimeRangeLabel> ranges,
+  ) {
+    if (ranges.isEmpty) return const <_TimeRangeLabel>[];
+
+    final sorted = List<_TimeRangeLabel>.from(ranges)
+      ..sort((a, b) {
+        final byStart = a.startMin.compareTo(b.startMin);
+        if (byStart != 0) return byStart;
+        return a.endMin.compareTo(b.endMin);
+      });
+
+    final merged = <_TimeRangeLabel>[];
+    var current = sorted.first;
+
+    for (final next in sorted.skip(1)) {
+      final overlapsOrVeryClose = next.startMin <= current.endMin + 5;
+      if (overlapsOrVeryClose) {
+        current = _TimeRangeLabel(
+          startMin: current.startMin,
+          endMin: math.max(current.endMin, next.endMin),
+        );
+        continue;
+      }
+
+      merged.add(current);
+      current = next;
+    }
+
+    merged.add(current);
+    return merged;
+  }
+
   Set<int> _lessonRoomIds(Map<dynamic, dynamic> lesson) {
     final ids = <int>{};
     final ro = lesson['ro'];
@@ -1305,7 +1338,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     const double timeColWidth = 56;
-    final timeRanges = _collectTimeRangesFromWeek();
+    final timeRanges = _compressTimeRangesForDisplay(
+      _collectTimeRangesFromWeek(),
+    );
 
     final now = DateTime.now();
     final dayDate = _currentMonday.add(Duration(days: dayIndex));
@@ -1627,7 +1662,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     const double timeColWidth = 52.0;
     const double minDayColWidth = 56.0;
     const double dayColGap = 4.0;
-    final timeRanges = _collectTimeRangesFromWeek();
+    final timeRanges = _compressTimeRangesForDisplay(
+      _collectTimeRangesFromWeek(),
+    );
     final cs = Theme.of(context).colorScheme;
     final today = DateTime.now();
 
@@ -2067,10 +2104,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     });
 
     if (isDemoMode) {
-      final tempWeek = DemoModeService.buildWeek(
-        _currentMonday,
-        locale: appLocaleNotifier.value,
-      );
+      final tempWeek = DemoModeService.buildWeek(_currentMonday, locale: 'en');
       _applyKnownSubjectsFromWeek(tempWeek);
       await _saveWeekToCache(
         requestPersonId: requestPersonId,

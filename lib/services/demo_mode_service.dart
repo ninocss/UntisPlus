@@ -6,7 +6,7 @@ class DemoModeService {
 
   static Map<int, List<dynamic>> buildWeek(
     DateTime monday, {
-    String locale = 'de',
+    String locale = 'en',
   }) {
     final mon = DateTime(monday.year, monday.month, monday.day);
     final tue = mon.add(const Duration(days: 1));
@@ -22,7 +22,7 @@ class DemoModeService {
           845,
           'MA',
           _subjectName('MA', locale),
-          'Frau Becker',
+          'Olivia Carter',
           'A101',
         ),
         _lesson(
@@ -31,7 +31,7 @@ class DemoModeService {
           935,
           'MA',
           _subjectName('MA', locale),
-          'Frau Becker',
+          'Olivia Carter',
           'A101',
         ),
         _lesson(
@@ -40,8 +40,8 @@ class DemoModeService {
           1030,
           'DE',
           _subjectName('DE', locale),
-          'Herr Lang',
-          'B204',
+          'Daniel Reed',
+          'Language Room',
         ),
         _lesson(
           mon,
@@ -49,8 +49,8 @@ class DemoModeService {
           1120,
           'EN',
           _subjectName('EN', locale),
-          'Mrs. Miller',
-          'C110',
+          'Emily Miller',
+          'English Studio',
         ),
         _lesson(
           mon,
@@ -58,8 +58,8 @@ class DemoModeService {
           1120,
           'IF',
           _subjectName('IF', locale),
-          'Herr Weber',
-          'IT 3',
+          'Noah Bennett',
+          'Tech Lab 3',
         ),
         _lesson(
           mon,
@@ -67,8 +67,8 @@ class DemoModeService {
           1215,
           'CH',
           _subjectName('CH', locale),
-          'Dr. Roth',
-          'Lab 1',
+          'Dr. Harper',
+          'Science Lab 1',
         ),
         _lesson(
           mon,
@@ -76,7 +76,7 @@ class DemoModeService {
           1310,
           'SP',
           _subjectName('SP', locale),
-          'Coach Ali',
+          'Coach Jordan',
           'Hall 2',
         ),
         _lesson(
@@ -85,8 +85,8 @@ class DemoModeService {
           1405,
           'GE',
           _subjectName('GE', locale),
-          'Herr Braun',
-          'B018',
+          'Marcus Hill',
+          'History Hall',
           code: 'cancelled',
         ),
       ],
@@ -97,8 +97,8 @@ class DemoModeService {
           845,
           'BI',
           _subjectName('BI', locale),
-          'Frau Koch',
-          'Lab 2',
+          'Sophia Nguyen',
+          'Science Lab 2',
         ),
         _lesson(
           tue,
@@ -106,8 +106,8 @@ class DemoModeService {
           935,
           'BI',
           _subjectName('BI', locale),
-          'Frau Koch',
-          'Lab 2',
+          'Sophia Nguyen',
+          'Science Lab 2',
         ),
         _lesson(
           tue,
@@ -115,7 +115,7 @@ class DemoModeService {
           1030,
           'PH',
           _subjectName('PH', locale),
-          'Dr. Maier',
+          'Dr. Ellis',
           'A210',
         ),
         _lesson(
@@ -124,7 +124,7 @@ class DemoModeService {
           1120,
           'FR',
           _subjectName('FR', locale),
-          'Mme Dubois',
+          'Claire Dubois',
           'C205',
         ),
         _lesson(
@@ -133,8 +133,8 @@ class DemoModeService {
           1220,
           'KU',
           _subjectName('KU', locale),
-          'Frau Stern',
-          'Art 1',
+          'Ava Collins',
+          'Art Studio',
         ),
         _lesson(
           tue,
@@ -142,8 +142,8 @@ class DemoModeService {
           1310,
           'MU',
           _subjectName('MU', locale),
-          'Frau Vogel',
-          'M012',
+          'Maya Brooks',
+          'Music Room',
           code: 'cancelled',
         ),
       ],
@@ -154,8 +154,8 @@ class DemoModeService {
           845,
           'EN',
           _subjectName('EN', locale),
-          'Mrs. Miller',
-          'C110',
+          'Emily Miller',
+          'English Studio',
         ),
         _lesson(
           wed,
@@ -163,7 +163,7 @@ class DemoModeService {
           935,
           'MA',
           _subjectName('MA', locale),
-          'Frau Becker',
+          'Olivia Carter',
           'A101',
         ),
         _lesson(
@@ -172,7 +172,7 @@ class DemoModeService {
           1030,
           'PH',
           _subjectName('PH', locale),
-          'Dr. Maier',
+          'Dr. Ellis',
           'A210',
         ),
         _lesson(
@@ -181,7 +181,7 @@ class DemoModeService {
           1120,
           'PH',
           _subjectName('PH', locale),
-          'Dr. Maier',
+          'Dr. Ellis',
           'A210',
         ),
         _lesson(
@@ -190,8 +190,8 @@ class DemoModeService {
           1220,
           'DE',
           _subjectName('DE', locale),
-          'Herr Lang',
-          'B204',
+          'Daniel Reed',
+          'Language Room',
         ),
         _lesson(
           wed,
@@ -199,8 +199,8 @@ class DemoModeService {
           1310,
           'GE',
           _subjectName('GE', locale),
-          'Herr Braun',
-          'B018',
+          'Marcus Hill',
+          'History Hall',
         ),
         _lesson(
           wed,
@@ -208,8 +208,8 @@ class DemoModeService {
           1405,
           'IF',
           _subjectName('IF', locale),
-          'Herr Weber',
-          'IT 3',
+          'Noah Bennett',
+          'Tech Lab 3',
         ),
         _lesson(
           wed,
@@ -217,7 +217,7 @@ class DemoModeService {
           1405,
           'FO',
           _subjectName('FO', locale),
-          'Frau Otto',
+          'Emma Foster',
           'C006',
         ),
         _lesson(
@@ -226,8 +226,8 @@ class DemoModeService {
           1455,
           'CH',
           _subjectName('CH', locale),
-          'Dr. Roth',
-          'Lab 1',
+          'Dr. Harper',
+          'Science Lab 1',
           code: 'cancelled',
         ),
       ],
@@ -238,7 +238,7 @@ class DemoModeService {
           845,
           'MA',
           _subjectName('MA', locale),
-          'Frau Becker',
+          'Olivia Carter',
           'A101',
         ),
         _lesson(
@@ -247,8 +247,8 @@ class DemoModeService {
           935,
           'EN',
           _subjectName('EN', locale),
-          'Mrs. Miller',
-          'C110',
+          'Emily Miller',
+          'English Studio',
         ),
         _lesson(
           thu,
@@ -256,8 +256,8 @@ class DemoModeService {
           1030,
           'DE',
           _subjectName('DE', locale),
-          'Herr Lang',
-          'B204',
+          'Daniel Reed',
+          'Language Room',
         ),
         _lesson(
           thu,
@@ -265,8 +265,8 @@ class DemoModeService {
           1120,
           'GE',
           _subjectName('GE', locale),
-          'Herr Braun',
-          'B018',
+          'Marcus Hill',
+          'History Hall',
         ),
         _lesson(
           thu,
@@ -274,8 +274,8 @@ class DemoModeService {
           1220,
           'SP',
           _subjectName('SP', locale),
-          'Coach Ali',
-          'Field',
+          'Coach Jordan',
+          'Athletics Field',
         ),
         _lesson(
           thu,
@@ -283,8 +283,8 @@ class DemoModeService {
           1310,
           'SP',
           _subjectName('SP', locale),
-          'Coach Ali',
-          'Field',
+          'Coach Jordan',
+          'Athletics Field',
         ),
         _lesson(
           thu,
@@ -292,8 +292,8 @@ class DemoModeService {
           1405,
           'KU',
           _subjectName('KU', locale),
-          'Frau Stern',
-          'Art 1',
+          'Ava Collins',
+          'Art Studio',
         ),
       ],
       4: [
@@ -303,8 +303,8 @@ class DemoModeService {
           845,
           'BI',
           _subjectName('BI', locale),
-          'Frau Koch',
-          'Lab 2',
+          'Sophia Nguyen',
+          'Science Lab 2',
         ),
         _lesson(
           fri,
@@ -312,8 +312,8 @@ class DemoModeService {
           935,
           'CH',
           _subjectName('CH', locale),
-          'Dr. Roth',
-          'Lab 1',
+          'Dr. Harper',
+          'Science Lab 1',
         ),
         _lesson(
           fri,
@@ -321,8 +321,8 @@ class DemoModeService {
           1030,
           'IF',
           _subjectName('IF', locale),
-          'Herr Weber',
-          'IT 3',
+          'Noah Bennett',
+          'Tech Lab 3',
         ),
         _lesson(
           fri,
@@ -330,8 +330,8 @@ class DemoModeService {
           1120,
           'EN',
           _subjectName('EN', locale),
-          'Mrs. Miller',
-          'C110',
+          'Emily Miller',
+          'English Studio',
         ),
         _lesson(
           fri,
@@ -339,8 +339,8 @@ class DemoModeService {
           1220,
           'SO',
           _subjectName('SO', locale),
-          'Frau Neumann',
-          'B022',
+          'Hannah Price',
+          'Civics Room',
         ),
         _lesson(
           fri,
@@ -348,8 +348,8 @@ class DemoModeService {
           1310,
           'KL',
           _subjectName('KL', locale),
-          'Herr Lang',
-          'B204',
+          'Daniel Reed',
+          'Language Room',
           code: 'cancelled',
         ),
       ],
@@ -361,28 +361,28 @@ class DemoModeService {
     final y = now.year;
     return [
       {
-        'subject': 'Mathematik',
-        'examType': 'Klausur',
+        'subject': 'Mathematics',
+        'examType': 'Midterm Exam',
         'date': _dateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 3)),
         ),
-        'description': 'Analysis und Funktionen',
+        'description': 'Functions, derivatives, and graph analysis.',
       },
       {
-        'subject': 'Englisch',
-        'examType': 'Vokabeltest',
+        'subject': 'English Language Arts',
+        'examType': 'Vocabulary Quiz',
         'date': _dateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 8)),
         ),
-        'description': 'Unit 6, Writing Task',
+        'description': 'Unit 6: persuasive writing and reading comprehension.',
       },
       {
-        'subject': 'Biologie',
-        'examType': 'Praktikum',
+        'subject': 'Biology',
+        'examType': 'Lab Assessment',
         'date': _dateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 12)),
         ),
-        'description': 'Mikroskopie-Protokoll',
+        'description': 'Microscopy report and cell structure analysis.',
       },
     ];
   }
@@ -429,14 +429,14 @@ class DemoModeService {
       },
       'DE': {
         'de': 'Deutsch',
-        'en': 'German',
+        'en': 'German Language',
         'fr': 'Allemand',
         'es': 'Aleman',
         'el': 'Γερμανικά',
       },
       'EN': {
         'de': 'Englisch',
-        'en': 'English',
+        'en': 'English Language Arts',
         'fr': 'Anglais',
         'es': 'Ingles',
         'el': 'Αγγλικά',
@@ -506,7 +506,7 @@ class DemoModeService {
       },
       'FO': {
         'de': 'Forderung',
-        'en': 'Advanced Support',
+        'en': 'Enrichment Seminar',
         'fr': 'Approfondissement',
         'es': 'Refuerzo Avanzado',
         'el': 'Ενισχυτική Διδασκαλία',
@@ -520,7 +520,7 @@ class DemoModeService {
       },
       'KL': {
         'de': 'Klassenleiterstunde',
-        'en': 'Class Teacher Period',
+        'en': 'Advisory Period',
         'fr': 'Heure de professeur principal',
         'es': 'Hora de tutor',
         'el': 'Ώρα υπευθύνου τμήματος',
