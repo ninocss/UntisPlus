@@ -176,36 +176,91 @@ jobs:
             exit 0
           fi
 
-          PREV_TAG=$(git tag --sort=-creatordate | grep -Fxv "$RELEASE_TAG" | head -n 1 || true)
-          if [ -n "$PREV_TAG" ]; then
-            COMMITS=$(git log "$PREV_TAG"..HEAD --pretty=format:'- %s (%h)' | head -n 120)
-          else
-            COMMITS=$(git log --pretty=format:'- %s (%h)' | head -n 120)
+          APP_VERSION=$(grep -E '^version:\s*' pubspec.yaml | head -n 1 | sed -E 's/^version:\s*//')
+          if [ -z "${APP_VERSION:-}" ]; then
+            APP_VERSION="unknown"
           fi
 
-          if [ -z "$COMMITS" ]; then
+          PREV_TAG=$(git tag --sort=-creatordate | grep -Fxv "$RELEASE_TAG" | head -n 1 || true)
+
+          REPO_SLUG="${GITHUB_REPOSITORY:-}"
+          if [ -n "$REPO_SLUG" ] && [ -n "$PREV_TAG" ]; then
+            COMPARE_URL="https://github.com/${REPO_SLUG}/compare/${PREV_TAG}...${RELEASE_TAG}"
+          elif [ -n "$REPO_SLUG" ]; then
+            COMPARE_URL="https://github.com/${REPO_SLUG}/commits/${GITHUB_SHA:-HEAD}"
+          else
+            COMPARE_URL=""
+          fi
+
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="$PREV_TAG..HEAD"
+            COMMIT_COUNT=$(git rev-list --count "$RANGE" 2>/dev/null || echo "0")
+            COMMITS=$(git log "$RANGE" -n 80 --no-merges --pretty=format:'- %s (%h)' --name-only)
+            CHANGED_FILES=$(git diff --name-only "$RANGE" | head -n 220 || true)
+          else
+            COMMIT_COUNT=$(git rev-list --max-count=80 --count HEAD 2>/dev/null || echo "0")
+            COMMITS=$(git log -n 80 --no-merges --pretty=format:'- %s (%h)' --name-only)
+            CHANGED_FILES=$(git log -n 80 --no-merges --name-only --pretty=format:'' | sed '/^$/d' | sort -u | head -n 220 || true)
+          fi
+
+          if [ -z "${COMMITS//[[:space:]]/}" ]; then
             COMMITS='- No commit messages found.'
           fi
 
+          if [ -z "${CHANGED_FILES//[[:space:]]/}" ]; then
+            CHANGED_FILES='(none)'
+          fi
+
           PROMPT=$(cat <<'EOF'
-          You are a release manager for a Flutter app.
-          Create concise, user-friendly release notes in Markdown. You can Use some Emojis, but keep it professional.
-          Requirements:
-          - Output in English.
-          - Start with a short summary paragraph.
-          - Then sections: "Highlights", "Improvements", "Fixes", "Technical Notes".
-          - Use bullet points and include only changes that are inferable from commits.
-          - If uncertain, phrase cautiously and do not invent details.
-          - Keep it compact and readable for end users.
-          - Only return the final Release Notes. No Comments from you.
-          - I'm a sole developer
-          - Don't write like I'm a company, I'm just a hobby-dev.
+           You are a release manager writing release notes for a Flutter app.
+           Your job: produce detailed, high-signal release notes that are still honest.
+
+           Hard rules:
+           - Output in English.
+           - Output valid Markdown only.
+           - Use ONLY information that is inferable from the provided commits and file paths.
+           - If something is unclear, explicitly say it's "likely" / "may" / "internal" and avoid guessing.
+           - Do NOT invent features, UI changes, or bug fixes.
+           - Do NOT mention this prompt or your reasoning.
+
+           Tone:
+           - Friendly and practical.
+           - I am a sole hobby developer (not a company). Write accordingly.
+           - Emojis are allowed sparingly (max ~5 total).
+
+           Output format (keep exactly this order):
+           1) Title line: "Release <tag>" (and include app version if provided).
+           2) One short summary paragraph (2–4 sentences) describing who benefits and what changed.
+           3) Sections with H2 headings:
+             - Highlights (3–7 bullets, user-facing, highest impact first)
+             - What's New (new capabilities / screens / flows; user-facing)
+             - Improvements (UX, clarity, polish, refactors that affect behavior)
+             - Fixes (bugs; include the symptom and where it occurred if inferable)
+             - Performance & Reliability (if inferable)
+             - Technical Notes (advanced users/devs; mention modules/areas, migrations, config)
+           4) A final "Full Changelog" line with a link if a compare URL is provided.
+
+           Bullet guidelines:
+           - Each bullet should be 1–2 lines, start with a verb, and include context (screen/feature/module) when possible.
+           - Prefer concrete descriptions ("Improved timetable refresh"), not vague ones ("Various changes").
+           - If a change is purely internal, keep it in Technical Notes and label it "Internal".
+           - If there are no user-visible changes, say so explicitly and focus on Technical Notes.
+          - Rewrite commit messages into release-note wording; do not copy them verbatim.
+          - Do not include raw commit hashes in the output.
+          - Avoid filler bullets like "chore"/"misc" unless they have a clear user impact.
+
+           Only return the final release notes.
           EOF
           )
 
           PAYLOAD=$(jq -n \
             --arg prompt "$PROMPT" \
             --arg tag "$RELEASE_TAG" \
+            --arg prev_tag "${PREV_TAG:-}" \
+            --arg app_version "$APP_VERSION" \
+            --arg commit_count "$COMMIT_COUNT" \
+            --arg compare_url "$COMPARE_URL" \
+            --arg changed_files "$CHANGED_FILES" \
             --arg commits "$COMMITS" \
             '{
               contents: [
@@ -213,7 +268,17 @@ jobs:
                   role: "user",
                   parts: [
                     {
-                      text: ($prompt + "\n\nRelease tag: " + $tag + "\n\nCommits:\n" + $commits)
+                      text: (
+                        $prompt +
+                        "\n\nContext:" +
+                        "\n- Release tag: " + $tag +
+                        "\n- App version (pubspec.yaml): " + $app_version +
+                        "\n- Previous tag (if any): " + (if ($prev_tag | length) > 0 then $prev_tag else "(none)" end) +
+                        "\n- Commit count in range: " + $commit_count +
+                        (if ($compare_url | length) > 0 then "\n- Compare URL: " + $compare_url else "" end) +
+                        "\n\nChanged files (for scoping; may be truncated):\n" + $changed_files +
+                        "\n\nCommits (subject + touched files; may be truncated):\n" + $commits
+                      )
                     }
                   ]
                 }

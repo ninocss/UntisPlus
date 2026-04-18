@@ -2,8 +2,8 @@ name: Daily Nightly Build
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Läuft jeden Tag um 00:00 UTC
-  workflow_dispatch: # Erlaubt dir, den Build jederzeit manuell zu starten
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   check_changes:
