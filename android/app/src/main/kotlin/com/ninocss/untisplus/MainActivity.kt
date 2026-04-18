@@ -1,4 +1,4 @@
-package gay.ninoio.untisplus
+package com.ninocss.untisplus
 
 import android.app.Notification
 import android.app.NotificationChannel
