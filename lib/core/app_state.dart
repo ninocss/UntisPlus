@@ -212,6 +212,7 @@ Future<bool> _reAuthenticate() async {
   final prefs = await SharedPreferences.getInstance();
   final user = prefs.getString('username') ?? '';
   final pass = prefs.getString('password') ?? '';
+  final useLoginKey = prefs.getString('loginCredentialMode') == 'loginKey';
   if (user.isEmpty || pass.isEmpty) return false;
 
   try {
@@ -220,6 +221,7 @@ Future<bool> _reAuthenticate() async {
       password: pass,
       client: 'UntisPlus',
       requestId: 'relogin',
+      useLoginKey: useLoginKey,
     );
     final newSession = authResult?['sessionId']?.toString();
     if (newSession != null && newSession.isNotEmpty) {

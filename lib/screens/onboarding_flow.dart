@@ -12,6 +12,8 @@ class OnboardingFlow extends StatefulWidget {
 class _OnboardingFlowState extends State<OnboardingFlow> {
   final PageController _pageController = PageController();
   static const int _totalOnboardingSteps = 5;
+  static const String _credentialModePassword = 'password';
+  static const String _credentialModeLoginKey = 'loginKey';
   int _currentPage = 0;
 
   final _serverController = TextEditingController();
@@ -31,6 +33,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   bool _requiresTwoFactor = false;
   bool _manualSchoolEntry = false;
   bool _isSearching = false;
+  bool _useLoginKey = false;
   List<SchoolSearchResult> _searchResults = [];
   Timer? _debounce;
 
@@ -38,8 +41,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void initState() {
     super.initState();
     _onboardingAiProvider = _normalizeAiProvider(aiProvider);
-    _onboardingAiCustomCompatibility =
-        _normalizeAiCustomCompatibility(aiCustomCompatibility);
+    _onboardingAiCustomCompatibility = _normalizeAiCustomCompatibility(
+      aiCustomCompatibility,
+    );
     _onboardingAiModel = aiModel;
     _onboardingProviderApiKeys = {
       'gemini': geminiApiKey,
@@ -59,6 +63,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     _aiCustomBaseUrlController.text = aiCustomBaseUrl;
     _syncApiKeyControllerForProvider();
+    SharedPreferences.getInstance().then((prefs) {
+      if (!mounted) return;
+      setState(() {
+        _useLoginKey =
+            prefs.getString('loginCredentialMode') == _credentialModeLoginKey;
+      });
+    });
   }
 
   @override
@@ -124,8 +135,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _cacheCurrentProviderApiKey() {
-    _onboardingProviderApiKeys[_onboardingAiProvider] =
-        _aiApiKeyController.text.trim();
+    _onboardingProviderApiKeys[_onboardingAiProvider] = _aiApiKeyController.text
+        .trim();
   }
 
   void _syncApiKeyControllerForProvider() {
@@ -572,6 +583,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         client: 'UntisPlus',
         requestId: '1',
         otp: _requiresTwoFactor ? _twoFactorController.text.trim() : null,
+        useLoginKey: _useLoginKey,
       );
 
       if (authResult != null) {
@@ -609,6 +621,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         await prefs.setString('schoolName', schoolName);
         await prefs.setString('username', _userController.text);
         await prefs.setString('password', _passwordController.text);
+        await prefs.setString(
+          'loginCredentialMode',
+          _useLoginKey ? _credentialModeLoginKey : _credentialModePassword,
+        );
         await prefs.setInt('personType', personType);
         await prefs.setInt('personId', personId);
         await prefs.setBool('demoMode', false);
@@ -754,7 +770,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final mq = MediaQuery.of(context);
     final safeViewportHeight =
-        mq.size.height - mq.padding.top - mq.padding.bottom - mq.viewInsets.bottom;
+        mq.size.height -
+        mq.padding.top -
+        mq.padding.bottom -
+        mq.viewInsets.bottom;
     final sheetHeight = safeViewportHeight.clamp(340.0, 620.0).toDouble();
 
     return showModalBottomSheet<int>(
@@ -846,7 +865,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                   ),
                                   child: Icon(
                                     _backgroundStyleIcon(idx),
-                                    color: colors.primary.withValues(alpha: 0.96),
+                                    color: colors.primary.withValues(
+                                      alpha: 0.96,
+                                    ),
                                     size: 19,
                                   ),
                                 ),
@@ -857,19 +878,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                         ? FontWeight.w700
                                         : FontWeight.w600,
                                     fontSize: 15.2,
-                                    color: colors.onSurface.withValues(alpha: 0.98),
+                                    color: colors.onSurface.withValues(
+                                      alpha: 0.98,
+                                    ),
                                   ),
                                 ),
                                 trailing: selected
                                     ? Icon(
                                         Icons.check_circle_rounded,
-                                        color: colors.primary.withValues(alpha: 0.98),
+                                        color: colors.primary.withValues(
+                                          alpha: 0.98,
+                                        ),
                                       )
                                     : Icon(
                                         Icons.chevron_right_rounded,
-                                        color: colors.onSurfaceVariant.withValues(
-                                          alpha: 0.86,
-                                        ),
+                                        color: colors.onSurfaceVariant
+                                            .withValues(alpha: 0.86),
                                       ),
                               ),
                             ),
@@ -1151,49 +1175,41 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   const SizedBox(height: 10),
                   ValueListenableBuilder<ThemeMode>(
                     valueListenable: themeModeNotifier,
-                    builder: (context, val, _) =>
-                        SegmentedButton<ThemeMode>(
-                          style: SegmentedButton.styleFrom(
-                            textStyle: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          segments: [
-                            ButtonSegment(
-                              value: ThemeMode.light,
-                              icon: const Icon(
-                                Icons.light_mode_rounded,
-                                size: 17,
-                              ),
-                              label: Text(l.settingsThemeLight),
-                            ),
-                            ButtonSegment(
-                              value: ThemeMode.system,
-                              icon: const Icon(
-                                Icons.brightness_auto_rounded,
-                                size: 17,
-                              ),
-                              label: Text(l.settingsThemeSystem),
-                            ),
-                            ButtonSegment(
-                              value: ThemeMode.dark,
-                              icon: const Icon(
-                                Icons.dark_mode_rounded,
-                                size: 17,
-                              ),
-                              label: Text(l.settingsThemeDark),
-                            ),
-                          ],
-                          selected: {val},
-                          onSelectionChanged: (set) async {
-                            final mode = set.first;
-                            themeModeNotifier.value = mode;
-                            final prefs =
-                                await SharedPreferences.getInstance();
-                            await prefs.setInt('themeMode', mode.index);
-                          },
+                    builder: (context, val, _) => SegmentedButton<ThemeMode>(
+                      style: SegmentedButton.styleFrom(
+                        textStyle: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
+                      ),
+                      segments: [
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          icon: const Icon(Icons.light_mode_rounded, size: 17),
+                          label: Text(l.settingsThemeLight),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          icon: const Icon(
+                            Icons.brightness_auto_rounded,
+                            size: 17,
+                          ),
+                          label: Text(l.settingsThemeSystem),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          icon: const Icon(Icons.dark_mode_rounded, size: 17),
+                          label: Text(l.settingsThemeDark),
+                        ),
+                      ],
+                      selected: {val},
+                      onSelectionChanged: (set) async {
+                        final mode = set.first;
+                        themeModeNotifier.value = mode;
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setInt('themeMode', mode.index);
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -1254,9 +1270,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             l.settingsBackgroundStyle,
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.w600,
-                              color: colors.onSurface.withValues(
-                                alpha: 0.98,
-                              ),
+                              color: colors.onSurface.withValues(alpha: 0.98),
                             ),
                           ),
                           subtitle: Text(
@@ -1275,8 +1289,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             ),
                           ),
                           onTap: () async {
-                            final selected =
-                                await _showBackgroundStylePicker(style);
+                            final selected = await _showBackgroundStylePicker(
+                              style,
+                            );
                             if (selected != null) {
                               await _setBackgroundAnimationStyle(selected);
                             }
@@ -1485,11 +1500,33 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ],
             _buildField(_userController, l.loginUsername, Icons.person),
             const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: Text(l.loginCredentialModePassword),
+                  selected: !_useLoginKey,
+                  onSelected: (_) {
+                    setState(() => _useLoginKey = false);
+                  },
+                ),
+                ChoiceChip(
+                  label: Text(l.loginCredentialModeLoginKey),
+                  selected: _useLoginKey,
+                  onSelected: (_) {
+                    setState(() => _useLoginKey = true);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             _buildField(
               _passwordController,
-              l.loginPassword,
+              _useLoginKey ? l.loginLoginKey : l.loginPassword,
               Icons.key,
               obscure: true,
+              helperText: _useLoginKey ? l.loginLoginKeyHint : null,
             ),
             if (_requiresTwoFactor) ...[
               const SizedBox(height: 12),
@@ -1641,7 +1678,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               _buildOnboardingAiOptionTile(
                 icon: Icons.merge_type_rounded,
                 title: l.settingsAiCompatibility,
-                subtitle: _compatibilityLabel(l, _onboardingAiCustomCompatibility),
+                subtitle: _compatibilityLabel(
+                  l,
+                  _onboardingAiCustomCompatibility,
+                ),
                 onTap: _showOnboardingAiCompatibilityDialog,
               ),
               const SizedBox(height: 10),
@@ -2075,9 +2115,7 @@ class _StepWrapper extends StatelessWidget {
                 AnimatedPadding(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
-                  padding: EdgeInsets.only(
-                    bottom: keyboardOpen ? 6 : 0,
-                  ),
+                  padding: EdgeInsets.only(bottom: keyboardOpen ? 6 : 0),
                   child: footer!,
                 ),
               ],

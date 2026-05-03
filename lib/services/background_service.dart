@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:otp_auth/otp_auth.dart';
 import 'package:workmanager/workmanager.dart';
 import '../core/time_utils.dart';
 
@@ -144,6 +145,83 @@ String _localizedDailyBriefingExpanded(
     default:
       return 'Start: $firstStart\nEnde: $lastEnd\nStunden: $lessonCount\nPausen: $breakCount\nNächste Stunde: $nextLesson';
   }
+}
+
+String _normalizeWebUntisSecret(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return '';
+
+  if (trimmed.startsWith('otpauth://')) {
+    return OTPUri.extractSecret(
+      trimmed,
+    ).trim().replaceAll(' ', '').toUpperCase();
+  }
+
+  if (trimmed.startsWith('untis://')) {
+    final uri = Uri.tryParse(trimmed);
+    final extracted =
+        uri?.queryParameters['key'] ?? uri?.queryParameters['secret'] ?? '';
+    if (extracted.isNotEmpty) {
+      return extracted.trim().replaceAll(' ', '').toUpperCase();
+    }
+  }
+
+  return trimmed.replaceAll(' ', '').toUpperCase();
+}
+
+String _generateWebUntisOtp(String credential) {
+  final secret = _normalizeWebUntisSecret(credential);
+  if (secret.isEmpty) {
+    throw ArgumentError('WebUntis secret must not be empty.');
+  }
+
+  return TOTP(
+    secret: secret,
+    digits: 6,
+    algorithm: OTPAlgorithm.sha1,
+    period: 30,
+  ).now();
+}
+
+Future<String?> _loginWithWebUntisSecret({
+  required String schoolUrl,
+  required String schoolName,
+  required String user,
+  required String secret,
+}) async {
+  final response = await http.post(
+    Uri.parse(
+      'https://$schoolUrl/WebUntis/jsonrpc_intern.do?school=$schoolName',
+    ),
+    body: jsonEncode({
+      'id': 'bg_login',
+      'method': 'getUserData2017',
+      'params': [
+        {
+          'auth': {
+            'clientTime': DateTime.now().millisecondsSinceEpoch,
+            'user': user,
+            'otp': _generateWebUntisOtp(secret),
+          },
+        },
+      ],
+      'jsonrpc': '2.0',
+    }),
+  );
+
+  if (response.statusCode != 200 || response.body.trim().isEmpty) {
+    return null;
+  }
+
+  final data = jsonDecode(response.body);
+  if (data is Map && data['error'] != null) {
+    return null;
+  }
+
+  final setCookie = response.headers['set-cookie'] ?? '';
+  final sessionId =
+      RegExp(r'JSESSIONID=([^;]+)').firstMatch(setCookie)?.group(1) ?? '';
+  return sessionId.isEmpty ? null : sessionId;
 }
 
 String _localizedImportantChangesTitle(String locale) {
@@ -524,6 +602,7 @@ Future<void> updateUntisData() async {
   final schoolName = prefs.getString('schoolName') ?? '';
   final user = prefs.getString('username') ?? '';
   final pass = prefs.getString('password') ?? '';
+  final useLoginKey = prefs.getString('loginCredentialMode') == 'loginKey';
   final locale = prefs.getString('appLocale') ?? 'de';
 
   if (!isDemoMode &&
@@ -543,19 +622,34 @@ Future<void> updateUntisData() async {
     final authUrl = Uri.parse(
       'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
     );
-    final authRes = await http.post(
-      authUrl,
-      body: jsonEncode({
-        "id": "bg_login",
-        "method": "authenticate",
-        "params": {"user": user, "password": pass, "client": "UntisPlusWidget"},
-        "jsonrpc": "2.0",
-      }),
-    );
+    if (useLoginKey) {
+      sessionId =
+          await _loginWithWebUntisSecret(
+            schoolUrl: schoolUrl,
+            schoolName: schoolName,
+            user: user,
+            secret: pass,
+          ) ??
+          '';
+    } else {
+      final authRes = await http.post(
+        authUrl,
+        body: jsonEncode({
+          "id": "bg_login",
+          "method": "authenticate",
+          "params": {
+            "user": user,
+            "password": pass,
+            "client": "UntisPlusWidget",
+          },
+          "jsonrpc": "2.0",
+        }),
+      );
 
-    if (authRes.statusCode == 200) {
-      final data = jsonDecode(authRes.body);
-      sessionId = data['result']?['sessionId']?.toString() ?? "";
+      if (authRes.statusCode == 200) {
+        final data = jsonDecode(authRes.body);
+        sessionId = data['result']?['sessionId']?.toString() ?? "";
+      }
     }
 
     if (sessionId.isEmpty) return;

@@ -25,6 +25,10 @@ class AppL10n {
   String get loginSchool => _t('loginSchool');
   String get loginUsername => _t('loginUsername');
   String get loginPassword => _t('loginPassword');
+  String get loginLoginKey => _t('loginLoginKey');
+  String get loginLoginKeyHint => _t('loginLoginKeyHint');
+  String get loginCredentialModePassword => _t('loginCredentialModePassword');
+  String get loginCredentialModeLoginKey => _t('loginCredentialModeLoginKey');
   String get loginButton => _t('loginButton');
   String get loginFailed => _t('loginFailed');
   String get loginConnectionError => _t('loginConnectionError');
@@ -347,6 +351,11 @@ class AppL10n {
       'loginSchool': 'Schule',
       'loginUsername': 'Benutzername',
       'loginPassword': 'Passwort',
+      'loginLoginKey': 'Login-Schlüssel',
+      'loginLoginKeyHint':
+          'Nutze den WebUntis-Login-Schlüssel, wenn sich deine Schule über Microsoft 365 oder Office 365 anmeldet.',
+      'loginCredentialModePassword': 'Passwort',
+      'loginCredentialModeLoginKey': 'Login-Schlüssel',
       'loginButton': 'Loslegen',
       'loginFailed': 'Login fehlgeschlagen. Prüfe deine Daten.',
       'loginConnectionError': 'Verbindungsfehler',
@@ -694,6 +703,11 @@ class AppL10n {
       'loginSchool': 'School',
       'loginUsername': 'Username',
       'loginPassword': 'Password',
+      'loginLoginKey': 'Login key',
+      'loginLoginKeyHint':
+          'Use the WebUntis login key if your school signs in through Microsoft 365 or Office 365.',
+      'loginCredentialModePassword': 'Password',
+      'loginCredentialModeLoginKey': 'Login key',
       'loginButton': "Let's go",
       'loginFailed': 'Login failed. Check your credentials.',
       'loginConnectionError': 'Connection error',
@@ -1026,6 +1040,11 @@ class AppL10n {
       'loginSchool': 'École',
       'loginUsername': "Nom d'utilisateur",
       'loginPassword': 'Mot de passe',
+      'loginLoginKey': 'Clé de connexion',
+      'loginLoginKeyHint':
+          'Utilise la clé de connexion WebUntis si ton école se connecte via Microsoft 365 ou Office 365.',
+      'loginCredentialModePassword': 'Mot de passe',
+      'loginCredentialModeLoginKey': 'Clé de connexion',
       'loginButton': 'Commencer',
       'loginFailed': 'Connexion échouée. Vérifie tes données.',
       'loginConnectionError': 'Erreur de connexion',
@@ -1332,6 +1351,11 @@ class AppL10n {
       'loginSchool': 'Escuela',
       'loginUsername': 'Usuario',
       'loginPassword': 'Contraseña',
+      'loginLoginKey': 'Clave de inicio de sesión',
+      'loginLoginKeyHint':
+          'Usa la clave de inicio de sesión de WebUntis si tu escuela inicia sesión con Microsoft 365 u Office 365.',
+      'loginCredentialModePassword': 'Contraseña',
+      'loginCredentialModeLoginKey': 'Clave de inicio de sesión',
       'loginButton': 'Empezar',
       'loginFailed': 'Error de inicio de sesión. Verifica tus datos.',
       'loginConnectionError': 'Error de conexión',
@@ -1639,6 +1663,11 @@ class AppL10n {
       'loginSchool': 'Σχολείο',
       'loginUsername': 'Όνομα χρήστη',
       'loginPassword': 'Κωδικός πρόσβασης',
+      'loginLoginKey': 'Κλειδί σύνδεσης',
+      'loginLoginKeyHint':
+          'Χρησιμοποίησε το κλειδί σύνδεσης WebUntis αν το σχολείο σου συνδέεται μέσω Microsoft 365 ή Office 365.',
+      'loginCredentialModePassword': 'Κωδικός πρόσβασης',
+      'loginCredentialModeLoginKey': 'Κλειδί σύνδεσης',
       'loginButton': 'Πάμε',
       'loginFailed': 'Η σύνδεση απέτυχε. Έλεγξε τα στοιχεία σου.',
       'loginConnectionError': 'Σφάλμα σύνδεσης',

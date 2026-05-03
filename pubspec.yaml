@@ -32,6 +32,7 @@ dependencies:
   package_info_plus: ^9.0.1
   flutter_markdown_plus: ^1.0.7
   sensors_plus: ^7.0.0
+  otp_auth: ^1.0.1
 
 dev_dependencies:
   flutter_test:

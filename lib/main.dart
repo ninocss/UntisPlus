@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:otp_auth/otp_auth.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
@@ -149,6 +150,165 @@ Uri _webUntisRpcUri({String? serverUrl, String? school}) {
   );
 }
 
+Uri _webUntisInternRpcUri({String? serverUrl, String? school}) {
+  final resolvedServer = serverUrl ?? schoolUrl;
+  final resolvedSchool = school ?? schoolName;
+  return Uri.parse(
+    'https://$resolvedServer/WebUntis/jsonrpc_intern.do?school=$resolvedSchool',
+  );
+}
+
+String _normalizeWebUntisSecret(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return '';
+
+  if (trimmed.startsWith('otpauth://')) {
+    return OTPUri.extractSecret(
+      trimmed,
+    ).trim().replaceAll(' ', '').toUpperCase();
+  }
+
+  if (trimmed.startsWith('untis://')) {
+    final uri = Uri.tryParse(trimmed);
+    final extracted =
+        uri?.queryParameters['key'] ?? uri?.queryParameters['secret'] ?? '';
+    if (extracted.isNotEmpty) {
+      return extracted.trim().replaceAll(' ', '').toUpperCase();
+    }
+  }
+
+  return trimmed.replaceAll(' ', '').toUpperCase();
+}
+
+String _generateWebUntisOtp(String credential) {
+  final secret = _normalizeWebUntisSecret(credential);
+  if (secret.isEmpty) {
+    throw ArgumentError('WebUntis secret must not be empty.');
+  }
+
+  final totp = TOTP(
+    secret: secret,
+    digits: 6,
+    algorithm: OTPAlgorithm.sha1,
+    period: 30,
+  );
+  return totp.now();
+}
+
+Future<Map<String, dynamic>?> _authenticateUntisWithSecret({
+  required String user,
+  required String secret,
+  required String client,
+  String requestId = 'auth',
+  String? serverUrl,
+  String? school,
+}) async {
+  final otp = _generateWebUntisOtp(secret);
+  final response = await http.post(
+    _webUntisInternRpcUri(serverUrl: serverUrl, school: school),
+    body: jsonEncode({
+      'id': requestId,
+      'method': 'getUserData2017',
+      'params': [
+        {
+          'auth': {
+            'clientTime': DateTime.now().millisecondsSinceEpoch,
+            'user': user,
+            'otp': otp,
+          },
+        },
+      ],
+      'jsonrpc': '2.0',
+    }),
+  );
+
+  if (response.statusCode != 200 || response.body.trim().isEmpty) {
+    return null;
+  }
+
+  final decoded = jsonDecode(response.body);
+  if (decoded is! Map<String, dynamic>) {
+    return null;
+  }
+
+  final error = decoded['error'];
+  if (error is Map) {
+    final err = Map<String, dynamic>.from(error);
+    final message = (err['message'] ?? '').toString();
+    final data = (err['data'] ?? '').toString();
+    final combined = '${message.toLowerCase()} ${data.toLowerCase()}';
+    if (combined.contains('otp') ||
+        combined.contains('secret') ||
+        combined.contains('login')) {
+      return {
+        'otpInvalid': true,
+        'errorCode': err['code'],
+        'errorMessage': message,
+      };
+    }
+  }
+
+  if (!response.headers.containsKey('set-cookie')) {
+    return null;
+  }
+
+  final cookie = response.headers['set-cookie'];
+  if (cookie == null || cookie.isEmpty) {
+    return null;
+  }
+
+  final sessionId =
+      RegExp(r'JSESSIONID=([^;]+)').firstMatch(cookie)?.group(1) ?? '';
+  if (sessionId.isEmpty) {
+    return null;
+  }
+
+  final appConfigResponse = await http.get(
+    Uri.parse('https://${serverUrl ?? schoolUrl}/WebUntis/api/app/config'),
+    headers: {
+      'Cookie': 'JSESSIONID=$sessionId; schoolname=${school ?? schoolName}',
+    },
+  );
+
+  if (appConfigResponse.statusCode != 200 ||
+      appConfigResponse.body.trim().isEmpty) {
+    return {'sessionId': sessionId};
+  }
+
+  final appConfigDecoded = jsonDecode(appConfigResponse.body);
+  if (appConfigDecoded is! Map<String, dynamic>) {
+    return {'sessionId': sessionId};
+  }
+
+  final data = appConfigDecoded['data'];
+  final loginConfigUser = data is Map
+      ? data['loginServiceConfig'] is Map
+            ? (data['loginServiceConfig'] as Map)['user']
+            : null
+      : null;
+  if (loginConfigUser is Map) {
+    final personId = loginConfigUser['personId'];
+    final persons = loginConfigUser['persons'];
+    int? personType;
+    if (persons is List) {
+      final person = persons.cast<dynamic>().firstWhere(
+        (entry) => entry is Map && entry['id'] == personId,
+        orElse: () => null,
+      );
+      if (person is Map && person['type'] != null) {
+        personType = int.tryParse(person['type'].toString());
+      }
+    }
+    return {
+      'sessionId': sessionId,
+      'personId': int.tryParse(personId?.toString() ?? '') ?? 0,
+      'personType': personType ?? 5,
+    };
+  }
+
+  return {'sessionId': sessionId};
+}
+
 Future<Map<String, dynamic>?> _authenticateUntis({
   required String user,
   required String password,
@@ -157,7 +317,19 @@ Future<Map<String, dynamic>?> _authenticateUntis({
   String? serverUrl,
   String? school,
   String? otp,
+  bool useLoginKey = false,
 }) async {
+  if (useLoginKey) {
+    return _authenticateUntisWithSecret(
+      user: user,
+      secret: password,
+      client: client,
+      requestId: requestId,
+      serverUrl: serverUrl,
+      school: school,
+    );
+  }
+
   final otpCode = otp?.trim();
   final params = <String, dynamic>{
     'user': user,

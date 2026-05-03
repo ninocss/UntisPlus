@@ -528,6 +528,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.3.0"
+  otp_auth:
+    dependency: "direct main"
+    description:
+      name: otp_auth
+      sha256: eeb82e2a6fe644374112dfa52cb7e71cf376b1362394cfc65c81f74bcc076412
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   package_config:
     dependency: transitive
     description:
