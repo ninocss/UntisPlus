@@ -129,7 +129,7 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
     required Offset parallax,
     required bool gyroEnabled,
   }) {
-    final style = widget.style.clamp(0, 9);
+    final style = widget.style.clamp(0, 10);
     switch (style) {
       case 1:
         return _SpaceLayer(
@@ -154,6 +154,8 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
         return _GridLayer(t: t, cs: cs);
       case 9:
         return _RingsLayer(t: t, cs: cs);
+      case 10:
+        return CustomBackgroundView(spec: null, t: t, parallax: parallax);
       default:
         return _OrbsLayer(t: t, cs: cs);
     }

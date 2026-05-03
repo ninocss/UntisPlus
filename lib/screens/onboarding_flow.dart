@@ -729,6 +729,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         return l.settingsBackgroundStyleGrid;
       case 9:
         return l.settingsBackgroundStyleRings;
+      case 10:
+        return l.settingsBackgroundStyleCustom;
       default:
         return l.settingsBackgroundStyleOrbs;
     }
@@ -754,13 +756,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         return Icons.grid_on_rounded;
       case 9:
         return Icons.radio_button_checked_rounded;
+      case 10:
+        return Icons.wallpaper_rounded;
       default:
         return Icons.blur_circular_rounded;
     }
   }
 
   Future<void> _setBackgroundAnimationStyle(int style) async {
-    final normalized = style.clamp(0, 9);
+    final normalized = style.clamp(0, 10);
     backgroundAnimationStyleNotifier.value = normalized;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('backgroundAnimationStyle', normalized);
@@ -817,7 +821,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     child: ListView.separated(
                       physics: const ClampingScrollPhysics(),
                       padding: const EdgeInsets.only(bottom: 12),
-                      itemCount: 10,
+                      itemCount: 11,
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (ctx, idx) {
                         final selected = idx == currentStyle;

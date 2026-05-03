@@ -285,6 +285,13 @@ class AppL10n {
   String get settingsBackgroundStyleWaves => _t('settingsBackgroundStyleWaves');
   String get settingsBackgroundStyleGrid => _t('settingsBackgroundStyleGrid');
   String get settingsBackgroundStyleRings => _t('settingsBackgroundStyleRings');
+  String get settingsBackgroundStyleCustom =>
+      _t('settingsBackgroundStyleCustom');
+  String get settingsCustomBackgrounds => _t('settingsCustomBackgrounds');
+  String get settingsCustomBackgroundsDesc =>
+      _t('settingsCustomBackgroundsDesc');
+  String settingsCustomBackgroundsSelected(String name) =>
+      _t('settingsCustomBackgroundsSelected').replaceAll('{name}', name);
   String get settingsGlassEffect => _t('settingsGlassEffect');
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
   String get settingsProgressivePush => _t('settingsProgressivePush');
@@ -337,6 +344,92 @@ class AppL10n {
   // ── AI System Prompt ─────────────────────────────────────────────────────────
   String get aiSystemPersona => _t('aiSystemPersona');
   String get aiSystemRules => _t('aiSystemRules');
+
+  // ── Custom Background Editor ───────────────────────────────────────────────
+  String get bgEditorTitle => _t('bgEditorTitle');
+  String get bgEditorLivePreview => _t('bgEditorLivePreview');
+  String get bgEditorSave => _t('bgEditorSave');
+  String get bgEditorSaved => _t('bgEditorSaved');
+  String get bgEditorSaveFailed => _t('bgEditorSaveFailed');
+  String get bgEditorUseInApp => _t('bgEditorUseInApp');
+  String get bgEditorApplied => _t('bgEditorApplied');
+  String get bgEditorLibrary => _t('bgEditorLibrary');
+  String get bgEditorNew => _t('bgEditorNew');
+  String get bgEditorNewName => _t('bgEditorNewName');
+  String get bgEditorDuplicate => _t('bgEditorDuplicate');
+  String get bgEditorDelete => _t('bgEditorDelete');
+  String get bgEditorDeleteTitle => _t('bgEditorDeleteTitle');
+  String get bgEditorDeleteDesc => _t('bgEditorDeleteDesc');
+  String get bgEditorDeleteConfirm => _t('bgEditorDeleteConfirm');
+
+  String get bgEditorExportTitle => _t('bgEditorExportTitle');
+  String get bgEditorExportSelected => _t('bgEditorExportSelected');
+  String get bgEditorExportAll => _t('bgEditorExportAll');
+  String get bgEditorExported => _t('bgEditorExported');
+  String get bgEditorExportedAll => _t('bgEditorExportedAll');
+
+  String get bgEditorImportTitle => _t('bgEditorImportTitle');
+  String get bgEditorImportFromClipboard => _t('bgEditorImportFromClipboard');
+  String get bgEditorImportFromFile => _t('bgEditorImportFromFile');
+  String get bgEditorImportClipboardEmpty =>
+      _t('bgEditorImportClipboardEmpty');
+  String bgEditorImportedCount(int n) =>
+      _t('bgEditorImportedCount').replaceAll('{n}', '$n');
+  String get bgEditorImportFailed => _t('bgEditorImportFailed');
+
+  String get bgEditorMeta => _t('bgEditorMeta');
+  String get bgEditorName => _t('bgEditorName');
+
+  String get bgEditorBase => _t('bgEditorBase');
+  String get bgEditorUseThemeColors => _t('bgEditorUseThemeColors');
+  String get bgEditorUseThemeColorsDesc => _t('bgEditorUseThemeColorsDesc');
+  String get bgEditorGradientLinear => _t('bgEditorGradientLinear');
+  String get bgEditorGradientRadial => _t('bgEditorGradientRadial');
+  String get bgEditorBaseOpacity => _t('bgEditorBaseOpacity');
+  String get bgEditorGradientAngle => _t('bgEditorGradientAngle');
+  String get bgEditorRadialCenterX => _t('bgEditorRadialCenterX');
+  String get bgEditorRadialCenterY => _t('bgEditorRadialCenterY');
+  String get bgEditorRadialRadius => _t('bgEditorRadialRadius');
+  String bgEditorColorN(int n) =>
+      _t('bgEditorColorN').replaceAll('{n}', '$n');
+
+  String get bgEditorOrbs => _t('bgEditorOrbs');
+  String get bgEditorOrbsEnabled => _t('bgEditorOrbsEnabled');
+  String get bgEditorOrbsThemeDesc => _t('bgEditorOrbsThemeDesc');
+  String get bgEditorRandomizeSeed => _t('bgEditorRandomizeSeed');
+  String get bgEditorOrbsCount => _t('bgEditorOrbsCount');
+  String get bgEditorOrbsSize => _t('bgEditorOrbsSize');
+  String get bgEditorOrbsVariance => _t('bgEditorOrbsVariance');
+  String get bgEditorOrbsOpacity => _t('bgEditorOrbsOpacity');
+  String get bgEditorOrbsSoftness => _t('bgEditorOrbsSoftness');
+  String bgEditorOrbColorN(int n) =>
+      _t('bgEditorOrbColorN').replaceAll('{n}', '$n');
+
+  String get bgEditorEffects => _t('bgEditorEffects');
+  String get bgEditorPatternNone => _t('bgEditorPatternNone');
+  String get bgEditorPatternLines => _t('bgEditorPatternLines');
+  String get bgEditorPatternGrid => _t('bgEditorPatternGrid');
+  String get bgEditorPatternOpacity => _t('bgEditorPatternOpacity');
+  String get bgEditorPatternScale => _t('bgEditorPatternScale');
+  String get bgEditorPatternAngle => _t('bgEditorPatternAngle');
+  String get bgEditorNoise => _t('bgEditorNoise');
+  String get bgEditorVignette => _t('bgEditorVignette');
+
+  String get bgEditorMotion => _t('bgEditorMotion');
+  String get bgEditorAnimate => _t('bgEditorAnimate');
+  String get bgEditorSpeed => _t('bgEditorSpeed');
+  String get bgEditorParallax => _t('bgEditorParallax');
+
+  String get bgEditorAiTitle => _t('bgEditorAiTitle');
+  String get bgEditorAiDesc => _t('bgEditorAiDesc');
+  String get bgEditorAiHint => _t('bgEditorAiHint');
+  String get bgEditorAiGenerate => _t('bgEditorAiGenerate');
+  String get bgEditorAiSystem => _t('bgEditorAiSystem');
+  String get bgEditorAiUserPrefix => _t('bgEditorAiUserPrefix');
+  String get bgEditorAiUserSchemaHint => _t('bgEditorAiUserSchemaHint');
+  String get bgEditorAiGeneratedName => _t('bgEditorAiGeneratedName');
+  String get bgEditorAiSuccess => _t('bgEditorAiSuccess');
+  String get bgEditorAiError => _t('bgEditorAiError');
 
   // ─────────────────────────────────────────────────────────────────────────────
   static const Map<String, Map<String, dynamic>> _strings = {
@@ -628,6 +721,138 @@ class AppL10n {
       'settingsBackgroundStyleWaves': 'Wellen',
       'settingsBackgroundStyleGrid': 'Gitter',
       'settingsBackgroundStyleRings': 'Ringe',
+            'settingsBackgroundStyleCustom': 'Custom',
+            'settingsCustomBackgrounds': 'Eigene Hintergründe',
+            'settingsCustomBackgroundsDesc':
+                    'Erstellen, speichern, importieren & exportieren',
+            'settingsCustomBackgroundsSelected': 'Ausgewählt: {name}',
+
+            'bgEditorTitle': 'Hintergrund-Editor',
+            'bgEditorLivePreview': 'Live-Vorschau',
+            'bgEditorSave': 'Speichern',
+            'bgEditorSaved': 'Gespeichert.',
+            'bgEditorSaveFailed': 'Speichern fehlgeschlagen.',
+            'bgEditorUseInApp': 'In App verwenden',
+            'bgEditorApplied': 'Als Hintergrund aktiviert.',
+            'bgEditorLibrary': 'Bibliothek',
+            'bgEditorNew': 'Neu',
+            'bgEditorNewName': 'Neuer Hintergrund',
+            'bgEditorDuplicate': 'Duplizieren',
+            'bgEditorDelete': 'Löschen',
+            'bgEditorDeleteTitle': 'Hintergrund löschen?',
+            'bgEditorDeleteDesc': 'Dieser Hintergrund wird dauerhaft entfernt.',
+            'bgEditorDeleteConfirm': 'Löschen',
+
+            'bgEditorExportTitle': 'Export',
+            'bgEditorExportSelected': 'Ausgewählten exportieren',
+            'bgEditorExportAll': 'Alle exportieren',
+            'bgEditorExported': 'JSON in Zwischenablage kopiert.',
+            'bgEditorExportedAll': 'Alle Hintergründe als JSON kopiert.',
+
+            'bgEditorImportTitle': 'Import',
+            'bgEditorImportFromClipboard': 'Aus Zwischenablage',
+            'bgEditorImportFromFile': 'Aus Datei',
+            'bgEditorImportClipboardEmpty': 'Zwischenablage ist leer.',
+            'bgEditorImportedCount': '{n} Hintergrund(e) importiert.',
+            'bgEditorImportFailed': 'Import fehlgeschlagen.',
+
+            'bgEditorMeta': 'Metadaten',
+            'bgEditorName': 'Name',
+            'bgEditorBase': 'Basis-Gradient',
+            'bgEditorUseThemeColors': 'Theme-Farben verwenden',
+            'bgEditorUseThemeColorsDesc':
+                    'Nutzt Farben aus dem aktuellen Farbschema.',
+            'bgEditorGradientLinear': 'Linear',
+            'bgEditorGradientRadial': 'Radial',
+            'bgEditorBaseOpacity': 'Basis-Deckkraft',
+            'bgEditorGradientAngle': 'Winkel',
+            'bgEditorRadialCenterX': 'Zentrum X',
+            'bgEditorRadialCenterY': 'Zentrum Y',
+            'bgEditorRadialRadius': 'Radius',
+            'bgEditorColorN': 'Farbe {n}',
+
+            'bgEditorOrbs': 'Orbs',
+            'bgEditorOrbsEnabled': 'Orbs aktiv',
+            'bgEditorOrbsThemeDesc': 'Verwendet Theme-Farben für Orbs.',
+            'bgEditorRandomizeSeed': 'Seed randomisieren',
+            'bgEditorOrbsCount': 'Anzahl',
+            'bgEditorOrbsSize': 'Größe',
+            'bgEditorOrbsVariance': 'Varianz',
+            'bgEditorOrbsOpacity': 'Deckkraft',
+            'bgEditorOrbsSoftness': 'Weichheit',
+            'bgEditorOrbColorN': 'Orb-Farbe {n}',
+
+            'bgEditorEffects': 'Muster & Effekte',
+            'bgEditorPatternNone': 'Keins',
+            'bgEditorPatternLines': 'Linien',
+            'bgEditorPatternGrid': 'Gitter',
+            'bgEditorPatternOpacity': 'Muster-Deckkraft',
+            'bgEditorPatternScale': 'Skalierung',
+            'bgEditorPatternAngle': 'Muster-Winkel',
+            'bgEditorNoise': 'Rauschen',
+            'bgEditorVignette': 'Vignette',
+
+            'bgEditorMotion': 'Bewegung',
+            'bgEditorAnimate': 'Animieren',
+            'bgEditorSpeed': 'Geschwindigkeit',
+            'bgEditorParallax': 'Parallax',
+
+            'bgEditorAiTitle': 'KI-Generator',
+            'bgEditorAiDesc':
+                    'Beschreibe einen Look – die KI erstellt einen neuen Hintergrund.',
+            'bgEditorAiHint': 'z.B. „Neon-Nebel, weich, dunkel, blau/pink“',
+            'bgEditorAiGenerate': 'Mit KI erstellen',
+            'bgEditorAiSystem': '''
+You generate ONE Flutter background preset.
+Output ONLY valid JSON (no markdown, no commentary).
+
+Return a single JSON object with this schema:
+{
+    "version": 1,
+    "name": "...",
+    "base": {
+        "type": "linear"|"radial",
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "opacity": 0.0-1.0,
+        "angleDeg": 0-360,
+        "centerX": -1..1,
+        "centerY": -1..1,
+        "radius": 0.3-2.5
+    },
+    "orbs": {
+        "enabled": true|false,
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "count": 0-18,
+        "seed": 0-2147483647,
+        "size": 40-480,
+        "sizeVariance": 0.0-1.0,
+        "opacity": 0.0-1.0,
+        "softness": 0.0-1.0
+    },
+    "pattern": {
+        "type": "none"|"lines"|"grid",
+        "opacity": 0.0-1.0,
+        "scale": 0.4-3.5,
+        "angleDeg": 0-360
+    },
+    "noise": 0.0-0.5,
+    "vignette": 0.0-1.0,
+    "animate": true|false,
+    "animationSpeed": 0.0-3.0,
+    "parallaxStrength": 0.0-1.0
+}
+
+Keep values reasonable and visually pleasing. Prefer 2-3 base colors.
+Use "useThemeColors": true unless the prompt asks for specific colors.
+''',
+            'bgEditorAiUserPrefix': 'Description:',
+            'bgEditorAiUserSchemaHint':
+                    'Return JSON only. Do not wrap in code fences.',
+            'bgEditorAiGeneratedName': 'KI Hintergrund',
+            'bgEditorAiSuccess': 'KI-Hintergrund erstellt.',
+            'bgEditorAiError': 'KI: ',
       'settingsGlassEffect': 'Glaseffekt (Blur)',
       'settingsGlassEffectDesc':
           'Aktiviert weiche Glas-/Unschärfeeffekte in der Oberfläche',
@@ -965,6 +1190,135 @@ class AppL10n {
       'settingsBackgroundStyleWaves': 'Waves',
       'settingsBackgroundStyleGrid': 'Grid',
       'settingsBackgroundStyleRings': 'Rings',
+            'settingsBackgroundStyleCustom': 'Custom',
+            'settingsCustomBackgrounds': 'Custom backgrounds',
+            'settingsCustomBackgroundsDesc': 'Create, save, import & export',
+            'settingsCustomBackgroundsSelected': 'Selected: {name}',
+
+            'bgEditorTitle': 'Background Editor',
+            'bgEditorLivePreview': 'Live preview',
+            'bgEditorSave': 'Save',
+            'bgEditorSaved': 'Saved.',
+            'bgEditorSaveFailed': 'Save failed.',
+            'bgEditorUseInApp': 'Use in app',
+            'bgEditorApplied': 'Applied as background.',
+            'bgEditorLibrary': 'Library',
+            'bgEditorNew': 'New',
+            'bgEditorNewName': 'New background',
+            'bgEditorDuplicate': 'Duplicate',
+            'bgEditorDelete': 'Delete',
+            'bgEditorDeleteTitle': 'Delete background?',
+            'bgEditorDeleteDesc': 'This background will be removed permanently.',
+            'bgEditorDeleteConfirm': 'Delete',
+
+            'bgEditorExportTitle': 'Export',
+            'bgEditorExportSelected': 'Export selected',
+            'bgEditorExportAll': 'Export all',
+            'bgEditorExported': 'JSON copied to clipboard.',
+            'bgEditorExportedAll': 'All backgrounds copied as JSON.',
+
+            'bgEditorImportTitle': 'Import',
+            'bgEditorImportFromClipboard': 'From clipboard',
+            'bgEditorImportFromFile': 'From file',
+            'bgEditorImportClipboardEmpty': 'Clipboard is empty.',
+            'bgEditorImportedCount': 'Imported {n} background(s).',
+            'bgEditorImportFailed': 'Import failed.',
+
+            'bgEditorMeta': 'Metadata',
+            'bgEditorName': 'Name',
+            'bgEditorBase': 'Base gradient',
+            'bgEditorUseThemeColors': 'Use theme colors',
+            'bgEditorUseThemeColorsDesc': 'Uses colors from the current theme.',
+            'bgEditorGradientLinear': 'Linear',
+            'bgEditorGradientRadial': 'Radial',
+            'bgEditorBaseOpacity': 'Base opacity',
+            'bgEditorGradientAngle': 'Angle',
+            'bgEditorRadialCenterX': 'Center X',
+            'bgEditorRadialCenterY': 'Center Y',
+            'bgEditorRadialRadius': 'Radius',
+            'bgEditorColorN': 'Color {n}',
+
+            'bgEditorOrbs': 'Orbs',
+            'bgEditorOrbsEnabled': 'Enable orbs',
+            'bgEditorOrbsThemeDesc': 'Uses theme colors for orbs.',
+            'bgEditorRandomizeSeed': 'Randomize seed',
+            'bgEditorOrbsCount': 'Count',
+            'bgEditorOrbsSize': 'Size',
+            'bgEditorOrbsVariance': 'Variance',
+            'bgEditorOrbsOpacity': 'Opacity',
+            'bgEditorOrbsSoftness': 'Softness',
+            'bgEditorOrbColorN': 'Orb color {n}',
+
+            'bgEditorEffects': 'Pattern & effects',
+            'bgEditorPatternNone': 'None',
+            'bgEditorPatternLines': 'Lines',
+            'bgEditorPatternGrid': 'Grid',
+            'bgEditorPatternOpacity': 'Pattern opacity',
+            'bgEditorPatternScale': 'Scale',
+            'bgEditorPatternAngle': 'Pattern angle',
+            'bgEditorNoise': 'Noise',
+            'bgEditorVignette': 'Vignette',
+
+            'bgEditorMotion': 'Motion',
+            'bgEditorAnimate': 'Animate',
+            'bgEditorSpeed': 'Speed',
+            'bgEditorParallax': 'Parallax',
+
+            'bgEditorAiTitle': 'AI Generator',
+            'bgEditorAiDesc': 'Describe a look — AI creates a new background.',
+            'bgEditorAiHint': 'e.g. “neon nebula, soft, dark, blue/pink”',
+            'bgEditorAiGenerate': 'Generate with AI',
+            'bgEditorAiSystem': '''
+You generate ONE Flutter background preset.
+Output ONLY valid JSON (no markdown, no commentary).
+
+Return a single JSON object with this schema:
+{
+    "version": 1,
+    "name": "...",
+    "base": {
+        "type": "linear"|"radial",
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "opacity": 0.0-1.0,
+        "angleDeg": 0-360,
+        "centerX": -1..1,
+        "centerY": -1..1,
+        "radius": 0.3-2.5
+    },
+    "orbs": {
+        "enabled": true|false,
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "count": 0-18,
+        "seed": 0-2147483647,
+        "size": 40-480,
+        "sizeVariance": 0.0-1.0,
+        "opacity": 0.0-1.0,
+        "softness": 0.0-1.0
+    },
+    "pattern": {
+        "type": "none"|"lines"|"grid",
+        "opacity": 0.0-1.0,
+        "scale": 0.4-3.5,
+        "angleDeg": 0-360
+    },
+    "noise": 0.0-0.5,
+    "vignette": 0.0-1.0,
+    "animate": true|false,
+    "animationSpeed": 0.0-3.0,
+    "parallaxStrength": 0.0-1.0
+}
+
+Keep values reasonable and visually pleasing. Prefer 2-3 base colors.
+Use "useThemeColors": true unless the prompt asks for specific colors.
+''',
+            'bgEditorAiUserPrefix': 'Description:',
+            'bgEditorAiUserSchemaHint':
+                    'Return JSON only. Do not wrap in code fences.',
+            'bgEditorAiGeneratedName': 'AI Background',
+            'bgEditorAiSuccess': 'AI background created.',
+            'bgEditorAiError': 'AI: ',
       'settingsGlassEffect': 'Glass Effect (Blur)',
       'settingsGlassEffectDesc':
           'Enables soft glass/blur effects across the interface',
@@ -1278,6 +1632,139 @@ class AppL10n {
       'settingsBackgroundStyleWaves': 'Vagues',
       'settingsBackgroundStyleGrid': 'Grille',
       'settingsBackgroundStyleRings': 'Anneaux',
+            'settingsBackgroundStyleCustom': 'Personnalisé',
+            'settingsCustomBackgrounds': 'Fonds personnalisés',
+            'settingsCustomBackgroundsDesc':
+                    'Créer, enregistrer, importer et exporter',
+            'settingsCustomBackgroundsSelected': 'Sélectionné : {name}',
+
+            'bgEditorTitle': 'Éditeur de fond',
+            'bgEditorLivePreview': 'Aperçu en direct',
+            'bgEditorSave': 'Enregistrer',
+            'bgEditorSaved': 'Enregistré.',
+            'bgEditorSaveFailed': 'Échec de l\'enregistrement.',
+            'bgEditorUseInApp': 'Utiliser dans l\'app',
+            'bgEditorApplied': 'Activé comme fond.',
+            'bgEditorLibrary': 'Bibliothèque',
+            'bgEditorNew': 'Nouveau',
+            'bgEditorNewName': 'Nouveau fond',
+            'bgEditorDuplicate': 'Dupliquer',
+            'bgEditorDelete': 'Supprimer',
+            'bgEditorDeleteTitle': 'Supprimer le fond ?',
+            'bgEditorDeleteDesc': 'Ce fond sera supprimé définitivement.',
+            'bgEditorDeleteConfirm': 'Supprimer',
+
+            'bgEditorExportTitle': 'Exporter',
+            'bgEditorExportSelected': 'Exporter la sélection',
+            'bgEditorExportAll': 'Exporter tout',
+            'bgEditorExported': 'JSON copié dans le presse-papiers.',
+            'bgEditorExportedAll': 'Tous les fonds copiés en JSON.',
+
+            'bgEditorImportTitle': 'Importer',
+            'bgEditorImportFromClipboard': 'Depuis le presse-papiers',
+            'bgEditorImportFromFile': 'Depuis un fichier',
+            'bgEditorImportClipboardEmpty': 'Presse-papiers vide.',
+            'bgEditorImportedCount': '{n} fond(s) importé(s).',
+            'bgEditorImportFailed': 'Échec de l\'importation.',
+
+            'bgEditorMeta': 'Métadonnées',
+            'bgEditorName': 'Nom',
+            'bgEditorBase': 'Dégradé de base',
+            'bgEditorUseThemeColors': 'Utiliser les couleurs du thème',
+            'bgEditorUseThemeColorsDesc':
+                    'Utilise les couleurs du thème actuel.',
+            'bgEditorGradientLinear': 'Linéaire',
+            'bgEditorGradientRadial': 'Radial',
+            'bgEditorBaseOpacity': 'Opacité de base',
+            'bgEditorGradientAngle': 'Angle',
+            'bgEditorRadialCenterX': 'Centre X',
+            'bgEditorRadialCenterY': 'Centre Y',
+            'bgEditorRadialRadius': 'Rayon',
+            'bgEditorColorN': 'Couleur {n}',
+
+            'bgEditorOrbs': 'Orbes',
+            'bgEditorOrbsEnabled': 'Orbes activés',
+            'bgEditorOrbsThemeDesc':
+                    'Utilise les couleurs du thème pour les orbes.',
+            'bgEditorRandomizeSeed': 'Aléa du seed',
+            'bgEditorOrbsCount': 'Nombre',
+            'bgEditorOrbsSize': 'Taille',
+            'bgEditorOrbsVariance': 'Variance',
+            'bgEditorOrbsOpacity': 'Opacité',
+            'bgEditorOrbsSoftness': 'Douceur',
+            'bgEditorOrbColorN': 'Couleur d\'orbe {n}',
+
+            'bgEditorEffects': 'Motif & effets',
+            'bgEditorPatternNone': 'Aucun',
+            'bgEditorPatternLines': 'Lignes',
+            'bgEditorPatternGrid': 'Grille',
+            'bgEditorPatternOpacity': 'Opacité du motif',
+            'bgEditorPatternScale': 'Échelle',
+            'bgEditorPatternAngle': 'Angle du motif',
+            'bgEditorNoise': 'Bruit',
+            'bgEditorVignette': 'Vignette',
+
+            'bgEditorMotion': 'Mouvement',
+            'bgEditorAnimate': 'Animer',
+            'bgEditorSpeed': 'Vitesse',
+            'bgEditorParallax': 'Parallaxe',
+
+            'bgEditorAiTitle': 'Générateur IA',
+            'bgEditorAiDesc': 'Décris un style — l\'IA crée un nouveau fond.',
+            'bgEditorAiHint':
+                    'ex. « nébuleuse néon, doux, sombre, bleu/rose »',
+            'bgEditorAiGenerate': 'Générer avec l\'IA',
+            'bgEditorAiSystem': '''
+You generate ONE Flutter background preset.
+Output ONLY valid JSON (no markdown, no commentary).
+
+Return a single JSON object with this schema:
+{
+    "version": 1,
+    "name": "...",
+    "base": {
+        "type": "linear"|"radial",
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "opacity": 0.0-1.0,
+        "angleDeg": 0-360,
+        "centerX": -1..1,
+        "centerY": -1..1,
+        "radius": 0.3-2.5
+    },
+    "orbs": {
+        "enabled": true|false,
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "count": 0-18,
+        "seed": 0-2147483647,
+        "size": 40-480,
+        "sizeVariance": 0.0-1.0,
+        "opacity": 0.0-1.0,
+        "softness": 0.0-1.0
+    },
+    "pattern": {
+        "type": "none"|"lines"|"grid",
+        "opacity": 0.0-1.0,
+        "scale": 0.4-3.5,
+        "angleDeg": 0-360
+    },
+    "noise": 0.0-0.5,
+    "vignette": 0.0-1.0,
+    "animate": true|false,
+    "animationSpeed": 0.0-3.0,
+    "parallaxStrength": 0.0-1.0
+}
+
+Keep values reasonable and visually pleasing. Prefer 2-3 base colors.
+Use "useThemeColors": true unless the prompt asks for specific colors.
+''',
+            'bgEditorAiUserPrefix': 'Description:',
+            'bgEditorAiUserSchemaHint':
+                    'Return JSON only. Do not wrap in code fences.',
+            'bgEditorAiGeneratedName': 'Fond IA',
+            'bgEditorAiSuccess': 'Fond IA créé.',
+            'bgEditorAiError': 'IA: ',
       'settingsProgressivePush': 'Notification push progressive',
       'settingsProgressivePushDesc':
           'Afficher le cours actuel comme notification persistante',
@@ -1590,6 +2077,137 @@ class AppL10n {
       'settingsBackgroundStyleWaves': 'Ondas',
       'settingsBackgroundStyleGrid': 'Cuadrícula',
       'settingsBackgroundStyleRings': 'Anillos',
+            'settingsBackgroundStyleCustom': 'Personalizado',
+            'settingsCustomBackgrounds': 'Fondos personalizados',
+            'settingsCustomBackgroundsDesc':
+                    'Crear, guardar, importar y exportar',
+            'settingsCustomBackgroundsSelected': 'Seleccionado: {name}',
+
+            'bgEditorTitle': 'Editor de fondo',
+            'bgEditorLivePreview': 'Vista previa en vivo',
+            'bgEditorSave': 'Guardar',
+            'bgEditorSaved': 'Guardado.',
+            'bgEditorSaveFailed': 'Error al guardar.',
+            'bgEditorUseInApp': 'Usar en la app',
+            'bgEditorApplied': 'Aplicado como fondo.',
+            'bgEditorLibrary': 'Biblioteca',
+            'bgEditorNew': 'Nuevo',
+            'bgEditorNewName': 'Nuevo fondo',
+            'bgEditorDuplicate': 'Duplicar',
+            'bgEditorDelete': 'Eliminar',
+            'bgEditorDeleteTitle': '¿Eliminar fondo?',
+            'bgEditorDeleteDesc': 'Este fondo se eliminará permanentemente.',
+            'bgEditorDeleteConfirm': 'Eliminar',
+
+            'bgEditorExportTitle': 'Exportar',
+            'bgEditorExportSelected': 'Exportar seleccionado',
+            'bgEditorExportAll': 'Exportar todo',
+            'bgEditorExported': 'JSON copiado al portapapeles.',
+            'bgEditorExportedAll': 'Todos los fondos copiados como JSON.',
+
+            'bgEditorImportTitle': 'Importar',
+            'bgEditorImportFromClipboard': 'Desde el portapapeles',
+            'bgEditorImportFromFile': 'Desde un archivo',
+            'bgEditorImportClipboardEmpty': 'El portapapeles está vacío.',
+            'bgEditorImportedCount': 'Importados {n} fondo(s).',
+            'bgEditorImportFailed': 'Error de importación.',
+
+            'bgEditorMeta': 'Metadatos',
+            'bgEditorName': 'Nombre',
+            'bgEditorBase': 'Degradado base',
+            'bgEditorUseThemeColors': 'Usar colores del tema',
+            'bgEditorUseThemeColorsDesc': 'Usa colores del tema actual.',
+            'bgEditorGradientLinear': 'Lineal',
+            'bgEditorGradientRadial': 'Radial',
+            'bgEditorBaseOpacity': 'Opacidad base',
+            'bgEditorGradientAngle': 'Ángulo',
+            'bgEditorRadialCenterX': 'Centro X',
+            'bgEditorRadialCenterY': 'Centro Y',
+            'bgEditorRadialRadius': 'Radio',
+            'bgEditorColorN': 'Color {n}',
+
+            'bgEditorOrbs': 'Orbes',
+            'bgEditorOrbsEnabled': 'Orbes activados',
+            'bgEditorOrbsThemeDesc': 'Usa colores del tema para los orbes.',
+            'bgEditorRandomizeSeed': 'Aleatorizar semilla',
+            'bgEditorOrbsCount': 'Cantidad',
+            'bgEditorOrbsSize': 'Tamaño',
+            'bgEditorOrbsVariance': 'Variación',
+            'bgEditorOrbsOpacity': 'Opacidad',
+            'bgEditorOrbsSoftness': 'Suavidad',
+            'bgEditorOrbColorN': 'Color de orbe {n}',
+
+            'bgEditorEffects': 'Patrón y efectos',
+            'bgEditorPatternNone': 'Ninguno',
+            'bgEditorPatternLines': 'Líneas',
+            'bgEditorPatternGrid': 'Cuadrícula',
+            'bgEditorPatternOpacity': 'Opacidad del patrón',
+            'bgEditorPatternScale': 'Escala',
+            'bgEditorPatternAngle': 'Ángulo del patrón',
+            'bgEditorNoise': 'Ruido',
+            'bgEditorVignette': 'Viñeta',
+
+            'bgEditorMotion': 'Movimiento',
+            'bgEditorAnimate': 'Animar',
+            'bgEditorSpeed': 'Velocidad',
+            'bgEditorParallax': 'Parallax',
+
+            'bgEditorAiTitle': 'Generador IA',
+            'bgEditorAiDesc': 'Describe un estilo — la IA crea un nuevo fondo.',
+            'bgEditorAiHint':
+                    'p. ej. “nebulosa neón, suave, oscura, azul/rosa”',
+            'bgEditorAiGenerate': 'Generar con IA',
+            'bgEditorAiSystem': '''
+You generate ONE Flutter background preset.
+Output ONLY valid JSON (no markdown, no commentary).
+
+Return a single JSON object with this schema:
+{
+    "version": 1,
+    "name": "...",
+    "base": {
+        "type": "linear"|"radial",
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "opacity": 0.0-1.0,
+        "angleDeg": 0-360,
+        "centerX": -1..1,
+        "centerY": -1..1,
+        "radius": 0.3-2.5
+    },
+    "orbs": {
+        "enabled": true|false,
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "count": 0-18,
+        "seed": 0-2147483647,
+        "size": 40-480,
+        "sizeVariance": 0.0-1.0,
+        "opacity": 0.0-1.0,
+        "softness": 0.0-1.0
+    },
+    "pattern": {
+        "type": "none"|"lines"|"grid",
+        "opacity": 0.0-1.0,
+        "scale": 0.4-3.5,
+        "angleDeg": 0-360
+    },
+    "noise": 0.0-0.5,
+    "vignette": 0.0-1.0,
+    "animate": true|false,
+    "animationSpeed": 0.0-3.0,
+    "parallaxStrength": 0.0-1.0
+}
+
+Keep values reasonable and visually pleasing. Prefer 2-3 base colors.
+Use "useThemeColors": true unless the prompt asks for specific colors.
+''',
+            'bgEditorAiUserPrefix': 'Description:',
+            'bgEditorAiUserSchemaHint':
+                    'Return JSON only. Do not wrap in code fences.',
+            'bgEditorAiGeneratedName': 'Fondo IA',
+            'bgEditorAiSuccess': 'Fondo IA creado.',
+            'bgEditorAiError': 'IA: ',
       'settingsProgressivePush': 'Notificación push progresiva',
       'settingsProgressivePushDesc':
           'Mostrar la clase actual como notificación persistente',
@@ -1904,6 +2522,140 @@ class AppL10n {
       'settingsBackgroundStyleWaves': 'Κύματα',
       'settingsBackgroundStyleGrid': 'Πλέγμα',
       'settingsBackgroundStyleRings': 'Δακτύλιοι',
+            'settingsBackgroundStyleCustom': 'Προσαρμοσμένο',
+            'settingsCustomBackgrounds': 'Προσαρμοσμένα φόντα',
+            'settingsCustomBackgroundsDesc':
+                    'Δημιουργία, αποθήκευση, εισαγωγή και εξαγωγή',
+            'settingsCustomBackgroundsSelected': 'Επιλεγμένο: {name}',
+
+            'bgEditorTitle': 'Επεξεργαστής φόντου',
+            'bgEditorLivePreview': 'Ζωντανή προεπισκόπηση',
+            'bgEditorSave': 'Αποθήκευση',
+            'bgEditorSaved': 'Αποθηκεύτηκε.',
+            'bgEditorSaveFailed': 'Αποτυχία αποθήκευσης.',
+            'bgEditorUseInApp': 'Χρήση στην εφαρμογή',
+            'bgEditorApplied': 'Εφαρμόστηκε ως φόντο.',
+            'bgEditorLibrary': 'Βιβλιοθήκη',
+            'bgEditorNew': 'Νέο',
+            'bgEditorNewName': 'Νέο φόντο',
+            'bgEditorDuplicate': 'Αντιγραφή',
+            'bgEditorDelete': 'Διαγραφή',
+            'bgEditorDeleteTitle': 'Διαγραφή φόντου;',
+            'bgEditorDeleteDesc': 'Αυτό το φόντο θα διαγραφεί οριστικά.',
+            'bgEditorDeleteConfirm': 'Διαγραφή',
+
+            'bgEditorExportTitle': 'Εξαγωγή',
+            'bgEditorExportSelected': 'Εξαγωγή επιλεγμένου',
+            'bgEditorExportAll': 'Εξαγωγή όλων',
+            'bgEditorExported': 'Το JSON αντιγράφηκε στο πρόχειρο.',
+            'bgEditorExportedAll': 'Όλα τα φόντα αντιγράφηκαν ως JSON.',
+
+            'bgEditorImportTitle': 'Εισαγωγή',
+            'bgEditorImportFromClipboard': 'Από το πρόχειρο',
+            'bgEditorImportFromFile': 'Από αρχείο',
+            'bgEditorImportClipboardEmpty': 'Το πρόχειρο είναι κενό.',
+            'bgEditorImportedCount': 'Εισήχθησαν {n} φόντο(α).',
+            'bgEditorImportFailed': 'Η εισαγωγή απέτυχε.',
+
+            'bgEditorMeta': 'Μεταδεδομένα',
+            'bgEditorName': 'Όνομα',
+            'bgEditorBase': 'Βασική διαβάθμιση',
+            'bgEditorUseThemeColors': 'Χρήση χρωμάτων θέματος',
+            'bgEditorUseThemeColorsDesc':
+                    'Χρησιμοποιεί χρώματα από το τρέχον θέμα.',
+            'bgEditorGradientLinear': 'Γραμμική',
+            'bgEditorGradientRadial': 'Ακτινική',
+            'bgEditorBaseOpacity': 'Αδιαφάνεια βάσης',
+            'bgEditorGradientAngle': 'Γωνία',
+            'bgEditorRadialCenterX': 'Κέντρο X',
+            'bgEditorRadialCenterY': 'Κέντρο Y',
+            'bgEditorRadialRadius': 'Ακτίνα',
+            'bgEditorColorN': 'Χρώμα {n}',
+
+            'bgEditorOrbs': 'Σφαίρες',
+            'bgEditorOrbsEnabled': 'Ενεργοποίηση σφαιρών',
+            'bgEditorOrbsThemeDesc':
+                    'Χρησιμοποιεί χρώματα θέματος για τις σφαίρες.',
+            'bgEditorRandomizeSeed': 'Τυχαίο seed',
+            'bgEditorOrbsCount': 'Πλήθος',
+            'bgEditorOrbsSize': 'Μέγεθος',
+            'bgEditorOrbsVariance': 'Διακύμανση',
+            'bgEditorOrbsOpacity': 'Αδιαφάνεια',
+            'bgEditorOrbsSoftness': 'Απαλότητα',
+            'bgEditorOrbColorN': 'Χρώμα σφαίρας {n}',
+
+            'bgEditorEffects': 'Μοτίβο & εφέ',
+            'bgEditorPatternNone': 'Κανένα',
+            'bgEditorPatternLines': 'Γραμμές',
+            'bgEditorPatternGrid': 'Πλέγμα',
+            'bgEditorPatternOpacity': 'Αδιαφάνεια μοτίβου',
+            'bgEditorPatternScale': 'Κλίμακα',
+            'bgEditorPatternAngle': 'Γωνία μοτίβου',
+            'bgEditorNoise': 'Θόρυβος',
+            'bgEditorVignette': 'Βινιέτα',
+
+            'bgEditorMotion': 'Κίνηση',
+            'bgEditorAnimate': 'Κίνηση',
+            'bgEditorSpeed': 'Ταχύτητα',
+            'bgEditorParallax': 'Παράλλαξη',
+
+            'bgEditorAiTitle': 'Γεννήτρια AI',
+            'bgEditorAiDesc':
+                    'Περιέγραψε ένα στυλ — το AI δημιουργεί νέο φόντο.',
+            'bgEditorAiHint':
+                    'π.χ. « νέφος νέον, απαλό, σκοτεινό, μπλε/ροζ »',
+            'bgEditorAiGenerate': 'Δημιουργία με AI',
+            'bgEditorAiSystem': '''
+You generate ONE Flutter background preset.
+Output ONLY valid JSON (no markdown, no commentary).
+
+Return a single JSON object with this schema:
+{
+    "version": 1,
+    "name": "...",
+    "base": {
+        "type": "linear"|"radial",
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "opacity": 0.0-1.0,
+        "angleDeg": 0-360,
+        "centerX": -1..1,
+        "centerY": -1..1,
+        "radius": 0.3-2.5
+    },
+    "orbs": {
+        "enabled": true|false,
+        "useThemeColors": true|false,
+        "colors": ["#RRGGBB", ...],
+        "count": 0-18,
+        "seed": 0-2147483647,
+        "size": 40-480,
+        "sizeVariance": 0.0-1.0,
+        "opacity": 0.0-1.0,
+        "softness": 0.0-1.0
+    },
+    "pattern": {
+        "type": "none"|"lines"|"grid",
+        "opacity": 0.0-1.0,
+        "scale": 0.4-3.5,
+        "angleDeg": 0-360
+    },
+    "noise": 0.0-0.5,
+    "vignette": 0.0-1.0,
+    "animate": true|false,
+    "animationSpeed": 0.0-3.0,
+    "parallaxStrength": 0.0-1.0
+}
+
+Keep values reasonable and visually pleasing. Prefer 2-3 base colors.
+Use "useThemeColors": true unless the prompt asks for specific colors.
+''',
+            'bgEditorAiUserPrefix': 'Description:',
+            'bgEditorAiUserSchemaHint':
+                    'Return JSON only. Do not wrap in code fences.',
+            'bgEditorAiGeneratedName': 'Φόντο AI',
+            'bgEditorAiSuccess': 'Δημιουργήθηκε φόντο AI.',
+            'bgEditorAiError': 'AI: ',
       'settingsGlassEffect': 'Εφέ γυαλιού (θόλωση)',
       'settingsGlassEffectDesc':
           'Ενεργοποιεί ήπια εφέ γυαλιού/θόλωσης σε όλο το περιβάλλον',

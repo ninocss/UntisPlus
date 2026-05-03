@@ -29,9 +29,12 @@ part 'core/design_tokens.dart';
 part 'app/untis_plus_app.dart';
 part 'core/shared_ui.dart';
 part 'core/app_state.dart';
+part 'core/custom_backgrounds.dart';
 part 'screens/onboarding_flow.dart';
+part 'screens/custom_background_editor_screen.dart';
 part 'screens/main_navigation_screen.dart';
 part 'widgets/animated_background.dart';
+part 'widgets/custom_background_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,13 +73,15 @@ void main() async {
   backgroundAnimationsNotifier.value =
       prefs.getBool('backgroundAnimations') ?? true;
   backgroundAnimationStyleNotifier.value =
-      (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 9);
+      (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 10);
   backgroundGyroscopeNotifier.value =
       prefs.getBool('backgroundGyroscope') ?? false;
   blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
   dailyBriefingPushNotifier.value = prefs.getBool('dailyBriefingPush') ?? true;
   importantChangesPushNotifier.value =
       prefs.getBool('importantChangesPush') ?? true;
+
+  await loadCustomBackgroundsFromPrefs(prefs);
 
   hiddenSubjectsNotifier.value = (prefs.getStringList('hiddenSubjects') ?? [])
       .toSet();
@@ -6726,6 +6731,8 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadPrefs();
+    customBackgroundsNotifier.addListener(_onChanged);
+    selectedCustomBackgroundIdNotifier.addListener(_onChanged);
     hiddenSubjectsNotifier.addListener(_onChanged);
     knownSubjectsNotifier.addListener(_onChanged);
     subjectColorsNotifier.addListener(_onChanged);
@@ -6746,6 +6753,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
+    customBackgroundsNotifier.removeListener(_onChanged);
+    selectedCustomBackgroundIdNotifier.removeListener(_onChanged);
     hiddenSubjectsNotifier.removeListener(_onChanged);
     knownSubjectsNotifier.removeListener(_onChanged);
     subjectColorsNotifier.removeListener(_onChanged);
@@ -7545,7 +7554,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _setBackgroundAnimationStyle(int style) async {
-    final normalized = style.clamp(0, 9);
+    final normalized = style.clamp(0, 10);
     backgroundAnimationStyleNotifier.value = normalized;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('backgroundAnimationStyle', normalized);
@@ -7664,6 +7673,8 @@ class _SettingsPageState extends State<SettingsPage> {
         return l.settingsBackgroundStyleGrid;
       case 9:
         return l.settingsBackgroundStyleRings;
+      case 10:
+        return l.settingsBackgroundStyleCustom;
       default:
         return l.settingsBackgroundStyleOrbs;
     }
@@ -7689,6 +7700,8 @@ class _SettingsPageState extends State<SettingsPage> {
         return Icons.grid_on_rounded;
       case 9:
         return Icons.radio_button_checked_rounded;
+      case 10:
+        return Icons.wallpaper_rounded;
       default:
         return Icons.blur_circular_rounded;
     }
@@ -7696,7 +7709,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showBackgroundStyleDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final styleOptions = List<int>.generate(10, (index) => index);
+    final styleOptions = List<int>.generate(11, (index) => index);
 
     _showUnifiedOptionSheet<int>(
       context: context,
@@ -8097,6 +8110,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
     final hidden = hiddenSubjectsNotifier.value.toList()..sort();
+    final activeCustomBackground = _activeCustomBackgroundOrNull();
 
     return Scaffold(
       body: _AnimatedBackground(
@@ -8453,6 +8467,26 @@ class _SettingsPageState extends State<SettingsPage> {
                             color: cs.onSurface.withValues(alpha: 0.4),
                           ),
                           onTap: _showBackgroundStyleDialog,
+                        ),
+                        _tile(
+                          leading: _tileIcon(Icons.wallpaper_rounded, cs.tertiary),
+                          title: l.settingsCustomBackgrounds,
+                          subtitle: activeCustomBackground == null
+                              ? l.settingsCustomBackgroundsDesc
+                              : l.settingsCustomBackgroundsSelected(
+                                  activeCustomBackground.name,
+                                ),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 20,
+                            color: cs.onSurface.withValues(alpha: 0.4),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              _buildBouncyRoute(const CustomBackgroundEditorScreen()),
+                            );
+                          },
                         ),
                         _tile(
                           leading: _tileIcon(
