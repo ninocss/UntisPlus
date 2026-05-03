@@ -25,6 +25,7 @@ import 'services/demo_mode_service.dart';
 import 'widgets/rounded_blur_app_bar.dart';
 
 part 'core/school_models.dart';
+part 'core/design_tokens.dart';
 part 'app/untis_plus_app.dart';
 part 'core/shared_ui.dart';
 part 'core/app_state.dart';

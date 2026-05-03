@@ -38,10 +38,12 @@ class UntisPlusApp extends StatelessWidget {
                         bodyColor: scheme.onSurface,
                         displayColor: scheme.onSurface,
                       );
+                  final tokens = AppDesignTokens.fromScheme(scheme);
 
                   return ThemeData(
                     useMaterial3: true,
                     colorScheme: scheme,
+                    extensions: <ThemeExtension<dynamic>>[tokens],
                     scaffoldBackgroundColor: Color.alphaBlend(
                       scheme.primary.withValues(alpha: 0.04),
                       scheme.surface,
@@ -74,10 +76,9 @@ class UntisPlusApp extends StatelessWidget {
                       scrolledUnderElevation: 0,
                       backgroundColor: Colors.transparent,
                       surfaceTintColor: Colors.transparent,
-                      titleTextStyle: GoogleFonts.outfit(
+                      titleTextStyle: baseText.titleLarge?.copyWith(
                         color: scheme.onSurface,
                         fontWeight: FontWeight.w900,
-                        fontSize: 24,
                         letterSpacing: -0.4,
                       ),
                     ),
@@ -125,12 +126,39 @@ class UntisPlusApp extends StatelessWidget {
                       indicatorShape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      labelTextStyle: WidgetStateProperty.all(
-                        GoogleFonts.outfit(
+                      labelTextStyle: WidgetStatePropertyAll(
+                        baseText.labelMedium?.copyWith(
                           fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          color: scheme.onSurface,
                         ),
                       ),
+                    ),
+                    elevatedButtonTheme: ElevatedButtonThemeData(
+                      style: ElevatedButton.styleFrom(
+                        textStyle: baseText.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            tokens.radiusMedium,
+                          ),
+                        ),
+                      ),
+                    ),
+                    textButtonTheme: TextButtonThemeData(
+                      style: TextButton.styleFrom(
+                        textStyle: baseText.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    chipTheme: ChipThemeData(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          tokens.radiusMedium,
+                        ),
+                      ),
+                      labelStyle: baseText.labelLarge,
                     ),
                   );
                 }

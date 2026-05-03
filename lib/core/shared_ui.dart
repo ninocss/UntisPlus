@@ -22,34 +22,12 @@ Widget _withOptionalBackdropBlur({
 }
 
 List<Color> _subjectColorPalette(ColorScheme cs) {
-  return <Color>[
-    cs.primary,
-    cs.secondary,
-    cs.tertiary,
-    cs.error,
-    const Color(0xFF4F7CFF),
-    const Color(0xFF00B8D4),
-    const Color(0xFF00C853),
-    const Color(0xFFFFA000),
-    const Color(0xFFE91E63),
-    const Color(0xFF7C4DFF),
-    const Color(0xFF6D4C41),
-    const Color(0xFF009688),
-  ];
+  return untisPlusSubjectPalette(cs);
 }
 
 Color _autoLessonColor(String subject, bool isDark) {
   final normalized = subject.trim().toLowerCase();
-  final palette = <Color>[
-    const Color(0xFF4F7CFF),
-    const Color(0xFF00B8D4),
-    const Color(0xFF00C853),
-    const Color(0xFFFFA000),
-    const Color(0xFFFF5252),
-    const Color(0xFF7C4DFF),
-    const Color(0xFFE91E63),
-    const Color(0xFF009688),
-  ];
+  final palette = untisPlusAutoLessonPalette();
 
   final base = palette[normalized.hashCode.abs() % palette.length];
   final hsl = HSLColor.fromColor(base);
