@@ -691,6 +691,17 @@ Future<void> updateUntisData() async {
     }
   }
 
+  // Respect user-hidden subjects and the "show cancelled" setting
+  final hiddenSubjects = prefs.getStringList('hiddenSubjects') ?? <String>[];
+  final showCancelled = prefs.getBool('showCancelled') ?? true;
+
+  lessons = lessons
+      .whereType<Map>()
+      .where((l) => !hiddenSubjects
+          .contains(l['_subjectShort']?.toString() ?? ''))
+      .where((l) => showCancelled || (l['code'] ?? '') != 'cancelled')
+      .toList(growable: false);
+
   if (lessons.isEmpty) {
     await NotificationService().cancelNotification(
       kCurrentLessonNotificationId,
@@ -725,12 +736,11 @@ Future<void> updateUntisData() async {
   String timeRemaining = "";
 
   final currentTimeInt = now.hour * 100 + now.minute;
-  bool foundCurrent = false;
+  bool hasActiveLesson = false;
 
   int? currentProgress;
   int? maxProgress;
   int? endTimeMs;
-  String subTextInfo = _localizedStatusCurrentLesson(locale);
 
   int _breakCount(List<dynamic> dayLessons) {
     var breaks = 0;
@@ -783,33 +793,32 @@ Future<void> updateUntisData() async {
     String startStr = formatUntisTime(start.toString());
     String endStr = formatUntisTime(end.toString());
 
-    if (!foundCurrent) {
-      if (currentTimeInt >= start && currentTimeInt <= end) {
-        currentLessonName = name;
-        timeRemaining = _localizedUntilTime(locale, endStr);
-        foundCurrent = true;
-        subTextInfo = _localizedStatusCurrentLesson(locale);
+    if (currentTimeInt >= start && currentTimeInt <= end) {
+      hasActiveLesson = true;
+      currentLessonName = name;
+      timeRemaining = _localizedUntilTime(locale, endStr);
 
-        DateTime startTimeDate = untisTimeToDate(start);
-        DateTime endTimeDate = untisTimeToDate(end);
+      final startTimeDate = untisTimeToDate(start);
+      final endTimeDate = untisTimeToDate(end);
 
-        maxProgress = endTimeDate.difference(startTimeDate).inMinutes;
-        currentProgress = now.difference(startTimeDate).inMinutes;
-        endTimeMs = endTimeDate.millisecondsSinceEpoch;
+      maxProgress = endTimeDate.difference(startTimeDate).inMinutes;
+      currentProgress = now.difference(startTimeDate).inMinutes;
+      endTimeMs = endTimeDate.millisecondsSinceEpoch;
 
-        if (i + 1 < lessons.length) {
-          var nextL = lessons[i + 1];
-          nextLessonName = lessonDisplayName(nextL);
-        } else {
-          nextLessonName = _localizedClosedLabel(locale);
-        }
-      } else if (currentTimeInt < start) {
-        timeRemaining = _localizedLessonStartsAt(locale, startStr);
-        nextLessonName = name;
-        foundCurrent = true;
-        subTextInfo = _localizedStatusNextLesson(locale);
-        endTimeMs = untisTimeToDate(start).millisecondsSinceEpoch;
+      if (i + 1 < lessons.length) {
+        final nextL = lessons[i + 1];
+        nextLessonName = lessonDisplayName(nextL);
+      } else {
+        nextLessonName = _localizedClosedLabel(locale);
       }
+      break;
+    }
+
+    if (currentTimeInt < start) {
+      timeRemaining = _localizedLessonStartsAt(locale, startStr);
+      nextLessonName = name;
+      endTimeMs = untisTimeToDate(start).millisecondsSinceEpoch;
+      break;
     }
   }
 
@@ -821,12 +830,7 @@ Future<void> updateUntisData() async {
   final lastEnd = formatUntisTime((lastLesson['endTime'] as int).toString());
   final breakCount = _breakCount(lessons);
 
-  if (!foundCurrent && currentTimeInt > (lessons.last['endTime'] as int)) {
-    currentLessonName = "Schluss";
-    currentLessonName = _localizedClosedLabel(locale);
-    nextLessonName = "-";
-    timeRemaining = "";
-    subTextInfo = _localizedStatusNoClasses(locale);
+  if (!hasActiveLesson && currentTimeInt > (lessons.last['endTime'] as int)) {
     await NotificationService().cancelNotification(
       kCurrentLessonNotificationId,
     );
@@ -893,18 +897,23 @@ Future<void> updateUntisData() async {
   await prefs.setString(signatureKey, lessonSignature);
 
   if (isProgressivePushEnabled) {
-    await NotificationService().showProgressiveNotification(
-      id: kCurrentLessonNotificationId,
-      title: currentLessonName,
-      body:
-          '${timeRemaining.isNotEmpty ? '$timeRemaining  |  ' : ''}${_localizedThen(locale, nextLessonName)}',
-      subText: subTextInfo,
-      currentProgress: currentProgress,
-      maxProgress: maxProgress,
-      endTimeMs: endTimeMs,
-      locale: locale,
-      nextLesson: nextLessonName,
-    );
+    if (hasActiveLesson) {
+      await NotificationService().showProgressiveNotification(
+        id: kCurrentLessonNotificationId,
+        title: currentLessonName,
+        body: timeRemaining,
+        subText: null,
+        currentProgress: currentProgress,
+        maxProgress: maxProgress,
+        endTimeMs: endTimeMs,
+        locale: locale,
+        nextLesson: nextLessonName,
+      );
+    } else {
+      await NotificationService().cancelNotification(
+        kCurrentLessonNotificationId,
+      );
+    }
   } else {
     await NotificationService().cancelNotification(
       kCurrentLessonNotificationId,

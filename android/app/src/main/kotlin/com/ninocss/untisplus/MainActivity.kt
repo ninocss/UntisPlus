@@ -68,7 +68,7 @@ class MainActivity : FlutterActivity() {
 			val channelId = (args["channelId"] as? String).orEmpty().ifEmpty { "current_lesson_channel" }
 			val title = (args["title"] as? String).orEmpty()
 			val body = (args["body"] as? String).orEmpty()
-			val subText = args["subText"] as? String
+			val subText = (args["subText"] as? String)?.trim()?.takeIf { it.isNotEmpty() }
 			val currentLesson = (args["currentLesson"] as? String).orEmpty()
 			val nextLesson = (args["nextLesson"] as? String).orEmpty()
 			val locale = (args["locale"] as? String).orEmpty().ifEmpty { "de" }
@@ -102,12 +102,15 @@ class MainActivity : FlutterActivity() {
 				.setSmallIcon(R.mipmap.ic_launcher)
 				.setContentTitle(title)
 				.setContentText(body)
-				.setSubText(subText)
 				.setOnlyAlertOnce(true)
 				.setOngoing(true)
 				.setAutoCancel(false)
 				.setCategory(Notification.CATEGORY_PROGRESS)
 				.setContentIntent(openTimetableIntent)
+			if (subText != null) {
+				builder.setSubText(subText)
+			}
+			builder
 				.addAction(Notification.Action.Builder(0, actionLabel(locale, "open_timetable"), openTimetableIntent).build())
 				.addAction(Notification.Action.Builder(0, actionLabel(locale, "open_next_lesson"), openNextLessonIntent).build())
 				.addAction(Notification.Action.Builder(0, actionLabel(locale, "open_free_rooms"), openFreeRoomsIntent).build())
