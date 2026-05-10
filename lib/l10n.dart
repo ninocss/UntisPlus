@@ -347,6 +347,18 @@ class AppL10n {
 
   // ── Custom Background Editor ───────────────────────────────────────────────
   String get bgEditorTitle => _t('bgEditorTitle');
+    String get bgEditorPreviewTab => _t('bgEditorPreviewTab');
+    String get bgEditorDesignTab => _t('bgEditorDesignTab');
+    String get bgEditorLibraryTab => _t('bgEditorLibraryTab');
+    String get bgEditorStartPoints => _t('bgEditorStartPoints');
+    String get bgEditorUpdatedAt => _t('bgEditorUpdatedAt');
+    String get bgEditorEdit => _t('bgEditorEdit');
+    String get bgEditorUndo => _t('bgEditorUndo');
+    String get bgEditorRedo => _t('bgEditorRedo');
+    String get bgEditorRandomize => _t('bgEditorRandomize');
+    String get bgEditorUnsavedTitle => _t('bgEditorUnsavedTitle');
+    String get bgEditorUnsavedDesc => _t('bgEditorUnsavedDesc');
+    String get bgEditorDiscard => _t('bgEditorDiscard');
   String get bgEditorLivePreview => _t('bgEditorLivePreview');
   String get bgEditorSave => _t('bgEditorSave');
   String get bgEditorSaved => _t('bgEditorSaved');
@@ -728,6 +740,9 @@ class AppL10n {
             'settingsCustomBackgroundsSelected': 'Ausgewählt: {name}',
 
             'bgEditorTitle': 'Hintergrund-Editor',
+            'bgEditorUndo': 'Rückgängig',
+            'bgEditorRedo': 'Wiederholen',
+            'bgEditorRandomize': 'Zufall',
             'bgEditorLivePreview': 'Live-Vorschau',
             'bgEditorSave': 'Speichern',
             'bgEditorSaved': 'Gespeichert.',
@@ -1196,6 +1211,18 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
             'settingsCustomBackgroundsSelected': 'Selected: {name}',
 
             'bgEditorTitle': 'Background Editor',
+            'bgEditorPreviewTab': 'Preview',
+            'bgEditorDesignTab': 'Design',
+            'bgEditorLibraryTab': 'Library',
+            'bgEditorStartPoints': 'Start points',
+            'bgEditorUpdatedAt': 'Updated',
+            'bgEditorEdit': 'Edit',
+            'bgEditorUndo': 'Undo',
+            'bgEditorRedo': 'Redo',
+            'bgEditorRandomize': 'Random',
+            'bgEditorUnsavedTitle': 'Unsaved changes',
+            'bgEditorUnsavedDesc': 'Save changes, discard them, or keep editing?',
+            'bgEditorDiscard': 'Discard',
             'bgEditorLivePreview': 'Live preview',
             'bgEditorSave': 'Save',
             'bgEditorSaved': 'Saved.',
