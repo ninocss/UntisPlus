@@ -201,6 +201,11 @@ class AppL10n {
   String get settingsSectionGeneral => _t('settingsSectionGeneral');
   String get settingsAppearance => _t('settingsAppearance');
   String get settingsAppearanceDesc => _t('settingsAppearanceDesc');
+    String get settingsHubNotifications => _t('settingsHubNotifications');
+    String get settingsHubDataBackup => _t('settingsHubDataBackup');
+    String get settingsHubDataBackupDesc => _t('settingsHubDataBackupDesc');
+    String get settingsHubAccount => _t('settingsHubAccount');
+    String get settingsHubUpdatesAbout => _t('settingsHubUpdatesAbout');
   String get settingsLanguage => _t('settingsLanguage');
   String get settingsSectionAI => _t('settingsSectionAI');
   String get settingsAiProvider => _t('settingsAiProvider');
@@ -340,6 +345,27 @@ class AppL10n {
       _t('settingsGithubInstallPrompted');
   String get settingsGithubOpenReleasePage =>
       _t('settingsGithubOpenReleasePage');
+  String get settingsBackupIncludeApiKeys => _t('settingsBackupIncludeApiKeys');
+  String get settingsBackupIncludeApiKeysDesc =>
+      _t('settingsBackupIncludeApiKeysDesc');
+  String get settingsBackupExportAllFile => _t('settingsBackupExportAllFile');
+  String get settingsBackupExportAllClipboard =>
+      _t('settingsBackupExportAllClipboard');
+  String get settingsBackupImportAllTitle => _t('settingsBackupImportAllTitle');
+  String get settingsBackupImportAllFile => _t('settingsBackupImportAllFile');
+  String get settingsBackupImportAllClipboard =>
+      _t('settingsBackupImportAllClipboard');
+  String get settingsBackupExportDialogTitle =>
+      _t('settingsBackupExportDialogTitle');
+  String get settingsBackupExportSuccess => _t('settingsBackupExportSuccess');
+  String get settingsBackupExportClipboardSuccess =>
+      _t('settingsBackupExportClipboardSuccess');
+  String get settingsBackupImportSuccess => _t('settingsBackupImportSuccess');
+  String get settingsBackupImportFailed => _t('settingsBackupImportFailed');
+  String get settingsBackupClipboardEmpty => _t('settingsBackupClipboardEmpty');
+  String get settingsBackupConfirmTitle => _t('settingsBackupConfirmTitle');
+  String get settingsBackupConfirmDesc => _t('settingsBackupConfirmDesc');
+  String get settingsBackupConfirmAction => _t('settingsBackupConfirmAction');
 
   // ── AI System Prompt ─────────────────────────────────────────────────────────
   String get aiSystemPersona => _t('aiSystemPersona');
@@ -650,6 +676,11 @@ class AppL10n {
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Erscheinungsbild',
       'settingsAppearanceDesc': 'System (Hell/Dunkel)',
+    'settingsHubNotifications': 'Benachrichtigungen & Widgets',
+    'settingsHubDataBackup': 'Daten & Backup',
+    'settingsHubDataBackupDesc': 'Alle App-Einstellungen sichern',
+    'settingsHubAccount': 'Account & Demo',
+    'settingsHubUpdatesAbout': 'Updates & Über',
       'settingsLanguage': 'Sprache',
       'settingsSectionAI': 'KI-Assistent',
       'settingsAiProvider': 'Anbieter',
@@ -917,6 +948,27 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallPrompted':
           'Download gestartet. Nach dem Download erscheint der Installationsdialog.',
       'settingsGithubOpenReleasePage': 'GitHub Release-Seite öffnen',
+      'settingsBackupIncludeApiKeys': 'API-Keys einschließen',
+      'settingsBackupIncludeApiKeysDesc':
+          'Nur aktivieren, wenn das Backup sicher gespeichert wird.',
+      'settingsBackupExportAllFile': 'Alle Einstellungen als Datei exportieren',
+      'settingsBackupExportAllClipboard':
+          'Alle Einstellungen in Zwischenablage kopieren',
+      'settingsBackupImportAllTitle': 'Alle Einstellungen importieren',
+      'settingsBackupImportAllFile': 'Aus Datei importieren',
+      'settingsBackupImportAllClipboard': 'Aus Zwischenablage importieren',
+      'settingsBackupExportDialogTitle': 'Einstellungen-Backup speichern',
+      'settingsBackupExportSuccess': 'Backup-Datei gespeichert.',
+      'settingsBackupExportClipboardSuccess':
+          'Backup als JSON in Zwischenablage kopiert.',
+      'settingsBackupImportSuccess': 'Backup importiert.',
+      'settingsBackupImportFailed':
+          'Import fehlgeschlagen. Bitte JSON und Schema prüfen.',
+      'settingsBackupClipboardEmpty': 'Zwischenablage ist leer.',
+      'settingsBackupConfirmTitle': 'Import bestätigen',
+      'settingsBackupConfirmDesc':
+          'Import überschreibt aktuelle Einstellungen und aktualisiert die App direkt.',
+      'settingsBackupConfirmAction': 'Importieren',
 
       'aiSystemPersona':
           'Du bist "Plan-Assistent", ein freundlicher und motivierender KI-Helfer für Schüler*innen.',
@@ -1395,6 +1447,31 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallPrompted':
           'Download started. The installation prompt appears after download.',
       'settingsGithubOpenReleasePage': 'Open GitHub release page',
+      'settingsHubNotifications': 'Notifications & Widgets',
+      'settingsHubDataBackup': 'Data & Backup',
+      'settingsHubDataBackupDesc': 'Back up all app settings',
+      'settingsHubAccount': 'Account & Demo',
+      'settingsHubUpdatesAbout': 'Updates & About',
+      'settingsBackupIncludeApiKeys': 'Include API keys',
+      'settingsBackupIncludeApiKeysDesc':
+          'Only enable this if you store the backup securely.',
+      'settingsBackupExportAllFile': 'Export all settings to file',
+      'settingsBackupExportAllClipboard': 'Copy all settings to clipboard',
+      'settingsBackupImportAllTitle': 'Import all settings',
+      'settingsBackupImportAllFile': 'Import from file',
+      'settingsBackupImportAllClipboard': 'Import from clipboard',
+      'settingsBackupExportDialogTitle': 'Save settings backup',
+      'settingsBackupExportSuccess': 'Backup file saved.',
+      'settingsBackupExportClipboardSuccess':
+          'Backup JSON copied to clipboard.',
+      'settingsBackupImportSuccess': 'Backup imported.',
+      'settingsBackupImportFailed':
+          'Import failed. Please validate JSON and schema.',
+      'settingsBackupClipboardEmpty': 'Clipboard is empty.',
+      'settingsBackupConfirmTitle': 'Confirm import',
+      'settingsBackupConfirmDesc':
+          'Import will overwrite current settings and immediately refresh the app state.',
+      'settingsBackupConfirmAction': 'Import',
 
       'aiSystemPersona':
           'You are "Schedule Assistant", a friendly and motivating AI helper for students.',
@@ -1603,6 +1680,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Application',
       'settingsAppearance': 'Apparence',
       'settingsAppearanceDesc': 'Système (Clair/Sombre)',
+    'settingsHubNotifications': 'Notifications & Widgets',
+    'settingsHubDataBackup': 'Données & Sauvegarde',
+    'settingsHubDataBackupDesc': 'Sauvegarder tous les réglages',
+    'settingsHubAccount': 'Compte & Démo',
+    'settingsHubUpdatesAbout': 'Mises à jour & À propos',
       'settingsLanguage': 'Langue',
       'settingsSectionAI': 'Assistant IA',
       'settingsApiKey': 'Clé API Gemini',
@@ -1839,6 +1921,28 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallPrompted':
           'Téléchargement démarré. La demande d\'installation apparaît après le téléchargement.',
       'settingsGithubOpenReleasePage': 'Ouvrir la page des versions GitHub',
+      'settingsBackupIncludeApiKeys': 'Inclure les clés API',
+      'settingsBackupIncludeApiKeysDesc':
+          'À activer uniquement si la sauvegarde est stockée de manière sûre.',
+      'settingsBackupExportAllFile':
+          'Exporter tous les réglages dans un fichier',
+      'settingsBackupExportAllClipboard':
+          'Copier tous les réglages dans le presse-papiers',
+      'settingsBackupImportAllTitle': 'Importer tous les réglages',
+      'settingsBackupImportAllFile': 'Importer depuis un fichier',
+      'settingsBackupImportAllClipboard': 'Importer depuis le presse-papiers',
+      'settingsBackupExportDialogTitle': 'Enregistrer la sauvegarde',
+      'settingsBackupExportSuccess': 'Fichier de sauvegarde enregistré.',
+      'settingsBackupExportClipboardSuccess':
+          'Sauvegarde JSON copiée dans le presse-papiers.',
+      'settingsBackupImportSuccess': 'Sauvegarde importée.',
+      'settingsBackupImportFailed':
+          'Échec de l\'import. Vérifie le JSON et le schéma.',
+      'settingsBackupClipboardEmpty': 'Le presse-papiers est vide.',
+      'settingsBackupConfirmTitle': 'Confirmer l\'import',
+      'settingsBackupConfirmDesc':
+          'L\'import écrase les réglages actuels et met à jour l\'app immédiatement.',
+      'settingsBackupConfirmAction': 'Importer',
 
       'aiSystemPersona':
           'Tu es "Assistant Planning", un assistant IA amical et motivant pour les élèves.',
@@ -2048,6 +2152,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Aplicación',
       'settingsAppearance': 'Apariencia',
       'settingsAppearanceDesc': 'Sistema (Claro/Oscuro)',
+    'settingsHubNotifications': 'Notificaciones & Widgets',
+    'settingsHubDataBackup': 'Datos & Copia de seguridad',
+    'settingsHubDataBackupDesc': 'Guardar toda la configuración',
+    'settingsHubAccount': 'Cuenta & Demo',
+    'settingsHubUpdatesAbout': 'Actualizaciones & Acerca de',
       'settingsLanguage': 'Idioma',
       'settingsSectionAI': 'Asistente IA',
       'settingsApiKey': 'Clave API Gemini',
@@ -2282,6 +2391,27 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallPrompted':
           'Descarga iniciada. El aviso de instalación aparece al terminar la descarga.',
       'settingsGithubOpenReleasePage': 'Abrir página de versiones de GitHub',
+      'settingsBackupIncludeApiKeys': 'Incluir claves API',
+      'settingsBackupIncludeApiKeysDesc':
+          'Actívalo solo si guardas la copia en un lugar seguro.',
+      'settingsBackupExportAllFile': 'Exportar toda la configuración a archivo',
+      'settingsBackupExportAllClipboard':
+          'Copiar toda la configuración al portapapeles',
+      'settingsBackupImportAllTitle': 'Importar toda la configuración',
+      'settingsBackupImportAllFile': 'Importar desde archivo',
+      'settingsBackupImportAllClipboard': 'Importar desde portapapeles',
+      'settingsBackupExportDialogTitle': 'Guardar copia de configuración',
+      'settingsBackupExportSuccess': 'Archivo de copia guardado.',
+      'settingsBackupExportClipboardSuccess':
+          'Copia JSON copiada al portapapeles.',
+      'settingsBackupImportSuccess': 'Copia importada.',
+      'settingsBackupImportFailed':
+          'Error de importación. Verifica el JSON y el esquema.',
+      'settingsBackupClipboardEmpty': 'El portapapeles está vacío.',
+      'settingsBackupConfirmTitle': 'Confirmar importación',
+      'settingsBackupConfirmDesc':
+          'La importación sobrescribe la configuración actual y actualiza la app al instante.',
+      'settingsBackupConfirmAction': 'Importar',
 
       'aiSystemPersona':
           'Eres "Asistente de Horario", un ayudante IA amigable y motivador para estudiantes.',
@@ -2493,6 +2623,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Γενικά',
       'settingsAppearance': 'Εμφάνιση',
       'settingsAppearanceDesc': 'Σύστημα (Φωτεινό/Σκοτεινό)',
+    'settingsHubNotifications': 'Ειδοποιήσεις & Widgets',
+    'settingsHubDataBackup': 'Δεδομένα & Αντίγραφα',
+    'settingsHubDataBackupDesc': 'Αντίγραφο όλων των ρυθμίσεων',
+    'settingsHubAccount': 'Λογαριασμός & Demo',
+    'settingsHubUpdatesAbout': 'Ενημερώσεις & Σχετικά',
       'settingsLanguage': 'Γλώσσα',
       'settingsSectionAI': 'Βοηθός AI',
       'settingsApiKey': 'Κλειδί Gemini API',
@@ -2734,6 +2869,28 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallPrompted':
           'Η λήψη ξεκίνησε. Η προτροπή εγκατάστασης εμφανίζεται μετά τη λήψη.',
       'settingsGithubOpenReleasePage': 'Άνοιγμα σελίδας έκδοσης στο GitHub',
+      'settingsBackupIncludeApiKeys': 'Συμπερίληψη API keys',
+      'settingsBackupIncludeApiKeysDesc':
+          'Ενεργοποίησέ το μόνο αν το αντίγραφο αποθηκεύεται με ασφάλεια.',
+      'settingsBackupExportAllFile':
+          'Εξαγωγή όλων των ρυθμίσεων σε αρχείο',
+      'settingsBackupExportAllClipboard':
+          'Αντιγραφή όλων των ρυθμίσεων στο πρόχειρο',
+      'settingsBackupImportAllTitle': 'Εισαγωγή όλων των ρυθμίσεων',
+      'settingsBackupImportAllFile': 'Εισαγωγή από αρχείο',
+      'settingsBackupImportAllClipboard': 'Εισαγωγή από πρόχειρο',
+      'settingsBackupExportDialogTitle': 'Αποθήκευση αντιγράφου ρυθμίσεων',
+      'settingsBackupExportSuccess': 'Το αντίγραφο αποθηκεύτηκε.',
+      'settingsBackupExportClipboardSuccess':
+          'Το backup JSON αντιγράφηκε στο πρόχειρο.',
+      'settingsBackupImportSuccess': 'Το αντίγραφο εισήχθη.',
+      'settingsBackupImportFailed':
+          'Η εισαγωγή απέτυχε. Έλεγξε το JSON και το schema.',
+      'settingsBackupClipboardEmpty': 'Το πρόχειρο είναι άδειο.',
+      'settingsBackupConfirmTitle': 'Επιβεβαίωση εισαγωγής',
+      'settingsBackupConfirmDesc':
+          'Η εισαγωγή αντικαθιστά τις τρέχουσες ρυθμίσεις και ενημερώνει άμεσα την εφαρμογή.',
+      'settingsBackupConfirmAction': 'Εισαγωγή',
 
       'aiSystemPersona':
           'Είσαι ο "Βοηθός Προγράμματος", ένας φιλικός και ενθαρρυντικός βοηθός AI για μαθητές.',

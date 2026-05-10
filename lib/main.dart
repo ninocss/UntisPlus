@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +23,7 @@ import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'services/notification_service.dart';
 import 'services/background_service.dart';
+import 'services/backup_service.dart';
 import 'services/demo_mode_service.dart';
 import 'widgets/rounded_blur_app_bar.dart';
 
@@ -33,6 +36,15 @@ part 'core/custom_backgrounds.dart';
 part 'screens/onboarding_flow.dart';
 part 'screens/custom_background_editor_screen.dart';
 part 'screens/main_navigation_screen.dart';
+part 'screens/settings_hub.dart';
+part 'screens/settings/settings_timetable_page.dart';
+part 'screens/settings/settings_notifications_page.dart';
+part 'screens/settings/settings_appearance_page.dart';
+part 'screens/settings/settings_subjects_page.dart';
+part 'screens/settings/settings_ai_page.dart';
+part 'screens/settings/settings_backup_page.dart';
+part 'screens/settings/settings_account_page.dart';
+part 'screens/settings/settings_about_updates_page.dart';
 part 'widgets/animated_background.dart';
 part 'widgets/custom_background_view.dart';
 

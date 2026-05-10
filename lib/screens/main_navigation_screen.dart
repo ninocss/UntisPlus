@@ -146,7 +146,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     WeeklyTimetablePage(key: ValueKey(sessionID)),
     const ExamsPage(),
     const SchoolNotificationsPage(),
-    SettingsPage(),
+    const SettingsHubPage(),
   ];
 
   @override
