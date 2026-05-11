@@ -56,5 +56,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "chore: update web build from ${GITHUB_SHA}"
+          git commit -m "chore: update web build from ${GITHUB_SHA::7}"
           git push origin webapp
