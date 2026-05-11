@@ -2975,6 +2975,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: RoundedBlurAppBar(
+        blurListenable: blurEnabledNotifier,
         leading: IconButton(
           tooltip: l.timetableSelectAnother,
           icon: const Icon(Icons.groups_rounded),
@@ -4109,6 +4110,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: RoundedBlurAppBar(
+        blurListenable: blurEnabledNotifier,
         title: Text(
           l.examsTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
@@ -6518,6 +6520,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
+        blurListenable: blurEnabledNotifier,
         title: Text(
           l.infoTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 22),
@@ -9253,6 +9256,7 @@ class SubjectColorsPage extends StatelessWidget {
     final l = AppL10n.of(appLocaleNotifier.value);
     return Scaffold(
       appBar: RoundedBlurAppBar(
+        blurListenable: blurEnabledNotifier,
         title: Text(
           l.settingsSectionColors,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
@@ -9380,6 +9384,7 @@ class HiddenSubjectsPage extends StatelessWidget {
     final l = AppL10n.of(appLocaleNotifier.value);
     return Scaffold(
       appBar: RoundedBlurAppBar(
+        blurListenable: blurEnabledNotifier,
         title: Text(
           l.settingsSectionHidden,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700),

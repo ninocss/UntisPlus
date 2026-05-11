@@ -218,7 +218,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       ignoring: true,
                       child: Opacity(
                         opacity: isDark ? 0.28 : 0.2,
-                        child: _AnimatedBackgroundScene(style: style),
+                        child: RepaintBoundary(
+                          child: _AnimatedBackgroundScene(style: style),
+                        ),
                       ),
                     );
                   },
@@ -231,11 +233,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             left: 16,
             right: 16,
             bottom: mq.padding.bottom + 16,
-            child: ValueListenableBuilder<String>(
-              valueListenable: appLocaleNotifier,
-              builder: (context, locale, _) {
-                return _buildFloatingNavBar(context, cs);
-              },
+            child: AnimatedBuilder(
+              animation: Listenable.merge([
+                appLocaleNotifier,
+                blurEnabledNotifier,
+              ]),
+              builder: (context, _) => _buildFloatingNavBar(context, cs),
             ),
           ),
           if (_showTutorial)

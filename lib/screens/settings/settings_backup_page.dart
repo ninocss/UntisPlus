@@ -190,6 +190,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
+        blurListenable: blurEnabledNotifier,
         title: Text(
           l.settingsHubDataBackup,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),

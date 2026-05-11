@@ -1290,6 +1290,7 @@ class _CustomBackgroundEditorScreenState extends State<CustomBackgroundEditorScr
       child: Scaffold(
         backgroundColor: cs.surface,
         appBar: RoundedBlurAppBar(
+          blurListenable: blurEnabledNotifier,
           title: Text(
             l.bgEditorTitle,
             style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
