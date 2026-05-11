@@ -1,0 +1,61 @@
+name: Flutter Web Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build_and_publish_web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Web
+        run: flutter build web --release
+
+      - name: Publish to webapp branch
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin webapp || true
+          if git show-ref --verify --quiet refs/remotes/origin/webapp; then
+            git checkout -B webapp origin/webapp
+          else
+            git checkout --orphan webapp
+            git rm -rf . || true
+          fi
+
+          find . -mindepth 1 -maxdepth 1 ! -name ".git" -exec rm -rf {} +
+          cp -r build/web/. .
+          touch .nojekyll
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          short_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          git commit -m "chore: update web build from ${short_sha}"
+          git push origin webapp
