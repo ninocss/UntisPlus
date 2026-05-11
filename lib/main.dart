@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
@@ -2653,7 +2652,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _loading = false;
       });
     } catch (e) {
-      print("Fehler beim Laden: $e");
+      debugPrint("Fehler beim Laden: $e");
       if (hasCachedWeek) {
         if (!mounted) return;
         setState(() {
@@ -3759,8 +3758,9 @@ class _ExamsPageState extends State<ExamsPage> {
                             firstDate: DateTime(2020),
                             lastDate: DateTime(2030),
                           );
-                          if (picked != null)
+                          if (picked != null) {
                             setDlg(() => selectedDate = picked);
+                          }
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -4650,10 +4650,12 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
       }
 
       apiExams = await tryEndpoint('/WebUntis/api/exams');
-      if (apiExams.isEmpty)
+      if (apiExams.isEmpty) {
         apiExams = await tryEndpoint('/WebUntis/api/classreg/exams');
-      if (apiExams.isEmpty && personId != 0)
+      }
+      if (apiExams.isEmpty && personId != 0) {
         apiExams = await tryEndpoint('/WebUntis/api/exams/student/$personId');
+      }
     }
 
     if (mounted) {
@@ -5212,7 +5214,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: _quickPrompts.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (context, index) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final prompt = _quickPrompts[index];
                             return ActionChip(
@@ -6660,14 +6662,15 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                               const SizedBox(height: 8),
                               TextButton.icon(
                                 onPressed: () async {
+                                  final messenger = ScaffoldMessenger.of(context);
                                   final ok = await url_launcher.launchUrlString(
                                     item.url!,
                                     mode: url_launcher
                                         .LaunchMode
                                         .externalApplication,
                                   );
-                                  if (!ok && mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                  if (!ok) {
+                                    messenger.showSnackBar(
                                       SnackBar(
                                         content: Text(
                                           l.settingsGithubOpenFailed,
@@ -7437,7 +7440,9 @@ class _SettingsPageState extends State<SettingsPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     setState(() => _checkingGithubUpdate = true);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+
+    messenger.showSnackBar(
       SnackBar(
         content: Text(l.settingsGithubChecking),
         behavior: SnackBarBehavior.floating,
@@ -7480,7 +7485,7 @@ class _SettingsPageState extends State<SettingsPage> {
           : true;
 
       if (!hasUpdate) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(l.settingsGithubNoUpdate),
             behavior: SnackBarBehavior.floating,
@@ -7498,7 +7503,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!confirm) return;
 
       if (assetUrl == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(l.settingsGithubNoDownloadAsset),
             behavior: SnackBarBehavior.floating,
@@ -7513,14 +7518,14 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
       if (launched) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(l.settingsGithubInstallPrompted),
             behavior: SnackBarBehavior.floating,
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text(l.settingsGithubOpenFailed),
             behavior: SnackBarBehavior.floating,
@@ -7528,7 +7533,7 @@ class _SettingsPageState extends State<SettingsPage> {
         );
       }
     } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(l.settingsGithubCheckFailed),
           behavior: SnackBarBehavior.floating,
@@ -7855,8 +7860,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () async {
+                            final navigator = Navigator.of(ctx);
                             await _setProviderApiKey('');
-                            Navigator.pop(ctx);
+                            navigator.pop();
                             _loadPrefs();
                           },
                           style: OutlinedButton.styleFrom(
@@ -7882,8 +7888,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: FilledButton.icon(
                         onPressed: () async {
                           final val = ctrl.text.trim();
+                          final navigator = Navigator.of(ctx);
                           await _setProviderApiKey(val);
-                          Navigator.pop(ctx);
+                          navigator.pop();
                           _loadPrefs();
                         },
                         icon: const Icon(Icons.check_rounded, size: 18),
@@ -7913,10 +7920,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _logout(BuildContext context) async {
     HapticFeedback.heavyImpact();
+    final navigator = Navigator.of(context);
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
+    navigator.pushAndRemoveUntil(
       _buildBouncyRoute(const OnboardingFlow()),
       (route) => false,
     );
@@ -8996,9 +9004,9 @@ class SubjectColorsPage extends StatelessWidget {
       Theme.of(context).brightness == Brightness.dark,
     );
 
-    double red = (current ?? fallback).red.toDouble();
-    double green = (current ?? fallback).green.toDouble();
-    double blue = (current ?? fallback).blue.toDouble();
+    double red = ((current ?? fallback).r * 255.0);
+    double green = ((current ?? fallback).g * 255.0);
+    double blue = ((current ?? fallback).b * 255.0);
 
     _showUnifiedSheet<void>(
       context: context,
@@ -9095,7 +9103,7 @@ class SubjectColorsPage extends StatelessWidget {
                     ),
                     FilledButton(
                       onPressed: () {
-                        _setSubjectColor(subject, preview.value);
+                        _setSubjectColor(subject, preview.toARGB32());
                         Navigator.pop(ctx);
                       },
                       child: Text(
@@ -9146,12 +9154,12 @@ class SubjectColorsPage extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 children: palette.map((c) {
-                  final isSelected =
-                      current != null && current.value == c.value;
+                    final isSelected =
+                      current != null && current.toARGB32() == c.toARGB32();
                   return GestureDetector(
                     onTap: () {
                       Navigator.pop(ctx);
-                      _setSubjectColor(subject, c.value);
+                      _setSubjectColor(subject, c.toARGB32());
                     },
                     child: Container(
                       width: 46,

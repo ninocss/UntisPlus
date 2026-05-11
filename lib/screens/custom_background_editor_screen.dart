@@ -149,6 +149,7 @@ class _CustomBackgroundEditorScreenState extends State<CustomBackgroundEditorScr
     });
   }
 
+  // ignore: unused_element
   String _gradientSummary(CustomBackgroundGradient base) {
     final mode = base.type == CustomBackgroundGradientType.radial
         ? 'radial'
@@ -158,22 +159,26 @@ class _CustomBackgroundEditorScreenState extends State<CustomBackgroundEditorScr
     return '$mode · $opacity · $palette';
   }
 
+  // ignore: unused_element
   String _orbsSummary(CustomBackgroundOrbs orbs) {
     if (!orbs.enabled) return 'off';
     final palette = orbs.useThemeColors ? 'Theme' : '${orbs.colors.length} colors';
     return '${orbs.count} orbs · $palette';
   }
 
+  // ignore: unused_element
   String _patternSummary(CustomBackgroundPattern pattern) {
     if (pattern.type == CustomBackgroundPatternType.none) return 'none';
     return '${pattern.type.name} · ${(pattern.opacity * 100).round()}%';
   }
 
+  // ignore: unused_element
   String _motionSummary() {
     final animate = _draft.animate ? 'anim' : 'static';
     return '$animate · ${_draft.animationSpeed.toStringAsFixed(1)}x';
   }
 
+  // ignore: unused_element
   Color _sectionAccentFor(String key, ColorScheme cs) {
     switch (key) {
       case 'base':
@@ -193,6 +198,7 @@ class _CustomBackgroundEditorScreenState extends State<CustomBackgroundEditorScr
     }
   }
 
+  // ignore: unused_element
   Widget _expressiveSectionCard({
     required ColorScheme cs,
     required Color accent,
@@ -1268,8 +1274,19 @@ class _CustomBackgroundEditorScreenState extends State<CustomBackgroundEditorScr
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
 
-    return WillPopScope(
-      onWillPop: _confirmDiscardIfNeeded,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) {
+          return;
+        }
+        final navigator = Navigator.of(context);
+        final shouldPop = await _confirmDiscardIfNeeded();
+        if (!shouldPop || !mounted) {
+          return;
+        }
+        navigator.pop(result);
+      },
       child: Scaffold(
         backgroundColor: cs.surface,
         appBar: RoundedBlurAppBar(

@@ -383,7 +383,7 @@ class SettingsHubPage extends StatelessWidget {
 				child: ListView.separated(
 					padding: EdgeInsets.fromLTRB(16, 16, 16, mq.padding.bottom + 132),
 					itemCount: items.length,
-					separatorBuilder: (_, __) => const SizedBox(height: 12),
+					separatorBuilder: (context, index) => const SizedBox(height: 12),
 					itemBuilder: (context, index) {
 						final item = items[index];
 						return TweenAnimationBuilder<double>(

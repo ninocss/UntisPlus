@@ -32,21 +32,30 @@ String _newCustomBackgroundId() {
 
 int _nowMs() => DateTime.now().millisecondsSinceEpoch;
 
+String _localizedMapValue(Map<String, String> values) {
+  final locale = AppL10n.of(appLocaleNotifier.value).locale;
+  return values[locale] ?? values['en'] ?? values.values.first;
+}
+
 @immutable
 class CustomBackgroundPreset {
   final String key;
-  final String label;
-  final String category;
+  final Map<String, String> labels;
+  final Map<String, String> categories;
   final Color accent;
   final CustomBackgroundSpec Function({String? id, String? name}) build;
 
   const CustomBackgroundPreset({
     required this.key,
-    required this.label,
-    required this.category,
+    required this.labels,
+    required this.categories,
     required this.accent,
     required this.build,
   });
+
+  String get label => _localizedMapValue(labels);
+
+  String get category => _localizedMapValue(categories);
 
   CustomBackgroundSpec create({String? id, String? name}) {
     return build(id: id, name: name);
@@ -86,8 +95,20 @@ CustomBackgroundSpec _buildPresetSpec({
 final List<CustomBackgroundPreset> kBuiltInBackgroundPresets = [
   CustomBackgroundPreset(
     key: 'morning_fog',
-    label: 'Morning Fog',
-    category: 'Ambient',
+    labels: const {
+      'de': 'Morgennebel',
+      'en': 'Morning Fog',
+      'fr': 'Brume matinale',
+      'es': 'Niebla matinal',
+      'el': 'Πρωινή ομίχλη',
+    },
+    categories: const {
+      'de': 'Atmosphärisch',
+      'en': 'Ambient',
+      'fr': 'Ambiant',
+      'es': 'Ambiental',
+      'el': 'Ατμοσφαιρικό',
+    },
     accent: Color(0xFF7CC7E8),
     build: ({String? id, String? name}) => _buildPresetSpec(
       id: id,
@@ -128,8 +149,20 @@ final List<CustomBackgroundPreset> kBuiltInBackgroundPresets = [
   ),
   CustomBackgroundPreset(
     key: 'lavender_dusk',
-    label: 'Lavender Dusk',
-    category: 'Ambient',
+    labels: const {
+      'de': 'Lavendeldämmerung',
+      'en': 'Lavender Dusk',
+      'fr': 'Crépuscule lavande',
+      'es': 'Ocaso lavanda',
+      'el': 'Λιλά σούρουπο',
+    },
+    categories: const {
+      'de': 'Atmosphärisch',
+      'en': 'Ambient',
+      'fr': 'Ambiant',
+      'es': 'Ambiental',
+      'el': 'Ατμοσφαιρικό',
+    },
     accent: Color(0xFFB48CFF),
     build: ({String? id, String? name}) => _buildPresetSpec(
       id: id,
@@ -170,8 +203,20 @@ final List<CustomBackgroundPreset> kBuiltInBackgroundPresets = [
   ),
   CustomBackgroundPreset(
     key: 'neon_pulse',
-    label: 'Neon Pulse',
-    category: 'Vibrant',
+    labels: const {
+      'de': 'Neon-Puls',
+      'en': 'Neon Pulse',
+      'fr': 'Impulsion néon',
+      'es': 'Pulso neón',
+      'el': 'Νέον παλμός',
+    },
+    categories: const {
+      'de': 'Lebhaft',
+      'en': 'Vibrant',
+      'fr': 'Vif',
+      'es': 'Vibrante',
+      'el': 'Ζωηρό',
+    },
     accent: Color(0xFF00E5FF),
     build: ({String? id, String? name}) => _buildPresetSpec(
       id: id,
@@ -212,8 +257,20 @@ final List<CustomBackgroundPreset> kBuiltInBackgroundPresets = [
   ),
   CustomBackgroundPreset(
     key: 'clean_slate',
-    label: 'Clean Slate',
-    category: 'Minimal',
+    labels: const {
+      'de': 'Leere Leinwand',
+      'en': 'Clean Slate',
+      'fr': 'Toile vierge',
+      'es': 'Lienzo limpio',
+      'el': 'Καθαρός καμβάς',
+    },
+    categories: const {
+      'de': 'Minimalistisch',
+      'en': 'Minimal',
+      'fr': 'Minimal',
+      'es': 'Minimal',
+      'el': 'Μινιμαλιστικό',
+    },
     accent: Color(0xFF9FB3C8),
     build: ({String? id, String? name}) => _buildPresetSpec(
       id: id,
@@ -254,8 +311,20 @@ final List<CustomBackgroundPreset> kBuiltInBackgroundPresets = [
   ),
   CustomBackgroundPreset(
     key: 'aurora_borealis',
-    label: 'Aurora Borealis',
-    category: 'Dynamic',
+    labels: const {
+      'de': 'Polarlicht',
+      'en': 'Aurora Borealis',
+      'fr': 'Aurore boréale',
+      'es': 'Aurora boreal',
+      'el': 'Σέλας',
+    },
+    categories: const {
+      'de': 'Dynamisch',
+      'en': 'Dynamic',
+      'fr': 'Dynamique',
+      'es': 'Dinámico',
+      'el': 'Δυναμικό',
+    },
     accent: Color(0xFF3EF2C5),
     build: ({String? id, String? name}) => _buildPresetSpec(
       id: id,
@@ -296,8 +365,20 @@ final List<CustomBackgroundPreset> kBuiltInBackgroundPresets = [
   ),
   CustomBackgroundPreset(
     key: 'blueprint',
-    label: 'Blueprint',
-    category: 'Pattern',
+    labels: const {
+      'de': 'Blaupause',
+      'en': 'Blueprint',
+      'fr': 'Plan technique',
+      'es': 'Plano',
+      'el': 'Σχέδιο',
+    },
+    categories: const {
+      'de': 'Muster',
+      'en': 'Pattern',
+      'fr': 'Motif',
+      'es': 'Patrón',
+      'el': 'Μοτίβο',
+    },
     accent: Color(0xFF3E8EDE),
     build: ({String? id, String? name}) => _buildPresetSpec(
       id: id,
@@ -338,8 +419,20 @@ final List<CustomBackgroundPreset> kBuiltInBackgroundPresets = [
   ),
   CustomBackgroundPreset(
     key: 'sunlit_paper',
-    label: 'Sunlit Paper',
-    category: 'Light',
+    labels: const {
+      'de': 'Sonnenpapier',
+      'en': 'Sunlit Paper',
+      'fr': 'Papier ensoleillé',
+      'es': 'Papel soleado',
+      'el': 'Χαρτί στο φως',
+    },
+    categories: const {
+      'de': 'Hell',
+      'en': 'Light',
+      'fr': 'Clair',
+      'es': 'Claro',
+      'el': 'Ανοιχτό',
+    },
     accent: Color(0xFFF0C56B),
     build: ({String? id, String? name}) => _buildPresetSpec(
       id: id,
@@ -380,8 +473,20 @@ final List<CustomBackgroundPreset> kBuiltInBackgroundPresets = [
   ),
   CustomBackgroundPreset(
     key: 'ocean_deep',
-    label: 'Ocean Deep',
-    category: 'Dark',
+    labels: const {
+      'de': 'Tiefsee',
+      'en': 'Ocean Deep',
+      'fr': 'Océan profond',
+      'es': 'Océano profundo',
+      'el': 'Βαθύς ωκεανός',
+    },
+    categories: const {
+      'de': 'Dunkel',
+      'en': 'Dark',
+      'fr': 'Sombre',
+      'es': 'Oscuro',
+      'el': 'Σκούρο',
+    },
     accent: Color(0xFF2EA7D8),
     build: ({String? id, String? name}) => _buildPresetSpec(
       id: id,

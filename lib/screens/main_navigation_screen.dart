@@ -79,8 +79,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   bool _isTutorialTarget(int index) {
-    if (!_showTutorial || _tutorialStep >= _tutorialTargets.length)
+    if (!_showTutorial || _tutorialStep >= _tutorialTargets.length) {
       return false;
+    }
     return _tutorialTargets[_tutorialStep] == index;
   }
 

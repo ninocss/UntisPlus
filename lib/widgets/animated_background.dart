@@ -75,7 +75,7 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
   void _startGyroscope() {
     if (_gyroSub != null) return;
     try {
-      _gyroSub = gyroscopeEvents.listen((event) {
+      _gyroSub = gyroscopeEventStream().listen((event) {
         _gyroTargetX = (event.y * 0.35).clamp(-1.0, 1.0);
         _gyroTargetY = (event.x * 0.35).clamp(-1.0, 1.0);
       }, onError: (_) {});

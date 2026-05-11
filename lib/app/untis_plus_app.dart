@@ -163,9 +163,11 @@ class UntisPlusApp extends StatelessWidget {
                   );
                 }
 
+                final l = AppL10n.of(locale);
+
                 return MaterialApp(
                   debugShowCheckedModeBanner: false,
-                  title: 'Untis+',
+                  title: l.appName,
                   theme: themeFrom(lightScheme),
                   darkTheme: themeFrom(darkScheme),
                   themeMode: themeMode,

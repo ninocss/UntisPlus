@@ -148,7 +148,8 @@ class SettingsAppearancePage extends StatelessWidget {
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                 ),
                 subtitle: Text(
-                  _settingsLocaleLabels[appLocaleNotifier.value] ?? 'Deutsch',
+                  _settingsLocaleLabels[appLocaleNotifier.value] ??
+                      (_settingsLocaleLabels['de'] ?? appLocaleNotifier.value),
                   style: GoogleFonts.outfit(),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),

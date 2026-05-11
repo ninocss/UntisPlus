@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,7 +24,7 @@ void callbackDispatcher() {
         await updateUntisData();
       }
     } catch (e) {
-      print("Background Task Error: $e");
+      debugPrint("Background Task Error: $e");
     }
     return Future.value(true);
   });
@@ -31,7 +32,7 @@ void callbackDispatcher() {
 
 class BackgroundService {
   static void initialize() {
-    Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+    Workmanager().initialize(callbackDispatcher);
     Workmanager().registerPeriodicTask(
       "untis_school_notification_update",
       kTimetableUpdateTask,
@@ -272,6 +273,7 @@ String _localizedStatusCurrentLesson(String locale) {
   }
 }
 
+// ignore: unused_element
 String _localizedStatusNextLesson(String locale) {
   switch (locale) {
     case 'en':
@@ -288,6 +290,7 @@ String _localizedStatusNextLesson(String locale) {
   }
 }
 
+// ignore: unused_element
 String _localizedStatusNoClasses(String locale) {
   switch (locale) {
     case 'en':
@@ -336,6 +339,7 @@ String _localizedUntilTime(String locale, String end) {
   }
 }
 
+// ignore: unused_element
 String _localizedThen(String locale, String nextLesson) {
   switch (locale) {
     case 'en':
@@ -484,41 +488,69 @@ String _localizedChangeSummary(String locale, Map<String, int> counts) {
 
   if (locale == 'de') {
     final parts = <String>[];
-    if (cancelled > 0) parts.add('$cancelled Ausfälle');
-    if (room > 0) parts.add('$room Raumwechsel');
-    if (substitution > 0) parts.add('$substitution Vertretungen');
-    if (other > 0 || parts.isEmpty)
+    if (cancelled > 0) {
+      parts.add('$cancelled Ausfälle');
+    }
+    if (room > 0) {
+      parts.add('$room Raumwechsel');
+    }
+    if (substitution > 0) {
+      parts.add('$substitution Vertretungen');
+    }
+    if (other > 0 || parts.isEmpty) {
       parts.add('${other > 0 ? other : 1} Änderungen');
+    }
     return parts.join(' · ');
   }
 
   if (locale == 'en') {
     final parts = <String>[];
-    if (cancelled > 0) parts.add('$cancelled cancellations');
-    if (room > 0) parts.add('$room room changes');
-    if (substitution > 0) parts.add('$substitution substitutions');
-    if (other > 0 || parts.isEmpty)
+    if (cancelled > 0) {
+      parts.add('$cancelled cancellations');
+    }
+    if (room > 0) {
+      parts.add('$room room changes');
+    }
+    if (substitution > 0) {
+      parts.add('$substitution substitutions');
+    }
+    if (other > 0 || parts.isEmpty) {
       parts.add('${other > 0 ? other : 1} updates');
+    }
     return parts.join(' · ');
   }
 
   if (locale == 'fr') {
     final parts = <String>[];
-    if (cancelled > 0) parts.add('$cancelled annulations');
-    if (room > 0) parts.add('$room changements de salle');
-    if (substitution > 0) parts.add('$substitution remplacements');
-    if (other > 0 || parts.isEmpty)
+    if (cancelled > 0) {
+      parts.add('$cancelled annulations');
+    }
+    if (room > 0) {
+      parts.add('$room changements de salle');
+    }
+    if (substitution > 0) {
+      parts.add('$substitution remplacements');
+    }
+    if (other > 0 || parts.isEmpty) {
       parts.add('${other > 0 ? other : 1} changements');
+    }
     return parts.join(' · ');
   }
 
   if (locale == 'es') {
     final parts = <String>[];
-    if (cancelled > 0) parts.add('$cancelled cancelaciones');
-    if (room > 0) parts.add('$room cambios de aula');
-    if (substitution > 0) parts.add('$substitution sustituciones');
-    if (other > 0 || parts.isEmpty)
+    if (cancelled > 0) {
+      parts.add('$cancelled cancelaciones');
+    }
+    if (room > 0) {
+      parts.add('$room cambios de aula');
+    }
+    if (substitution > 0) {
+      parts.add('$substitution sustituciones');
+    }
+    if (other > 0 || parts.isEmpty) {
       parts.add('${other > 0 ? other : 1} cambios');
+    }
     return parts.join(' · ');
   }
 
@@ -742,7 +774,7 @@ Future<void> updateUntisData() async {
   int? maxProgress;
   int? endTimeMs;
 
-  int _breakCount(List<dynamic> dayLessons) {
+  int computeBreakCount(List<dynamic> dayLessons) {
     var breaks = 0;
     for (var i = 0; i < dayLessons.length - 1; i++) {
       final currentEnd = dayLessons[i]['endTime'];
@@ -828,7 +860,7 @@ Future<void> updateUntisData() async {
     (firstLesson['startTime'] as int).toString(),
   );
   final lastEnd = formatUntisTime((lastLesson['endTime'] as int).toString());
-  final breakCount = _breakCount(lessons);
+  final breakCount = computeBreakCount(lessons);
 
   if (!hasActiveLesson && currentTimeInt > (lessons.last['endTime'] as int)) {
     await NotificationService().cancelNotification(

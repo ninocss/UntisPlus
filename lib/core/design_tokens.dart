@@ -109,7 +109,7 @@ class AppDesignTokens extends ThemeExtension<AppDesignTokens> {
   }
 }
 
-const AppSpacing = _AppSpacing();
+const appSpacing = _AppSpacing();
 
 class _AppSpacing {
   const _AppSpacing();
