@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher_string.dart' as url_launcher;
 import 'package:flutter/services.dart';
@@ -25,6 +26,8 @@ import 'services/background_service.dart';
 import 'services/backup_service.dart';
 import 'services/demo_mode_service.dart';
 import 'widgets/rounded_blur_app_bar.dart';
+import 'web/file_download_helper.dart'
+    if (dart.library.io) 'web/file_download_helper_stub.dart';
 
 part 'core/school_models.dart';
 part 'core/design_tokens.dart';
@@ -49,8 +52,10 @@ part 'widgets/custom_background_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService().init();
-  BackgroundService.initialize();
+  if (!kIsWeb) {
+    await NotificationService().init();
+    BackgroundService.initialize();
+  }
 
   await Future.wait([
     initializeDateFormatting('de_DE', null),

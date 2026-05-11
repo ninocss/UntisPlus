@@ -32,6 +32,8 @@ void callbackDispatcher() {
 
 class BackgroundService {
   static void initialize() {
+    if (kIsWeb) return;
+
     Workmanager().initialize(callbackDispatcher);
     Workmanager().registerPeriodicTask(
       "untis_school_notification_update",

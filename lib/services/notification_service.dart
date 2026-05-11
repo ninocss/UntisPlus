@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -55,6 +56,11 @@ class NotificationService {
 
   Future<void> init() async {
     if (_initialized) return;
+    if (kIsWeb) {
+      _initialized = true;
+      return;
+    }
+
     tz.initializeTimeZones();
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -163,6 +169,7 @@ class NotificationService {
   }
 
   Future<void> requestPermissions() async {
+    if (kIsWeb) return;
     await _flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -181,6 +188,8 @@ class NotificationService {
     String locale = 'de',
     String? nextLesson,
   }) async {
+    if (kIsWeb) return;
+
     final bool hasProgress = maxProgress != null && currentProgress != null;
 
     final payload = jsonEncode({

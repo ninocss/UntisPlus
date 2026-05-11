@@ -71,6 +71,14 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         final content = await _backupService.exportAllToJsonText(
           includeApiKeys: _includeApiKeys,
         );
+        if (kIsWeb) {
+          await downloadTextFile(
+            filename: _defaultFileName(),
+            content: content,
+          );
+          _showSnack(l.settingsBackupExportSuccess);
+          return;
+        }
         final savePath = await _resolveExportPath(l);
         if (savePath == null || savePath.isEmpty) return;
         await File(savePath).writeAsString(content);
