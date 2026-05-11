@@ -56,5 +56,6 @@ jobs:
             exit 0
           fi
 
-          git commit -m "chore: update web build from ${GITHUB_SHA::7}"
+          short_sha="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          git commit -m "chore: update web build from ${short_sha}"
           git push origin webapp
