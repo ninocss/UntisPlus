@@ -41,8 +41,8 @@ app.*.symbols
 app.*.map.json
 
 
+android/local.properties
+android/app/build.gradle.kts
 android/app/release-key.jks
 android/app/*.jks
 android/app/*.keystore
-android/local.properties
-android/app/build.gradle.kts
