@@ -9,7 +9,6 @@ class SettingsSubjectsPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: RoundedBlurAppBar(
-        blurListenable: blurEnabledNotifier,
         title: Text(
           l.settingsSectionSubjects,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),

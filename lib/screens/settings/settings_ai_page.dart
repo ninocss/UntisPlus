@@ -429,7 +429,6 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
-        blurListenable: blurEnabledNotifier,
         title: Text(
           l.settingsSectionAI,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),

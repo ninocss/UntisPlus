@@ -371,7 +371,6 @@ class SettingsHubPage extends StatelessWidget {
 
 		return Scaffold(
 			appBar: RoundedBlurAppBar(
-				blurListenable: blurEnabledNotifier,
 				title: Text(
 					l.settingsTitle,
 					style: GoogleFonts.outfit(fontWeight: FontWeight.w800),

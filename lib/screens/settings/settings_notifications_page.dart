@@ -10,7 +10,6 @@ class SettingsNotificationsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
-        blurListenable: blurEnabledNotifier,
         title: Text(
           l.settingsHubNotifications,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),

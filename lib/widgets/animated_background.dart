@@ -16,11 +16,7 @@ class _AnimatedBackground extends StatelessWidget {
           builder: (context, style, _) {
             return Stack(
               children: [
-                Positioned.fill(
-                  child: RepaintBoundary(
-                    child: _AnimatedBackgroundScene(style: style),
-                  ),
-                ),
+                Positioned.fill(child: _AnimatedBackgroundScene(style: style)),
                 child,
               ],
             );

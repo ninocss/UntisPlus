@@ -32,7 +32,6 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: RoundedBlurAppBar(
-        blurListenable: blurEnabledNotifier,
         title: Text(
           l.settingsHubAccount,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),

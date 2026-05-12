@@ -183,7 +183,6 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
-        blurListenable: blurEnabledNotifier,
         title: Text(
           l.settingsHubUpdatesAbout,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
