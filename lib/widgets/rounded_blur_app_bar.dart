@@ -29,6 +29,9 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -40,16 +43,37 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: title,
       bottom: bottom,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(borderRadius)),
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(borderRadius),
+        ),
       ),
       flexibleSpace: ClipRRect(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(borderRadius)),
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(borderRadius),
+        ),
         child: useBlur
             ? BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                child: Container(color: Colors.transparent),
+                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Container(
+                  color: isDark
+                      ? Color.alphaBlend(
+                          cs.primary.withValues(alpha: 0.08),
+                          cs.surface.withValues(alpha: 0.65),
+                        )
+                      : cs.surface.withValues(alpha: 0.82),
+                  child: Stack(
+                    fit: StackFit.passthrough,
+                    children: [
+                      Positioned.fill(
+                        child: Container(
+                          color: cs.primary.withValues(alpha: 0.06),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               )
-            : Container(color: Colors.transparent),
+            : Container(color: cs.surface),
       ),
     );
   }

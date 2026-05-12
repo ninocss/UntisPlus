@@ -822,7 +822,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       physics: const ClampingScrollPhysics(),
                       padding: const EdgeInsets.only(bottom: 12),
                       itemCount: 11,
-                      separatorBuilder: (context, index) => const SizedBox(height: 10),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 10),
                       itemBuilder: (ctx, idx) {
                         final selected = idx == currentStyle;
                         final baseColor = colors.primary;

@@ -10,8 +10,9 @@ const String _kPrefsSelectedCustomBackgroundId = 'selectedCustomBackgroundId';
 final ValueNotifier<List<CustomBackgroundSpec>> customBackgroundsNotifier =
     ValueNotifier(const []);
 
-final ValueNotifier<String?> selectedCustomBackgroundIdNotifier =
-    ValueNotifier(null);
+final ValueNotifier<String?> selectedCustomBackgroundIdNotifier = ValueNotifier(
+  null,
+);
 
 CustomBackgroundSpec? _activeCustomBackgroundOrNull() {
   final selectedId = selectedCustomBackgroundIdNotifier.value;
@@ -664,12 +665,9 @@ class CustomBackgroundGradient {
     final fallback = CustomBackgroundGradient.defaults();
     return CustomBackgroundGradient(
       type: _parseGradientType(json['type']),
-      useThemeColors: (json['useThemeColors'] ?? fallback.useThemeColors) ==
-          true,
-      colors: _parseColorList(
-        json['colors'],
-        fallback: fallback.colors,
-      ),
+      useThemeColors:
+          (json['useThemeColors'] ?? fallback.useThemeColors) == true,
+      colors: _parseColorList(json['colors'], fallback: fallback.colors),
       opacity: _clampDouble(json['opacity'], 0.0, 1.0, fallback.opacity),
       angleDeg: _clampDouble(json['angleDeg'], 0.0, 360.0, fallback.angleDeg),
       centerX: _clampDouble(json['centerX'], -1.0, 1.0, fallback.centerX),
@@ -765,8 +763,8 @@ class CustomBackgroundOrbs {
       ),
       opacity: _clampDouble(json['opacity'], 0.0, 1.0, fallback.opacity),
       softness: _clampDouble(json['softness'], 0.0, 1.0, fallback.softness),
-      useThemeColors: (json['useThemeColors'] ?? fallback.useThemeColors) ==
-          true,
+      useThemeColors:
+          (json['useThemeColors'] ?? fallback.useThemeColors) == true,
       colors: _parseColorList(json['colors'], fallback: fallback.colors),
     );
   }
@@ -1061,10 +1059,7 @@ Future<void> loadCustomBackgroundsFromPrefs(SharedPreferences prefs) async {
     selectedCustomBackgroundIdNotifier.value = selectedId.trim();
   } else {
     selectedCustomBackgroundIdNotifier.value = parsed.first.id;
-    await prefs.setString(
-      _kPrefsSelectedCustomBackgroundId,
-      parsed.first.id,
-    );
+    await prefs.setString(_kPrefsSelectedCustomBackgroundId, parsed.first.id);
   }
 }
 
@@ -1154,9 +1149,9 @@ String exportCustomBackgroundSpecPretty(CustomBackgroundSpec spec) {
 }
 
 String exportCustomBackgroundLibraryPretty(List<CustomBackgroundSpec> specs) {
-  return const JsonEncoder.withIndent('  ').convert(
-    specs.map((s) => s.toJson()).toList(growable: false),
-  );
+  return const JsonEncoder.withIndent(
+    '  ',
+  ).convert(specs.map((s) => s.toJson()).toList(growable: false));
 }
 
 String _stripMarkdownCodeFences(String input) {
@@ -1218,9 +1213,7 @@ CustomBackgroundSpec _withUniqueId(
   return updated;
 }
 
-List<CustomBackgroundSpec> parseCustomBackgroundSpecsFromJsonText(
-  String text,
-) {
+List<CustomBackgroundSpec> parseCustomBackgroundSpecsFromJsonText(String text) {
   final jsonText = _extractFirstJsonBlock(text);
   final decoded = jsonDecode(jsonText);
   if (decoded is Map) {
@@ -1246,12 +1239,10 @@ Future<int> importCustomBackgroundsFromJsonText(
   final existing = customBackgroundsNotifier.value;
   final ids = <String>{...existing.map((e) => e.id)};
 
-  final normalized = incoming
-      .map((s) {
-        final base = s.copyWith(updatedAtMs: now);
-        return _withUniqueId(base, ids);
-      })
-      .toList();
+  final normalized = incoming.map((s) {
+    final base = s.copyWith(updatedAtMs: now);
+    return _withUniqueId(base, ids);
+  }).toList();
 
   if (replaceAll) {
     customBackgroundsNotifier.value = List.unmodifiable(normalized);

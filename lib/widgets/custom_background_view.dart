@@ -17,7 +17,8 @@ class CustomBackgroundView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final effectiveSpec = spec ??
+    final effectiveSpec =
+        spec ??
         _activeCustomBackgroundOrNull() ??
         CustomBackgroundSpec.defaults(id: 'theme_aura', name: 'Theme Aura');
 
@@ -53,10 +54,7 @@ class _CustomBackgroundPainter extends CustomPainter {
 
   bool get _isDark => brightness == Brightness.dark;
 
-  List<Color> _resolveColors(
-    List<int> stored, {
-    required bool useTheme,
-  }) {
+  List<Color> _resolveColors(List<int> stored, {required bool useTheme}) {
     if (useTheme) {
       return <Color>[
         cs.primaryContainer,
@@ -139,10 +137,9 @@ class _CustomBackgroundPainter extends CustomPainter {
       final px = rng.nextDouble();
       final py = rng.nextDouble();
 
-      final sizeFactor = (1 +
-              ((rng.nextDouble() * 2 - 1) *
-                  orbs.sizeVariance.clamp(0.0, 1.0)))
-          .clamp(0.35, 1.75);
+      final sizeFactor =
+          (1 + ((rng.nextDouble() * 2 - 1) * orbs.sizeVariance.clamp(0.0, 1.0)))
+              .clamp(0.35, 1.75);
       final radius = (orbs.size * 0.5 * sizeFactor).clamp(18.0, 320.0);
 
       final basePos = Offset(
@@ -160,12 +157,16 @@ class _CustomBackgroundPainter extends CustomPainter {
       final pos = basePos + parallaxPx + wobble;
 
       final color = palette[(rng.nextInt(1 << 31) + i) % palette.length];
-      final orbAlpha = (orbs.opacity * (0.82 + rng.nextDouble() * 0.22))
-          .clamp(0.0, 1.0);
+      final orbAlpha = (orbs.opacity * (0.82 + rng.nextDouble() * 0.22)).clamp(
+        0.0,
+        1.0,
+      );
 
       final softness = orbs.softness.clamp(0.0, 1.0);
       final inner = color.withValues(alpha: orbAlpha);
-      final mid = color.withValues(alpha: (orbAlpha * (0.28 + 0.44 * softness)));
+      final mid = color.withValues(
+        alpha: (orbAlpha * (0.28 + 0.44 * softness)),
+      );
       final outer = color.withValues(alpha: 0.0);
 
       final orbRect = Rect.fromCircle(center: pos, radius: radius);
@@ -190,7 +191,9 @@ class _CustomBackgroundPainter extends CustomPainter {
         ? cs.onSurface.withValues(alpha: 0.65)
         : cs.onSurface.withValues(alpha: 0.55);
 
-    final color = baseColor.withValues(alpha: (opacity * 0.10).clamp(0.0, 0.12));
+    final color = baseColor.withValues(
+      alpha: (opacity * 0.10).clamp(0.0, 0.12),
+    );
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0
@@ -256,7 +259,9 @@ class _CustomBackgroundPainter extends CustomPainter {
     final intensity = spec.vignette.clamp(0.0, 0.7);
     if (intensity <= 0.001) return;
 
-    final edge = cs.shadow.withValues(alpha: (_isDark ? 0.55 : 0.28) * intensity);
+    final edge = cs.shadow.withValues(
+      alpha: (_isDark ? 0.55 : 0.28) * intensity,
+    );
     final edge2 = cs.shadow.withValues(
       alpha: (_isDark ? 0.72 : 0.36) * intensity,
     );

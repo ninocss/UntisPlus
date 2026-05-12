@@ -15,10 +15,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
   void _showSnack(String text) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(text),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -163,10 +160,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
           l.settingsBackupConfirmTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
         ),
-        content: Text(
-          l.settingsBackupConfirmDesc,
-          style: GoogleFonts.outfit(),
-        ),
+        content: Text(l.settingsBackupConfirmDesc, style: GoogleFonts.outfit()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -210,7 +204,8 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,
                       value: _includeApiKeys,
-                      onChanged: (value) => setState(() => _includeApiKeys = value),
+                      onChanged: (value) =>
+                          setState(() => _includeApiKeys = value),
                       title: Text(
                         l.settingsBackupIncludeApiKeys,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700),

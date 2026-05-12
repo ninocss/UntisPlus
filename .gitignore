@@ -13,6 +13,7 @@
 migrate_working_dir/
 .vscode/
 tooling/
+.github/skills/
 
 .idea/
 .dart_tool/

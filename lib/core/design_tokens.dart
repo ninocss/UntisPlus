@@ -48,15 +48,15 @@ class AppDesignTokens extends ThemeExtension<AppDesignTokens> {
   }
 
   List<Color> get lessonPalette => <Color>[
-        lessonAccent,
-        lessonAccent2,
-        lessonAccent3,
-        lessonAccent4,
-        lessonAccent5,
-        lessonAccent6,
-        lessonAccent7,
-        lessonAccent8,
-      ];
+    lessonAccent,
+    lessonAccent2,
+    lessonAccent3,
+    lessonAccent4,
+    lessonAccent5,
+    lessonAccent6,
+    lessonAccent7,
+    lessonAccent8,
+  ];
 
   @override
   AppDesignTokens copyWith({

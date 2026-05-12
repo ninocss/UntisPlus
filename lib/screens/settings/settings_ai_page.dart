@@ -16,7 +16,9 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   Future<void> _reloadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    aiProvider = _normalizeAiProvider(prefs.getString('aiProvider') ?? aiProvider);
+    aiProvider = _normalizeAiProvider(
+      prefs.getString('aiProvider') ?? aiProvider,
+    );
     aiCustomCompatibility = _normalizeAiCustomCompatibility(
       prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
     );
@@ -267,7 +269,9 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     ),
                     FilledButton(
                       onPressed: () async {
-                        await _settingsSetAiSystemPromptTemplate(ctrl.text.trim());
+                        await _settingsSetAiSystemPromptTemplate(
+                          ctrl.text.trim(),
+                        );
                         if (!ctx.mounted) return;
                         Navigator.pop(ctx);
                         _reloadFromPrefs();

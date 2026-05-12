@@ -731,8 +731,9 @@ Future<void> updateUntisData() async {
 
   lessons = lessons
       .whereType<Map>()
-      .where((l) => !hiddenSubjects
-          .contains(l['_subjectShort']?.toString() ?? ''))
+      .where(
+        (l) => !hiddenSubjects.contains(l['_subjectShort']?.toString() ?? ''),
+      )
       .where((l) => showCancelled || (l['code'] ?? '') != 'cancelled')
       .toList(growable: false);
 

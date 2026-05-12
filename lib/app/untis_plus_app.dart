@@ -95,8 +95,8 @@ class UntisPlusApp extends StatelessWidget {
                     ),
                     inputDecorationTheme: InputDecorationTheme(
                       filled: true,
-                      fillColor: scheme.surfaceContainerHighest.withValues(alpha: 
-                        0.6,
+                      fillColor: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.6,
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -215,9 +215,10 @@ class _BouncyPageTransitionsBuilder extends PageTransitionsBuilder {
     Widget child,
   ) {
     final fade = CurvedAnimation(parent: animation, curve: _kSoftBounce);
-    final scale = Tween<double>(begin: 0.965, end: 1.0).animate(
-      CurvedAnimation(parent: animation, curve: _kSmoothBounce),
-    );
+    final scale = Tween<double>(
+      begin: 0.965,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce));
     final slide = Tween<Offset>(
       begin: const Offset(0, 0.028),
       end: Offset.zero,
@@ -232,4 +233,3 @@ class _BouncyPageTransitionsBuilder extends PageTransitionsBuilder {
     );
   }
 }
-

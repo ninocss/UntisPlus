@@ -4,7 +4,8 @@ class SettingsAboutUpdatesPage extends StatefulWidget {
   const SettingsAboutUpdatesPage({super.key});
 
   @override
-  State<SettingsAboutUpdatesPage> createState() => _SettingsAboutUpdatesPageState();
+  State<SettingsAboutUpdatesPage> createState() =>
+      _SettingsAboutUpdatesPageState();
 }
 
 class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
@@ -109,7 +110,9 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
 
     try {
       final resp = await http.get(
-        Uri.parse('https://api.github.com/repos/ninocss/UntisPlus/releases/latest'),
+        Uri.parse(
+          'https://api.github.com/repos/ninocss/UntisPlus/releases/latest',
+        ),
         headers: const {'Accept': 'application/vnd.github+json'},
       );
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
@@ -123,7 +126,8 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
 
       final tag = (data['tag_name'] ?? '').toString().trim();
       final htmlUrl =
-          (data['html_url'] ?? 'https://github.com/ninocss/UntisPlus/releases').toString();
+          (data['html_url'] ?? 'https://github.com/ninocss/UntisPlus/releases')
+              .toString();
       final assets = (data['assets'] is List)
           ? data['assets'] as List<dynamic>
           : const <dynamic>[];
@@ -158,7 +162,9 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            launched ? l.settingsGithubInstallPrompted : l.settingsGithubOpenFailed,
+            launched
+                ? l.settingsGithubInstallPrompted
+                : l.settingsGithubOpenFailed,
           ),
           behavior: SnackBarBehavior.floating,
         ),

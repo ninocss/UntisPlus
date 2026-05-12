@@ -433,6 +433,33 @@ Future<Map<String, dynamic>?> _authenticateUntis({
   return null;
 }
 
+class _StripesPainter extends CustomPainter {
+  final Color color;
+
+  _StripesPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..isAntiAlias = true;
+    
+    final double step = 8.0;
+    
+    for (double i = -size.height; i < size.width; i += step) {
+      canvas.drawLine(
+        Offset(i, 0),
+        Offset(i + size.height, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StripesPainter oldDelegate) => color != oldDelegate.color;
+}
+
 // --- WOCHENPLAN (TAB VIEW) ---
 class WeeklyTimetablePage extends StatefulWidget {
   const WeeklyTimetablePage({super.key});
@@ -2101,6 +2128,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         : fgColor.withValues(
                                             alpha: isDark2 ? 0.28 : 0.20,
                                           );
+                                    final isNow = (dayIndex == todayIndex) && (slot.startMin <= nowMin && nowMin < slot.endMin);
+
                                     return Positioned(
                                       top: top,
                                       left: left,
@@ -2113,77 +2142,108 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                               _showLessonDetail(context, l),
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              color: bgColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border(
-                                                left: BorderSide(
-                                                  color: fgColor,
-                                                  width: 3,
-                                                ),
+                                              borderRadius: BorderRadius.circular(8),
+                                              boxShadow: isNow
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: fgColor.withValues(alpha: 0.35),
+                                                        blurRadius: 12,
+                                                        spreadRadius: 1,
+                                                      )
+                                                    ]
+                                                  : null,
+                                            ),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Stack(
+                                                children: [
+                                                  Container(color: bgColor),
+                                                  if (isCancelled)
+                                                    Positioned.fill(
+                                                      child: CustomPaint(
+                                                        painter: _StripesPainter(
+                                                          color: fgColor.withValues(alpha: 0.15),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  Positioned(
+                                                    left: 0,
+                                                    top: 0,
+                                                    bottom: 0,
+                                                    width: 3,
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          begin: Alignment.topCenter,
+                                                          end: Alignment.bottomCenter,
+                                                          colors: [
+                                                            fgColor,
+                                                            fgColor.withValues(alpha: 0.1),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Padding(
+                                                    padding: const EdgeInsets.fromLTRB(
+                                                      8,
+                                                      3,
+                                                      3,
+                                                      3,
+                                                    ),
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment.start,
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Text(
+                                                          subject,
+                                                          maxLines: 1,
+                                                          overflow:
+                                                              TextOverflow.ellipsis,
+                                                          style: GoogleFonts.outfit(
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.w800,
+                                                            color: fgColor,
+                                                          ),
+                                                        ),
+                                                        if (height >= 30 &&
+                                                            teacher.isNotEmpty)
+                                                          Text(
+                                                            teacher,
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow.ellipsis,
+                                                            style: GoogleFonts.outfit(
+                                                              fontSize: 9,
+                                                              fontWeight:
+                                                                  FontWeight.w500,
+                                                              color: fgColor.withValues(
+                                                                alpha: 0.75,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        if (height >= 45 &&
+                                                            room.isNotEmpty)
+                                                          Text(
+                                                            room,
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow.ellipsis,
+                                                            style: GoogleFonts.outfit(
+                                                              fontSize: 9,
+                                                              fontWeight:
+                                                                  FontWeight.w600,
+                                                              color: fgColor.withValues(
+                                                                alpha: 0.85,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            ),
-                                            padding: const EdgeInsets.fromLTRB(
-                                              5,
-                                              3,
-                                              3,
-                                              3,
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  subject,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: GoogleFonts.outfit(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: fgColor,
-                                                    decoration: isCancelled
-                                                        ? TextDecoration
-                                                              .lineThrough
-                                                        : null,
-                                                    decorationColor: fgColor,
-                                                    decorationThickness: 2.0,
-                                                  ),
-                                                ),
-                                                if (height >= 30 &&
-                                                    teacher.isNotEmpty)
-                                                  Text(
-                                                    teacher,
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: GoogleFonts.outfit(
-                                                      fontSize: 9,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color: fgColor.withValues(
-                                                        alpha: 0.6,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                if (height >= 45 &&
-                                                    room.isNotEmpty)
-                                                  Text(
-                                                    room,
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: GoogleFonts.outfit(
-                                                      fontSize: 9,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: fgColor.withValues(
-                                                        alpha: 0.75,
-                                                      ),
-                                                    ),
-                                                  ),
-                                              ],
                                             ),
                                           ),
                                         ),
@@ -2192,28 +2252,41 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   }),
                                   if (showNowLine && dayIndex == todayIndex)
                                     Positioned(
-                                      top: nowTop - 1,
+                                      top: nowTop - 1.5,
                                       left: 0,
                                       right: 0,
                                       child: IgnorePointer(
                                         child: Row(
                                           children: [
                                             Container(
-                                              width: 6,
-                                              height: 6,
+                                              width: 4,
+                                              height: 4,
                                               decoration: BoxDecoration(
                                                 color: cs.error,
                                                 shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: cs.error.withValues(alpha: 0.6),
+                                                    blurRadius: 4,
+                                                    spreadRadius: 1,
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Container(
-                                                height: 2,
+                                                height: 3,
                                                 decoration: BoxDecoration(
                                                   color: cs.error,
                                                   borderRadius:
-                                                      BorderRadius.circular(2),
+                                                      BorderRadius.circular(1.5),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: cs.error.withValues(alpha: 0.6),
+                                                      blurRadius: 4,
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ),
@@ -5219,7 +5292,8 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: _quickPrompts.length,
-                          separatorBuilder: (context, index) => const SizedBox(width: 8),
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final prompt = _quickPrompts[index];
                             return ActionChip(
@@ -6667,7 +6741,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                               const SizedBox(height: 8),
                               TextButton.icon(
                                 onPressed: () async {
-                                  final messenger = ScaffoldMessenger.of(context);
+                                  final messenger = ScaffoldMessenger.of(
+                                    context,
+                                  );
                                   final ok = await url_launcher.launchUrlString(
                                     item.url!,
                                     mode: url_launcher
@@ -8031,22 +8107,29 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
               border: Border.all(
-                color: accent.withValues(alpha: 0.24),
+                color: cs.primary.withValues(alpha: 0.15),
                 width: 1,
               ),
-              child: Column(
-                children: [
-                  for (int i = 0; i < tiles.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 0.5,
-                        thickness: 0.5,
-                        indent: 66,
-                        color: accent.withValues(alpha: 0.2),
-                      ),
-                    tiles[i],
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  children: [
+                    for (int i = 0; i < tiles.length; i++) ...[
+                      if (i > 0)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Divider(
+                            height: 1,
+                            thickness: 1,
+                            indent: 74,
+                            endIndent: 16,
+                            color: cs.outlineVariant.withValues(alpha: 0.35),
+                          ),
+                        ),
+                      tiles[i],
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ],
@@ -8065,43 +8148,50 @@ class _SettingsPageState extends State<SettingsPage> {
     VoidCallback? onTap,
     Color? subtitleColor,
   }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        child: Row(
-          children: [
-            if (leading != null) ...[leading, const SizedBox(width: 14)],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15.5,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.08),
+        highlightColor: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              if (leading != null) ...[leading, const SizedBox(width: 14)],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      subtitle,
+                      title,
                       style: GoogleFonts.outfit(
-                        fontSize: 12.5,
-                        color:
-                            subtitleColor ??
-                            Theme.of(context).colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.75),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15.5,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12.5,
+                          color:
+                              subtitleColor ??
+                              Theme.of(context).colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            ?trailing,
-          ],
+              ?trailing,
+            ],
+          ),
         ),
       ),
     );
@@ -8109,15 +8199,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // ── Rounded icon box for tile leading ─────
   Widget _tileIcon(IconData icon, Color color) => Container(
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     decoration: BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [color.withValues(alpha: 0.26), color.withValues(alpha: 0.12)],
       ),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       boxShadow: [
         BoxShadow(
@@ -8127,7 +8217,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ],
     ),
-    child: Icon(icon, color: color, size: 20),
+    child: Icon(icon, color: color, size: 22),
   );
 
   @override
@@ -8161,12 +8251,34 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Stack(
                   children: [
                     _withOptionalBackdropBlur(
-                      sigmaX: 16,
-                      sigmaY: 16,
+                      sigmaX: 24,
+                      sigmaY: 24,
                       child: const SizedBox.shrink(),
-                      childBuilder: (enabled) => Container(
-                        color: enabled ? Colors.transparent : cs.surface,
-                      ),
+                      childBuilder: (enabled) {
+                        final isDark =
+                            Theme.of(context).brightness == Brightness.dark;
+                        return Stack(
+                          fit: StackFit.passthrough,
+                          children: [
+                            Container(
+                              color: enabled
+                                  ? (isDark
+                                        ? Color.alphaBlend(
+                                            cs.primary.withValues(alpha: 0.08),
+                                            cs.surface.withValues(alpha: 0.65),
+                                          )
+                                        : cs.surface.withValues(alpha: 0.82))
+                                  : cs.surface,
+                            ),
+                            if (enabled)
+                              Positioned.fill(
+                                child: Container(
+                                  color: cs.primary.withValues(alpha: 0.06),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
                     FlexibleSpaceBar(
                       titlePadding: const EdgeInsets.fromLTRB(20, 0, 16, 14),
@@ -8335,7 +8447,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             height: 44,
                             decoration: BoxDecoration(
                               color: cs.primary,
-                              shape: BoxShape.circle,
+                              borderRadius: BorderRadius.circular(14),
                             ),
                             child: Center(
                               child: Text(
@@ -8345,6 +8457,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 style: TextStyle(
                                   color: cs.onPrimary,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 18,
                                 ),
                               ),
                             ),
@@ -8494,7 +8607,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           onTap: _showBackgroundStyleDialog,
                         ),
                         _tile(
-                          leading: _tileIcon(Icons.wallpaper_rounded, cs.tertiary),
+                          leading: _tileIcon(
+                            Icons.wallpaper_rounded,
+                            cs.tertiary,
+                          ),
                           title: l.settingsCustomBackgrounds,
                           subtitle: activeCustomBackground == null
                               ? l.settingsCustomBackgroundsDesc
@@ -8509,7 +8625,9 @@ class _SettingsPageState extends State<SettingsPage> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              _buildBouncyRoute(const CustomBackgroundEditorScreen()),
+                              _buildBouncyRoute(
+                                const CustomBackgroundEditorScreen(),
+                              ),
                             );
                           },
                         ),
@@ -9159,7 +9277,7 @@ class SubjectColorsPage extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 children: palette.map((c) {
-                    final isSelected =
+                  final isSelected =
                       current != null && current.toARGB32() == c.toARGB32();
                   return GestureDetector(
                     onTap: () {
@@ -9315,13 +9433,13 @@ class SubjectColorsPage extends StatelessWidget {
                           vertical: 4,
                         ),
                         leading: Container(
-                          width: 40,
-                          height: 40,
+                          width: 44,
+                          height: 44,
                           decoration: BoxDecoration(
                             color:
                                 subjectColor ??
                                 Theme.of(context).colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                             border: subjectColor != null
                                 ? Border.all(
                                     color: subjectColor.withValues(alpha: 0.35),
@@ -9333,7 +9451,7 @@ class SubjectColorsPage extends StatelessWidget {
                               ? Icon(
                                   Icons.palette_outlined,
                                   color: Theme.of(context).colorScheme.primary,
-                                  size: 20,
+                                  size: 22,
                                 )
                               : null,
                         ),
@@ -9435,11 +9553,11 @@ class HiddenSubjectsPage extends StatelessWidget {
                       vertical: 4,
                     ),
                     leading: Container(
-                      width: 40,
-                      height: 40,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Center(
                         child: Text(

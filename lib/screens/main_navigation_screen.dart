@@ -322,6 +322,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Widget _buildFloatingNavBar(BuildContext context, ColorScheme cs) {
     final timetableSelected = _selectedIndex == 0;
+    final l = AppL10n.of(appLocaleNotifier.value);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(bottom: 24),
@@ -340,7 +342,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 );
               },
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(35),
                 child: _withOptionalBackdropBlur(
                   sigmaX: 16,
                   sigmaY: 16,
@@ -348,22 +350,30 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   childBuilder: (enabled) => AnimatedContainer(
                     duration: const Duration(milliseconds: 380),
                     curve: _kSoftBounce,
-                    height: 66,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    height: 70,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
                       color: enabled
-                          ? cs.surface.withValues(alpha: 0.72)
+                          ? Color.alphaBlend(
+                              cs.primaryContainer.withValues(alpha: 0.18),
+                              cs.surface.withValues(alpha: 0.72),
+                            )
                           : cs.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(35),
                       border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.42),
+                        color: cs.primary.withValues(alpha: 0.18),
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: cs.shadow.withValues(alpha: 0.12),
+                          color: cs.shadow.withValues(alpha: 0.08),
                           blurRadius: 24,
-                          offset: const Offset(0, 9),
+                          offset: const Offset(0, 8),
+                        ),
+                        BoxShadow(
+                          color: cs.shadow.withValues(alpha: 0.04),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -374,6 +384,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           cs: cs,
                           icon: Icons.assignment_outlined,
                           selectedIcon: Icons.assignment_rounded,
+                          label: l.navExams,
                           selected: _selectedIndex == 1,
                           onTap: () => _onNavTap(1),
                           tutorialHighlight: _isTutorialTarget(1),
@@ -383,6 +394,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           cs: cs,
                           icon: Icons.campaign_outlined,
                           selectedIcon: Icons.campaign_rounded,
+                          label: l.navInfo,
                           selected: _selectedIndex == 2,
                           onTap: () => _onNavTap(2),
                           tutorialHighlight: _isTutorialTarget(2),
@@ -392,6 +404,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           cs: cs,
                           icon: Icons.settings_outlined,
                           selectedIcon: Icons.settings_rounded,
+                          label: l.navMenu,
                           selected: _selectedIndex == 3,
                           onTap: () => _onNavTap(3),
                           tutorialHighlight: _isTutorialTarget(3),
@@ -512,6 +525,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     required ColorScheme cs,
     required IconData icon,
     required IconData selectedIcon,
+    required String label,
     required bool selected,
     required VoidCallback onTap,
     bool tutorialHighlight = false,
@@ -522,11 +536,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 320),
         curve: _kSoftBounce,
-        width: selected ? 60 : 48,
-        height: 44,
+        height: 48,
+        padding: EdgeInsets.symmetric(horizontal: selected ? 16 : 12),
         decoration: BoxDecoration(
           color: selected ? cs.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(24),
           border: tutorialHighlight
               ? Border.all(color: cs.tertiary, width: 2)
               : selected
@@ -542,21 +556,45 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ]
               : null,
         ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          switchInCurve: _kSmoothBounce,
-          switchOutCurve: _kSoftBounce,
-          transitionBuilder: (child, anim) {
-            return ScaleTransition(scale: anim, child: child);
-          },
-          child: Icon(
-            selected ? selectedIcon : icon,
-            key: ValueKey(selected),
-            size: selected ? 27 : 25,
-            color: selected
-                ? cs.onPrimaryContainer
-                : cs.onSurfaceVariant.withValues(alpha: 0.8),
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: _kSmoothBounce,
+              switchOutCurve: _kSoftBounce,
+              transitionBuilder: (child, anim) {
+                return ScaleTransition(scale: anim, child: child);
+              },
+              child: Icon(
+                selected ? selectedIcon : icon,
+                key: ValueKey(selected),
+                size: selected ? 23 : 26,
+                color: selected
+                    ? cs.onPrimaryContainer
+                    : cs.onSurfaceVariant.withValues(alpha: 0.8),
+              ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 320),
+              curve: _kSoftBounce,
+              alignment: Alignment.centerLeft,
+              child: selected
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Text(
+                        label,
+                        style: GoogleFonts.outfit(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.5,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
     );
