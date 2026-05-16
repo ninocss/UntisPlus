@@ -113,7 +113,7 @@ Widget _glassContainer({
 }) {
   final cs = Theme.of(context).colorScheme;
   final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  
   return ClipRRect(
     borderRadius: borderRadius,
     child: _withOptionalBackdropBlur(
@@ -125,13 +125,10 @@ Widget _glassContainer({
           borderRadius: borderRadius,
           color:
               color ??
-              (enabled
-                  ? (isDark
-                        ? Color.alphaBlend(
-                            cs.primary.withValues(alpha: 0.08),
-                            cs.surface.withValues(alpha: 0.65),
-                          )
-                        : cs.surface.withValues(alpha: 0.82))
+              (enabled 
+                  ? (isDark 
+                      ? Color.alphaBlend(cs.primary.withValues(alpha: 0.08), cs.surface.withValues(alpha: 0.65))
+                      : cs.surface.withValues(alpha: 0.82))
                   : cs.surface),
           border:
               border ??
@@ -148,7 +145,7 @@ Widget _glassContainer({
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: borderRadius,
-                    color: cs.primary.withValues(alpha: 0.06),
+                    color: cs.surface.withValues(alpha: 0.02),
                   ),
                 ),
               ),
@@ -264,10 +261,10 @@ Future<T?> _showUnifiedOptionSheet<T>({
             mq.padding.top -
             mq.padding.bottom -
             mq.viewInsets.bottom;
-        final maxListHeight =
-            (safeViewportHeight * (subtitle == null ? 0.74 : 0.68))
-                .clamp(220.0, 520.0)
-                .toDouble();
+        final maxListHeight = (safeViewportHeight *
+            (subtitle == null ? 0.74 : 0.68))
+          .clamp(220.0, 520.0)
+          .toDouble();
         return Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
           child: _springEntry(
@@ -321,213 +318,197 @@ Future<T?> _showUnifiedOptionSheet<T>({
                     padding: EdgeInsets.only(bottom: mq.padding.bottom + 12),
                     itemCount: options.length,
                     itemBuilder: (listCtx, idx) {
-                      final opt = options[idx];
-                      final color = opt.destructive ? cs.error : cs.primary;
-                      final iconBackground = opt.selected
-                          ? color.withValues(alpha: isLightMode ? 0.22 : 0.26)
-                          : color.withValues(alpha: isLightMode ? 0.1 : 0.14);
-                      final backgroundColor = opt.selected
-                          ? color.withValues(
-                              alpha: isLightMode
-                                  ? (blurOn ? 0.2 : 0.14)
-                                  : (blurOn ? 0.24 : 0.28),
-                            )
-                          : (isLightMode
-                                ? cs.surfaceContainerHigh.withValues(
-                                    alpha: blurOn ? 0.82 : 0.88,
-                                  )
-                                : cs.surfaceContainerHighest.withValues(
-                                    alpha: blurOn ? 0.76 : 0.84,
-                                  ));
-                      final borderColor = opt.selected
-                          ? color.withValues(
-                              alpha: isLightMode
-                                  ? (blurOn ? 0.42 : 0.3)
-                                  : (blurOn ? 0.58 : 0.48),
-                            )
-                          : cs.outlineVariant.withValues(
-                              alpha: isLightMode
-                                  ? (blurOn ? 0.58 : 0.44)
-                                  : (blurOn ? 0.58 : 0.5),
-                            );
-                      final titleColor = opt.selected
-                          ? (opt.destructive
-                                ? cs.error
-                                : (isLightMode
-                                      ? cs.primary.withValues(alpha: 1)
-                                      : cs.onSurface.withValues(alpha: 1)))
-                          : cs.onSurface.withValues(
-                              alpha: isLightMode ? 0.99 : 1,
-                            );
-                      final subtitleColor = opt.selected
-                          ? cs.onSurface.withValues(
-                              alpha: isLightMode ? 0.88 : 0.9,
-                            )
-                          : cs.onSurfaceVariant.withValues(
-                              alpha: isLightMode ? 0.94 : 0.9,
-                            );
-                      final leadingIconColor = opt.selected
-                          ? (opt.destructive
-                                ? cs.error
-                                : (isLightMode
-                                      ? cs.primary.withValues(alpha: 1)
-                                      : cs.primary.withValues(alpha: 0.95)))
-                          : cs.onSurface.withValues(
-                              alpha: isLightMode ? 0.9 : 0.94,
-                            );
-                      final trailingIconColor = opt.selected
-                          ? leadingIconColor
-                          : cs.onSurfaceVariant.withValues(
-                              alpha: isLightMode ? 0.88 : 0.82,
-                            );
-                      final shadowColor = (opt.selected ? color : cs.shadow)
-                          .withValues(
-                            alpha: isLightMode
-                                ? (opt.selected
-                                      ? (blurOn ? 0.11 : 0.08)
-                                      : (blurOn ? 0.04 : 0.03))
-                                : (blurOn
-                                      ? (opt.selected ? 0.16 : 0.1)
-                                      : (opt.selected ? 0.1 : 0.06)),
+                        final opt = options[idx];
+                        final color = opt.destructive ? cs.error : cs.onSurfaceVariant;
+                        final iconBackground = opt.selected
+                            ? color.withValues(alpha: isLightMode ? 0.22 : 0.26)
+                            : color.withValues(alpha: isLightMode ? 0.1 : 0.14);
+                        final backgroundColor = opt.selected
+                            ? color.withValues(
+                                alpha: isLightMode
+                                    ? (blurOn ? 0.2 : 0.14)
+                                    : (blurOn ? 0.24 : 0.28),
+                              )
+                            : (isLightMode
+                                  ? cs.surfaceContainerHigh.withValues(
+                                      alpha: blurOn ? 0.82 : 0.88,
+                                    )
+                                  : cs.surfaceContainerHighest.withValues(
+                                      alpha: blurOn ? 0.76 : 0.84,
+                                    ));
+                        final borderColor = opt.selected
+                            ? color.withValues(
+                                alpha: isLightMode
+                                    ? (blurOn ? 0.42 : 0.3)
+                                    : (blurOn ? 0.58 : 0.48),
+                              )
+                            : cs.outlineVariant.withValues(
+                                alpha: isLightMode
+                                    ? (blurOn ? 0.58 : 0.44)
+                                    : (blurOn ? 0.58 : 0.5),
+                              );
+                        final titleColor = opt.selected
+                            ? (opt.destructive
+                              ? cs.error
+                              : cs.onSurface.withValues(alpha: 1))
+                            : cs.onSurface.withValues(
+                            alpha: isLightMode ? 0.99 : 1,
                           );
+                        final subtitleColor = opt.selected
+                            ? cs.onSurface.withValues(
+                                alpha: isLightMode ? 0.88 : 0.9,
+                              )
+                            : cs.onSurfaceVariant.withValues(
+                                alpha: isLightMode ? 0.94 : 0.9,
+                              );
+                        final leadingIconColor = opt.selected
+                            ? (opt.destructive
+                              ? cs.error
+                              : cs.onSurface.withValues(alpha: isLightMode ? 1 : 0.95))
+                            : cs.onSurface.withValues(
+                            alpha: isLightMode ? 0.9 : 0.94,
+                          );
+                        final trailingIconColor = opt.selected
+                            ? leadingIconColor
+                            : cs.onSurfaceVariant.withValues(
+                                alpha: isLightMode ? 0.88 : 0.82,
+                              );
+                        final shadowColor = (opt.selected ? color : cs.shadow)
+                            .withValues(
+                              alpha: isLightMode
+                                  ? (opt.selected
+                                        ? (blurOn ? 0.11 : 0.08)
+                                        : (blurOn ? 0.04 : 0.03))
+                                  : (blurOn
+                                        ? (opt.selected ? 0.16 : 0.1)
+                                        : (opt.selected ? 0.1 : 0.06)),
+                            );
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: _withOptionalBackdropBlur(
-                            sigmaX: 10,
-                            sigmaY: 10,
-                            child: const SizedBox.shrink(),
-                            childBuilder: (_) => Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  Navigator.pop(ctx, opt.value);
-                                },
-                                borderRadius: BorderRadius.circular(18),
-                                child: Ink(
-                                  decoration: BoxDecoration(
-                                    gradient: opt.selected
-                                        ? LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [
-                                              backgroundColor,
-                                              color.withValues(
-                                                alpha: isLightMode
-                                                    ? 0.12
-                                                    : 0.18,
-                                              ),
-                                            ],
-                                          )
-                                        : null,
-                                    color: opt.selected
-                                        ? null
-                                        : backgroundColor,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(
-                                      color: borderColor,
-                                      width: opt.selected ? 1.4 : 1,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: shadowColor,
-                                        blurRadius: opt.selected ? 15 : 9,
-                                        offset: Offset(0, blurOn ? 6 : 4),
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: _withOptionalBackdropBlur(
+                              sigmaX: 10,
+                              sigmaY: 10,
+                              child: const SizedBox.shrink(),
+                              childBuilder: (_) => Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    Navigator.pop(ctx, opt.value);
+                                  },
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: Ink(
+                                    decoration: BoxDecoration(
+                                      color: opt.selected
+                                          ? null
+                                          : backgroundColor,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: borderColor,
+                                        width: opt.selected ? 1.4 : 1,
                                       ),
-                                    ],
-                                  ),
-                                  child: ListTile(
-                                    minTileHeight: 56,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 2,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: shadowColor,
+                                          blurRadius: opt.selected ? 15 : 9,
+                                          offset: Offset(0, blurOn ? 6 : 4),
+                                        ),
+                                      ],
                                     ),
-                                    leading: opt.icon == null
-                                        ? null
-                                        : Container(
-                                            width: 38,
-                                            height: 38,
-                                            decoration: BoxDecoration(
-                                              color: iconBackground,
-                                              border: Border.all(
-                                                color: borderColor.withValues(
-                                                  alpha: isLightMode
-                                                      ? 0.9
-                                                      : 0.75,
+                                    child: ListTile(
+                                      minTileHeight: 56,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 2,
+                                          ),
+                                      leading: opt.icon == null
+                                          ? null
+                                          : Container(
+                                              width: 38,
+                                              height: 38,
+                                              decoration: BoxDecoration(
+                                                color: iconBackground,
+                                                border: Border.all(
+                                                  color: borderColor.withValues(
+                                                    alpha: isLightMode
+                                                        ? 0.9
+                                                        : 0.75,
+                                                  ),
                                                 ),
+                                                borderRadius:
+                                                    BorderRadius.circular(11),
                                               ),
-                                              borderRadius:
-                                                  BorderRadius.circular(11),
+                                              child: Icon(
+                                                opt.icon,
+                                                color: leadingIconColor,
+                                                size: 19,
+                                              ),
                                             ),
-                                            child: Icon(
-                                              opt.icon,
-                                              color: leadingIconColor,
-                                              size: 19,
-                                            ),
-                                          ),
-                                    title: Text(
-                                      opt.title,
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: opt.selected
-                                            ? FontWeight.w700
-                                            : FontWeight.w600,
-                                        fontSize: 15.4,
-                                        letterSpacing: 0.08,
-                                        color: titleColor,
+                                      title: Text(
+                                        opt.title,
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: opt.selected
+                                              ? FontWeight.w700
+                                              : FontWeight.w600,
+                                          fontSize: 15.4,
+                                          letterSpacing: 0.08,
+                                          color: titleColor,
+                                        ),
                                       ),
-                                    ),
-                                    subtitle: opt.subtitle == null
-                                        ? null
-                                        : Text(
-                                            opt.subtitle!,
-                                            style: GoogleFonts.outfit(
-                                              color: subtitleColor,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              letterSpacing: 0.05,
+                                      subtitle: opt.subtitle == null
+                                          ? null
+                                          : Text(
+                                              opt.subtitle!,
+                                              style: GoogleFonts.outfit(
+                                                color: subtitleColor,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                letterSpacing: 0.05,
+                                              ),
                                             ),
-                                          ),
-                                    trailing: AnimatedSwitcher(
-                                      duration: const Duration(
-                                        milliseconds: 220,
+                                      trailing: AnimatedSwitcher(
+                                        duration: const Duration(
+                                          milliseconds: 220,
+                                        ),
+                                        transitionBuilder:
+                                            (child, animation) {
+                                              return ScaleTransition(
+                                                scale: animation,
+                                                child: FadeTransition(
+                                                  opacity: animation,
+                                                  child: child,
+                                                ),
+                                              );
+                                            },
+                                        child: opt.selected
+                                            ? Icon(
+                                                Icons.check_circle_rounded,
+                                                key: ValueKey(
+                                                  '${opt.title}_selected',
+                                                ),
+                                                color: trailingIconColor,
+                                                size: 22,
+                                              )
+                                            : Icon(
+                                                Icons.chevron_right_rounded,
+                                                key: ValueKey(
+                                                  '${opt.title}_arrow',
+                                                ),
+                                                color: trailingIconColor,
+                                                size: 20,
+                                              ),
                                       ),
-                                      transitionBuilder: (child, animation) {
-                                        return ScaleTransition(
-                                          scale: animation,
-                                          child: FadeTransition(
-                                            opacity: animation,
-                                            child: child,
-                                          ),
-                                        );
-                                      },
-                                      child: opt.selected
-                                          ? Icon(
-                                              Icons.check_circle_rounded,
-                                              key: ValueKey(
-                                                '${opt.title}_selected',
-                                              ),
-                                              color: trailingIconColor,
-                                              size: 22,
-                                            )
-                                          : Icon(
-                                              Icons.chevron_right_rounded,
-                                              key: ValueKey(
-                                                '${opt.title}_arrow',
-                                              ),
-                                              color: trailingIconColor,
-                                              size: 20,
-                                            ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      );
+                        );
                     },
                   ),
                 ),

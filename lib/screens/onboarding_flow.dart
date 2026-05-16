@@ -780,13 +780,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         mq.viewInsets.bottom;
     final sheetHeight = safeViewportHeight.clamp(340.0, 620.0).toDouble();
 
-    return showModalBottomSheet<int>(
+    return _showUnifiedSheet<int>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      sheetAnimationStyle: _kBottomSheetAnimationStyle,
-      builder: (sheetContext) {
+      child: Builder(builder: (sheetContext) {
         final colors = Theme.of(sheetContext).colorScheme;
         final blurOn = blurEnabledNotifier.value;
 
@@ -912,7 +910,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
           ),
         );
-      },
+      }),
     );
   }
 

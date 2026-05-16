@@ -14,6 +14,7 @@ migrate_working_dir/
 .vscode/
 tooling/
 .github/skills/
+.claude
 
 .idea/
 .dart_tool/

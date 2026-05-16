@@ -907,9 +907,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiGeneratedName': 'KI Hintergrund',
       'bgEditorAiSuccess': 'KI-Hintergrund erstellt.',
       'bgEditorAiError': 'KI: ',
-      'settingsGlassEffect': 'Glaseffekt (Blur)',
+      'settingsGlassEffect': 'Blur',
       'settingsGlassEffectDesc':
-          'Aktiviert weiche Glas-/Unschärfeeffekte in der Oberfläche',
+          'Aktiviert Blur in der Oberfläche',
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
@@ -1406,9 +1406,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiGeneratedName': 'AI Background',
       'bgEditorAiSuccess': 'AI background created.',
       'bgEditorAiError': 'AI: ',
-      'settingsGlassEffect': 'Glass Effect (Blur)',
+      'settingsGlassEffect': 'Blur',
       'settingsGlassEffectDesc':
-          'Enables soft glass/blur effects across the interface',
+          'Enables blur effects across the interface',
       'settingsProgressivePush': 'Progressive push notification',
       'settingsProgressivePushDesc':
           'Show the current lesson as a persistent notification',
@@ -2847,9 +2847,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiGeneratedName': 'Φόντο AI',
       'bgEditorAiSuccess': 'Δημιουργήθηκε φόντο AI.',
       'bgEditorAiError': 'AI: ',
-      'settingsGlassEffect': 'Εφέ γυαλιού (θόλωση)',
+      'settingsGlassEffect': 'θόλωση',
       'settingsGlassEffectDesc':
-          'Ενεργοποιεί ήπια εφέ γυαλιού/θόλωσης σε όλο το περιβάλλον',
+          'Ενεργοποιεί ήπια θόλωσης σε όλο το περιβάλλον',
       'settingsProgressivePush': 'Σταδιακή ειδοποίηση push',
       'settingsProgressivePushDesc':
           'Εμφανίζει το τρέχον μάθημα ως μόνιμη ειδοποίηση',
