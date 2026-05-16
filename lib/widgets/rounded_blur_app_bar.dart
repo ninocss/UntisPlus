@@ -55,25 +55,60 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
             ? BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
                 child: Container(
-                  color: isDark
-                      ? Color.alphaBlend(
-                          cs.primary.withValues(alpha: 0.08),
-                          cs.surface.withValues(alpha: 0.65),
-                        )
-                      : cs.surface.withValues(alpha: 0.82),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                  ),
                   child: Stack(
                     fit: StackFit.passthrough,
                     children: [
+                      // Base surface tint layer
                       Positioned.fill(
                         child: Container(
-                          color: cs.primary.withValues(alpha: 0.06),
+                            color: cs.surface.withValues(alpha: 0.72), // matches appAlphaValues.sheetAlphaBlur
+                        ),
+                      ),
+                      // Primary accent layer
+                      Positioned.fill(
+                        child: Container(
+                          color: cs.primary.withValues(alpha: 0.05),
+                        ),
+                      ),
+                      // Subtle radial gradient behind title
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              center: const Alignment(0, -0.4),
+                              radius: 0.6,
+                              colors: [
+                                cs.primary.withValues(alpha: 0.04),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 1.0],
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               )
-            : Container(color: cs.surface),
+            : Container(
+                color: cs.surface,
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }

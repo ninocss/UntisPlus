@@ -123,6 +123,16 @@ class _AppSpacing {
   final double xxl = 32;
 }
 
+  const appAlphaValues = _AppAlphaValues();
+
+  class _AppAlphaValues {
+    const _AppAlphaValues();
+
+    final double cardAlphaBlur = 0.82;
+    final double cardAlphaNoBlur = 0.96;
+    final double sheetAlphaBlur = 0.72;
+  }
+
 List<Color> untisPlusSubjectPalette(ColorScheme cs) {
   final tokens = AppDesignTokens.fromScheme(cs);
   return tokens.lessonPalette;

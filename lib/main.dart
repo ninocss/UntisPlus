@@ -5200,7 +5200,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         childBuilder: (enabled) => Container(
           height: MediaQuery.of(context).size.height * 0.82,
           decoration: BoxDecoration(
-            color: enabled ? cs.surface.withValues(alpha: 0.72) : cs.surface,
+              color: enabled ? cs.surface.withValues(alpha: appAlphaValues.sheetAlphaBlur) : cs.surface,
             gradient: enabled
                 ? LinearGradient(
                     begin: Alignment.topLeft,

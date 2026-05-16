@@ -129,7 +129,7 @@ Widget _glassContainer({
                   ? (isDark 
                       ? Color.alphaBlend(cs.primary.withValues(alpha: 0.08), cs.surface.withValues(alpha: 0.65))
                       : cs.surface.withValues(alpha: 0.82))
-                  : cs.surface),
+                    : cs.surface.withValues(alpha: appAlphaValues.cardAlphaNoBlur)),
           border:
               border ??
               Border.all(
