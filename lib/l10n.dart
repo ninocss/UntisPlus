@@ -273,6 +273,8 @@ class AppL10n {
   String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
   String get settingsBackgroundAnimationsDesc =>
       _t('settingsBackgroundAnimationsDesc');
+    String get settingsPageTransitions => _t('settingsPageTransitions');
+    String get settingsPageTransitionsDesc => _t('settingsPageTransitionsDesc');
   String get settingsBackgroundGyroscope => _t('settingsBackgroundGyroscope');
   String get settingsBackgroundGyroscopeDesc =>
       _t('settingsBackgroundGyroscopeDesc');
@@ -748,6 +750,9 @@ class AppL10n {
       'settingsBackgroundAnimations': 'Hintergrundanimationen',
       'settingsBackgroundAnimationsDesc':
           'Animierte Farbverläufe im Hintergrund anzeigen',
+      'settingsPageTransitions': 'Seiten-Animationen',
+      'settingsPageTransitionsDesc':
+          'Animierte Übergänge beim Wechsel der Hauptbereiche anzeigen',
       'settingsBackgroundGyroscope': 'Gyroskop-Reaktion',
       'settingsBackgroundGyroscopeDesc':
           'Lässt den Hintergrund auf die Gerätebewegung reagieren',
@@ -1251,6 +1256,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsBackgroundAnimations': 'Background Animations',
       'settingsBackgroundAnimationsDesc':
           'Show animated gradient effects in the background',
+      'settingsPageTransitions': 'Page transitions',
+      'settingsPageTransitionsDesc':
+          'Animate transitions when switching main sections',
       'settingsBackgroundGyroscope': 'Gyroscope reaction',
       'settingsBackgroundGyroscopeDesc':
           'Lets backgrounds react to device movement',
@@ -1735,6 +1743,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsBackgroundAnimations': 'Animations de fond',
       'settingsBackgroundAnimationsDesc':
           'Afficher des effets de dégradé animés en arrière-plan',
+      'settingsPageTransitions': 'Transitions de page',
+      'settingsPageTransitionsDesc':
+          'Animer les transitions lors du changement de sections principales',
       'settingsBackgroundGyroscope': 'Réaction gyroscopique',
       'settingsBackgroundGyroscopeDesc':
           'Permet au fond de réagir aux mouvements de l\'appareil',
@@ -2214,6 +2225,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsBackgroundAnimations': 'Animaciones de fondo',
       'settingsBackgroundAnimationsDesc':
           'Mostrar efectos de degradado animados en el fondo',
+      'settingsPageTransitions': 'Transiciones de página',
+      'settingsPageTransitionsDesc':
+          'Animar transiciones al cambiar entre secciones principales',
       'settingsBackgroundGyroscope': 'Respuesta del giroscopio',
       'settingsBackgroundGyroscopeDesc':
           'Hace que el fondo reaccione al movimiento del dispositivo',
@@ -2693,6 +2707,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsBackgroundAnimations': 'Κινούμενα στοιχεία φόντου',
       'settingsBackgroundAnimationsDesc':
           'Εμφάνιση κινούμενων εφέ διαβάθμισης στο φόντο',
+      'settingsPageTransitions': 'Μεταβάσεις σελίδων',
+      'settingsPageTransitionsDesc':
+          'Κινούμενες μεταβάσεις όταν αλλάζετε κύριες ενότητες',
       'settingsBackgroundGyroscope': 'Αντίδραση γυροσκοπίου',
       'settingsBackgroundGyroscopeDesc':
           'Κάνει το φόντο να αντιδρά στην κίνηση της συσκευής',

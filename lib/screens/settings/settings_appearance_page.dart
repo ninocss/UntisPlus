@@ -202,6 +202,27 @@ class SettingsAppearancePage extends StatelessWidget {
             Card.filled(
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
+                valueListenable: pageTransitionAnimationsNotifier,
+                builder: (context, value, _) {
+                  return SwitchListTile.adaptive(
+                    value: value,
+                    onChanged: _settingsSetPageTransitionAnimations,
+                    title: Text(
+                      l.settingsPageTransitions,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      l.settingsPageTransitionsDesc,
+                      style: GoogleFonts.outfit(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card.filled(
+              color: cs.surfaceContainerHigh,
+              child: ValueListenableBuilder<bool>(
                 valueListenable: backgroundGyroscopeNotifier,
                 builder: (context, value, _) {
                   return SwitchListTile.adaptive(

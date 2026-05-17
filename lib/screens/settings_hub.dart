@@ -45,6 +45,12 @@ Future<void> _settingsSetBackgroundGyroscope(bool value) async {
   await prefs.setBool('backgroundGyroscope', value);
 }
 
+Future<void> _settingsSetPageTransitionAnimations(bool value) async {
+  pageTransitionAnimationsNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('pageTransitionAnimations', value);
+}
+
 Future<void> _settingsSetBlurEnabled(bool value) async {
   blurEnabledNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();

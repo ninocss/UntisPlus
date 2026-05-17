@@ -144,10 +144,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   List<Widget> get _pages => <Widget>[
-    WeeklyTimetablePage(key: ValueKey(sessionID)),
-    const ExamsPage(),
-    const SchoolNotificationsPage(),
-    const SettingsHubPage(),
+    WeeklyTimetablePage(key: ValueKey('page_0_$sessionID')),
+    const ExamsPage(key: ValueKey('page_1')),
+    const SchoolNotificationsPage(key: ValueKey('page_2')),
+    const SettingsHubPage(key: ValueKey('page_3')),
   ];
 
   @override
@@ -204,7 +204,34 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             data: mq.copyWith(
               padding: mq.padding.copyWith(bottom: mq.padding.bottom + 104),
             ),
-            child: IndexedStack(index: _selectedIndex, children: _pages),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: pageTransitionAnimationsNotifier,
+              builder: (context, enabled, _) {
+                if (!enabled) {
+                  return IndexedStack(index: _selectedIndex, children: _pages);
+                }
+
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 420),
+                  switchInCurve: _kSmoothBounce,
+                  switchOutCurve: _kSoftBounce,
+                  transitionBuilder: (child, anim) {
+                    final offsetAnim = Tween<Offset>(
+                      begin: const Offset(0.0, 0.04),
+                      end: Offset.zero,
+                    ).animate(anim);
+                    return FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(position: offsetAnim, child: child),
+                    );
+                  },
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(_selectedIndex),
+                    child: _pages[_selectedIndex],
+                  ),
+                );
+              },
+            ),
           ),
           Positioned.fill(
             child: ValueListenableBuilder<bool>(

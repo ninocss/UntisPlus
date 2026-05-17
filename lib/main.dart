@@ -88,6 +88,8 @@ void main() async {
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
   backgroundAnimationsNotifier.value =
       prefs.getBool('backgroundAnimations') ?? true;
+    pageTransitionAnimationsNotifier.value =
+      prefs.getBool('pageTransitionAnimations') ?? true;
   backgroundAnimationStyleNotifier.value =
       (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 10);
   backgroundGyroscopeNotifier.value =
@@ -5357,24 +5359,19 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                cs.primaryContainer,
-                                cs.tertiaryContainer,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
+                            color: cs.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           child: Icon(
                             Icons.auto_awesome_rounded,
                             color: cs.primary,
-                            size: 22,
+                            size: 20,
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -5405,10 +5402,8 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
                     if (_quickPrompts.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       SizedBox(
                         height: 38,
                         child: ListView.separated(
@@ -5464,64 +5459,57 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
               ),
 
               Padding(
-                padding: EdgeInsets.fromLTRB(16, 8, 16, bottom + 20),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        cs.surfaceContainerHigh.withValues(alpha: 0.72),
-                        cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: cs.outlineVariant.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _inputController,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _send(),
-                          style: GoogleFonts.outfit(fontSize: 15),
-                          decoration: InputDecoration(
-                            hintText: AppL10n.of(
-                              appLocaleNotifier.value,
-                            ).aiInputHint,
-                            hintStyle: GoogleFonts.outfit(
-                              color: cs.onSurface.withValues(alpha: 0.38),
+                padding: EdgeInsets.fromLTRB(16, 12, 16, bottom + 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _inputController,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _send(),
+                        style: GoogleFonts.outfit(fontSize: 15),
+                        decoration: InputDecoration(
+                          hintText: AppL10n.of(
+                            appLocaleNotifier.value,
+                          ).aiInputHint,
+                          hintStyle: GoogleFonts.outfit(
+                            color: cs.onSurface.withValues(alpha: 0.38),
+                          ),
+                          filled: true,
+                          fillColor: cs.surfaceContainerHigh.withValues(alpha: 0.4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 11,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide(
+                              color: cs.outlineVariant.withValues(alpha: 0.25),
                             ),
-                            filled: true,
-                            fillColor: Colors.transparent,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(22),
-                              borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide(
+                              color: cs.outlineVariant.withValues(alpha: 0.25),
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      AnimatedOpacity(
-                        opacity: _thinking ? 0.4 : 1.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: FilledButton(
-                          onPressed: _thinking ? null : _send,
-                          style: FilledButton.styleFrom(
-                            shape: const CircleBorder(),
-                            padding: const EdgeInsets.all(14),
-                          ),
-                          child: const Icon(Icons.send_rounded, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    AnimatedOpacity(
+                      opacity: _thinking ? 0.4 : 1.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: FilledButton(
+                        onPressed: _thinking ? null : _send,
+                        style: FilledButton.styleFrom(
+                          shape: const CircleBorder(),
+                          padding: const EdgeInsets.all(12),
                         ),
+                        child: const Icon(Icons.send_rounded, size: 18),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
