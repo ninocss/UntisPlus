@@ -353,8 +353,8 @@ class SettingsHubPage extends StatelessWidget {
         iconBackground: const Color(0xFFE9E0FF),
         iconColor: const Color(0xFF5D35B1),
         title: l.settingsSectionAI,
-        subtitle: l.settingsAiModel,
-        pageBuilder: () => const SettingsAiPage(),
+        subtitle: l.aiAskAnything,
+        pageBuilder: () => const AiAssistantPage(),
       ),
       _SettingsHubItem(
         icon: Icons.cloud_sync_rounded,

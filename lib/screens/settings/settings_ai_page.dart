@@ -1,7 +1,9 @@
 part of '../../main.dart';
 
 class SettingsAiPage extends StatefulWidget {
-  const SettingsAiPage({super.key});
+  final bool openPromptEditor;
+
+  const SettingsAiPage({super.key, this.openPromptEditor = false});
 
   @override
   State<SettingsAiPage> createState() => _SettingsAiPageState();
@@ -12,6 +14,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   void initState() {
     super.initState();
     _reloadFromPrefs();
+    if (widget.openPromptEditor) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showPromptDialog();
+      });
+    }
   }
 
   Future<void> _reloadFromPrefs() async {

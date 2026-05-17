@@ -27,7 +27,7 @@ import 'services/backup_service.dart';
 import 'services/demo_mode_service.dart';
 import 'widgets/rounded_blur_app_bar.dart';
 import 'web/file_download_helper.dart'
-    if (dart.library.io) 'web/file_download_helper_stub.dart';
+  if (dart.library.io) 'web/file_download_helper_stub.dart';
 
 part 'core/school_models.dart';
 part 'core/design_tokens.dart';
@@ -49,6 +49,8 @@ part 'screens/settings/settings_account_page.dart';
 part 'screens/settings/settings_about_updates_page.dart';
 part 'widgets/animated_background.dart';
 part 'widgets/custom_background_view.dart';
+
+int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -3093,11 +3095,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: l.aiTitle,
-            icon: const Icon(Icons.auto_awesome_rounded),
-            onPressed: _openGeminiChat,
-          ),
-          IconButton(
             tooltip: l.freeRoomsTitle,
             icon: const Icon(Icons.meeting_room_outlined),
             onPressed: _showFreeRoomsDialog,
@@ -3238,19 +3235,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
-  void _openGeminiChat() {
-    HapticFeedback.mediumImpact();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      sheetAnimationStyle: _kBottomSheetAnimationStyle,
-      builder: (_) => _TimetableChatSheet(
-        weekData: _weekData,
-        currentMonday: _currentMonday,
-      ),
-    );
-  }
 }
 
 // --- PRÜFUNGEN ---
@@ -4198,11 +4182,26 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           ),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'exams_chat_fab',
+        onPressed: () {
+          Navigator.of(context).push(
+            _buildBouncyRoute(const AiAssistantPage()),
+          );
+        },
+        icon: const Icon(Icons.chat_bubble_outline_rounded),
+        label: Text(
+          appLocaleNotifier.value.toLowerCase().startsWith('de')
+              ? 'Prüfungen besprechen'
+              : 'Discuss exams',
+        ),
+      ),
       body: _AnimatedBackground(
         child: RefreshIndicator(
           onRefresh: _refreshExams,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),

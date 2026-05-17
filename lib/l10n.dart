@@ -173,6 +173,7 @@ class AppL10n {
   String get infoEmptyHint => _t('infoEmptyHint');
   String get infoFetchError => _t('infoFetchError');
   String get infoOpenLink => _t('infoOpenLink');
+    String get navAi => _t('navAi');
   String notificationActionCurrentLesson(String lesson) =>
       _t('notificationActionCurrentLesson').replaceAll('{lesson}', lesson);
   String notificationActionNextLesson(String lesson) =>
@@ -475,6 +476,7 @@ class AppL10n {
       'navExams': 'Prüfungen',
       'navInfo': 'Info',
       'navMenu': 'Menü',
+    'navAi': 'KI',
 
       'loginServer': 'Server URL',
       'loginSchool': 'Schule',
@@ -998,6 +1000,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'navExams': 'Exams',
       'navInfo': 'Info',
       'navMenu': 'Menu',
+    'navAi': 'AI',
 
       'loginServer': 'Server URL',
       'loginSchool': 'School',
