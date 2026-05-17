@@ -693,6 +693,121 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return candidates.join(', ');
   }
 
+  String _resolveSubjectShortFromLesson(Map<dynamic, dynamic> lesson, [int? subId]) {
+    final suList = (lesson['su'] as List?) ?? const <dynamic>[];
+    if (suList.isNotEmpty) {
+      final first = suList.firstWhere((e) => e is Map, orElse: () => null) as Map?;
+      if (first != null) {
+        final name = (first['name'] ?? '').toString();
+        if (name.trim().isNotEmpty) return name.trim();
+      }
+    }
+
+    final candidates = <String>[];
+    void add(dynamic v) {
+      if (v == null) return;
+      if (v is Map && v['name'] != null) v = v['name'];
+      final s = v.toString().trim();
+      if (s.isNotEmpty && !candidates.contains(s)) candidates.add(s);
+    }
+
+    add(lesson['subject']);
+    add(lesson['subjectName']);
+    add(lesson['name']);
+    add(lesson['longName']);
+    add(lesson['text']);
+    if (candidates.isNotEmpty) return candidates.join(', ');
+
+    if (subId != null) {
+      final fromMap = _subjectShortMap[subId];
+      if (fromMap != null && fromMap.isNotEmpty) return fromMap;
+    }
+
+    return '';
+  }
+
+  String _resolveSubjectLongFromLesson(Map<dynamic, dynamic> lesson, [int? subId]) {
+    final suList = (lesson['su'] as List?) ?? const <dynamic>[];
+    if (suList.isNotEmpty) {
+      final first = suList.firstWhere((e) => e is Map, orElse: () => null) as Map?;
+      if (first != null) {
+        final name = (first['longname'] ?? first['longName'] ?? first['displayName'] ?? '').toString();
+        if (name.trim().isNotEmpty) return name.trim();
+      }
+    }
+
+    final candidates = <String>[];
+    void add(dynamic v) {
+      if (v == null) return;
+      if (v is Map && (v['longname'] != null || v['longName'] != null)) v = v['longname'] ?? v['longName'];
+      final s = v.toString().trim();
+      if (s.isNotEmpty && !candidates.contains(s)) candidates.add(s);
+    }
+
+    add(lesson['subject']);
+    add(lesson['subjectLongName']);
+    add(lesson['longName']);
+    add(lesson['text']);
+    if (candidates.isNotEmpty) return candidates.join(', ');
+
+    if (subId != null) {
+      final fromMap = _subjectLong[subId];
+      if (fromMap != null && fromMap.isNotEmpty) return fromMap;
+    }
+
+    return '';
+  }
+
+  String _resolveRoomFromLesson(Map<dynamic, dynamic> lesson, [int? roId]) {
+    final roList = (lesson['ro'] as List?) ?? const <dynamic>[];
+    if (roList.isNotEmpty) {
+      final first = roList.firstWhere((e) => e is Map, orElse: () => null) as Map?;
+      if (first != null) {
+        final name = (first['name'] ?? first['displayName'] ?? '').toString();
+        if (name.trim().isNotEmpty) return name.trim();
+      }
+    }
+
+    final r = (lesson['room'] ?? lesson['roomName'] ?? lesson['roomText'] ?? '').toString().trim();
+    if (r.isNotEmpty) return r;
+
+    if (roId != null) {
+      final fromMap = _roomMap[roId];
+      if (fromMap != null && fromMap.isNotEmpty) return fromMap;
+    }
+
+    return '';
+  }
+
+  String _resolveTeacherFromLesson(Map<dynamic, dynamic> lesson) {
+    final fromTe = _extractTeacherNamesFromLesson(lesson);
+    if (fromTe.trim().isNotEmpty) return fromTe;
+
+    final fromTop = _extractTeacherNamesFromTopLevel(lesson);
+    if (fromTop.trim().isNotEmpty) return fromTop;
+
+    // try to map teacher ids from 'te' list
+    final teList = (lesson['te'] as List?) ?? const <dynamic>[];
+    final names = <String>[];
+    for (final t in teList) {
+      if (t is Map) {
+        final id = t['id'] as int?;
+        if (id != null) {
+          final mapped = _teacherMap[id];
+          if (mapped != null && mapped.isNotEmpty && !names.contains(mapped)) names.add(mapped);
+        }
+        final direct = (t['longName'] ?? t['longname'] ?? t['displayName'] ?? t['name'] ?? '').toString().trim();
+        if (direct.isNotEmpty && !names.contains(direct)) names.add(direct);
+      } else if (t != null) {
+        final s = t.toString().trim();
+        if (s.isNotEmpty && !names.contains(s)) names.add(s);
+      }
+    }
+    return names.join(', ');
+  }
+
+  // Exam-specific resolvers removed (moved to inline resolution where used)
+
   String _lessonTeacherKey(
     Map<dynamic, dynamic> lesson, {
     bool withRoom = true,
@@ -2518,20 +2633,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 : teacherFromTopLevel;
 
             final resolvedLesson = Map<String, dynamic>.from(lesson);
-            resolvedLesson['_subjectLong'] =
-                (lesson['su'] as List?)?.firstOrNull?['longname'] ??
-                (lesson['su'] as List?)?.firstOrNull?['longName'] ??
-                _subjectLong[subId] ??
-                '';
-            resolvedLesson['_subjectShort'] =
-                (lesson['su'] as List?)?.firstOrNull?['name'] ??
-                _subjectShortMap[subId] ??
-                '';
-            resolvedLesson['_teacher'] = teacherResolved;
-            resolvedLesson['_room'] =
-                (lesson['ro'] as List?)?.firstOrNull?['name'] ??
-                _roomMap[roId] ??
-                '';
+            resolvedLesson['_subjectLong'] = _resolveSubjectLongFromLesson(lessonMap, subId);
+            resolvedLesson['_subjectShort'] = _resolveSubjectShortFromLesson(lessonMap, subId);
+            // prefer the teacher we extracted earlier, but fill from ids if empty
+            final resolvedTeacher = (teacherResolved.trim().isNotEmpty)
+              ? teacherResolved
+              : _resolveTeacherFromLesson(lessonMap);
+            resolvedLesson['_teacher'] = resolvedTeacher;
+            resolvedLesson['_room'] = _resolveRoomFromLesson(lessonMap, roId);
 
             tempWeek[dayIndex]!.add(resolvedLesson);
           }
@@ -4737,9 +4846,20 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     }
 
     if (mounted) {
-      setState(() {
+        setState(() {
         _exams = [
-          ...apiExams.map((e) => {...e, '_source': 'api'}),
+          ...apiExams.map((e) {
+            try {
+              final em = Map<String, dynamic>.from(e);
+              em['_source'] = 'api';
+              em['_subjectResolved'] = (em['subject'] ?? em['subjectName'] ?? em['name'] ?? em['text'] ?? '').toString().trim();
+              em['_roomResolved'] = (em['room'] ?? em['roomName'] ?? em['ro'] ?? '').toString().trim();
+              em['_teacherResolved'] = (em['teacher'] ?? em['teacherName'] ?? em['te'] ?? '').toString().trim();
+              return em;
+            } catch (_) {
+              return {...e, '_source': 'api'};
+            }
+          }),
           ...customExams.map((e) => {...e, '_source': 'custom'}),
         ];
         _exams.sort((a, b) {
@@ -4763,7 +4883,9 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     if (_exams.isEmpty) return 'Keine Prüfungen eingetragen.';
     final buf = StringBuffer();
     for (var ex in _exams) {
-      final subject = ex['subject'] ?? ex['subjectName'] ?? '?';
+      final subject = (ex['_subjectResolved'] as String?)?.isNotEmpty == true
+          ? ex['_subjectResolved']
+          : (ex['subject'] ?? ex['subjectName'] ?? '?');
       final type = ex['type'] ?? 'Klausur';
       final dateRaw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
           .toString();
