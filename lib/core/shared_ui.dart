@@ -130,6 +130,16 @@ Widget _glassContainer({
                       ? Color.alphaBlend(cs.primary.withValues(alpha: 0.08), cs.surface.withValues(alpha: 0.65))
                       : cs.surface.withValues(alpha: 0.82))
                     : cs.surface.withValues(alpha: appAlphaValues.cardAlphaNoBlur)),
+          gradient: gradient ?? (enabled
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cs.surface.withValues(alpha: 0.8),
+                    cs.surfaceContainerHigh.withValues(alpha: 0.66),
+                  ],
+                )
+              : null),
           border:
               border ??
               Border.all(
