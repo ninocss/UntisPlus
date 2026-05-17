@@ -3,7 +3,7 @@ description: "A Flutter application for managing and viewing school schedules, h
 
 publish_to: 'none'
 
-version: 4.0.1+1
+version: 4.1.0+1
 
 environment:
   sdk: ^3.11.0
