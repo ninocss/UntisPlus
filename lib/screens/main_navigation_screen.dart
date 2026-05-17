@@ -24,6 +24,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   final _scrollController = ScrollController();
   final _firstChipKey = GlobalKey();
   Timer? _typingHintTimer;
+  int _typingHintIndex = 0;
   final List<Map<String, String>> _messages = [];
   List<Map<String, dynamic>> _exams = [];
   Map<int, List<dynamic>> _weekData = {
@@ -38,6 +39,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   bool _thinking = false;
   bool _showTypingHint = false;
   bool _showBanner = true;
+  bool _bannerExpanded = false;
   String _loadedHistoryDate = '';
 
   @override
@@ -535,10 +537,241 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   }
 
   Future<String> _requestProviderResponse(String systemPrompt) async {
-    // Local stub to satisfy references from this part file.
-    // The real implementation lives in lib/main.dart; this stub returns
-    // a clear error that will be shown to the user if invoked.
-    throw Exception('CONFIG: AI backend not available in this build (stub).');
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final provider = _normalizeAiProvider(aiProvider);
+    final apiKey = _activeAiApiKey().trim();
+    if (apiKey.isEmpty) {
+      throw Exception(
+        'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
+      );
+    }
+
+    final model = aiModel.trim().isNotEmpty
+        ? aiModel.trim()
+        : _defaultModelForProvider(
+            provider,
+            customCompatibility: aiCustomCompatibility,
+          );
+
+    String _normalizedBaseUrl(String value) {
+      var out = value.trim();
+      while (out.endsWith('/')) {
+        out = out.substring(0, out.length - 1);
+      }
+      return out;
+    }
+
+    String _openAiCompatibleEndpoint(String rawBaseUrl) {
+      final base = _normalizedBaseUrl(rawBaseUrl);
+      if (base.isEmpty) return '';
+      if (base.endsWith('/chat/completions')) return base;
+      if (base.endsWith('/v1')) return '$base/chat/completions';
+      if (base.endsWith('/v1/chat')) return '$base/completions';
+      return '$base/v1/chat/completions';
+    }
+
+    String _geminiCompatibleEndpoint(String rawBaseUrl, String model) {
+      final base = _normalizedBaseUrl(rawBaseUrl);
+      if (base.isEmpty) return '';
+      if (base.contains('/models/')) return base;
+      if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
+      if (base.contains('/v1')) return '$base/models/$model:generateContent';
+      return '$base/v1beta/models/$model:generateContent';
+    }
+
+    List<Map<String, String>> _historyForProvider() {
+      return _messages
+          .map(
+            (m) => {
+              'role': m['role'] == 'user' ? 'user' : 'assistant',
+              'content': m['content'] ?? '',
+            },
+          )
+          .toList();
+    }
+
+    Future<String> _requestGeminiResponse({
+      required String endpoint,
+      required String apiKey,
+      required String systemPrompt,
+    }) async {
+      final contents = _messages.map((m) {
+        final role = (m['role'] == 'user') ? 'user' : 'model';
+        return {
+          'role': role,
+          'parts': [
+            {'text': m['content'] ?? ''},
+          ],
+        };
+      }).toList();
+
+      final body = jsonEncode({
+        'systemInstruction': {
+          'parts': [
+            {'text': systemPrompt},
+          ],
+        },
+        'contents': contents,
+        'generationConfig': {'maxOutputTokens': 2600, 'temperature': 0.2},
+      });
+
+      final endpointUri = Uri.parse(endpoint);
+      final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
+        ..putIfAbsent('key', () => apiKey);
+      final uri = endpointUri.replace(queryParameters: mergedParams);
+
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
+        body: body,
+      );
+
+      Map<String, dynamic>? payload;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) payload = decoded;
+      } catch (_) {}
+
+      if (response.statusCode != 200) {
+        final message = payload?['error']?['message'] ?? response.statusCode;
+        throw Exception('API: $message');
+      }
+
+      var reply = '';
+      final candidates = payload?['candidates'];
+      if (candidates is List && candidates.isNotEmpty) {
+        final content = candidates.first['content'];
+        final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
+        if (parts is List) {
+          reply = parts
+              .map((p) => (p is Map<String, dynamic>) ? p['text'] : null)
+              .whereType<String>()
+              .join();
+        }
+      }
+
+      reply = reply.trim();
+      if (reply.isEmpty) {
+        throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+      }
+      return reply;
+    }
+
+    Future<String> _requestOpenAiCompatibleResponse({
+      required String endpoint,
+      required String apiKey,
+      required String model,
+      required String systemPrompt,
+    }) async {
+      final messages = [
+        {'role': 'system', 'content': systemPrompt},
+        ..._historyForProvider(),
+      ];
+
+      final body = jsonEncode({
+        'model': model,
+        'messages': messages,
+        'temperature': 0.2,
+      });
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+        },
+        body: body,
+      );
+
+      Map<String, dynamic>? payload;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) payload = decoded;
+      } catch (_) {}
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final message = payload?['error']?['message'] ?? response.statusCode;
+        throw Exception('API: $message');
+      }
+
+      final choices = payload?['choices'];
+      if (choices is! List || choices.isEmpty) {
+        throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+      }
+
+      final first = choices.first;
+      if (first is! Map<String, dynamic>) {
+        throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+      }
+
+      final message = first['message'];
+      if (message is Map<String, dynamic>) {
+        final content = message['content'];
+        if (content is String && content.trim().isNotEmpty) {
+          return content.trim();
+        }
+        if (content is List) {
+          final text = content
+              .map((part) {
+                if (part is Map<String, dynamic>) {
+                  return part['text']?.toString() ?? '';
+                }
+                return '';
+              })
+              .join()
+              .trim();
+          if (text.isNotEmpty) return text;
+        }
+      }
+
+      final legacyText = first['text']?.toString().trim() ?? '';
+      if (legacyText.isNotEmpty) return legacyText;
+      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+    }
+
+    switch (provider) {
+      case 'openai':
+        return _requestOpenAiCompatibleResponse(
+          endpoint: 'https://api.openai.com/v1/chat/completions',
+          apiKey: apiKey,
+          model: model,
+          systemPrompt: systemPrompt,
+        );
+      case 'mistral':
+        return _requestOpenAiCompatibleResponse(
+          endpoint: 'https://api.mistral.ai/v1/chat/completions',
+          apiKey: apiKey,
+          model: model,
+          systemPrompt: systemPrompt,
+        );
+      case 'custom':
+        final baseUrl = aiCustomBaseUrl.trim();
+        if (baseUrl.isEmpty) {
+          throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
+        }
+        final compat = _normalizeAiCustomCompatibility(aiCustomCompatibility);
+        if (compat == 'gemini') {
+          return _requestGeminiResponse(
+            endpoint: _geminiCompatibleEndpoint(baseUrl, model),
+            apiKey: apiKey,
+            systemPrompt: systemPrompt,
+          );
+        }
+        return _requestOpenAiCompatibleResponse(
+          endpoint: _openAiCompatibleEndpoint(baseUrl),
+          apiKey: apiKey,
+          model: model,
+          systemPrompt: systemPrompt,
+        );
+      case 'gemini':
+      default:
+        return _requestGeminiResponse(
+          endpoint:
+              'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
+          apiKey: apiKey,
+          systemPrompt: systemPrompt,
+        );
+    }
   }
 
   String _daySummaryForPrompt(DateTime date) {
@@ -621,12 +854,15 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     setState(() {
       _messages.add({'role': 'user', 'content': text});
       _thinking = true;
-      _showTypingHint = false;
+      _typingHintIndex = 0;
     });
     _typingHintTimer?.cancel();
-    _typingHintTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted || !_thinking) return;
-      setState(() => _showTypingHint = true);
+    _typingHintTimer = Timer.periodic(const Duration(milliseconds: 2500), (t) {
+      if (!mounted || !_thinking) {
+        t.cancel();
+        return;
+      }
+      setState(() => _typingHintIndex = _typingHintIndex + 1);
     });
     await _saveHistory();
     _scrollToBottom();
@@ -656,7 +892,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     } finally {
       _typingHintTimer?.cancel();
       if (mounted) setState(() => _thinking = false);
-      _showTypingHint = false;
+      _typingHintIndex = 0;
       _scrollToBottom();
     }
   }
@@ -804,7 +1040,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       child: !_showBanner
           ? const SizedBox.shrink()
           : InkWell(
-              onTap: _scrollToFirstChip,
+              onTap: () => setState(() => _bannerExpanded = !_bannerExpanded),
               borderRadius: BorderRadius.circular(20),
               child: Container(
                 key: const ValueKey('context_banner'),
@@ -815,28 +1051,67 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.event_note_rounded, color: cs.onPrimaryContainer),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _contextBannerText(),
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          color: cs.onPrimaryContainer,
+                child: AnimatedCrossFade(
+                  firstChild: Row(
+                    children: [
+                      Icon(Icons.event_note_rounded, color: cs.onPrimaryContainer),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _contextBannerText(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                            color: cs.onPrimaryContainer,
+                          ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      onPressed: () => setState(() => _showBanner = false),
-                      icon: Icon(Icons.close_rounded, color: cs.onPrimaryContainer),
-                      visualDensity: VisualDensity.compact,
-                      tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
-                          ? 'Ausblenden'
-                          : 'Dismiss',
-                    ),
-                  ],
+                      IconButton(
+                        onPressed: () => setState(() => _showBanner = false),
+                        icon: Icon(Icons.close_rounded, color: cs.onPrimaryContainer),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
+                            ? 'Ausblenden'
+                            : 'Dismiss',
+                      ),
+                    ],
+                  ),
+                  secondChild: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.event_note_rounded, color: cs.onPrimaryContainer),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _contextBannerText(),
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                                color: cs.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => setState(() => _showBanner = false),
+                            icon: Icon(Icons.close_rounded, color: cs.onPrimaryContainer),
+                            visualDensity: VisualDensity.compact,
+                            tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
+                                ? 'Ausblenden'
+                                : 'Dismiss',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        AppL10n.of(appLocaleNotifier.value).aiAskAnything,
+                        style: GoogleFonts.outfit(fontSize: 13, color: cs.onPrimaryContainer.withValues(alpha: 0.92)),
+                      ),
+                    ],
+                  ),
+                  crossFadeState: _bannerExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 220),
                 ),
               ),
             ),
@@ -933,9 +1208,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
   Widget _buildTypingBubble(ColorScheme cs) {
     final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
-    final text = _showTypingHint
-        ? (isGerman ? 'Fast fertig…' : 'Almost done…')
-        : (isGerman ? 'Analysiert deinen Stundenplan…' : 'Analyzing your timetable…');
+    final messages = isGerman
+      ? ['Analysiert deinen Stundenplan…', 'Formuliere Antwort…', 'Fast fertig…']
+      : ['Analyzing your timetable…', 'Formulating response…', 'Almost done…'];
+    final text = messages.isEmpty ? '' : messages[_typingHintIndex % messages.length];
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
@@ -985,7 +1261,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
   Widget _buildInput(ColorScheme cs) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(context).padding.bottom + 104),
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -1035,14 +1311,14 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
               ),
             ),
             const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: _thinking ? null : _send,
-              style: FilledButton.styleFrom(
-                shape: const StadiumBorder(),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            AnimatedOpacity(
+              opacity: _thinking ? 0.4 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: FloatingActionButton.small(
+                onPressed: _thinking ? null : _send,
+                heroTag: null,
+                child: Icon(_thinking ? Icons.hourglass_top_rounded : Icons.send_rounded),
               ),
-              icon: const Icon(Icons.send_rounded, size: 18),
-              label: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Senden' : 'Send'),
             ),
           ],
         ),
@@ -1091,7 +1367,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     return Column(
       children: [
         _buildContextBanner(cs),
-        _buildChipRow(cs),
+        if (_messages.isNotEmpty) _buildChipRow(cs),
         Expanded(
           child: _messages.isEmpty
               ? _buildEmptyState(cs)
@@ -1175,14 +1451,8 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         ),
         title: Text(l.aiTitle),
         actions: [
-          IconButton(
-            tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
-                ? 'Einstellungen'
-                : 'Settings',
-            icon: const Icon(Icons.settings_rounded),
-            onPressed: _openSettings,
-          ),
           PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
             tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
                 ? 'Mehr'
                 : 'More',

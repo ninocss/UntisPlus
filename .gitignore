@@ -40,10 +40,11 @@ app.*.symbols
 
 # Obfuscation related
 app.*.map.json
-
+plan.md
 
 android/local.properties
 android/app/build.gradle.kts
 android/app/release-key.jks
 android/app/*.jks
 android/app/*.keystore
+.aider*
