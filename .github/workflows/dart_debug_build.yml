@@ -34,7 +34,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Debug APK
-        run: flutter build apk --debug --no-tree-shake-icons
+        run: flutter build apk --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
