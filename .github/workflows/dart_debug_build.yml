@@ -8,9 +8,9 @@ on:
         required: true
         default: 'main'
       flutter_version:
-        description: 'Flutter-Version (z.B. 3.19.5)'
+        description: 'Flutter-Version (z.B. 3.35.0)'
         required: true
-        default: '3.19.5'
+        default: '3.35.0'
       artifact_name:
         description: 'Name des Artefakts'
         required: true
