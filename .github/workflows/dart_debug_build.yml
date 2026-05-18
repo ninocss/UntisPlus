@@ -1,10 +1,6 @@
 name: Build Debug APK
 
 on:
-  push:
-    branches: [ ${{ github.event.repository.default_branch }} ]
-  pull_request:
-    branches: [ ${{ github.event.repository.default_branch }} ]
   workflow_dispatch:
     inputs:
       branch:
@@ -12,7 +8,7 @@ on:
         required: true
         default: 'main'
       flutter_version:
-        description: 'Flutter-Version'
+        description: 'Flutter-Version (z.B. 3.19.5)'
         required: true
         default: '3.19.5'
       artifact_name:
@@ -26,12 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || github.event.repository.default_branch }}
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ github.event.inputs.flutter_version || '3.19.5' }}
+          flutter-version: ${{ github.event.inputs.flutter_version }}
           channel: 'stable'
 
       - name: Get dependencies
@@ -43,6 +39,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.inputs.artifact_name || 'debug-apk' }}
+          name: ${{ github.event.inputs.artifact_name }}
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
