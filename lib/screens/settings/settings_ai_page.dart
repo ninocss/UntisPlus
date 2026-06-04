@@ -1,3 +1,4 @@
+// settings_ai_page.dart
 part of '../../main.dart';
 
 class SettingsAiPage extends StatefulWidget {
@@ -450,7 +451,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.smart_toy_rounded),
@@ -467,7 +472,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.memory_rounded),
@@ -482,7 +491,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             ),
             if (isCustom) ...[
               const SizedBox(height: 12),
-              Card.filled(
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 color: cs.surfaceContainerHigh,
                 child: ListTile(
                   leading: const Icon(Icons.merge_type_rounded),
@@ -499,7 +512,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              Card.filled(
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 color: cs.surfaceContainerHigh,
                 child: ListTile(
                   leading: const Icon(Icons.link_rounded),
@@ -521,7 +538,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               ),
             ],
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.key_rounded),
@@ -540,7 +561,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.edit_note_rounded),
@@ -557,7 +582,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.data_object_rounded),

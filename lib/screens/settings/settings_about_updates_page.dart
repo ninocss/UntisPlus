@@ -1,3 +1,4 @@
+// settings_about_updates_page.dart
 part of '../../main.dart';
 
 class SettingsAboutUpdatesPage extends StatefulWidget {
@@ -52,6 +53,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Text(
             l.settingsGithubUpdateFound(latestVersion),
             style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
@@ -199,7 +201,11 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.system_update_alt_rounded),
@@ -213,16 +219,20 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
                 ),
                 trailing: _checking
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2.3),
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
                       )
                     : const Icon(Icons.chevron_right_rounded),
                 onTap: _checking ? null : _checkGithubUpdate,
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.open_in_new_rounded),
@@ -244,8 +254,12 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
-              color: cs.surfaceContainerLow,
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.rocket_launch_outlined),
                 title: Text(

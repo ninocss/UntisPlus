@@ -259,8 +259,7 @@ Future<void> _settingsSyncFromPrefs() async {
   showCancelledNotifier.value =
       prefs.getBool('showCancelled') ?? showCancelledNotifier.value;
   backgroundAnimationsNotifier.value =
-      prefs.getBool('backgroundAnimations') ??
-      backgroundAnimationsNotifier.value;
+      prefs.getBool('backgroundAnimations') ?? backgroundAnimationsNotifier.value;
   backgroundAnimationStyleNotifier.value =
       (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 10);
   backgroundGyroscopeNotifier.value =
@@ -272,8 +271,7 @@ Future<void> _settingsSyncFromPrefs() async {
   dailyBriefingPushNotifier.value =
       prefs.getBool('dailyBriefingPush') ?? dailyBriefingPushNotifier.value;
   importantChangesPushNotifier.value =
-      prefs.getBool('importantChangesPush') ??
-      importantChangesPushNotifier.value;
+      prefs.getBool('importantChangesPush') ?? importantChangesPushNotifier.value;
   demoModeNotifier.value = prefs.getBool('demoMode') ?? demoModeNotifier.value;
 
   aiProvider = _normalizeAiProvider(
@@ -318,64 +316,64 @@ class SettingsHubPage extends StatelessWidget {
     final items = <_SettingsHubItem>[
       _SettingsHubItem(
         icon: Icons.calendar_view_week_rounded,
-        iconBackground: const Color(0xFFD9EEFF),
-        iconColor: const Color(0xFF0E63A8),
+        iconBackground: cs.primaryContainer,
+        iconColor: cs.onPrimaryContainer,
         title: l.settingsSectionTimetable,
         subtitle: l.settingsShowCancelled,
         pageBuilder: () => const SettingsTimetablePage(),
       ),
       _SettingsHubItem(
         icon: Icons.notifications_active_rounded,
-        iconBackground: const Color(0xFFFFE4CC),
-        iconColor: const Color(0xFFB85A00),
+        iconBackground: cs.secondaryContainer,
+        iconColor: cs.onSecondaryContainer,
         title: l.settingsHubNotifications,
         subtitle: l.settingsProgressivePush,
         pageBuilder: () => const SettingsNotificationsPage(),
       ),
       _SettingsHubItem(
         icon: Icons.palette_outlined,
-        iconBackground: const Color(0xFFFFDDF1),
-        iconColor: const Color(0xFFB1005E),
+        iconBackground: cs.tertiaryContainer,
+        iconColor: cs.onTertiaryContainer,
         title: l.settingsAppearance,
         subtitle: l.settingsCustomBackgrounds,
         pageBuilder: () => const SettingsAppearancePage(),
       ),
       _SettingsHubItem(
         icon: Icons.auto_awesome_motion_rounded,
-        iconBackground: const Color(0xFFDFF6E3),
-        iconColor: const Color(0xFF1E7D32),
+        iconBackground: cs.primaryContainer,
+        iconColor: cs.onPrimaryContainer,
         title: l.settingsSectionSubjects,
         subtitle: l.settingsSectionColors,
         pageBuilder: () => const SettingsSubjectsPage(),
       ),
       _SettingsHubItem(
         icon: Icons.smart_toy_outlined,
-        iconBackground: const Color(0xFFE9E0FF),
-        iconColor: const Color(0xFF5D35B1),
+        iconBackground: cs.secondaryContainer,
+        iconColor: cs.onSecondaryContainer,
         title: l.settingsSectionAI,
         subtitle: l.aiAskAnything,
         pageBuilder: () => const AiAssistantPage(),
       ),
       _SettingsHubItem(
         icon: Icons.cloud_sync_rounded,
-        iconBackground: const Color(0xFFD8F4FF),
-        iconColor: const Color(0xFF00759E),
+        iconBackground: cs.tertiaryContainer,
+        iconColor: cs.onTertiaryContainer,
         title: l.settingsHubDataBackup,
         subtitle: l.settingsHubDataBackupDesc,
         pageBuilder: () => const SettingsBackupPage(),
       ),
       _SettingsHubItem(
         icon: Icons.manage_accounts_outlined,
-        iconBackground: const Color(0xFFFFE8D8),
-        iconColor: const Color(0xFFA14A00),
+        iconBackground: cs.primaryContainer,
+        iconColor: cs.onPrimaryContainer,
         title: l.settingsHubAccount,
         subtitle: l.settingsDemoMode,
         pageBuilder: () => const SettingsAccountPage(),
       ),
       _SettingsHubItem(
         icon: Icons.system_update_alt_rounded,
-        iconBackground: const Color(0xFFFFF0C7),
-        iconColor: const Color(0xFF8A6A00),
+        iconBackground: cs.secondaryContainer,
+        iconColor: cs.onSecondaryContainer,
         title: l.settingsHubUpdatesAbout,
         subtitle: l.settingsAppVersion,
         pageBuilder: () => const SettingsAboutUpdatesPage(),
@@ -391,8 +389,6 @@ class SettingsHubPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: _AnimatedBackground(
-        // Keep enough space for the floating bottom nav so the last tile
-        // never sits under it.
         child: ListView.separated(
           padding: EdgeInsets.fromLTRB(16, 16, 16, mq.padding.bottom + 132),
           itemCount: items.length,
@@ -412,95 +408,68 @@ class SettingsHubPage extends StatelessWidget {
                   ),
                 );
               },
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.shadow.withValues(alpha: 0.08),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                child: Material(
-                  color: cs.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(24),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(24),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        _buildBouncyRoute(item.pageBuilder()),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  item.iconBackground,
-                                  Color.alphaBlend(
-                                    item.iconColor.withValues(alpha: 0.12),
-                                    item.iconBackground,
-                                  ),
-                                ],
+                color: cs.surfaceContainerHigh,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      _buildBouncyRoute(item.pageBuilder()),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: item.iconBackground,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Icon(item.icon, color: item.iconColor),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
                               ),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Icon(item.icon, color: item.iconColor),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
-                                  ),
+                              const SizedBox(height: 4),
+                              Text(
+                                item.subtitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 13,
                                 ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  item.subtitle,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
-                                    color: cs.onSurfaceVariant,
-                                    fontSize: 12.8,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHighest,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.chevron_right_rounded,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ],
                     ),
                   ),
                 ),

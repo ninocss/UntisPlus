@@ -1,3 +1,4 @@
+// settings_timetable_page.dart
 part of '../../main.dart';
 
 class SettingsTimetablePage extends StatelessWidget {
@@ -20,7 +21,11 @@ class SettingsTimetablePage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
                 valueListenable: showCancelledNotifier,
@@ -41,8 +46,12 @@ class SettingsTimetablePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
-              color: cs.surfaceContainerLow,
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.sync_rounded),
                 title: Text(

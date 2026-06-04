@@ -1,3 +1,4 @@
+// settings_account_page.dart
 part of '../../main.dart';
 
 class SettingsAccountPage extends StatefulWidget {
@@ -42,7 +43,11 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -75,7 +80,7 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () => _settingsLogout(context),
                       icon: const Icon(Icons.logout_rounded),
@@ -86,6 +91,9 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                       style: FilledButton.styleFrom(
                         backgroundColor: cs.errorContainer,
                         foregroundColor: cs.onErrorContainer,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                   ],
@@ -93,7 +101,11 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
                 valueListenable: demoModeNotifier,

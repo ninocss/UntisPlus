@@ -1,3 +1,4 @@
+// settings_backup_page.dart
 part of '../../main.dart';
 
 class SettingsBackupPage extends StatefulWidget {
@@ -12,10 +13,14 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
   bool _includeApiKeys = false;
   bool _busy = false;
 
-  void _showSnack(String text) {
+  void _showSnack(String text, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(text),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? Theme.of(context).colorScheme.error : null,
+      ),
     );
   }
 
@@ -38,60 +43,57 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     return 'untisplus-settings-$stamp.json';
   }
 
-  Future<String?> _resolveExportPath(AppL10n l) async {
-    final fileName = _defaultFileName();
-
-    final savePath = await FilePicker.saveFile(
-      dialogTitle: l.settingsBackupExportDialogTitle,
-      fileName: fileName,
-      type: FileType.custom,
-      allowedExtensions: const ['json'],
-    );
-    if (savePath != null && savePath.isNotEmpty) {
-      return savePath;
+  bool _isValidJson(String text) {
+    try {
+      jsonDecode(text);
+      return true;
+    } catch (_) {
+      return false;
     }
+  }
 
-    // Fallback for platforms where save dialogs are unavailable.
-    final folder = await FilePicker.getDirectoryPath(
-      dialogTitle: l.settingsBackupExportDialogTitle,
+  Future<String> _getValidatedExportContent() async {
+    final content = await _backupService.exportAllToJsonText(
+      includeApiKeys: _includeApiKeys,
     );
-    if (folder == null || folder.isEmpty) {
-      return null;
+    if (content.trim().isEmpty) {
+      throw Exception('Exported content is empty');
     }
-    return '$folder${Platform.pathSeparator}$fileName';
+    if (!_isValidJson(content)) {
+      throw Exception('Generated JSON is invalid');
+    }
+    return content;
   }
 
   Future<void> _exportToFile() async {
     final l = AppL10n.of(appLocaleNotifier.value);
     try {
       await _setBusyWhile(() async {
-        final content = await _backupService.exportAllToJsonText(
-          includeApiKeys: _includeApiKeys,
+        final content = await _getValidatedExportContent();
+        final bytes = utf8.encode(content);
+
+        final result = await FilePicker.saveFile(
+          dialogTitle: l.settingsBackupExportDialogTitle,
+          fileName: _defaultFileName(),
+          bytes: bytes,
         );
-        if (kIsWeb) {
-          await downloadTextFile(
-            filename: _defaultFileName(),
-            content: content,
-          );
-          _showSnack(l.settingsBackupExportSuccess);
-          return;
-        }
-        final savePath = await _resolveExportPath(l);
-        if (savePath == null || savePath.isEmpty) return;
-        await File(savePath).writeAsString(content);
+        if (result == null || result.isEmpty) return;
         _showSnack(l.settingsBackupExportSuccess);
       });
     } catch (e) {
-      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})');
+      final errorMsg = e.toString();
+      if (errorMsg.contains('JSON is invalid') || errorMsg.contains('empty')) {
+        _showSnack("l.settingsBackupInvalidJson", isError: true);
+      } else {
+        _showSnack('${"l.settingsBackupExportFailed"} (${e.toString()})', isError: true);
+      }
     }
   }
 
   Future<void> _exportToClipboard() async {
     final l = AppL10n.of(appLocaleNotifier.value);
     await _setBusyWhile(() async {
-      final content = await _backupService.exportAllToJsonText(
-        includeApiKeys: _includeApiKeys,
-      );
+      final content = await _getValidatedExportContent();
       await Clipboard.setData(ClipboardData(text: content));
       _showSnack(l.settingsBackupExportClipboardSuccess);
     });
@@ -118,6 +120,9 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         if (content == null || content.trim().isEmpty) {
           throw const FormatException('Empty file');
         }
+        if (!_isValidJson(content)) {
+          throw const FormatException('Invalid JSON format');
+        }
 
         final confirmed = await _confirmImport();
         if (!confirmed) return;
@@ -126,7 +131,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         _showSnack(l.settingsBackupImportSuccess);
       });
     } catch (e) {
-      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})');
+      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})', isError: true);
     }
   }
 
@@ -137,7 +142,11 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         final data = await Clipboard.getData(Clipboard.kTextPlain);
         final text = data?.text?.trim() ?? '';
         if (text.isEmpty) {
-          _showSnack(l.settingsBackupClipboardEmpty);
+          _showSnack(l.settingsBackupClipboardEmpty, isError: true);
+          return;
+        }
+        if (!_isValidJson(text)) {
+          _showSnack("l.settingsBackupInvalidJson", isError: true);
           return;
         }
         final confirmed = await _confirmImport();
@@ -147,7 +156,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         _showSnack(l.settingsBackupImportSuccess);
       });
     } catch (e) {
-      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})');
+      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})', isError: true);
     }
   }
 
@@ -156,6 +165,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           l.settingsBackupConfirmTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
@@ -194,7 +204,11 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 16, 16, mq.padding.bottom + 120),
           children: [
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -224,11 +238,11 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       ),
                       style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
+                        minimumSize: const Size(double.infinity, 52),
                         backgroundColor: cs.primaryContainer,
                         foregroundColor: cs.onPrimaryContainer,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     ),
@@ -241,9 +255,9 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       ),
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
+                        minimumSize: const Size(double.infinity, 52),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     ),
@@ -252,8 +266,12 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
-              color: cs.surfaceContainerLow,
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Column(
@@ -275,11 +293,11 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       ),
                       style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
+                        minimumSize: const Size(double.infinity, 52),
                         backgroundColor: cs.tertiaryContainer,
                         foregroundColor: cs.onTertiaryContainer,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     ),
@@ -292,9 +310,9 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       ),
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
+                        minimumSize: const Size(double.infinity, 52),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     ),

@@ -1,3 +1,4 @@
+// settings_subjects_page.dart
 part of '../../main.dart';
 
 class SettingsSubjectsPage extends StatelessWidget {
@@ -19,7 +20,11 @@ class SettingsSubjectsPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.palette_outlined),
@@ -41,7 +46,11 @@ class SettingsSubjectsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<Set<String>>(
                 valueListenable: hiddenSubjectsNotifier,

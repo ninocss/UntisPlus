@@ -1,3 +1,4 @@
+// settings_appearance_page.dart
 part of '../../main.dart';
 
 class SettingsAppearancePage extends StatelessWidget {
@@ -90,7 +91,11 @@ class SettingsAppearancePage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -103,13 +108,18 @@ class SettingsAppearancePage extends StatelessWidget {
                         Text(
                           l.settingsThemeMode,
                           style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             fontSize: 16,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         SegmentedButton<ThemeMode>(
                           showSelectedIcon: false,
+                          style: SegmentedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                           segments: [
                             ButtonSegment(
                               value: ThemeMode.system,
@@ -139,7 +149,11 @@ class SettingsAppearancePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.language_rounded),
@@ -157,7 +171,11 @@ class SettingsAppearancePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
                 valueListenable: blurEnabledNotifier,
@@ -178,7 +196,11 @@ class SettingsAppearancePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
                 valueListenable: backgroundAnimationsNotifier,
@@ -199,7 +221,11 @@ class SettingsAppearancePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
                 valueListenable: backgroundGyroscopeNotifier,
@@ -220,7 +246,11 @@ class SettingsAppearancePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<int>(
                 valueListenable: backgroundAnimationStyleNotifier,
@@ -242,8 +272,12 @@ class SettingsAppearancePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
-              color: cs.surfaceContainerLow,
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.wallpaper_rounded),
                 title: Text(

@@ -1,3 +1,4 @@
+// settings_notifications_page.dart
 part of '../../main.dart';
 
 class SettingsNotificationsPage extends StatelessWidget {
@@ -20,7 +21,11 @@ class SettingsNotificationsPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
                 valueListenable: progressivePushNotifier,
@@ -41,7 +46,11 @@ class SettingsNotificationsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
                 valueListenable: dailyBriefingPushNotifier,
@@ -62,7 +71,11 @@ class SettingsNotificationsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Card.filled(
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
                 valueListenable: importantChangesPushNotifier,
