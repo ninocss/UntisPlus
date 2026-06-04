@@ -532,7 +532,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   String? _loadError;
   bool _showingCachedWeek = false;
   int _viewMode = 0;
+  // Carousel state for week switching
+  double _carouselOffset = 0.0;
   int _weekAnimationDirection = 1;
+  AnimationController? _carouselAnimController;
+  final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
 
   String? _tempSessionId;
   int? _viewingClassId;
@@ -553,19 +557,33 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final Map<int, String> _teacherMap = {};
   final Map<int, String> _roomMap = {};
 
-  String _weekCacheKey({
+  String _mondayKey(DateTime monday) => DateFormat('yyyyMMdd').format(monday);
+
+  String _weekCacheKeyFor({
+    required DateTime monday,
     required int requestPersonId,
     required int requestPersonType,
   }) {
-    final monday = DateFormat('yyyyMMdd').format(_currentMonday);
+    final mondayStr = DateFormat('yyyyMMdd').format(monday);
     return [
       'weekCacheV1',
       schoolUrl,
       schoolName,
       requestPersonType.toString(),
       requestPersonId.toString(),
-      monday,
+      mondayStr,
     ].join('|');
+  }
+
+  String _weekCacheKey({
+    required int requestPersonId,
+    required int requestPersonType,
+  }) {
+    return _weekCacheKeyFor(
+      monday: _currentMonday,
+      requestPersonId: requestPersonId,
+      requestPersonType: requestPersonType,
+    );
   }
 
   Map<int, List<dynamic>> _emptyWeekData() => {
@@ -590,13 +608,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Future<Map<int, List<dynamic>>?> _loadWeekFromCache({
     required int requestPersonId,
     required int requestPersonType,
+    DateTime? monday,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final key = _weekCacheKey(
-        requestPersonId: requestPersonId,
-        requestPersonType: requestPersonType,
-      );
+      final key = monday != null
+          ? _weekCacheKeyFor(
+              monday: monday,
+              requestPersonId: requestPersonId,
+              requestPersonType: requestPersonType,
+            )
+          : _weekCacheKey(
+              requestPersonId: requestPersonId,
+              requestPersonType: requestPersonType,
+            );
       final raw = prefs.getString(key);
       if (raw == null || raw.isEmpty) return null;
 
@@ -643,13 +668,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     required int requestPersonId,
     required int requestPersonType,
     required Map<int, List<dynamic>> weekData,
+    DateTime? monday,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final key = _weekCacheKey(
-        requestPersonId: requestPersonId,
-        requestPersonType: requestPersonType,
-      );
+      final key = monday != null
+          ? _weekCacheKeyFor(
+              monday: monday,
+              requestPersonId: requestPersonId,
+              requestPersonType: requestPersonType,
+            )
+          : _weekCacheKey(
+              requestPersonId: requestPersonId,
+              requestPersonType: requestPersonType,
+            );
       final payload = {
         'savedAt': DateTime.now().toIso8601String(),
         'weekData': {
@@ -826,7 +858,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
     demoModeNotifier.addListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
-    if (sessionID.isNotEmpty || demoModeNotifier.value) _fetchFullWeek();
+    if (sessionID.isNotEmpty || demoModeNotifier.value) {
+      _fetchFullWeek();
+      _prefetchAdjacentWeeks();
+    }
     _loadViewPref();
   }
 
@@ -885,22 +920,35 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         m.contains('nicht erlaubtes datum');
   }
 
-  void _prevWeek() {
-    HapticFeedback.selectionClick();
+  void _navigateToWeek(DateTime newMonday, int direction) {
+    final cacheKey = _mondayKey(newMonday);
+    final cached = _adjacentWeekCache[cacheKey];
     setState(() {
-      _weekAnimationDirection = -1;
-      _currentMonday = _currentMonday.subtract(const Duration(days: 7));
+      _weekAnimationDirection = direction;
+      _currentMonday = newMonday;
+      if (cached != null) {
+        _weekData = cached;
+        _showingCachedWeek = true;
+        _loading = false;
+      }
     });
     _fetchFullWeek();
   }
 
+  void _prevWeek() {
+    HapticFeedback.selectionClick();
+    _navigateToWeek(
+      _currentMonday.subtract(const Duration(days: 7)),
+      -1,
+    );
+  }
+
   void _nextWeek() {
     HapticFeedback.selectionClick();
-    setState(() {
-      _weekAnimationDirection = 1;
-      _currentMonday = _currentMonday.add(const Duration(days: 7));
-    });
-    _fetchFullWeek();
+    _navigateToWeek(
+      _currentMonday.add(const Duration(days: 7)),
+      1,
+    );
   }
 
   void _onSwipeLeft() {
@@ -946,14 +994,329 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     _fetchFullWeek();
   }
 
+  // --- Week carousel ---
+
+  DateTime _weekMondayFromDelta(int delta) =>
+      _currentMonday.add(Duration(days: 7 * delta));
+
+  Map<int, List<dynamic>>? _getAdjacentWeekData(DateTime monday) {
+    return _adjacentWeekCache[_mondayKey(monday)];
+  }
+
+  Future<void> _prefetchAdjacentWeeks() async {
+    if (demoModeNotifier.value) return;
+    final pid = _viewingClassId ?? personId;
+    final pType = _viewingClassId != null ? 1 : personType;
+    if (pid == 0) return;
+    await _fetchMasterData();
+    for (final delta in [-1, 1, 2]) {
+      final adjMonday = _weekMondayFromDelta(delta);
+      final key = _mondayKey(adjMonday);
+      if (_adjacentWeekCache.containsKey(key)) continue;
+      try {
+        DateTime friday = adjMonday.add(const Duration(days: 4));
+        int startDate = int.parse(DateFormat('yyyyMMdd').format(adjMonday));
+        int endDate = int.parse(DateFormat('yyyyMMdd').format(friday));
+        final url = Uri.parse(
+          'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+        );
+        final response = await http.post(
+          url,
+          headers: {
+            "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: jsonEncode({
+            "id": "week_prefetch",
+            "method": "getTimetable",
+            "params": {
+              "options": {
+                "element": {"id": pid, "type": pType},
+                "startDate": startDate,
+                "endDate": endDate,
+                "showLsText": true,
+                "showSubstText": true,
+                "showInfo": true,
+                "showBooking": true,
+              },
+            },
+            "jsonrpc": "2.0",
+          }),
+        );
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(response.body);
+          if (decoded['error'] == null && decoded['result'] != null) {
+            final tempWeek = _parseWeekResult(decoded['result']);
+            if (tempWeek != null) {
+              _adjacentWeekCache[key] = tempWeek;
+              await _saveWeekToCache(
+                requestPersonId: pid,
+                requestPersonType: pType,
+                weekData: tempWeek,
+                monday: adjMonday,
+              );
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  Map<int, List<dynamic>>? _parseWeekResult(dynamic result) {
+    if (result is! List) return null;
+    final week = _emptyWeekData();
+    for (final entry in result) {
+      if (entry is! Map) continue;
+      final day = entry['date'];
+      if (day is! int) continue;
+      final dayStr = day.toString();
+      final date = DateTime.tryParse(
+        '${dayStr.substring(0, 4)}-${dayStr.substring(4, 6)}-${dayStr.substring(6, 8)}',
+      );
+      if (date == null) continue;
+      final dayIndex = date.weekday - 1;
+      if (dayIndex < 0 || dayIndex > 4) continue;
+      final lessonMap = Map<String, dynamic>.from(
+        entry.cast<String, dynamic>(),
+      );
+      _enrichLesson(lessonMap);
+      week[dayIndex] = [...week[dayIndex]!, lessonMap];
+    }
+    for (final i in week.keys) {
+      week[i]!.sort((a, b) {
+        final aStart = (a['startTime'] as int?) ?? 0;
+        final bStart = (b['startTime'] as int?) ?? 0;
+        return aStart.compareTo(bStart);
+      });
+    }
+    return week;
+  }
+
+  void _enrichLesson(Map<String, dynamic> lesson) {
+    final teList = (lesson['te'] as List?) ?? [];
+    if (teList.isNotEmpty) {
+      final firstTeacher = teList.first as Map?;
+      if (firstTeacher != null) {
+        final tId = firstTeacher['id'] as int?;
+        lesson['_teacher'] = tId != null
+            ? (_teacherMap[tId] ??
+                (firstTeacher['name']?.toString() ?? '?'))
+            : '?';
+      }
+    }
+    final suList = (lesson['su'] as List?) ?? [];
+    if (suList.isNotEmpty) {
+      final firstSubject = suList.first as Map?;
+      if (firstSubject != null) {
+        final sId = firstSubject['id'] as int?;
+        lesson['_subjectShort'] = sId != null
+            ? (_subjectShortMap[sId] ??
+                (firstSubject['name']?.toString() ?? '?'))
+            : '?';
+        lesson['_subjectLong'] = sId != null
+            ? (_subjectLong[sId] ??
+                (firstSubject['longName']?.toString() ??
+                    firstSubject['name']?.toString() ?? '?'))
+            : '?';
+      }
+    }
+    final roList = (lesson['ro'] as List?) ?? [];
+    if (roList.isNotEmpty) {
+      final firstRoom = roList.first as Map?;
+      if (firstRoom != null) {
+        final rId = firstRoom['id'] as int?;
+        lesson['_room'] = rId != null
+            ? (_roomMap[rId] ??
+                (firstRoom['name']?.toString() ?? '?'))
+            : '?';
+      }
+    }
+  }
+
+  Widget _buildAdjacentWeekView(int direction) {
+    final adjMonday = _weekMondayFromDelta(direction);
+    final cached = _getAdjacentWeekData(adjMonday);
+    if (cached != null) {
+      return _buildWeekView(monday: adjMonday, weekData: cached);
+    }
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(strokeWidth: 2),
+          const SizedBox(height: 8),
+          Text(
+            '${l.timetableTitle} …',
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeekCarousel() {
+    return GestureDetector(
+      onHorizontalDragStart: _onCarouselDragStart,
+      onHorizontalDragUpdate: _onCarouselDragUpdate,
+      onHorizontalDragEnd: _onCarouselDragEnd,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final offset = _carouselOffset.clamp(-w, w);
+          const double peek = 64.0;
+
+          return ClipRect(
+            child: Stack(
+              children: [
+                if (offset > 0)
+                  Transform.translate(
+                    offset: Offset(-w + peek + offset, 0),
+                    child: SizedBox(
+                      width: w,
+                      child: _buildAdjacentWeekView(-1),
+                    ),
+                  ),
+                if (offset < 0)
+                  Transform.translate(
+                    offset: Offset(w - peek + offset, 0),
+                    child: SizedBox(
+                      width: w,
+                      child: _buildAdjacentWeekView(1),
+                    ),
+                  ),
+                Transform.translate(
+                  offset: Offset(offset, 0),
+                  child: SizedBox(
+                    width: w,
+                    child: KeyedSubtree(
+                      key: ValueKey(
+                        'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
+                      ),
+                      child: _buildWeekView(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _onCarouselDragStart(DragStartDetails details) {
+    setState(() {
+      _carouselOffset = 0;
+    });
+    _prefetchAdjacentWeeks();
+  }
+
+  void _onCarouselDragUpdate(DragUpdateDetails details) {
+    setState(() {
+      _carouselOffset += details.delta.dx;
+    });
+  }
+
+  void _onCarouselDragEnd(DragEndDetails details) {
+    final width = context.findRenderObject() != null
+        ? (context.findRenderObject()! as RenderBox).size.width
+        : 400.0;
+    final threshold = width * 0.25;
+    final velocity = details.primaryVelocity ?? 0;
+
+    if (_carouselOffset < -threshold || velocity < -400) {
+      _animateCarouselTo(-1, width);
+    } else if (_carouselOffset > threshold || velocity > 400) {
+      _animateCarouselTo(1, width);
+    } else {
+      _animateCarouselTo(0, width);
+    }
+  }
+
+  void _animateCarouselTo(int direction, double width) {
+    if (direction == 0) {
+      _carouselAnimController?.dispose();
+      _carouselAnimController = AnimationController(
+        duration: const Duration(milliseconds: 250),
+        vsync: this,
+      );
+      final anim = Tween<double>(begin: _carouselOffset, end: 0).animate(
+        CurvedAnimation(
+          parent: _carouselAnimController!,
+          curve: Curves.easeOutCubic,
+        ),
+      );
+      _carouselAnimController!.addListener(() {
+        if (!mounted) return;
+        setState(() => _carouselOffset = anim.value);
+      });
+      _carouselAnimController!.addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() {
+            _carouselOffset = 0;
+          });
+        }
+      });
+      _carouselAnimController!.forward();
+      return;
+    }
+
+    final target = direction * width;
+    _carouselAnimController?.dispose();
+    _carouselAnimController = AnimationController(
+      duration: const Duration(milliseconds: 280),
+      vsync: this,
+    );
+    final anim = Tween<double>(begin: _carouselOffset, end: target).animate(
+      CurvedAnimation(
+        parent: _carouselAnimController!,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+    _carouselAnimController!.addListener(() {
+      if (!mounted) return;
+      setState(() => _carouselOffset = anim.value);
+    });
+    _carouselAnimController!.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        final newMonday = direction > 0
+            ? _currentMonday.subtract(const Duration(days: 7))
+            : _currentMonday.add(const Duration(days: 7));
+        final cacheKey = _mondayKey(newMonday);
+        final cached = _adjacentWeekCache[cacheKey];
+        setState(() {
+          _weekAnimationDirection = direction > 0 ? -1 : 1;
+          _currentMonday = newMonday;
+          if (cached != null) {
+            _weekData = cached;
+            _showingCachedWeek = true;
+            _loading = false;
+          }
+          _carouselOffset = 0;
+        });
+        HapticFeedback.selectionClick();
+        _fetchFullWeek();
+        _prefetchAdjacentWeeks();
+      }
+    });
+    _carouselAnimController!.forward();
+  }
+
   @override
   void dispose() {
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.removeListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.removeListener(_onHiddenSubjectsChanged);
     demoModeNotifier.removeListener(_onDemoModeChanged);
-    pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
+    pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     _tabController.dispose();
+    _carouselAnimController?.dispose();
     super.dispose();
   }
 
@@ -1052,10 +1415,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return merged;
   }
 
-  List<_TimeRangeLabel> _collectTimeRangesFromWeek() {
+  List<_TimeRangeLabel> _collectTimeRangesFromWeek() =>
+      _collectTimeRangesFromData(_weekData);
+
+  List<_TimeRangeLabel> _collectTimeRangesFromData(
+    Map<int, List<dynamic>> weekData,
+  ) {
     final seen = <String>{};
     final ranges = <_TimeRangeLabel>[];
-    for (final day in _weekData.values) {
+    for (final day in weekData.values) {
       final visibleDayLessons = day
           .where(
             (l) => !hiddenSubjectsNotifier.value.contains(
@@ -2011,13 +2379,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
-  Widget _buildWeekView() {
+  Widget _buildWeekView({
+    DateTime? monday,
+    Map<int, List<dynamic>>? weekData,
+  }) {
+    final m = monday ?? _currentMonday;
+    final wd = weekData ?? _weekData;
     final media = MediaQuery.of(context);
     final topContentPadding = media.padding.top + kToolbarHeight + 10;
 
     int globalMin = 480;
     int globalMax = 900;
-    for (final day in _weekData.values) {
+    for (final day in wd.values) {
       for (final l in day) {
         final s = _toMinutes((l['startTime'] as int?) ?? 480);
         final e = _toMinutes((l['endTime'] as int?) ?? 600);
@@ -2031,22 +2404,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final totalHeight = (globalMax - globalMin) * _ppm;
 
     final List<int> ticks = [];
-    for (int m = globalMin - (globalMin % 60) + 60; m < globalMax; m += 60) {
-      ticks.add(m);
+    for (int min = globalMin - (globalMin % 60) + 60; min < globalMax; min += 60) {
+      ticks.add(min);
     }
 
     const double timeColWidth = 52.0;
     const double minDayColWidth = 56.0;
     const double dayColGap = 4.0;
-    final timeRanges = _collectTimeRangesFromWeek();
+    final timeRanges = _collectTimeRangesFromData(wd);
     final cs = Theme.of(context).colorScheme;
     final today = DateTime.now();
 
     final todayDate = DateTime(today.year, today.month, today.day);
     final mondayDate = DateTime(
-      _currentMonday.year,
-      _currentMonday.month,
-      _currentMonday.day,
+      m.year,
+      m.month,
+      m.day,
     );
     final todayIndex = todayDate.difference(mondayDate).inDays;
     final nowMin = today.hour * 60 + today.minute;
@@ -2091,7 +2464,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   ),
                   child: Row(
                     children: List.generate(5, (i) {
-                      final d = _currentMonday.add(Duration(days: i));
+                      final d = m.add(Duration(days: i));
                       final isToday =
                           d.year == today.year &&
                           d.month == today.month &&
@@ -2216,7 +2589,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: List.generate(5, (dayIndex) {
-                        final lessons = (_weekData[dayIndex] ?? [])
+                        final lessons = (wd[dayIndex] ?? [])
                             .where(
                               (l) => !hiddenSubjectsNotifier.value.contains(
                                 l['_subjectShort']?.toString() ?? '',
@@ -2256,7 +2629,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       ),
                                     );
                                   }),
-                                  ..._getHolidaysForDay(_currentMonday.add(Duration(days: dayIndex))).map((holiday) {
+                                  ..._getHolidaysForDay(m.add(Duration(days: dayIndex))).map((holiday) {
                                     final holidayStartMin = _toMinutes(800);
                                     final holidayEndMin = _toMinutes(1800);
                                     final top2 = (holidayStartMin - globalMin) * _ppm;
@@ -3566,42 +3939,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   ),
                 ),
               )
-            : _viewMode == 1
-            ? GestureDetector(
-                onHorizontalDragEnd: (details) {
-                  final velocity = details.primaryVelocity ?? 0;
-                  if (velocity < -350) _nextWeek();
-                  if (velocity > 350) _prevWeek();
-                },
-                // Animates between week changes while keeping the week view fixed.
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 320),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    final beginOffset = Offset(
-                      _weekAnimationDirection > 0 ? 0.16 : -0.16,
-                      0,
-                    );
-                    final slide = Tween<Offset>(
-                      begin: beginOffset,
-                      end: Offset.zero,
-                    ).animate(animation);
-                    return ClipRect(
-                      child: FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(position: slide, child: child),
-                      ),
-                    );
-                  },
-                  child: KeyedSubtree(
-                    key: ValueKey(
-                      '${DateFormat('yyyyMMdd').format(_currentMonday)}-$_viewMode',
-                    ),
-                    child: _buildWeekView(),
-                  ),
-                ),
-              )
+             : _viewMode == 1
+             ? _buildWeekCarousel()
             : GestureDetector(
                 onHorizontalDragEnd: (details) {
                   final velocity = details.primaryVelocity ?? 0;

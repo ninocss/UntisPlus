@@ -23,6 +23,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final _twoFactorController = TextEditingController();
   final _aiApiKeyController = TextEditingController();
   final _aiCustomBaseUrlController = TextEditingController();
+  final _schoolSearchFocusNode = FocusNode();
 
   late String _onboardingAiProvider;
   late String _onboardingAiModel;
@@ -63,6 +64,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     _aiCustomBaseUrlController.text = aiCustomBaseUrl;
     _syncApiKeyControllerForProvider();
+    _pageController.addListener(_onPageChanged);
     SharedPreferences.getInstance().then((prefs) {
       if (!mounted) return;
       setState(() {
@@ -72,9 +74,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     });
   }
 
+  void _onPageChanged() {
+    final page = _pageController.page?.round() ?? _currentPage;
+    if (page == 2) {
+      _schoolSearchFocusNode.requestFocus();
+    }
+  }
+
   @override
   void dispose() {
+    _pageController.removeListener(_onPageChanged);
     _pageController.dispose();
+    _schoolSearchFocusNode.dispose();
     _serverController.dispose();
     _schoolController.dispose();
     _userController.dispose();
@@ -1552,7 +1563,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
             ),
             child: TextField(
-              autofocus: true,
+              focusNode: _schoolSearchFocusNode,
               style: GoogleFonts.outfit(fontSize: 15),
               decoration: InputDecoration(
                 hintText: l.loginSearchHint,
