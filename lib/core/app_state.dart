@@ -234,3 +234,9 @@ Future<bool> _reAuthenticate() async {
   } catch (_) {}
   return false;
 }
+
+// ── CLASS FAVORITES & DEFAULTS ──────────────────────────────────────────────
+int? defaultClassId;
+String? defaultClassName;
+Set<int> favoriteClassIds = {};
+

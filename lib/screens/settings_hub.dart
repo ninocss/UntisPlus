@@ -123,6 +123,9 @@ Future<void> _settingsSetDemoMode(BuildContext context, bool enabled) async {
 
 Future<void> _settingsLogout(BuildContext context) async {
   HapticFeedback.heavyImpact();
+  defaultClassId = null;
+  defaultClassName = null;
+  favoriteClassIds = {};
   final prefs = await SharedPreferences.getInstance();
   await prefs.clear();
   if (!context.mounted) return;
@@ -308,6 +311,14 @@ Future<void> _settingsSyncFromPrefs() async {
 
   hiddenSubjectsNotifier.value =
       (prefs.getStringList('hiddenSubjects') ?? const <String>[]).toSet();
+  
+  defaultClassId = prefs.getInt('defaultClassId');
+  defaultClassName = prefs.getString('defaultClassName');
+  favoriteClassIds = (prefs.getStringList('favoriteClassIds') ?? [])
+      .map((idStr) => int.tryParse(idStr))
+      .whereType<int>()
+      .toSet();
+
   try {
     final colorsJson = prefs.getString('subjectColors');
     if (colorsJson != null) {

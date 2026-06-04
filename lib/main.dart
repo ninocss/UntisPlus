@@ -85,6 +85,13 @@ void main() async {
     personType = prefs.getInt('personType') ?? 0;
     personId = prefs.getInt('personId') ?? 0;
   }
+  defaultClassId = prefs.getInt('defaultClassId');
+  defaultClassName = prefs.getString('defaultClassName');
+  favoriteClassIds = (prefs.getStringList('favoriteClassIds') ?? [])
+      .map((idStr) => int.tryParse(idStr))
+      .whereType<int>()
+      .toSet();
+
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
   themeModeNotifier.value = ThemeMode.values[prefs.getInt('themeMode') ?? 0];
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
@@ -793,6 +800,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       vsync: this,
       initialIndex: (DateTime.now().weekday - 1).clamp(0, 4),
     );
+    if (defaultClassId != null) {
+      _viewingClassId = defaultClassId;
+      _viewingClassName = defaultClassName;
+    }
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.addListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
@@ -2894,6 +2905,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     } catch (_) {}
 
     final l = AppL10n.of(appLocaleNotifier.value);
+    final isGerman = appLocaleNotifier.value == 'de';
 
     showModalBottomSheet(
       context: context,
@@ -2902,174 +2914,328 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (_, scrollController) {
-            return _glassContainer(
-              context: ctx,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
-              ),
-              child: ListView(
-                controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                children: [
-                  Center(
-                    child: Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: cs.outlineVariant,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final List<dynamic> sortedClasses = List.from(classes);
+            sortedClasses.sort((a, b) {
+              final idA = a['id'] as int?;
+              final idB = b['id'] as int?;
+              final isFavA = idA != null && favoriteClassIds.contains(idA);
+              final isFavB = idB != null && favoriteClassIds.contains(idB);
+              if (isFavA && !isFavB) return -1;
+              if (!isFavA && isFavB) return 1;
+              final nameA = (a['name'] ?? a['longName'] ?? '').toString();
+              final nameB = (b['name'] ?? b['longName'] ?? '').toString();
+              return nameA.compareTo(nameB);
+            });
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.6,
+              minChildSize: 0.4,
+              maxChildSize: 0.9,
+              expand: false,
+              builder: (_, scrollController) {
+                return _glassContainer(
+                  context: ctx,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(32),
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    l.timetableSelectClass,
-                    style: GoogleFonts.outfit(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Wähle einen Stundenplan aus',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.96),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Card(
-                    elevation: 0,
-                    color: cs.surfaceContainerHighest.withValues(
-                      alpha: blurEnabledNotifier.value ? 0.88 : 0.94,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(
-                        color: cs.outlineVariant.withValues(alpha: 0.58),
-                      ),
-                    ),
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.person,
-                        color: cs.primary.withValues(alpha: 0.95),
-                      ),
-                      title: Text(
-                        l.timetableMyTimetable,
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: cs.onSurface.withValues(alpha: 0.99),
-                        ),
-                      ),
-                      onTap: () {
-                        setState(() {
-                          _viewingClassId = null;
-                          _viewingClassName = null;
-                          _tempSessionId = null;
-                        });
-                        Navigator.pop(ctx);
-                        _fetchFullWeek();
-                      },
-                    ),
-                  ),
-                  if (classes.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 16),
-                        Text(
-                          'Andere Klassen',
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.94),
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 42,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: cs.outlineVariant,
+                            borderRadius: BorderRadius.circular(999),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        ...classes.asMap().entries.map((entry) {
-                          final i = entry.key;
-                          final c = entry.value;
-                          final name = c['name'] ?? c['longName'] ?? '?';
-                          final id = c['id'] as int?;
-                          if (id == null) return const SizedBox.shrink();
-                          return _springEntry(
-                            duration: Duration(milliseconds: 300 + i * 45),
-                            offsetY: 16,
-                            startScale: 0.95,
-                            curve: _kSmoothBounce,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Card(
-                                elevation: 0,
-                                color: cs.surfaceContainerHigh.withValues(
-                                  alpha: blurEnabledNotifier.value
-                                      ? 0.86
-                                      : 0.92,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                  side: BorderSide(
-                                    color: cs.outlineVariant.withValues(
-                                      alpha: 0.54,
-                                    ),
-                                  ),
-                                ),
-                                child: ListTile(
-                                  leading: Icon(
-                                    Icons.class_outlined,
-                                    color: cs.primary.withValues(alpha: 0.95),
-                                  ),
-                                  title: Text(
-                                    name,
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 16,
-                                      color: cs.onSurface.withValues(
-                                        alpha: 0.99,
-                                      ),
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    setState(() {
-                                      _viewingClassId = id;
-                                      _viewingClassName = name;
-                                      _tempSessionId =
-                                          (sid != null && sid != sessionID)
-                                          ? sid
-                                          : null;
-                                    });
-                                    Navigator.pop(ctx);
-                                    _fetchFullWeek();
-                                  },
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        l.timetableNoClassesFound,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        l.timetableSelectClass,
                         style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: cs.onSurface,
                         ),
                       ),
-                    ),
-                ],
-              ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isGerman
+                            ? 'Wähle einen Stundenplan aus. Favoriten werden oben angezeigt.'
+                            : 'Select a timetable. Favorites are shown at the top.',
+                        style: GoogleFonts.outfit(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.96),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Card(
+                        elevation: 0,
+                        color: cs.surfaceContainerHighest.withValues(
+                          alpha: blurEnabledNotifier.value ? 0.88 : 0.94,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.58),
+                          ),
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.person,
+                            color: cs.primary.withValues(alpha: 0.95),
+                          ),
+                          title: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  l.timetableMyTimetable,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    color: cs.onSurface.withValues(alpha: 0.99),
+                                  ),
+                                ),
+                              ),
+                              if (defaultClassId == null) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: cs.primaryContainer,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    isGerman ? 'Standard' : 'Default',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: cs.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: IconButton(
+                            tooltip: isGerman
+                                ? 'Als Standard festlegen'
+                                : 'Set as default',
+                            icon: Icon(
+                              defaultClassId == null
+                                  ? Icons.home_rounded
+                                  : Icons.add_rounded,
+                              color: defaultClassId == null
+                                  ? cs.primary
+                                  : cs.onSurfaceVariant.withValues(alpha: 0.6),
+                            ),
+                            onPressed: () async {
+                              final prefs = await SharedPreferences.getInstance();
+                              setSheetState(() {
+                                defaultClassId = null;
+                                defaultClassName = null;
+                              });
+                              await prefs.remove('defaultClassId');
+                              await prefs.remove('defaultClassName');
+                              setState(() {});
+                            },
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _viewingClassId = null;
+                              _viewingClassName = null;
+                              _tempSessionId = null;
+                            });
+                            Navigator.pop(ctx);
+                            _fetchFullWeek();
+                          },
+                        ),
+                      ),
+                      if (sortedClasses.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 16),
+                            Text(
+                              isGerman ? 'Andere Klassen' : 'Other classes',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: cs.onSurfaceVariant.withValues(alpha: 0.94),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...sortedClasses.asMap().entries.map((entry) {
+                              final i = entry.key;
+                              final c = entry.value;
+                              final name = (c['name'] ?? c['longName'] ?? '?').toString();
+                              final id = c['id'] as int?;
+                              if (id == null) return const SizedBox.shrink();
+
+                              final isFavorite = favoriteClassIds.contains(id);
+                              final isDefault = defaultClassId == id;
+
+                              return _springEntry(
+                                duration: Duration(milliseconds: 300 + i * 45),
+                                offsetY: 16,
+                                startScale: 0.95,
+                                curve: _kSmoothBounce,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Card(
+                                    elevation: 0,
+                                    color: cs.surfaceContainerHigh.withValues(
+                                      alpha: blurEnabledNotifier.value
+                                          ? 0.86
+                                          : 0.92,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(
+                                        color: cs.outlineVariant.withValues(
+                                          alpha: 0.54,
+                                        ),
+                                      ),
+                                    ),
+                                    child: ListTile(
+                                      leading: Icon(
+                                        isFavorite ? Icons.star_rounded : Icons.class_outlined,
+                                        color: isFavorite
+                                            ? Colors.amber.shade600
+                                            : cs.primary.withValues(alpha: 0.95),
+                                      ),
+                                      title: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              style: GoogleFonts.outfit(
+                                                fontWeight: isFavorite ? FontWeight.bold : FontWeight.w500,
+                                                fontSize: 16,
+                                                color: cs.onSurface.withValues(
+                                                  alpha: 0.99,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          if (isDefault) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: cs.primaryContainer,
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                isGerman ? 'Standard' : 'Default',
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: cs.onPrimaryContainer,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            tooltip: isFavorite
+                                                ? (isGerman ? 'Favorit entfernen' : 'Remove favorite')
+                                                : (isGerman ? 'Als Favorit speichern' : 'Add to favorites'),
+                                            icon: Icon(
+                                              isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                                              color: isFavorite ? Colors.amber.shade600 : cs.onSurfaceVariant.withValues(alpha: 0.6),
+                                            ),
+                                            onPressed: () async {
+                                              final prefs = await SharedPreferences.getInstance();
+                                              setSheetState(() {
+                                                if (isFavorite) {
+                                                  favoriteClassIds.remove(id);
+                                                } else {
+                                                  favoriteClassIds.add(id);
+                                                }
+                                              });
+                                              await prefs.setStringList(
+                                                'favoriteClassIds',
+                                                favoriteClassIds.map((id) => id.toString()).toList(),
+                                              );
+                                              setState(() {});
+                                            },
+                                          ),
+                                          IconButton(
+                                            tooltip: isDefault
+                                                ? (isGerman ? 'Standard' : 'Default')
+                                                : (isGerman ? 'Als Standard festlegen' : 'Set as default'),
+                                            icon: Icon(
+                                              isDefault ? Icons.home_rounded : Icons.add_rounded,
+                                              color: isDefault ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.6),
+                                            ),
+                                            onPressed: () async {
+                                              final prefs = await SharedPreferences.getInstance();
+                                              setSheetState(() {
+                                                if (isDefault) {
+                                                  defaultClassId = null;
+                                                  defaultClassName = null;
+                                                } else {
+                                                  defaultClassId = id;
+                                                  defaultClassName = name;
+                                                }
+                                              });
+                                              if (defaultClassId == null) {
+                                                await prefs.remove('defaultClassId');
+                                                await prefs.remove('defaultClassName');
+                                              } else {
+                                                await prefs.setInt('defaultClassId', defaultClassId!);
+                                                await prefs.setString('defaultClassName', defaultClassName!);
+                                              }
+                                              setState(() {});
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                      onTap: () {
+                                        setState(() {
+                                          _viewingClassId = id;
+                                          _viewingClassName = name;
+                                          _tempSessionId =
+                                              (sid != null && sid != sessionID)
+                                              ? sid
+                                              : null;
+                                        });
+                                        Navigator.pop(ctx);
+                                        _fetchFullWeek();
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            l.timetableNoClassesFound,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
             );
           },
         );
@@ -8045,6 +8211,9 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _logout(BuildContext context) async {
     HapticFeedback.heavyImpact();
     final navigator = Navigator.of(context);
+    defaultClassId = null;
+    defaultClassName = null;
+    favoriteClassIds = {};
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     if (!mounted) return;
