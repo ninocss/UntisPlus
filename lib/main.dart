@@ -106,10 +106,12 @@ void main() async {
   try {
     final colorsJson = prefs.getString('subjectColors');
     if (colorsJson != null) {
-      final decoded = jsonDecode(colorsJson) as Map<String, dynamic>;
-      subjectColorsNotifier.value = decoded.map(
-        (k, v) => MapEntry(k, (v as num).toInt()),
-      );
+      final decoded = jsonDecode(colorsJson);
+      if (decoded is Map) {
+        subjectColorsNotifier.value = decoded.map(
+          (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+        );
+      }
     }
   } catch (_) {}
 
@@ -120,7 +122,6 @@ void main() async {
     final legacy = prefs.getString('openAiApiKey') ?? '';
     if (legacy.isNotEmpty) {
       geminiApiKey = legacy;
-      await prefs.setString('geminiApiKey', legacy);
       await prefs.remove('openAiApiKey');
     }
   }
@@ -599,7 +600,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             )
             .toList();
       }
-
       tempWeek.forEach((_, list) {
         list.sort((a, b) {
           final aStart = (a['startTime'] as int?) ?? 0;
@@ -1406,6 +1406,128 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+  Widget _buildTimetableLessonCard({
+    required BuildContext context,
+    required bool isCancelled,
+    required bool isDark,
+    required Color fgColor,
+    required Color bgColor,
+    required String subject,
+    required String teacher,
+    required String room,
+    required bool isNow,
+    required double borderRadius,
+    required EdgeInsets padding,
+    required double accentWidth,
+    required double subjectFontSize,
+    required double teacherFontSize,
+    required double roomFontSize,
+    required bool useStripes,
+  }) {
+    final cardRadius = BorderRadius.circular(borderRadius);
+    final borderColor = fgColor.withValues(alpha: isDark ? 0.24 : 0.18);
+    final shadow = isNow
+        ? [
+            BoxShadow(
+              color: fgColor.withValues(alpha: 0.12),
+              blurRadius: 12,
+              spreadRadius: 0.5,
+            ),
+          ]
+        : const <BoxShadow>[];
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: cardRadius,
+        boxShadow: shadow,
+      ),
+      child: ClipRRect(
+        borderRadius: cardRadius,
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: cardRadius,
+                border: Border.all(color: borderColor),
+              ),
+            ),
+            if (isCancelled && useStripes)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _StripesPainter(
+                    color: fgColor.withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: accentWidth,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      fgColor.withValues(alpha: 0.95),
+                      fgColor.withValues(alpha: 0.45),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: padding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    subject,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: subjectFontSize,
+                      fontWeight: FontWeight.w800,
+                      color: fgColor,
+                      decoration: isCancelled ? TextDecoration.lineThrough : null,
+                      decorationColor: fgColor,
+                      decorationThickness: 1.8,
+                    ),
+                  ),
+                  if (teacher.isNotEmpty)
+                    Text(
+                      teacher,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: teacherFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: fgColor.withValues(alpha: 0.68),
+                      ),
+                    ),
+                  if (room.isNotEmpty)
+                    Text(
+                      room,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: roomFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: fgColor.withValues(alpha: 0.78),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   List<_LessonSlot> _computeLessonSlots(List<dynamic> rawLessons) {
     final entries =
         rawLessons.whereType<Map>().map((lesson) {
@@ -1587,9 +1709,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 textAlign: TextAlign.right,
                                 style: GoogleFonts.outfit(
                                   fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w600,
                                   color: csG.onSurfaceVariant.withValues(
-                                    alpha: 0.8,
+                                            alpha: 0.54,
                                   ),
                                 ),
                               ),
@@ -1600,7 +1722,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                   color: csG.onSurfaceVariant.withValues(
-                                    alpha: 0.7,
+                                            alpha: 0.45,
                                   ),
                                 ),
                               ),
@@ -1619,9 +1741,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             textAlign: TextAlign.right,
                             style: GoogleFonts.outfit(
                               fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                               color: csG.onSurfaceVariant.withValues(
-                                alpha: 0.7,
+                                      alpha: 0.5,
                               ),
                             ),
                           ),
@@ -1644,8 +1766,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             left: 0,
                             right: 0,
                             child: Container(
-                              height: 0.5,
-                              color: csG.outlineVariant.withValues(alpha: 0.6),
+                              height: 0.45,
+                              color: csG.outlineVariant.withValues(
+                                alpha: 0.28,
+                              ),
                             ),
                           );
                         }),
@@ -1659,16 +1783,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             9999.0,
                           );
                           final dim = isToday && endMin <= nowMin;
-                          final isCancelled = (l['code'] ?? '') == 'cancelled';
-                          final subject =
-                              l['_subjectShort']?.toString().isNotEmpty == true
-                              ? l['_subjectShort'].toString()
-                              : (l['_subjectLong']?.toString().isNotEmpty ==
-                                        true
-                                    ? l['_subjectLong'].toString()
-                                    : '?');
-                          final room = l['_room']?.toString() ?? '';
-                          final teacher = l['_teacher']?.toString() ?? '';
 
                           const horizontalInset = 2.0;
                           const columnGap = 4.0;
@@ -1685,22 +1799,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               horizontalInset +
                               (slot.column * (cardWidth + columnGap));
 
-                          final cs = Theme.of(context).colorScheme;
-                          final sk = l['_subjectShort']?.toString() ?? '';
-                          final cv = isCancelled
-                              ? null
-                              : subjectColorsNotifier.value[sk];
-                          final isDark =
-                              Theme.of(context).brightness == Brightness.dark;
-                          final fgColor = isCancelled
-                              ? cs.error
-                              : cv != null
-                              ? Color(cv)
-                              : _autoLessonColor(sk, isDark);
-                          final bgColor = isCancelled
-                              ? cs.errorContainer
-                              : fgColor.withValues(alpha: isDark ? 0.28 : 0.20);
-
                           return Positioned(
                             top: top,
                             left: left,
@@ -1708,74 +1806,73 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             height: height,
                             child: _dimPastLesson(
                               dim: dim,
-                              child: GestureDetector(
-                                onTap: () => _showLessonDetail(context, l),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: bgColor,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border(
-                                      left: BorderSide(
-                                        color: fgColor,
-                                        width: 3.5,
+                              child: Builder(
+                                builder: (context) {
+                                  final cs = Theme.of(context).colorScheme;
+                                  final isDark =
+                                      Theme.of(context).brightness ==
+                                      Brightness.dark;
+                                  final isCancelled = (l['code'] ?? '') == 'cancelled';
+                                  final sk = l['_subjectShort']?.toString() ?? '';
+                                  final cv = isCancelled
+                                      ? null
+                                      : subjectColorsNotifier.value[sk];
+                                  final fgColor = isCancelled
+                                      ? cs.error
+                                      : cv != null
+                                      ? Color(cv)
+                                      : _autoLessonColor(sk, isDark);
+                                  final bgColor = isCancelled
+                                      ? Color.alphaBlend(
+                                          cs.error.withValues(alpha: 0.10),
+                                          cs.surfaceContainerHighest,
+                                        )
+                                      : Color.alphaBlend(
+                                          fgColor.withValues(
+                                            alpha: isDark ? 0.14 : 0.10,
+                                          ),
+                                          cs.surfaceContainerHighest,
+                                        );
+                                  final subject =
+                                      l['_subjectShort']?.toString().isNotEmpty ==
+                                              true
+                                          ? l['_subjectShort'].toString()
+                                          : (l['_subjectLong']?.toString().isNotEmpty ==
+                                                  true
+                                              ? l['_subjectLong'].toString()
+                                              : '?');
+                                  final room = l['_room']?.toString() ?? '';
+                                  final teacher = l['_teacher']?.toString() ?? '';
+                                  final isNow =
+                                      (startMin <= nowMin && nowMin < endMin);
+
+                                  return GestureDetector(
+                                    onTap: () => _showLessonDetail(context, l),
+                                    child: _buildTimetableLessonCard(
+                                      context: context,
+                                      isCancelled: isCancelled,
+                                      isDark: isDark,
+                                      fgColor: fgColor,
+                                      bgColor: bgColor,
+                                      subject: subject,
+                                      teacher: teacher,
+                                      room: room,
+                                      isNow: isNow,
+                                      borderRadius: 12,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        8,
+                                        5,
+                                        6,
+                                        5,
                                       ),
+                                      accentWidth: 3,
+                                      subjectFontSize: 11.5,
+                                      teacherFontSize: 9.5,
+                                      roomFontSize: 9.5,
+                                      useStripes: true,
                                     ),
-                                  ),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    7,
-                                    4,
-                                    5,
-                                    4,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        subject,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                          color: fgColor,
-                                          decoration: isCancelled
-                                              ? TextDecoration.lineThrough
-                                              : null,
-                                          decorationColor: fgColor,
-                                          decorationThickness: 2.0,
-                                        ),
-                                      ),
-                                      if (height >= 32 && teacher.isNotEmpty)
-                                        Text(
-                                          teacher,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w500,
-                                            color: fgColor.withValues(
-                                              alpha: 0.6,
-                                            ),
-                                          ),
-                                        ),
-                                      if (height >= 52 && room.isNotEmpty)
-                                        Text(
-                                          room,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: fgColor.withValues(
-                                              alpha: 0.75,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
+                                  );
+                                },
                               ),
                             ),
                           );
@@ -1789,8 +1886,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               child: Row(
                                 children: [
                                   Container(
-                                    width: 6,
-                                    height: 6,
+                                    width: 5,
+                                    height: 5,
                                     decoration: BoxDecoration(
                                       color: csG.error,
                                       shape: BoxShape.circle,
@@ -1982,9 +2079,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         textAlign: TextAlign.right,
                                         style: GoogleFonts.outfit(
                                           fontSize: 10,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w600,
                                           color: cs.onSurfaceVariant.withValues(
-                                            alpha: 0.8,
+                                            alpha: 0.54,
                                           ),
                                         ),
                                       ),
@@ -1995,7 +2092,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           fontSize: 10,
                                           fontWeight: FontWeight.w500,
                                           color: cs.onSurfaceVariant.withValues(
-                                            alpha: 0.7,
+                                            alpha: 0.45,
                                           ),
                                         ),
                                       ),
@@ -2061,9 +2158,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       left: 0,
                                       right: 0,
                                       child: Container(
-                                        height: 0.5,
+                                        height: 0.45,
                                         color: cs.outlineVariant.withValues(
-                                          alpha: 0.6,
+                                          alpha: 0.28,
                                         ),
                                       ),
                                     );
@@ -2078,24 +2175,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     final dim =
                                         (dayIndex == todayIndex) &&
                                         endMin <= nowMin;
-                                    final isCancelled =
-                                        (l['code'] ?? '') == 'cancelled';
-                                    final subject =
-                                        l['_subjectShort']
-                                                ?.toString()
-                                                .isNotEmpty ==
-                                            true
-                                        ? l['_subjectShort'].toString()
-                                        : (l['_subjectLong']
-                                                      ?.toString()
-                                                      .isNotEmpty ==
-                                                  true
-                                              ? l['_subjectLong'].toString()
-                                              : '?');
-                                    final room = l['_room']?.toString() ?? '';
-                                    final teacher =
-                                        l['_teacher']?.toString() ?? '';
-
                                     const horizontalInset = 1.0;
                                     const columnGap = 2.0;
                                     final columns = slot.columnCount;
@@ -2112,143 +2191,91 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         horizontalInset +
                                         (slot.column * (cardWidth + columnGap));
 
-                                    final sk2 =
-                                        l['_subjectShort']?.toString() ?? '';
-                                    final cv2 = isCancelled
-                                        ? null
-                                        : subjectColorsNotifier.value[sk2];
-                                    final isDark2 =
-                                        Theme.of(context).brightness ==
-                                        Brightness.dark;
-                                    final fgColor = isCancelled
-                                        ? cs.error
-                                        : cv2 != null
-                                        ? Color(cv2)
-                                        : _autoLessonColor(sk2, isDark2);
-                                    final bgColor = isCancelled
-                                        ? cs.errorContainer
-                                        : fgColor.withValues(
-                                            alpha: isDark2 ? 0.28 : 0.20,
-                                          );
-                                    final isNow = (dayIndex == todayIndex) && (slot.startMin <= nowMin && nowMin < slot.endMin);
-
                                     return Positioned(
                                       top: top,
                                       left: left,
                                       width: cardWidth,
                                       height: height,
-                                      child: _dimPastLesson(
-                                        dim: dim,
-                                        child: GestureDetector(
-                                          onTap: () =>
-                                              _showLessonDetail(context, l),
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(8),
-                                              boxShadow: isNow
-                                                  ? [
-                                                      BoxShadow(
-                                                        color: fgColor.withValues(alpha: 0.35),
-                                                        blurRadius: 12,
-                                                        spreadRadius: 1,
-                                                      )
-                                                    ]
-                                                  : null,
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: Stack(
-                                                children: [
-                                                  Container(color: bgColor),
-                                                  if (isCancelled)
-                                                    Positioned.fill(
-                                                      child: CustomPaint(
-                                                        painter: _StripesPainter(
-                                                          color: fgColor.withValues(alpha: 0.15),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  Positioned(
-                                                    left: 0,
-                                                    top: 0,
-                                                    bottom: 0,
-                                                    width: 3,
-                                                    child: Container(
-                                                      decoration: BoxDecoration(
-                                                        gradient: LinearGradient(
-                                                          begin: Alignment.topCenter,
-                                                          end: Alignment.bottomCenter,
-                                                          colors: [
-                                                            fgColor,
-                                                            fgColor.withValues(alpha: 0.1),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
+                                      child: Builder(
+                                        builder: (context) {
+                                          final cs = Theme.of(context).colorScheme;
+                                          final isDark2 =
+                                              Theme.of(context).brightness ==
+                                              Brightness.dark;
+                                          final isCancelled =
+                                              (l['code'] ?? '') == 'cancelled';
+                                          final subject =
+                                              l['_subjectShort']
+                                                      ?.toString()
+                                                      .isNotEmpty ==
+                                                  true
+                                                  ? l['_subjectShort'].toString()
+                                                  : (l['_subjectLong']
+                                                                ?.toString()
+                                                                .isNotEmpty ==
+                                                            true
+                                                        ? l['_subjectLong']
+                                                            .toString()
+                                                        : '?');
+                                          final room = l['_room']?.toString() ?? '';
+                                          final teacher =
+                                              l['_teacher']?.toString() ?? '';
+                                          final sk2 =
+                                              l['_subjectShort']?.toString() ?? '';
+                                          final cv2 = isCancelled
+                                              ? null
+                                              : subjectColorsNotifier.value[sk2];
+                                          final fgColor = isCancelled
+                                              ? cs.error
+                                              : cv2 != null
+                                              ? Color(cv2)
+                                              : _autoLessonColor(sk2, isDark2);
+                                          final bgColor = isCancelled
+                                              ? Color.alphaBlend(
+                                                  cs.error.withValues(alpha: 0.10),
+                                                  cs.surfaceContainerHighest,
+                                                )
+                                              : Color.alphaBlend(
+                                                  fgColor.withValues(
+                                                    alpha: isDark2 ? 0.14 : 0.10,
                                                   ),
-                                                  Padding(
-                                                    padding: const EdgeInsets.fromLTRB(
-                                                      8,
-                                                      3,
-                                                      3,
-                                                      3,
-                                                    ),
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment.start,
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Text(
-                                                          subject,
-                                                          maxLines: 1,
-                                                          overflow:
-                                                              TextOverflow.ellipsis,
-                                                          style: GoogleFonts.outfit(
-                                                            fontSize: 10,
-                                                            fontWeight: FontWeight.w800,
-                                                            color: fgColor,
-                                                          ),
-                                                        ),
-                                                        if (height >= 30 &&
-                                                            teacher.isNotEmpty)
-                                                          Text(
-                                                            teacher,
-                                                            maxLines: 1,
-                                                            overflow:
-                                                                TextOverflow.ellipsis,
-                                                            style: GoogleFonts.outfit(
-                                                              fontSize: 9,
-                                                              fontWeight:
-                                                                  FontWeight.w500,
-                                                              color: fgColor.withValues(
-                                                                alpha: 0.75,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        if (height >= 45 &&
-                                                            room.isNotEmpty)
-                                                          Text(
-                                                            room,
-                                                            maxLines: 1,
-                                                            overflow:
-                                                                TextOverflow.ellipsis,
-                                                            style: GoogleFonts.outfit(
-                                                              fontSize: 9,
-                                                              fontWeight:
-                                                                  FontWeight.w600,
-                                                              color: fgColor.withValues(
-                                                                alpha: 0.85,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
+                                                  cs.surfaceContainerHighest,
+                                                );
+                                          final isNow = (dayIndex == todayIndex) &&
+                                              (slot.startMin <= nowMin &&
+                                                  nowMin < slot.endMin);
+
+                                          return _dimPastLesson(
+                                            dim: dim,
+                                            child: GestureDetector(
+                                              onTap: () =>
+                                                  _showLessonDetail(context, l),
+                                              child: _buildTimetableLessonCard(
+                                                context: context,
+                                                isCancelled: isCancelled,
+                                                isDark: isDark2,
+                                                fgColor: fgColor,
+                                                bgColor: bgColor,
+                                                subject: subject,
+                                                teacher: teacher,
+                                                room: room,
+                                                isNow: isNow,
+                                                borderRadius: 12,
+                                                padding: const EdgeInsets.fromLTRB(
+                                                  8,
+                                                  4,
+                                                  5,
+                                                  4,
+                                                ),
+                                                accentWidth: 3,
+                                                subjectFontSize: 10,
+                                                teacherFontSize: 9,
+                                                roomFontSize: 9,
+                                                useStripes: true,
                                               ),
                                             ),
-                                          ),
-                                        ),
+                                          );
+                                        },
                                       ),
                                     );
                                   }),
@@ -2261,16 +2288,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         child: Row(
                                           children: [
                                             Container(
-                                              width: 4,
-                                              height: 4,
+                                              width: 5,
+                                              height: 5,
                                               decoration: BoxDecoration(
                                                 color: cs.error,
                                                 shape: BoxShape.circle,
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: cs.error.withValues(alpha: 0.6),
-                                                    blurRadius: 4,
-                                                    spreadRadius: 1,
+                                                    color: cs.error.withValues(
+                                                      alpha: 0.35,
+                                                    ),
+                                                    blurRadius: 3,
+                                                    spreadRadius: 0.5,
                                                   ),
                                                 ],
                                               ),
@@ -2278,15 +2307,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Container(
-                                                height: 3,
+                                                height: 2,
                                                 decoration: BoxDecoration(
                                                   color: cs.error,
                                                   borderRadius:
-                                                      BorderRadius.circular(1.5),
+                                                      BorderRadius.circular(2),
                                                   boxShadow: [
                                                     BoxShadow(
-                                                      color: cs.error.withValues(alpha: 0.6),
-                                                      blurRadius: 4,
+                                                      color: cs.error.withValues(
+                                                        alpha: 0.25,
+                                                      ),
+                                                      blurRadius: 3,
                                                     ),
                                                   ],
                                                 ),
@@ -4581,7 +4612,14 @@ ROHDATEN STUNDENPLAN (JSON):
 ROHDATEN PRUEFUNGEN (JSON):
 [exams_json]
 
-${l.aiSystemRules}''';
+${l.aiSystemRules}
+
+ANTWORTFORMAT:
+- Antworte kurz und visuell.
+- Nutze bevorzugt ein JSON-Objekt mit headline, summary, tags, metrics und lessons.
+- metrics soll eine Liste von Objekten mit label und value sein.
+- lessons soll eine Liste von Objekten mit subject, subjectShort, room, teacher, time und status sein.
+- Vermeide lange Fließtexte. Priorisiere Karten, Kennzahlen und Stundenblöcke.''';
 }
 
 // --- KI-ASSISTENT CHAT ---

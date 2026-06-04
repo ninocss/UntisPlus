@@ -19,13 +19,60 @@ class AiAssistantPage extends StatefulWidget {
   State<AiAssistantPage> createState() => _AiAssistantPageState();
 }
 
+class _AiMetric {
+  final String label;
+  final String value;
+
+  const _AiMetric({required this.label, required this.value});
+}
+
+class _AiLessonCardData {
+  final String subject;
+  final String subjectShort;
+  final String room;
+  final String teacher;
+  final String time;
+  final bool isCancelled;
+
+  const _AiLessonCardData({
+    required this.subject,
+    required this.subjectShort,
+    required this.room,
+    required this.teacher,
+    required this.time,
+    required this.isCancelled,
+  });
+}
+
+class _AiSearchResult {
+  final String query;
+  final String headline;
+  final String summary;
+  final List<String> tags;
+  final List<_AiMetric> metrics;
+  final List<_AiLessonCardData> lessons;
+  final String rawReply;
+
+  const _AiSearchResult({
+    required this.query,
+    required this.headline,
+    required this.summary,
+    required this.tags,
+    required this.metrics,
+    required this.lessons,
+    required this.rawReply,
+  });
+}
+
 class _AiAssistantPageState extends State<AiAssistantPage> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final _firstChipKey = GlobalKey();
   Timer? _typingHintTimer;
   int _typingHintIndex = 0;
-  final List<Map<String, String>> _messages = [];
+  int _searchGeneration = 0;
+  String _latestQuery = '';
+  _AiSearchResult? _latestResult;
   List<Map<String, dynamic>> _exams = [];
   Map<int, List<dynamic>> _weekData = {
     0: <dynamic>[],
@@ -45,7 +92,6 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   @override
   void initState() {
     super.initState();
-    _loadHistory();
     _loadContext();
   }
 
@@ -57,98 +103,163 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     super.dispose();
   }
 
-  String _todayStamp() => DateFormat('yyyyMMdd').format(DateTime.now());
-
-  Future<void> _loadHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedDate = prefs.getString('aiChatDate') ?? '';
-      if (savedDate != _todayStamp()) {
-        await prefs.remove('aiChatHistory');
-        await prefs.remove('aiChatDate');
-        if (!mounted) return;
-        setState(() {
-          _messages.clear();
-          _loadedHistoryDate = '';
-        });
-        return;
-      }
-
-      final raw = prefs.getString('aiChatHistory') ?? '';
-      if (raw.isEmpty) {
-        if (!mounted) return;
-        setState(() {
-          _messages.clear();
-          _loadedHistoryDate = savedDate;
-        });
-        return;
-      }
-
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return;
-      final history = decoded
-          .whereType<Map>()
-          .map(
-            (entry) => Map<String, String>.from(
-              entry.map(
-                (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
-              ),
-            ),
-          )
-          .toList();
-
-      if (!mounted) return;
-      setState(() {
-        _messages
-          ..clear()
-          ..addAll(history);
-        _loadedHistoryDate = savedDate;
-      });
-      _scrollToBottom();
-    } catch (_) {}
+  void _resetSearchState() {
+    _typingHintTimer?.cancel();
+    _typingHintIndex = 0;
+    _thinking = false;
+    _latestQuery = '';
+    _latestResult = null;
   }
 
-  Future<void> _saveHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final today = _todayStamp();
-      if (_messages.isEmpty) {
-        await prefs.remove('aiChatHistory');
-        await prefs.remove('aiChatDate');
-        return;
-      }
-      await prefs.setString('aiChatHistory', jsonEncode(_messages));
-      await prefs.setString('aiChatDate', today);
-      _loadedHistoryDate = today;
-    } catch (_) {}
+  String _extractJsonCandidate(String reply) {
+    final trimmed = reply.trim();
+    final fenced = RegExp(r'```(?:json)?\s*([\s\S]*?)```', caseSensitive: false)
+        .firstMatch(trimmed)
+        ?.group(1)
+        ?.trim();
+    if (fenced != null && fenced.isNotEmpty) return fenced;
+
+    final start = trimmed.indexOf('{');
+    final end = trimmed.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      return trimmed.substring(start, end + 1).trim();
+    }
+    return trimmed;
   }
 
-  Future<void> _clearHistoryPrefs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('aiChatHistory');
-      await prefs.remove('aiChatDate');
-    } catch (_) {}
+  String _firstNonEmptyString(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+    return '';
   }
 
-  Future<void> _storeBadResponseFeedback({
-    required String response,
-    String? prompt,
-  }) async {
+  List<String> _stringListFrom(dynamic value) {
+    if (value is List) {
+      return value.map((entry) => entry.toString().trim()).where((entry) => entry.isNotEmpty).toList(growable: false);
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      return [value.trim()];
+    }
+    return const [];
+  }
+
+  List<_AiLessonCardData> _lessonsFromParsedPayload(Map<String, dynamic> data) {
+    final rawLessons = data['lessons'] ?? data['stunden'] ?? data['items'];
+    if (rawLessons is! List) return const [];
+
+    return rawLessons.whereType<Map>().map((rawLesson) {
+      final lesson = rawLesson.cast<String, dynamic>();
+      final time = _firstNonEmptyString(lesson, const ['time', 'slot', 'range', 'period']);
+      final subject = _firstNonEmptyString(lesson, const ['subject', 'title', 'name']);
+      final subjectShort = _firstNonEmptyString(lesson, const ['subjectShort', 'short', 'abbr']);
+      final room = _firstNonEmptyString(lesson, const ['room', 'raum', 'location']);
+      final teacher = _firstNonEmptyString(lesson, const ['teacher', 'lehrer', 'person']);
+      final status = _firstNonEmptyString(lesson, const ['status', 'state']);
+      return _AiLessonCardData(
+        subject: subject.isEmpty ? (subjectShort.isEmpty ? '?' : subjectShort) : subject,
+        subjectShort: subjectShort,
+        room: room,
+        teacher: teacher,
+        time: time.isEmpty ? '—' : time,
+        isCancelled: status.toLowerCase().contains('cancel') || status.toLowerCase().contains('ausfall'),
+      );
+    }).where((lesson) => lesson.subject.isNotEmpty || lesson.room.isNotEmpty || lesson.teacher.isNotEmpty).toList(growable: false);
+  }
+
+  List<_AiLessonCardData> _fallbackLessonsForResult() {
+    final lessons = _todayLessons().whereType<Map>().map((raw) {
+      final lesson = raw.cast<dynamic, dynamic>();
+      final subject = lesson['_subjectLong']?.toString().isNotEmpty == true
+          ? lesson['_subjectLong'].toString()
+          : (lesson['_subjectShort']?.toString().isNotEmpty == true ? lesson['_subjectShort'].toString() : '?');
+      final subjectShort = lesson['_subjectShort']?.toString() ?? '';
+      final room = lesson['_room']?.toString().trim() ?? '';
+      final teacher = lesson['_teacher']?.toString().trim() ?? '';
+      final start = _formatUntisTime((lesson['startTime'] ?? 800).toString());
+      final end = _formatUntisTime((lesson['endTime'] ?? 845).toString());
+      return _AiLessonCardData(
+        subject: subject,
+        subjectShort: subjectShort,
+        room: room,
+        teacher: teacher,
+        time: '$start–$end',
+        isCancelled: (lesson['code'] ?? '') == 'cancelled',
+      );
+    }).toList(growable: false);
+
+    return lessons.take(4).toList(growable: false);
+  }
+
+  _AiSearchResult _parseSearchResult({required String query, required String reply}) {
+    final fallbackLessons = _fallbackLessonsForResult();
+    final fallbackHeadline = reply.split(RegExp(r'[\n\.\!\?]')).first.trim();
+    final fallbackSummary = reply.trim().isEmpty ? query : reply.trim();
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final existing = prefs.getStringList('aiBadResponseFeedback') ?? [];
-      final payload = <String, dynamic>{
-        'date': DateTime.now().toIso8601String(),
-        'response': response,
-        if (prompt != null && prompt.isNotEmpty) 'prompt': prompt,
-      };
-      existing.add(jsonEncode(payload));
-      if (existing.length > 50) {
-        existing.removeRange(0, existing.length - 50);
+      final decoded = jsonDecode(_extractJsonCandidate(reply));
+      if (decoded is Map<String, dynamic>) {
+        final metrics = <_AiMetric>[];
+        final metricSource = decoded['metrics'] ?? decoded['stats'];
+        if (metricSource is List) {
+          for (final entry in metricSource.whereType<Map>()) {
+            final metric = entry.cast<String, dynamic>();
+            final label = _firstNonEmptyString(metric, const ['label', 'name', 'title']);
+            final value = _firstNonEmptyString(metric, const ['value', 'amount', 'text']);
+            if (label.isNotEmpty && value.isNotEmpty) {
+              metrics.add(_AiMetric(label: label, value: value));
+            }
+          }
+        }
+
+        final tags = _stringListFrom(decoded['tags']).take(6).toList(growable: false);
+        final lessons = _lessonsFromParsedPayload(decoded);
+
+        return _AiSearchResult(
+          query: query,
+          headline: _firstNonEmptyString(decoded, const ['headline', 'title', 'summaryTitle']).isEmpty
+              ? fallbackHeadline
+              : _firstNonEmptyString(decoded, const ['headline', 'title', 'summaryTitle']),
+          summary: _firstNonEmptyString(decoded, const ['summary', 'text', 'result']).isEmpty
+              ? fallbackSummary
+              : _firstNonEmptyString(decoded, const ['summary', 'text', 'result']),
+          tags: tags.isEmpty ? [query] : tags,
+          metrics: metrics.isEmpty
+              ? [
+                  _AiMetric(
+                    label: appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Heute' : 'Today',
+                    value: '${_lessonCountToday()}',
+                  ),
+                ]
+              : metrics,
+          lessons: lessons.isEmpty ? fallbackLessons : lessons,
+          rawReply: reply,
+        );
       }
-      await prefs.setStringList('aiBadResponseFeedback', existing);
     } catch (_) {}
+
+    return _AiSearchResult(
+      query: query,
+      headline: fallbackHeadline.isEmpty
+          ? (appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Neue Suche' : 'New search')
+          : fallbackHeadline,
+      summary: fallbackSummary,
+      tags: [query],
+      metrics: [
+        _AiMetric(
+          label: appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Heute' : 'Today',
+          value: '${_lessonCountToday()}',
+        ),
+        _AiMetric(
+          label: appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Prüfungen' : 'Exams',
+          value: '${_examCountThisWeek()}',
+        ),
+      ],
+      lessons: fallbackLessons,
+      rawReply: reply,
+    );
   }
 
   Map<int, List<dynamic>> _emptyWeekData() => {
@@ -403,50 +514,6 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     return '${_contextDateLabel()}  •  $lessonText  •  $examText';
   }
 
-  Future<void> _copyMessage(String content) async {
-    await Clipboard.setData(ClipboardData(text: content));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          appLocaleNotifier.value.toLowerCase().startsWith('de')
-              ? 'Nachricht kopiert'
-              : 'Message copied',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Future<void> _confirmClearChat() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Chat leeren?' : 'Clear chat?'),
-        content: Text(appLocaleNotifier.value.toLowerCase().startsWith('de')
-            ? 'Alle Nachrichten in dieser Sitzung werden entfernt.'
-            : 'All messages in this session will be removed.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.settingsApiKeyCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Leeren' : 'Clear'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    setState(() {
-      _messages.clear();
-      _inputController.clear();
-    });
-    await _clearHistoryPrefs();
-  }
-
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -484,23 +551,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     );
   }
 
-  Future<void> _exportHistory() async {
-    final payload = jsonEncode({
-      'date': _todayStamp(),
-      'messages': _messages,
+  Future<void> _clearCurrentResult() async {
+    setState(() {
+      _resetSearchState();
     });
-    await Clipboard.setData(ClipboardData(text: payload));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          appLocaleNotifier.value.toLowerCase().startsWith('de')
-              ? 'Verlauf als JSON kopiert'
-              : 'History copied as JSON',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   String _resolvedSystemPrompt() {
@@ -533,10 +587,20 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     for (final entry in entries) {
       resolved = resolved.replaceAll(entry.key, entry.value);
     }
-    return resolved;
+    return '''$resolved
+
+ANTWORTFORMAT:
+- Antworte möglichst kurz und visuell.
+- Liefere bevorzugt ein JSON-Objekt mit den Feldern: headline, summary, tags, metrics, lessons.
+- metrics ist eine Liste aus Objekten mit label und value.
+- lessons ist eine Liste aus Objekten mit subject, subjectShort, room, teacher, time und status.
+- Nutze wenig Fließtext und formuliere Ergebnisse so, dass sie direkt als Suchergebnis-Karten gerendert werden können.''';
   }
 
-  Future<String> _requestProviderResponse(String systemPrompt) async {
+  Future<String> _requestProviderResponse(
+    String systemPrompt, {
+    required String userQuery,
+  }) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final provider = _normalizeAiProvider(aiProvider);
     final apiKey = _activeAiApiKey().trim();
@@ -579,31 +643,20 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       return '$base/v1beta/models/$model:generateContent';
     }
 
-    List<Map<String, String>> _historyForProvider() {
-      return _messages
-          .map(
-            (m) => {
-              'role': m['role'] == 'user' ? 'user' : 'assistant',
-              'content': m['content'] ?? '',
-            },
-          )
-          .toList();
-    }
-
     Future<String> _requestGeminiResponse({
       required String endpoint,
       required String apiKey,
       required String systemPrompt,
+      required String userQuery,
     }) async {
-      final contents = _messages.map((m) {
-        final role = (m['role'] == 'user') ? 'user' : 'model';
-        return {
-          'role': role,
+      final contents = [
+        {
+          'role': 'user',
           'parts': [
-            {'text': m['content'] ?? ''},
+            {'text': userQuery},
           ],
-        };
-      }).toList();
+        },
+      ];
 
       final body = jsonEncode({
         'systemInstruction': {
@@ -662,10 +715,11 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       required String apiKey,
       required String model,
       required String systemPrompt,
+      required String userQuery,
     }) async {
       final messages = [
         {'role': 'system', 'content': systemPrompt},
-        ..._historyForProvider(),
+        {'role': 'user', 'content': userQuery},
       ];
 
       final body = jsonEncode({
@@ -736,6 +790,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           apiKey: apiKey,
           model: model,
           systemPrompt: systemPrompt,
+          userQuery: userQuery,
         );
       case 'mistral':
         return _requestOpenAiCompatibleResponse(
@@ -743,6 +798,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           apiKey: apiKey,
           model: model,
           systemPrompt: systemPrompt,
+          userQuery: userQuery,
         );
       case 'custom':
         final baseUrl = aiCustomBaseUrl.trim();
@@ -755,6 +811,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
             endpoint: _geminiCompatibleEndpoint(baseUrl, model),
             apiKey: apiKey,
             systemPrompt: systemPrompt,
+            userQuery: userQuery,
           );
         }
         return _requestOpenAiCompatibleResponse(
@@ -762,6 +819,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           apiKey: apiKey,
           model: model,
           systemPrompt: systemPrompt,
+          userQuery: userQuery,
         );
       case 'gemini':
       default:
@@ -770,6 +828,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
               'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
           apiKey: apiKey,
           systemPrompt: systemPrompt,
+          userQuery: userQuery,
         );
     }
   }
@@ -838,21 +897,23 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     final text = _inputController.text.trim();
     if (text.isEmpty || _thinking) return;
 
+    final generation = ++_searchGeneration;
     if (_activeAiApiKey().trim().isEmpty) {
       final l = AppL10n.of(appLocaleNotifier.value);
       final provider = _normalizeAiProvider(aiProvider);
+      final reply = _providerAwareMissingApiKeyMessage(l, provider);
+      if (!mounted) return;
       setState(() {
-        _messages.add({
-          'role': 'assistant',
-          'content': _providerAwareMissingApiKeyMessage(l, provider),
-        });
+        _latestQuery = text;
+        _latestResult = _parseSearchResult(query: text, reply: reply);
       });
       return;
     }
 
     _inputController.clear();
     setState(() {
-      _messages.add({'role': 'user', 'content': text});
+      _latestQuery = text;
+      _latestResult = null;
       _thinking = true;
       _typingHintIndex = 0;
     });
@@ -864,36 +925,34 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       }
       setState(() => _typingHintIndex = _typingHintIndex + 1);
     });
-    await _saveHistory();
-    _scrollToBottom();
 
     try {
-      final reply = await _requestProviderResponse(_resolvedSystemPrompt());
+      final reply = await _requestProviderResponse(
+        _resolvedSystemPrompt(),
+        userQuery: text,
+      );
+      if (!mounted || generation != _searchGeneration) return;
       setState(() {
-        _messages.add({'role': 'assistant', 'content': reply});
+        _latestResult = _parseSearchResult(query: text, reply: reply);
       });
-      await _saveHistory();
     } catch (e) {
+      if (!mounted || generation != _searchGeneration) return;
       final message = e.toString();
       final l = AppL10n.of(appLocaleNotifier.value);
       final isApiError = message.contains('API:');
       final isConfigError = message.contains('CONFIG:');
       setState(() {
-        _messages.add({
-          'role': 'assistant',
-          'content': isConfigError
-              ? message.replaceFirst('Exception: CONFIG: ', '')
-              : isApiError
-                  ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-                  : '${l.aiConnectionError} $e',
-        });
+        final reply = isConfigError
+            ? message.replaceFirst('Exception: CONFIG: ', '')
+            : isApiError
+                ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
+                : '${l.aiConnectionError} $e';
+        _latestResult = _parseSearchResult(query: text, reply: reply);
       });
-      await _saveHistory();
     } finally {
       _typingHintTimer?.cancel();
       if (mounted) setState(() => _thinking = false);
       _typingHintIndex = 0;
-      _scrollToBottom();
     }
   }
 
@@ -901,124 +960,6 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     if (_thinking) return;
     _inputController.text = prompt;
     await _send();
-  }
-
-  Future<void> _repeatMessageAt(int index) async {
-    if (index < 0 || index >= _messages.length) return;
-    final msg = _messages[index];
-    if (msg['role'] == 'assistant') {
-      for (var i = index - 1; i >= 0; i--) {
-        if (_messages[i]['role'] == 'user') {
-          _inputController.text = _messages[i]['content'] ?? '';
-          await _send();
-          return;
-        }
-      }
-      return;
-    }
-    _inputController.text = msg['content'] ?? '';
-    await _send();
-  }
-
-  Future<void> _markBadResponseAt(int index) async {
-    if (index < 0 || index >= _messages.length) return;
-    final msg = _messages[index];
-    if (msg['role'] != 'assistant') return;
-
-    String? prompt;
-    for (var i = index - 1; i >= 0; i--) {
-      if (_messages[i]['role'] == 'user') {
-        prompt = _messages[i]['content'];
-        break;
-      }
-    }
-
-    await _storeBadResponseFeedback(
-      response: msg['content'] ?? '',
-      prompt: prompt,
-    );
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          appLocaleNotifier.value.toLowerCase().startsWith('de')
-              ? 'Feedback gespeichert'
-              : 'Feedback saved',
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Future<void> _showMessageActions(int index) async {
-    if (index < 0 || index >= _messages.length) return;
-    final msg = _messages[index];
-    final isUser = msg['role'] == 'user';
-    final l = AppL10n.of(appLocaleNotifier.value);
-
-    await showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-        return _glassContainer(
-          context: ctx,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.outlineVariant,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ListTile(
-                  leading: const Icon(Icons.copy_rounded),
-                  title: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Kopieren' : 'Copy'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _copyMessage(msg['content'] ?? '');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh_rounded),
-                  title: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Wiederholen' : 'Repeat'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _repeatMessageAt(index);
-                  },
-                ),
-                if (!isUser)
-                  ListTile(
-                    leading: const Icon(Icons.thumb_down_alt_rounded),
-                    title: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Schlechte Antwort' : 'Bad response'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _markBadResponseAt(index);
-                    },
-                  ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   List<String> _buildContextualChips() {
@@ -1105,7 +1046,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        AppL10n.of(appLocaleNotifier.value).aiAskAnything,
+                        appLocaleNotifier.value.toLowerCase().startsWith('de')
+                            ? 'Ergebnisse werden als Karten und Stundenblöcke angezeigt.'
+                            : 'Results appear as cards and lesson blocks.',
                         style: GoogleFonts.outfit(fontSize: 13, color: cs.onPrimaryContainer.withValues(alpha: 0.92)),
                       ),
                     ],
@@ -1121,7 +1064,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   Future<void> _handleMenuAction(String action) async {
     switch (action) {
       case 'clear':
-        await _confirmClearChat();
+        await _clearCurrentResult();
         break;
       case 'settings':
         await _openSettings();
@@ -1129,79 +1072,112 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       case 'prompt':
         await _openPromptEditor();
         break;
-      case 'export':
-        await _exportHistory();
+      case 'refresh':
+        if (_latestQuery.trim().isNotEmpty) {
+          await _sendQuickPrompt(_latestQuery);
+        }
         break;
     }
   }
-
-  Widget _buildBubble(ColorScheme cs, int index) {
-    final message = _messages[index];
-    final content = message['content'] ?? '';
-    final isUser = message['role'] == 'user';
-    final bubble = Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  Widget _buildSearchMetricCard(ColorScheme cs, _AiMetric metric) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        gradient: isUser
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [cs.primary, cs.secondary],
-              )
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  cs.surfaceContainerHigh.withValues(alpha: 0.72),
-                  cs.surfaceContainerHighest.withValues(alpha: 0.58),
-                ],
-              ),
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(20),
-          topRight: const Radius.circular(20),
-          bottomLeft: Radius.circular(isUser ? 20 : 4),
-          bottomRight: Radius.circular(isUser ? 4 : 20),
-        ),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.76),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       ),
-      child: isUser
-          ? Text(
-              content,
-              style: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: cs.onPrimary,
-              ),
-            )
-          : MarkdownBody(
-              data: content,
-              styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                p: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: cs.onSurface,
-                  height: 1.25,
-                ),
-                strong: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: cs.onSurface,
-                ),
-                code: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurface,
-                ),
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            metric.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: cs.onSurfaceVariant,
             ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            metric.value,
+            style: GoogleFonts.outfit(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: cs.onSurface,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      ),
     );
+  }
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onLongPress: () => _showMessageActions(index),
-        child: bubble,
+  Widget _buildSearchLoadingState(ColorScheme cs) {
+    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
+    return SingleChildScrollView(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest.withValues(alpha: 0.74),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.22)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.manage_search_rounded, color: cs.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _latestQuery.isEmpty ? (isGerman ? 'Suche läuft…' : 'Search running…') : _latestQuery,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  isGerman
+                      ? 'Die KI formt gerade Karten und Stundenblöcke aus deinem Stundenplan.'
+                      : 'The AI is shaping cards and lesson blocks from your timetable.',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                if (_latestQuery.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Chip(
+                    label: Text(_latestQuery, style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 12)),
+                    backgroundColor: cs.primaryContainer.withValues(alpha: 0.72),
+                    side: BorderSide.none,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildTypingBubble(cs),
+        ],
       ),
     );
   }
@@ -1209,39 +1185,32 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   Widget _buildTypingBubble(ColorScheme cs) {
     final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
     final messages = isGerman
-      ? ['Analysiert deinen Stundenplan…', 'Formuliere Antwort…', 'Fast fertig…']
-      : ['Analyzing your timetable…', 'Formulating response…', 'Almost done…'];
+        ? ['Analysiert den Stundenplan…', 'Sortiert Ergebnisse…', 'Fast fertig…']
+        : ['Analyzing timetable…', 'Sorting results…', 'Almost done…'];
     final text = messages.isEmpty ? '' : messages[_typingHintIndex % messages.length];
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-            bottomRight: Radius.circular(20),
-            bottomLeft: Radius.circular(4),
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              _Dot(delay: 0),
+              SizedBox(width: 4),
+              _Dot(delay: 150),
+              SizedBox(width: 4),
+              _Dot(delay: 300),
+            ],
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                _Dot(delay: 0),
-                SizedBox(width: 4),
-                _Dot(delay: 150),
-                SizedBox(width: 4),
-                _Dot(delay: 300),
-              ],
-            ),
-            const SizedBox(height: 8),
-            AnimatedSwitcher(
+          const SizedBox(width: 12),
+          Expanded(
+            child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
               child: Text(
                 text,
@@ -1253,56 +1222,50 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInput(ColorScheme cs) {
+  Widget _buildSearchBar(ColorScheme cs) {
+    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.of(context).padding.bottom + 104),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 14 + MediaQuery.of(context).padding.bottom),
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh.withValues(alpha: 0.88),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+          color: cs.surfaceContainerHigh.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.38)),
+          boxShadow: [
+            BoxShadow(
+              color: cs.shadow.withValues(alpha: 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: Row(
           children: [
-            IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      appLocaleNotifier.value.toLowerCase().startsWith('de')
-                          ? 'Anhänge kommen in einem späteren Schritt.'
-                          : 'Attachments will be added in a later step.',
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              icon: const Icon(Icons.attach_file_rounded),
-              tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
-                  ? 'Anhang'
-                  : 'Attachment',
-            ),
+            const SizedBox(width: 4),
+            Icon(Icons.manage_search_rounded, color: cs.primary),
+            const SizedBox(width: 10),
             Expanded(
               child: TextField(
                 controller: _inputController,
-                textInputAction: TextInputAction.send,
+                textInputAction: TextInputAction.search,
+                onChanged: (_) => setState(() {}),
                 onSubmitted: (_) => _send(),
-                style: GoogleFonts.outfit(fontSize: 15),
+                style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
-                  hintText: AppL10n.of(appLocaleNotifier.value).aiInputHint,
+                  hintText: isGerman ? 'Stunden, Freistunden, Prüfungen …' : 'Lessons, free periods, exams ...',
                   hintStyle: GoogleFonts.outfit(
-                    color: cs.onSurface.withValues(alpha: 0.38),
+                    color: cs.onSurface.withValues(alpha: 0.42),
                   ),
                   filled: true,
                   fillColor: Colors.transparent,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(22),
                     borderSide: BorderSide.none,
@@ -1310,18 +1273,157 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            if (_inputController.text.isNotEmpty) ...[
+              IconButton(
+                onPressed: _thinking
+                    ? null
+                    : () {
+                        setState(() => _inputController.clear());
+                      },
+                icon: const Icon(Icons.clear_rounded),
+                tooltip: isGerman ? 'Leeren' : 'Clear',
+              ),
+            ],
             AnimatedOpacity(
-              opacity: _thinking ? 0.4 : 1.0,
+              opacity: _thinking ? 0.55 : 1.0,
               duration: const Duration(milliseconds: 200),
-              child: FloatingActionButton.small(
+              child: FilledButton(
                 onPressed: _thinking ? null : _send,
-                heroTag: null,
-                child: Icon(_thinking ? Icons.hourglass_top_rounded : Icons.send_rounded),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+                child: Icon(_thinking ? Icons.hourglass_top_rounded : Icons.search_rounded),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildResultHeader(ColorScheme cs) {
+    final result = _latestResult;
+    if (result == null) {
+      if (_thinking) {
+        return _buildSearchLoadingState(cs);
+      }
+      return _buildEmptyState(cs);
+    }
+
+    return SingleChildScrollView(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  cs.primaryContainer.withValues(alpha: 0.96),
+                  cs.tertiaryContainer.withValues(alpha: 0.88),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.auto_awesome_rounded, color: cs.onPrimaryContainer),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        result.headline,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          color: cs.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  result.summary,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onPrimaryContainer.withValues(alpha: 0.92),
+                    height: 1.35,
+                  ),
+                ),
+                if (result.tags.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: result.tags.take(4).map((tag) {
+                      return Chip(
+                        label: Text(tag, style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 12)),
+                        side: BorderSide.none,
+                        backgroundColor: cs.onPrimaryContainer.withValues(alpha: 0.12),
+                        labelStyle: TextStyle(color: cs.onPrimaryContainer),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (result.metrics.isNotEmpty)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 460;
+                final columns = isWide ? 3 : 2;
+                return GridView.count(
+                  crossAxisCount: columns,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 1.7,
+                  children: result.metrics.map((metric) => _buildSearchMetricCard(cs, metric)).toList(),
+                );
+              },
+            ),
+          if (result.lessons.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Text(
+              appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Stunden' : 'Lessons',
+              style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            ...result.lessons.map(
+              (lesson) => LessonCard(
+                subject: lesson.subject,
+                subjectShort: lesson.subjectShort,
+                room: lesson.room,
+                teacher: lesson.teacher,
+                time: lesson.time,
+                isCancelled: lesson.isCancelled,
+              ),
+            ),
+          ],
+          if (_thinking) ...[
+            const SizedBox(height: 8),
+            _buildTypingBubble(cs),
+          ],
+        ],
       ),
     );
   }
@@ -1367,22 +1469,11 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     return Column(
       children: [
         _buildContextBanner(cs),
-        if (_messages.isNotEmpty) _buildChipRow(cs),
+        if (_latestResult == null) _buildChipRow(cs),
         Expanded(
-          child: _messages.isEmpty
-              ? _buildEmptyState(cs)
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  itemCount: _messages.length + (_thinking ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == _messages.length) return _buildTypingBubble(cs);
-                    final msg = _messages[index];
-                    return _buildBubble(cs, index);
-                  },
-                ),
+          child: _buildResultHeader(cs),
         ),
-        _buildInput(cs),
+        _buildSearchBar(cs),
       ],
     );
   }
@@ -1394,15 +1485,17 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.tips_and_updates_rounded, size: 40, color: cs.primary.withValues(alpha: 0.5)),
+          Icon(Icons.manage_search_rounded, size: 40, color: cs.primary.withValues(alpha: 0.5)),
           const SizedBox(height: 12),
           Text(
-            l.aiKnowsSchedule,
+            appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Such dir Ergebnisse aus deinem Stundenplan.' : 'Search results from your timetable.',
             style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 17),
           ),
           const SizedBox(height: 4),
           Text(
-            l.aiAskAnything,
+            appLocaleNotifier.value.toLowerCase().startsWith('de')
+                ? 'Die KI antwortet hier als kompakte Ergebnisansicht mit Karten, Kennzahlen und Stunden.'
+                : 'The AI responds here as a compact result view with cards, metrics, and lessons.',
             style: GoogleFonts.outfit(fontSize: 14, color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
@@ -1476,15 +1569,11 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
               ),
               PopupMenuItem<String>(
                 value: 'clear',
-                child: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Chat leeren' : 'Clear chat'),
+                child: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Ergebnis leeren' : 'Clear result'),
               ),
               PopupMenuItem<String>(
-                value: 'export',
-                child: Text(
-                  appLocaleNotifier.value.toLowerCase().startsWith('de')
-                      ? 'Verlauf exportieren'
-                      : 'Export history',
-                ),
+                value: 'refresh',
+                child: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Neu suchen' : 'Search again'),
               ),
             ],
           ),

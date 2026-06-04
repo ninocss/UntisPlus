@@ -1,8 +1,0 @@
-Analyzing Untis+...                                             
-
-   info - Statements in an if should be enclosed in a block - lib\screens\custom_background_editor_screen.dart:1818:39 - curly_braces_in_flow_control_structures
-   info - 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead - lib\web\file_download_helper.dart:2:1 - deprecated_member_use
-   info - Don't use web-only libraries outside Flutter web plugins - lib\web\file_download_helper.dart:2:1 - avoid_web_libraries_in_flutter
-warning - The value of the local variable 'isDark' isn't used - lib\widgets\rounded_blur_app_bar.dart:33:11 - unused_local_variable
-
-4 issues found. (ran in 8.0s)
