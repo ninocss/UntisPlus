@@ -1,0 +1,63 @@
+name: Generate AI Changelog
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Changelog via Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          COMMITS=$(git log -n 15 --oneline)
+          CLEAN_COMMITS=$(echo "$COMMITS" | jq -R -s '.')
+          
+          PROMPT="Analysiere diese Git-Commits und erstelle einen Changelog im Markdown-Format. 
+          Halte dich strikt an dieses Layout-Schema und schreibe NUR AUF ENGLISCH:
+          
+          # [Prägnanter Titel der Version, der Hauptfeatures nennt]
+          
+          ## What's New?
+          * **[Kategorie oder Hauptfeature]**
+            * [Detail 1]
+            * [Detail 2]
+          * **[Anderes Feature]**
+          
+          > [Falls Refactorings, Löschungen oder signifikante Änderungen stattgefunden haben, füge hier am Ende eine Erklärung als Blockquote ein, beginnend mit ** Warum...]
+          
+          Antworte ausschließlich im JSON-Format mit dem Key 'markdown'. Der Value ist der generierte Markdown-String. Keine Code-Blocks im JSON. Commits: $CLEAN_COMMITS"
+          
+          PAYLOAD=$(jq -n \
+            --arg prompt "$PROMPT" \
+            '{
+              contents: [{ parts: [{ text: $prompt }] }],
+              generationConfig: { responseMimeType: "application/json" }
+            }')
+
+          RESPONSE=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}")
+          
+          CHANGELOG_JSON=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text')
+          echo "$CHANGELOG_JSON" > changelog.json
+
+      - name: Commit and Push Changelog
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add changelog.json
+          git commit -m "chore: update automated changelog [skip ci]" || exit 0
+          git push
