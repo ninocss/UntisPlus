@@ -34,12 +34,12 @@ UntisPlus is a modern, privacy-focused Flutter client for WebUntis, designed to 
 </table>
 
 ## Roadmap
-- [] Redesign the App for a more modern and user-friendly interface, enhancing the overall user experience.
-- [] Implement a new, more intuitive onboarding flow to improve the initial user experience.
-- [] Support multiple WebUntis accounts, allowing users to easily switch between different schools or profiles.
-- [] Add a widget that displays the next upcoming lesson, providing quick access to essential information.
-- [] Support Local AI models, enabling users to leverage AI capabilities without relying on external servers, thus enhancing privacy and performance.
-- [] Implementing a function to automatically set a alarm matching to wake up the next day!
+- [X] Redesign the App for a more modern and user-friendly interface, enhancing the overall user experience.
+- [X] Implement a new, more intuitive onboarding flow to improve the initial user experience.
+- [ ] Support multiple WebUntis accounts, allowing users to easily switch between different schools or profiles.
+- [ ] Add a widget that displays the next upcoming lesson, providing quick access to essential information.
+- [ ] Support Local AI models, enabling users to leverage AI capabilities without relying on external servers, thus enhancing privacy and performance.
+- [ ] Implementing a function to automatically set a alarm matching to wake up the next day!
 
 ## ⚡ Quick Start
 
