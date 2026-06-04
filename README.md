@@ -113,6 +113,7 @@ flutter run
 ```
 
 👥 Contributing
+
 Fork the repository.
 
 Clone your fork: git clone https://github.com/your-username/UntisPlus.git
@@ -124,6 +125,8 @@ Commit changes using clear messages: git commit -am 'Add explicit feature descri
 Push to the branch: git push origin feature/your-feature
 
 Open a Pull Request against the main branch.
+
+But please give Credits to UntisPlus or your forked repo! ❤️
 
 ⚠️ Disclaimer
 UntisPlus is an independent developer project. It is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WebUntis or any of its subsidiaries or affiliates.
