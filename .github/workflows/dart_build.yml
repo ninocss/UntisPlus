@@ -37,6 +37,11 @@ on:
           - aab
           - apk+aab
           - none
+      split_per_abi:
+        description: 'APK per ABI splitten (armeabi-v7a, arm64-v8a, x86_64)'
+        required: true
+        default: true
+        type: boolean
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -60,7 +65,9 @@ jobs:
       run_tests: ${{ steps.meta.outputs.run_tests }}
       build_apk: ${{ steps.meta.outputs.build_apk }}
       build_aab: ${{ steps.meta.outputs.build_aab }}
+      split_per_abi: ${{ steps.meta.outputs.split_per_abi }}
       last_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}
+      app_version: ${{ steps.meta.outputs.app_version }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -76,6 +83,7 @@ jobs:
           INPUT_DRAFT: ${{ github.event.inputs.draft }}
           INPUT_RUN_TESTS: ${{ github.event.inputs.run_tests }}
           INPUT_BUILD_ARTIFACTS: ${{ github.event.inputs.build_artifacts }}
+          INPUT_SPLIT_PER_ABI: ${{ github.event.inputs.split_per_abi }}
         run: |
           set -euo pipefail
 
@@ -117,6 +125,7 @@ jobs:
           prerelease="$(normalize_bool "${INPUT_PRERELEASE:-}" "false")"
           draft="$(normalize_bool "${INPUT_DRAFT:-}" "false")"
           run_tests="$(normalize_bool "${INPUT_RUN_TESTS:-}" "true")"
+          split_per_abi="$(normalize_bool "${INPUT_SPLIT_PER_ABI:-}" "true")"
 
           build_artifacts="$(echo "${INPUT_BUILD_ARTIFACTS:-apk}" | tr -d '[:space:]')"
           build_apk="false"
@@ -139,6 +148,9 @@ jobs:
               ;;
           esac
 
+          app_version="$(grep -E '^version:\s*' pubspec.yaml | head -n 1 | sed -E 's/^version:\s*//' | sed -E 's/[[:space:]]*\+.*//')"
+          echo "app_version=$app_version"
+
           {
             echo "release_tag=$resolved_tag"
             echo "release_name=$resolved_name"
@@ -147,11 +159,10 @@ jobs:
             echo "run_tests=$run_tests"
             echo "build_apk=$build_apk"
             echo "build_aab=$build_aab"
+            echo "split_per_abi=$split_per_abi"
             echo "last_semver_tag=$last_tag"
+            echo "app_version=$app_version"
           } >> "$GITHUB_OUTPUT"
-
-          echo "Resolved tag: $resolved_tag"
-          echo "Previous semver tag: ${last_tag:-none}"
 
       - name: Summary
         run: |
@@ -163,6 +174,7 @@ jobs:
           echo "- run_tests: ${{ steps.meta.outputs.run_tests }}" >> $GITHUB_STEP_SUMMARY
           echo "- build_apk: ${{ steps.meta.outputs.build_apk }}" >> $GITHUB_STEP_SUMMARY
           echo "- build_aab: ${{ steps.meta.outputs.build_aab }}" >> $GITHUB_STEP_SUMMARY
+          echo "- split_per_abi: ${{ steps.meta.outputs.split_per_abi }}" >> $GITHUB_STEP_SUMMARY
           echo "- latest_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}" >> $GITHUB_STEP_SUMMARY
 
   quality_checks:
@@ -173,74 +185,210 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
+
       - name: Install Dependencies
         run: flutter pub get
+
       - name: Analyze & Test
         run: |
           flutter analyze --no-fatal-infos
           flutter test
 
+  setup_signing:
+    name: Setup Signing
+    runs-on: ubuntu-latest
+    needs: meta
+    if: ${{ needs.meta.outputs.build_apk == 'true' || needs.meta.outputs.build_aab == 'true' }}
+    outputs:
+      keystore_configured: ${{ steps.signing.outputs.keystore_configured }}
+    steps:
+      - name: Configure Android Signing
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "WARNING: Keystore secrets nicht vollstaendig konfiguriert."
+            echo "Der Build wird ohne Signierung laufen (unsigned release)."
+            echo "keystore_configured=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          mkdir -p "$RUNNER_TEMP/android-signing"
+
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/android-signing/upload-keystore.jks"
+
+          echo "storePassword=$KEY_STORE_PASSWORD" > "$RUNNER_TEMP/android-signing/key.properties"
+          echo "keyPassword=$KEY_PASSWORD" >> "$RUNNER_TEMP/android-signing/key.properties"
+          echo "keyAlias=$KEY_ALIAS" >> "$RUNNER_TEMP/android-signing/key.properties"
+          echo "storeFile=$RUNNER_TEMP/android-signing/upload-keystore.jks" >> "$RUNNER_TEMP/android-signing/key.properties"
+
+          echo "keystore_configured=true" >> $GITHUB_OUTPUT
+
+      - name: Upload Signing Config
+        if: ${{ steps.signing.outputs.keystore_configured == 'true' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: android-signing
+          path: ${{ runner.temp }}/android-signing/
+          if-no-files-found: error
+          retention-days: 1
+
   build_apk:
     name: Build APK
     runs-on: ubuntu-latest
-    needs: [meta, quality_checks]
-    if: ${{ always() && needs.meta.outputs.build_apk == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    needs: [meta, quality_checks, setup_signing]
+    if: ${{ always() && needs.meta.outputs.build_apk == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.setup_signing.result == 'success' || needs.setup_signing.result == 'skipped') }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Download Signing Config
+        if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: android-signing
+          path: ${{ runner.temp }}/android-signing
+
+      - name: Apply Signing Config
+        if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
+        run: |
+          cp "$RUNNER_TEMP/android-signing/key.properties" android/key.properties
+
       - name: Install Dependencies
         run: flutter pub get
+
       - name: Build Android APK
-        run: flutter build apk --release
-      - name: Upload APK Artifact
+        run: |
+          if [ "${{ needs.meta.outputs.split_per_abi }}" = "true" ] && [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            flutter build apk --release --split-per-abi
+          elif [ "${{ needs.meta.outputs.split_per_abi }}" = "true" ]; then
+            flutter build apk --release --split-per-abi
+          else
+            flutter build apk --release
+          fi
+
+      - name: Prepare APK Artifacts
+        run: |
+          mkdir -p apk_artifacts
+          TAG="${{ needs.meta.outputs.release_tag }}"
+          VERSION="${{ needs.meta.outputs.app_version }}"
+
+          if [ -d "build/app/outputs/flutter-apk" ]; then
+            for f in build/app/outputs/flutter-apk/app-*-release.apk; do
+              [ -f "$f" ] || continue
+              basename="$(basename "$f")"
+              abi=""
+              case "$basename" in
+                *armeabi-v7a*) abi="-armeabi-v7a" ;;
+                *arm64-v8a*)   abi="-arm64-v8a" ;;
+                *x86_64*)      abi="-x86_64" ;;
+              esac
+              cp "$f" "apk_artifacts/UntisPlus-${TAG}${abi}.apk"
+            done
+          fi
+
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v6
         with:
           name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: apk_artifacts/
           if-no-files-found: error
 
   build_aab:
     name: Build AAB
     runs-on: ubuntu-latest
-    needs: [meta, quality_checks]
-    if: ${{ always() && needs.meta.outputs.build_aab == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    needs: [meta, quality_checks, setup_signing]
+    if: ${{ always() && needs.meta.outputs.build_aab == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.setup_signing.result == 'success' || needs.setup_signing.result == 'skipped') }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Download Signing Config
+        if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: android-signing
+          path: ${{ runner.temp }}/android-signing
+
+      - name: Apply Signing Config
+        if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
+        run: |
+          cp "$RUNNER_TEMP/android-signing/key.properties" android/key.properties
+
       - name: Install Dependencies
         run: flutter pub get
+
       - name: Build Android AAB
         run: flutter build appbundle --release
-      - name: Upload AAB Artifact
+
+      - name: Prepare AAB Artifact
+        run: |
+          mkdir -p aab_artifacts
+          TAG="${{ needs.meta.outputs.release_tag }}"
+
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+            cp "build/app/outputs/bundle/release/app-release.aab" "aab_artifacts/UntisPlus-${TAG}.aab"
+          fi
+
+      - name: Upload AAB Artifacts
         uses: actions/upload-artifact@v6
         with:
           name: release-aab
-          path: build/app/outputs/bundle/release/app-release.aab
+          path: aab_artifacts/
           if-no-files-found: error
 
   release_notes:
@@ -272,7 +420,6 @@ jobs:
           set -euo pipefail
 
           if [ -z "$GEMINI_API_KEY" ]; then
-            echo "No GEMINI_API_KEY configured. Falling back to GitHub generated notes."
             echo "has_ai_notes=false" >> $GITHUB_OUTPUT
             echo "ai_reason=missing_api_key" >> $GITHUB_OUTPUT
             exit 0
@@ -332,9 +479,9 @@ jobs:
 
            Output format (keep exactly this order):
            1) Title line: "Release <tag>" (and include app version if provided).
-           2) One short summary paragraph (2–4 sentences) describing who benefits and what changed.
+           2) One short summary paragraph (2-4 sentences) describing who benefits and what changed.
            3) Sections with H2 headings:
-             - Highlights (3–7 bullets, user-facing, highest impact first)
+             - Highlights (3-7 bullets, user-facing, highest impact first)
              - What's New (new capabilities / screens / flows; user-facing)
              - Improvements (UX, clarity, polish, refactors that affect behavior)
              - Fixes (bugs; include the symptom and where it occurred if inferable)
@@ -343,13 +490,13 @@ jobs:
            4) A final "Full Changelog" line with a link if a compare URL is provided.
 
            Bullet guidelines:
-           - Each bullet should be 1–2 lines, start with a verb, and include context (screen/feature/module) when possible.
+           - Each bullet should be 1-2 lines, start with a verb, and include context (screen/feature/module) when possible.
            - Prefer concrete descriptions ("Improved timetable refresh"), not vague ones ("Various changes").
            - If a change is purely internal, keep it in Technical Notes and label it "Internal".
            - If there are no user-visible changes, say so explicitly and focus on Technical Notes.
-          - Rewrite commit messages into release-note wording; do not copy them verbatim.
-          - Do not include raw commit hashes in the output.
-          - Avoid filler bullets like "chore"/"misc" unless they have a clear user impact.
+           - Rewrite commit messages into release-note wording; do not copy them verbatim.
+           - Do not include raw commit hashes in the output.
+           - Avoid filler bullets like "chore"/"misc" unless they have a clear user impact.
 
            Only return the final release notes.
           EOF
@@ -412,7 +559,6 @@ jobs:
 
           USED_MODEL="$GEMINI_MODEL"
           if [ -n "$API_ERROR" ] || [ -z "$BODY" ]; then
-            echo "Primary Gemini attempt failed (model=${GEMINI_MODEL}). Trying fallback model ${GEMINI_FALLBACK_MODEL}."
             RESPONSE=$(request_model "$GEMINI_FALLBACK_MODEL")
             API_ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
             BODY=$(echo "$RESPONSE" | extract_body)
@@ -431,14 +577,12 @@ jobs:
           } >> $GITHUB_OUTPUT
 
           if [ -n "$API_ERROR" ]; then
-            echo "Gemini API returned an error: $API_ERROR"
             echo "has_ai_notes=false" >> $GITHUB_OUTPUT
             echo "ai_reason=gemini_api_error" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           if [ -z "$BODY" ]; then
-            echo "AI note generation failed. Falling back to GitHub generated notes."
             echo "has_ai_notes=false" >> $GITHUB_OUTPUT
             if [ -n "$BLOCK_REASON" ]; then
               echo "ai_reason=gemini_blocked_${BLOCK_REASON}" >> $GITHUB_OUTPUT
@@ -473,14 +617,6 @@ jobs:
           echo "- block_reason: ${{ steps.ai_notes.outputs.gemini_block_reason }}" >> $GITHUB_STEP_SUMMARY
           echo "- finish_reason: ${{ steps.ai_notes.outputs.gemini_finish_reason }}" >> $GITHUB_STEP_SUMMARY
 
-          if [ -n "${{ steps.ai_notes.outputs.gemini_response_snippet }}" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Response diagnostics:" >> $GITHUB_STEP_SUMMARY
-            echo '```json' >> $GITHUB_STEP_SUMMARY
-            echo "${{ steps.ai_notes.outputs.gemini_response_snippet }}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
-
   release:
     name: GitHub Release
     runs-on: ubuntu-latest
@@ -489,7 +625,7 @@ jobs:
     needs: [meta, quality_checks, build_apk, build_aab, release_notes]
     if: ${{ always() && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.build_apk.result == 'success' || needs.build_apk.result == 'skipped') && (needs.build_aab.result == 'success' || needs.build_aab.result == 'skipped') && (needs.release_notes.result == 'success' || needs.release_notes.result == 'skipped') }}
     steps:
-      - name: Download APK Artifact
+      - name: Download APK Artifacts
         if: ${{ needs.meta.outputs.build_apk == 'true' }}
         uses: actions/download-artifact@v7
         with:
@@ -510,6 +646,9 @@ jobs:
           name: gemini-release-notes
           path: release_assets
 
+      - name: List Release Assets
+        run: find release_assets -type f -ls
+
       - name: Create GitHub Release (AI Notes)
         if: ${{ needs.release_notes.outputs.has_ai_notes == 'true' }}
         uses: softprops/action-gh-release@v3
@@ -517,9 +656,7 @@ jobs:
           tag_name: ${{ needs.meta.outputs.release_tag }}
           name: ${{ needs.meta.outputs.release_name }}
           body_path: release_assets/gemini_release_notes.md
-          files: |
-            release_assets/app-release.apk
-            release_assets/app-release.aab
+          files: release_assets/*
           fail_on_unmatched_files: false
           draft: ${{ needs.meta.outputs.draft == 'true' }}
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
@@ -532,9 +669,7 @@ jobs:
         with:
           tag_name: ${{ needs.meta.outputs.release_tag }}
           name: ${{ needs.meta.outputs.release_name }}
-          files: |
-            release_assets/app-release.apk
-            release_assets/app-release.aab
+          files: release_assets/*
           fail_on_unmatched_files: false
           generate_release_notes: true
           draft: ${{ needs.meta.outputs.draft == 'true' }}

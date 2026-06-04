@@ -1,9 +1,21 @@
 name: Generate AI Changelog
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      commit_count:
+        description: 'Anzahl der zu analysierenden Commits'
+        required: true
+        default: '15'
+      release_version:
+        description: 'Versionsnummer (z.B. v1.2.0)'
+        required: true
+        default: 'v1.0.0'
+      include_refactor:
+        description: 'Refactoring-Erklärung erzwingen?'
+        type: boolean
+        required: true
+        default: true
 
 permissions:
   contents: write
@@ -20,14 +32,17 @@ jobs:
       - name: Generate Changelog via Gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          COMMIT_COUNT: ${{ github.event.inputs.commit_count }}
+          RELEASE_VERSION: ${{ github.event.inputs.release_version }}
+          INCLUDE_REFACTOR: ${{ github.event.inputs.include_refactor }}
         run: |
-          COMMITS=$(git log -n 15 --oneline)
+          COMMITS=$(git log -n "$COMMIT_COUNT" --oneline)
           CLEAN_COMMITS=$(echo "$COMMITS" | jq -R -s '.')
           
-          PROMPT="Analysiere diese Git-Commits und erstelle einen Changelog im Markdown-Format. 
+          PROMPT="Analysiere diese Git-Commits und erstelle einen Changelog für Version $RELEASE_VERSION im Markdown-Format. 
           Halte dich strikt an dieses Layout-Schema und schreibe NUR AUF ENGLISCH:
           
-          # [Prägnanter Titel der Version, der Hauptfeatures nennt]
+          # Version $RELEASE_VERSION - [Prägnanter Titel der Version, der Hauptfeatures nennt]
           
           ## What's New?
           * **[Kategorie oder Hauptfeature]**
@@ -35,7 +50,7 @@ jobs:
             * [Detail 2]
           * **[Anderes Feature]**
           
-          > [Falls Refactorings, Löschungen oder signifikante Änderungen stattgefunden haben, füge hier am Ende eine Erklärung als Blockquote ein, beginnend mit ** Warum...]
+          Falls der Parameter INCLUDE_REFACTOR auf 'true' steht (aktueller Wert: $INCLUDE_REFACTOR), musst du zwingend am Ende eine Erklärung als Blockquote einfügen, die mit '** Warum...' beginnt, falls Refactorings oder Änderungen stattgefunden haben.
           
           Antworte ausschließlich im JSON-Format mit dem Key 'markdown'. Der Value ist der generierte Markdown-String. Keine Code-Blocks im JSON. Commits: $CLEAN_COMMITS"
           
@@ -59,5 +74,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add changelog.json
-          git commit -m "chore: update automated changelog [skip ci]" || exit 0
+          git commit -m "chore: update automated changelog for ${{ github.event.inputs.release_version }} [skip ci]" || exit 0
           git push
