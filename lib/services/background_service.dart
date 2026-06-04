@@ -705,10 +705,18 @@ Future<void> updateUntisData() async {
         "id": "bg_req",
         "method": "getTimetable",
         "params": {
-          "id": personId,
-          "type": personType,
-          "startDate": todayDate,
-          "endDate": todayDate,
+          "options": {
+            "element": {
+              "id": personId,
+              "type": personType,
+            },
+            "startDate": todayDate,
+            "endDate": todayDate,
+            "showLsText": true,
+            "showSubstText": true,
+            "showInfo": true,
+            "showBooking": true,
+          },
         },
         "jsonrpc": "2.0",
       }),

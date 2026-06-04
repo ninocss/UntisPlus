@@ -123,6 +123,7 @@ class AppL10n {
   String get detailTime => _t('detailTime');
   String get detailTeacher => _t('detailTeacher');
   String get detailRoom => _t('detailRoom');
+  String get detailClass => _t('detailClass');
   String get detailLesson => _t('detailLesson');
   String get detailInfo => _t('detailInfo');
   String get detailCancelled => _t('detailCancelled');
@@ -608,6 +609,7 @@ class AppL10n {
       'detailTime': 'Zeit',
       'detailTeacher': 'Lehrkraft',
       'detailRoom': 'Raum',
+      'detailClass': 'Klasse',
       'detailLesson': 'Stunde',
       'detailInfo': 'Hinweis',
       'detailCancelled': 'FÄLLT AUS',
@@ -934,6 +936,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransitionEaseIn': 'Ease In',
       'settingsPageTransitionEaseOut': 'Ease Out',
       'settingsPageTransitionExpo': 'Expo',
+      'settingsTabTransition': 'Tab-Übergänge',
+      'settingsTabTransitionDesc':
+          'Wendet Seitenübergänge auf die Hauptnavigation an',
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
@@ -1129,6 +1134,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'detailTime': 'Time',
       'detailTeacher': 'Teacher',
       'detailRoom': 'Room',
+      'detailClass': 'Class',
       'detailLesson': 'Lesson',
       'detailInfo': 'Note',
       'detailCancelled': 'CANCELLED',
@@ -1538,6 +1544,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'navExams': 'Examens',
       'navInfo': 'Infos',
       'navMenu': 'Menu',
+      'navAi': 'IA',
 
       'loginServer': 'URL du serveur',
       'loginSchool': 'École',
@@ -1648,6 +1655,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'detailTime': 'Heure',
       'detailTeacher': 'Enseignant',
       'detailRoom': 'Salle',
+      'detailClass': 'Classe',
       'detailLesson': 'Cours',
       'detailInfo': 'Remarque',
       'detailCancelled': 'ANNULÉ',
@@ -1732,6 +1740,52 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubUpdatesAbout': 'Mises à jour & À propos',
       'settingsLanguage': 'Langue',
       'settingsSectionAI': 'Assistant IA',
+      'settingsAiProvider': 'Fournisseur',
+      'settingsAiProviderGemini': 'Google Gemini',
+      'settingsAiProviderOpenAi': 'OpenAI',
+      'settingsAiProviderMistral': 'Mistral AI',
+      'settingsAiProviderCustom': 'Fournisseur personnalisé',
+      'settingsAiModel': 'Modèle',
+      'settingsAiApiKey': 'Clé API',
+      'settingsAiApiKeyNotSet': 'Non configuré — appuyer pour configurer',
+      'settingsAiApiKeyDialogDesc':
+          'Requis pour l\'assistant IA. Utilise « Obtenir la clé API » pour ouvrir la bonne page du fournisseur sélectionné.',
+      'settingsAiApiKeyGet': 'Obtenir la clé API',
+      'settingsAiApiKeyOpenFailed': 'Impossible d\'ouvrir la page de clé API.',
+      'settingsAiPrompt': 'Invite système',
+      'settingsAiPromptDesc':
+          'Modifie l\'invite par défaut et utilise des variables comme [timetable].',
+      'settingsAiPromptEditTitle': 'Modifier l\'invite système',
+      'settingsAiPromptReset': 'Réinitialiser',
+      'settingsAiPromptVariables': 'Variables d\'invite',
+      'settingsAiPromptVariablesDesc':
+          'Tous les espaces réservés remplacés automatiquement par des données de l\'app.',
+      'settingsAiCustomBaseUrl': 'URL de base personnalisée',
+      'settingsAiCustomBaseUrlDesc':
+          'URL de base de ton propre fournisseur (compatible OpenAI ou Gemini).',
+      'settingsAiCustomBaseUrlHint': 'https://api.ton-fournisseur.tld/v1',
+      'settingsAiCompatibility': 'Compatibilité personnalisée',
+      'settingsAiCompatibilityOpenAi': 'Compatible OpenAI',
+      'settingsAiCompatibilityGemini': 'Compatible Gemini',
+      'aiCustomBaseUrlMissing':
+          '⚠️ Configure d\'abord l\'URL de base personnalisée dans les paramètres IA.',
+      'settingsPageTransition': 'Transition de page',
+      'settingsPageTransitionDesc':
+          'Choisis le style de transition pour la navigation',
+      'settingsTabTransition': 'Transitions des onglets',
+      'settingsTabTransitionDesc':
+          'Applique les transitions aux onglets de navigation principaux',
+      'settingsPageTransitionBounce': 'Rebond',
+      'settingsPageTransitionFade': 'Fondu',
+      'settingsPageTransitionSlide': 'Glissement',
+      'settingsPageTransitionZoom': 'Zoom',
+      'settingsPageTransitionBlur': 'Flou',
+      'settingsPageTransitionEaseIn': 'Ease In',
+      'settingsPageTransitionEaseOut': 'Ease Out',
+      'settingsPageTransitionExpo': 'Expo',
+      'bgEditorUndo': 'Annuler',
+      'bgEditorRedo': 'Rétablir',
+      'bgEditorRandomize': 'Aléatoire',
       'settingsApiKey': 'Clé API Gemini',
       'settingsApiKeyNotSet': 'Non configuré — Appuyer pour configurer',
       'settingsApiKeyDialogTitle': 'Clé API Gemini',
@@ -1926,6 +1980,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiGeneratedName': 'Fond IA',
       'bgEditorAiSuccess': 'Fond IA créé.',
       'bgEditorAiError': 'IA: ',
+      'settingsGlassEffect': 'Effet de flou',
+      'settingsGlassEffectDesc': 'Active le flou dans l\'interface',
+      'settingsSectionUpdates': 'Mises à jour',
       'settingsProgressivePush': 'Notification push progressive',
       'settingsProgressivePushDesc':
           'Afficher le cours actuel comme notification persistante',
@@ -2016,6 +2073,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'navExams': 'Exámenes',
       'navInfo': 'Info',
       'navMenu': 'Menú',
+      'navAi': 'IA',
 
       'loginServer': 'URL del servidor',
       'loginSchool': 'Escuela',
@@ -2127,6 +2185,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'detailTime': 'Hora',
       'detailTeacher': 'Profesor',
       'detailRoom': 'Aula',
+      'detailClass': 'Clase',
       'detailLesson': 'Clase',
       'detailInfo': 'Nota',
       'detailCancelled': 'CANCELADO',
@@ -2211,6 +2270,53 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubUpdatesAbout': 'Actualizaciones & Acerca de',
       'settingsLanguage': 'Idioma',
       'settingsSectionAI': 'Asistente IA',
+      'settingsAiProvider': 'Proveedor',
+      'settingsAiProviderGemini': 'Google Gemini',
+      'settingsAiProviderOpenAi': 'OpenAI',
+      'settingsAiProviderMistral': 'Mistral AI',
+      'settingsAiProviderCustom': 'Proveedor personalizado',
+      'settingsAiModel': 'Modelo',
+      'settingsAiApiKey': 'Clave API',
+      'settingsAiApiKeyNotSet': 'No configurado — toca para configurar',
+      'settingsAiApiKeyDialogDesc':
+          'Necesario para el asistente IA. Usa «Obtener clave API» para abrir la página correcta del proveedor seleccionado.',
+      'settingsAiApiKeyGet': 'Obtener clave API',
+      'settingsAiApiKeyOpenFailed':
+          'No se pudo abrir la página de clave API.',
+      'settingsAiPrompt': 'Instrucción del sistema',
+      'settingsAiPromptDesc':
+          'Edita la instrucción predeterminada y usa variables como [timetable].',
+      'settingsAiPromptEditTitle': 'Editar instrucción del sistema',
+      'settingsAiPromptReset': 'Restablecer',
+      'settingsAiPromptVariables': 'Variables de instrucción',
+      'settingsAiPromptVariablesDesc':
+          'Todos los marcadores de posición reemplazados automáticamente con datos de la app.',
+      'settingsAiCustomBaseUrl': 'URL base personalizada',
+      'settingsAiCustomBaseUrlDesc':
+          'URL base de tu propio proveedor (compatible con OpenAI o Gemini).',
+      'settingsAiCustomBaseUrlHint': 'https://api.tu-proveedor.tld/v1',
+      'settingsAiCompatibility': 'Compatibilidad personalizada',
+      'settingsAiCompatibilityOpenAi': 'Compatible con OpenAI',
+      'settingsAiCompatibilityGemini': 'Compatible con Gemini',
+      'aiCustomBaseUrlMissing':
+          '⚠️ Configura primero la URL base personalizada en los ajustes de IA.',
+      'settingsPageTransition': 'Transición de página',
+      'settingsPageTransitionDesc':
+          'Elige el estilo de transición para la navegación',
+      'settingsTabTransition': 'Transiciones de pestañas',
+      'settingsTabTransitionDesc':
+          'Aplica transiciones a las pestañas de navegación principales',
+      'settingsPageTransitionBounce': 'Rebote',
+      'settingsPageTransitionFade': 'Fundido',
+      'settingsPageTransitionSlide': 'Deslizamiento',
+      'settingsPageTransitionZoom': 'Zoom',
+      'settingsPageTransitionBlur': 'Desenfoque',
+      'settingsPageTransitionEaseIn': 'Ease In',
+      'settingsPageTransitionEaseOut': 'Ease Out',
+      'settingsPageTransitionExpo': 'Expo',
+      'bgEditorUndo': 'Deshacer',
+      'bgEditorRedo': 'Rehacer',
+      'bgEditorRandomize': 'Aleatorio',
       'settingsApiKey': 'Clave API Gemini',
       'settingsApiKeyNotSet': 'No configurado — Toca para configurar',
       'settingsApiKeyDialogTitle': 'Clave API Gemini',
@@ -2404,6 +2510,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiGeneratedName': 'Fondo IA',
       'bgEditorAiSuccess': 'Fondo IA creado.',
       'bgEditorAiError': 'IA: ',
+      'settingsGlassEffect': 'Efecto de desenfoque',
+      'settingsGlassEffectDesc': 'Activa el desenfoque en la interfaz',
+      'settingsSectionUpdates': 'Actualizaciones',
       'settingsProgressivePush': 'Notificación push progresiva',
       'settingsProgressivePushDesc':
           'Mostrar la clase actual como notificación persistente',
@@ -2493,6 +2602,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'navExams': 'Εξετάσεις',
       'navInfo': 'Πληροφορίες',
       'navMenu': 'Μενού',
+      'navAi': 'AI',
 
       'loginServer': 'Διεύθυνση διακομιστή',
       'loginSchool': 'Σχολείο',
@@ -2607,6 +2717,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'detailTime': 'Ώρα',
       'detailTeacher': 'Καθηγητής',
       'detailRoom': 'Αίθουσα',
+      'detailClass': 'Τάξη',
       'detailLesson': 'Μάθημα',
       'detailInfo': 'Σημείωση',
       'detailCancelled': 'ΑΚΥΡΩΘΗΚΕ',
@@ -2690,6 +2801,53 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubUpdatesAbout': 'Ενημερώσεις & Σχετικά',
       'settingsLanguage': 'Γλώσσα',
       'settingsSectionAI': 'Βοηθός AI',
+      'settingsAiProvider': 'Πάροχος',
+      'settingsAiProviderGemini': 'Google Gemini',
+      'settingsAiProviderOpenAi': 'OpenAI',
+      'settingsAiProviderMistral': 'Mistral AI',
+      'settingsAiProviderCustom': 'Προσαρμοσμένος πάροχος',
+      'settingsAiModel': 'Μοντέλο',
+      'settingsAiApiKey': 'Κλειδί API',
+      'settingsAiApiKeyNotSet': 'Δεν έχει ρυθμιστεί — πάτησε για ρύθμιση',
+      'settingsAiApiKeyDialogDesc':
+          'Απαιτείται για τον βοηθό AI. Χρησιμοποίησε «Λήψη κλειδιού API» για να ανοίξεις τη σωστή σελίδα του επιλεγμένου παρόχου.',
+      'settingsAiApiKeyGet': 'Λήψη κλειδιού API',
+      'settingsAiApiKeyOpenFailed':
+          'Δεν ήταν δυνατό να ανοίξει η σελίδα κλειδιού API.',
+      'settingsAiPrompt': 'Εντολή συστήματος',
+      'settingsAiPromptDesc':
+          'Επεξεργάσου την προεπιλεγμένη εντολή και χρησιμοποίησε μεταβλητές όπως [timetable].',
+      'settingsAiPromptEditTitle': 'Επεξεργασία εντολής συστήματος',
+      'settingsAiPromptReset': 'Επαναφορά',
+      'settingsAiPromptVariables': 'Μεταβλητές εντολής',
+      'settingsAiPromptVariablesDesc':
+          'Όλοι οι δείκτες που αντικαθίστανται αυτόματα με δεδομένα της εφαρμογής.',
+      'settingsAiCustomBaseUrl': 'Προσαρμοσμένη βασική URL',
+      'settingsAiCustomBaseUrlDesc':
+          'Βασική URL του δικού σου παρόχου (συμβατός με OpenAI ή Gemini).',
+      'settingsAiCustomBaseUrlHint': 'https://api.parochos-sou.tld/v1',
+      'settingsAiCompatibility': 'Προσαρμοσμένη συμβατότητα',
+      'settingsAiCompatibilityOpenAi': 'Συμβατός με OpenAI',
+      'settingsAiCompatibilityGemini': 'Συμβατός με Gemini',
+      'aiCustomBaseUrlMissing':
+          '⚠️ Πρώτα ρύθμισε την προσαρμοσμένη βασική URL στις ρυθμίσεις AI.',
+      'settingsPageTransition': 'Μετάβαση σελίδας',
+      'settingsPageTransitionDesc':
+          'Επίλεξε τον τρόπο μετάβασης για την πλοήγηση',
+      'settingsTabTransition': 'Μεταβάσεις καρτελών',
+      'settingsTabTransitionDesc':
+          'Εφαρμόζει μεταβάσεις στις κύριες καρτέλες πλοήγησης',
+      'settingsPageTransitionBounce': 'Αναπήδηση',
+      'settingsPageTransitionFade': 'Εξασθένιση',
+      'settingsPageTransitionSlide': 'Ολίσθηση',
+      'settingsPageTransitionZoom': 'Ζουμ',
+      'settingsPageTransitionBlur': 'Θόλωση',
+      'settingsPageTransitionEaseIn': 'Ease In',
+      'settingsPageTransitionEaseOut': 'Ease Out',
+      'settingsPageTransitionExpo': 'Expo',
+      'bgEditorUndo': 'Αναίρεση',
+      'bgEditorRedo': 'Επανάληψη',
+      'bgEditorRandomize': 'Τυχαίο',
       'settingsApiKey': 'Κλειδί Gemini API',
       'settingsApiKeyNotSet': 'Δεν έχει ρυθμιστεί — πάτησε για ρύθμιση',
       'settingsApiKeyDialogTitle': 'Κλειδί Gemini API',

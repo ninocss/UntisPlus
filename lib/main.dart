@@ -527,6 +527,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     with TickerProviderStateMixin {
   late TabController _tabController;
   Map<int, List<dynamic>> _weekData = {0: [], 1: [], 2: [], 3: [], 4: []};
+  List<Map<String, dynamic>> _holidays = [];
   bool _loading = true;
   String? _loadError;
   bool _showingCachedWeek = false;
@@ -624,6 +625,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         });
       });
 
+      final cachedHolidays = decoded['holidays'];
+      if (cachedHolidays is List) {
+        _holidays = cachedHolidays
+            .whereType<Map>()
+            .map((h) => Map<String, dynamic>.from(h.cast<String, dynamic>()))
+            .toList();
+      }
+
       return tempWeek;
     } catch (_) {
       return null;
@@ -646,6 +655,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         'weekData': {
           for (var i = 0; i < 5; i++) '$i': weekData[i] ?? const <dynamic>[],
         },
+        if (_holidays.isNotEmpty)
+          'holidays': _holidays,
       };
       await prefs.setString(key, jsonEncode(payload));
     } catch (_) {}
@@ -1166,6 +1177,21 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     return freeRooms;
+  }
+
+  List<Map<String, dynamic>> _getHolidaysForDay(DateTime day) {
+    final dayStr = DateFormat('yyyyMMdd').format(day);
+    final dayInt = int.tryParse(dayStr);
+    if (dayInt == null) return [];
+    return _holidays.where((h) {
+      final start = h['startDate'];
+      final end = h['endDate'];
+      if (start == null || end == null) return false;
+      final s = int.tryParse(start.toString());
+      final e = int.tryParse(end.toString());
+      if (s == null || e == null) return false;
+      return dayInt >= s && dayInt <= e;
+    }).toList();
   }
 
   Future<void> _showFreeRoomsDialog() async {
@@ -1793,6 +1819,51 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             ),
                           );
                         }),
+                        ..._getHolidaysForDay(dayDate).map((holiday) {
+                          final holidayStartMin = _toMinutes(800);
+                          final holidayEndMin = _toMinutes(1800);
+                          final top = (holidayStartMin - globalMin) * _ppm;
+                          final height = ((holidayEndMin - holidayStartMin) * _ppm).clamp(28.0, 9999.0);
+                          final holidayName = (holiday['longName'] ?? holiday['name'] ?? '').toString();
+                          final isDark = Theme.of(context).brightness == Brightness.dark;
+                          return Positioned(
+                            top: top,
+                            left: 2,
+                            right: 2,
+                            height: height,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: csG.tertiaryContainer.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: csG.tertiary.withValues(alpha: 0.4),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.celebration_rounded, size: 20, color: csG.tertiary),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      holidayName,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: csG.onTertiaryContainer,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                         ...lessonSlots.map((slot) {
                           final l = slot.lesson;
                           final startMin = slot.startMin;
@@ -2185,6 +2256,49 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       ),
                                     );
                                   }),
+                                  ..._getHolidaysForDay(_currentMonday.add(Duration(days: dayIndex))).map((holiday) {
+                                    final holidayStartMin = _toMinutes(800);
+                                    final holidayEndMin = _toMinutes(1800);
+                                    final top2 = (holidayStartMin - globalMin) * _ppm;
+                                    final height2 = ((holidayEndMin - holidayStartMin) * _ppm).clamp(24.0, 9999.0);
+                                    final holidayName = (holiday['longName'] ?? holiday['name'] ?? '').toString();
+                                    return Positioned(
+                                      top: top2,
+                                      left: 1,
+                                      right: 1,
+                                      height: height2,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: cs.tertiaryContainer.withValues(alpha: 0.85),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: cs.tertiary.withValues(alpha: 0.4),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.all(8),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Icon(Icons.celebration_rounded, size: 16, color: cs.tertiary),
+                                            const SizedBox(height: 2),
+                                            Expanded(
+                                              child: Text(
+                                                holidayName,
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: cs.onTertiaryContainer,
+                                                ),
+                                                maxLines: 3,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }),
                                   ...lessonSlots.map((slot) {
                                     final l = slot.lesson;
                                     final startMin = slot.startMin;
@@ -2364,8 +2478,43 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+  Future<void> _fetchHolidays() async {
+    try {
+      final url = Uri.parse(
+        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+      );
+      final response = await http.post(
+        url,
+        headers: {
+          "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "id": "holidays",
+          "method": "getHolidays",
+          "params": {},
+          "jsonrpc": "2.0",
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['result'] is List) {
+          final holidays = (decoded['result'] as List).whereType<Map>().map(
+            (h) => Map<String, dynamic>.from(h.cast<String, dynamic>()),
+          ).toList();
+          if (mounted) {
+            setState(() => _holidays = holidays);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _fetchFullWeek({bool silent = false}) async {
     if (personId == 0 && personType == 0) {}
+
+    _holidays = [];
 
     final isDemoMode = demoModeNotifier.value;
 
@@ -2460,10 +2609,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           "id": "week_req",
           "method": "getTimetable",
           "params": {
-            "id": requestPersonId,
-            "type": requestPersonType,
-            "startDate": startDate,
-            "endDate": endDate,
+            "options": {
+              "element": {
+                "id": requestPersonId,
+                "type": requestPersonType,
+              },
+              "startDate": startDate,
+              "endDate": endDate,
+              "showLsText": true,
+              "showSubstText": true,
+              "showInfo": true,
+              "showBooking": true,
+            },
           },
           "jsonrpc": "2.0",
         }),
@@ -2570,21 +2727,34 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 ? teacherFromTe
                 : teacherFromTopLevel;
 
+            final lstext = (lesson['lstext'] ?? '').toString().trim();
+            final eventName = lstext.isNotEmpty ? lstext : (lesson['eventText'] ?? lesson['eventReason'] ?? '').toString().trim();
+            final isAllDayEvent = (lesson['startTime'] == 0 && lesson['endTime'] != null);
+
             final resolvedLesson = Map<String, dynamic>.from(lesson);
+            if (isAllDayEvent) {
+              resolvedLesson['startTime'] = 800;
+              resolvedLesson['endTime'] = 1800;
+            }
             resolvedLesson['_subjectLong'] =
                 (lesson['su'] as List?)?.firstOrNull?['longname'] ??
                 (lesson['su'] as List?)?.firstOrNull?['longName'] ??
                 _subjectLong[subId] ??
-                '';
+                (eventName.isNotEmpty ? eventName : '');
             resolvedLesson['_subjectShort'] =
                 (lesson['su'] as List?)?.firstOrNull?['name'] ??
                 _subjectShortMap[subId] ??
-                '';
+                (eventName.isNotEmpty ? eventName : '');
             resolvedLesson['_teacher'] = teacherResolved;
             resolvedLesson['_room'] =
                 (lesson['ro'] as List?)?.firstOrNull?['name'] ??
                 _roomMap[roId] ??
                 '';
+            resolvedLesson['_classNames'] =
+                (lesson['kl'] as List?)?.map((k) => k['name']?.toString() ?? '').where((n) => n.isNotEmpty).join(', ') ?? '';
+            resolvedLesson['_activityType'] = (lesson['activityType'] ?? '').toString();
+            resolvedLesson['_eventName'] = eventName;
+            resolvedLesson['_lessonInfo'] = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
 
             tempWeek[dayIndex]!.add(resolvedLesson);
           }
@@ -2713,10 +2883,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   "id": "week_class_$classId",
                   "method": "getTimetable",
                   "params": {
-                    "id": classId,
-                    "type": 1,
-                    "startDate": startDate,
-                    "endDate": endDate,
+                    "options": {
+                      "element": {
+                        "id": classId,
+                        "type": 1,
+                      },
+                      "startDate": startDate,
+                      "endDate": endDate,
+                      "showLsText": true,
+                      "showSubstText": true,
+                      "showInfo": true,
+                      "showBooking": true,
+                    },
                   },
                   "jsonrpc": "2.0",
                 }),
@@ -2775,6 +2953,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         requestPersonType: requestPersonType,
         weekData: tempWeek,
       );
+
+      await _fetchHolidays();
 
       if (!mounted) return;
       setState(() {
@@ -5865,6 +6045,9 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
   final info = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
   final lessonNr = lesson['lsnumber']?.toString() ?? '';
   final subjectKey = lesson['_subjectShort']?.toString() ?? '';
+  final eventName = lesson['_eventName']?.toString() ?? '';
+  final classNames = lesson['_classNames']?.toString() ?? '';
+  final activityType = lesson['_activityType']?.toString() ?? '';
 
   showModalBottomSheet(
     context: context,
@@ -5880,6 +6063,9 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
       isCancelled: isCancelled,
       info: info,
       lessonNr: lessonNr,
+      eventName: eventName,
+      classNames: classNames,
+      activityType: activityType,
       onHideSubject: () {
         Navigator.of(context).pop();
         _hideSubject(subjectKey);
@@ -5927,6 +6113,7 @@ class _AnimatedLessonCard extends StatelessWidget {
 
 class _LessonDetailSheet extends StatelessWidget {
   final String subject, subjectShort, room, teacher, time, info, lessonNr;
+  final String eventName, classNames, activityType;
   final bool isCancelled;
   final VoidCallback? onHideSubject;
 
@@ -5939,6 +6126,9 @@ class _LessonDetailSheet extends StatelessWidget {
     required this.isCancelled,
     required this.info,
     required this.lessonNr,
+    this.eventName = '',
+    this.classNames = '',
+    this.activityType = '',
     this.onHideSubject,
   });
 
@@ -6113,6 +6303,10 @@ class _LessonDetailSheet extends StatelessWidget {
             _row(context, Icons.access_time_rounded, l.detailTime, time),
             _row(context, Icons.person_rounded, l.detailTeacher, teacher),
             _row(context, Icons.room_rounded, l.detailRoom, room),
+            if (classNames.isNotEmpty)
+              _row(context, Icons.group_rounded, l.detailClass, classNames),
+            if (activityType.isNotEmpty && activityType != 'Unterricht')
+              _row(context, Icons.category_rounded, 'Art', activityType),
             if (lessonNr.isNotEmpty && lessonNr != '0')
               _row(context, Icons.tag_rounded, l.detailLesson, lessonNr),
             if (info.isNotEmpty)

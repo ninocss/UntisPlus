@@ -1458,19 +1458,16 @@ ANTWORTFORMAT:
     if (chips.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-      child: Scrollbar(
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (var i = 0; i < chips.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                _buildChip(cs, chips[i], i == 0),
-              ],
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < chips.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              _buildChip(cs, chips[i], i == 0),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -1493,8 +1490,7 @@ ANTWORTFORMAT:
   Widget _buildBody(ColorScheme cs) {
     return Column(
       children: [
-        _buildContextBanner(cs),
-        if (_latestResult == null) _buildChipRow(cs),
+        if (_latestResult == null && !_thinking) _buildChipRow(cs),
         Expanded(
           child: _buildResultHeader(cs),
         ),
@@ -1504,42 +1500,24 @@ ANTWORTFORMAT:
   }
 
   Widget _buildEmptyState(ColorScheme cs) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.manage_search_rounded, size: 40, color: cs.primary.withValues(alpha: 0.5)),
-          const SizedBox(height: 12),
+          Icon(Icons.auto_awesome_rounded, size: 36, color: cs.primary.withValues(alpha: 0.7)),
+          const SizedBox(height: 14),
           Text(
-            appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Such dir Ergebnisse aus deinem Stundenplan.' : 'Search results from your timetable.',
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 17),
+            isGerman ? 'Was möchtest du wissen?' : 'What do you want to know?',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -0.5),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
-            appLocaleNotifier.value.toLowerCase().startsWith('de')
-                ? 'Die KI antwortet hier als kompakte Ergebnisansicht mit Karten, Kennzahlen und Stunden.'
-                : 'The AI responds here as a compact result view with cards, metrics, and lessons.',
-            style: GoogleFonts.outfit(fontSize: 14, color: cs.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _buildContextualChips()
-                .map(
-                  (s) => ActionChip(
-                    label: Text(
-                      s,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    backgroundColor: cs.primaryContainer,
-                    side: BorderSide.none,
-                    onPressed: () => _sendQuickPrompt(s),
-                  ),
-                )
-                .toList(),
+            isGerman
+                ? 'Frag nach Stunden, Prüfungen oder freien Räumen.'
+                : 'Ask about lessons, exams or free rooms.',
+            style: GoogleFonts.outfit(fontSize: 15, color: cs.onSurfaceVariant, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -1859,8 +1837,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         return AnimatedSwitcher(
           duration: _getTransitionDuration(transitionIndex),
           switchInCurve: _getTransitionCurve(transitionIndex),
-          switchOutCurve: _getTransitionCurve(transitionIndex).flipped,
+          switchOutCurve: Curves.linear,
           transitionBuilder: (child, animation) {
+            // The outgoing child gets a reverse animation (1→0).
+            // We only apply the fancy transition to the incoming child;
+            // the outgoing child just fades out instantly to avoid whitescreen.
+            final isIncoming = animation.status != AnimationStatus.reverse;
+            if (!isIncoming) {
+              return FadeTransition(opacity: animation, child: child);
+            }
             return _buildTabTransition(child, animation, transitionIndex);
           },
           layoutBuilder: (currentChild, previousChildren) {
@@ -1994,75 +1979,181 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Positioned(
               left: 16,
               right: 16,
-              top: mq.padding.top + 10,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  decoration: BoxDecoration(
-                    color: cs.surface.withValues(alpha: 0.94),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: cs.primary.withValues(alpha: 0.35),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: cs.shadow.withValues(alpha: 0.22),
-                        blurRadius: 22,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.school_rounded, color: cs.primary),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              l.tutorialTitle,
+              bottom: mq.padding.bottom + 104,
+              child: TweenAnimationBuilder<double>(
+                key: ValueKey(_tutorialStep),
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 380),
+                curve: _kSmoothBounce,
+                builder: (context, val, child) => Transform.translate(
+                  offset: Offset(0, 16 * (1 - val)),
+                  child: Opacity(opacity: val.clamp(0, 1), child: child),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: _withOptionalBackdropBlur(
+                      sigmaX: 22,
+                      sigmaY: 22,
+                      child: const SizedBox.shrink(),
+                      childBuilder: (blur) => Container(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                        decoration: BoxDecoration(
+                          color: blur
+                              ? cs.surface.withValues(alpha: 0.75)
+                              : cs.surface.withValues(alpha: 0.97),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: cs.primary.withValues(alpha: 0.22),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: cs.shadow.withValues(alpha: 0.18),
+                              blurRadius: 28,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Header row
+                            Row(
+                              children: [
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: cs.primaryContainer
+                                        .withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.school_rounded,
+                                    size: 17,
+                                    color: cs.onPrimaryContainer,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    l.tutorialTitle,
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13.5,
+                                      color: cs.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                // Step dots
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: List.generate(
+                                    _tutorialTargets.length,
+                                    (i) {
+                                      final active = i == _tutorialStep;
+                                      final done = i < _tutorialStep;
+                                      return AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 300),
+                                        margin: const EdgeInsets.only(left: 4),
+                                        width: active ? 18 : 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          color: active
+                                              ? cs.primary
+                                              : done
+                                                  ? cs.primary
+                                                      .withValues(alpha: 0.4)
+                                                  : cs.surfaceContainerHighest,
+                                          borderRadius:
+                                              BorderRadius.circular(99),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  height: 30,
+                                  child: TextButton(
+                                    onPressed: _skipTutorial,
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: Text(
+                                      l.tutorialSkip,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            // Divider
+                            Container(
+                              height: 1,
+                              color: cs.outlineVariant.withValues(alpha: 0.35),
+                            ),
+                            const SizedBox(height: 10),
+                            // Step title
+                            Text(
+                              _tutorialTitle(l),
                               style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15.5,
+                                color: cs.onSurface,
                               ),
                             ),
-                          ),
-                          TextButton(
-                            onPressed: _skipTutorial,
-                            child: Text(l.tutorialSkip),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _tutorialTitle(l),
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                            const SizedBox(height: 4),
+                            Text(
+                              _tutorialDesc(l),
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                color: cs.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
+                            if (_tutorialStep >= _tutorialTargets.length) ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: _finishTutorial,
+                                  icon: const Icon(
+                                    Icons.check_rounded,
+                                    size: 17,
+                                  ),
+                                  label: Text(
+                                    l.tutorialDone,
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size(0, 44),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _tutorialDesc(l),
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: cs.onSurface.withValues(alpha: 0.8),
-                        ),
-                      ),
-                      if (_tutorialStep >= _tutorialTargets.length) ...[
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: FilledButton.icon(
-                            onPressed: _finishTutorial,
-                            icon: const Icon(Icons.check_rounded),
-                            label: Text(l.tutorialDone),
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ),

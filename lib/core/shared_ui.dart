@@ -196,15 +196,15 @@ Widget _glassContainer({
   BorderRadiusGeometry borderRadius = const BorderRadius.all(
     Radius.circular(28),
   ),
-  double sigmaX = 14,
-  double sigmaY = 14,
+  double sigmaX = 22,
+  double sigmaY = 22,
   Color? color,
   Gradient? gradient,
   Border? border,
 }) {
   final cs = Theme.of(context).colorScheme;
   final isDark = Theme.of(context).brightness == Brightness.dark;
-  
+
   return ClipRRect(
     borderRadius: borderRadius,
     child: _withOptionalBackdropBlur(
@@ -214,29 +214,42 @@ Widget _glassContainer({
       childBuilder: (enabled) => Container(
         decoration: BoxDecoration(
           borderRadius: borderRadius,
-          color:
-              color ??
-              (enabled 
-                  ? (isDark 
-                      ? Color.alphaBlend(cs.primary.withValues(alpha: 0.08), cs.surface.withValues(alpha: 0.65))
-                      : cs.surface.withValues(alpha: 0.82))
-                    : cs.surface.withValues(alpha: appAlphaValues.cardAlphaNoBlur)),
-          border:
-              border ??
+          color: color ??
+              (enabled
+                  ? (isDark
+                      ? Color.alphaBlend(
+                          cs.primary.withValues(alpha: 0.06),
+                          cs.surface.withValues(alpha: 0.55),
+                        )
+                      : Color.alphaBlend(
+                          cs.primary.withValues(alpha: 0.03),
+                          cs.surface.withValues(alpha: 0.72),
+                        ))
+                  : cs.surface.withValues(alpha: appAlphaValues.cardAlphaNoBlur)),
+          border: border ??
               Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.4),
+                color: isDark
+                    ? cs.outlineVariant.withValues(alpha: 0.28)
+                    : cs.outlineVariant.withValues(alpha: 0.45),
                 width: 1,
               ),
         ),
         child: Stack(
           fit: StackFit.passthrough,
           children: [
-            if (enabled)
+            if (enabled && isDark)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: borderRadius,
-                    color: cs.surface.withValues(alpha: 0.02),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        cs.surface.withValues(alpha: 0.05),
+                        Colors.transparent,
+                      ],
+                    ),
                   ),
                 ),
               ),

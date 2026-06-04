@@ -934,8 +934,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
+          // Background gradient
           AnimatedContainer(
-            duration: const Duration(seconds: 1),
+            duration: const Duration(milliseconds: 800),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -949,7 +950,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
             ),
           ),
-
+          // Animated background scene
           ValueListenableBuilder<bool>(
             valueListenable: backgroundAnimationsNotifier,
             builder: (context, enabled, _) {
@@ -961,81 +962,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               );
             },
           ),
-
           SafeArea(
             child: Column(
               children: [
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+                // Progress header
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.surface.withValues(alpha: 0.84),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: colors.outlineVariant.withValues(alpha: 0.65),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: _currentPage > 0
-                                  ? _previousPage
-                                  : null,
-                              icon: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                              ),
-                              tooltip: MaterialLocalizations.of(
-                                context,
-                              ).backButtonTooltip,
-                            ),
-                            Expanded(
-                              child: Text(
-                                '${_currentPage + 1}/$_totalOnboardingSteps',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  color: colors.onSurface,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 48),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: List.generate(_totalOnboardingSteps, (
-                            index,
-                          ) {
-                            return Expanded(
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 320),
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: _currentPage >= index
-                                      ? colors.primary
-                                      : colors.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: _buildProgressHeader(colors),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
+                // Page content
                 Expanded(
                   child: PageView(
                     controller: _pageController,
@@ -1058,11 +995,108 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
+  Widget _buildProgressHeader(ColorScheme colors) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: _withOptionalBackdropBlur(
+        sigmaX: 18,
+        sigmaY: 18,
+        child: const SizedBox.shrink(),
+        childBuilder: (blurEnabled) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: blurEnabled
+                ? colors.surface.withValues(alpha: 0.6)
+                : colors.surface.withValues(alpha: 0.88),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: colors.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Back button
+              AnimatedOpacity(
+                opacity: _currentPage > 0 ? 1.0 : 0.3,
+                duration: const Duration(milliseconds: 200),
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: IconButton(
+                    onPressed: _currentPage > 0 ? _previousPage : null,
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 17,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Pill progress indicators
+              Expanded(
+                child: Row(
+                  children: List.generate(_totalOnboardingSteps, (index) {
+                    final isActive = index == _currentPage;
+                    final isDone = index < _currentPage;
+                    return Expanded(
+                      flex: isActive ? 3 : 1,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 380),
+                        curve: _kSmoothBounce,
+                        margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? colors.primary
+                              : isDone
+                                  ? colors.primary.withValues(alpha: 0.55)
+                                  : colors.surfaceContainerHighest
+                                      .withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Step counter pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  '${_currentPage + 1}/$_totalOnboardingSteps',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                    color: colors.onPrimaryContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLanguageStep() {
     final l = AppL10n.of(appLocaleNotifier.value);
+    const langs = [
+      ('de', 'Deutsch', '🇩🇪'),
+      ('en', 'English', '🇬🇧'),
+      ('fr', 'Français', '🇫🇷'),
+      ('es', 'Español', '🇪🇸'),
+      ('el', 'Ελληνικά', '🇬🇷'),
+    ];
 
     return _StepWrapper(
-      icon: Icons.language,
+      icon: Icons.language_rounded,
       title: l.onboardingWelcomeTitle,
       subtitle: l.onboardingChooseLanguageSubtitle,
       content: ValueListenableBuilder<String>(
@@ -1071,15 +1105,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           return SingleChildScrollView(
             child: Column(
               children: [
-                _buildLangBtn('de', 'Deutsch', '🇩🇪', currentLang),
-                const SizedBox(height: 12),
-                _buildLangBtn('en', 'English', '🇬🇧', currentLang),
-                const SizedBox(height: 12),
-                _buildLangBtn('fr', 'Français', '🇫🇷', currentLang),
-                const SizedBox(height: 12),
-                _buildLangBtn('es', 'Español', '🇪🇸', currentLang),
-                const SizedBox(height: 12),
-                _buildLangBtn('el', 'Ελληνικά', '🇬🇷', currentLang),
+                for (final (code, name, flag) in langs) ...[
+                  _buildLangBtn(code, name, flag, currentLang),
+                  if (code != 'el') const SizedBox(height: 10),
+                ],
               ],
             ),
           );
@@ -1092,52 +1121,78 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Widget _buildLangBtn(String code, String name, String flag, String current) {
     final colors = Theme.of(context).colorScheme;
     final isSel = current == code;
-    return InkWell(
-      onTap: () async {
-        appLocaleNotifier.value = code;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('appLocale', code);
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-        decoration: BoxDecoration(
-          color: isSel
-              ? colors.primaryContainer.withValues(alpha: 0.96)
-              : colors.surfaceContainerHigh.withValues(alpha: 0.88),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          HapticFeedback.selectionClick();
+          appLocaleNotifier.value = code;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('appLocale', code);
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
             color: isSel
-                ? colors.primary.withValues(alpha: 0.92)
-                : colors.outlineVariant.withValues(alpha: 0.72),
-            width: 2,
+                ? colors.primaryContainer.withValues(alpha: 0.9)
+                : colors.surfaceContainerHigh.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSel
+                  ? colors.primary.withValues(alpha: 0.8)
+                  : colors.outlineVariant.withValues(alpha: 0.5),
+              width: isSel ? 1.5 : 1,
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: (isSel ? colors.primary : colors.shadow).withValues(
-                alpha: isSel ? 0.12 : 0.05,
+          child: Row(
+            children: [
+              // Flag in a subtle rounded container
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? colors.primary.withValues(alpha: 0.12)
+                      : colors.surface.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(flag, style: const TextStyle(fontSize: 22)),
               ),
-              blurRadius: isSel ? 14 : 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Text(flag, style: const TextStyle(fontSize: 24)),
-            const SizedBox(width: 16),
-            Text(
-              name,
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
-                color: isSel ? colors.onPrimaryContainer : colors.onSurface,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  name,
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight:
+                        isSel ? FontWeight.w700 : FontWeight.w500,
+                    color:
+                        isSel ? colors.onPrimaryContainer : colors.onSurface,
+                  ),
+                ),
               ),
-            ),
-            const Spacer(),
-            if (isSel) Icon(Icons.check_circle, color: colors.primary),
-          ],
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: isSel
+                    ? Icon(
+                        Icons.check_circle_rounded,
+                        key: const ValueKey('check'),
+                        color: colors.primary,
+                        size: 22,
+                      )
+                    : Icon(
+                        Icons.radio_button_unchecked_rounded,
+                        key: const ValueKey('empty'),
+                        color: colors.outlineVariant,
+                        size: 22,
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1148,213 +1203,96 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final colors = Theme.of(context).colorScheme;
 
     return _StepWrapper(
-      icon: Icons.palette,
+      icon: Icons.palette_rounded,
       title: l.onboardingAppearanceTitle,
       subtitle: l.onboardingAppearanceSubtitle,
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              decoration: BoxDecoration(
-                color: colors.surface.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: colors.outlineVariant.withValues(alpha: 0.7),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // Theme mode section
+            _buildSectionLabel(l.settingsThemeMode, colors),
+            const SizedBox(height: 8),
+            ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeModeNotifier,
+              builder: (context, val, _) => _buildThemeModeRow(l, val, colors),
+            ),
+            const SizedBox(height: 18),
+            // Background section
+            _buildSectionLabel(l.settingsBackgroundAnimations, colors),
+            const SizedBox(height: 8),
+            ValueListenableBuilder<bool>(
+              valueListenable: backgroundAnimationsNotifier,
+              builder: (context, animEnabled, _) => Column(
                 children: [
-                  Text(
-                    l.settingsThemeMode,
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14.5,
-                      color: colors.onSurface,
+                  _buildToggleTile(
+                    icon: Icons.animation_rounded,
+                    title: l.settingsBackgroundAnimations,
+                    subtitle: l.settingsBackgroundAnimationsDesc,
+                    value: animEnabled,
+                    onChanged: (nv) async {
+                      backgroundAnimationsNotifier.value = nv;
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('backgroundAnimations', nv);
+                    },
+                    colors: colors,
+                  ),
+                  const SizedBox(height: 8),
+                  AnimatedOpacity(
+                    opacity: animEnabled ? 1.0 : 0.45,
+                    duration: const Duration(milliseconds: 250),
+                    child: IgnorePointer(
+                      ignoring: !animEnabled,
+                      child: Column(
+                        children: [
+                          ValueListenableBuilder<int>(
+                            valueListenable: backgroundAnimationStyleNotifier,
+                            builder: (context, style, _) =>
+                                _buildChevronTile(
+                              icon: _backgroundStyleIcon(style),
+                              title: l.settingsBackgroundStyle,
+                              subtitle: _backgroundStyleLabel(l, style),
+                              onTap: () async {
+                                final selected =
+                                    await _showBackgroundStylePicker(style);
+                                if (selected != null) {
+                                  await _setBackgroundAnimationStyle(selected);
+                                }
+                              },
+                              colors: colors,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: backgroundGyroscopeNotifier,
+                            builder: (context, val, _) => _buildToggleTile(
+                              icon: Icons.screen_rotation_rounded,
+                              title: l.settingsBackgroundGyroscope,
+                              subtitle: l.settingsBackgroundGyroscopeDesc,
+                              value: val,
+                              onChanged: _setBackgroundGyroscopeEnabled,
+                              colors: colors,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  ValueListenableBuilder<ThemeMode>(
-                    valueListenable: themeModeNotifier,
-                    builder: (context, val, _) => SegmentedButton<ThemeMode>(
-                      style: SegmentedButton.styleFrom(
-                        textStyle: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                      segments: [
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          icon: const Icon(Icons.light_mode_rounded, size: 17),
-                          label: Text(l.settingsThemeLight),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          icon: const Icon(
-                            Icons.brightness_auto_rounded,
-                            size: 17,
-                          ),
-                          label: Text(l.settingsThemeSystem),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          icon: const Icon(Icons.dark_mode_rounded, size: 17),
-                          label: Text(l.settingsThemeDark),
-                        ),
-                      ],
-                      selected: {val},
-                      onSelectionChanged: (set) async {
-                        final mode = set.first;
-                        themeModeNotifier.value = mode;
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.setInt('themeMode', mode.index);
-                      },
+                  const SizedBox(height: 18),
+                  _buildSectionLabel(l.settingsGlassEffect, colors),
+                  const SizedBox(height: 8),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: blurEnabledNotifier,
+                    builder: (context, val, _) => _buildToggleTile(
+                      icon: Icons.blur_on_rounded,
+                      title: l.settingsGlassEffect,
+                      subtitle: l.settingsGlassEffectDesc,
+                      value: val,
+                      onChanged: _setBlurEnabled,
+                      colors: colors,
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<bool>(
-              valueListenable: backgroundAnimationsNotifier,
-              builder: (context, val, _) => SwitchListTile(
-                title: Text(
-                  l.settingsBackgroundAnimations,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(l.settingsBackgroundAnimationsDesc),
-                value: val,
-                onChanged: (nv) async {
-                  backgroundAnimationsNotifier.value = nv;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('backgroundAnimations', nv);
-                },
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                tileColor: colors.surface.withValues(alpha: 0.75),
-              ),
-            ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<bool>(
-              valueListenable: backgroundAnimationsNotifier,
-              builder: (context, animationsEnabled, _) {
-                return Opacity(
-                  opacity: animationsEnabled ? 1 : 0.55,
-                  child: AbsorbPointer(
-                    absorbing: !animationsEnabled,
-                    child: ValueListenableBuilder<int>(
-                      valueListenable: backgroundAnimationStyleNotifier,
-                      builder: (context, style, _) => Container(
-                        decoration: BoxDecoration(
-                          color: colors.surfaceContainerHigh.withValues(
-                            alpha: 0.84,
-                          ),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: colors.outlineVariant.withValues(
-                              alpha: 0.78,
-                            ),
-                          ),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 4,
-                          ),
-                          leading: Icon(
-                            _backgroundStyleIcon(style),
-                            color: colors.primary.withValues(alpha: 0.95),
-                          ),
-                          title: Text(
-                            l.settingsBackgroundStyle,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w600,
-                              color: colors.onSurface.withValues(alpha: 0.98),
-                            ),
-                          ),
-                          subtitle: Text(
-                            _backgroundStyleLabel(l, style),
-                            style: GoogleFonts.outfit(
-                              color: colors.onSurfaceVariant.withValues(
-                                alpha: 0.92,
-                              ),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          trailing: Icon(
-                            Icons.chevron_right_rounded,
-                            color: colors.onSurfaceVariant.withValues(
-                              alpha: 0.88,
-                            ),
-                          ),
-                          onTap: () async {
-                            final selected = await _showBackgroundStylePicker(
-                              style,
-                            );
-                            if (selected != null) {
-                              await _setBackgroundAnimationStyle(selected);
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<bool>(
-              valueListenable: backgroundAnimationsNotifier,
-              builder: (context, animationsEnabled, _) {
-                return Opacity(
-                  opacity: animationsEnabled ? 1 : 0.55,
-                  child: AbsorbPointer(
-                    absorbing: !animationsEnabled,
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: backgroundGyroscopeNotifier,
-                      builder: (context, val, _) => SwitchListTile(
-                        title: Text(
-                          l.settingsBackgroundGyroscope,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(l.settingsBackgroundGyroscopeDesc),
-                        value: val,
-                        onChanged: (nv) async {
-                          await _setBackgroundGyroscopeEnabled(nv);
-                        },
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        tileColor: colors.surface.withValues(alpha: 0.75),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<bool>(
-              valueListenable: blurEnabledNotifier,
-              builder: (context, val, _) => SwitchListTile(
-                title: Text(
-                  l.settingsGlassEffect,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-                subtitle: Text(l.settingsGlassEffectDesc),
-                value: val,
-                onChanged: (nv) async {
-                  await _setBlurEnabled(nv);
-                },
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                tileColor: colors.surface.withValues(alpha: 0.75),
               ),
             ),
           ],
@@ -1364,179 +1302,572 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
+  Widget _buildSectionLabel(String text, ColorScheme colors) {
+    return Text(
+      text.toUpperCase(),
+      style: GoogleFonts.outfit(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.1,
+        color: colors.primary.withValues(alpha: 0.75),
+      ),
+    );
+  }
+
+  Widget _buildThemeModeRow(AppL10n l, ThemeMode val, ColorScheme colors) {
+    final modes = [
+      (ThemeMode.light, Icons.light_mode_rounded, l.settingsThemeLight),
+      (ThemeMode.system, Icons.brightness_auto_rounded, l.settingsThemeSystem),
+      (ThemeMode.dark, Icons.dark_mode_rounded, l.settingsThemeDark),
+    ];
+    return Row(
+      children: modes.map((m) {
+        final (mode, icon, label) = m;
+        final selected = val == mode;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: mode == ThemeMode.dark ? 0 : 8,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () async {
+                  HapticFeedback.selectionClick();
+                  themeModeNotifier.value = mode;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt('themeMode', mode.index);
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? colors.primaryContainer.withValues(alpha: 0.85)
+                        : colors.surfaceContainerHigh.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: selected
+                          ? colors.primary.withValues(alpha: 0.7)
+                          : colors.outlineVariant.withValues(alpha: 0.4),
+                      width: selected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        icon,
+                        size: 22,
+                        color: selected
+                            ? colors.primary
+                            : colors.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        label,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: selected
+                              ? colors.onPrimaryContainer
+                              : colors.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildToggleTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required ColorScheme colors,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHigh.withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: colors.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: colors.onPrimaryContainer),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: value,
+                onChanged: onChanged,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChevronTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    required ColorScheme colors,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHigh.withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: colors.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: colors.onPrimaryContainer),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoginStep() {
     final l = AppL10n.of(appLocaleNotifier.value);
+    final colors = Theme.of(context).colorScheme;
 
     Widget content;
     Widget footer;
     if (!_manualSchoolEntry && _schoolController.text.isEmpty) {
+      // School search view
       content = Column(
         children: [
-          TextField(
-            autofocus: true,
-            decoration: InputDecoration(
-              labelText: l.loginSearchHint,
-              prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+          // Search field
+          Container(
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHigh.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colors.outlineVariant.withValues(alpha: 0.4),
               ),
             ),
-            onChanged: (val) {
-              if (_debounce?.isActive ?? false) _debounce!.cancel();
-              _debounce = Timer(const Duration(milliseconds: 800), () {
-                if (!mounted) return;
-                _searchSchool(val);
-              });
-            },
+            child: TextField(
+              autofocus: true,
+              style: GoogleFonts.outfit(fontSize: 15),
+              decoration: InputDecoration(
+                hintText: l.loginSearchHint,
+                hintStyle: GoogleFonts.outfit(color: colors.onSurfaceVariant),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.only(left: 12, right: 8),
+                  child: Icon(Icons.search_rounded, color: colors.onSurfaceVariant),
+                ),
+                prefixIconConstraints: const BoxConstraints(minWidth: 0),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+              ),
+              onChanged: (val) {
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
+                _debounce = Timer(const Duration(milliseconds: 600), () {
+                  if (!mounted) return;
+                  _searchSchool(val);
+                });
+              },
+            ),
           ),
           const SizedBox(height: 10),
           Expanded(
             child: _isSearching
                 ? const Center(child: CircularProgressIndicator())
                 : _searchResults.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: colors.surfaceContainerHigh
+                                    .withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.search_rounded,
+                                size: 36,
+                                color: colors.onSurfaceVariant
+                                    .withValues(alpha: 0.5),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              l.loginNoSchoolsFound,
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 10),
-                        Text(l.loginNoSchoolsFound),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _searchResults.length,
-                    itemBuilder: (context, index) {
-                      final s = _searchResults[index];
-                      return ListTile(
-                        title: Text(s.displayName),
-                        subtitle: Text(
-                          s.address.isNotEmpty
-                              ? '${s.address}\n${s.loginName} • ${s.serverUrl}'
-                              : '${s.loginName} • ${s.serverUrl}',
-                        ),
-                        isThreeLine: s.address.isNotEmpty,
-                        onTap: () {
-                          setState(() {
-                            _schoolController.text = s.loginName;
-                            _serverController.text = s.serverUrl;
-                            _searchResults = [];
-                          });
+                      )
+                    : ListView.separated(
+                        itemCount: _searchResults.length,
+                        separatorBuilder: (_, $2) => const SizedBox(height: 6),
+                        itemBuilder: (context, index) {
+                          final s = _searchResults[index];
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() {
+                                  _schoolController.text = s.loginName;
+                                  _serverController.text = s.serverUrl;
+                                  _searchResults = [];
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.surfaceContainerHigh
+                                      .withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: colors.outlineVariant
+                                        .withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: colors.primaryContainer
+                                            .withValues(alpha: 0.7),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        Icons.school_rounded,
+                                        size: 18,
+                                        color: colors.onPrimaryContainer,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            s.displayName,
+                                            style: GoogleFonts.outfit(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          Text(
+                                            s.address.isNotEmpty
+                                                ? s.address
+                                                : s.loginName,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 12,
+                                              color: colors.onSurfaceVariant,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: colors.onSurfaceVariant
+                                          .withValues(alpha: 0.6),
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
                         },
-                      );
-                    },
-                  ),
+                      ),
           ),
         ],
       );
       footer = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextButton(
-            onPressed: () => setState(() => _manualSchoolEntry = true),
-            child: Text(l.loginManualEntry),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _isLogginIn ? null : _activateDemoMode,
-            icon: const Icon(Icons.science_rounded),
-            label: Text(l.onboardingUseDemoMode),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 46),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => setState(() => _manualSchoolEntry = true),
+                  icon: const Icon(Icons.edit_rounded, size: 17),
+                  label: Text(l.loginManualEntry),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isLogginIn ? null : _activateDemoMode,
+                  icon: const Icon(Icons.science_rounded, size: 17),
+                  label: Text(l.onboardingUseDemoMode),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
             l.onboardingUseDemoModeDesc,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: GoogleFonts.outfit(
               fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: colors.onSurfaceVariant,
             ),
           ),
         ],
       );
     } else {
+      // Credentials view
       content = SingleChildScrollView(
         child: Column(
           children: [
             if (!_manualSchoolEntry && _schoolController.text.isNotEmpty) ...[
-              Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                shape: RoundedRectangleBorder(
+              // Cleaner school card
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(16),
-                ),
-                child: ListTile(
-                  leading: const Icon(Icons.school),
-                  title: Text(_schoolController.text),
-                  subtitle: Text(_serverController.text),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit),
-                    tooltip: l.loginChangeSchool,
-                    onPressed: () {
-                      setState(() {
-                        _schoolController.clear();
-                        _serverController.clear();
-                      });
-                    },
+                  border: Border.all(
+                    color: colors.primary.withValues(alpha: 0.25),
                   ),
                 ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: colors.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.school_rounded,
+                        color: colors.onPrimaryContainer,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _schoolController.text,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: colors.onSurface,
+                            ),
+                          ),
+                          Text(
+                            _serverController.text,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      tooltip: l.loginChangeSchool,
+                      onPressed: () => setState(() {
+                        _schoolController.clear();
+                        _serverController.clear();
+                      }),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
             ] else ...[
-              _buildField(_serverController, l.loginServer, Icons.dns),
-              const SizedBox(height: 12),
+              _buildField(_serverController, l.loginServer, Icons.dns_rounded),
+              const SizedBox(height: 10),
               _buildField(
                 _schoolController,
                 l.loginSchool,
-                Icons.location_city,
+                Icons.location_city_rounded,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
             ],
-            _buildField(_userController, l.loginUsername, Icons.person),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            _buildField(
+              _userController,
+              l.loginUsername,
+              Icons.person_rounded,
+            ),
+            const SizedBox(height: 10),
+            // Credential mode toggle
+            Row(
               children: [
-                ChoiceChip(
-                  label: Text(l.loginCredentialModePassword),
-                  selected: !_useLoginKey,
-                  onSelected: (_) {
-                    setState(() => _useLoginKey = false);
-                  },
+                Expanded(
+                  child: _buildCredentialModeChip(
+                    label: l.loginCredentialModePassword,
+                    selected: !_useLoginKey,
+                    onTap: () => setState(() => _useLoginKey = false),
+                    colors: colors,
+                  ),
                 ),
-                ChoiceChip(
-                  label: Text(l.loginCredentialModeLoginKey),
-                  selected: _useLoginKey,
-                  onSelected: (_) {
-                    setState(() => _useLoginKey = true);
-                  },
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildCredentialModeChip(
+                    label: l.loginCredentialModeLoginKey,
+                    selected: _useLoginKey,
+                    onTap: () => setState(() => _useLoginKey = true),
+                    colors: colors,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             _buildField(
               _passwordController,
               _useLoginKey ? l.loginLoginKey : l.loginPassword,
-              Icons.key,
+              Icons.key_rounded,
               obscure: true,
               helperText: _useLoginKey ? l.loginLoginKeyHint : null,
             ),
             if (_requiresTwoFactor) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _buildField(
                 _twoFactorController,
                 l.loginTwoFactorCode,
-                Icons.verified_user,
+                Icons.verified_user_rounded,
                 keyboardType: TextInputType.number,
                 helperText: l.loginTwoFactorHint,
                 autofillHints: const [AutofillHints.oneTimeCode],
@@ -1550,34 +1881,39 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       footer = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 8),
-          _isLogginIn
-              ? const CircularProgressIndicator()
-              : FilledButton(
-                  onPressed: _handleLogin,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: Text(
-                    _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+          const SizedBox(height: 4),
+          if (_isLogginIn)
+            const SizedBox(
+              height: 56,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            FilledButton(
+              onPressed: _handleLogin,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 56),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
                 ),
+              ),
+              child: Text(
+                _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
+                style: GoogleFonts.outfit(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           if (_manualSchoolEntry) ...[
-            const SizedBox(height: 16),
-            TextButton(
+            const SizedBox(height: 10),
+            TextButton.icon(
               onPressed: () => setState(() {
                 _manualSchoolEntry = false;
                 _schoolController.clear();
                 _serverController.clear();
               }),
-              child: Text(l.loginSwitchToSearch),
+              icon: const Icon(Icons.search_rounded, size: 16),
+              label: Text(l.loginSwitchToSearch),
             ),
           ],
         ],
@@ -1590,6 +1926,49 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       subtitle: l.onboardingSchoolLoginSubtitle,
       content: content,
       footer: footer,
+    );
+  }
+
+  Widget _buildCredentialModeChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    required ColorScheme colors,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? colors.primaryContainer.withValues(alpha: 0.85)
+                : colors.surfaceContainerHigh.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected
+                  ? colors.primary.withValues(alpha: 0.65)
+                  : colors.outlineVariant.withValues(alpha: 0.4),
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? colors.onPrimaryContainer : colors.onSurface,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1607,58 +1986,87 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         : modelOptions.first;
 
     return _StepWrapper(
-      icon: Icons.auto_awesome,
+      icon: Icons.auto_awesome_rounded,
       title: l.settingsSectionAI,
       subtitle: l.onboardingGeminiSubtitle,
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Info banner – gradient accent card
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: colors.secondaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  colors: [
+                    colors.primaryContainer.withValues(alpha: 0.7),
+                    colors.secondaryContainer.withValues(alpha: 0.5),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: colors.primary.withValues(alpha: 0.2),
+                ),
               ),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline, size: 32),
-                  const SizedBox(height: 12),
-                  Text(
-                    l.settingsAiApiKeyDialogDesc,
-                    textAlign: TextAlign.start,
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '${l.settingsAiProvider}: ${_providerLabel(l, _onboardingAiProvider)}',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w700,
-                      color: colors.onSecondaryContainer,
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.info_rounded,
+                      size: 18,
+                      color: colors.primary,
                     ),
                   ),
-                  if (providerPortal.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      onPressed: _openApiKeyPortal,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 42),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.settingsAiApiKeyDialogDesc,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13.5,
+                            color: colors.onSurface.withValues(alpha: 0.88),
+                            height: 1.45,
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      icon: const Icon(Icons.open_in_new_rounded),
-                      label: Text(
-                        l.settingsAiApiKeyGet,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
+                        if (providerPortal.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          GestureDetector(
+                            onTap: _openApiKeyPortal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 14,
+                                  color: colors.primary,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  l.settingsAiApiKeyGet,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -1669,7 +2077,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               subtitle: _providerLabel(l, _onboardingAiProvider),
               onTap: _showOnboardingAiProviderDialog,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _buildOnboardingAiOptionTile(
               icon: Icons.memory_rounded,
               title: l.settingsAiModel,
@@ -1677,7 +2085,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onTap: _showOnboardingAiModelDialog,
             ),
             if (isCustom) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               _buildOnboardingAiOptionTile(
                 icon: Icons.merge_type_rounded,
                 title: l.settingsAiCompatibility,
@@ -1687,7 +2095,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 ),
                 onTap: _showOnboardingAiCompatibilityDialog,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               _buildOnboardingAiOptionTile(
                 icon: Icons.link_rounded,
                 title: l.settingsAiCustomBaseUrl,
@@ -1697,25 +2105,25 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 onTap: _showOnboardingAiCustomBaseUrlDialog,
               ),
             ],
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _buildOnboardingAiOptionTile(
               icon: Icons.edit_note_rounded,
               title: l.settingsAiPrompt,
               subtitle: l.settingsAiPromptDesc,
               onTap: _showOnboardingAiPromptDialog,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _buildOnboardingAiOptionTile(
               icon: Icons.data_object_rounded,
               title: l.settingsAiPromptVariables,
               subtitle: l.settingsAiPromptVariablesDesc,
               onTap: _showOnboardingAiVariablesDialog,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             _buildField(
               _aiApiKeyController,
-              '${l.settingsAiApiKey} (${_providerLabel(l, _onboardingAiProvider)})',
-              Icons.key,
+              '${l.settingsAiApiKey} · ${_providerLabel(l, _onboardingAiProvider)}',
+              Icons.key_rounded,
               helperText: _apiKeyHintForProvider(_onboardingAiProvider),
             ),
           ],
@@ -1727,19 +2135,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             child: OutlinedButton(
               onPressed: _nextPage,
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
+                minimumSize: const Size(double.infinity, 54),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: Text(
                 l.onboardingSkip,
-                style: const TextStyle(fontSize: 16),
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
+            flex: 2,
             child: FilledButton(
               onPressed: () {
                 if (_aiApiKeyController.text.trim().isNotEmpty) {
@@ -1749,16 +2161,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 }
               },
               style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
+                minimumSize: const Size(double.infinity, 54),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: Text(
                 l.onboardingNext,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                style: GoogleFonts.outfit(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -1770,93 +2182,110 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Widget _buildTutorialStep() {
     final l = AppL10n.of(appLocaleNotifier.value);
+    final colors = Theme.of(context).colorScheme;
+
+    final features = [
+      (Icons.calendar_month_rounded, l.onboardingFeatureTimetableTitle,
+          l.onboardingFeatureTimetableDesc, colors.primary),
+      (Icons.draw_rounded, l.onboardingFeatureExamsTitle,
+          l.onboardingFeatureExamsDesc, colors.secondary),
+      (Icons.auto_awesome_rounded, l.onboardingFeatureAiTitle,
+          l.onboardingFeatureAiDesc, colors.tertiary),
+      (Icons.notifications_active_rounded, l.onboardingFeatureNotifyTitle,
+          l.onboardingFeatureNotifyDesc, colors.primary),
+    ];
 
     return _StepWrapper(
-      icon: Icons.rocket_launch,
+      icon: Icons.rocket_launch_rounded,
       title: l.onboardingReadyTitle,
       subtitle: l.onboardingReadySubtitle,
       content: SingleChildScrollView(
         child: Column(
           children: [
-            _buildFeatureRow(
-              Icons.calendar_month,
-              l.onboardingFeatureTimetableTitle,
-              l.onboardingFeatureTimetableDesc,
-            ),
-            const SizedBox(height: 16),
-            _buildFeatureRow(
-              Icons.draw,
-              l.onboardingFeatureExamsTitle,
-              l.onboardingFeatureExamsDesc,
-            ),
-            const SizedBox(height: 16),
-            _buildFeatureRow(
-              Icons.auto_awesome,
-              l.onboardingFeatureAiTitle,
-              l.onboardingFeatureAiDesc,
-            ),
-            const SizedBox(height: 16),
-            _buildFeatureRow(
-              Icons.notifications_active,
-              l.onboardingFeatureNotifyTitle,
-              l.onboardingFeatureNotifyDesc,
-            ),
+            for (int i = 0; i < features.length; i++) ...[
+              _buildFeatureCard(
+                icon: features[i].$1,
+                title: features[i].$2,
+                desc: features[i].$3,
+                accentColor: features[i].$4,
+                colors: colors,
+              ),
+              if (i < features.length - 1) const SizedBox(height: 10),
+            ],
           ],
         ),
       ),
       footer: FilledButton.icon(
         onPressed: _completeOnboarding,
-        icon: const Icon(Icons.check),
+        icon: const Icon(Icons.check_rounded),
         label: Text(
           l.onboardingFinishSetup,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w800),
         ),
         style: FilledButton.styleFrom(
-          minimumSize: const Size(double.infinity, 64),
+          minimumSize: const Size(double.infinity, 58),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(18),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildFeatureRow(IconData icon, String title, String desc) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
+  Widget _buildFeatureCard({
+    required IconData icon,
+    required String title,
+    required String desc,
+    required Color accentColor,
+    required ColorScheme colors,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHigh.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: 0.4),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              Text(
-                desc,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: accentColor),
           ),
-        ),
-      ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                    color: colors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  desc,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12.5,
+                    color: colors.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -2033,92 +2462,107 @@ class _StepWrapper extends StatelessWidget {
     final keyboardOpen = mq.viewInsets.bottom > 0;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compactLayout = keyboardOpen || constraints.maxHeight < 700;
-          final iconSize = compactLayout ? 58.0 : 74.0;
-          final iconInnerSize = compactLayout ? 28.0 : 36.0;
-          final headerRadius = compactLayout ? 18.0 : 22.0;
-          final titleSize = compactLayout ? 24.0 : 31.0;
-          final subtitleSize = compactLayout ? 13.5 : 15.0;
-          final topSpacing = compactLayout ? 10.0 : 18.0;
-          final sectionSpacing = compactLayout ? 10.0 : 18.0;
+          final compact = keyboardOpen || constraints.maxHeight < 680;
+          final iconSize = compact ? 52.0 : 68.0;
+          final iconInner = compact ? 24.0 : 30.0;
+          final titleSize = compact ? 22.0 : 28.0;
+          final subtitleSize = compact ? 13.0 : 14.5;
+          final topSpacing = compact ? 8.0 : 14.0;
+          final sectionSpacing = compact ? 10.0 : 16.0;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Icon
               AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 220),
                 width: iconSize,
                 height: iconSize,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [cs.primaryContainer, cs.secondaryContainer],
+                    colors: [
+                      cs.primaryContainer,
+                      cs.secondaryContainer,
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(iconSize / 3.2),
                   border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.6),
+                    color: cs.primary.withValues(alpha: 0.18),
                   ),
                 ),
                 child: Icon(
                   icon,
-                  size: iconInnerSize,
+                  size: iconInner,
                   color: cs.onPrimaryContainer,
                 ),
               ),
               SizedBox(height: topSpacing),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: double.infinity,
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  compactLayout ? 12 : 14,
-                  16,
-                  compactLayout ? 14 : 16,
-                ),
-                decoration: BoxDecoration(
-                  color: cs.surface.withValues(alpha: 0.78),
-                  borderRadius: BorderRadius.circular(headerRadius),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.7),
+              // Title/subtitle card
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: _withOptionalBackdropBlur(
+                  sigmaX: 14,
+                  sigmaY: 14,
+                  child: const SizedBox.shrink(),
+                  childBuilder: (blur) => Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      compact ? 10 : 13,
+                      16,
+                      compact ? 12 : 15,
+                    ),
+                    decoration: BoxDecoration(
+                      color: blur
+                          ? cs.surface.withValues(alpha: 0.56)
+                          : cs.surface.withValues(alpha: 0.84),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: cs.outlineVariant.withValues(alpha: 0.45),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.outfit(
+                            fontSize: titleSize,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                            color: cs.onSurface,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: compact ? 4 : 6),
+                        Text(
+                          subtitle,
+                          style: GoogleFonts.outfit(
+                            fontSize: subtitleSize,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.outfit(
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.7,
-                        color: cs.onSurface,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: compactLayout ? 6 : 8),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.outfit(
-                        fontSize: subtitleSize,
-                        fontWeight: FontWeight.w500,
-                        color: cs.onSurfaceVariant,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
                 ),
               ),
               SizedBox(height: sectionSpacing),
+              // Content
               Expanded(child: content),
               if (footer != null) ...[
-                SizedBox(height: compactLayout ? 8 : 12),
+                SizedBox(height: compact ? 6 : 10),
                 AnimatedPadding(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOut,
-                  padding: EdgeInsets.only(bottom: keyboardOpen ? 6 : 0),
+                  padding: EdgeInsets.only(bottom: keyboardOpen ? 4 : 0),
                   child: footer!,
                 ),
               ],

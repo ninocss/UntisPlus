@@ -1,11 +1,11 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
-val localProperties = Properties().apply {
-    val localPropertiesFile = file("../local.properties")
-    if (localPropertiesFile.exists()) {
-        FileInputStream(localPropertiesFile).use { load(it) }
-    }
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 plugins {
@@ -25,6 +25,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // Fixed Block: Simple string target for older Kotlin plugin versions
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -39,10 +40,11 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("release-key.jks")
-            storePassword = localProperties.getProperty("ANDROID_KEYSTORE_PASSWORD")
-            keyAlias = localProperties.getProperty("ANDROID_KEY_ALIAS")
-            keyPassword = localProperties.getProperty("ANDROID_KEY_PASSWORD")
+            val targetFile = keystoreProperties.getProperty("storeFile") ?: "release-key.jks"
+            storeFile = file(targetFile)
+            storePassword = keystoreProperties.getProperty("storePassword")
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
         }
     }
 

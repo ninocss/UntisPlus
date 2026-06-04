@@ -40,10 +40,10 @@ class AppDesignTokens extends ThemeExtension<AppDesignTokens> {
       lessonAccent6: const Color(0xFF00B8D4),
       lessonAccent7: const Color(0xFF00C853),
       lessonAccent8: const Color(0xFFFFA000),
-      radiusSmall: 10,
-      radiusMedium: 16,
-      radiusLarge: 20,
-      radiusXLarge: 28,
+      radiusSmall: 12,
+      radiusMedium: 20,
+      radiusLarge: 28,
+      radiusXLarge: 32,
     );
   }
 
