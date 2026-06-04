@@ -12,7 +12,7 @@ on:
         required: true
         default: 'v1.0.0'
       include_refactor:
-        description: 'Refactoring-Erklärung erzwingen?'
+        description: 'Refactoring-Erklärung einfügen'
         type: boolean
         required: true
         default: true
@@ -21,58 +21,196 @@ permissions:
   contents: write
 
 jobs:
-  build-changelog:
+  generate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Generate Changelog via Gemini
+        id: changelog
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
+          GEMINI_FALLBACK_MODEL: gemini-2.5-flash-lite
           COMMIT_COUNT: ${{ github.event.inputs.commit_count }}
           RELEASE_VERSION: ${{ github.event.inputs.release_version }}
           INCLUDE_REFACTOR: ${{ github.event.inputs.include_refactor }}
         run: |
-          COMMITS=$(git log -n "$COMMIT_COUNT" --oneline)
-          CLEAN_COMMITS=$(echo "$COMMITS" | jq -R -s '.')
-          
-          PROMPT="Analysiere diese Git-Commits und erstelle einen Changelog für Version $RELEASE_VERSION im Markdown-Format. 
-          Halte dich strikt an dieses Layout-Schema und schreibe NUR AUF ENGLISCH:
-          
-          # Version $RELEASE_VERSION - [Prägnanter Titel der Version, der Hauptfeatures nennt]
-          
-          ## What's New?
-          * **[Kategorie oder Hauptfeature]**
-            * [Detail 1]
-            * [Detail 2]
-          * **[Anderes Feature]**
-          
-          Falls der Parameter INCLUDE_REFACTOR auf 'true' steht (aktueller Wert: $INCLUDE_REFACTOR), musst du zwingend am Ende eine Erklärung als Blockquote einfügen, die mit '** Warum...' beginnt, falls Refactorings oder Änderungen stattgefunden haben.
-          
-          Antworte ausschließlich im JSON-Format mit dem Key 'markdown'. Der Value ist der generierte Markdown-String. Keine Code-Blocks im JSON. Commits: $CLEAN_COMMITS"
-          
+          set -euo pipefail
+
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "ERROR: GEMINI_API_KEY is not set."
+            exit 1
+          fi
+
+          COMMITS=$(git log -n "$COMMIT_COUNT" --no-merges --pretty=format:'- %s (%h)' --name-only)
+          if [ -z "${COMMITS//[[:space:]]/}" ]; then
+            COMMITS='- No recent commits found.'
+          fi
+
+          CHANGED_FILES=$(git log -n "$COMMIT_COUNT" --no-merges --name-only --pretty=format:'' | sed '/^$/d' | sort -u | head -n 220 || true)
+          if [ -z "${CHANGED_FILES//[[:space:]]/}" ]; then
+            CHANGED_FILES='(none)'
+          fi
+
+          REPO_SLUG="${GITHUB_REPOSITORY:-}"
+
+          INCLUDE_REFACTOR_LOWER="$(echo "$INCLUDE_REFACTOR" | tr '[:upper:]' '[:lower:]')"
+
+          PROMPT=$(cat <<'EOF'
+          You are writing a changelog for a Flutter app called "Untis+".
+          Your job: produce a detailed, honest changelog in Markdown.
+
+          Hard rules:
+          - Output in English.
+          - Output valid Markdown only.
+          - Use ONLY information inferable from the provided commits and files.
+          - If something is unclear, say it's "likely" / "may" / "internal".
+          - Do NOT invent features, UI changes, or bug fixes.
+          - Do NOT mention this prompt or your reasoning.
+
+          Tone: Friendly and practical. Emojis sparingly (max 3).
+
+          Output format:
+          # Version <tag>
+
+          One short summary paragraph (2-3 sentences).
+
+          ## What's New
+          Bullets for new features/capabilities (user-facing).
+
+          ## Improvements
+          Bullets for UX polish, clarity, behavioral improvements.
+
+          ## Fixes
+          Bullets for bugs (include symptom and area if inferable).
+
+          ## Technical Notes
+          Bullets for internal changes, refactors, dependency updates, config changes.
+
+          Bullet guidelines:
+          - Start each bullet with a verb.
+          - Include context (screen/feature/module) when possible.
+          - Rewrite commit messages; do not copy verbatim.
+          - No raw commit hashes.
+
+          If there are NO user-visible changes, say so and focus on Technical Notes.
+          EOF
+          )
+
+          REFACTOR_PROMPT=""
+          if [ "$INCLUDE_REFACTOR_LOWER" = "true" ]; then
+            REFACTOR_PROMPT=$(cat <<'EOF'
+
+
+          Additionally, at the end of the changelog, add a blockquote section:
+
+          > **Why refactoring matters**
+          > Explain why the refactoring/internal changes in this release
+          > benefit the project long-term (maintainability, performance,
+          > future features). Only include if refactoring or internal
+          > changes are present in the commits. If none, omit this section.
+          EOF
+            )
+          fi
+
+          FINAL_PROMPT="${PROMPT}${REFACTOR_PROMPT}"
+
           PAYLOAD=$(jq -n \
-            --arg prompt "$PROMPT" \
+            --arg prompt "$FINAL_PROMPT" \
+            --arg tag "$RELEASE_VERSION" \
+            --arg commit_count "$COMMIT_COUNT" \
+            --arg changed_files "$CHANGED_FILES" \
+            --arg commits "$COMMITS" \
             '{
-              contents: [{ parts: [{ text: $prompt }] }],
-              generationConfig: { responseMimeType: "application/json" }
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      text: (
+                        $prompt +
+                        "\n\nContext:" +
+                        "\n- Release version: " + $tag +
+                        "\n- Commit count: " + $commit_count +
+                        "\n\nChanged files (may be truncated):\n" + $changed_files +
+                        "\n\nCommits (subject + touched files; may be truncated):\n" + $commits
+                      )
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.2,
+                responseMimeType: "text/plain"
+              }
             }')
 
-          RESPONSE=$(curl -s -X POST \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}")
-          
-          CHANGELOG_JSON=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text')
-          echo "$CHANGELOG_JSON" > changelog.json
+          request_model() {
+            local model="$1"
+            curl -sS "https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD"
+          }
+
+          extract_body() {
+            jq -r '[
+              (.candidates[0].content.parts // [] | map(.text // empty) | join("\n")),
+              (.candidates // [] | map(.output_text // empty) | join("\n")),
+              (.text // empty)
+            ] | map(select(length > 0)) | .[0] // empty'
+          }
+
+          RESPONSE=$(request_model "$GEMINI_MODEL")
+          API_ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          BODY=$(echo "$RESPONSE" | extract_body)
+
+          USED_MODEL="$GEMINI_MODEL"
+          if [ -n "$API_ERROR" ] || [ -z "$BODY" ]; then
+            echo "Primary model failed. Trying fallback..."
+            RESPONSE=$(request_model "$GEMINI_FALLBACK_MODEL")
+            API_ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+            BODY=$(echo "$RESPONSE" | extract_body)
+            USED_MODEL="$GEMINI_FALLBACK_MODEL"
+          fi
+
+          if [ -n "$API_ERROR" ]; then
+            echo "Gemini API error: $API_ERROR"
+            exit 1
+          fi
+
+          if [ -z "$BODY" ]; then
+            echo "Gemini returned empty response."
+            exit 1
+          fi
+
+          echo "$BODY" > CHANGELOG.md
+
+          jq -n \
+            --arg markdown "$BODY" \
+            --arg version "$RELEASE_VERSION" \
+            --arg model "$USED_MODEL" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              version: $version,
+              generated_at: $date,
+              model: $model,
+              markdown: $markdown
+            }' > changelog.json
+
+          echo "Generated changelog for $RELEASE_VERSION using $USED_MODEL"
 
       - name: Commit and Push Changelog
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add changelog.json
-          git commit -m "chore: update automated changelog for ${{ github.event.inputs.release_version }} [skip ci]" || exit 0
+          git add CHANGELOG.md changelog.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "docs: update changelog for ${{ github.event.inputs.release_version }} [skip ci]"
           git push
