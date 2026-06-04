@@ -68,6 +68,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final _firstChipKey = GlobalKey();
+  final FocusNode _promptFocusNode = FocusNode();
   Timer? _typingHintTimer;
   int _typingHintIndex = 0;
   int _searchGeneration = 0;
@@ -93,10 +94,14 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   void initState() {
     super.initState();
     _loadContext();
+    _promptFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _promptFocusNode.dispose();
     _typingHintTimer?.cancel();
     _inputController.dispose();
     _scrollController.dispose();
@@ -1230,74 +1235,94 @@ ANTWORTFORMAT:
 
   Widget _buildSearchBar(ColorScheme cs) {
     final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, 14 + MediaQuery.of(context).padding.bottom),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh.withValues(alpha: 0.92),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.38)),
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: 0.08),
-              blurRadius: 24,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 4),
-            Icon(Icons.manage_search_rounded, color: cs.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                controller: _inputController,
-                textInputAction: TextInputAction.search,
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) => _send(),
-                style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  hintText: isGerman ? 'Stunden, Freistunden, Prüfungen …' : 'Lessons, free periods, exams ...',
-                  hintStyle: GoogleFonts.outfit(
-                    color: cs.onSurface.withValues(alpha: 0.42),
-                  ),
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(22),
-                    borderSide: BorderSide.none,
-                  ),
+    final mq = MediaQuery.of(context);
+    final keyboardHeight = mq.viewInsets.bottom;
+    final isKeyboardOpen = keyboardHeight > 0;
+    final isFocused = _promptFocusNode.hasFocus;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 20),
+      curve: Curves.fastOutSlowIn,
+      margin: EdgeInsets.fromLTRB(
+        8,
+        8,
+        8,
+        isKeyboardOpen ? (keyboardHeight + 12) : (14 + mq.padding.bottom),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: isFocused ? 12 : 8,
+        vertical: 14,
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 8), 
+          Expanded(
+            child: TextField(
+              controller: _inputController,
+              focusNode: _promptFocusNode,
+              textInputAction: TextInputAction.search,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _send(),
+              style: GoogleFonts.outfit(
+                fontSize: 16, 
+                fontWeight: isFocused ? FontWeight.w700 : FontWeight.w600,
+              ),
+              decoration: InputDecoration(
+                hintText: isGerman ? 'Stunden, Freistunden, Prüfungen …' : 'Lessons, free periods, exams ...',
+                hintStyle: GoogleFonts.outfit(
+                  color: cs.onSurface.withValues(alpha: 0.5),
+                ),
+                filled: true,
+                fillColor: Colors.transparent,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide.none,
                 ),
               ),
             ),
-            if (_inputController.text.isNotEmpty) ...[
-              IconButton(
-                onPressed: _thinking
-                    ? null
-                    : () {
-                        setState(() => _inputController.clear());
-                      },
-                icon: const Icon(Icons.clear_rounded),
-                tooltip: isGerman ? 'Leeren' : 'Clear',
+          ),
+          if (_inputController.text.isNotEmpty) ...[
+            IconButton(
+              onPressed: _thinking
+                  ? null
+                  : () {
+                      setState(() => _inputController.clear());
+                    },
+              icon: const Icon(Icons.clear_rounded),
+              tooltip: isGerman ? 'Leeren' : 'Clear',
+            ),
+          ],
+          const SizedBox(width: 8), 
+          FilledButton(
+            onPressed: _thinking ? null : _send,
+            style: FilledButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                horizontal: isFocused ? 24 : 18, 
+                vertical: 16,
               ),
-            ],
-            AnimatedOpacity(
-              opacity: _thinking ? 0.55 : 1.0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(isFocused ? 14 : 22),
+              ),
+            ),
+            child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              child: FilledButton(
-                onPressed: _thinking ? null : _send,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                child: Icon(_thinking ? Icons.hourglass_top_rounded : Icons.search_rounded),
-              ),
+              child: _thinking
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: cs.onPrimary,
+                      ),
+                    )
+                  : Icon(
+                      Icons.search_rounded,
+                      key: ValueKey<bool>(isFocused),
+                    ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1534,6 +1559,7 @@ ANTWORTFORMAT:
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -1745,6 +1771,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     return Scaffold(
       extendBody: true,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Positioned.fill(

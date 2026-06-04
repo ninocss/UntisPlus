@@ -473,7 +473,7 @@ class AppL10n {
     // ── GERMAN ────────────────────────────────────────────────────────────────
     'de': {
       'navWeek': 'Woche',
-      'navExams': 'Prüfungen',
+      'navExams': 'Exams',
       'navInfo': 'Info',
       'navMenu': 'Menü',
     'navAi': 'KI',

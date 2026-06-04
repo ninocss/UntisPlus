@@ -4213,19 +4213,22 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           ),
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'exams_chat_fab',
-        onPressed: () {
-          Navigator.of(context).push(
-            _buildBouncyRoute(const AiAssistantPage()),
-          );
-        },
-        icon: const Icon(Icons.chat_bubble_outline_rounded),
-        label: Text(
-          appLocaleNotifier.value.toLowerCase().startsWith('de')
-              ? 'Prüfungen besprechen'
-              : 'Discuss exams',
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 100, right: 8),
+        child: FloatingActionButton.extended(
+          heroTag: 'exams_chat_fab',
+          onPressed: () {
+            Navigator.of(context).push(
+              _buildBouncyRoute(const AiAssistantPage()),
+            );
+          },
+          icon: const Icon(Icons.chat_bubble_outline_rounded),
+          label: Text(
+            appLocaleNotifier.value.toLowerCase().startsWith('de')
+                ? 'Frage KI'
+                : 'Ask AI',
+          ),
         ),
       ),
       body: _AnimatedBackground(
