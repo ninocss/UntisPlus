@@ -261,6 +261,29 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
               ),
               color: cs.surfaceContainerHigh,
               child: ListTile(
+                leading: const Icon(Icons.new_releases_rounded),
+                title: Text(
+                  'Neuigkeiten (Changelog)',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  'Was ist neu in Untis+?',
+                  style: GoogleFonts.outfit(),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  showChangelogSheet(context);
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
+              child: ListTile(
                 leading: const Icon(Icons.rocket_launch_outlined),
                 title: Text(
                   l.appName,

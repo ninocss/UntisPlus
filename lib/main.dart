@@ -49,6 +49,7 @@ part 'screens/settings/settings_account_page.dart';
 part 'screens/settings/settings_about_updates_page.dart';
 part 'widgets/animated_background.dart';
 part 'widgets/custom_background_view.dart';
+part 'widgets/changelog_bottom_sheet.dart';
 
 int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
@@ -71,7 +72,12 @@ void main() async {
   final packageInfo = await PackageInfo.fromPlatform();
   appVersion = packageInfo.version;
   appBuildNumber = packageInfo.buildNumber;
+  final previousAppVersion = prefs.getString('installedAppVersion');
+  if (previousAppVersion == null || previousAppVersion != appVersion) {
+    await prefs.setBool('showChangelogPending', true);
+  }
   await prefs.setString('installedAppVersion', appVersion);
+  showChangelogOnStartup = prefs.getBool('showChangelogPending') ?? false;
   demoModeNotifier.value = prefs.getBool('demoMode') ?? false;
   final bool isLoggedIn = prefs.containsKey('sessionId');
   final bool onboardingCompleted =

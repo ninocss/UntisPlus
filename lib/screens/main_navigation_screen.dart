@@ -1643,6 +1643,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           _selectedIndex = 0;
         });
       });
+    } else if (showChangelogOnStartup) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        showChangelogOnStartup = false;
+        final p = await SharedPreferences.getInstance();
+        await p.remove('showChangelogPending');
+        if (mounted) showChangelogSheet(context);
+      });
     }
   }
 
