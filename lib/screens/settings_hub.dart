@@ -58,6 +58,12 @@ Future<void> _settingsSetPageTransition(int value) async {
   await prefs.setInt('pageTransition', normalized);
 }
 
+Future<void> _settingsSetTabTransition(bool value) async {
+  tabTransitionNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('tabTransition', value);
+}
+
 Future<void> _settingsSetProgressivePush(bool value) async {
   progressivePushNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -275,6 +281,8 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getBool('blurEnabled') ?? blurEnabledNotifier.value;
   pageTransitionNotifier.value =
       (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
+  tabTransitionNotifier.value =
+      prefs.getBool('tabTransition') ?? false;
   progressivePushNotifier.value =
       prefs.getBool('progressivePush') ?? progressivePushNotifier.value;
   dailyBriefingPushNotifier.value =

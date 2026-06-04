@@ -302,6 +302,8 @@ class AppL10n {
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
   String get settingsPageTransition => _t('settingsPageTransition');
   String get settingsPageTransitionDesc => _t('settingsPageTransitionDesc');
+  String get settingsTabTransition => _t('settingsTabTransition');
+  String get settingsTabTransitionDesc => _t('settingsTabTransitionDesc');
   String get settingsPageTransitionBounce => _t('settingsPageTransitionBounce');
   String get settingsPageTransitionFade => _t('settingsPageTransitionFade');
   String get settingsPageTransitionSlide => _t('settingsPageTransitionSlide');
@@ -1434,6 +1436,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Enables blur effects across the interface',
       'settingsPageTransition': 'Page Transition',
       'settingsPageTransitionDesc': 'Choose the transition style for page navigation',
+      'settingsTabTransition': 'Tab Transitions',
+      'settingsTabTransitionDesc': 'Apply page transitions to main navigation tabs (Timetable, Exams, Info)',
       'settingsPageTransitionBounce': 'Bounce',
       'settingsPageTransitionFade': 'Fade',
       'settingsPageTransitionSlide': 'Slide',

@@ -1745,6 +1745,135 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     });
   }
 
+  Duration _getTransitionDuration(int index) {
+    switch (index) {
+      case 0: return const Duration(milliseconds: 500); // Bounce
+      case 1: return const Duration(milliseconds: 350); // Fade
+      case 2: return const Duration(milliseconds: 400); // Slide
+      case 3: return const Duration(milliseconds: 450); // Zoom
+      case 4: return const Duration(milliseconds: 400); // Blur
+      case 5: return const Duration(milliseconds: 400); // EaseIn
+      case 6: return const Duration(milliseconds: 400); // EaseOut
+      case 7: return const Duration(milliseconds: 500); // Expo
+      default: return const Duration(milliseconds: 400);
+    }
+  }
+
+  Curve _getTransitionCurve(int index) {
+    switch (index) {
+      case 0: return _kSmoothBounce; // Bounce
+      case 1: return Curves.easeInOut; // Fade
+      case 2: return Curves.easeInOut; // Slide
+      case 3: return _kSmoothBounce; // Zoom
+      case 4: return Curves.easeInOut; // Blur
+      case 5: return Curves.easeIn; // EaseIn
+      case 6: return Curves.easeOut; // EaseOut
+      case 7: return Curves.easeInOutCubic; // Expo
+      default: return Curves.easeInOut;
+    }
+  }
+
+  Widget _buildTabTransition(Widget child, Animation<double> animation, int transitionIndex) {
+    switch (transitionIndex) {
+      case 0: // Bounce
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.85, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: _kSmoothBounce),
+          ),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      case 1: // Fade
+        return FadeTransition(opacity: animation, child: child);
+      case 2: // Slide
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.15, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      case 3: // Zoom
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.7, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: _kSmoothBounce),
+          ),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      case 4: // Blur
+        return FadeTransition(
+          opacity: animation,
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: 12 * (1 - animation.value),
+              sigmaY: 12 * (1 - animation.value),
+            ),
+            child: child,
+          ),
+        );
+      case 5: // EaseIn
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.2),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeIn)),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      case 6: // EaseOut
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, -0.2),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      case 7: // Expo
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.6, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic),
+          ),
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.15),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic)),
+            child: FadeTransition(opacity: animation, child: child),
+          ),
+        );
+      default:
+        return FadeTransition(opacity: animation, child: child);
+    }
+  }
+
+  Widget _buildTabTransitionStack() {
+    return ValueListenableBuilder<int>(
+      valueListenable: pageTransitionNotifier,
+      builder: (context, transitionIndex, _) {
+        return AnimatedSwitcher(
+          duration: _getTransitionDuration(transitionIndex),
+          switchInCurve: _getTransitionCurve(transitionIndex),
+          switchOutCurve: _getTransitionCurve(transitionIndex).flipped,
+          transitionBuilder: (child, animation) {
+            return _buildTabTransition(child, animation, transitionIndex);
+          },
+          layoutBuilder: (currentChild, previousChildren) {
+            return Stack(
+              alignment: Alignment.center,
+              fit: StackFit.expand,
+              children: [
+                ...previousChildren,
+                if (currentChild != null) currentChild,
+              ],
+            );
+          },
+          child: KeyedSubtree(
+            key: ValueKey(_selectedIndex),
+            child: _pages[_selectedIndex],
+          ),
+        );
+      },
+    );
+  }
+
   List<Widget> get _pages => <Widget>[
     WeeklyTimetablePage(key: ValueKey(sessionID)),
     const ExamsPage(),
@@ -1811,7 +1940,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             data: mq.copyWith(
               padding: mq.padding.copyWith(bottom: mq.padding.bottom + 104),
             ),
-            child: IndexedStack(index: _selectedIndex, children: _pages),
+            child: ValueListenableBuilder<bool>(
+              valueListenable: tabTransitionNotifier,
+              builder: (context, enableTransitions, _) {
+                if (!enableTransitions) {
+                  return IndexedStack(index: _selectedIndex, children: _pages);
+                }
+                return _buildTabTransitionStack();
+              },
+            ),
           ),
           Positioned.fill(
             child: ValueListenableBuilder<bool>(

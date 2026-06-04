@@ -371,6 +371,31 @@ class SettingsAppearancePage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               color: cs.surfaceContainerHigh,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: tabTransitionNotifier,
+                builder: (context, value, _) {
+                  return SwitchListTile.adaptive(
+                    value: value,
+                    onChanged: _settingsSetTabTransition,
+                    title: Text(
+                      l.settingsTabTransition,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      l.settingsTabTransitionDesc,
+                      style: GoogleFonts.outfit(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
               child: ListTile(
                 leading: const Icon(Icons.wallpaper_rounded),
                 title: Text(
