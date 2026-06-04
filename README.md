@@ -23,8 +23,8 @@
 | :--- | :--- |
 | **Description** | A modern, secure, and intuitive Flutter client for students and teachers to manage school schedules, tasks, and communications without central data exposure. |
 | **Data Policy** | Private by default. All authentication details, credentials, and schedule data remain strictly on the local device. |
-| **Current Version** | `4.0.1+1` |
-| **Target Platforms** | Android, iOS, Web |
+| **Current Version** | `4.2.0` |
+| **Target Platforms** | Android |
 
 ---
 
