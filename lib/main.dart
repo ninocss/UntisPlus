@@ -95,6 +95,8 @@ void main() async {
   backgroundGyroscopeNotifier.value =
       prefs.getBool('backgroundGyroscope') ?? false;
   blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
+  pageTransitionNotifier.value =
+      (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
   dailyBriefingPushNotifier.value = prefs.getBool('dailyBriefingPush') ?? true;
   importantChangesPushNotifier.value =
       prefs.getBool('importantChangesPush') ?? true;

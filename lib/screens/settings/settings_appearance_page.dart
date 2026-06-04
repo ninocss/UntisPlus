@@ -74,6 +74,73 @@ class SettingsAppearancePage extends StatelessWidget {
     });
   }
 
+  String _transitionLabel(AppL10n l, int index) {
+    switch (index) {
+      case 0:
+        return l.settingsPageTransitionBounce;
+      case 1:
+        return l.settingsPageTransitionFade;
+      case 2:
+        return l.settingsPageTransitionSlide;
+      case 3:
+        return l.settingsPageTransitionZoom;
+      case 4:
+        return l.settingsPageTransitionBlur;
+      case 5:
+        return l.settingsPageTransitionEaseIn;
+      case 6:
+        return l.settingsPageTransitionEaseOut;
+      case 7:
+        return l.settingsPageTransitionExpo;
+      default:
+        return l.settingsPageTransitionBounce;
+    }
+  }
+
+  IconData _transitionIcon(int index) {
+    switch (index) {
+      case 0:
+        return Icons.animation_rounded;
+      case 1:
+        return Icons.opacity_rounded;
+      case 2:
+        return Icons.swipe_rounded;
+      case 3:
+        return Icons.zoom_in_rounded;
+      case 4:
+        return Icons.blur_on_rounded;
+      case 5:
+        return Icons.arrow_forward_rounded;
+      case 6:
+        return Icons.arrow_back_rounded;
+      case 7:
+        return Icons.speed_rounded;
+      default:
+        return Icons.animation_rounded;
+    }
+  }
+
+  void _showTransitionDialog(BuildContext context) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    _showUnifiedOptionSheet<int>(
+      context: context,
+      title: l.settingsPageTransition,
+      subtitle: l.settingsPageTransitionDesc,
+      options: List.generate(8, (index) {
+        return _SheetOption(
+          value: index,
+          title: _transitionLabel(l, index),
+          icon: _transitionIcon(index),
+          selected: pageTransitionNotifier.value == index,
+        );
+      }),
+    ).then((value) {
+      if (value != null) {
+        _settingsSetPageTransition(value);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -267,6 +334,32 @@ class SettingsAppearancePage extends StatelessWidget {
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => _showBackgroundStyleDialog(context),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
+              child: ValueListenableBuilder<int>(
+                valueListenable: pageTransitionNotifier,
+                builder: (context, transition, _) {
+                  return ListTile(
+                    leading: const Icon(Icons.compare_arrows_rounded),
+                    title: Text(
+                      l.settingsPageTransition,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      _transitionLabel(l, transition),
+                      style: GoogleFonts.outfit(),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _showTransitionDialog(context),
                   );
                 },
               ),

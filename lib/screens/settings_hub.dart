@@ -51,6 +51,13 @@ Future<void> _settingsSetBlurEnabled(bool value) async {
   await prefs.setBool('blurEnabled', value);
 }
 
+Future<void> _settingsSetPageTransition(int value) async {
+  final normalized = value.clamp(0, 7);
+  pageTransitionNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('pageTransition', normalized);
+}
+
 Future<void> _settingsSetProgressivePush(bool value) async {
   progressivePushNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -266,6 +273,8 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getBool('backgroundGyroscope') ?? backgroundGyroscopeNotifier.value;
   blurEnabledNotifier.value =
       prefs.getBool('blurEnabled') ?? blurEnabledNotifier.value;
+  pageTransitionNotifier.value =
+      (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
   progressivePushNotifier.value =
       prefs.getBool('progressivePush') ?? progressivePushNotifier.value;
   dailyBriefingPushNotifier.value =

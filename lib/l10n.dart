@@ -300,6 +300,16 @@ class AppL10n {
       _t('settingsCustomBackgroundsSelected').replaceAll('{name}', name);
   String get settingsGlassEffect => _t('settingsGlassEffect');
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
+  String get settingsPageTransition => _t('settingsPageTransition');
+  String get settingsPageTransitionDesc => _t('settingsPageTransitionDesc');
+  String get settingsPageTransitionBounce => _t('settingsPageTransitionBounce');
+  String get settingsPageTransitionFade => _t('settingsPageTransitionFade');
+  String get settingsPageTransitionSlide => _t('settingsPageTransitionSlide');
+  String get settingsPageTransitionZoom => _t('settingsPageTransitionZoom');
+  String get settingsPageTransitionBlur => _t('settingsPageTransitionBlur');
+  String get settingsPageTransitionEaseIn => _t('settingsPageTransitionEaseIn');
+  String get settingsPageTransitionEaseOut => _t('settingsPageTransitionEaseOut');
+  String get settingsPageTransitionExpo => _t('settingsPageTransitionExpo');
   String get settingsProgressivePush => _t('settingsProgressivePush');
   String get settingsProgressivePushDesc => _t('settingsProgressivePushDesc');
   String get settingsDailyBriefingPush => _t('settingsDailyBriefingPush');
@@ -909,9 +919,19 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiGeneratedName': 'KI Hintergrund',
       'bgEditorAiSuccess': 'KI-Hintergrund erstellt.',
       'bgEditorAiError': 'KI: ',
-      'settingsGlassEffect': 'Blur',
+      'settingsGlassEffect': 'Blur-Effekt',
       'settingsGlassEffectDesc':
           'Aktiviert Blur in der Oberfläche',
+      'settingsPageTransition': 'Seitenübergang',
+      'settingsPageTransitionDesc': 'Wähle den Übergangsstil für Seitenwechsel',
+      'settingsPageTransitionBounce': 'Bounce',
+      'settingsPageTransitionFade': 'Fade',
+      'settingsPageTransitionSlide': 'Slide',
+      'settingsPageTransitionZoom': 'Zoom',
+      'settingsPageTransitionBlur': 'Blur',
+      'settingsPageTransitionEaseIn': 'Ease In',
+      'settingsPageTransitionEaseOut': 'Ease Out',
+      'settingsPageTransitionExpo': 'Expo',
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
@@ -1409,9 +1429,19 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiGeneratedName': 'AI Background',
       'bgEditorAiSuccess': 'AI background created.',
       'bgEditorAiError': 'AI: ',
-      'settingsGlassEffect': 'Blur',
+      'settingsGlassEffect': 'Blur Effect',
       'settingsGlassEffectDesc':
           'Enables blur effects across the interface',
+      'settingsPageTransition': 'Page Transition',
+      'settingsPageTransitionDesc': 'Choose the transition style for page navigation',
+      'settingsPageTransitionBounce': 'Bounce',
+      'settingsPageTransitionFade': 'Fade',
+      'settingsPageTransitionSlide': 'Slide',
+      'settingsPageTransitionZoom': 'Zoom',
+      'settingsPageTransitionBlur': 'Blur',
+      'settingsPageTransitionEaseIn': 'Ease In',
+      'settingsPageTransitionEaseOut': 'Ease Out',
+      'settingsPageTransitionExpo': 'Expo',
       'settingsProgressivePush': 'Progressive push notification',
       'settingsProgressivePushDesc':
           'Show the current lesson as a persistent notification',

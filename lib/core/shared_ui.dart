@@ -43,30 +43,121 @@ Route<T> _buildBouncyRoute<T>(
   Widget page, {
   Duration duration = const Duration(milliseconds: 520),
   Duration reverseDuration = const Duration(milliseconds: 360),
+  int? transitionType,
 }) {
+  final transition = transitionType ?? pageTransitionNotifier.value;
   return PageRouteBuilder<T>(
     pageBuilder: (context, animation, secondaryAnimation) => page,
     transitionDuration: duration,
     reverseTransitionDuration: reverseDuration,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final opacity = CurvedAnimation(parent: animation, curve: _kSoftBounce);
-      final scale = Tween<double>(
-        begin: 0.96,
-        end: 1.0,
-      ).animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce));
-      final slide = Tween<Offset>(
-        begin: const Offset(0.0, 0.03),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce));
+      switch (transition) {
+        case 0: // Bounce (default)
+          return _buildBounceTransition(animation, child);
+        case 1: // Fade
+          return _buildFadeTransition(animation, child);
+        case 2: // Slide
+          return _buildSlideTransition(animation, child);
+        case 3: // Zoom
+          return _buildZoomTransition(animation, child);
+        case 4: // Blur
+          return _buildBlurTransition(animation, child);
+        case 5: // Ease In
+          return _buildEaseInTransition(animation, child);
+        case 6: // Ease Out
+          return _buildEaseOutTransition(animation, child);
+        case 7: // Expo
+          return _buildExpoTransition(animation, child);
+        default:
+          return _buildBounceTransition(animation, child);
+      }
+    },
+  );
+}
 
-      return FadeTransition(
-        opacity: opacity,
-        child: SlideTransition(
-          position: slide,
-          child: ScaleTransition(scale: scale, child: child),
+Widget _buildBounceTransition(Animation<double> animation, Widget child) {
+  final opacity = CurvedAnimation(parent: animation, curve: _kSoftBounce);
+  final scale = Tween<double>(begin: 0.96, end: 1.0)
+      .animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce));
+  final slide = Tween<Offset>(begin: const Offset(0.0, 0.03), end: Offset.zero)
+      .animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce));
+
+  return FadeTransition(
+    opacity: opacity,
+    child: SlideTransition(
+      position: slide,
+      child: ScaleTransition(scale: scale, child: child),
+    ),
+  );
+}
+
+Widget _buildFadeTransition(Animation<double> animation, Widget child) {
+  return FadeTransition(
+    opacity: animation,
+    child: child,
+  );
+}
+
+Widget _buildSlideTransition(Animation<double> animation, Widget child) {
+  final slide = Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero)
+      .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+  return SlideTransition(position: slide, child: child);
+}
+
+Widget _buildZoomTransition(Animation<double> animation, Widget child) {
+  final scale = Tween<double>(begin: 0.8, end: 1.0)
+      .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutBack));
+  return ScaleTransition(scale: scale, child: child);
+}
+
+Widget _buildBlurTransition(Animation<double> animation, Widget child) {
+  return AnimatedBuilder(
+    animation: animation,
+    builder: (context, child) {
+      return BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: (1.0 - animation.value) * 10,
+          sigmaY: (1.0 - animation.value) * 10,
         ),
+        child: FadeTransition(opacity: animation, child: child),
       );
     },
+    child: child,
+  );
+}
+
+Widget _buildEaseInTransition(Animation<double> animation, Widget child) {
+  final curved = CurvedAnimation(parent: animation, curve: Curves.easeIn);
+  final slide = Tween<Offset>(begin: const Offset(0.0, 0.05), end: Offset.zero)
+      .animate(curved);
+  return FadeTransition(
+    opacity: curved,
+    child: SlideTransition(position: slide, child: child),
+  );
+}
+
+Widget _buildEaseOutTransition(Animation<double> animation, Widget child) {
+  final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
+  final slide = Tween<Offset>(begin: const Offset(0.0, 0.05), end: Offset.zero)
+      .animate(curved);
+  return FadeTransition(
+    opacity: curved,
+    child: SlideTransition(position: slide, child: child),
+  );
+}
+
+Widget _buildExpoTransition(Animation<double> animation, Widget child) {
+  final curved =
+      CurvedAnimation(parent: animation, curve: Curves.easeInOutExpo);
+  final scale = Tween<double>(begin: 0.9, end: 1.0).animate(curved);
+  final slide = Tween<Offset>(begin: const Offset(0.0, 0.02), end: Offset.zero)
+      .animate(curved);
+  return FadeTransition(
+    opacity: curved,
+    child: SlideTransition(
+      position: slide,
+      child: ScaleTransition(scale: scale, child: child),
+    ),
   );
 }
 
