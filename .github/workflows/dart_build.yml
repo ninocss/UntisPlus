@@ -271,8 +271,6 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
 
       - name: Download Signing Config
         if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
@@ -283,17 +281,11 @@ jobs:
 
       - name: Apply Signing Config
         if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
-        run: |
-          cp "$RUNNER_TEMP/android-signing/key.properties" android/key.properties
-
-      - name: Install Dependencies
-        run: flutter pub get
+        run: cp "$RUNNER_TEMP/android-signing/key.properties" android/key.properties
 
       - name: Build Android APK
         run: |
-          if [ "${{ needs.meta.outputs.split_per_abi }}" = "true" ] && [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            flutter build apk --release --split-per-abi
-          elif [ "${{ needs.meta.outputs.split_per_abi }}" = "true" ]; then
+          if [ "${{ needs.meta.outputs.split_per_abi }}" = "true" ]; then
             flutter build apk --release --split-per-abi
           else
             flutter build apk --release
@@ -303,20 +295,22 @@ jobs:
         run: |
           mkdir -p apk_artifacts
           TAG="${{ needs.meta.outputs.release_tag }}"
-          VERSION="${{ needs.meta.outputs.app_version }}"
-
-          if [ -d "build/app/outputs/flutter-apk" ]; then
-            for f in build/app/outputs/flutter-apk/app-*-release.apk; do
-              [ -f "$f" ] || continue
-              basename="$(basename "$f")"
-              abi=""
-              case "$basename" in
-                *armeabi-v7a*) abi="-armeabi-v7a" ;;
-                *arm64-v8a*)   abi="-arm64-v8a" ;;
-                *x86_64*)      abi="-x86_64" ;;
-              esac
-              cp "$f" "apk_artifacts/UntisPlus-${TAG}${abi}.apk"
-            done
+          
+          # Debugging Ausgabe der Build-Struktur
+          find build/app/outputs/flutter-apk/ -maxdepth 1 -name "*.apk"
+          
+          # Kopiere alle gefundenen APKs unabhängig von spezifischen Dateinamen
+          found=false
+          for f in build/app/outputs/flutter-apk/*.apk; do
+            if [ -f "$f" ]; then
+              cp "$f" "apk_artifacts/UntisPlus-${TAG}-$(basename "$f")"
+              found=true
+            fi
+          done
+          
+          if [ "$found" = false ]; then
+            echo "Fehler: Keine APK-Dateien in build/app/outputs/flutter-apk/ gefunden."
+            exit 1
           fi
 
       - name: Upload APK Artifacts
@@ -325,6 +319,7 @@ jobs:
           name: release-apk
           path: apk_artifacts/
           if-no-files-found: error
+
 
   build_aab:
     name: Build AAB
