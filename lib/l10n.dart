@@ -307,8 +307,9 @@ class AppL10n {
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
   String get settingsPageTransition => _t('settingsPageTransition');
   String get settingsPageTransitionDesc => _t('settingsPageTransitionDesc');
-  String get settingsTabTransition => _t('settingsTabTransition');
-  String get settingsTabTransitionDesc => _t('settingsTabTransitionDesc');
+  String get settingsUseMaterialYou => _t('settingsUseMaterialYou');
+  String get settingsUseMaterialYouDesc => _t('settingsUseMaterialYouDesc');
+  String get settingsCustomColorSeed => _t('settingsCustomColorSeed');
   String get settingsPageTransitionBounce => _t('settingsPageTransitionBounce');
   String get settingsPageTransitionFade => _t('settingsPageTransitionFade');
   String get settingsPageTransitionSlide => _t('settingsPageTransitionSlide');
@@ -945,9 +946,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransitionEaseIn': 'Ease In',
       'settingsPageTransitionEaseOut': 'Ease Out',
       'settingsPageTransitionExpo': 'Expo',
-      'settingsTabTransition': 'Tab-Übergänge',
-      'settingsTabTransitionDesc':
-          'Wendet Seitenübergänge auf die Hauptnavigation an',
+      'settingsUseMaterialYou': 'Material You',
+      'settingsUseMaterialYouDesc':
+          'Farben automatisch an Systemakzentfarbe anpassen',
+      'settingsCustomColorSeed': 'Farbe wählen',
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
@@ -1456,8 +1458,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Enables blur effects across the interface',
       'settingsPageTransition': 'Page Transition',
       'settingsPageTransitionDesc': 'Choose the transition style for page navigation',
-      'settingsTabTransition': 'Tab Transitions',
-      'settingsTabTransitionDesc': 'Apply page transitions to main navigation tabs (Timetable, Exams, Info)',
+      'settingsUseMaterialYou': 'Material You',
+      'settingsUseMaterialYouDesc': 'Automatically adapt to your system accent color',
+      'settingsCustomColorSeed': 'Custom color',
       'settingsPageTransitionBounce': 'Bounce',
       'settingsPageTransitionFade': 'Fade',
       'settingsPageTransitionSlide': 'Slide',
@@ -1786,9 +1789,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransition': 'Transition de page',
       'settingsPageTransitionDesc':
           'Choisis le style de transition pour la navigation',
-      'settingsTabTransition': 'Transitions des onglets',
-      'settingsTabTransitionDesc':
-          'Applique les transitions aux onglets de navigation principaux',
+      'settingsUseMaterialYou': 'Material You',
+      'settingsUseMaterialYouDesc':
+          "S'adapter automatiquement à la couleur d'accentuation du système",
+      'settingsCustomColorSeed': 'Couleur personnalisée',
       'settingsPageTransitionBounce': 'Rebond',
       'settingsPageTransitionFade': 'Fondu',
       'settingsPageTransitionSlide': 'Glissement',
@@ -2322,9 +2326,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransition': 'Transición de página',
       'settingsPageTransitionDesc':
           'Elige el estilo de transición para la navegación',
-      'settingsTabTransition': 'Transiciones de pestañas',
-      'settingsTabTransitionDesc':
-          'Aplica transiciones a las pestañas de navegación principales',
+      'settingsUseMaterialYou': 'Material You',
+      'settingsUseMaterialYouDesc':
+          'Adaptar automáticamente al color de acento del sistema',
+      'settingsCustomColorSeed': 'Color personalizado',
       'settingsPageTransitionBounce': 'Rebote',
       'settingsPageTransitionFade': 'Fundido',
       'settingsPageTransitionSlide': 'Deslizamiento',
@@ -2858,9 +2863,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransition': 'Μετάβαση σελίδας',
       'settingsPageTransitionDesc':
           'Επίλεξε τον τρόπο μετάβασης για την πλοήγηση',
-      'settingsTabTransition': 'Μεταβάσεις καρτελών',
-      'settingsTabTransitionDesc':
-          'Εφαρμόζει μεταβάσεις στις κύριες καρτέλες πλοήγησης',
+      'settingsUseMaterialYou': 'Material You',
+      'settingsUseMaterialYouDesc':
+          'Αυτόματη προσαρμογή στο χρώμα έμφασης του συστήματος',
+      'settingsCustomColorSeed': 'Προσαρμοσμένο χρώμα',
       'settingsPageTransitionBounce': 'Αναπήδηση',
       'settingsPageTransitionFade': 'Εξασθένιση',
       'settingsPageTransitionSlide': 'Ολίσθηση',

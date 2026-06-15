@@ -114,7 +114,10 @@ void main() async {
   blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
   pageTransitionNotifier.value =
       (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
-  tabTransitionNotifier.value = prefs.getBool('tabTransition') ?? false;
+  useMaterialYouNotifier.value =
+      prefs.getBool('useMaterialYou') ?? true;
+  customColorSeedNotifier.value =
+      prefs.getInt('customColorSeed') ?? 0xFF0F766E;
   dailyBriefingPushNotifier.value = prefs.getBool('dailyBriefingPush') ?? true;
   importantChangesPushNotifier.value =
       prefs.getBool('importantChangesPush') ?? true;
@@ -1513,24 +1516,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return ids;
   }
 
-  List<String> _findFreeRooms({
-    required int dayIndex,
+  List<String> _computeFreeRooms({
+    required List<List<dynamic>> timetables,
     required int startMin,
     required int endMin,
   }) {
     final occupiedIds = <int>{};
-    final lessons = _weekData[dayIndex] ?? const <dynamic>[];
-
-    for (final raw in lessons.whereType<Map>()) {
-      final lesson = raw.cast<dynamic, dynamic>();
-      if ((lesson['code'] ?? '') == 'cancelled') continue;
-
-      final lessonStart = _lessonStartMinutes(lesson);
-      final lessonEnd = _lessonEndMinutes(lesson);
-      final overlaps = lessonStart < endMin && lessonEnd > startMin;
-      if (!overlaps) continue;
-
-      occupiedIds.addAll(_lessonRoomIds(lesson));
+    for (final periods in timetables) {
+      for (final raw in periods) {
+        if (raw is! Map) continue;
+        final lesson = raw.cast<dynamic, dynamic>();
+        if ((lesson['code'] ?? '') == 'cancelled') continue;
+        final lessonStart = _lessonStartMinutes(lesson);
+        final lessonEnd = _lessonEndMinutes(lesson);
+        if (lessonStart < endMin && lessonEnd > startMin) {
+          occupiedIds.addAll(_lessonRoomIds(lesson));
+        }
+      }
     }
 
     final freeRooms = <String>[];
@@ -1542,12 +1544,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (occupiedIds.contains(entry.key)) continue;
       final name = entry.value.trim();
       if (name.isEmpty) continue;
-      final normalized = name.toLowerCase();
-      if (seenNames.add(normalized)) {
+      if (seenNames.add(name.toLowerCase())) {
         freeRooms.add(name);
       }
     }
-
     return freeRooms;
   }
 
@@ -1582,8 +1582,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
-    int selectedIndex = 0;
     final dayDate = _currentMonday.add(Duration(days: dayIndex));
+    int selectedIndex = 0;
     final now = DateTime.now();
     final isToday =
         dayDate.year == now.year &&
@@ -1598,6 +1598,35 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (idx >= 0) selectedIndex = idx;
     }
 
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final classes = await _fetchClasses();
+    List<List<dynamic>> timetables = [];
+    if (classes.isNotEmpty) {
+      final results = await Future.wait(
+        classes.map((c) => _fetchClassTimetable(c['id'] as int, dayDate)),
+        eagerError: false,
+      );
+      timetables = results.whereType<List<dynamic>>().toList();
+    }
+
+    final freeRoomsForRange = <List<String>>[
+      for (final range in ranges)
+        _computeFreeRooms(
+          timetables: timetables,
+          startMin: range.startMin,
+          endMin: range.endMin,
+        ),
+    ];
+
+    if (!mounted) return;
+    if (context.mounted) Navigator.of(context).pop();
+
     await showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -1607,12 +1636,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final cs = Theme.of(ctx).colorScheme;
         return StatefulBuilder(
           builder: (ctx, setDlg) {
-            final selectedRange = ranges[selectedIndex];
-            final freeRooms = _findFreeRooms(
-              dayIndex: dayIndex,
-              startMin: selectedRange.startMin,
-              endMin: selectedRange.endMin,
-            );
+            final freeRooms = freeRoomsForRange[selectedIndex];
             final dayName = _dayShort[dayIndex];
 
             return _glassContainer(
@@ -1644,7 +1668,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '$dayName • ${_formatMinutes(selectedRange.startMin)} - ${_formatMinutes(selectedRange.endMin)}',
+                          '$dayName • ${_formatMinutes(ranges[selectedIndex].startMin)} - ${_formatMinutes(ranges[selectedIndex].endMin)}',
                           style: GoogleFonts.outfit(
                             color: cs.onSurfaceVariant,
                             fontWeight: FontWeight.w600,
@@ -1788,6 +1812,85 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         );
       },
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchClasses() async {
+    final url = Uri.parse(
+      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+    );
+
+    Future<List<dynamic>> fetchClassesForSession(String sid) async {
+      final response = await http.post(
+        url,
+        headers: {"Cookie": "JSESSIONID=$sid; schoolname=$schoolName"},
+        body: jsonEncode({
+          "id": "fr_cl",
+          "method": "getKlassen",
+          "params": {},
+          "jsonrpc": "2.0",
+        }),
+      );
+      if (response.statusCode != 200) return const <dynamic>[];
+      final data = jsonDecode(response.body);
+      if (data is Map && data['result'] is List) {
+        return data['result'] as List<dynamic>;
+      }
+      return const <dynamic>[];
+    }
+
+    List<dynamic> classes = [];
+    if (sessionID.isNotEmpty) {
+      try {
+        classes = await fetchClassesForSession(sessionID);
+      } catch (_) {}
+    }
+    if (classes.isEmpty) {
+      try {
+        final anonSid = await _authenticateAnonymous();
+        if (anonSid != null && anonSid.isNotEmpty) {
+          classes = await fetchClassesForSession(anonSid);
+        }
+      } catch (_) {}
+    }
+    return classes.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<dynamic>> _fetchClassTimetable(int classId, DateTime date) async {
+    final dateInt = int.parse(DateFormat('yyyyMMdd').format(date));
+    final url = Uri.parse(
+      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+    );
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "id": "fr_tt_$classId",
+          "method": "getTimetable",
+          "params": {
+            "options": {
+              "element": {"id": classId, "type": 1},
+              "startDate": dateInt,
+              "endDate": dateInt,
+              "showRooms": true,
+              "showSubjects": true,
+              "showTeachers": true,
+              "showClasses": true,
+            },
+          },
+          "jsonrpc": "2.0",
+        }),
+      );
+      if (response.statusCode != 200) return [];
+      final data = jsonDecode(response.body);
+      if (data is Map && data['result'] is List) {
+        return data['result'] as List<dynamic>;
+      }
+    } catch (_) {}
+    return [];
   }
 
   static const List<double> _grayscaleMatrix = <double>[
@@ -4959,24 +5062,6 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           ),
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 100, right: 8),
-        child: FloatingActionButton.extended(
-          heroTag: 'exams_chat_fab',
-          onPressed: () {
-            Navigator.of(context).push(
-              _buildBouncyRoute(const AiAssistantPage()),
-            );
-          },
-          icon: const Icon(Icons.chat_bubble_outline_rounded),
-          label: Text(
-            appLocaleNotifier.value.toLowerCase().startsWith('de')
-                ? 'Frage KI'
-                : 'Ask AI',
-          ),
-        ),
-      ),
       body: _AnimatedBackground(
         child: RefreshIndicator(
           onRefresh: _refreshExams,
@@ -5365,10 +5450,11 @@ ${l.aiSystemRules}
 
 ANTWORTFORMAT:
 - Antworte kurz und visuell.
-- Nutze bevorzugt ein JSON-Objekt mit headline, summary, tags, metrics und lessons.
-- metrics soll eine Liste von Objekten mit label und value sein.
-- lessons soll eine Liste von Objekten mit subject, subjectShort, room, teacher, time und status sein.
-- Vermeide lange Fließtexte. Priorisiere Karten, Kennzahlen und Stundenblöcke.''';
+- Nutze bevorzugt ein JSON-Objekt mit den Feldern: headline, summary, tags, metrics und lessons.
+- metrics ist eine Liste von Objekten mit label und value.
+- lessons ist eine Liste von Objekten mit subject, subjectShort, room, teacher, time und status.
+- Vermeide lange Fließtexte.
+- WICHTIG: Gib NUR Felder an, die für die Frage relevant sind. Wenn die Frage nach keiner Metrik oder keinen Stunden verlangt, lasse metrics bzw. lessons im JSON einfach weg oder gib leere Arrays zurück.''';
 }
 
 // --- KI-ASSISTENT CHAT ---

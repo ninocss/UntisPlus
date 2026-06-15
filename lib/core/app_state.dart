@@ -148,7 +148,8 @@ final ValueNotifier<String?> pendingTimetableNextLessonNotifier = ValueNotifier(
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
 final ValueNotifier<int> pageTransitionNotifier = ValueNotifier(0);
-final ValueNotifier<bool> tabTransitionNotifier = ValueNotifier(false);
+final ValueNotifier<bool> useMaterialYouNotifier = ValueNotifier(true);
+final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
 
 String _icuLocale(String locale) {
   switch (locale) {

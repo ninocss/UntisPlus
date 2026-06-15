@@ -58,10 +58,16 @@ Future<void> _settingsSetPageTransition(int value) async {
   await prefs.setInt('pageTransition', normalized);
 }
 
-Future<void> _settingsSetTabTransition(bool value) async {
-  tabTransitionNotifier.value = value;
+Future<void> _settingsSetUseMaterialYou(bool value) async {
+  useMaterialYouNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('tabTransition', value);
+  await prefs.setBool('useMaterialYou', value);
+}
+
+Future<void> _settingsSetCustomColorSeed(int value) async {
+  customColorSeedNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('customColorSeed', value);
 }
 
 Future<void> _settingsSetCancelledLessonColor(int colorValue) async {
@@ -296,8 +302,10 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getBool('blurEnabled') ?? blurEnabledNotifier.value;
   pageTransitionNotifier.value =
       (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
-  tabTransitionNotifier.value =
-      prefs.getBool('tabTransition') ?? false;
+  useMaterialYouNotifier.value =
+      prefs.getBool('useMaterialYou') ?? true;
+  customColorSeedNotifier.value =
+      prefs.getInt('customColorSeed') ?? 0xFF0F766E;
   progressivePushNotifier.value =
       prefs.getBool('progressivePush') ?? progressivePushNotifier.value;
   dailyBriefingPushNotifier.value =
@@ -391,8 +399,8 @@ class SettingsHubPage extends StatelessWidget {
         iconBackground: cs.secondaryContainer,
         iconColor: cs.onSecondaryContainer,
         title: l.settingsSectionAI,
-        subtitle: l.aiAskAnything,
-        pageBuilder: () => const AiAssistantPage(),
+        subtitle: l.settingsAiProvider,
+        pageBuilder: () => const SettingsAiPage(),
       ),
       _SettingsHubItem(
         icon: Icons.cloud_sync_rounded,

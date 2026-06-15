@@ -215,7 +215,132 @@ class SettingsAppearancePage extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
+              child: Column(
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: useMaterialYouNotifier,
+                    builder: (context, useMaterialYou, _) {
+                      return SwitchListTile.adaptive(
+                        value: useMaterialYou,
+                        onChanged: _settingsSetUseMaterialYou,
+                        title: Text(
+                          l.settingsUseMaterialYou,
+                          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          l.settingsUseMaterialYouDesc,
+                          style: GoogleFonts.outfit(),
+                        ),
+                      );
+                    },
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: useMaterialYouNotifier,
+                    builder: (context, useMaterialYou, _) {
+                      if (useMaterialYou) return const SizedBox.shrink();
+                      return ValueListenableBuilder<int>(
+                        valueListenable: customColorSeedNotifier,
+                        builder: (context, seed, _) {
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l.settingsCustomColorSeed,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: Color(seed),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Slider(
+                                        min: 0,
+                                        max: 359,
+                                        divisions: 359,
+                                        value: (HSLColor.fromColor(
+                                          Color(seed),
+                                        ).hue % 360).clamp(0, 359),
+                                        onChanged: (hue) {
+                                          final hsl = HSLColor.fromColor(
+                                            Color(seed),
+                                          );
+                                          final newColor = hsl
+                                              .withHue(hue)
+                                              .withSaturation(0.5)
+                                              .withLightness(0.5)
+                                              .toColor();
+                                          _settingsSetCustomColorSeed(
+                                            newColor.toARGB32(),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    0xFF0F766E, 0xFFD32F2F, 0xFF1976D2,
+                                    0xFF388E3C, 0xFFF57C00, 0xFF7B1FA2,
+                                    0xFF00796B, 0xFFC2185B, 0xFF455A64,
+                                    0xFF5D4037,
+                                  ].map((color) {
+                                    final selected = seed == color;
+                                    final c = Color(color);
+                                    return GestureDetector(
+                                      onTap: () =>
+                                          _settingsSetCustomColorSeed(color),
+                                      child: Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: c,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: selected
+                                              ? Border.all(
+                                                  color: cs.onSurface,
+                                                  width: 2.5,
+                                                )
+                                              : null,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -237,108 +362,7 @@ class SettingsAppearancePage extends StatelessWidget {
                 onTap: () => _showLanguageDialog(context),
               ),
             ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: blurEnabledNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-                    value: value,
-                    onChanged: _settingsSetBlurEnabled,
-                    title: Text(
-                      l.settingsGlassEffect,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsGlassEffectDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: backgroundAnimationsNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-                    value: value,
-                    onChanged: _settingsSetBackgroundAnimations,
-                    title: Text(
-                      l.settingsBackgroundAnimations,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsBackgroundAnimationsDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: backgroundGyroscopeNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-                    value: value,
-                    onChanged: _settingsSetBackgroundGyroscope,
-                    title: Text(
-                      l.settingsBackgroundGyroscope,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsBackgroundGyroscopeDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<int>(
-                valueListenable: backgroundAnimationStyleNotifier,
-                builder: (context, style, _) {
-                  return ListTile(
-                    leading: const Icon(Icons.animation_rounded),
-                    title: Text(
-                      l.settingsBackgroundStyle,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      _backgroundStyleLabel(l, style),
-                      style: GoogleFonts.outfit(),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => _showBackgroundStyleDialog(context),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -364,7 +388,7 @@ class SettingsAppearancePage extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -372,24 +396,109 @@ class SettingsAppearancePage extends StatelessWidget {
               ),
               color: cs.surfaceContainerHigh,
               child: ValueListenableBuilder<bool>(
-                valueListenable: tabTransitionNotifier,
+                valueListenable: blurEnabledNotifier,
                 builder: (context, value, _) {
                   return SwitchListTile.adaptive(
                     value: value,
-                    onChanged: _settingsSetTabTransition,
+                    onChanged: _settingsSetBlurEnabled,
                     title: Text(
-                      l.settingsTabTransition,
+                      l.settingsGlassEffect,
                       style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                     ),
                     subtitle: Text(
-                      l.settingsTabTransitionDesc,
+                      l.settingsGlassEffectDesc,
                       style: GoogleFonts.outfit(),
                     ),
                   );
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: cs.surfaceContainerHigh,
+              child: Column(
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: backgroundAnimationsNotifier,
+                    builder: (context, value, _) {
+                      return SwitchListTile.adaptive(
+                        value: value,
+                        onChanged: _settingsSetBackgroundAnimations,
+                        title: Text(
+                          l.settingsBackgroundAnimations,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          l.settingsBackgroundAnimationsDesc,
+                          style: GoogleFonts.outfit(),
+                        ),
+                      );
+                    },
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: backgroundAnimationsNotifier,
+                    builder: (context, animationsEnabled, _) {
+                      if (!animationsEnabled) return const SizedBox.shrink();
+                      return Column(
+                        children: [
+                          const Divider(height: 1, indent: 16, endIndent: 16),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: backgroundGyroscopeNotifier,
+                            builder: (context, value, _) {
+                              return SwitchListTile.adaptive(
+                                value: value,
+                                onChanged: _settingsSetBackgroundGyroscope,
+                                title: Text(
+                                  l.settingsBackgroundGyroscope,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  l.settingsBackgroundGyroscopeDesc,
+                                  style: GoogleFonts.outfit(),
+                                ),
+                              );
+                            },
+                          ),
+                          const Divider(height: 1, indent: 16, endIndent: 16),
+                          ValueListenableBuilder<int>(
+                            valueListenable:
+                                backgroundAnimationStyleNotifier,
+                            builder: (context, style, _) {
+                              return ListTile(
+                                leading: const Icon(Icons.auto_awesome_rounded),
+                                title: Text(
+                                  l.settingsBackgroundStyle,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  _backgroundStyleLabel(l, style),
+                                  style: GoogleFonts.outfit(),
+                                ),
+                                trailing:
+                                    const Icon(Icons.chevron_right_rounded),
+                                onTap: () =>
+                                    _showBackgroundStyleDialog(context),
+                              );
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -414,7 +523,7 @@ class SettingsAppearancePage extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(

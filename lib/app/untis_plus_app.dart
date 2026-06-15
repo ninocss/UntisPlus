@@ -12,20 +12,32 @@ class UntisPlusApp extends StatelessWidget {
         return ValueListenableBuilder<ThemeMode>(
           valueListenable: themeModeNotifier,
           builder: (context, themeMode, _) {
-            return DynamicColorBuilder(
-              builder: (lightDynamic, darkDynamic) {
-                final lightScheme =
-                    lightDynamic ??
-                    ColorScheme.fromSeed(
-                      seedColor: const Color(0xFF0F766E),
-                      brightness: Brightness.light,
-                    );
-                final darkScheme =
-                    darkDynamic ??
-                    ColorScheme.fromSeed(
-                      seedColor: const Color(0xFF0F766E),
-                      brightness: Brightness.dark,
-                    );
+            return ValueListenableBuilder<bool>(
+              valueListenable: useMaterialYouNotifier,
+              builder: (context, useMaterialYou, _) {
+                return ValueListenableBuilder<int>(
+                  valueListenable: customColorSeedNotifier,
+                  builder: (context, seed, _) {
+                    return DynamicColorBuilder(
+                      builder: (lightDynamic, darkDynamic) {
+                        final effectiveLight = useMaterialYou
+                            ? lightDynamic
+                            : null;
+                        final effectiveDark = useMaterialYou
+                            ? darkDynamic
+                            : null;
+                        final lightScheme =
+                            effectiveLight ??
+                            ColorScheme.fromSeed(
+                              seedColor: Color(seed),
+                              brightness: Brightness.light,
+                            );
+                        final darkScheme =
+                            effectiveDark ??
+                            ColorScheme.fromSeed(
+                              seedColor: Color(seed),
+                              brightness: Brightness.dark,
+                            );
 
                 ThemeData themeFrom(ColorScheme scheme) {
                   final baseText =
@@ -296,6 +308,10 @@ class UntisPlusApp extends StatelessWidget {
         );
       },
     );
+  },
+);
+  },
+);
   }
 }
 

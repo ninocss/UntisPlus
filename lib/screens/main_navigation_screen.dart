@@ -175,32 +175,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     }).where((lesson) => lesson.subject.isNotEmpty || lesson.room.isNotEmpty || lesson.teacher.isNotEmpty).toList(growable: false);
   }
 
-  List<_AiLessonCardData> _fallbackLessonsForResult() {
-    final lessons = _todayLessons().whereType<Map>().map((raw) {
-      final lesson = raw.cast<dynamic, dynamic>();
-      final subject = lesson['_subjectLong']?.toString().isNotEmpty == true
-          ? lesson['_subjectLong'].toString()
-          : (lesson['_subjectShort']?.toString().isNotEmpty == true ? lesson['_subjectShort'].toString() : '?');
-      final subjectShort = lesson['_subjectShort']?.toString() ?? '';
-      final room = lesson['_room']?.toString().trim() ?? '';
-      final teacher = lesson['_teacher']?.toString().trim() ?? '';
-      final start = _formatUntisTime((lesson['startTime'] ?? 800).toString());
-      final end = _formatUntisTime((lesson['endTime'] ?? 845).toString());
-      return _AiLessonCardData(
-        subject: subject,
-        subjectShort: subjectShort,
-        room: room,
-        teacher: teacher,
-        time: '$start–$end',
-        isCancelled: (lesson['code'] ?? '') == 'cancelled',
-      );
-    }).toList(growable: false);
-
-    return lessons.take(4).toList(growable: false);
-  }
-
   _AiSearchResult _parseSearchResult({required String query, required String reply}) {
-    final fallbackLessons = _fallbackLessonsForResult();
     final fallbackHeadline = reply.split(RegExp(r'[\n\.\!\?]')).first.trim();
     final fallbackSummary = reply.trim().isEmpty ? query : reply.trim();
     try {
@@ -230,16 +205,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           summary: _firstNonEmptyString(decoded, const ['summary', 'text', 'result']).isEmpty
               ? fallbackSummary
               : _firstNonEmptyString(decoded, const ['summary', 'text', 'result']),
-          tags: tags.isEmpty ? [query] : tags,
-          metrics: metrics.isEmpty
-              ? [
-                  _AiMetric(
-                    label: appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Heute' : 'Today',
-                    value: '${_lessonCountToday()}',
-                  ),
-                ]
-              : metrics,
-          lessons: lessons.isEmpty ? fallbackLessons : lessons,
+          tags: tags,
+          metrics: metrics,
+          lessons: lessons,
           rawReply: reply,
         );
       }
@@ -251,18 +219,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           ? (appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Neue Suche' : 'New search')
           : fallbackHeadline,
       summary: fallbackSummary,
-      tags: [query],
-      metrics: [
-        _AiMetric(
-          label: appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Heute' : 'Today',
-          value: '${_lessonCountToday()}',
-        ),
-        _AiMetric(
-          label: appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Prüfungen' : 'Exams',
-          value: '${_examCountThisWeek()}',
-        ),
-      ],
-      lessons: fallbackLessons,
+      tags: const [],
+      metrics: const [],
+      lessons: const [],
       rawReply: reply,
     );
   }
@@ -599,7 +558,8 @@ ANTWORTFORMAT:
 - Liefere bevorzugt ein JSON-Objekt mit den Feldern: headline, summary, tags, metrics, lessons.
 - metrics ist eine Liste aus Objekten mit label und value.
 - lessons ist eine Liste aus Objekten mit subject, subjectShort, room, teacher, time und status.
-- Nutze wenig Fließtext und formuliere Ergebnisse so, dass sie direkt als Suchergebnis-Karten gerendert werden können.''';
+- Nutze wenig Fließtext und formuliere Ergebnisse so, dass sie direkt als Suchergebnis-Karten gerendert werden können.
+- WICHTIG: Gib NUR Felder an, die für die Frage relevant sind. Wenn die Frage nach keiner Metrik oder keinen Stunden verlangt, lasse metrics bzw. lessons im JSON einfach weg oder gib leere Arrays zurück.''';
   }
 
   Future<String> _requestProviderResponse(
@@ -1084,36 +1044,58 @@ ANTWORTFORMAT:
         break;
     }
   }
+  IconData _metricIcon(String label) {
+    final lower = label.toLowerCase();
+    if (lower.contains('stunde') || lower.contains('lesson') || lower.contains('kurs')) return Icons.school_rounded;
+    if (lower.contains('prüf') || lower.contains('exam') || lower.contains('test') || lower.contains('klausur')) return Icons.assignment_rounded;
+    if (lower.contains('raum') || lower.contains('room')) return Icons.meeting_room_rounded;
+    if (lower.contains('lehrer') || lower.contains('teacher')) return Icons.person_rounded;
+    if (lower.contains('frei') || lower.contains('free') || lower.contains('pause') || lower.contains('break')) return Icons.free_breakfast_rounded;
+    if (lower.contains('tag') || lower.contains('day') || lower.contains('heute')) return Icons.today_rounded;
+    if (lower.contains('zeit') || lower.contains('time')) return Icons.schedule_rounded;
+    return Icons.auto_awesome_rounded;
+  }
+
   Widget _buildSearchMetricCard(ColorScheme cs, _AiMetric metric) {
+    final icon = _metricIcon(metric.label);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.76),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            metric.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            metric.value,
-            style: GoogleFonts.outfit(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: cs.onSurface,
-              letterSpacing: -0.5,
+          Icon(icon, size: 18, color: cs.primary.withValues(alpha: 0.7)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  metric.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  metric.value,
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: cs.onSurface,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1329,6 +1311,7 @@ ANTWORTFORMAT:
 
   Widget _buildResultHeader(ColorScheme cs) {
     final result = _latestResult;
+    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
     if (result == null) {
       if (_thinking) {
         return _buildSearchLoadingState(cs);
@@ -1344,7 +1327,7 @@ ANTWORTFORMAT:
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -1362,15 +1345,22 @@ ANTWORTFORMAT:
               children: [
                 Row(
                   children: [
-                    Icon(Icons.auto_awesome_rounded, color: cs.onPrimaryContainer),
-                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: cs.onPrimaryContainer.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.auto_awesome_rounded, size: 18, color: cs.onPrimaryContainer),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         result.headline,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
-                          fontSize: 21,
+                          fontSize: 20,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.5,
                           color: cs.onPrimaryContainer,
@@ -1379,7 +1369,7 @@ ANTWORTFORMAT:
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Text(
                   result.summary,
                   maxLines: 4,
@@ -1388,11 +1378,11 @@ ANTWORTFORMAT:
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: cs.onPrimaryContainer.withValues(alpha: 0.92),
-                    height: 1.35,
+                    height: 1.4,
                   ),
                 ),
                 if (result.tags.isNotEmpty) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -1409,8 +1399,19 @@ ANTWORTFORMAT:
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          if (result.metrics.isNotEmpty)
+          if (result.metrics.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Icon(Icons.bar_chart_rounded, size: 18, color: cs.primary),
+                const SizedBox(width: 8),
+                Text(
+                  isGerman ? 'Übersicht' : 'Overview',
+                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: cs.onSurface),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             LayoutBuilder(
               builder: (context, constraints) {
                 final isWide = constraints.maxWidth > 460;
@@ -1421,18 +1422,25 @@ ANTWORTFORMAT:
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
-                  childAspectRatio: 1.7,
+                  childAspectRatio: 2.2,
                   children: result.metrics.map((metric) => _buildSearchMetricCard(cs, metric)).toList(),
                 );
               },
             ),
+          ],
           if (result.lessons.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            Text(
-              appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Stunden' : 'Lessons',
-              style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Icon(Icons.school_rounded, size: 18, color: cs.primary),
+                const SizedBox(width: 8),
+                Text(
+                  isGerman ? 'Stunden' : 'Lessons',
+                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: cs.onSurface),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             ...result.lessons.map(
               (lesson) => LessonCard(
                 subject: lesson.subject,
@@ -1506,8 +1514,15 @@ ANTWORTFORMAT:
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.auto_awesome_rounded, size: 36, color: cs.primary.withValues(alpha: 0.7)),
-          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(Icons.auto_awesome_rounded, size: 28, color: cs.onPrimaryContainer),
+          ),
+          const SizedBox(height: 20),
           Text(
             isGerman ? 'Was möchtest du wissen?' : 'What do you want to know?',
             style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -0.5),
@@ -1531,22 +1546,15 @@ ANTWORTFORMAT:
 
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: Text(l.aiTitle)),
+        appBar: RoundedBlurAppBar(title: Text(l.aiTitle, style: GoogleFonts.outfit(fontWeight: FontWeight.w800))),
         body: Center(child: CircularProgressIndicator(color: cs.primary)),
       );
     }
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: widget.onBackToTimetable ?? () => Navigator.of(context).maybePop(),
-          tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
-              ? 'Zurück'
-              : 'Back',
-        ),
-        title: Text(l.aiTitle),
+      appBar: RoundedBlurAppBar(
+        title: Text(l.aiTitle, style: GoogleFonts.outfit(fontWeight: FontWeight.w800)),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
@@ -1584,7 +1592,9 @@ ANTWORTFORMAT:
           const SizedBox(width: 4),
         ],
       ),
-      body: _buildBody(cs),
+      body: _AnimatedBackground(
+        child: _buildBody(cs),
+      ),
     );
   }
 
@@ -1965,20 +1975,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             data: mq.copyWith(
               padding: mq.padding.copyWith(bottom: mq.padding.bottom + 104),
             ),
-              child: ValueListenableBuilder<bool>(
-              valueListenable: tabTransitionNotifier,
-              builder: (context, enableTransitions, _) {
-                if (!enableTransitions) {
-                  return IndexedStack(
-                    index: _selectedIndex,
-                    children: _pages
-                        .map((page) => _buildPageWithBackground(context, page))
-                        .toList(),
-                  );
-                }
-                return _buildTabTransitionStack(context);
-              },
-            ),
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: _pages
+                    .map((page) => _buildPageWithBackground(context, page))
+                    .toList(),
+              ),
           ),
           // Floating nav bar
           Positioned(
