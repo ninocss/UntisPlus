@@ -219,11 +219,11 @@ Widget _glassContainer({
                   ? (isDark
                       ? Color.alphaBlend(
                           cs.primary.withValues(alpha: 0.06),
-                          cs.surface.withValues(alpha: 0.55),
+                          cs.surface.withValues(alpha: 0.60),
                         )
                       : Color.alphaBlend(
                           cs.primary.withValues(alpha: 0.03),
-                          cs.surface.withValues(alpha: 0.72),
+                          cs.surface.withValues(alpha: 0.78),
                         ))
                   : cs.surface.withValues(alpha: appAlphaValues.cardAlphaNoBlur)),
           border: border ??
@@ -237,18 +237,21 @@ Widget _glassContainer({
         child: Stack(
           fit: StackFit.passthrough,
           children: [
-            if (enabled && isDark)
+            if (enabled)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: borderRadius,
                     gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                       colors: [
-                        cs.surface.withValues(alpha: 0.05),
+                        Colors.white.withValues(
+                          alpha: isDark ? 0.04 : 0.12,
+                        ),
                         Colors.transparent,
                       ],
+                      stops: const [0.0, 0.35],
                     ),
                   ),
                 ),

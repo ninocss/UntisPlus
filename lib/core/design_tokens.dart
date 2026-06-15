@@ -128,9 +128,9 @@ class _AppSpacing {
   class _AppAlphaValues {
     const _AppAlphaValues();
 
-    final double cardAlphaBlur = 0.82;
+    final double cardAlphaBlur = 0.86;
     final double cardAlphaNoBlur = 0.96;
-    final double sheetAlphaBlur = 0.72;
+    final double sheetAlphaBlur = 0.78;
   }
 
 List<Color> untisPlusSubjectPalette(ColorScheme cs) {

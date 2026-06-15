@@ -5937,12 +5937,14 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
               color: enabled ? cs.surface.withValues(alpha: appAlphaValues.sheetAlphaBlur) : cs.surface,
             gradient: enabled
                 ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                     colors: [
-                      cs.surface.withValues(alpha: 0.8),
+                      cs.surface.withValues(alpha: 0.85),
+                      cs.surface.withValues(alpha: 0.78),
                       cs.surfaceContainerHigh.withValues(alpha: 0.66),
                     ],
+                    stops: const [0.0, 0.3, 1.0],
                   )
                 : null,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -6744,7 +6746,7 @@ class LessonCard extends StatelessWidget {
                     : (enabled
                           ? Theme.of(
                               context,
-                            ).colorScheme.surface.withValues(alpha: 0.85)
+                            ).colorScheme.surface.withValues(alpha: 0.88)
                           : Theme.of(context).colorScheme.surface),
                 border: Border.all(
                   color: cs.outlineVariant.withValues(alpha: 0.45),

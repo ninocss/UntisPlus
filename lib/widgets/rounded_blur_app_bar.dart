@@ -69,7 +69,25 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
                       // Base surface tint layer
                       Positioned.fill(
                         child: Container(
-                            color: cs.surface.withValues(alpha: 0.72), // matches appAlphaValues.sheetAlphaBlur
+                            color: cs.surface.withValues(alpha: 0.72),
+                        ),
+                      ),
+                      // Frosted glass highlight at top
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.white.withValues(
+                                  alpha: isDark ? 0.04 : 0.12,
+                                ),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.35],
+                            ),
+                          ),
                         ),
                       ),
                       // Primary accent layer
