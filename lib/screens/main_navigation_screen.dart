@@ -2191,10 +2191,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   sigmaY: 16,
                   child: const SizedBox.shrink(),
                   childBuilder: (enabled) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 380),
+                    duration: const Duration(milliseconds: 450),
                     curve: _kSoftBounce,
-                    height: 70,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    height: 60,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       color: enabled
                           ? Color.alphaBlend(
@@ -2204,18 +2204,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           : cs.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(35),
                       border: Border.all(
-                        color: cs.primary.withValues(alpha: 0.18),
-                        width: 1,
+                        color: cs.primary.withValues(alpha: 0.15),
+                        width: 0.8,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: cs.shadow.withValues(alpha: 0.08),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
+                          color: cs.shadow.withValues(alpha: 0.06),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
                         ),
                         BoxShadow(
-                          color: cs.shadow.withValues(alpha: 0.04),
-                          blurRadius: 4,
+                          color: cs.shadow.withValues(alpha: 0.03),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -2232,7 +2232,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           onTap: () => _onNavTap(1),
                           tutorialHighlight: _isTutorialTarget(1),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         _navIconBtn(
                           cs: cs,
                           icon: Icons.campaign_outlined,
@@ -2242,7 +2242,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           onTap: () => _onNavTap(2),
                           tutorialHighlight: _isTutorialTarget(2),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         _navIconBtn(
                           cs: cs,
                           icon: Icons.settings_outlined,
@@ -2252,7 +2252,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           onTap: () => _onNavTap(3),
                           tutorialHighlight: _isTutorialTarget(3),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         _navIconBtn(
                           cs: cs,
                           icon: Icons.auto_awesome_outlined,
@@ -2268,7 +2268,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
             ),
 
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
 
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
@@ -2284,31 +2284,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 );
               },
               child: AnimatedScale(
-                scale: timetableSelected ? 1.04 : 0.96,
-                duration: const Duration(milliseconds: 360),
+                scale: timetableSelected ? 1.06 : 0.94,
+                duration: const Duration(milliseconds: 400),
                 curve: _kSmoothBounce,
                 child: _BouncyButton(
                   onTap: () => _onNavTap(0),
-                  scaleTarget: 0.9,
+                  scaleTarget: 0.88,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 420),
+                    duration: const Duration(milliseconds: 480),
                     curve: _kSoftBounce,
-                    height: timetableSelected ? 74 : 62,
-                    width: timetableSelected ? 74 : 62,
+                    height: timetableSelected ? 68 : 56,
+                    width: timetableSelected ? 68 : 56,
                     decoration: BoxDecoration(
                       color: timetableSelected
                           ? cs.primary
                           : cs.surfaceContainerHigh.withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(
-                        timetableSelected ? 24 : 20,
+                        timetableSelected ? 22 : 18,
                       ),
                       border: Border.all(
                         color: _isTutorialTarget(0)
                             ? cs.tertiary
                             : timetableSelected
-                            ? cs.primary.withValues(alpha: 0.44)
-                            : cs.outlineVariant.withValues(alpha: 0.36),
-                        width: _isTutorialTarget(0) ? 2.0 : 1,
+                            ? cs.primary.withValues(alpha: 0.38)
+                            : cs.outlineVariant.withValues(alpha: 0.30),
+                        width: _isTutorialTarget(0) ? 2.0 : 0.8,
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -2316,20 +2316,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                               (timetableSelected
                                       ? cs.primary
                                       : cs.surfaceContainerHigh)
-                                  .withValues(alpha: 0.38),
-                          blurRadius: timetableSelected ? 22 : 14,
-                          offset: Offset(0, timetableSelected ? 8 : 5),
+                                  .withValues(alpha: 0.32),
+                          blurRadius: timetableSelected ? 20 : 12,
+                          offset: Offset(0, timetableSelected ? 6 : 4),
                         ),
                       ],
                     ),
                     child: Center(
                       child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 380),
+                        duration: const Duration(milliseconds: 420),
                         switchInCurve: _kSmoothBounce,
                         switchOutCurve: _kSoftBounce,
                         transitionBuilder: (child, anim) {
                           final slide = Tween<Offset>(
-                            begin: const Offset(0, 0.2),
+                            begin: const Offset(0, 0.15),
                             end: Offset.zero,
                           ).animate(anim);
                           return FadeTransition(
@@ -2338,7 +2338,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                               position: slide,
                               child: ScaleTransition(
                                 scale: Tween<double>(
-                                  begin: 0.88,
+                                  begin: 0.85,
                                   end: 1.0,
                                 ).animate(anim),
                                 child: child,
@@ -2347,8 +2347,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           );
                         },
                         child: AnimatedRotation(
-                          turns: timetableSelected ? 0 : -0.04,
-                          duration: const Duration(milliseconds: 360),
+                          turns: timetableSelected ? 0 : -0.03,
+                          duration: const Duration(milliseconds: 400),
                           curve: _kSmoothBounce,
                           child: Icon(
                             timetableSelected
@@ -2358,7 +2358,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             color: timetableSelected
                                 ? cs.onPrimary
                                 : cs.onSurfaceVariant,
-                            size: timetableSelected ? 36 : 30,
+                            size: timetableSelected ? 34 : 28,
                           ),
                         ),
                       ),
@@ -2386,17 +2386,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       onTap: onTap,
       scaleTarget: 0.8,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 320),
+        duration: const Duration(milliseconds: 380),
         curve: _kSoftBounce,
-        height: 48,
-        padding: EdgeInsets.symmetric(horizontal: selected ? 16 : 12),
+        height: 44,
+        padding: EdgeInsets.symmetric(horizontal: selected ? 14 : 11),
         decoration: BoxDecoration(
           color: selected ? cs.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
           border: tutorialHighlight
               ? Border.all(color: cs.tertiary, width: 2)
               : selected
-              ? Border.all(color: cs.primary.withValues(alpha: 0.22), width: 1)
+              ? Border.all(color: cs.primary.withValues(alpha: 0.20), width: 0.8)
               : Border.all(color: Colors.transparent, width: 0),
           boxShadow: tutorialHighlight
               ? [
@@ -2413,7 +2413,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 350),
               switchInCurve: _kSmoothBounce,
               switchOutCurve: _kSoftBounce,
               transitionBuilder: (child, anim) {
@@ -2422,25 +2422,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: Icon(
                 selected ? selectedIcon : icon,
                 key: ValueKey(selected),
-                size: selected ? 23 : 26,
+                size: selected ? 22 : 24,
                 color: selected
                     ? cs.onPrimaryContainer
                     : cs.onSurfaceVariant.withValues(alpha: 0.8),
               ),
             ),
             AnimatedSize(
-              duration: const Duration(milliseconds: 320),
+              duration: const Duration(milliseconds: 360),
               curve: _kSoftBounce,
               alignment: Alignment.centerLeft,
               child: selected
                   ? Padding(
-                      padding: const EdgeInsets.only(left: 6),
+                      padding: const EdgeInsets.only(left: 5),
                       child: Text(
                         label,
                         style: GoogleFonts.outfit(
                           color: cs.onPrimaryContainer,
                           fontWeight: FontWeight.w600,
-                          fontSize: 14.5,
+                          fontSize: 13.5,
                         ),
                       ),
                     )
