@@ -1762,10 +1762,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget _buildTabTransition(Widget child, Animation<double> animation, int transitionIndex) {
     switch (transitionIndex) {
       case 0: // Bounce
-        return ScaleTransition(
-          scale: Tween<double>(begin: 0.85, end: 1.0).animate(
-            CurvedAnimation(parent: animation, curve: _kSmoothBounce),
-          ),
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.35, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce)),
           child: FadeTransition(opacity: animation, child: child),
         );
       case 1: // Fade
@@ -1830,7 +1831,72 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
-  Widget _buildTabTransitionStack() {
+  Widget _buildPageWithBackground(BuildContext context, Widget page) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        Color.alphaBlend(
+                          cs.primary.withValues(alpha: 0.18),
+                          cs.surface,
+                        ),
+                        Color.alphaBlend(
+                          cs.tertiary.withValues(alpha: 0.14),
+                          cs.surface,
+                        ),
+                        cs.surface,
+                      ]
+                    : [
+                        Color.alphaBlend(
+                          cs.primary.withValues(alpha: 0.08),
+                          cs.surface,
+                        ),
+                        Color.alphaBlend(
+                          cs.secondary.withValues(alpha: 0.07),
+                          cs.surface,
+                        ),
+                        cs.surface,
+                      ],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: ValueListenableBuilder<bool>(
+            valueListenable: backgroundAnimationsNotifier,
+            builder: (context, enabled, _) {
+              if (!enabled) return const SizedBox.shrink();
+              return ValueListenableBuilder<int>(
+                valueListenable: backgroundAnimationStyleNotifier,
+                builder: (context, style, _) {
+                  return IgnorePointer(
+                    ignoring: true,
+                    child: Opacity(
+                      opacity: isDark ? 0.28 : 0.2,
+                      child: _AnimatedBackgroundScene(style: style),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        Positioned.fill(child: page),
+      ],
+    );
+  }
+
+  Widget _buildTabTransitionStack(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: pageTransitionNotifier,
       builder: (context, transitionIndex, _) {
@@ -1860,7 +1926,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           },
           child: KeyedSubtree(
             key: ValueKey(_selectedIndex),
-            child: _pages[_selectedIndex],
+            child: _buildPageWithBackground(context, _pages[_selectedIndex]),
           ),
         );
       },
@@ -1888,7 +1954,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final l = AppL10n.of(appLocaleNotifier.value);
 
     return Scaffold(
@@ -1896,70 +1961,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isDark
-                      ? [
-                          Color.alphaBlend(
-                            cs.primary.withValues(alpha: 0.18),
-                            cs.surface,
-                          ),
-                          Color.alphaBlend(
-                            cs.tertiary.withValues(alpha: 0.14),
-                            cs.surface,
-                          ),
-                          cs.surface,
-                        ]
-                      : [
-                          Color.alphaBlend(
-                            cs.primary.withValues(alpha: 0.08),
-                            cs.surface,
-                          ),
-                          Color.alphaBlend(
-                            cs.secondary.withValues(alpha: 0.07),
-                            cs.surface,
-                          ),
-                          cs.surface,
-                        ],
-                ),
-              ),
-            ),
-          ),
           MediaQuery(
             data: mq.copyWith(
               padding: mq.padding.copyWith(bottom: mq.padding.bottom + 104),
             ),
-            child: ValueListenableBuilder<bool>(
+              child: ValueListenableBuilder<bool>(
               valueListenable: tabTransitionNotifier,
               builder: (context, enableTransitions, _) {
                 if (!enableTransitions) {
-                  return IndexedStack(index: _selectedIndex, children: _pages);
+                  return IndexedStack(
+                    index: _selectedIndex,
+                    children: _pages
+                        .map((page) => _buildPageWithBackground(context, page))
+                        .toList(),
+                  );
                 }
-                return _buildTabTransitionStack();
-              },
-            ),
-          ),
-          Positioned.fill(
-            child: ValueListenableBuilder<bool>(
-              valueListenable: backgroundAnimationsNotifier,
-              builder: (context, enabled, _) {
-                if (!enabled) return const SizedBox.shrink();
-                return ValueListenableBuilder<int>(
-                  valueListenable: backgroundAnimationStyleNotifier,
-                  builder: (context, style, _) {
-                    return IgnorePointer(
-                      ignoring: true,
-                      child: Opacity(
-                        opacity: isDark ? 0.28 : 0.2,
-                        child: _AnimatedBackgroundScene(style: style),
-                      ),
-                    );
-                  },
-                );
+                return _buildTabTransitionStack(context);
               },
             ),
           ),
@@ -2193,7 +2210,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   childBuilder: (enabled) => AnimatedContainer(
                     duration: const Duration(milliseconds: 450),
                     curve: _kSoftBounce,
-                    height: 60,
+                    height: 64,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       color: enabled

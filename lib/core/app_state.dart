@@ -129,6 +129,8 @@ final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
   ThemeMode.system,
 );
 final ValueNotifier<bool> showCancelledNotifier = ValueNotifier(true);
+final ValueNotifier<int> cancelledLessonColorNotifier = ValueNotifier(0xFFFF1744);
+final ValueNotifier<bool> monochromeLessonsNotifier = ValueNotifier(false);
 final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
 final ValueNotifier<int> backgroundAnimationStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> backgroundGyroscopeNotifier = ValueNotifier(false);

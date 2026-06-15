@@ -270,6 +270,10 @@ class AppL10n {
   String get settingsSectionTimetable => _t('settingsSectionTimetable');
   String get settingsShowCancelled => _t('settingsShowCancelled');
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
+  String get settingsCancelledColor => _t('settingsCancelledColor');
+  String get settingsCancelledColorDesc => _t('settingsCancelledColorDesc');
+  String get settingsMonochromeLessons => _t('settingsMonochromeLessons');
+  String get settingsMonochromeLessonsDesc => _t('settingsMonochromeLessonsDesc');
   String get settingsDemoMode => _t('settingsDemoMode');
   String get settingsDemoModeDesc => _t('settingsDemoModeDesc');
   String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
@@ -758,6 +762,11 @@ class AppL10n {
       'settingsShowCancelled': 'Ausgefallene Stunden anzeigen',
       'settingsShowCancelledDesc':
           'Ausgefallene Stunden werden im Stundenplan angezeigt',
+      'settingsCancelledColor': 'Ausgefallene Farbe',
+      'settingsCancelledColorDesc': 'Farbe für ausgefallene Stunden anpassen',
+      'settingsMonochromeLessons': 'Monochrome Stunden',
+      'settingsMonochromeLessonsDesc':
+          'Alle Stunden in Material-You-Farben statt Einzelfarben',
       'settingsDemoMode': 'Demo-Modus',
       'settingsDemoModeDesc':
           'Verwendet lokale Demo-Daten statt Schulserver (sofort aktiv).',
@@ -1276,6 +1285,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelled': 'Show cancelled lessons',
       'settingsShowCancelledDesc':
           'Cancelled lessons are shown in the timetable',
+      'settingsCancelledColor': 'Cancelled color',
+      'settingsCancelledColorDesc': 'Customize the color for cancelled lessons',
+      'settingsMonochromeLessons': 'Monochrome lessons',
+      'settingsMonochromeLessonsDesc':
+          'Use Material You colors instead of individual subject colors',
       'settingsDemoMode': 'Demo mode',
       'settingsDemoModeDesc':
           'Uses local demo data instead of school servers (active instantly).',
@@ -1820,6 +1834,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelled': 'Afficher les cours annulés',
       'settingsShowCancelledDesc':
           'Les cours annulés sont visibles dans l\'emploi du temps',
+      'settingsCancelledColor': 'Couleur annulée',
+      'settingsCancelledColorDesc': 'Personnaliser la couleur des cours annulés',
+      'settingsMonochromeLessons': 'Cours monochromes',
+      'settingsMonochromeLessonsDesc':
+          'Utiliser les couleurs Material You au lieu de couleurs individuelles',
       'settingsDemoMode': 'Mode démo',
       'settingsDemoModeDesc':
           'Utilise des données de démonstration locales au lieu du serveur école (immédiat).',
@@ -2351,6 +2370,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelled': 'Mostrar clases canceladas',
       'settingsShowCancelledDesc':
           'Las clases canceladas se muestran en el horario',
+      'settingsCancelledColor': 'Color cancelado',
+      'settingsCancelledColorDesc': 'Personalizar el color de las clases canceladas',
+      'settingsMonochromeLessons': 'Clases monocromáticas',
+      'settingsMonochromeLessonsDesc':
+          'Usar colores Material You en lugar de colores individuales',
       'settingsDemoMode': 'Modo demo',
       'settingsDemoModeDesc':
           'Usa datos de demostración locales en lugar del servidor escolar (inmediato).',
@@ -2882,6 +2906,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelled': 'Εμφάνιση ακυρωμένων μαθημάτων',
       'settingsShowCancelledDesc':
           'Τα ακυρωμένα μαθήματα εμφανίζονται στο ωρολόγιο',
+      'settingsCancelledColor': 'Χρώμα ακύρωσης',
+      'settingsCancelledColorDesc': 'Προσαρμογή χρώματος για ακυρωμένα μαθήματα',
+      'settingsMonochromeLessons': 'Μονόχρωμα μαθήματα',
+      'settingsMonochromeLessonsDesc':
+          'Χρήση Material You χρωμάτων αντί για μεμονωμένα χρώματα',
       'settingsDemoMode': 'Λειτουργία demo',
       'settingsDemoModeDesc':
           'Χρησιμοποιεί τοπικά δεδομένα demo αντί για τους διακομιστές του σχολείου (άμεση ενεργοποίηση).',

@@ -101,6 +101,10 @@ void main() async {
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
   themeModeNotifier.value = ThemeMode.values[prefs.getInt('themeMode') ?? 0];
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
+  cancelledLessonColorNotifier.value =
+      prefs.getInt('cancelledLessonColor') ?? 0xFFFF1744;
+  monochromeLessonsNotifier.value =
+      prefs.getBool('monochromeLessons') ?? false;
   backgroundAnimationsNotifier.value =
       prefs.getBool('backgroundAnimations') ?? true;
   backgroundAnimationStyleNotifier.value =
@@ -2273,17 +2277,21 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       Brightness.dark;
                                   final isCancelled = (l['code'] ?? '') == 'cancelled';
                                   final sk = l['_subjectShort']?.toString() ?? '';
-                                  final cv = isCancelled
+                                  final useMonochrome = monochromeLessonsNotifier.value;
+                                  final cancelledColor = Color(cancelledLessonColorNotifier.value);
+                                  final cv = isCancelled || useMonochrome
                                       ? null
                                       : subjectColorsNotifier.value[sk];
                                   final fgColor = isCancelled
-                                      ? cs.error
+                                      ? cancelledColor
+                                      : useMonochrome
+                                      ? cs.primary
                                       : cv != null
                                       ? Color(cv)
                                       : _autoLessonColor(sk, isDark);
                                   final bgColor = isCancelled
                                       ? Color.alphaBlend(
-                                          cs.error.withValues(alpha: 0.10),
+                                          cancelledColor.withValues(alpha: 0.10),
                                           cs.surfaceContainerHighest,
                                         )
                                       : Color.alphaBlend(
@@ -2729,17 +2737,21 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                               l['_teacher']?.toString() ?? '';
                                           final sk2 =
                                               l['_subjectShort']?.toString() ?? '';
-                                          final cv2 = isCancelled
+                                          final useMonochrome2 = monochromeLessonsNotifier.value;
+                                          final cancelledColor2 = Color(cancelledLessonColorNotifier.value);
+                                          final cv2 = isCancelled || useMonochrome2
                                               ? null
                                               : subjectColorsNotifier.value[sk2];
                                           final fgColor = isCancelled
-                                              ? cs.error
+                                              ? cancelledColor2
+                                              : useMonochrome2
+                                              ? cs.primary
                                               : cv2 != null
                                               ? Color(cv2)
                                               : _autoLessonColor(sk2, isDark2);
                                           final bgColor = isCancelled
                                               ? Color.alphaBlend(
-                                                  cs.error.withValues(alpha: 0.10),
+                                                  cancelledColor2.withValues(alpha: 0.10),
                                                   cs.surfaceContainerHighest,
                                                 )
                                               : Color.alphaBlend(
@@ -3832,7 +3844,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 _viewingClassName ?? l.timetableTitle,
                 style: GoogleFonts.outfit(
                   fontWeight: FontWeight.w900,
-                  fontSize: 20,
+                  fontSize: 17,
                 ),
               ),
               if (_showingCachedWeek)
@@ -3878,10 +3890,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             : TabBar(
                 controller: _tabController,
                 indicatorColor: Theme.of(context).colorScheme.primary,
-                indicatorWeight: 4,
+                indicatorWeight: 3,
                 labelStyle: GoogleFonts.outfit(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 14,
                 ),
                 labelColor: Theme.of(context).colorScheme.primary,
                 unselectedLabelColor: Theme.of(
@@ -3889,7 +3901,47 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 ).colorScheme.onSurfaceVariant,
                 dividerColor: Colors.transparent,
                 tabs: List.generate(5, (i) {
-                  return Tab(child: Text(_dayShort[i]));
+                  final dayDate = _currentMonday.add(Duration(days: i));
+                  final now = DateTime.now();
+                  final isToday = dayDate.year == now.year &&
+                      dayDate.month == now.month &&
+                      dayDate.day == now.day;
+                  return Tab(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _dayShort[i],
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.1,
+                          ),
+                        ),
+                        Text(
+                          '${dayDate.day}.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            height: 1.2,
+                            color: isToday
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (isToday)
+                          Container(
+                            width: 3,
+                            height: 3,
+                            margin: const EdgeInsets.only(top: 1),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        else
+                          const SizedBox(height: 4),
+                      ],
+                    ),
+                  );
                 }),
               ),
       ),
@@ -6534,6 +6586,7 @@ class _LessonDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
+    final cancelledColor = Color(cancelledLessonColorNotifier.value);
     return _sheetSurface(
       context: context,
       blur: blurEnabledNotifier.value,
@@ -6567,18 +6620,18 @@ class _LessonDetailSheet extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: cs.errorContainer,
+                  color: cancelledColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.cancel_outlined, size: 16, color: cs.error),
+                    Icon(Icons.cancel_outlined, size: 16, color: cancelledColor),
                     const SizedBox(width: 6),
                     Text(
                       l.detailCancelled,
                       style: GoogleFonts.outfit(
-                        color: cs.error,
+                        color: cancelledColor,
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
                       ),
@@ -6711,6 +6764,7 @@ class LessonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final cancelledColor = Color(cancelledLessonColorNotifier.value);
     return GestureDetector(
       onTap: onTap,
       onTapDown: (_) => HapticFeedback.selectionClick(),
@@ -6738,11 +6792,7 @@ class LessonCard extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: isCancelled
-                    ? (enabled
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.errorContainer.withValues(alpha: 0.9)
-                          : Theme.of(context).colorScheme.errorContainer)
+                    ? cancelledColor.withValues(alpha: enabled ? 0.18 : 0.22)
                     : (enabled
                           ? Theme.of(
                               context,
@@ -6833,8 +6883,8 @@ class LessonCard extends StatelessWidget {
                           appLocaleNotifier.value,
                         ).detailCancelledBadge,
                       ),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                      textColor: Theme.of(context).colorScheme.onError,
+                      backgroundColor: cancelledColor,
+                      textColor: cs.onError,
                     ),
                 ],
               ),

@@ -1,7 +1,7 @@
 part of '../main.dart';
 
-const Curve _kSmoothBounce = Cubic(0.16, 0.94, 0.22, 1.24);
-const Curve _kSoftBounce = Cubic(0.18, 0.9, 0.26, 1.14);
+const Curve _kSmoothBounce = Cubic(0.16, 0.84, 0.22, 1.44);
+const Curve _kSoftBounce = Cubic(0.18, 0.74, 0.28, 1.34);
 
 Widget _withOptionalBackdropBlur({
   required double sigmaX,

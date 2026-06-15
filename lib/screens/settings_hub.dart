@@ -64,6 +64,18 @@ Future<void> _settingsSetTabTransition(bool value) async {
   await prefs.setBool('tabTransition', value);
 }
 
+Future<void> _settingsSetCancelledLessonColor(int colorValue) async {
+  cancelledLessonColorNotifier.value = colorValue;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('cancelledLessonColor', colorValue);
+}
+
+Future<void> _settingsSetMonochromeLessons(bool value) async {
+  monochromeLessonsNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('monochromeLessons', value);
+}
+
 Future<void> _settingsSetProgressivePush(bool value) async {
   progressivePushNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
