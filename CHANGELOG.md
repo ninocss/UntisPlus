@@ -1,28 +1,35 @@
-# Version v4.2.0
+# Version v4.3.0
 
-This release introduces a convenient new way to view updates directly within the app, alongside a refreshed design and smoother animations. We've also improved how events and holidays are handled, making your schedule even clearer. Under the hood, significant technical improvements ensure a more stable and performant experience.
+This release brings a significant visual refresh to Untis+, with updates to the navigation bar, top bar, and lesson displays. We've also introduced new theming options, including custom Material You colors, and improved how events and holidays are presented. Under the hood, we've enhanced animations, caching, and added an in-app changelog for future updates. ✨
 
 ## What's New
-*   Access an in-app changelog viewer directly from the settings, allowing you to easily see what's new in each update.
+*   Introduce custom color support for Material You, allowing for a more personalized app experience.
+*   Add in-app changelog functionality, making it easier to see what's new in future updates directly within the app, likely accessible from the "About & Updates" settings.
 
 ## Improvements
-*   Enhanced the handling of events and holidays, likely leading to more accurate or comprehensive display within the app.
-*   Refined the overall app design and theming for a fresh, modern look and feel. ✨
-*   Updated app icons, providing new visual options or a refreshed appearance.
-*   Improved animations, particularly within the onboarding flow, for a smoother and more engaging user experience.
-*   Optimized internal caching mechanisms, which may lead to faster data loading and improved overall performance.
+*   Redesign the navigation bar and top bar for a fresh, modern look.
+*   Enhance the design of lesson displays, including clearer presentation of cancelled lessons.
+*   Display dates on weekdays for improved timetable readability.
+*   Implement a monochrome design option for lessons.
+*   Refine the design of the Exams section.
+*   Add a blurring effect to the background for a more polished visual experience.
+*   Update various animations throughout the app for a smoother feel.
+*   Improve the handling and display of events and holidays.
+*   Update general app design and theming across various screens.
 
 ## Fixes
-*   No explicit bug fixes were identified in this release.
+*   No explicit bug fixes were mentioned in the provided changes.
 
 ## Technical Notes
-*   Updated the project's `README.md` documentation.
-*   Refactored internal class management, particularly around application state and main initialization, to improve code organization and maintainability.
-*   Updated various dependencies and build configurations for Android, including `build.gradle.kts` and `AndroidManifest.xml`.
-*   Updated localization files (`l10n.dart`), likely adding new strings or refining existing translations.
-*   Adjusted the background service configuration, potentially improving its reliability or efficiency.
-*   Implemented and refined GitHub Actions workflows for automated changelog generation and Dart build processes.
-*   Performed multiple automated updates to the internal `changelog.json` file.
+*   Update CI/CD workflows for `dart_build.yml` and `changelog.yml` to streamline development processes.
+*   Bump the app version to v4.3.0.
+*   Refine internal design tokens and shared UI components for consistency.
+*   Update caching mechanisms for likely performance improvements.
+*   Update Android build configuration and manifest.
+*   Add new adaptive launcher icons for Android, offering various visual styles (3D, Chrome, Galaxy, Gradient, Marmor, Paper).
+*   Update `pubspec.yaml` dependencies.
+*   Make internal changes to the background service, potentially improving reliability or efficiency.
+*   Update automated changelog files (`changelog.json`).
 
 > **Why refactoring matters**
-> This release includes several internal code improvements and refactorings, such as better class management and optimized caching. These changes are crucial for the long-term health of Untis+. They make the codebase easier to understand and maintain, which means we can develop new features faster and fix issues more efficiently in the future. Ultimately, this leads to a more stable, performant, and feature-rich app for you.
+> This release includes several internal changes, such as updates to our CI/CD workflows, internal design tokens, and caching mechanisms. These behind-the-scenes improvements are crucial for the long-term health of the Untis+ project. They help ensure the app remains stable, performant, and easier for developers to maintain and extend. By streamlining our development processes and refining core components, we're laying a stronger foundation for delivering exciting new features and continued improvements in the future.
