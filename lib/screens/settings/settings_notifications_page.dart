@@ -31,6 +31,14 @@ class SettingsNotificationsPage extends StatelessWidget {
                 valueListenable: progressivePushNotifier,
                 builder: (context, value, _) {
                   return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                     value: value,
                     onChanged: _settingsSetProgressivePush,
                     title: Text(
@@ -56,6 +64,14 @@ class SettingsNotificationsPage extends StatelessWidget {
                 valueListenable: dailyBriefingPushNotifier,
                 builder: (context, value, _) {
                   return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                     value: value,
                     onChanged: _settingsSetDailyBriefingPush,
                     title: Text(
@@ -81,6 +97,14 @@ class SettingsNotificationsPage extends StatelessWidget {
                 valueListenable: importantChangesPushNotifier,
                 builder: (context, value, _) {
                   return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                     value: value,
                     onChanged: _settingsSetImportantChangesPush,
                     title: Text(

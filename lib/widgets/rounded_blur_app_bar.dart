@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -7,8 +6,8 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget? leading;
   final double height;
   final bool centerTitle;
-  final double borderRadius;
-  final bool useBlur;
+  final double borderRadius; // Kept for API compatibility but ignored
+  final bool useBlur; // Kept for API compatibility but ignored
   final PreferredSizeWidget? bottom;
 
   const RoundedBlurAppBar({
@@ -29,105 +28,13 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      surfaceTintColor: Colors.transparent,
       centerTitle: centerTitle,
       leading: leading,
       actions: actions,
       title: title,
       bottom: bottom,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(borderRadius),
-        ),
-      ),
-      flexibleSpace: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(borderRadius),
-        ),
-        child: useBlur
-            ? BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: cs.outlineVariant.withValues(alpha: 0.25),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Stack(
-                    fit: StackFit.passthrough,
-                    children: [
-                      // Base surface tint layer
-                      Positioned.fill(
-                        child: Container(
-                            color: cs.surface.withValues(alpha: 0.72),
-                        ),
-                      ),
-                      // Frosted glass highlight at top
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.white.withValues(
-                                  alpha: isDark ? 0.04 : 0.12,
-                                ),
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 0.35],
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Primary accent layer
-                      Positioned.fill(
-                        child: Container(
-                          color: cs.primary.withValues(alpha: 0.05),
-                        ),
-                      ),
-                      // Subtle radial gradient behind title
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: const Alignment(0, -0.4),
-                              radius: 0.6,
-                              colors: [
-                                cs.primary.withValues(alpha: 0.04),
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 1.0],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Container(
-                color: cs.surface,
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.25),
-                      width: 1,
-                    ),
-                  ),
-                ),
-              ),
-      ),
+      // Material 3 handles scrolledUnderElevation and surfaceTint automatically
     );
   }
 }

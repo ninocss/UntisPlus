@@ -1007,91 +1007,77 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildProgressHeader(ColorScheme colors) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: _withOptionalBackdropBlur(
-        sigmaX: 18,
-        sigmaY: 18,
-        child: const SizedBox.shrink(),
-        childBuilder: (blurEnabled) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: blurEnabled
-                ? colors.surface.withValues(alpha: 0.6)
-                : colors.surface.withValues(alpha: 0.88),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: colors.outlineVariant.withValues(alpha: 0.45),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHigh.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Row(
+        children: [
+          AnimatedOpacity(
+            opacity: _currentPage > 0 ? 1.0 : 0.3,
+            duration: const Duration(milliseconds: 200),
+            child: SizedBox(
+              width: 36,
+              height: 36,
+              child: IconButton(
+                onPressed: _currentPage > 0 ? _previousPage : null,
+                padding: EdgeInsets.zero,
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 17,
+                  color: colors.onSurface,
+                ),
+              ),
             ),
           ),
-          child: Row(
-            children: [
-              // Back button
-              AnimatedOpacity(
-                opacity: _currentPage > 0 ? 1.0 : 0.3,
-                duration: const Duration(milliseconds: 200),
-                child: SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: IconButton(
-                    onPressed: _currentPage > 0 ? _previousPage : null,
-                    padding: EdgeInsets.zero,
-                    icon: Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 17,
-                      color: colors.onSurface,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Row(
+              children: List.generate(_totalOnboardingSteps, (index) {
+                final isActive = index == _currentPage;
+                final isDone = index < _currentPage;
+                return Expanded(
+                  flex: isActive ? 3 : 1,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 380),
+                    curve: _kSmoothBounce,
+                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? colors.primary
+                          : isDone
+                              ? colors.primary.withValues(alpha: 0.55)
+                              : colors.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(99),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Pill progress indicators
-              Expanded(
-                child: Row(
-                  children: List.generate(_totalOnboardingSteps, (index) {
-                    final isActive = index == _currentPage;
-                    final isDone = index < _currentPage;
-                    return Expanded(
-                      flex: isActive ? 3 : 1,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 380),
-                        curve: _kSmoothBounce,
-                        margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? colors.primary
-                              : isDone
-                                  ? colors.primary.withValues(alpha: 0.55)
-                                  : colors.surfaceContainerHighest
-                                      .withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Step counter pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Text(
-                  '${_currentPage + 1}/$_totalOnboardingSteps',
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                    color: colors.onPrimaryContainer,
-                  ),
-                ),
-              ),
-            ],
+                );
+              }),
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: colors.primaryContainer.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              '${_currentPage + 1}/$_totalOnboardingSteps',
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+                color: colors.onPrimaryContainer,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2052,26 +2038,20 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         ),
                         if (providerPortal.isNotEmpty) ...[
                           const SizedBox(height: 10),
-                          GestureDetector(
-                            onTap: _openApiKeyPortal,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.open_in_new_rounded,
-                                  size: 14,
-                                  color: colors.primary,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  l.settingsAiApiKeyGet,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: colors.primary,
-                                  ),
-                                ),
-                              ],
+                          TextButton.icon(
+                            onPressed: _openApiKeyPortal,
+                            icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                            label: Text(
+                              l.settingsAiApiKeyGet,
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
                         ],
@@ -2513,56 +2493,45 @@ class _StepWrapper extends StatelessWidget {
                 ),
               ),
               SizedBox(height: topSpacing),
-              // Title/subtitle card
-              ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: _withOptionalBackdropBlur(
-                  sigmaX: 14,
-                  sigmaY: 14,
-                  child: const SizedBox.shrink(),
-                  childBuilder: (blur) => Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      compact ? 10 : 13,
-                      16,
-                      compact ? 12 : 15,
-                    ),
-                    decoration: BoxDecoration(
-                      color: blur
-                          ? cs.surface.withValues(alpha: 0.56)
-                          : cs.surface.withValues(alpha: 0.84),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: cs.outlineVariant.withValues(alpha: 0.45),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          title,
-                          style: GoogleFonts.outfit(
-                            fontSize: titleSize,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                            color: cs.onSurface,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: compact ? 4 : 6),
-                        Text(
-                          subtitle,
-                          style: GoogleFonts.outfit(
-                            fontSize: subtitleSize,
-                            fontWeight: FontWeight.w500,
-                            color: cs.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  compact ? 10 : 13,
+                  16,
+                  compact ? 12 : 15,
+                ),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.18),
                   ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontSize: titleSize,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                        color: cs.onSurface,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: compact ? 4 : 6),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.outfit(
+                        fontSize: subtitleSize,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
               SizedBox(height: sectionSpacing),

@@ -111,6 +111,14 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                 valueListenable: demoModeNotifier,
                 builder: (context, value, _) {
                   return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                     value: value,
                     onChanged: (v) => _settingsSetDemoMode(context, v),
                     title: Text(

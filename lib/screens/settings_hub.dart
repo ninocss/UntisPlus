@@ -355,6 +355,86 @@ Future<void> _settingsSyncFromPrefs() async {
 class SettingsHubPage extends StatelessWidget {
   const SettingsHubPage({super.key});
 
+  Widget _buildGroupCard(ColorScheme cs, BuildContext context, List<_SettingsHubItem> groupItems) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      color: cs.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: groupItems.asMap().entries.map((entry) {
+          final index = entry.key;
+          final item = entry.value;
+          final isLast = index == groupItems.length - 1;
+          return Column(
+            children: [
+              InkWell(
+                onTap: () {
+                  Navigator.push(context, _buildBouncyRoute(item.pageBuilder()));
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: item.iconBackground,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Icon(item.icon, color: item.iconColor),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.subtitle,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                color: cs.onSurfaceVariant,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (!isLast)
+                Divider(
+                  height: 1,
+                  indent: 84,
+                  endIndent: 16,
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -437,14 +517,11 @@ class SettingsHubPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: _AnimatedBackground(
-        child: ListView.separated(
+        child: ListView(
           padding: EdgeInsets.fromLTRB(16, 16, 16, mq.padding.bottom + 132),
-          itemCount: items.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return TweenAnimationBuilder<double>(
-              duration: Duration(milliseconds: 240 + index * 40),
+          children: [
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 300),
               tween: Tween(begin: 0, end: 1),
               curve: Curves.easeOutCubic,
               builder: (context, value, child) {
@@ -456,74 +533,41 @@ class SettingsHubPage extends StatelessWidget {
                   ),
                 );
               },
-              child: Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                color: cs.surfaceContainerHigh,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      _buildBouncyRoute(item.pageBuilder()),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: item.iconBackground,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Icon(item.icon, color: item.iconColor),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                item.subtitle,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.outfit(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ],
-                    ),
+              child: _buildGroupCard(cs, context, [items[0], items[3], items[2]]),
+            ),
+            const SizedBox(height: 16),
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 400),
+              tween: Tween(begin: 0, end: 1),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - value) * 16),
+                    child: child,
                   ),
-                ),
-              ),
-            );
-          },
+                );
+              },
+              child: _buildGroupCard(cs, context, [items[1], items[4], items[6]]),
+            ),
+            const SizedBox(height: 16),
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 500),
+              tween: Tween(begin: 0, end: 1),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - value) * 16),
+                    child: child,
+                  ),
+                );
+              },
+              child: _buildGroupCard(cs, context, [items[5], items[7]]),
+            ),
+          ],
         ),
       ),
     );

@@ -1222,22 +1222,24 @@ ANTWORTFORMAT:
     final isKeyboardOpen = keyboardHeight > 0;
     final isFocused = _promptFocusNode.hasFocus;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 20),
-      curve: Curves.fastOutSlowIn,
+    return Container(
       margin: EdgeInsets.fromLTRB(
+        16,
         8,
-        8,
-        8,
+        16,
         isKeyboardOpen ? (keyboardHeight + 12) : (14 + mq.padding.bottom),
       ),
-      padding: EdgeInsets.symmetric(
-        horizontal: isFocused ? 12 : 8,
-        vertical: 14,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.18),
+        ),
       ),
       child: Row(
         children: [
-          const SizedBox(width: 8), 
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _inputController,
@@ -1246,19 +1248,20 @@ ANTWORTFORMAT:
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _send(),
               style: GoogleFonts.outfit(
-                fontSize: 16, 
+                fontSize: 16,
                 fontWeight: isFocused ? FontWeight.w700 : FontWeight.w600,
+                color: cs.onSurface,
               ),
               decoration: InputDecoration(
                 hintText: isGerman ? 'Stunden, Freistunden, Prüfungen …' : 'Lessons, free periods, exams ...',
                 hintStyle: GoogleFonts.outfit(
-                  color: cs.onSurface.withValues(alpha: 0.5),
+                  color: cs.onSurfaceVariant,
                 ),
                 filled: true,
                 fillColor: Colors.transparent,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(18),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -1271,20 +1274,17 @@ ANTWORTFORMAT:
                   : () {
                       setState(() => _inputController.clear());
                     },
-              icon: const Icon(Icons.clear_rounded),
+              icon: Icon(Icons.clear_rounded, color: cs.onSurfaceVariant),
               tooltip: isGerman ? 'Leeren' : 'Clear',
             ),
           ],
-          const SizedBox(width: 8), 
+          const SizedBox(width: 8),
           FilledButton(
             onPressed: _thinking ? null : _send,
             style: FilledButton.styleFrom(
-              padding: EdgeInsets.symmetric(
-                horizontal: isFocused ? 24 : 18, 
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(isFocused ? 14 : 22),
+                borderRadius: BorderRadius.circular(18),
               ),
             ),
             child: AnimatedSwitcher(
@@ -1329,16 +1329,11 @@ ANTWORTFORMAT:
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  cs.primaryContainer.withValues(alpha: 0.96),
-                  cs.tertiaryContainer.withValues(alpha: 0.88),
-                ],
+              color: cs.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.18),
               ),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1517,10 +1512,10 @@ ANTWORTFORMAT:
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: cs.primaryContainer.withValues(alpha: 0.6),
+              color: cs.secondaryContainer,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(Icons.auto_awesome_rounded, size: 28, color: cs.onPrimaryContainer),
+            child: Icon(Icons.auto_awesome_rounded, size: 28, color: cs.onSecondaryContainer),
           ),
           const SizedBox(height: 20),
           Text(
@@ -1843,7 +1838,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Widget _buildPageWithBackground(BuildContext context, Widget page) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Stack(
       fit: StackFit.expand,
@@ -1851,33 +1845,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        Color.alphaBlend(
-                          cs.primary.withValues(alpha: 0.18),
-                          cs.surface,
-                        ),
-                        Color.alphaBlend(
-                          cs.tertiary.withValues(alpha: 0.14),
-                          cs.surface,
-                        ),
-                        cs.surface,
-                      ]
-                    : [
-                        Color.alphaBlend(
-                          cs.primary.withValues(alpha: 0.08),
-                          cs.surface,
-                        ),
-                        Color.alphaBlend(
-                          cs.secondary.withValues(alpha: 0.07),
-                          cs.surface,
-                        ),
-                        cs.surface,
-                      ],
-              ),
+              color: cs.surface,
             ),
           ),
         ),
@@ -1892,7 +1860,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   return IgnorePointer(
                     ignoring: true,
                     child: Opacity(
-                      opacity: isDark ? 0.28 : 0.2,
+                      opacity: Theme.of(context).brightness == Brightness.dark ? 0.28 : 0.2,
                       child: _AnimatedBackgroundScene(style: style),
                     ),
                   );
@@ -2186,13 +2154,49 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final timetableSelected = _selectedIndex == 0;
     final l = AppL10n.of(appLocaleNotifier.value);
 
+    // ---- Secondary items (indices 1-4) shown in the pill bar ----
+    final items = [
+      _NavItem(
+        icon: Icons.assignment_outlined,
+        selectedIcon: Icons.assignment_rounded,
+        label: l.navExams,
+        pageIndex: 1,
+        tutorialHighlight: _isTutorialTarget(1),
+      ),
+      _NavItem(
+        icon: Icons.campaign_outlined,
+        selectedIcon: Icons.campaign_rounded,
+        label: l.navInfo,
+        pageIndex: 2,
+        tutorialHighlight: _isTutorialTarget(2),
+      ),
+      _NavItem(
+        icon: Icons.settings_outlined,
+        selectedIcon: Icons.settings_rounded,
+        label: l.navMenu,
+        pageIndex: 3,
+        tutorialHighlight: _isTutorialTarget(3),
+      ),
+      _NavItem(
+        icon: Icons.auto_awesome_outlined,
+        selectedIcon: Icons.auto_awesome_rounded,
+        label: l.navAi,
+        pageIndex: 4,
+      ),
+    ];
+
+    // Which item in the secondary bar is selected? -1 = none (timetable active)
+    final selectedBarIndex =
+        _selectedIndex == 0 ? -1 : _selectedIndex - 1;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(bottom: 24),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // ---- Pill nav bar ----
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 560),
@@ -2203,92 +2207,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   child: Opacity(opacity: val.clamp(0, 1), child: child),
                 );
               },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(35),
-                child: _withOptionalBackdropBlur(
-                  sigmaX: 16,
-                  sigmaY: 16,
-                  child: const SizedBox.shrink(),
-                  childBuilder: (enabled) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 450),
-                    curve: _kSoftBounce,
-                    height: 64,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: enabled
-                          ? Color.alphaBlend(
-                              cs.primaryContainer.withValues(alpha: 0.18),
-                              cs.surface.withValues(alpha: 0.72),
-                            )
-                          : cs.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(35),
-                      border: Border.all(
-                        color: cs.primary.withValues(alpha: 0.15),
-                        width: 0.8,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: cs.shadow.withValues(alpha: 0.06),
-                          blurRadius: 20,
-                          offset: const Offset(0, 6),
-                        ),
-                        BoxShadow(
-                          color: cs.shadow.withValues(alpha: 0.03),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _navIconBtn(
-                          cs: cs,
-                          icon: Icons.assignment_outlined,
-                          selectedIcon: Icons.assignment_rounded,
-                          label: l.navExams,
-                          selected: _selectedIndex == 1,
-                          onTap: () => _onNavTap(1),
-                          tutorialHighlight: _isTutorialTarget(1),
-                        ),
-                        const SizedBox(width: 6),
-                        _navIconBtn(
-                          cs: cs,
-                          icon: Icons.campaign_outlined,
-                          selectedIcon: Icons.campaign_rounded,
-                          label: l.navInfo,
-                          selected: _selectedIndex == 2,
-                          onTap: () => _onNavTap(2),
-                          tutorialHighlight: _isTutorialTarget(2),
-                        ),
-                        const SizedBox(width: 6),
-                        _navIconBtn(
-                          cs: cs,
-                          icon: Icons.settings_outlined,
-                          selectedIcon: Icons.settings_rounded,
-                          label: l.navMenu,
-                          selected: _selectedIndex == 3,
-                          onTap: () => _onNavTap(3),
-                          tutorialHighlight: _isTutorialTarget(3),
-                        ),
-                        const SizedBox(width: 6),
-                        _navIconBtn(
-                          cs: cs,
-                          icon: Icons.auto_awesome_outlined,
-                          selectedIcon: Icons.auto_awesome_rounded,
-                          label: l.navAi,
-                          selected: _selectedIndex == 4,
-                          onTap: () => _onNavTap(4),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              child: _ExpressiveNavBar(
+                items: items,
+                selectedIndex: selectedBarIndex,
+                colorScheme: cs,
+                onTap: (pageIndex) => _onNavTap(pageIndex),
               ),
             ),
 
             const SizedBox(width: 12),
 
+            // ---- FAB timetable button ----
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 620),
@@ -2302,18 +2231,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                 );
               },
-              child: AnimatedScale(
-                scale: timetableSelected ? 1.06 : 0.94,
-                duration: const Duration(milliseconds: 400),
-                curve: _kSmoothBounce,
-                child: _BouncyButton(
-                  onTap: () => _onNavTap(0),
-                  scaleTarget: 0.88,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 480),
-                    curve: _kSoftBounce,
-                    height: timetableSelected ? 68 : 56,
-                    width: timetableSelected ? 68 : 56,
+              child: _BouncyButton(
+                onTap: () => _onNavTap(0),
+                scaleTarget: 0.88,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 480),
+                  curve: _kSoftBounce,
+                  height: _ExpressiveNavBarState._barHeight,
+                  width: _ExpressiveNavBarState._barHeight,
                     decoration: BoxDecoration(
                       color: timetableSelected
                           ? cs.primary
@@ -2331,12 +2256,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              (timetableSelected
-                                      ? cs.primary
-                                      : cs.surfaceContainerHigh)
-                                  .withValues(alpha: 0.32),
-                          blurRadius: timetableSelected ? 20 : 12,
+                          color: timetableSelected
+                              ? cs.primary.withValues(alpha: 0.30)
+                              : cs.shadow.withValues(alpha: 0.12),
+                          blurRadius: timetableSelected ? 22 : 12,
                           offset: Offset(0, timetableSelected ? 6 : 4),
                         ),
                       ],
@@ -2384,86 +2307,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                     ),
                   ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _navIconBtn({
-    required ColorScheme cs,
-    required IconData icon,
-    required IconData selectedIcon,
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    bool tutorialHighlight = false,
-  }) {
-    return _BouncyButton(
-      onTap: onTap,
-      scaleTarget: 0.8,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 380),
-        curve: _kSoftBounce,
-        height: 44,
-        padding: EdgeInsets.symmetric(horizontal: selected ? 14 : 11),
-        decoration: BoxDecoration(
-          color: selected ? cs.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(22),
-          border: tutorialHighlight
-              ? Border.all(color: cs.tertiary, width: 2)
-              : selected
-              ? Border.all(color: cs.primary.withValues(alpha: 0.20), width: 0.8)
-              : Border.all(color: Colors.transparent, width: 0),
-          boxShadow: tutorialHighlight
-              ? [
-                  BoxShadow(
-                    color: cs.tertiary.withValues(alpha: 0.35),
-                    blurRadius: 14,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
-              switchInCurve: _kSmoothBounce,
-              switchOutCurve: _kSoftBounce,
-              transitionBuilder: (child, anim) {
-                return ScaleTransition(scale: anim, child: child);
-              },
-              child: Icon(
-                selected ? selectedIcon : icon,
-                key: ValueKey(selected),
-                size: selected ? 22 : 24,
-                color: selected
-                    ? cs.onPrimaryContainer
-                    : cs.onSurfaceVariant.withValues(alpha: 0.8),
-              ),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 360),
-              curve: _kSoftBounce,
-              alignment: Alignment.centerLeft,
-              child: selected
-                  ? Padding(
-                      padding: const EdgeInsets.only(left: 5),
-                      child: Text(
-                        label,
-                        style: GoogleFonts.outfit(
-                          color: cs.onPrimaryContainer,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
             ),
           ],
         ),
@@ -2472,6 +2315,385 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Material You Expressive Navigation Bar
+// ---------------------------------------------------------------------------
+
+class _NavItem {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final int pageIndex;
+  final bool tutorialHighlight;
+
+  const _NavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.pageIndex,
+    this.tutorialHighlight = false,
+  });
+}
+
+/// A pill-indicator navigation bar whose indicator morphs via spring physics
+/// between destinations – matching the Material 3 Expressive spec.
+class _ExpressiveNavBar extends StatefulWidget {
+  final List<_NavItem> items;
+  final int selectedIndex; // -1 = nothing selected
+  final ColorScheme colorScheme;
+  final void Function(int pageIndex) onTap;
+
+  const _ExpressiveNavBar({
+    required this.items,
+    required this.selectedIndex,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  State<_ExpressiveNavBar> createState() => _ExpressiveNavBarState();
+}
+
+class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
+    with TickerProviderStateMixin {
+  // Morphing stage: a spring simulation drives t (0..1, with slight overshoot)
+  // between the previously rendered layout ("from") and the target layout ("to").
+  late AnimationController _morphController;
+
+  // Alpha animation for the "no selection" state (pill fades out)
+  late AnimationController _visibilityController;
+  late Animation<double> _pillAlpha;
+
+  // Per-item icon wiggle
+  final List<AnimationController> _iconWiggle = [];
+
+  static const _itemWidth = 46.0;
+  static const _pillBaseWidth = 42.0;
+  static const _pillExpandedExtra = 56.0; // extra px when label visible
+  static const _pillHeight = 44.0;
+  static const _barHeight = 64.0;
+  static const _barHPad = 8.0;
+  static const _itemGap = 2.0;
+
+  // From-state (frozen at the start of the current morph)
+  List<double> _fromWidths = const [];
+  double _fromLeft = 0;
+  double _fromWidth = _pillBaseWidth;
+
+  // Target selection
+  int _targetSel = -1;
+  double _targetFrac = 1.0;
+
+  // Last rendered state (used as the start point of the next morph)
+  List<double> _lastWidths = const [];
+  double _lastLeft = 0;
+  double _lastWidth = _pillBaseWidth;
+
+  @override
+  void initState() {
+    super.initState();
+    _morphController = AnimationController.unbounded(vsync: this);
+
+    _visibilityController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+      value: widget.selectedIndex >= 0 ? 1.0 : 0.0,
+    );
+    _pillAlpha = _visibilityController;
+
+    for (int i = 0; i < widget.items.length; i++) {
+      _iconWiggle.add(
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 380),
+        ),
+      );
+    }
+
+    final sel = widget.selectedIndex;
+    _targetSel = sel;
+    _targetFrac = 1.0;
+    if (sel >= 0) {
+      final layout = _layoutFor(sel, 1.0);
+      _fromLeft = _lastLeft = layout.left;
+      _fromWidth = _lastWidth = layout.width;
+      _fromWidths = _lastWidths = List.of(layout.widths);
+      _morphController.value = 1.0;
+    } else {
+      _fromWidths = _lastWidths =
+          List.generate(widget.items.length, (_) => _itemWidth, growable: false);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ExpressiveNavBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedIndex == widget.selectedIndex) return;
+
+    final newSel = widget.selectedIndex;
+    final wasHidden = _pillAlpha.value < 0.05;
+
+    // Freeze the currently rendered layout as the morph start point.
+    _fromLeft = _lastLeft;
+    _fromWidth = _lastWidth;
+    _fromWidths = List.of(_lastWidths);
+
+    if (newSel < 0) {
+      // Timetable selected -> fold pill to compact size in place and fade out.
+      _targetSel = _targetSel >= 0 ? _targetSel : 0;
+      _targetFrac = 0.0;
+      _visibilityController.reverse();
+    } else if (wasHidden) {
+      // Coming from a hidden state -> grow the compact pill at the new tab.
+      final compact = _layoutFor(newSel, 0.0);
+      _fromLeft = compact.left;
+      _fromWidth = compact.width;
+      _fromWidths = List.of(compact.widths);
+      _targetSel = newSel;
+      _targetFrac = 1.0;
+      _visibilityController.forward();
+    } else {
+      // Secondary tab -> secondary tab: morph between the two layouts.
+      _targetSel = newSel;
+      _targetFrac = 1.0;
+      _visibilityController.forward();
+    }
+
+    if (newSel >= 0 && newSel < _iconWiggle.length) {
+      _iconWiggle[newSel].forward(from: 0);
+    }
+
+    _animateMorph();
+  }
+
+  void _animateMorph() {
+    _morphController.value = 0;
+    final spring = SpringDescription.withDampingRatio(
+      mass: 1,
+      stiffness: 460,
+      ratio: 0.78,
+    );
+    final sim = SpringSimulation(
+      spring,
+      0,
+      1.0,
+      0, // initial velocity
+    );
+    _morphController.animateWith(sim);
+  }
+
+  ({double left, double width, List<double> widths}) _layoutFor(
+    int sel,
+    double frac,
+  ) {
+    final widths = List.generate(widget.items.length, (i) {
+      if (sel >= 0 && i == sel) {
+        return _pillBaseWidth + frac * _pillExpandedExtra;
+      }
+      return _itemWidth;
+    });
+    var left = _barHPad;
+    if (sel >= 0) {
+      left += widths.take(sel).fold(0.0, (a, b) => a + b) + sel * _itemGap;
+    }
+    final width = sel >= 0 ? widths[sel] : _pillBaseWidth;
+    return (left: left, width: width, widths: widths);
+  }
+
+  @override
+  void dispose() {
+    _morphController.dispose();
+    _visibilityController.dispose();
+    for (final c in _iconWiggle) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.colorScheme;
+    final n = widget.items.length;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(35),
+      child: Container(
+        height: _barHeight,
+        padding: const EdgeInsets.symmetric(horizontal: _barHPad),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(35),
+          border: Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.18),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: cs.shadow.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: AnimatedBuilder(
+          animation: Listenable.merge([
+            _morphController,
+            _visibilityController,
+          ]),
+          builder: (context, _) {
+            final t = _morphController.value.clamp(0.0, 1.1);
+            final to = _layoutFor(_targetSel, _targetFrac);
+
+            // Interpolate every item width (and the pill rect) from the frozen
+            // start layout toward the target layout – this keeps the pill glued
+            // to the moving items without the reference-frame jumps.
+            final widths = List.generate(n, (i) {
+              final from = i < _fromWidths.length ? _fromWidths[i] : _itemWidth;
+              return from + (to.widths[i] - from) * t;
+            });
+            final pillLeft = _fromLeft + (to.left - _fromLeft) * t;
+            final pillWidth = _fromWidth + (to.width - _fromWidth) * t;
+
+            // Render snapshot (start point for the next morph).
+            _lastWidths = List.of(widths);
+            _lastLeft = pillLeft;
+            _lastWidth = pillWidth;
+
+            // Total bar content width
+            final totalW = widths.fold(0.0, (a, b) => a + b) +
+                (n - 1) * _itemGap; // gaps between items
+            final pillAlpha = _pillAlpha.value;
+
+            return SizedBox(
+              width: totalW,
+              height: _barHeight,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // ---- Morphing pill indicator ----
+                  Positioned(
+                    left: pillLeft - _barHPad,
+                    child: Opacity(
+                      opacity: pillAlpha.clamp(0.0, 1.0),
+                      child: Container(
+                        width: pillWidth,
+                        height: _pillHeight,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          borderRadius: BorderRadius.circular(_pillHeight / 2),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // ---- Items row ----
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < n; i++) ...[
+                        if (i > 0) const SizedBox(width: 2),
+                        _buildItem(i, widths[i], t, cs),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItem(
+    int i,
+    double width,
+    double labelT,
+    ColorScheme cs,
+  ) {
+    final item = widget.items[i];
+    final selected = widget.selectedIndex == i;
+    final wiggle = _iconWiggle[i];
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        widget.onTap(item.pageIndex);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: width,
+        height: _barHeight,
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // --- Icon with wiggle ---
+              AnimatedBuilder(
+                animation: wiggle,
+                builder: (context, child) {
+                  // Spring-style wiggle: sin wave decaying
+                  final t = wiggle.value;
+                  final angle = math.sin(t * math.pi * 4) * 0.08 * (1 - t);
+                  return Transform.rotate(angle: angle, child: child);
+                },
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: _kSmoothBounce,
+                  switchOutCurve: Curves.easeOut,
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: Tween(begin: 0.7, end: 1.0).animate(anim),
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: Icon(
+                    selected ? item.selectedIcon : item.icon,
+                    key: ValueKey('${item.pageIndex}_$selected'),
+                    size: selected ? 22 : 24,
+                    color: selected
+                        ? cs.onPrimary
+                        : item.tutorialHighlight
+                            ? cs.tertiary
+                            : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+
+              // --- Label (slides in/out with the morph) ---
+              ClipRect(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: selected ? labelT.clamp(0.0, 1.0) : 0,
+                  child: Opacity(
+                    opacity: (selected ? labelT : 0.0).clamp(0.0, 1.0),
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Text(
+                        item.label,
+                        style: GoogleFonts.outfit(
+                          color: cs.onPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+// Bouncy press helper (unchanged)
+// ---------------------------------------------------------------------------
 class _BouncyButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

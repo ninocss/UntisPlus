@@ -1,11 +1,11 @@
 import 'dart:ui';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:url_launcher/url_launcher_string.dart' as url_launcher;
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -26,8 +26,6 @@ import 'services/background_service.dart';
 import 'services/backup_service.dart';
 import 'services/demo_mode_service.dart';
 import 'widgets/rounded_blur_app_bar.dart';
-import 'web/file_download_helper.dart'
-  if (dart.library.io) 'web/file_download_helper_stub.dart';
 
 part 'core/school_models.dart';
 part 'core/design_tokens.dart';
@@ -457,33 +455,6 @@ Future<Map<String, dynamic>?> _authenticateUntis({
   }
 
   return null;
-}
-
-class _StripesPainter extends CustomPainter {
-  final Color color;
-
-  _StripesPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.5
-      ..isAntiAlias = true;
-    
-    final double step = 8.0;
-    
-    for (double i = -size.height; i < size.width; i += step) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(i + size.height, size.height),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _StripesPainter oldDelegate) => color != oldDelegate.color;
 }
 
 // --- WOCHENPLAN (TAB VIEW) ---
@@ -1946,41 +1917,44 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     required bool useStripes,
   }) {
     final cardRadius = BorderRadius.circular(borderRadius);
-    final borderColor = fgColor.withValues(alpha: isDark ? 0.24 : 0.18);
-    final shadow = isNow
-        ? [
-            BoxShadow(
-              color: fgColor.withValues(alpha: 0.12),
-              blurRadius: 12,
-              spreadRadius: 0.5,
-            ),
-          ]
-        : const <BoxShadow>[];
+    final cs = Theme.of(context).colorScheme;
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: cardRadius,
-        boxShadow: shadow,
+        boxShadow: isNow
+            ? [
+                BoxShadow(
+                  color: cs.shadow.withValues(alpha: 0.12),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: cs.shadow.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: cardRadius,
         child: Stack(
           children: [
+            // Base background
             Container(
               decoration: BoxDecoration(
-                color: bgColor,
+                color: isCancelled ? bgColor.withValues(alpha: 0.5) : bgColor,
                 borderRadius: cardRadius,
-                border: Border.all(color: borderColor),
-              ),
-            ),
-            if (isCancelled && useStripes)
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _StripesPainter(
-                    color: fgColor.withValues(alpha: 0.08),
-                  ),
+                border: Border.all(
+                  color: fgColor.withValues(alpha: 0.16),
+                  width: 0.8,
                 ),
               ),
+            ),
+
+            // Left accent bar instead of gradient
             Positioned(
               left: 0,
               top: 0,
@@ -1988,17 +1962,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               width: accentWidth,
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      fgColor.withValues(alpha: 0.95),
-                      fgColor.withValues(alpha: 0.45),
-                    ],
+                  color: fgColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(borderRadius),
+                    bottomLeft: Radius.circular(borderRadius),
                   ),
                 ),
               ),
             ),
+
+            // Content
             Padding(
               padding: padding,
               child: Column(
@@ -2012,10 +1985,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     style: GoogleFonts.outfit(
                       fontSize: subjectFontSize,
                       fontWeight: FontWeight.w800,
-                      color: fgColor,
+                      color: isCancelled ? fgColor.withValues(alpha: 0.6) : fgColor,
                       decoration: isCancelled ? TextDecoration.lineThrough : null,
-                      decorationColor: fgColor,
-                      decorationThickness: 1.8,
+                      decorationColor: fgColor.withValues(alpha: 0.5),
+                      decorationThickness: 1.6,
                     ),
                   ),
                   if (teacher.isNotEmpty)
@@ -2026,7 +1999,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       style: GoogleFonts.outfit(
                         fontSize: teacherFontSize,
                         fontWeight: FontWeight.w600,
-                        color: fgColor.withValues(alpha: 0.68),
+                        color: isCancelled
+                            ? fgColor.withValues(alpha: 0.48)
+                            : fgColor.withValues(alpha: 0.72),
                       ),
                     ),
                   if (room.isNotEmpty)
@@ -2037,7 +2012,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       style: GoogleFonts.outfit(
                         fontSize: roomFontSize,
                         fontWeight: FontWeight.w600,
-                        color: fgColor.withValues(alpha: 0.78),
+                        color: isCancelled
+                            ? fgColor.withValues(alpha: 0.48)
+                            : fgColor.withValues(alpha: 0.72),
                       ),
                     ),
                 ],
@@ -4892,22 +4869,20 @@ class _ExamsPageState extends State<ExamsPage> {
           ? 'image/png'
           : 'image/jpeg';
     } else {
-      final picked = await FilePicker.pickFiles(
+      final picked = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: providerUsesGeminiProtocol
             ? ['pdf', 'png', 'jpg', 'jpeg']
             : ['png', 'jpg', 'jpeg'],
-        withData: true,
       );
-      if (picked == null || picked.files.isEmpty) return;
-      fileBytes = picked.files.first.bytes;
-      final ext = picked.files.first.extension?.toLowerCase() ?? '';
+      if (picked == null) return;
+      fileBytes = await picked.readAsBytes();
+      final ext = picked.name.split('.').last.toLowerCase();
       mimeType = ext == 'pdf'
           ? 'application/pdf'
           : (ext == 'png' ? 'image/png' : 'image/jpeg');
     }
 
-    if (fileBytes == null) return;
     if (!mounted) return;
 
     var loadingVisible = true;
@@ -5235,10 +5210,16 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: accent.withValues(alpha: 0.5), width: 1.5),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
         onTap: isCustom && customIndex != null
             ? () {
                 HapticFeedback.selectionClick();
@@ -5248,12 +5229,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                 );
               }
             : null,
-        child: Container(
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
-            borderRadius: BorderRadius.circular(20),
-            border: Border(left: BorderSide(color: accent, width: 4)),
-          ),
+        child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -6072,7 +6048,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         childBuilder: (enabled) => Container(
           height: MediaQuery.of(context).size.height * 0.82,
           decoration: BoxDecoration(
-              color: enabled ? cs.surface.withValues(alpha: appAlphaValues.sheetAlphaBlur) : cs.surface,
+              color: enabled ? cs.surface.withValues(alpha: 0.78) : cs.surface,
             gradient: enabled
                 ? LinearGradient(
                     begin: Alignment.topCenter,
@@ -6851,23 +6827,17 @@ class LessonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final cancelledColor = Color(cancelledLessonColorNotifier.value);
-    return GestureDetector(
-      onTap: onTap,
-      onTapDown: (_) => HapticFeedback.selectionClick(),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(
-                context,
-              ).colorScheme.shadow.withValues(alpha: 0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      color: Colors.transparent, // Let child background handle color
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(32),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(32),
+        onTapDown: (_) => HapticFeedback.selectionClick(),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(32),
           child: _withOptionalBackdropBlur(
@@ -7119,7 +7089,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           if ((response.statusCode == 401 || response.statusCode == 403) &&
               retry &&
               await _reAuthenticate()) {
-            return requestWithCookieFallback(sender, retry: false);
+            return await requestWithCookieFallback(sender, retry: false);
           }
         } catch (_) {}
       }

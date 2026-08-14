@@ -77,7 +77,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
           fileName: _defaultFileName(),
           bytes: bytes,
         );
-        if (result == null || result.isEmpty) return;
+        if (result == null) return;
         _showSnack(l.settingsBackupExportSuccess);
       });
     } catch (e) {
@@ -103,21 +103,14 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     try {
       await _setBusyWhile(() async {
-        final result = await FilePicker.pickFiles(
+        final file = await FilePicker.pickFile(
           type: FileType.custom,
           allowedExtensions: const ['json'],
-          withData: true,
         );
-        if (result == null || result.files.isEmpty) return;
-        final file = result.files.single;
+        if (file == null) return;
 
-        String? content;
-        if (file.bytes != null) {
-          content = utf8.decode(file.bytes!);
-        } else if (file.path != null && file.path!.isNotEmpty) {
-          content = await File(file.path!).readAsString();
-        }
-        if (content == null || content.trim().isEmpty) {
+        final content = utf8.decode(await file.readAsBytes());
+        if (content.trim().isEmpty) {
           throw const FormatException('Empty file');
         }
         if (!_isValidJson(content)) {
@@ -216,6 +209,14 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                       contentPadding: EdgeInsets.zero,
                       value: _includeApiKeys,
                       onChanged: (value) =>

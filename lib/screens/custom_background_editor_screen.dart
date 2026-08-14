@@ -673,16 +673,14 @@ class _CustomBackgroundEditorScreenState
   Future<void> _importFromFile() async {
     final l = AppL10n.of(appLocaleNotifier.value);
     try {
-      final picked = await FilePicker.pickFiles(
+      final picked = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: const ['json'],
-        withData: true,
       );
-      if (picked == null || picked.files.isEmpty) return;
+      if (picked == null) return;
 
-      final file = picked.files.first;
-      final bytes = file.bytes;
-      if (bytes == null || bytes.isEmpty) {
+      final bytes = await picked.readAsBytes();
+      if (bytes.isEmpty) {
         throw Exception('No bytes');
       }
 

@@ -228,6 +228,14 @@ class SettingsAppearancePage extends StatelessWidget {
                     valueListenable: useMaterialYouNotifier,
                     builder: (context, useMaterialYou, _) {
                       return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                         value: useMaterialYou,
                         onChanged: _settingsSetUseMaterialYou,
                         title: Text(
@@ -399,6 +407,14 @@ class SettingsAppearancePage extends StatelessWidget {
                 valueListenable: blurEnabledNotifier,
                 builder: (context, value, _) {
                   return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                     value: value,
                     onChanged: _settingsSetBlurEnabled,
                     title: Text(
@@ -426,6 +442,14 @@ class SettingsAppearancePage extends StatelessWidget {
                     valueListenable: backgroundAnimationsNotifier,
                     builder: (context, value, _) {
                       return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                         value: value,
                         onChanged: _settingsSetBackgroundAnimations,
                         title: Text(
@@ -452,6 +476,14 @@ class SettingsAppearancePage extends StatelessWidget {
                             valueListenable: backgroundGyroscopeNotifier,
                             builder: (context, value, _) {
                               return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                                 value: value,
                                 onChanged: _settingsSetBackgroundGyroscope,
                                 title: Text(
@@ -509,6 +541,14 @@ class SettingsAppearancePage extends StatelessWidget {
                 valueListenable: monochromeLessonsNotifier,
                 builder: (context, value, _) {
                   return SwitchListTile.adaptive(
+
+                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return const Icon(Icons.check);
+                          }
+                          return const Icon(Icons.close);
+                        }),
+
                     value: value,
                     onChanged: _settingsSetMonochromeLessons,
                     title: Text(
