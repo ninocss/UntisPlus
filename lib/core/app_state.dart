@@ -105,24 +105,8 @@ String _providerAwareMissingApiKeyMessage(AppL10n l, String provider) {
   return '${l.aiNoApiKey} (${_localizedAiProviderLabel(l, provider)})';
 }
 
-const Map<String, String> aiPromptVariableDescriptions = {
-  '[today]': 'Heutiges Datum in lokaler Schreibweise',
-  '[today_iso]': 'Heutiges Datum im Format YYYY-MM-DD',
-  '[locale]': 'Aktive App-Sprache (z.B. de, en)',
-  '[school_name]': 'Name der Schule',
-  '[school_url]': 'Server/Domain der Schule',
-  '[person_type]': 'WebUntis Personentyp als Zahl',
-  '[person_id]': 'WebUntis Personen-ID',
-  '[demo_mode]': 'true, wenn Demo-Modus aktiv ist',
-  '[current_monday]': 'Montag der geladenen Woche (DD.MM.YYYY)',
-  '[current_friday]': 'Freitag der geladenen Woche (DD.MM.YYYY)',
-  '[day_summary_today]': 'Kurzuebersicht fuer heute',
-  '[day_summary_tomorrow]': 'Kurzuebersicht fuer morgen',
-  '[timetable]': 'Formatierter Stundenplan der aktuellen Woche',
-  '[timetable_json]': 'Rohdaten des Stundenplans als JSON',
-  '[exams]': 'Formatierte Liste geplanter Pruefungen',
-  '[exams_json]': 'Pruefungsdaten als JSON',
-};
+
+
 
 final ValueNotifier<String> appLocaleNotifier = ValueNotifier('de');
 final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
@@ -146,6 +130,8 @@ final ValueNotifier<String?> pendingTimetableNextLessonNotifier = ValueNotifier(
   null,
 );
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
+final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
+final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
 final ValueNotifier<int> pageTransitionNotifier = ValueNotifier(0);
 final ValueNotifier<bool> useMaterialYouNotifier = ValueNotifier(true);
@@ -159,8 +145,6 @@ String _icuLocale(String locale) {
       return 'fr_FR';
     case 'es':
       return 'es_ES';
-    case 'el':
-      return 'el_GR';
     default:
       return 'de_DE';
   }

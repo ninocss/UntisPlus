@@ -20,26 +20,45 @@ Widget _glassContainer({
   required BuildContext context,
   required Widget child,
   BorderRadiusGeometry borderRadius = const BorderRadius.all(
-    Radius.circular(28),
+    Radius.circular(32),
   ),
-  double sigmaX = 22,
-  double sigmaY = 22,
+  double sigmaX = 65,
+  double sigmaY = 65,
   Color? color,
   Gradient? gradient,
   Border? border,
 }) {
   final cs = Theme.of(context).colorScheme;
-  return Container(
-    decoration: BoxDecoration(
-      borderRadius: borderRadius,
-      color: color ?? cs.surfaceContainerHigh,
-      border: border ??
-          Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.18),
-            width: 1,
+  return ValueListenableBuilder<bool>(
+    valueListenable: blurEnabledNotifier,
+    builder: (context, blurEnabled, _) {
+      final surfaceColor = color ?? cs.surfaceContainerLow.withValues(alpha: 0.4);
+      final decor = BoxDecoration(
+        borderRadius: borderRadius,
+        color: blurEnabled ? surfaceColor : (color ?? cs.surfaceContainerHigh),
+        border: border ??
+            Border.all(
+              color: cs.outlineVariant.withValues(alpha: blurEnabled ? 0.25 : 0.4),
+              width: 1,
+            ),
+      );
+
+      Widget content = Container(
+        decoration: decor,
+        child: child,
+      );
+
+      if (blurEnabled) {
+        content = ClipRRect(
+          borderRadius: borderRadius is BorderRadius ? borderRadius : BorderRadius.zero,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: sigmaX, sigmaY: sigmaY),
+            child: content,
           ),
-    ),
-    child: child,
+        );
+      }
+      return content;
+    },
   );
 }
 
@@ -49,25 +68,49 @@ Widget _withOptionalBackdropBlur({
   required Widget child,
   required Widget Function(bool enabled) childBuilder,
 }) {
-  // Disabled blur for Material 3 standard
-  return childBuilder(false);
+  return ValueListenableBuilder<bool>(
+    valueListenable: blurEnabledNotifier,
+    builder: (context, enabled, _) => childBuilder(enabled),
+  );
 }
+
+
 
 Widget _sheetSurface({
   required BuildContext context,
   required Widget child,
   bool blur = true,
   BorderRadiusGeometry borderRadius = const BorderRadius.vertical(
-    top: Radius.circular(28),
+    top: Radius.circular(32),
   ),
 }) {
   final cs = Theme.of(context).colorScheme;
-  return Container(
-    decoration: BoxDecoration(
-      color: cs.surfaceContainerLow,
-      borderRadius: borderRadius,
-    ),
-    child: child,
+  return ValueListenableBuilder<bool>(
+    valueListenable: blurEnabledNotifier,
+    builder: (context, blurEnabled, _) {
+      final isBlurActive = blur && blurEnabled;
+      final decor = BoxDecoration(
+        color: isBlurActive ? cs.surfaceContainerLowest.withValues(alpha: 0.5) : cs.surfaceContainerLow,
+        borderRadius: borderRadius,
+        border: isBlurActive ? Border(top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3), width: 1.5)) : null,
+      );
+      
+      Widget content = Container(
+        decoration: decor,
+        child: child,
+      );
+      
+      if (isBlurActive) {
+        content = ClipRRect(
+          borderRadius: borderRadius is BorderRadius ? borderRadius : const BorderRadius.vertical(top: Radius.circular(32)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 75, sigmaY: 75),
+            child: content,
+          ),
+        );
+      }
+      return content;
+    },
   );
 }
 
@@ -131,11 +174,17 @@ Future<T?> _showUnifiedSheet<T>({
     context: context,
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
     builder: (ctx) {
-      if (outerPadding == null) {
-        return child;
+      Widget content = child;
+      if (outerPadding != null) {
+        content = Padding(padding: outerPadding, child: content);
       }
-      return Padding(padding: outerPadding, child: child);
+      return _sheetSurface(
+        context: ctx,
+        child: content,
+      );
     },
   );
 }
@@ -151,73 +200,363 @@ Future<T?> _showUnifiedOptionSheet<T>({
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
     builder: (ctx) {
-      final mq = MediaQuery.of(ctx);
       final cs = Theme.of(ctx).colorScheme;
-      return SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(bottom: bottomMargin),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 8),
+      return _sheetSurface(
+        context: ctx,
+        child: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomMargin),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 16),
                 Text(
-                  subtitle,
-                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
+                  title,
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  textAlign: TextAlign.center,
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    subtitle,
+                    style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final opt = options[index];
+                      return ListTile(
+                        leading: opt.icon != null
+                            ? Icon(
+                                opt.icon,
+                                color: opt.destructive
+                                    ? cs.error
+                                    : (opt.selected ? cs.primary : null),
+                              )
+                            : null,
+                        title: Text(
+                          opt.title,
+                          style: TextStyle(
+                            color: opt.destructive
+                                ? cs.error
+                                : (opt.selected ? cs.primary : null),
+                            fontWeight: opt.selected ? FontWeight.bold : null,
+                          ),
+                        ),
+                        subtitle: opt.subtitle != null ? Text(opt.subtitle!) : null,
+                        trailing: opt.selected
+                            ? Icon(Icons.check, color: cs.primary)
+                            : null,
+                        onTap: () {
+                          Navigator.pop(ctx, opt.value);
+                        },
+                      );
+                    },
+                  ),
                 ),
               ],
-              const SizedBox(height: 16),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (context, index) {
-                    final opt = options[index];
-                    return ListTile(
-                      leading: opt.icon != null
-                          ? Icon(
-                              opt.icon,
-                              color: opt.destructive
-                                  ? cs.error
-                                  : (opt.selected ? cs.primary : null),
-                            )
-                          : null,
-                      title: Text(
-                        opt.title,
-                        style: TextStyle(
-                          color: opt.destructive
-                              ? cs.error
-                              : (opt.selected ? cs.primary : null),
-                          fontWeight: opt.selected ? FontWeight.bold : null,
-                        ),
-                      ),
-                      subtitle: opt.subtitle != null ? Text(opt.subtitle!) : null,
-                      trailing: opt.selected
-                          ? Icon(Icons.check, color: cs.primary)
-                          : null,
-                      onTap: () {
-                        Navigator.pop(ctx, opt.value);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       );
     },
   );
+}
+
+// ── Settings UI Components (Material You Expressive Grouped Sections) ────────
+
+class SettingsGroup extends StatelessWidget {
+  final String? title;
+  final List<Widget> children;
+  final EdgeInsetsGeometry margin;
+  final EdgeInsetsGeometry? padding;
+
+  const SettingsGroup({
+    super.key,
+    this.title,
+    required this.children,
+    this.margin = const EdgeInsets.only(bottom: 16),
+    this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final validChildren = children.where((w) {
+      if (w is SizedBox && w.width == 0 && w.height == 0) return false;
+      return true;
+    }).toList();
+
+    if (validChildren.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: margin,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (title != null) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 12, bottom: 6, top: 4),
+              child: Text(
+                title!,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: cs.primary,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ],
+          Card(
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            color: cs.surfaceContainerLow,
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: padding ?? EdgeInsets.zero,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < validChildren.length; i++) ...[
+                    validChildren[i],
+                    if (i < validChildren.length - 1)
+                      Divider(
+                        height: 1,
+                        indent: 58,
+                        endIndent: 16,
+                        color: cs.outlineVariant.withValues(alpha: 0.35),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class SettingsTile extends StatelessWidget {
+  final IconData? icon;
+  final Color? iconColor;
+  final Color? iconBackgroundColor;
+  final Widget? leading;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool destructive;
+
+  const SettingsTile({
+    super.key,
+    this.icon,
+    this.iconColor,
+    this.iconBackgroundColor,
+    this.leading,
+    required this.title,
+    this.subtitle,
+    this.trailing = const Icon(Icons.chevron_right_rounded),
+    this.onTap,
+    this.destructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final effectiveLeading = leading ??
+        (icon != null
+            ? Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: iconBackgroundColor ??
+                      (destructive
+                          ? cs.errorContainer
+                          : cs.primaryContainer.withValues(alpha: 0.7)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: iconColor ??
+                      (destructive
+                          ? cs.onErrorContainer
+                          : cs.onPrimaryContainer),
+                ),
+              )
+            : null);
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: Row(
+          children: [
+            if (effectiveLeading != null) ...[
+              effectiveLeading,
+              const SizedBox(width: 14),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: destructive ? cs.error : cs.onSurface,
+                    ),
+                  ),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12.5,
+                        color: cs.onSurfaceVariant,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              IconTheme(
+                data: IconThemeData(
+                  color: cs.onSurfaceVariant,
+                  size: 22,
+                ),
+                child: trailing!,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SettingsSwitchTile extends StatelessWidget {
+  final IconData? icon;
+  final Color? iconColor;
+  final Color? iconBackgroundColor;
+  final Widget? leading;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const SettingsSwitchTile({
+    super.key,
+    this.icon,
+    this.iconColor,
+    this.iconBackgroundColor,
+    this.leading,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final effectiveLeading = leading ??
+        (icon != null
+            ? Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: iconBackgroundColor ?? cs.primaryContainer.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: iconColor ?? cs.onPrimaryContainer,
+                ),
+              )
+            : null);
+
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onChanged(!value);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        child: Row(
+          children: [
+            if (effectiveLeading != null) ...[
+              effectiveLeading,
+              const SizedBox(width: 14),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12.5,
+                        color: cs.onSurfaceVariant,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Switch.adaptive(
+              value: value,
+              onChanged: (val) {
+                HapticFeedback.selectionClick();
+                onChanged(val);
+              },
+              thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const Icon(Icons.check, size: 14);
+                }
+                return const Icon(Icons.close, size: 14);
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 

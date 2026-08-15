@@ -51,6 +51,26 @@ part 'widgets/changelog_bottom_sheet.dart';
 
 int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
+/// Platform channel for window-level UI effects (e.g. Android frosted blur).
+const MethodChannel _uiChannel = MethodChannel('untisplus/ui');
+
+/// Sends the desired backdrop blur radius to the native Android window.
+/// On Android 12+ (API 31) this calls [Window.setBackdropBlurRadius].
+/// Android 17 renders it as the full frosted-glass system effect.
+/// Radius 0 disables the effect; ignored on older API levels and non-Android.
+Future<void> _applyAndroidWindowBlur(bool enabled) async {
+  if (kIsWeb) return;
+  try {
+    await _uiChannel.invokeMethod<void>(
+      'setWindowBlur',
+      enabled ? 80 : 0,
+    );
+  } catch (_) {
+    // Silently ignore on platforms/API levels that don't support it.
+  }
+}
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!kIsWeb) {
@@ -110,6 +130,10 @@ void main() async {
   backgroundGyroscopeNotifier.value =
       prefs.getBool('backgroundGyroscope') ?? false;
   blurEnabledNotifier.value = prefs.getBool('blurEnabled') ?? true;
+  appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
+  appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
+  unawaited(_applyAndroidWindowBlur(blurEnabledNotifier.value));
+
   pageTransitionNotifier.value =
       (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
   useMaterialYouNotifier.value =
@@ -512,9 +536,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   int _viewMode = 0;
   // Carousel state for week switching
   double _carouselOffset = 0.0;
-  int _weekAnimationDirection = 1;
   AnimationController? _carouselAnimController;
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
+  // Day swipe carousel state
+  double _dayOffset = 0.0;
+  AnimationController? _dayAnimController;
 
   String? _tempSessionId;
   int? _viewingClassId;
@@ -902,7 +928,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final cacheKey = _mondayKey(newMonday);
     final cached = _adjacentWeekCache[cacheKey];
     setState(() {
-      _weekAnimationDirection = direction;
       _currentMonday = newMonday;
       if (cached != null) {
         _weekData = cached;
@@ -927,28 +952,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       _currentMonday.add(const Duration(days: 7)),
       1,
     );
-  }
-
-  void _onSwipeLeft() {
-    if (_tabController.index < 4) {
-      HapticFeedback.selectionClick();
-      _tabController.animateTo(_tabController.index + 1);
-    } else {
-      HapticFeedback.selectionClick();
-      _nextWeek();
-      _tabController.animateTo(0, duration: Duration.zero);
-    }
-  }
-
-  void _onSwipeRight() {
-    if (_tabController.index > 0) {
-      HapticFeedback.selectionClick();
-      _tabController.animateTo(_tabController.index - 1);
-    } else {
-      HapticFeedback.selectionClick();
-      _prevWeek();
-      _tabController.animateTo(4, duration: Duration.zero);
-    }
   }
 
   Future<void> _toggleView() async {
@@ -1138,6 +1141,139 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+  // ── DAY CAROUSEL ─────────────────────────────────────────────────
+  Widget _buildDayCarousel() {
+    return GestureDetector(
+      onHorizontalDragStart: _onDayDragStart,
+      onHorizontalDragUpdate: _onDayDragUpdate,
+      onHorizontalDragEnd: _onDayDragEnd,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final offset = _dayOffset.clamp(-w, w);
+          final double progress = (offset / w).abs().clamp(0.0, 1.0);
+          final double curveP = Curves.easeOut.transform(progress);
+
+          final double currentScale = 1.0 - (0.04 * curveP);
+          final double currentOpacity = ((1.0 - progress) * 2.0).clamp(0.0, 1.0);
+          final int currentDay = _tabController.index;
+          final bool goingRight = offset > 0;
+          final int adjacentDay = goingRight ? currentDay - 1 : currentDay + 1;
+          final bool adjacentExists = adjacentDay >= 0 && adjacentDay <= 4;
+          final double incomingScale = 0.96 + (0.04 * curveP);
+          final double incomingOpacity = (progress * 2.0).clamp(0.0, 1.0);
+
+          return ClipRect(
+            child: Stack(
+              children: [
+                // Adjacent (incoming) day
+                if (adjacentExists && offset != 0.0)
+                  Transform.translate(
+                    offset: Offset(goingRight ? -w + offset : w + offset, 0),
+                    child: Transform.scale(
+                      scale: incomingScale,
+                      child: Opacity(
+                        opacity: incomingOpacity,
+                        child: SizedBox(width: w, child: _buildGridView(adjacentDay)),
+                      ),
+                    ),
+                  ),
+                // Current day
+                Transform.translate(
+                  offset: Offset(offset, 0),
+                  child: Transform.scale(
+                    scale: currentScale,
+                    child: Opacity(
+                      opacity: currentOpacity,
+                      child: SizedBox(
+                        width: w,
+                        child: KeyedSubtree(
+                          key: ValueKey('day-$currentDay'),
+                          child: _buildGridView(currentDay),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _onDayDragStart(DragStartDetails _) {
+    _dayAnimController?.stop();
+    setState(() => _dayOffset = 0.0);
+  }
+
+  void _onDayDragUpdate(DragUpdateDetails details) {
+    final current = _tabController.index;
+    final dx = details.delta.dx;
+    if (dx > 0 && current == 0) return;
+    if (dx < 0 && current == 4) return;
+    setState(() => _dayOffset += dx);
+  }
+
+  void _onDayDragEnd(DragEndDetails details) {
+    final width = (context.findRenderObject() as RenderBox?)?.size.width ?? 400.0;
+    final velocity = details.primaryVelocity ?? 0;
+    final threshold = width * 0.12;
+
+    if (_dayOffset < -threshold || velocity < -200) {
+      _snapDayCarousel(-1, width);
+    } else if (_dayOffset > threshold || velocity > 200) {
+      _snapDayCarousel(1, width);
+    } else {
+      _snapDayCarousel(0, width);
+    }
+  }
+
+  void _snapDayCarousel(int direction, double width) {
+    if (direction != 0) {
+      // Update tab immediately so TabBar highlights the right day
+      if (direction < 0 && _tabController.index == 4) {
+        HapticFeedback.selectionClick();
+        _nextWeek();
+        _tabController.index = 0;
+      } else if (direction > 0 && _tabController.index == 0) {
+        HapticFeedback.selectionClick();
+        _prevWeek();
+        _tabController.index = 4;
+      } else {
+        HapticFeedback.selectionClick();
+        _tabController.index = (_tabController.index - direction).clamp(0, 4);
+      }
+    }
+
+    final target = direction == 0 ? 0.0 : (direction < 0 ? -width : width);
+    _dayAnimController?.dispose();
+    _dayAnimController = AnimationController(
+      vsync: this,
+      duration: direction == 0
+          ? const Duration(milliseconds: 250)
+          : const Duration(milliseconds: 300),
+    );
+    final anim = Tween<double>(begin: _dayOffset, end: target).animate(
+      CurvedAnimation(
+        parent: _dayAnimController!,
+        curve: direction == 0 ? Curves.easeOutCubic : Curves.easeOutQuart,
+      ),
+    );
+    _dayAnimController!.addListener(() {
+      if (!mounted) return;
+      setState(() => _dayOffset = anim.value);
+    });
+    _dayAnimController!.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) {
+        setState(() => _dayOffset = 0.0);
+      }
+    });
+    _dayAnimController!.forward();
+  }
+
+  // ── WEEK CAROUSEL ─────────────────────────────────────────────────
   Widget _buildWeekCarousel() {
     return GestureDetector(
       onHorizontalDragStart: _onCarouselDragStart,
@@ -1147,36 +1283,59 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           final offset = _carouselOffset.clamp(-w, w);
-          const double peek = 64.0;
+          final double progress = (offset / w).abs().clamp(0.0, 1.0);
+          
+          final double currentScale = 1.0 - (0.05 * Curves.easeOut.transform(progress));
+          final double currentOpacity = ((1.0 - progress) * 1.5).clamp(0.0, 1.0);
+          final double incomingScale = 0.95 + (0.05 * Curves.easeOut.transform(1.0 - progress));
+          final double incomingOpacity = (progress * 1.5).clamp(0.0, 1.0);
 
           return ClipRect(
             child: Stack(
               children: [
                 if (offset > 0)
                   Transform.translate(
-                    offset: Offset(-w + peek + offset, 0),
-                    child: SizedBox(
-                      width: w,
-                      child: _buildAdjacentWeekView(-1),
+                    offset: Offset(-w + offset, 0),
+                    child: Transform.scale(
+                      scale: incomingScale,
+                      child: Opacity(
+                        opacity: incomingOpacity,
+                        child: SizedBox(
+                          width: w,
+                          child: _buildAdjacentWeekView(-1),
+                        ),
+                      ),
                     ),
                   ),
                 if (offset < 0)
                   Transform.translate(
-                    offset: Offset(w - peek + offset, 0),
-                    child: SizedBox(
-                      width: w,
-                      child: _buildAdjacentWeekView(1),
+                    offset: Offset(w + offset, 0),
+                    child: Transform.scale(
+                      scale: incomingScale,
+                      child: Opacity(
+                        opacity: incomingOpacity,
+                        child: SizedBox(
+                          width: w,
+                          child: _buildAdjacentWeekView(1),
+                        ),
+                      ),
                     ),
                   ),
                 Transform.translate(
                   offset: Offset(offset, 0),
-                  child: SizedBox(
-                    width: w,
-                    child: KeyedSubtree(
-                      key: ValueKey(
-                        'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
+                  child: Transform.scale(
+                    scale: currentScale,
+                    child: Opacity(
+                      opacity: currentOpacity,
+                      child: SizedBox(
+                        width: w,
+                        child: KeyedSubtree(
+                          key: ValueKey(
+                            'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
+                          ),
+                          child: _buildWeekView(),
+                        ),
                       ),
-                      child: _buildWeekView(),
                     ),
                   ),
                 ),
@@ -1205,12 +1364,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final width = context.findRenderObject() != null
         ? (context.findRenderObject()! as RenderBox).size.width
         : 400.0;
-    final threshold = width * 0.25;
+    final threshold = width * 0.12;
     final velocity = details.primaryVelocity ?? 0;
 
-    if (_carouselOffset < -threshold || velocity < -400) {
+    if (_carouselOffset < -threshold || velocity < -200) {
       _animateCarouselTo(-1, width);
-    } else if (_carouselOffset > threshold || velocity > 400) {
+    } else if (_carouselOffset > threshold || velocity > 200) {
       _animateCarouselTo(1, width);
     } else {
       _animateCarouselTo(0, width);
@@ -1269,7 +1428,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final cacheKey = _mondayKey(newMonday);
         final cached = _adjacentWeekCache[cacheKey];
         setState(() {
-          _weekAnimationDirection = direction > 0 ? -1 : 1;
           _currentMonday = newMonday;
           if (cached != null) {
             _weekData = cached;
@@ -1295,6 +1453,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     _tabController.dispose();
     _carouselAnimController?.dispose();
+    _dayAnimController?.dispose();
     super.dispose();
   }
 
@@ -2277,7 +2436,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           final top = (holidayStartMin - globalMin) * _ppm;
                           final height = ((holidayEndMin - holidayStartMin) * _ppm).clamp(28.0, 9999.0);
                           final holidayName = (holiday['longName'] ?? holiday['name'] ?? '').toString();
-                          final isDark = Theme.of(context).brightness == Brightness.dark;
                           return Positioned(
                             top: top,
                             left: 2,
@@ -3556,7 +3714,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     } catch (_) {}
 
     final l = AppL10n.of(appLocaleNotifier.value);
-    final isGerman = appLocaleNotifier.value == 'de';
 
     showModalBottomSheet(
       context: context,
@@ -3616,9 +3773,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        isGerman
-                            ? 'Wähle einen Stundenplan aus. Favoriten werden oben angezeigt.'
-                            : 'Select a timetable. Favorites are shown at the top.',
+                        l.classPickerHeaderDesc,
                         style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
@@ -3663,7 +3818,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    isGerman ? 'Standard' : 'Default',
+                                    l.classPickerDefaultBadge,
                                     style: GoogleFonts.outfit(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
@@ -3675,9 +3830,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             ],
                           ),
                           trailing: IconButton(
-                            tooltip: isGerman
-                                ? 'Als Standard festlegen'
-                                : 'Set as default',
+                            tooltip: l.classPickerSetDefault,
                             icon: Icon(
                               defaultClassId == null
                                   ? Icons.home_rounded
@@ -3714,7 +3867,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           children: [
                             const SizedBox(height: 16),
                             Text(
-                              isGerman ? 'Andere Klassen' : 'Other classes',
+                              l.classPickerOtherClasses,
                               style: GoogleFonts.outfit(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -3784,7 +3937,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                 borderRadius: BorderRadius.circular(6),
                                               ),
                                               child: Text(
-                                                isGerman ? 'Standard' : 'Default',
+                                                l.classPickerDefaultBadge,
                                                 style: GoogleFonts.outfit(
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.bold,
@@ -3800,8 +3953,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         children: [
                                           IconButton(
                                             tooltip: isFavorite
-                                                ? (isGerman ? 'Favorit entfernen' : 'Remove favorite')
-                                                : (isGerman ? 'Als Favorit speichern' : 'Add to favorites'),
+                                                ? l.classPickerRemoveFavorite
+                                                : l.classPickerAddFavorite,
                                             icon: Icon(
                                               isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
                                               color: isFavorite ? Colors.amber.shade600 : cs.onSurfaceVariant.withValues(alpha: 0.6),
@@ -3824,8 +3977,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           ),
                                           IconButton(
                                             tooltip: isDefault
-                                                ? (isGerman ? 'Standard' : 'Default')
-                                                : (isGerman ? 'Als Standard festlegen' : 'Set as default'),
+                                                ? l.classPickerDefaultBadge
+                                                : l.classPickerSetDefault,
                                             icon: Icon(
                                               isDefault ? Icons.home_rounded : Icons.add_rounded,
                                               color: isDefault ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.6),
@@ -4073,21 +4226,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               )
              : _viewMode == 1
              ? _buildWeekCarousel()
-            : GestureDetector(
-                onHorizontalDragEnd: (details) {
-                  final velocity = details.primaryVelocity ?? 0;
-                  if (velocity < -400) _onSwipeLeft();
-                  if (velocity > 400) _onSwipeRight();
-                },
-                child: TabBarView(
-                  controller: _tabController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: List.generate(
-                    5,
-                    (dayIndex) => _buildGridView(dayIndex),
-                  ),
-                ),
-              ),
+            : _buildDayCarousel(),
       ),
     );
   }
@@ -5608,7 +5747,8 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
   }
 
   String _formatExamsForAi() {
-    if (_exams.isEmpty) return 'Keine Prüfungen eingetragen.';
+    final l = AppL10n.of(appLocaleNotifier.value);
+    if (_exams.isEmpty) return l.examsNoneEntered;
     final buf = StringBuffer();
     for (var ex in _exams) {
       final subject = ex['subject'] ?? ex['subjectName'] ?? '?';
@@ -7676,7 +7816,6 @@ class _SettingsPageState extends State<SettingsPage> {
     'en': 'English',
     'fr': 'Français',
     'es': 'Español',
-    'el': 'Ελληνικά',
   };
 
   @override
@@ -8245,7 +8384,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   constraints: const BoxConstraints(maxHeight: 380),
                   child: ListView(
                     shrinkWrap: true,
-                    children: aiPromptVariableDescriptions.entries
+                    children: l.aiPromptVariableDescriptions.entries
                         .map(
                           (entry) => ListTile(
                             dense: true,
@@ -8522,6 +8661,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setBlurEnabled(bool v) async {
     blurEnabledNotifier.value = v;
+    unawaited(_applyAndroidWindowBlur(v));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('blurEnabled', v);
   }
@@ -10228,11 +10368,14 @@ class SubjectColorsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
+    final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
+
     return Scaffold(
       appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsSectionColors,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
       ),
@@ -10248,21 +10391,23 @@ class SubjectColorsPage extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.palette_outlined,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                      size: 56,
+                      color: cs.outlineVariant,
                     ),
                     const SizedBox(height: 16),
                     Text(
                       l.settingsNoSubjectsLoaded,
                       style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       l.settingsNoSubjectsLoadedDesc,
                       style: GoogleFonts.outfit(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: cs.onSurfaceVariant,
+                        fontSize: 13,
                       ),
                     ),
                   ],
@@ -10272,72 +10417,44 @@ class SubjectColorsPage extends StatelessWidget {
             return ValueListenableBuilder(
               valueListenable: subjectColorsNotifier,
               builder: (context, colors, _) {
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  itemCount: subjects.length,
-                  itemBuilder: (context, index) {
-                    final subj = subjects[index];
-                    final colorVal = colors[subj];
-                    final subjectColor = colorVal != null
-                        ? Color(colorVal)
-                        : null;
-                    return _springEntry(
-                      duration: Duration(milliseconds: 280 + index * 36),
-                      offsetY: 14,
-                      startScale: 0.95,
-                      curve: _kSmoothBounce,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 4,
-                        ),
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color:
-                                subjectColor ??
-                                Theme.of(context).colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(14),
-                            border: subjectColor != null
-                                ? Border.all(
-                                    color: subjectColor.withValues(alpha: 0.35),
-                                    width: 2,
+                return ListView(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+                  children: [
+                    SettingsGroup(
+                      children: subjects.map((subj) {
+                        final colorVal = colors[subj];
+                        final subjectColor = colorVal != null ? Color(colorVal) : null;
+                        return SettingsTile(
+                          leading: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: subjectColor ?? cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                              border: subjectColor != null
+                                  ? Border.all(
+                                      color: subjectColor.withValues(alpha: 0.4),
+                                      width: 2,
+                                    )
+                                  : null,
+                            ),
+                            child: subjectColor == null
+                                ? Icon(
+                                    Icons.palette_outlined,
+                                    color: cs.primary,
+                                    size: 20,
                                   )
                                 : null,
                           ),
-                          child: subjectColor == null
-                              ? Icon(
-                                  Icons.palette_outlined,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: 22,
-                                )
-                              : null,
-                        ),
-                        title: Text(
-                          subj,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        subtitle: Text(
-                          subjectColor != null
+                          title: subj,
+                          subtitle: subjectColor != null
                               ? l.settingsCustomColor
                               : l.settingsDefaultColor,
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () =>
-                            _showColorPicker(context, subj, subjectColor),
-                      ),
-                    );
-                  },
+                          onTap: () => _showColorPicker(context, subj, subjectColor),
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 );
               },
             );
@@ -10355,11 +10472,14 @@ class HiddenSubjectsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
+    final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
+
     return Scaffold(
       appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsSectionHidden,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
       ),
@@ -10375,79 +10495,86 @@ class HiddenSubjectsPage extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.visibility_off_outlined,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                      size: 56,
+                      color: cs.outlineVariant,
                     ),
                     const SizedBox(height: 16),
                     Text(
                       l.settingsNoHidden,
                       style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       l.settingsNoHiddenDesc,
                       style: GoogleFonts.outfit(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: cs.onSurfaceVariant,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               );
             }
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              itemCount: hidden.length,
-              itemBuilder: (context, index) {
-                final subject = hidden[index];
-                return _springEntry(
-                  duration: Duration(milliseconds: 280 + index * 36),
-                  offsetY: 14,
-                  startScale: 0.95,
-                  curve: _kSmoothBounce,
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 4,
-                    ),
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Center(
-                        child: Text(
-                          subject.isNotEmpty ? subject[0].toUpperCase() : '?',
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                            color: Theme.of(context).colorScheme.secondary,
+            return ListView(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+              children: [
+                SettingsGroup(
+                  children: hidden.map((subject) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: cs.secondaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                subject.isNotEmpty ? subject[0].toUpperCase() : '?',
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: cs.secondary,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              subject,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () => _unhideSubject(subject),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              l.settingsUnhide,
+                              style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    title: Text(
-                      subject,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    trailing: FilledButton.tonal(
-                      onPressed: () {
-                        _unhideSubject(subject);
-                      },
-                      child: Text(
-                        l.settingsUnhide,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                );
-              },
+                    );
+                  }).toList(),
+                ),
+              ],
             );
           },
         ),

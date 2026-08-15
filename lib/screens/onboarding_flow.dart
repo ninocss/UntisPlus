@@ -518,7 +518,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   constraints: const BoxConstraints(maxHeight: 360),
                   child: ListView(
                     shrinkWrap: true,
-                    children: aiPromptVariableDescriptions.entries
+                    children: l.aiPromptVariableDescriptions.entries
                         .map(
                           (entry) => ListTile(
                             dense: true,
@@ -1089,7 +1089,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ('en', 'English', '🇬🇧'),
       ('fr', 'Français', '🇫🇷'),
       ('es', 'Español', '🇪🇸'),
-      ('el', 'Ελληνικά', '🇬🇷'),
     ];
 
     return _StepWrapper(

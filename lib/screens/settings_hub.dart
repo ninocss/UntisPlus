@@ -5,7 +5,6 @@ const Map<String, String> _settingsLocaleLabels = {
   'en': 'English',
   'fr': 'Français',
   'es': 'Español',
-  'el': 'Ελληνικά',
 };
 
 Future<void> _settingsSetLocale(String code) async {
@@ -49,6 +48,18 @@ Future<void> _settingsSetBlurEnabled(bool value) async {
   blurEnabledNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool('blurEnabled', value);
+}
+
+Future<void> _settingsSetAppBgBlurEnabled(bool value) async {
+  appBgBlurEnabledNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('appBgBlurEnabled', value);
+}
+
+Future<void> _settingsSetAppBgBlurAmount(double value) async {
+  appBgBlurAmountNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('appBgBlurAmount', value);
 }
 
 Future<void> _settingsSetPageTransition(int value) async {
@@ -359,7 +370,7 @@ class SettingsHubPage extends StatelessWidget {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       color: cs.surfaceContainerLow,
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -374,19 +385,19 @@ class SettingsHubPage extends StatelessWidget {
                   Navigator.push(context, _buildBouncyRoute(item.pageBuilder()));
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: Row(
                     children: [
                       Container(
-                        width: 52,
-                        height: 52,
+                        width: 42,
+                        height: 42,
                         decoration: BoxDecoration(
                           color: item.iconBackground,
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(item.icon, color: item.iconColor),
+                        child: Icon(item.icon, color: item.iconColor, size: 22),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,17 +408,17 @@ class SettingsHubPage extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w700,
-                                fontSize: 16,
+                                fontSize: 15.5,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               item.subtitle,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.outfit(
                                 color: cs.onSurfaceVariant,
-                                fontSize: 13,
+                                fontSize: 12.5,
                               ),
                             ),
                           ],
@@ -424,9 +435,9 @@ class SettingsHubPage extends StatelessWidget {
               if (!isLast)
                 Divider(
                   height: 1,
-                  indent: 84,
+                  indent: 70,
                   endIndent: 16,
-                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                  color: cs.outlineVariant.withValues(alpha: 0.35),
                 ),
             ],
           );

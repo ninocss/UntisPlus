@@ -18,11 +18,17 @@ class SettingsTimetablePage extends StatelessWidget {
       child: StatefulBuilder(
         builder: (ctx, setState) {
           final preview = Color.fromARGB(
-            255, red.round(), green.round(), blue.round(),
+            255,
+            red.round(),
+            green.round(),
+            blue.round(),
           );
           return Padding(
             padding: EdgeInsets.fromLTRB(
-              16, 12, 16, MediaQuery.of(ctx).viewInsets.bottom + 16,
+              20,
+              12,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -30,57 +36,77 @@ class SettingsTimetablePage extends StatelessWidget {
               children: [
                 Center(
                   child: Container(
-                    width: 42, height: 4,
+                    width: 36,
+                    height: 4,
                     decoration: BoxDecoration(
                       color: cs.outlineVariant,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 Text(
                   l.settingsCancelledColor,
                   style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w800, fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  height: 66,
+                  height: 52,
                   decoration: BoxDecoration(
                     color: preview,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: cs.outlineVariant),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   '${l.settingsColorRed}: ${red.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
                 Slider(
-                  value: red, min: 0, max: 255,
+                  value: red,
+                  min: 0,
+                  max: 255,
                   activeColor: Colors.red,
                   onChanged: (v) => setState(() => red = v),
                 ),
                 Text(
                   '${l.settingsColorGreen}: ${green.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
                 Slider(
-                  value: green, min: 0, max: 255,
+                  value: green,
+                  min: 0,
+                  max: 255,
                   activeColor: Colors.green,
                   onChanged: (v) => setState(() => green = v),
                 ),
                 Text(
                   '${l.settingsColorBlue}: ${blue.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
                 Slider(
-                  value: blue, min: 0, max: 255,
+                  value: blue,
+                  min: 0,
+                  max: 255,
                   activeColor: Colors.blue,
                   onChanged: (v) => setState(() => blue = v),
                 ),
+                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -91,6 +117,7 @@ class SettingsTimetablePage extends StatelessWidget {
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     FilledButton(
                       onPressed: () {
                         _settingsSetCancelledLessonColor(preview.toARGB32());
@@ -115,6 +142,7 @@ class SettingsTimetablePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
@@ -126,102 +154,79 @@ class SettingsTimetablePage extends StatelessWidget {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: showCancelledNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                    value: value,
-                    onChanged: _settingsSetShowCancelled,
-                    title: Text(
-                      l.settingsShowCancelled,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsShowCancelledDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<int>(
-                valueListenable: cancelledLessonColorNotifier,
-                builder: (context, colorValue, _) {
-                  final cancelledColor = Color(colorValue);
-                  return ListTile(
-                    leading: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: cancelledColor,
-                        borderRadius: BorderRadius.circular(8),
+            SettingsGroup(
+              title: l.settingsSectionTimetable,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: showCancelledNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.event_busy_rounded,
+                      iconBackgroundColor: cs.errorContainer.withValues(
+                        alpha: 0.7,
                       ),
-                    ),
-                    title: Text(
-                      l.settingsCancelledColor,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsCancelledColorDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => _showCancelledColorPicker(context, cancelledColor),
-                  );
-                },
-              ),
+                      iconColor: cs.onErrorContainer,
+                      title: l.settingsShowCancelled,
+                      subtitle: l.settingsShowCancelledDesc,
+                      value: value,
+                      onChanged: _settingsSetShowCancelled,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<int>(
+                  valueListenable: cancelledLessonColorNotifier,
+                  builder: (context, colorValue, _) {
+                    final cancelledColor = Color(colorValue);
+                    return SettingsTile(
+                      leading: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: cancelledColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: cs.outlineVariant.withValues(alpha: 0.5),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      title: l.settingsCancelledColor,
+                      subtitle: l.settingsCancelledColorDesc,
+                      onTap:
+                          () => _showCancelledColorPicker(
+                            context,
+                            cancelledColor,
+                          ),
+                    );
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.sync_rounded),
-                title: Text(
-                  l.settingsRefreshPushWidgetNow,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+            SettingsGroup(
+              title: l.settingsRefreshPushWidgetNow,
+              children: [
+                SettingsTile(
+                  icon: Icons.sync_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsRefreshPushWidgetNow,
+                  subtitle: l.settingsRefreshPushWidgetNowDesc,
+                  onTap: () async {
+                    await updateUntisData();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(l.settingsBackgroundLoading),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
                 ),
-                subtitle: Text(
-                  l.settingsRefreshPushWidgetNowDesc,
-                  style: GoogleFonts.outfit(),
-                ),
-                onTap: () async {
-                  await updateUntisData();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(l.settingsBackgroundLoading),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-              ),
+              ],
             ),
           ],
         ),

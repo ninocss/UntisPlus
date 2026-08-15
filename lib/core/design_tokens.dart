@@ -5,10 +5,12 @@ List<Color> untisPlusSubjectPalette(ColorScheme cs) {
     cs.primary,
     cs.secondary,
     cs.tertiary,
-    cs.error,
     cs.primaryContainer,
     cs.secondaryContainer,
     cs.tertiaryContainer,
+    cs.surfaceTint,
+    cs.inversePrimary,
+    cs.error,
     cs.errorContainer,
   ];
 }

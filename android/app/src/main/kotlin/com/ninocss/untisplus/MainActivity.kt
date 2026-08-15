@@ -14,15 +14,19 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 	companion object {
 		private const val CHANNEL = "untisplus/notifications"
+		private const val UI_CHANNEL = "untisplus/ui"
 		private const val ACTION_EXTRA_KEY = "notification_action_id"
 		private const val CURRENT_LESSON_EXTRA_KEY = "notification_current_lesson"
 		private const val NEXT_LESSON_EXTRA_KEY = "notification_next_lesson"
 	}
 
 	private var methodChannel: MethodChannel? = null
+	private var uiChannel: MethodChannel? = null
 
 	override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
+
+		// Notifications channel
 		methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
 		methodChannel?.setMethodCallHandler { call, result ->
 			when (call.method) {
@@ -35,7 +39,43 @@ class MainActivity : FlutterActivity() {
 			}
 		}
 
+		// UI / Window effects channel
+		uiChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, UI_CHANNEL)
+		uiChannel?.setMethodCallHandler { call, result ->
+			when (call.method) {
+				"setWindowBlur" -> {
+					val radius = (call.arguments as? Number)?.toInt() ?: 0
+					applyWindowBlur(radius)
+					result.success(null)
+				}
+				else -> result.notImplemented()
+			}
+		}
+
 		forwardIntentActionIfPresent(intent)
+	}
+
+	/**
+	 * Applies Android's native frosted-glass backdrop blur to the app window.
+	 *
+	 * Uses reflection so the source stays compile-safe regardless of compileSdk.
+	 * - Android 12 (API 31)+: calls Window.setBackdropBlurRadius via reflection.
+	 *   Android 17 renders this as the full frosted-glass system effect.
+	 * - Below API 31: silently no-ops; Flutter's BackdropFilter handles the effect.
+	 *
+	 * Passing radius = 0 disables the effect.
+	 */
+	private fun applyWindowBlur(radius: Int) {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+		try {
+			val method = window.javaClass.getMethod(
+				"setBackdropBlurRadius",
+				Int::class.javaPrimitiveType,
+			)
+			method.invoke(window, radius.coerceAtLeast(0))
+		} catch (_: Throwable) {
+			// Guard against missing method or future API changes.
+		}
 	}
 
 	override fun onNewIntent(intent: Intent) {
@@ -77,7 +117,7 @@ class MainActivity : FlutterActivity() {
 			val endTimeMs = (args["endTimeMs"] as? Number)?.toLong()
 
 			val manager = getSystemService(NotificationManager::class.java) ?: return false
-			ensureCurrentLessonChannel(manager, channelId)
+			ensureCurrentLessonChannel(manager, channelId, locale)
 
 			val openTimetableIntent = buildActionIntent(
 				actionId = "open_timetable",
@@ -169,19 +209,41 @@ class MainActivity : FlutterActivity() {
 		}
 	}
 
-	private fun ensureCurrentLessonChannel(manager: NotificationManager, channelId: String) {
+	private fun ensureCurrentLessonChannel(
+		manager: NotificationManager,
+		channelId: String,
+		locale: String
+	) {
 		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 		val existing = manager.getNotificationChannel(channelId)
 		if (existing != null) return
 
 		val channel = NotificationChannel(
 			channelId,
-			"Aktuelle Stunde / Pause",
+			channelName(locale),
 			NotificationManager.IMPORTANCE_DEFAULT,
 		).apply {
-			description = "Zeigt die aktuelle Stunde oder Pause an."
+			description = channelDescription(locale)
 		}
 		manager.createNotificationChannel(channel)
+	}
+
+	private fun channelName(locale: String): String {
+		val normalized = locale.lowercase()
+		if (normalized.startsWith("en")) return "Current lesson / Break"
+		if (normalized.startsWith("fr")) return "Cours actuel / Pause"
+		if (normalized.startsWith("es")) return "Clase actual / Descanso"
+		if (normalized.startsWith("el")) return "Τρέχον μάθημα / Διάλειμμα"
+		return "Aktuelle Stunde / Pause"
+	}
+
+	private fun channelDescription(locale: String): String {
+		val normalized = locale.lowercase()
+		if (normalized.startsWith("en")) return "Shows the current lesson or break."
+		if (normalized.startsWith("fr")) return "Affiche le cours actuel ou la pause."
+		if (normalized.startsWith("es")) return "Muestra la clase actual o el descanso."
+		if (normalized.startsWith("el")) return "Εμφανίζει το τρέχον μάθημα ή διάλειμμα."
+		return "Zeigt die aktuelle Stunde oder Pause an."
 	}
 
 	private fun buildActionIntent(

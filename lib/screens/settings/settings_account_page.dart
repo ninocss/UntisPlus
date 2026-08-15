@@ -31,6 +31,8 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
+
     return Scaffold(
       appBar: RoundedBlurAppBar(
         title: Text(
@@ -41,97 +43,101 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l.settingsLoggedInAs,
-                      style: GoogleFonts.outfit(
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
+            // ── GROUP 1: ACCOUNT ──
+            SettingsGroup(
+              title: l.settingsHubAccount,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          Icons.account_circle_rounded,
+                          size: 28,
+                          color: cs.onPrimaryContainer,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _username.isEmpty ? '—' : _username,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 22,
-                      ),
-                    ),
-                    if (_serverUrl.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _serverUrl,
-                        style: GoogleFonts.outfit(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 12.5,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              l.settingsLoggedInAs,
+                              style: GoogleFonts.outfit(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _username.isEmpty ? '—' : _username,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                            if (_serverUrl.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                _serverUrl,
+                                style: GoogleFonts.outfit(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: () => _settingsLogout(context),
-                      icon: const Icon(Icons.logout_rounded),
-                      label: Text(
-                        l.settingsLogout,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: cs.errorContainer,
-                        foregroundColor: cs.onErrorContainer,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                SettingsTile(
+                  icon: Icons.logout_rounded,
+                  iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.8),
+                  iconColor: cs.onErrorContainer,
+                  title: l.settingsLogout,
+                  destructive: true,
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _settingsLogout(context),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: demoModeNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
 
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                    value: value,
-                    onChanged: (v) => _settingsSetDemoMode(context, v),
-                    title: Text(
-                      l.settingsDemoMode,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsDemoModeDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
+            // ── GROUP 2: DEMO MODE ──
+            SettingsGroup(
+              title: l.settingsDemoMode,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: demoModeNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.science_rounded,
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onSecondaryContainer,
+                      title: l.settingsDemoMode,
+                      subtitle: l.settingsDemoModeDesc,
+                      value: value,
+                      onChanged: (v) => _settingsSetDemoMode(context, v),
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),

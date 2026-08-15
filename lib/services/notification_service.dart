@@ -168,6 +168,68 @@ class NotificationService {
     }
   }
 
+  String _channelNameFor(String locale, String channelId) {
+    switch (locale) {
+      case 'en':
+        if (channelId == kCurrentLessonChannelId) return 'Current lesson / Break';
+        if (channelId == kDailyBriefingChannelId) return 'Daily briefing';
+        if (channelId == kImportantChangesChannelId) return 'Important timetable changes';
+        return 'App updates';
+      case 'fr':
+        if (channelId == kCurrentLessonChannelId) return 'Cours actuel / Pause';
+        if (channelId == kDailyBriefingChannelId) return 'Briefing quotidien';
+        if (channelId == kImportantChangesChannelId) return 'Changements importants';
+        return 'Mises à jour';
+      case 'es':
+        if (channelId == kCurrentLessonChannelId) return 'Clase actual / Descanso';
+        if (channelId == kDailyBriefingChannelId) return 'Resumen diario';
+        if (channelId == kImportantChangesChannelId) return 'Cambios importantes en el horario';
+        return 'Actualizaciones';
+      case 'el':
+        if (channelId == kCurrentLessonChannelId) return 'Τρέχον μάθημα / Διάλειμμα';
+        if (channelId == kDailyBriefingChannelId) return 'Ημερήσια ενημέρωση';
+        if (channelId == kImportantChangesChannelId) return 'Σημαντικές αλλαγές';
+        return 'Ενημερώσεις';
+      case 'de':
+      default:
+        if (channelId == kCurrentLessonChannelId) return 'Aktuelle Stunde / Pause';
+        if (channelId == kDailyBriefingChannelId) return 'Tagesbriefing';
+        if (channelId == kImportantChangesChannelId) return 'Wichtige Stundenplan-Änderungen';
+        return 'App-Updates';
+    }
+  }
+
+  String _channelDescriptionFor(String locale, String channelId) {
+    switch (locale) {
+      case 'en':
+        if (channelId == kCurrentLessonChannelId) return 'Shows the current lesson or break.';
+        if (channelId == kDailyBriefingChannelId) return 'Shows a compact overview of your day in the morning.';
+        if (channelId == kImportantChangesChannelId) return 'Notifies about changes like cancellations or room changes.';
+        return 'Notifies you about new app versions.';
+      case 'fr':
+        if (channelId == kCurrentLessonChannelId) return 'Affiche le cours actuel ou la pause.';
+        if (channelId == kDailyBriefingChannelId) return 'Donne un aperçu compact de ta journée le matin.';
+        if (channelId == kImportantChangesChannelId) return 'Signale les changements comme les annulations ou les changements de salle.';
+        return "Vous informe des nouvelles versions de l'application.";
+      case 'es':
+        if (channelId == kCurrentLessonChannelId) return 'Muestra la clase actual o el descanso.';
+        if (channelId == kDailyBriefingChannelId) return 'Muestra un resumen compacto de tu día por la mañana.';
+        if (channelId == kImportantChangesChannelId) return 'Avisa sobre cambios como cancelaciones o cambios de aula.';
+        return 'Te informa sobre nuevas versiones de la aplicación.';
+      case 'el':
+        if (channelId == kCurrentLessonChannelId) return 'Εμφανίζει το τρέχον μάθημα ή διάλειμμα.';
+        if (channelId == kDailyBriefingChannelId) return 'Σας δίνει μια συνοπτική εικόνα της ημέρας το πρωί.';
+        if (channelId == kImportantChangesChannelId) return 'Ειδοποιεί για αλλαγές όπως ακυρώσεις ή αλλαγές αιθουσών.';
+        return 'Σας ενημερώνει για νέες εκδόσεις της εφαρμογής.';
+      case 'de':
+      default:
+        if (channelId == kCurrentLessonChannelId) return 'Zeigt die aktuelle Stunde oder Pause an.';
+        if (channelId == kDailyBriefingChannelId) return 'Gibt am Morgen einen kompakten Tagesüberblick.';
+        if (channelId == kImportantChangesChannelId) return 'Hinweise bei Änderungen wie Ausfall oder Raumwechsel.';
+        return 'Informiert über neue App-Versionen.';
+    }
+  }
+
   Future<void> requestPermissions() async {
     if (kIsWeb) return;
     await _flutterLocalNotificationsPlugin
@@ -228,8 +290,11 @@ class NotificationService {
     AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
           kCurrentLessonChannelId,
-          'Aktuelle Stunde / Pause',
-          channelDescription: 'Zeigt die aktuelle Stunde oder Pause an.',
+          _channelNameFor(locale, kCurrentLessonChannelId),
+          channelDescription: _channelDescriptionFor(
+            locale,
+            kCurrentLessonChannelId,
+          ),
           importance: Importance.defaultImportance,
           priority: Priority.high,
           ongoing: true,
@@ -289,8 +354,8 @@ class NotificationService {
   }) async {
     final android = AndroidNotificationDetails(
       kDailyBriefingChannelId,
-      'Tagesbriefing',
-      channelDescription: 'Gibt am Morgen einen kompakten Tagesüberblick.',
+      _channelNameFor(locale, kDailyBriefingChannelId),
+      channelDescription: _channelDescriptionFor(locale, kDailyBriefingChannelId),
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
       ongoing: false,
@@ -329,9 +394,8 @@ class NotificationService {
   }) async {
     final android = AndroidNotificationDetails(
       kImportantChangesChannelId,
-      'Wichtige Stundenplan-Änderungen',
-      channelDescription:
-          'Hinweise bei Änderungen wie Ausfall oder Raumwechsel.',
+      _channelNameFor(locale, kImportantChangesChannelId),
+      channelDescription: _channelDescriptionFor(locale, kImportantChangesChannelId),
       importance: Importance.high,
       priority: Priority.high,
       ongoing: false,
@@ -368,11 +432,12 @@ class NotificationService {
     required int id,
     required String title,
     required String body,
+    String locale = 'de',
   }) async {
-    const android = AndroidNotificationDetails(
+    final android = AndroidNotificationDetails(
       kUpdatesChannelId,
-      'App Updates',
-      channelDescription: 'Informiert über neue App-Versionen.',
+      _channelNameFor(locale, kUpdatesChannelId),
+      channelDescription: _channelDescriptionFor(locale, kUpdatesChannelId),
       importance: Importance.high,
       priority: Priority.high,
       category: AndroidNotificationCategory.recommendation,
@@ -380,7 +445,7 @@ class NotificationService {
       ongoing: false,
     );
 
-    const details = NotificationDetails(android: android);
+    final details = NotificationDetails(android: android);
     await _flutterLocalNotificationsPlugin.show(
       id: id,
       title: title,

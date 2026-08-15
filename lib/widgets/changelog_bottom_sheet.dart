@@ -7,7 +7,7 @@ class ChangelogData {
 
   factory ChangelogData.fromJson(Map<String, dynamic> json) {
     return ChangelogData(
-      markdown: json['markdown'] ?? '# Keine Daten verfügbar',
+      markdown: json['markdown'] ?? '# No data available',
     );
   }
 }
@@ -22,7 +22,7 @@ class ChangelogService {
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
       return ChangelogData.fromJson(decoded);
     } else {
-      throw Exception('Fehler beim Laden des Changelogs');
+      throw Exception('Failed to load changelog: ${response.statusCode}');
     }
   }
 }
@@ -60,7 +60,6 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
 
     return _sheetSurface(
@@ -103,7 +102,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Neuigkeiten',
+                          AppL10n.of(appLocaleNotifier.value).changelogTitle,
                           style: GoogleFonts.outfit(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -161,7 +160,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Fehler beim Laden',
+                              AppL10n.of(appLocaleNotifier.value).changelogLoadError,
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
@@ -183,7 +182,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                                 });
                               },
                               icon: const Icon(Icons.refresh_rounded),
-                              label: const Text('Erneut versuchen'),
+                              label: Text(AppL10n.of(appLocaleNotifier.value).changelogRetry),
                             ),
                           ],
                         ),
@@ -222,7 +221,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                         fontSize: 18,
                       ),
                       codeblockDecoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5),
+                        color: cs.surfaceContainerHigh,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: cs.outlineVariant.withValues(alpha: 0.5),

@@ -158,10 +158,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         builder: (ctx) {
           return Padding(
             padding: EdgeInsets.fromLTRB(
-              16,
+              20,
               12,
-              16,
-              MediaQuery.of(ctx).viewInsets.bottom + 16,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -174,7 +174,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     fontSize: 18,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 TextField(
                   controller: ctrl,
                   style: GoogleFonts.outfit(fontSize: 14),
@@ -187,7 +187,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -195,6 +195,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(l.settingsApiKeyCancel),
                     ),
+                    const SizedBox(width: 8),
                     FilledButton(
                       onPressed: () async {
                         await _settingsSetAiCustomBaseUrl(ctrl.text.trim());
@@ -230,10 +231,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         builder: (ctx) {
           return Padding(
             padding: EdgeInsets.fromLTRB(
-              16,
+              20,
               12,
-              16,
-              MediaQuery.of(ctx).viewInsets.bottom + 16,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -246,13 +247,13 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     fontSize: 18,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 SizedBox(
-                  height: 280,
+                  height: 260,
                   child: TextField(
                     controller: ctrl,
-                    minLines: 10,
-                    maxLines: 18,
+                    minLines: 8,
+                    maxLines: 16,
                     style: GoogleFonts.jetBrainsMono(fontSize: 12.5),
                     decoration: InputDecoration(
                       filled: true,
@@ -263,7 +264,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -271,10 +272,12 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(l.settingsApiKeyCancel),
                     ),
+                    const SizedBox(width: 6),
                     TextButton(
                       onPressed: () => ctrl.text = defaultTemplate,
                       child: Text(l.settingsAiPromptReset),
                     ),
+                    const SizedBox(width: 8),
                     FilledButton(
                       onPressed: () async {
                         await _settingsSetAiSystemPromptTemplate(
@@ -303,7 +306,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
       child: Builder(
         builder: (ctx) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,7 +323,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   constraints: const BoxConstraints(maxHeight: 380),
                   child: ListView(
                     shrinkWrap: true,
-                    children: aiPromptVariableDescriptions.entries
+                    children: l.aiPromptVariableDescriptions.entries
                         .map(
                           (entry) => ListTile(
                             dense: true,
@@ -366,10 +369,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         builder: (ctx) {
           return Padding(
             padding: EdgeInsets.fromLTRB(
-              16,
+              20,
               12,
-              16,
-              MediaQuery.of(ctx).viewInsets.bottom + 16,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -400,19 +403,23 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     TextButton.icon(
                       onPressed: () => _settingsOpenApiKeyPortal(context),
-                      icon: const Icon(Icons.open_in_new_rounded),
-                      label: Text(l.settingsAiApiKeyGet),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                      label: Text(
+                        l.settingsAiApiKeyGet,
+                        style: GoogleFonts.outfit(fontSize: 13),
+                      ),
                     ),
                     const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(l.settingsApiKeyCancel),
                     ),
+                    const SizedBox(width: 8),
                     FilledButton(
                       onPressed: () async {
                         await _settingsSetProviderApiKey(ctrl.text.trim());
@@ -436,6 +443,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
     final isCustom = aiProvider == 'custom';
     final activeKey = _activeProviderApiKey();
 
@@ -449,158 +457,101 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.smart_toy_rounded),
-                title: Text(
-                  l.settingsAiProvider,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  _localizedAiProviderLabel(l, aiProvider),
-                  style: GoogleFonts.outfit(),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: _showProviderDialog,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.memory_rounded),
-                title: Text(
-                  l.settingsAiModel,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(aiModel, style: GoogleFonts.outfit()),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: _showModelDialog,
-              ),
-            ),
-            if (isCustom) ...[
-              const SizedBox(height: 12),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                color: cs.surfaceContainerHigh,
-                child: ListTile(
-                  leading: const Icon(Icons.merge_type_rounded),
-                  title: Text(
-                    l.settingsAiCompatibility,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+            // ── GROUP 1: AI MODEL & PROVIDER ──
+            SettingsGroup(
+              title: l.settingsSectionAI,
+              children: [
+                SettingsTile(
+                  icon: Icons.smart_toy_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
                   ),
-                  subtitle: Text(
-                    _settingsAiCompatibilityLabel(l, aiCustomCompatibility),
-                    style: GoogleFonts.outfit(),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsAiProvider,
+                  subtitle: _localizedAiProviderLabel(l, aiProvider),
+                  onTap: _showProviderDialog,
+                ),
+                SettingsTile(
+                  icon: Icons.memory_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _showCompatibilityDialog,
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsAiModel,
+                  subtitle: aiModel,
+                  onTap: _showModelDialog,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                color: cs.surfaceContainerHigh,
-                child: ListTile(
-                  leading: const Icon(Icons.link_rounded),
-                  title: Text(
-                    l.settingsAiCustomBaseUrl,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                if (isCustom) ...[
+                  SettingsTile(
+                    icon: Icons.merge_type_rounded,
+                    iconBackgroundColor: cs.secondaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onSecondaryContainer,
+                    title: l.settingsAiCompatibility,
+                    subtitle: _settingsAiCompatibilityLabel(
+                      l,
+                      aiCustomCompatibility,
+                    ),
+                    onTap: _showCompatibilityDialog,
                   ),
-                  subtitle: Text(
-                    aiCustomBaseUrl.isEmpty
-                        ? l.settingsAiCustomBaseUrlHint
-                        : aiCustomBaseUrl,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(),
+                  SettingsTile(
+                    icon: Icons.link_rounded,
+                    iconBackgroundColor: cs.secondaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onSecondaryContainer,
+                    title: l.settingsAiCustomBaseUrl,
+                    subtitle:
+                        aiCustomBaseUrl.isEmpty
+                            ? l.settingsAiCustomBaseUrlHint
+                            : aiCustomBaseUrl,
+                    onTap: _showBaseUrlDialog,
                   ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _showBaseUrlDialog,
+                ],
+                SettingsTile(
+                  icon: Icons.key_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsAiApiKey,
+                  subtitle:
+                      activeKey.isEmpty
+                          ? l.settingsAiApiKeyNotSet
+                          : _settingsMaskKey(activeKey),
+                  onTap: _showApiKeyDialog,
                 ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.key_rounded),
-                title: Text(
-                  l.settingsAiApiKey,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  activeKey.isEmpty
-                      ? l.settingsAiApiKeyNotSet
-                      : _settingsMaskKey(activeKey),
-                  style: GoogleFonts.jetBrainsMono(fontSize: 12.2),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: _showApiKeyDialog,
-              ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.edit_note_rounded),
-                title: Text(
-                  l.settingsAiPrompt,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+
+            // ── GROUP 2: PROMPT CONFIGURATION ──
+            SettingsGroup(
+              title: l.settingsAiPrompt,
+              children: [
+                SettingsTile(
+                  icon: Icons.edit_note_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: l.settingsAiPrompt,
+                  subtitle: l.settingsAiPromptDesc,
+                  onTap: _showPromptDialog,
                 ),
-                subtitle: Text(
-                  l.settingsAiPromptDesc,
-                  style: GoogleFonts.outfit(),
+                SettingsTile(
+                  icon: Icons.data_object_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: l.settingsAiPromptVariables,
+                  subtitle: l.settingsAiPromptVariablesDesc,
+                  onTap: _showPromptVariablesDialog,
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: _showPromptDialog,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.data_object_rounded),
-                title: Text(
-                  l.settingsAiPromptVariables,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  l.settingsAiPromptVariablesDesc,
-                  style: GoogleFonts.outfit(),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: _showPromptVariablesDialog,
-              ),
+              ],
             ),
           ],
         ),

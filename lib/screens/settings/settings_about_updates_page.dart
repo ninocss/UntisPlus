@@ -53,7 +53,9 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           title: Text(
             l.settingsGithubUpdateFound(latestVersion),
             style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
@@ -130,16 +132,19 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
       final htmlUrl =
           (data['html_url'] ?? 'https://github.com/ninocss/UntisPlus/releases')
               .toString();
-      final assets = (data['assets'] is List)
-          ? data['assets'] as List<dynamic>
-          : const <dynamic>[];
+      final assets =
+          (data['assets'] is List)
+              ? data['assets'] as List<dynamic>
+              : const <dynamic>[];
       final assetUrl = _pickReleaseAssetUrl(assets);
       final targetUrl = assetUrl ?? htmlUrl;
-      final latestVersion = tag.isEmpty ? (data['name'] ?? '').toString() : tag;
+      final latestVersion =
+          tag.isEmpty ? (data['name'] ?? '').toString() : tag;
       final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersion);
-      final hasUpdate = hasComparableVersion
-          ? _compareVersionStrings(appVersion, latestVersion) < 0
-          : true;
+      final hasUpdate =
+          hasComparableVersion
+              ? _compareVersionStrings(appVersion, latestVersion) < 0
+              : true;
 
       if (!hasUpdate) {
         if (!mounted) return;
@@ -188,6 +193,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
@@ -199,101 +205,108 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.system_update_alt_rounded),
-                title: Text(
-                  l.settingsGithubUpdateCheck,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+            // ── GROUP 1: UPDATES & RELEASES ──
+            SettingsGroup(
+              title: l.settingsHubUpdatesAbout,
+              children: [
+                SettingsTile(
+                  icon: Icons.system_update_alt_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsGithubUpdateCheck,
+                  subtitle: l.settingsGithubUpdateCheckDesc,
+                  trailing:
+                      _checking
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                          )
+                          : const Icon(Icons.chevron_right_rounded),
+                  onTap: _checking ? null : _checkGithubUpdate,
                 ),
-                subtitle: Text(
-                  l.settingsGithubUpdateCheckDesc,
-                  style: GoogleFonts.outfit(),
+                SettingsTile(
+                  icon: Icons.open_in_new_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsGithubOpenReleasePage,
+                  subtitle: l.settingsGithubRepoLabel,
+                  onTap: () {
+                    url_launcher.launchUrlString(
+                      'https://github.com/ninocss/UntisPlus/releases',
+                      mode: url_launcher.LaunchMode.externalApplication,
+                    );
+                  },
                 ),
-                trailing: _checking
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      )
-                    : const Icon(Icons.chevron_right_rounded),
-                onTap: _checking ? null : _checkGithubUpdate,
-              ),
+                SettingsTile(
+                  icon: Icons.new_releases_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: l.settingsChangelogTitle,
+                  subtitle: l.settingsChangelogSubtitle,
+                  onTap: () => showChangelogSheet(context),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.open_in_new_rounded),
-                title: Text(
-                  l.settingsGithubOpenReleasePage,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+
+            // ── GROUP 2: APP INFO ──
+            SettingsGroup(
+              title: l.appName,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.rocket_launch_rounded,
+                          size: 24,
+                          color: cs.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              l.appName,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${l.settingsAppVersion} $appVersion (${l.settingsBuild} ${appBuildNumber.isEmpty ? '-' : appBuildNumber})',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12.5,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                subtitle: Text(
-                  l.settingsGithubRepoLabel,
-                  style: GoogleFonts.outfit(),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  url_launcher.launchUrlString(
-                    'https://github.com/ninocss/UntisPlus/releases',
-                    mode: url_launcher.LaunchMode.externalApplication,
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.new_releases_rounded),
-                title: Text(
-                  'Neuigkeiten (Changelog)',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  'Was ist neu in Untis+?',
-                  style: GoogleFonts.outfit(),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  showChangelogSheet(context);
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.rocket_launch_outlined),
-                title: Text(
-                  l.appName,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(
-                  '${l.settingsAppVersion} $appVersion (${l.settingsBuild} ${appBuildNumber.isEmpty ? '-' : appBuildNumber})',
-                  style: GoogleFonts.outfit(),
-                ),
-              ),
+              ],
             ),
           ],
         ),

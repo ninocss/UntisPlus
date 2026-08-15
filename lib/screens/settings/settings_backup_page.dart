@@ -81,12 +81,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         _showSnack(l.settingsBackupExportSuccess);
       });
     } catch (e) {
-      final errorMsg = e.toString();
-      if (errorMsg.contains('JSON is invalid') || errorMsg.contains('empty')) {
-        _showSnack("l.settingsBackupInvalidJson", isError: true);
-      } else {
-        _showSnack('${"l.settingsBackupExportFailed"} (${e.toString()})', isError: true);
-      }
+      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})', isError: true);
     }
   }
 
@@ -124,7 +119,10 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         _showSnack(l.settingsBackupImportSuccess);
       });
     } catch (e) {
-      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})', isError: true);
+      _showSnack(
+        '${l.settingsBackupImportFailed} (${e.toString()})',
+        isError: true,
+      );
     }
   }
 
@@ -139,7 +137,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
           return;
         }
         if (!_isValidJson(text)) {
-          _showSnack("l.settingsBackupInvalidJson", isError: true);
+          _showSnack(l.settingsBackupImportFailed, isError: true);
           return;
         }
         final confirmed = await _confirmImport();
@@ -149,7 +147,10 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         _showSnack(l.settingsBackupImportSuccess);
       });
     } catch (e) {
-      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})', isError: true);
+      _showSnack(
+        '${l.settingsBackupImportFailed} (${e.toString()})',
+        isError: true,
+      );
     }
   }
 
@@ -157,24 +158,30 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          l.settingsBackupConfirmTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        content: Text(l.settingsBackupConfirmDesc, style: GoogleFonts.outfit()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.settingsApiKeyCancel),
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: Text(
+              l.settingsBackupConfirmTitle,
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+            ),
+            content: Text(
+              l.settingsBackupConfirmDesc,
+              style: GoogleFonts.outfit(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l.settingsApiKeyCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(l.settingsBackupConfirmAction),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l.settingsBackupConfirmAction),
-          ),
-        ],
-      ),
     );
     return result ?? false;
   }
@@ -195,131 +202,143 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, mq.padding.bottom + 120),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                      contentPadding: EdgeInsets.zero,
-                      value: _includeApiKeys,
-                      onChanged: (value) =>
-                          setState(() => _includeApiKeys = value),
-                      title: Text(
-                        l.settingsBackupIncludeApiKeys,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(
-                        l.settingsBackupIncludeApiKeysDesc,
-                        style: GoogleFonts.outfit(),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _exportToFile,
-                      icon: const Icon(Icons.save_alt_rounded, size: 20),
-                      label: Text(
-                        l.settingsBackupExportAllFile,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 52),
-                        backgroundColor: cs.primaryContainer,
-                        foregroundColor: cs.onPrimaryContainer,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _busy ? null : _exportToClipboard,
-                      icon: const Icon(Icons.content_paste_rounded),
-                      label: Text(
-                        l.settingsBackupExportAllClipboard,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  ],
+            // ── GROUP 1: EXPORT ──
+            SettingsGroup(
+              title: l.settingsHubDataBackup,
+              children: [
+                SettingsSwitchTile(
+                  icon: Icons.key_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsBackupIncludeApiKeys,
+                  subtitle: l.settingsBackupIncludeApiKeysDesc,
+                  value: _includeApiKeys,
+                  onChanged: (value) => setState(() => _includeApiKeys = value),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: _busy ? null : _exportToFile,
+                          icon: const Icon(Icons.save_alt_rounded, size: 18),
+                          label: Text(
+                            l.settingsBackupExportAllFile,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : _exportToClipboard,
+                          icon: const Icon(
+                            Icons.content_paste_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            l.settingsBackupExportAllClipboard,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l.settingsBackupImportAllTitle,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _importFromFile,
-                      icon: const Icon(Icons.file_upload_rounded, size: 20),
-                      label: Text(
-                        l.settingsBackupImportAllFile,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 52),
-                        backgroundColor: cs.tertiaryContainer,
-                        foregroundColor: cs.onTertiaryContainer,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+
+            // ── GROUP 2: IMPORT ──
+            SettingsGroup(
+              title: l.settingsBackupImportAllTitle,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: _busy ? null : _importFromFile,
+                          icon: const Icon(Icons.file_upload_rounded, size: 18),
+                          label: Text(
+                            l.settingsBackupImportAllFile,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 12,
+                            ),
+                            backgroundColor: cs.secondaryContainer,
+                            foregroundColor: cs.onSecondaryContainer,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: _busy ? null : _importFromClipboard,
-                      icon: const Icon(Icons.assignment_return_rounded),
-                      label: Text(
-                        l.settingsBackupImportAllClipboard,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : _importFromClipboard,
+                          icon: const Icon(
+                            Icons.assignment_return_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            l.settingsBackupImportAllClipboard,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

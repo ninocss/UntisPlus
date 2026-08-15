@@ -145,6 +145,7 @@ class SettingsAppearancePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
@@ -156,438 +157,359 @@ class SettingsAppearancePage extends StatelessWidget {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: ValueListenableBuilder<ThemeMode>(
-                  valueListenable: themeModeNotifier,
-                  builder: (context, mode, _) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l.settingsThemeMode,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SegmentedButton<ThemeMode>(
+            // ── GROUP 1: THEME & COLOR SCHEME ──
+            SettingsGroup(
+              title: l.settingsThemeMode,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: ValueListenableBuilder<ThemeMode>(
+                    valueListenable: themeModeNotifier,
+                    builder: (context, mode, _) {
+                      return SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<ThemeMode>(
                           showSelectedIcon: false,
-                          style: SegmentedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
                           segments: [
                             ButtonSegment(
                               value: ThemeMode.system,
-                              label: Text(l.settingsThemeSystem),
-                              icon: const Icon(Icons.phone_android_rounded),
+                              label: Text(
+                                l.settingsThemeSystem,
+                                style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              icon: const Icon(Icons.phone_android_rounded, size: 18),
                             ),
                             ButtonSegment(
                               value: ThemeMode.light,
-                              label: Text(l.settingsThemeLight),
-                              icon: const Icon(Icons.light_mode_rounded),
+                              label: Text(
+                                l.settingsThemeLight,
+                                style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              icon: const Icon(Icons.light_mode_rounded, size: 18),
                             ),
                             ButtonSegment(
                               value: ThemeMode.dark,
-                              label: Text(l.settingsThemeDark),
-                              icon: const Icon(Icons.dark_mode_rounded),
+                              label: Text(
+                                l.settingsThemeDark,
+                                style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              icon: const Icon(Icons.dark_mode_rounded, size: 18),
                             ),
                           ],
                           selected: {mode},
                           onSelectionChanged: (selection) {
+                            HapticFeedback.selectionClick();
                             _settingsSetThemeMode(selection.first);
                           },
                         ),
-                      ],
+                      );
+                    },
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: useMaterialYouNotifier,
+                  builder: (context, useMaterialYou, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.palette_rounded,
+                      iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                      iconColor: cs.onPrimaryContainer,
+                      title: l.settingsUseMaterialYou,
+                      subtitle: l.settingsUseMaterialYouDesc,
+                      value: useMaterialYou,
+                      onChanged: _settingsSetUseMaterialYou,
                     );
                   },
                 ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: Column(
-                children: [
-                  ValueListenableBuilder<bool>(
-                    valueListenable: useMaterialYouNotifier,
-                    builder: (context, useMaterialYou, _) {
-                      return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                        value: useMaterialYou,
-                        onChanged: _settingsSetUseMaterialYou,
-                        title: Text(
-                          l.settingsUseMaterialYou,
-                          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          l.settingsUseMaterialYouDesc,
-                          style: GoogleFonts.outfit(),
-                        ),
-                      );
-                    },
-                  ),
-                  ValueListenableBuilder<bool>(
-                    valueListenable: useMaterialYouNotifier,
-                    builder: (context, useMaterialYou, _) {
-                      if (useMaterialYou) return const SizedBox.shrink();
-                      return ValueListenableBuilder<int>(
-                        valueListenable: customColorSeedNotifier,
-                        builder: (context, seed, _) {
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  l.settingsCustomColorSeed,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: useMaterialYouNotifier,
+                  builder: (context, useMaterialYou, _) {
+                    if (useMaterialYou) return const SizedBox.shrink();
+                    return ValueListenableBuilder<int>(
+                      valueListenable: customColorSeedNotifier,
+                      builder: (context, seed, _) {
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l.settingsCustomColorSeed,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13.5,
+                                  color: cs.onSurface,
                                 ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: Color(seed),
-                                        borderRadius: BorderRadius.circular(12),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: Color(seed),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: cs.outlineVariant.withValues(alpha: 0.5),
+                                        width: 1.5,
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Slider(
-                                        min: 0,
-                                        max: 359,
-                                        divisions: 359,
-                                        value: (HSLColor.fromColor(
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Slider(
+                                      min: 0,
+                                      max: 359,
+                                      divisions: 359,
+                                      value: (HSLColor.fromColor(
+                                        Color(seed),
+                                      ).hue % 360).clamp(0, 359),
+                                      onChanged: (hue) {
+                                        final hsl = HSLColor.fromColor(
                                           Color(seed),
-                                        ).hue % 360).clamp(0, 359),
-                                        onChanged: (hue) {
-                                          final hsl = HSLColor.fromColor(
-                                            Color(seed),
-                                          );
-                                          final newColor = hsl
-                                              .withHue(hue)
-                                              .withSaturation(0.5)
-                                              .withLightness(0.5)
-                                              .toColor();
-                                          _settingsSetCustomColorSeed(
-                                            newColor.toARGB32(),
-                                          );
-                                        },
+                                        );
+                                        final newColor = hsl
+                                            .withHue(hue)
+                                            .withSaturation(0.5)
+                                            .withLightness(0.5)
+                                            .toColor();
+                                        _settingsSetCustomColorSeed(
+                                          newColor.toARGB32(),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  0xFF0F766E,
+                                  0xFFD32F2F,
+                                  0xFF1976D2,
+                                  0xFF388E3C,
+                                  0xFFF57C00,
+                                  0xFF7B1FA2,
+                                  0xFF00796B,
+                                  0xFFC2185B,
+                                  0xFF455A64,
+                                  0xFF5D4037,
+                                ].map((color) {
+                                  final selected = seed == color;
+                                  final c = Color(color);
+                                  return GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      _settingsSetCustomColorSeed(color);
+                                    },
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: c,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: selected
+                                            ? Border.all(
+                                                color: cs.primary,
+                                                width: 2.5,
+                                              )
+                                            : Border.all(
+                                                color: Colors.transparent,
+                                              ),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: [
-                                    0xFF0F766E, 0xFFD32F2F, 0xFF1976D2,
-                                    0xFF388E3C, 0xFFF57C00, 0xFF7B1FA2,
-                                    0xFF00796B, 0xFFC2185B, 0xFF455A64,
-                                    0xFF5D4037,
-                                  ].map((color) {
-                                    final selected = seed == color;
-                                    final c = Color(color);
-                                    return GestureDetector(
-                                      onTap: () =>
-                                          _settingsSetCustomColorSeed(color),
-                                      child: Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: c,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: selected
-                                              ? Border.all(
-                                                  color: cs.onSurface,
-                                                  width: 2.5,
-                                                )
-                                              : null,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.language_rounded),
-                title: Text(
-                  l.settingsLanguage,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  _settingsLocaleLabels[appLocaleNotifier.value] ??
-                      (_settingsLocaleLabels['de'] ?? appLocaleNotifier.value),
-                  style: GoogleFonts.outfit(),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => _showLanguageDialog(context),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<int>(
-                valueListenable: pageTransitionNotifier,
-                builder: (context, transition, _) {
-                  return ListTile(
-                    leading: const Icon(Icons.compare_arrows_rounded),
-                    title: Text(
-                      l.settingsPageTransition,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      _transitionLabel(l, transition),
-                      style: GoogleFonts.outfit(),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => _showTransitionDialog(context),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: blurEnabledNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                    value: value,
-                    onChanged: _settingsSetBlurEnabled,
-                    title: Text(
-                      l.settingsGlassEffect,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsGlassEffectDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: Column(
-                children: [
-                  ValueListenableBuilder<bool>(
-                    valueListenable: backgroundAnimationsNotifier,
-                    builder: (context, value, _) {
-                      return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                        value: value,
-                        onChanged: _settingsSetBackgroundAnimations,
-                        title: Text(
-                          l.settingsBackgroundAnimations,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w700,
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ),
-                        ),
-                        subtitle: Text(
-                          l.settingsBackgroundAnimationsDesc,
-                          style: GoogleFonts.outfit(),
-                        ),
-                      );
-                    },
-                  ),
-                  ValueListenableBuilder<bool>(
-                    valueListenable: backgroundAnimationsNotifier,
-                    builder: (context, animationsEnabled, _) {
-                      if (!animationsEnabled) return const SizedBox.shrink();
-                      return Column(
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+
+            // ── GROUP 2: BACKGROUND & MOTION ──
+            SettingsGroup(
+              title: l.settingsBackgroundAnimations,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.auto_awesome_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsBackgroundAnimations,
+                      subtitle: l.settingsBackgroundAnimationsDesc,
+                      value: value,
+                      onChanged: _settingsSetBackgroundAnimations,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, animationsEnabled, _) {
+                    if (!animationsEnabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<bool>(
+                      valueListenable: backgroundGyroscopeNotifier,
+                      builder: (context, value, _) {
+                        return SettingsSwitchTile(
+                          icon: Icons.screen_rotation_rounded,
+                          iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                          iconColor: cs.onTertiaryContainer,
+                          title: l.settingsBackgroundGyroscope,
+                          subtitle: l.settingsBackgroundGyroscopeDesc,
+                          value: value,
+                          onChanged: _settingsSetBackgroundGyroscope,
+                        );
+                      },
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, animationsEnabled, _) {
+                    if (!animationsEnabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<int>(
+                      valueListenable: backgroundAnimationStyleNotifier,
+                      builder: (context, style, _) {
+                        return SettingsTile(
+                          icon: Icons.style_rounded,
+                          iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                          iconColor: cs.onTertiaryContainer,
+                          title: l.settingsBackgroundStyle,
+                          subtitle: _backgroundStyleLabel(l, style),
+                          onTap: () => _showBackgroundStyleDialog(context),
+                        );
+                      },
+                    );
+                  },
+                ),
+                SettingsTile(
+                  icon: Icons.wallpaper_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsCustomBackgrounds,
+                  subtitle: l.settingsCustomBackgroundsDesc,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      _buildBouncyRoute(const CustomBackgroundEditorScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+
+            // ── GROUP 3: INTERFACE & BEHAVIOR ──
+            SettingsGroup(
+              title: l.settingsGlassEffect,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: blurEnabledNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.blur_on_rounded,
+                      iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+                      iconColor: cs.onSecondaryContainer,
+                      title: l.settingsGlassEffect,
+                      subtitle: l.settingsGlassEffectDesc,
+                      value: value,
+                      onChanged: _settingsSetBlurEnabled,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: appBgBlurEnabledNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.blur_linear_rounded,
+                      iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+                      iconColor: cs.onSecondaryContainer,
+                      title: l.settingsAppBgBlur,
+                      subtitle: l.settingsAppBgBlurDesc,
+                      value: value,
+                      onChanged: _settingsSetAppBgBlurEnabled,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: appBgBlurEnabledNotifier,
+                  builder: (context, blurEnabled, _) {
+                    if (!blurEnabled) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Divider(height: 1, indent: 16, endIndent: 16),
-                          ValueListenableBuilder<bool>(
-                            valueListenable: backgroundGyroscopeNotifier,
-                            builder: (context, value, _) {
-                              return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                                value: value,
-                                onChanged: _settingsSetBackgroundGyroscope,
-                                title: Text(
-                                  l.settingsBackgroundGyroscope,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  l.settingsBackgroundGyroscopeDesc,
-                                  style: GoogleFonts.outfit(),
-                                ),
-                              );
-                            },
+                          Text(
+                            l.settingsAppBgBlurAmount,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: cs.onSurface,
+                            ),
                           ),
-                          const Divider(height: 1, indent: 16, endIndent: 16),
-                          ValueListenableBuilder<int>(
-                            valueListenable:
-                                backgroundAnimationStyleNotifier,
-                            builder: (context, style, _) {
-                              return ListTile(
-                                leading: const Icon(Icons.auto_awesome_rounded),
-                                title: Text(
-                                  l.settingsBackgroundStyle,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  _backgroundStyleLabel(l, style),
-                                  style: GoogleFonts.outfit(),
-                                ),
-                                trailing:
-                                    const Icon(Icons.chevron_right_rounded),
-                                onTap: () =>
-                                    _showBackgroundStyleDialog(context),
+                          ValueListenableBuilder<double>(
+                            valueListenable: appBgBlurAmountNotifier,
+                            builder: (context, amount, _) {
+                              return Slider(
+                                value: amount,
+                                min: 0,
+                                max: 40,
+                                onChanged: _settingsSetAppBgBlurAmount,
                               );
                             },
                           ),
                         ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: monochromeLessonsNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                    value: value,
-                    onChanged: _settingsSetMonochromeLessons,
-                    title: Text(
-                      l.settingsMonochromeLessons,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsMonochromeLessonsDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.wallpaper_rounded),
-                title: Text(
-                  l.settingsCustomBackgrounds,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
+                    );
+                  },
                 ),
-                subtitle: Text(
-                  l.settingsCustomBackgroundsDesc,
-                  style: GoogleFonts.outfit(),
+                ValueListenableBuilder<bool>(
+                  valueListenable: monochromeLessonsNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.tonality_rounded,
+                      iconBackgroundColor: cs.surfaceContainerHighest,
+                      iconColor: cs.onSurfaceVariant,
+                      title: l.settingsMonochromeLessons,
+                      subtitle: l.settingsMonochromeLessonsDesc,
+                      value: value,
+                      onChanged: _settingsSetMonochromeLessons,
+                    );
+                  },
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    _buildBouncyRoute(const CustomBackgroundEditorScreen()),
-                  );
-                },
-              ),
+                ValueListenableBuilder<int>(
+                  valueListenable: pageTransitionNotifier,
+                  builder: (context, transition, _) {
+                    return SettingsTile(
+                      icon: Icons.animation_rounded,
+                      iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                      iconColor: cs.onPrimaryContainer,
+                      title: l.settingsPageTransition,
+                      subtitle: _transitionLabel(l, transition),
+                      onTap: () => _showTransitionDialog(context),
+                    );
+                  },
+                ),
+                SettingsTile(
+                  icon: Icons.translate_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsLanguage,
+                  subtitle: _settingsLocaleLabels[appLocaleNotifier.value] ??
+                      (_settingsLocaleLabels['de'] ?? appLocaleNotifier.value),
+                  onTap: () => _showLanguageDialog(context),
+                ),
+              ],
             ),
           ],
         ),

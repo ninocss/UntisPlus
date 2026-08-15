@@ -22,23 +22,34 @@ class UntisPlusApp extends StatelessWidget {
                       builder: (lightDynamic, darkDynamic) {
 
                         final lightScheme = (useMaterialYou && lightDynamic != null)
-                            ? lightDynamic
-                            : ColorScheme.fromSeed(
-                                seedColor: Color(seed),
-                                brightness: Brightness.light,
-                                dynamicSchemeVariant: DynamicSchemeVariant.expressive,
-                              );
+                            ? lightDynamic.harmonized()
+                            : (useMaterialYou && darkDynamic != null)
+                                ? ColorScheme.fromSeed(
+                                    seedColor: darkDynamic.primary,
+                                    brightness: Brightness.light,
+                                    dynamicSchemeVariant: DynamicSchemeVariant.expressive,
+                                  )
+                                : ColorScheme.fromSeed(
+                                    seedColor: Color(seed),
+                                    brightness: Brightness.light,
+                                    dynamicSchemeVariant: DynamicSchemeVariant.expressive,
+                                  );
                         final darkScheme = (useMaterialYou && darkDynamic != null)
-                            ? darkDynamic
-                            : ColorScheme.fromSeed(
-                                seedColor: Color(seed),
-                                brightness: Brightness.dark,
-                                dynamicSchemeVariant: DynamicSchemeVariant.expressive,
-                              );
+                            ? darkDynamic.harmonized()
+                            : (useMaterialYou && lightDynamic != null)
+                                ? ColorScheme.fromSeed(
+                                    seedColor: lightDynamic.primary,
+                                    brightness: Brightness.dark,
+                                    dynamicSchemeVariant: DynamicSchemeVariant.expressive,
+                                  )
+                                : ColorScheme.fromSeed(
+                                    seedColor: Color(seed),
+                                    brightness: Brightness.dark,
+                                    dynamicSchemeVariant: DynamicSchemeVariant.expressive,
+                                  );
 
                         ThemeData themeFrom(ColorScheme scheme) {
                           // Standard Material 3 Typography based on GoogleFonts.outfit for brand identity
-                          // but without heavy custom overrides.
                           final baseText = GoogleFonts.outfitTextTheme(
                             ThemeData(
                               useMaterial3: true,
@@ -53,21 +64,25 @@ class UntisPlusApp extends StatelessWidget {
                             textTheme: baseText,
                             cardTheme: CardThemeData(
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
+                                borderRadius: BorderRadius.circular(22),
                               ),
                               clipBehavior: Clip.antiAlias,
                               elevation: 0,
                               color: scheme.surfaceContainerLow,
                             ),
                             dialogTheme: DialogThemeData(
+                              backgroundColor: scheme.surfaceContainerHigh,
+                              surfaceTintColor: scheme.primary,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(32),
+                                borderRadius: BorderRadius.circular(28),
                               ),
                             ),
-                            bottomSheetTheme: const BottomSheetThemeData(
-                              shape: RoundedRectangleBorder(
+                            bottomSheetTheme: BottomSheetThemeData(
+                              backgroundColor: scheme.surfaceContainerLow,
+                              surfaceTintColor: scheme.primary,
+                              shape: const RoundedRectangleBorder(
                                 borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(32),
+                                  top: Radius.circular(28),
                                 ),
                               ),
                             ),
@@ -98,9 +113,50 @@ class UntisPlusApp extends StatelessWidget {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                               ),
                             ),
+                            segmentedButtonTheme: SegmentedButtonThemeData(
+                              style: SegmentedButton.styleFrom(
+                                selectedBackgroundColor: scheme.secondaryContainer,
+                                selectedForegroundColor: scheme.onSecondaryContainer,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+                            switchTheme: SwitchThemeData(
+                              thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return scheme.onPrimary;
+                                }
+                                return scheme.outline;
+                              }),
+                              trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return scheme.primary;
+                                }
+                                return scheme.surfaceContainerHighest;
+                              }),
+                              trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                                if (states.contains(WidgetState.selected)) {
+                                  return Colors.transparent;
+                                }
+                                return scheme.outline.withValues(alpha: 0.5);
+                              }),
+                            ),
+                            sliderTheme: SliderThemeData(
+                              activeTrackColor: scheme.primary,
+                              inactiveTrackColor: scheme.surfaceContainerHighest,
+                              thumbColor: scheme.primary,
+                              overlayColor: scheme.primary.withValues(alpha: 0.12),
+                            ),
+                            dividerTheme: DividerThemeData(
+                              color: scheme.outlineVariant.withValues(alpha: 0.35),
+                              space: 1,
+                              thickness: 1,
+                            ),
                             listTileTheme: ListTileThemeData(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                              dense: true,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                             ),
                             snackBarTheme: SnackBarThemeData(
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

@@ -48,3 +48,7 @@ android/app/release-key.jks
 android/app/*.jks
 android/app/*.keystore
 .aider*
+
+*.py
+*.txt
+*.md

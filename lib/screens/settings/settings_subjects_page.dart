@@ -8,6 +8,8 @@ class SettingsSubjectsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
+
     return Scaffold(
       appBar: RoundedBlurAppBar(
         title: Text(
@@ -18,65 +20,50 @@ class SettingsSubjectsPage extends StatelessWidget {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ListTile(
-                leading: const Icon(Icons.palette_outlined),
-                title: Text(
-                  l.settingsSectionColors,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+            SettingsGroup(
+              title: l.settingsSectionSubjects,
+              children: [
+                SettingsTile(
+                  icon: Icons.color_lens_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsSectionColors,
+                  subtitle: l.settingsColorsDesc,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      _buildBouncyRoute(const SubjectColorsPage()),
+                    );
+                  },
                 ),
-                subtitle: Text(
-                  l.settingsColorsDesc,
-                  style: GoogleFonts.outfit(),
+                ValueListenableBuilder<Set<String>>(
+                  valueListenable: hiddenSubjectsNotifier,
+                  builder: (context, hidden, _) {
+                    return SettingsTile(
+                      icon: Icons.visibility_off_rounded,
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onSecondaryContainer,
+                      title: l.settingsSectionHidden,
+                      subtitle:
+                          hidden.isEmpty
+                              ? l.settingsNoHidden
+                              : l.settingsHiddenCount(hidden.length),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          _buildBouncyRoute(const HiddenSubjectsPage()),
+                        );
+                      },
+                    );
+                  },
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    _buildBouncyRoute(const SubjectColorsPage()),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<Set<String>>(
-                valueListenable: hiddenSubjectsNotifier,
-                builder: (context, hidden, _) {
-                  return ListTile(
-                    leading: const Icon(Icons.visibility_off_outlined),
-                    title: Text(
-                      l.settingsSectionHidden,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      hidden.isEmpty
-                          ? l.settingsNoHidden
-                          : l.settingsHiddenCount(hidden.length),
-                      style: GoogleFonts.outfit(),
-                    ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        _buildBouncyRoute(const HiddenSubjectsPage()),
-                      );
-                    },
-                  );
-                },
-              ),
+              ],
             ),
           ],
         ),

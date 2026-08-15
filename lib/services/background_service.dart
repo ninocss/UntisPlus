@@ -81,8 +81,6 @@ String _localizedUpdateTitle(String locale) {
       return 'Mise a jour Untis+ disponible';
     case 'es':
       return 'Actualizacion de Untis+ disponible';
-    case 'el':
-      return 'Διαθεσιμη ενημερωση Untis+';
     case 'de':
     default:
       return 'Untis+ Update verfugbar';
@@ -94,11 +92,9 @@ String _localizedDailyBriefingTitle(String locale) {
     case 'en':
       return 'Your school day at a glance';
     case 'fr':
-      return 'Ton apercu de la journee';
+      return 'Ton aperçu de la journée';
     case 'es':
-      return 'Resumen de tu dia escolar';
-    case 'el':
-      return 'Η ημερα σου με μια ματια';
+      return 'Resumen de tu día escolar';
     case 'de':
     default:
       return 'Dein Schultag auf einen Blick';
@@ -623,6 +619,7 @@ Future<void> checkGithubUpdateAndNotify() async {
       id: kUpdateNotificationId,
       title: _localizedUpdateTitle(locale),
       body: _localizedUpdateBody(locale, latestVersion),
+      locale: locale,
     );
   } catch (_) {
     // Keep silent in background; no user-facing error notification needed.

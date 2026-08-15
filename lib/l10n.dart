@@ -1,13 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Untis+ App Localization
-// Supported locales: de (German), en (English), fr (French), es (Spanish), el (Greek)
+// Supported locales: de (German), en (English), fr (French), es (Spanish)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AppL10n {
   final String locale;
   const AppL10n._(this.locale);
 
-  static const supportedLocales = ['de', 'en', 'fr', 'es', 'el'];
+  static const supportedLocales = ['de', 'en', 'fr', 'es'];
 
   static AppL10n of(String locale) =>
       AppL10n._(supportedLocales.contains(locale) ? locale : 'de');
@@ -151,6 +151,7 @@ class AppL10n {
   String get examsTomorrow => _t('examsTomorrow');
   String get examsOwn => _t('examsOwn');
   String get examsUnknown => _t('examsUnknown');
+  String get examsNoneEntered => _t('examsNoneEntered');
   String get examsImportTitle => _t('examsImportTitle');
   String get examsImportCamera => _t('examsImportCamera');
   String get examsImportGallery => _t('examsImportGallery');
@@ -228,6 +229,24 @@ class AppL10n {
   String get settingsAiPromptVariables => _t('settingsAiPromptVariables');
   String get settingsAiPromptVariablesDesc =>
       _t('settingsAiPromptVariablesDesc');
+  Map<String, String> get aiPromptVariableDescriptions => {
+    '[today]': _t('aiVar_today'),
+    '[today_iso]': _t('aiVar_today_iso'),
+    '[locale]': _t('aiVar_locale'),
+    '[school_name]': _t('aiVar_school_name'),
+    '[school_url]': _t('aiVar_school_url'),
+    '[person_type]': _t('aiVar_person_type'),
+    '[person_id]': _t('aiVar_person_id'),
+    '[demo_mode]': _t('aiVar_demo_mode'),
+    '[current_monday]': _t('aiVar_current_monday'),
+    '[current_friday]': _t('aiVar_current_friday'),
+    '[day_summary_today]': _t('aiVar_day_summary_today'),
+    '[day_summary_tomorrow]': _t('aiVar_day_summary_tomorrow'),
+    '[timetable]': _t('aiVar_timetable'),
+    '[timetable_json]': _t('aiVar_timetable_json'),
+    '[exams]': _t('aiVar_exams'),
+    '[exams_json]': _t('aiVar_exams_json'),
+  };
   String get settingsAiCustomBaseUrl => _t('settingsAiCustomBaseUrl');
   String get settingsAiCustomBaseUrlDesc => _t('settingsAiCustomBaseUrlDesc');
   String get settingsAiCustomBaseUrlHint => _t('settingsAiCustomBaseUrlHint');
@@ -305,6 +324,9 @@ class AppL10n {
       _t('settingsCustomBackgroundsSelected').replaceAll('{name}', name);
   String get settingsGlassEffect => _t('settingsGlassEffect');
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
+  String get settingsAppBgBlur => _strings[locale]?['settingsAppBgBlur'] ?? _strings['de']?['settingsAppBgBlur'] ?? 'App-Hintergrundunschärfe';
+  String get settingsAppBgBlurDesc => _strings[locale]?['settingsAppBgBlurDesc'] ?? _strings['de']?['settingsAppBgBlurDesc'] ?? 'Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.';
+  String get settingsAppBgBlurAmount => _strings[locale]?['settingsAppBgBlurAmount'] ?? _strings['de']?['settingsAppBgBlurAmount'] ?? 'Stärke der Hintergrundunschärfe';
   String get settingsPageTransition => _t('settingsPageTransition');
   String get settingsPageTransitionDesc => _t('settingsPageTransitionDesc');
   String get settingsUseMaterialYou => _t('settingsUseMaterialYou');
@@ -486,6 +508,53 @@ class AppL10n {
   String get bgEditorAiSuccess => _t('bgEditorAiSuccess');
   String get bgEditorAiError => _t('bgEditorAiError');
 
+  // ── Changelog & Updates ───────────────────────────────────────────────────
+  String get settingsChangelogTitle => _t('settingsChangelogTitle');
+  String get settingsChangelogSubtitle => _t('settingsChangelogSubtitle');
+  String get changelogTitle => _t('changelogTitle');
+  String get changelogLoadError => _t('changelogLoadError');
+  String get changelogRetry => _t('changelogRetry');
+
+  // ── AI Assistant & Querying ────────────────────────────────────────────────
+  String get aiNewSearch => _t('aiNewSearch');
+  String get aiSearchRunning => _t('aiSearchRunning');
+  String get aiSearchShapingDesc => _t('aiSearchShapingDesc');
+  String get aiStepAnalyzingTimetable => _t('aiStepAnalyzingTimetable');
+  String get aiStepSortingResults => _t('aiStepSortingResults');
+  String get aiStepAlmostDone => _t('aiStepAlmostDone');
+  String get aiSearchHintPlaceholder => _t('aiSearchHintPlaceholder');
+  String get aiOverview => _t('aiOverview');
+  String get aiEmptyPromptTitle => _t('aiEmptyPromptTitle');
+  String get aiEmptyPromptSubtitle => _t('aiEmptyPromptSubtitle');
+  String get aiPromptWhenFinishToday => _t('aiPromptWhenFinishToday');
+  String get aiPromptWhatCancelledToday => _t('aiPromptWhatCancelledToday');
+  String get aiPromptUpcomingExams => _t('aiPromptUpcomingExams');
+  String get aiPromptFirstLessonToday => _t('aiPromptFirstLessonToday');
+  String get aiPromptNextLesson => _t('aiPromptNextLesson');
+  String get aiPromptTomorrowSchedule => _t('aiPromptTomorrowSchedule');
+  String get aiClearResult => _t('aiClearResult');
+  String get aiSearchAgain => _t('aiSearchAgain');
+  String get aiClearInput => _t('aiClearInput');
+  String get aiLessons => _t('aiLessons');
+  String get aiMore => _t('aiMore');
+  String get aiSettingsMenu => _t('aiSettingsMenu');
+  String get aiResultsCardDesc => _t('aiResultsCardDesc');
+  String get aiDismiss => _t('aiDismiss');
+  String get aiLessonsCountSingle => _t('aiLessonsCountSingle');
+  String aiLessonsCountPlural(int count) =>
+      _t('aiLessonsCountPlural').replaceAll('{count}', '$count');
+  String get aiExamsCountWeekSingle => _t('aiExamsCountWeekSingle');
+  String aiExamsCountWeekPlural(int count) =>
+      _t('aiExamsCountWeekPlural').replaceAll('{count}', '$count');
+
+  // ── Class Picker ───────────────────────────────────────────────────────────
+  String get classPickerHeaderDesc => _t('classPickerHeaderDesc');
+  String get classPickerDefaultBadge => _t('classPickerDefaultBadge');
+  String get classPickerSetDefault => _t('classPickerSetDefault');
+  String get classPickerOtherClasses => _t('classPickerOtherClasses');
+  String get classPickerRemoveFavorite => _t('classPickerRemoveFavorite');
+  String get classPickerAddFavorite => _t('classPickerAddFavorite');
+
   // ─────────────────────────────────────────────────────────────────────────────
   static const Map<String, Map<String, dynamic>> _strings = {
     // ── GERMAN ────────────────────────────────────────────────────────────────
@@ -642,6 +711,7 @@ class AppL10n {
       'examsDaysIn': 'in {n} Tagen',
       'examsOwn': 'Eigene',
       'examsUnknown': '(unbekannt)',
+      'examsNoneEntered': 'Keine Prüfungen eingetragen.',
       'examsImportTitle': 'Klausurplan hochladen',
       'examsImportCamera': 'Kamera',
       'examsImportGallery': 'Galerie',
@@ -722,6 +792,22 @@ class AppL10n {
       'settingsAiPromptVariables': 'Prompt-Variablen',
       'settingsAiPromptVariablesDesc':
           'Liste aller Platzhalter, die automatisch mit Daten ersetzt werden.',
+      'aiVar_today': 'Heutiges Datum in lokaler Schreibweise',
+      'aiVar_today_iso': 'Heutiges Datum im Format YYYY-MM-DD',
+      'aiVar_locale': 'Aktive App-Sprache (z.B. de, en)',
+      'aiVar_school_name': 'Name der Schule',
+      'aiVar_school_url': 'Server/Domain der Schule',
+      'aiVar_person_type': 'WebUntis Personentyp als Zahl',
+      'aiVar_person_id': 'WebUntis Personen-ID',
+      'aiVar_demo_mode': 'true, wenn Demo-Modus aktiv ist',
+      'aiVar_current_monday': 'Montag der geladenen Woche (DD.MM.YYYY)',
+      'aiVar_current_friday': 'Freitag der geladenen Woche (DD.MM.YYYY)',
+      'aiVar_day_summary_today': 'Kurzübersicht für heute',
+      'aiVar_day_summary_tomorrow': 'Kurzübersicht für morgen',
+      'aiVar_timetable': 'Formatierter Stundenplan der aktuellen Woche',
+      'aiVar_timetable_json': 'Rohdaten des Stundenplans als JSON',
+      'aiVar_exams': 'Formatierte Liste geplanter Prüfungen',
+      'aiVar_exams_json': 'Prüfungsdaten als JSON',
       'settingsAiCustomBaseUrl': 'Custom Base URL',
       'settingsAiCustomBaseUrlDesc':
           'Basis-URL deines eigenen Anbieters (OpenAI- oder Gemini-kompatibel).',
@@ -1030,6 +1116,52 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 - Antworte auf Deutsch, sei hilfreich, motivierend und auf den Punkt.
 - Beginne nicht automatisch mit "Ja," – antworte direkt.
 - Du darfst Markdown zur Formatierung verwenden (z.B. Listen, **fett**).''',
+
+      'settingsChangelogTitle': 'Neuigkeiten (Changelog)',
+      'settingsChangelogSubtitle': 'Was ist neu in Untis+?',
+      'changelogTitle': 'Neuigkeiten',
+      'changelogLoadError': 'Fehler beim Laden',
+      'changelogRetry': 'Erneut versuchen',
+
+      'aiNewSearch': 'Neue Suche',
+      'aiSearchRunning': 'Suche läuft…',
+      'aiSearchShapingDesc':
+          'Die KI formt gerade Karten und Stundenblöcke aus deinem Stundenplan.',
+      'aiStepAnalyzingTimetable': 'Analysiert den Stundenplan…',
+      'aiStepSortingResults': 'Sortiert Ergebnisse…',
+      'aiStepAlmostDone': 'Fast fertig…',
+      'aiSearchHintPlaceholder': 'Stunden, Freistunden, Prüfungen …',
+      'aiOverview': 'Übersicht',
+      'aiEmptyPromptTitle': 'Was möchtest du wissen?',
+      'aiEmptyPromptSubtitle':
+          'Frag nach Stunden, Prüfungen oder freien Räumen.',
+      'aiPromptWhenFinishToday': 'Wann ist heute Schluss?',
+      'aiPromptWhatCancelledToday': 'Was fällt heute aus?',
+      'aiPromptUpcomingExams': 'Welche Prüfungen hab ich bald?',
+      'aiPromptFirstLessonToday': 'Was hab ich heute als erstes?',
+      'aiPromptNextLesson': 'Wann ist meine nächste Stunde?',
+      'aiPromptTomorrowSchedule': 'Was hab ich morgen?',
+      'aiClearResult': 'Ergebnis leeren',
+      'aiSearchAgain': 'Neu suchen',
+      'aiClearInput': 'Leeren',
+      'aiLessons': 'Stunden',
+      'aiMore': 'Mehr',
+      'aiSettingsMenu': 'KI-Einstellungen',
+      'aiResultsCardDesc':
+          'Ergebnisse werden als Karten und Stundenblöcke angezeigt.',
+      'aiDismiss': 'Ausblenden',
+      'aiLessonsCountSingle': '1 Stunde',
+      'aiLessonsCountPlural': '{count} Stunden',
+      'aiExamsCountWeekSingle': '1 Prüfung diese Woche',
+      'aiExamsCountWeekPlural': '{count} Prüfungen diese Woche',
+
+      'classPickerHeaderDesc':
+          'Wähle einen Stundenplan aus. Favoriten werden oben angezeigt.',
+      'classPickerDefaultBadge': 'Standard',
+      'classPickerSetDefault': 'Als Standard festlegen',
+      'classPickerOtherClasses': 'Andere Klassen',
+      'classPickerRemoveFavorite': 'Favorit entfernen',
+      'classPickerAddFavorite': 'Als Favorit speichern',
     },
 
     // ── ENGLISH ───────────────────────────────────────────────────────────────
@@ -1173,6 +1305,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsDaysIn': 'in {n} days',
       'examsOwn': 'Custom',
       'examsUnknown': '(unknown)',
+      'examsNoneEntered': 'No exams entered.',
       'examsImportTitle': 'Upload exam schedule',
       'examsImportCamera': 'Camera',
       'examsImportGallery': 'Gallery',
@@ -1246,6 +1379,22 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariables': 'Prompt Variables',
       'settingsAiPromptVariablesDesc':
           'All placeholders that are automatically replaced with app data.',
+      'aiVar_today': 'Today\'s date in local format',
+      'aiVar_today_iso': 'Today\'s date in YYYY-MM-DD format',
+      'aiVar_locale': 'Active app language (e.g. de, en)',
+      'aiVar_school_name': 'School name',
+      'aiVar_school_url': 'School server/domain',
+      'aiVar_person_type': 'WebUntis person type as number',
+      'aiVar_person_id': 'WebUntis person ID',
+      'aiVar_demo_mode': 'true if demo mode is active',
+      'aiVar_current_monday': 'Monday of the loaded week (DD.MM.YYYY)',
+      'aiVar_current_friday': 'Friday of the loaded week (DD.MM.YYYY)',
+      'aiVar_day_summary_today': 'Brief summary for today',
+      'aiVar_day_summary_tomorrow': 'Brief summary for tomorrow',
+      'aiVar_timetable': 'Formatted timetable for the current week',
+      'aiVar_timetable_json': 'Raw timetable data as JSON',
+      'aiVar_exams': 'Formatted list of upcoming exams',
+      'aiVar_exams_json': 'Exam data as JSON',
       'settingsAiCustomBaseUrl': 'Custom Base URL',
       'settingsAiCustomBaseUrlDesc':
           'Base URL of your own provider (OpenAI-compatible or Gemini-compatible).',
@@ -1553,6 +1702,50 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 - Answer in English, be helpful, motivating, and concise.
 - Do not start automatically with "Yes," – answer directly.
 - You may use Markdown for formatting (e.g. lists, **bold**).''',
+
+      'settingsChangelogTitle': "What's New (Changelog)",
+      'settingsChangelogSubtitle': 'What is new in Untis+?',
+      'changelogTitle': "What's New",
+      'changelogLoadError': 'Failed to load',
+      'changelogRetry': 'Try again',
+
+      'aiNewSearch': 'New search',
+      'aiSearchRunning': 'Search running…',
+      'aiSearchShapingDesc':
+          'The AI is shaping cards and lesson blocks from your timetable.',
+      'aiStepAnalyzingTimetable': 'Analyzing timetable…',
+      'aiStepSortingResults': 'Sorting results…',
+      'aiStepAlmostDone': 'Almost done…',
+      'aiSearchHintPlaceholder': 'Lessons, free periods, exams …',
+      'aiOverview': 'Overview',
+      'aiEmptyPromptTitle': 'What do you want to know?',
+      'aiEmptyPromptSubtitle': 'Ask about lessons, exams or free rooms.',
+      'aiPromptWhenFinishToday': 'When do I finish today?',
+      'aiPromptWhatCancelledToday': 'What is cancelled today?',
+      'aiPromptUpcomingExams': 'Which exams are coming up?',
+      'aiPromptFirstLessonToday': 'What is my first lesson today?',
+      'aiPromptNextLesson': 'When is my next lesson?',
+      'aiPromptTomorrowSchedule': 'What do I have tomorrow?',
+      'aiClearResult': 'Clear result',
+      'aiSearchAgain': 'Search again',
+      'aiClearInput': 'Clear',
+      'aiLessons': 'Lessons',
+      'aiMore': 'More',
+      'aiSettingsMenu': 'AI settings',
+      'aiResultsCardDesc': 'Results appear as cards and lesson blocks.',
+      'aiDismiss': 'Dismiss',
+      'aiLessonsCountSingle': '1 lesson',
+      'aiLessonsCountPlural': '{count} lessons',
+      'aiExamsCountWeekSingle': '1 exam this week',
+      'aiExamsCountWeekPlural': '{count} exams this week',
+
+      'classPickerHeaderDesc':
+          'Select a timetable. Favorites are shown at the top.',
+      'classPickerDefaultBadge': 'Default',
+      'classPickerSetDefault': 'Set as default',
+      'classPickerOtherClasses': 'Other classes',
+      'classPickerRemoveFavorite': 'Remove favorite',
+      'classPickerAddFavorite': 'Add to favorites',
     },
 
     // ── FRENCH ────────────────────────────────────────────────────────────────
@@ -1700,6 +1893,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsDaysIn': 'dans {n} jours',
       'examsOwn': 'Personnel',
       'examsUnknown': '(inconnu)',
+      'examsNoneEntered': 'Aucun examen saisi.',
       'examsImportTitle': 'Uploader le planning',
       'examsImportCamera': 'Caméra',
       'examsImportGallery': 'Galerie',
@@ -1777,6 +1971,22 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariables': 'Variables d\'invite',
       'settingsAiPromptVariablesDesc':
           'Tous les espaces réservés remplacés automatiquement par des données de l\'app.',
+      'aiVar_today': 'Date d\'aujourd\'hui en format local',
+      'aiVar_today_iso': 'Date d\'aujourd\'hui au format YYYY-MM-DD',
+      'aiVar_locale': 'Langue active de l\'app (ex. de, en)',
+      'aiVar_school_name': 'Nom de l\'école',
+      'aiVar_school_url': 'Serveur/domaine de l\'école',
+      'aiVar_person_type': 'Type de personne WebUntis en chiffre',
+      'aiVar_person_id': 'ID de personne WebUntis',
+      'aiVar_demo_mode': 'true si le mode démo est actif',
+      'aiVar_current_monday': 'Lundi de la semaine chargée (DD.MM.YYYY)',
+      'aiVar_current_friday': 'Vendredi de la semaine chargée (DD.MM.YYYY)',
+      'aiVar_day_summary_today': 'Résumé court pour aujourd\'hui',
+      'aiVar_day_summary_tomorrow': 'Résumé court pour demain',
+      'aiVar_timetable': 'Emploi du temps formaté pour la semaine en cours',
+      'aiVar_timetable_json': 'Données brutes de l\'emploi du temps en JSON',
+      'aiVar_exams': 'Liste formatée des examens à venir',
+      'aiVar_exams_json': 'Données d\'examens en JSON',
       'settingsAiCustomBaseUrl': 'URL de base personnalisée',
       'settingsAiCustomBaseUrlDesc':
           'URL de base de ton propre fournisseur (compatible OpenAI ou Gemini).',
@@ -2088,6 +2298,52 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 - Répondre en français, de manière amicale, utile et concise.
 - Ne pas commencer automatiquement par "Oui," – répondre directement.
 - Tu peux utiliser Markdown pour la mise en forme (ex. listes, **gras**).''',
+
+      'settingsChangelogTitle': 'Nouveautés (Changelog)',
+      'settingsChangelogSubtitle': 'Quoi de neuf dans Untis+ ?',
+      'changelogTitle': 'Nouveautés',
+      'changelogLoadError': 'Erreur de chargement',
+      'changelogRetry': 'Réessayer',
+
+      'aiNewSearch': 'Nouvelle recherche',
+      'aiSearchRunning': 'Recherche en cours…',
+      'aiSearchShapingDesc':
+          "L'IA génère des cartes et des blocs de cours à partir de ton emploi du temps.",
+      'aiStepAnalyzingTimetable': "Analyse de l'emploi du temps…",
+      'aiStepSortingResults': 'Tri des résultats…',
+      'aiStepAlmostDone': 'Presque terminé…',
+      'aiSearchHintPlaceholder': 'Cours, heures libres, examens …',
+      'aiOverview': 'Aperçu',
+      'aiEmptyPromptTitle': 'Que souhaites-tu savoir ?',
+      'aiEmptyPromptSubtitle':
+          'Pose des questions sur tes cours, examens ou salles libres.',
+      'aiPromptWhenFinishToday': "À quelle heure je termine aujourd'hui ?",
+      'aiPromptWhatCancelledToday': "Quels cours sont annulés aujourd'hui ?",
+      'aiPromptUpcomingExams': 'Quels sont mes prochains examens ?',
+      'aiPromptFirstLessonToday': "Quel est mon premier cours aujourd'hui ?",
+      'aiPromptNextLesson': 'Quand est mon prochain cours ?',
+      'aiPromptTomorrowSchedule': "Qu'est-ce que j'ai demain ?",
+      'aiClearResult': 'Effacer le résultat',
+      'aiSearchAgain': 'Rechercher à nouveau',
+      'aiClearInput': 'Effacer',
+      'aiLessons': 'Cours',
+      'aiMore': 'Plus',
+      'aiSettingsMenu': 'Paramètres IA',
+      'aiResultsCardDesc':
+          "Les résultats s'affichent sous forme de cartes et de blocs de cours.",
+      'aiDismiss': 'Masquer',
+      'aiLessonsCountSingle': '1 cours',
+      'aiLessonsCountPlural': '{count} cours',
+      'aiExamsCountWeekSingle': '1 examen cette semaine',
+      'aiExamsCountWeekPlural': '{count} examens cette semaine',
+
+      'classPickerHeaderDesc':
+          "Sélectionnez un emploi du temps. Les favoris s'affichent en haut.",
+      'classPickerDefaultBadge': 'Par défaut',
+      'classPickerSetDefault': 'Définir par défaut',
+      'classPickerOtherClasses': 'Autres classes',
+      'classPickerRemoveFavorite': 'Retirer des favoris',
+      'classPickerAddFavorite': 'Ajouter aux favoris',
     },
 
     // ── SPANISH ───────────────────────────────────────────────────────────────
@@ -2236,6 +2492,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsDaysIn': 'en {n} días',
       'examsOwn': 'Propio',
       'examsUnknown': '(desconocido)',
+      'examsNoneEntered': 'No hay exámenes registrados.',
       'examsImportTitle': 'Subir calendario',
       'examsImportCamera': 'Cámara',
       'examsImportGallery': 'Galería',
@@ -2314,6 +2571,22 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariables': 'Variables de instrucción',
       'settingsAiPromptVariablesDesc':
           'Todos los marcadores de posición reemplazados automáticamente con datos de la app.',
+      'aiVar_today': 'Fecha de hoy en formato local',
+      'aiVar_today_iso': 'Fecha de hoy en formato YYYY-MM-DD',
+      'aiVar_locale': 'Idioma activo de la app (p.ej. de, en)',
+      'aiVar_school_name': 'Nombre del centro escolar',
+      'aiVar_school_url': 'Servidor/dominio del centro escolar',
+      'aiVar_person_type': 'Tipo de persona de WebUntis como número',
+      'aiVar_person_id': 'ID de persona de WebUntis',
+      'aiVar_demo_mode': 'true si el modo demo está activo',
+      'aiVar_current_monday': 'Lunes de la semana cargada (DD.MM.YYYY)',
+      'aiVar_current_friday': 'Viernes de la semana cargada (DD.MM.YYYY)',
+      'aiVar_day_summary_today': 'Resumen breve de hoy',
+      'aiVar_day_summary_tomorrow': 'Resumen breve de mañana',
+      'aiVar_timetable': 'Horario formateado de la semana actual',
+      'aiVar_timetable_json': 'Datos brutos del horario en JSON',
+      'aiVar_exams': 'Lista formateada de exámenes próximos',
+      'aiVar_exams_json': 'Datos de exámenes en JSON',
       'settingsAiCustomBaseUrl': 'URL base personalizada',
       'settingsAiCustomBaseUrlDesc':
           'URL base de tu propio proveedor (compatible con OpenAI o Gemini).',
@@ -2623,545 +2896,52 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 - Responde en español, de forma amigable, útil y concisa.
 - No empieces automáticamente con "Sí," – responde directamente.
 - Puedes usar Markdown para el formato (ej. listas, **negrita**).''',
-    },
 
-    // ── GREEK ────────────────────────────────────────────────────────────────
-    'el': {
-      'navWeek': 'Εβδομάδα',
-      'navExams': 'Εξετάσεις',
-      'navInfo': 'Πληροφορίες',
-      'navMenu': 'Μενού',
-      'navAi': 'AI',
+      'settingsChangelogTitle': 'Novedades (Changelog)',
+      'settingsChangelogSubtitle': '¿Qué hay de nuevo en Untis+?',
+      'changelogTitle': 'Novedades',
+      'changelogLoadError': 'Error al cargar',
+      'changelogRetry': 'Reintentar',
 
-      'loginServer': 'Διεύθυνση διακομιστή',
-      'loginSchool': 'Σχολείο',
-      'loginUsername': 'Όνομα χρήστη',
-      'loginPassword': 'Κωδικός πρόσβασης',
-      'loginLoginKey': 'Κλειδί σύνδεσης',
-      'loginLoginKeyHint':
-          'Χρησιμοποίησε το κλειδί σύνδεσης WebUntis αν το σχολείο σου συνδέεται μέσω Microsoft 365 ή Office 365.',
-      'loginCredentialModePassword': 'Κωδικός πρόσβασης',
-      'loginCredentialModeLoginKey': 'Κλειδί σύνδεσης',
-      'loginButton': 'Πάμε',
-      'loginFailed': 'Η σύνδεση απέτυχε. Έλεγξε τα στοιχεία σου.',
-      'loginConnectionError': 'Σφάλμα σύνδεσης',
-      'loginSearchSchool': 'Αναζήτηση σχολείου',
-      'loginSelectSchool': 'Επιλογή σχολείου',
-      'loginSearchHint': 'Όνομα σχολείου ή πόλη...',
-      'loginNoSchoolsFound': 'Δεν βρέθηκαν σχολεία.',
-      'loginChangeLanguage': 'Γλώσσα',
-      'loginManualEntry': 'Χειροκίνητη εισαγωγή',
-      'loginSwitchToSearch': 'Πίσω στην αναζήτηση',
-      'loginChangeSchool': 'Αλλαγή σχολείου',
-      'loginTwoFactorCode': 'Κωδικός 2FA',
-      'loginTwoFactorHint': 'Εισήγαγε τον κωδικό 2FA από την εφαρμογή σου.',
-      'loginTwoFactorRequired':
-          'Το 2FA είναι ενεργό. Εισήγαγε τον κωδικό επαλήθευσης.',
-      'loginTwoFactorInvalid':
-          'Ο κωδικός 2FA δεν είναι έγκυρος ή έχει λήξει. Δοκίμασε ξανά.',
-      'loginVerifyButton': 'Επαλήθευση',
+      'aiNewSearch': 'Nueva búsqueda',
+      'aiSearchRunning': 'Búsqueda en curso…',
+      'aiSearchShapingDesc':
+          'La IA está generando tarjetas y bloques de clases a partir de tu horario.',
+      'aiStepAnalyzingTimetable': 'Analizando el horario…',
+      'aiStepSortingResults': 'Ordenando resultados…',
+      'aiStepAlmostDone': 'Casi listo…',
+      'aiSearchHintPlaceholder': 'Clases, horas libres, exámenes …',
+      'aiOverview': 'Resumen',
+      'aiEmptyPromptTitle': '¿Qué deseas saber?',
+      'aiEmptyPromptSubtitle':
+          'Pregunta sobre clases, exámenes o aulas libres.',
+      'aiPromptWhenFinishToday': '¿A qué hora termino hoy?',
+      'aiPromptWhatCancelledToday': '¿Qué se cancela hoy?',
+      'aiPromptUpcomingExams': '¿Qué exámenes tengo pronto?',
+      'aiPromptFirstLessonToday': '¿Cuál es mi primera clase hoy?',
+      'aiPromptNextLesson': '¿Cuándo es mi próxima clase?',
+      'aiPromptTomorrowSchedule': '¿Qué tengo mañana?',
+      'aiClearResult': 'Borrar resultado',
+      'aiSearchAgain': 'Buscar de nuevo',
+      'aiClearInput': 'Borrar',
+      'aiLessons': 'Clases',
+      'aiMore': 'Más',
+      'aiSettingsMenu': 'Ajustes de IA',
+      'aiResultsCardDesc':
+          'Los resultados se muestran como tarjetas y bloques de clases.',
+      'aiDismiss': 'Ocultar',
+      'aiLessonsCountSingle': '1 clase',
+      'aiLessonsCountPlural': '{count} clases',
+      'aiExamsCountWeekSingle': '1 examen esta semana',
+      'aiExamsCountWeekPlural': '{count} exámenes esta semana',
 
-      'onboardingWelcomeTitle': 'Καλώς ήρθες στο Untis+',
-      'onboardingChooseLanguageSubtitle': 'Επίλεξε τη γλώσσα που προτιμάς',
-      'onboardingAppearanceTitle': 'Εμφάνιση',
-      'onboardingAppearanceSubtitle':
-          'Κάνε το Untis+ να μοιάζει ακριβώς όπως θέλεις',
-      'onboardingThemeSystem': 'Σύστημα',
-      'onboardingThemeLight': 'Φωτεινό',
-      'onboardingThemeDark': 'Σκοτεινό',
-      'onboardingAnimationsHint': 'Ενεργοποίηση όμορφων κινούμενων φόντων',
-      'onboardingSchoolLoginTitle': 'Σύνδεση σχολείου',
-      'onboardingSchoolLoginSubtitle':
-          'Σύνδεσε τον λογαριασμό σου στο WebUntis',
-      'onboardingGeminiTitle': 'Gemini AI',
-      'onboardingGeminiSubtitle':
-          'Συζήτησε με το ωρολόγιό σου και τις εργασίες σου',
-      'onboardingGeminiInfo':
-          'Πάρε ένα δωρεάν κλειδί Gemini API από το Google AI Studio για να ξεκλειδώσεις τον ισχυρό βοηθό AI στο Untis+.',
-      'onboardingGeminiGetApiKey': 'Λήψη κλειδιού API',
-      'onboardingSkip': 'Παράλειψη',
-      'onboardingNext': 'Επόμενο',
-      'onboardingGeminiEnterKeyOrSkip':
-          'Εισήγαγε ένα κλειδί ή παράλειψε αυτό το βήμα',
-      'onboardingReadyTitle': 'Έτοιμο για εκκίνηση!',
-      'onboardingReadySubtitle': 'Να τι μπορείς να κάνεις στο Untis+',
-      'onboardingFeatureTimetableTitle': 'Ωρολόγιο & Ημερολόγιο',
-      'onboardingFeatureTimetableDesc':
-          'Παρακολούθησε το πρόγραμμα σου χωρίς κόπο.',
-      'onboardingFeatureExamsTitle': 'Εξετάσεις & Εργασίες',
-      'onboardingFeatureExamsDesc':
-          'Παρακολούθησε την πρόοδό σου, εισήγαγε εξετάσεις και εξήγαγέ τες σε JSON.',
-      'onboardingFeatureAiTitle': 'Βοηθός AI',
-      'onboardingFeatureAiDesc':
-          'Ρώτησε το Gemini για τη μέρα σου, τις εργασίες ή τις εξετάσεις.',
-      'onboardingFeatureNotifyTitle': 'Ειδοποιήσεις & Widgets',
-      'onboardingFeatureNotifyDesc':
-          'Μείνε ενημερωμένος πριν ξεκινήσει το σχολείο.',
-      'onboardingFinishSetup': 'Ολοκλήρωση ρύθμισης',
-      'onboardingUseDemoMode': 'Εκκίνηση demo mode',
-      'onboardingUseDemoModeDesc':
-          'Δοκίμασε το Untis+ χωρίς σύνδεση σχολείου με ρεαλιστικά δείγματα δεδομένων.',
-      'tutorialTitle': 'Σύντομο tutorial εφαρμογής',
-      'tutorialSkip': 'Παράλειψη tutorial',
-      'tutorialDone': 'Ολοκλήρωση tutorial',
-      'tutorialStepWeekTitle': '1. Ωρολόγιο',
-      'tutorialStepWeekDesc':
-          'Πάτησε το μεγάλο κουμπί με το ρολόι για να ανοίξεις την εβδομαδιαία προβολή.',
-      'tutorialStepExamsTitle': '2. Εξετάσεις',
-      'tutorialStepExamsDesc':
-          'Πάτησε το κουμπί εξετάσεων για να δεις, να εισάγεις και να εξάγεις εξετάσεις.',
-      'tutorialStepInfoTitle': '3. Σχολικές πληροφορίες',
-      'tutorialStepInfoDesc':
-          'Πάτησε το κουμπί πληροφοριών για τις τρέχουσες ανακοινώσεις του σχολείου σου.',
-      'tutorialStepSettingsTitle': '4. Ρυθμίσεις',
-      'tutorialStepSettingsDesc':
-          'Πάτησε το κουμπί ρυθμίσεων για να προσαρμόσεις γλώσσα, εμφάνιση και ειδοποιήσεις.',
-      'tutorialStepFinishTitle': 'Έτοιμο!',
-      'tutorialStepFinishDesc':
-          'Γνωρίζεις πλέον όλα τα βασικά μέρη της εφαρμογής. Καλή χρήση του Untis+!',
-
-      'timetableTitle': 'Ωρολόγιο',
-      'timetablePrevWeek': 'Προηγούμενη εβδομάδα',
-      'timetableNextWeek': 'Επόμενη εβδομάδα',
-      'timetableWeekView': 'Προβολή εβδομάδας',
-      'timetableDayGrid': 'Πλέγμα ημέρας',
-      'timetableNotLoaded': 'Το ωρολόγιο δεν φορτώθηκε',
-      'timetableReload': 'Επαναφόρτωση',
-      'timetableSelectClass': 'Επιλογή τάξης',
-      'timetableMyTimetable': 'Το ωρολόγιό μου',
-      'timetableSelectAnother': 'Άλλη τάξη',
-      'timetableNoClassesFound':
-          'Δεν βρέθηκαν τάξεις ή η πρόσβαση απορρίφθηκε.',
-      'freeRoomsTitle': 'Ελεύθερες αίθουσες',
-      'freeRoomsSelectTime': 'Επιλογή χρονικού διαστήματος',
-      'freeRoomsNoneFound':
-          'Δεν βρέθηκαν ελεύθερες αίθουσες για αυτό το χρονικό διάστημα.',
-      'freeRoomsNoRangesHint':
-          'Δεν βρέθηκαν κατάλληλα χρονικά διαστήματα για τη σημερινή ημέρα.',
-      'freeRoomsCount': '{n} ελεύθερες αίθουσες',
-      'weekDayShort': ['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ'],
-      'weekDayFull': ['Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή'],
-      'noLesson': '(χωρίς μάθημα)',
-
-      'detailTime': 'Ώρα',
-      'detailTeacher': 'Καθηγητής',
-      'detailRoom': 'Αίθουσα',
-      'detailClass': 'Τάξη',
-      'detailLesson': 'Μάθημα',
-      'detailInfo': 'Σημείωση',
-      'detailCancelled': 'ΑΚΥΡΩΘΗΚΕ',
-      'detailRegular': 'Κανονικό μάθημα',
-      'detailHideSubject': 'Μόνιμη απόκρυψη μαθήματος',
-      'detailCancelledBadge': 'ΑΚΥΡΩΘΗΚΕ',
-
-      'examsTitle': 'Εξετάσεις',
-      'examsReload': 'Επαναφόρτωση',
-      'examsNone': 'Δεν βρέθηκαν εξετάσεις',
-      'examsNoneHint': 'Άγγιξε + για να προσθέσεις εξέταση.',
-      'examsUpcoming': 'Επερχόμενες',
-      'examsPast': 'Παλαιότερες',
-      'examsAdd': 'Προσθήκη',
-      'examsAddTitle': 'Προσθήκη εξέτασης',
-      'examsEditTitle': 'Επεξεργασία εξέτασης',
-      'examsSubjectLabel': 'Μάθημα / Τίτλος *',
-      'examsTypeLabel': 'Τύπος (π.χ. διαγώνισμα, τεστ)',
-      'examsNotesLabel': 'Σημειώσεις / Θέματα',
-      'examsSave': 'Αποθήκευση',
-      'examsCancel': 'Ακύρωση',
-      'examsDelete': 'Διαγραφή',
-      'examsToday': 'Σήμερα',
-      'examsTomorrow': 'Αύριο',
-      'examsDaysIn': 'σε {n} ημέρες',
-      'examsOwn': 'Προσωπικό',
-      'examsUnknown': '(άγνωστο)',
-      'examsImportTitle': 'Μεταφόρτωση προγράμματος εξετάσεων',
-      'examsImportCamera': 'Κάμερα',
-      'examsImportGallery': 'Συλλογή',
-      'examsImportFile': 'PDF / Αρχείο',
-      'examsImportSuccess': 'Η εισαγωγή ολοκληρώθηκε με επιτυχία!',
-      'examsImportError': 'Σφάλμα εισαγωγής: ',
-      'examsImportInvalidJson': 'Δεν βρέθηκε έγκυρο JSON.',
-      'examsExportSuccess': 'Οι εξετάσεις αντιγράφηκαν ως JSON στο πρόχειρο.',
-      'examsExportEmpty': 'Δεν υπάρχουν προσωπικές εξετάσεις για εξαγωγή.',
-      'examsActionCustom': 'Χειροκίνητα',
-      'examsActionImport': 'Εισαγωγή (Σάρωση/PDF)',
-      'examsActionExport': 'Εξαγωγή (JSON)',
-      'examsActionScan': 'Σάρωση',
-
-      'infoTitle': 'Σχολικές ειδοποιήσεις',
-      'infoReload': 'Επαναφόρτωση',
-      'infoUpdated': 'Ενημερώθηκε',
-      'infoEmpty': 'Δεν υπάρχουν τρέχουσες ειδοποιήσεις',
-      'infoEmptyHint':
-          'Αν το σχολείο σου δεν έχει δημοσιεύσει κάτι προς το παρόν, δεν εμφανίζεται τίποτα εδώ.',
-      'infoFetchError':
-          'Δεν ήταν δυνατή η φόρτωση των ειδοποιήσεων. Προσπάθησε ξανά αργότερα.',
-      'infoOpenLink': 'Άνοιγμα συνδέσμου',
-      'notificationActionCurrentLesson': 'Τρεχον μαθημα: {lesson}',
-      'notificationActionNextLesson': 'Επομενο μαθημα: {lesson}',
-      'notificationActionNoNextLesson': 'Δεν βρεθηκε επομενο μαθημα για σημερα',
-
-      'aiTitle': 'Βοηθός AI',
-      'aiInputHint': 'Κάνε μια ερώτηση…',
-      'aiKnowsSchedule': 'Ξέρω το ωρολόγιό σου!',
-      'aiAskAnything': 'Ρώτησέ με ό,τι θέλεις για την εβδομάδα σου.',
-      'aiNoApiKey': '⚠️ Εισήγαγε το κλειδί Gemini API στις Ρυθμίσεις → Γενικά.',
-      'aiNoReply': '⚠️ Δεν ελήφθη απάντηση.',
-      'aiApiError': '⚠️ Σφάλμα API:',
-      'aiConnectionError': '⚠️ Σφάλμα σύνδεσης:',
-      'aiSuggestions': [
-        'Τι έχω αύριο;',
-        'Έχω κενή ώρα σήμερα;',
-        'Τι ώρα τελειώνει το σχολείο αύριο;',
-        'Ακυρώνεται κάτι σήμερα;',
-      ],
-
-      'settingsTitle': 'Ρυθμίσεις',
-      'settingsLoggedInAs': 'Συνδεδεμένος ως',
-      'settingsLogout': 'Αποσύνδεση',
-      'settingsSectionQuick': 'Γρήγορη πρόσβαση',
-      'settingsSectionGeneral': 'Γενικά',
-      'settingsAppearance': 'Εμφάνιση',
-      'settingsAppearanceDesc': 'Σύστημα (Φωτεινό/Σκοτεινό)',
-      'settingsHubNotifications': 'Ειδοποιήσεις & Widgets',
-      'settingsHubDataBackup': 'Δεδομένα & Αντίγραφα',
-      'settingsHubDataBackupDesc': 'Αντίγραφο όλων των ρυθμίσεων',
-      'settingsHubAccount': 'Λογαριασμός & Demo',
-      'settingsHubUpdatesAbout': 'Ενημερώσεις & Σχετικά',
-      'settingsLanguage': 'Γλώσσα',
-      'settingsSectionAI': 'Βοηθός AI',
-      'settingsAiProvider': 'Πάροχος',
-      'settingsAiProviderGemini': 'Google Gemini',
-      'settingsAiProviderOpenAi': 'OpenAI',
-      'settingsAiProviderMistral': 'Mistral AI',
-      'settingsAiProviderCustom': 'Προσαρμοσμένος πάροχος',
-      'settingsAiModel': 'Μοντέλο',
-      'settingsAiApiKey': 'Κλειδί API',
-      'settingsAiApiKeyNotSet': 'Δεν έχει ρυθμιστεί — πάτησε για ρύθμιση',
-      'settingsAiApiKeyDialogDesc':
-          'Απαιτείται για τον βοηθό AI. Χρησιμοποίησε «Λήψη κλειδιού API» για να ανοίξεις τη σωστή σελίδα του επιλεγμένου παρόχου.',
-      'settingsAiApiKeyGet': 'Λήψη κλειδιού API',
-      'settingsAiApiKeyOpenFailed':
-          'Δεν ήταν δυνατό να ανοίξει η σελίδα κλειδιού API.',
-      'settingsAiPrompt': 'Εντολή συστήματος',
-      'settingsAiPromptDesc':
-          'Επεξεργάσου την προεπιλεγμένη εντολή και χρησιμοποίησε μεταβλητές όπως [timetable].',
-      'settingsAiPromptEditTitle': 'Επεξεργασία εντολής συστήματος',
-      'settingsAiPromptReset': 'Επαναφορά',
-      'settingsAiPromptVariables': 'Μεταβλητές εντολής',
-      'settingsAiPromptVariablesDesc':
-          'Όλοι οι δείκτες που αντικαθίστανται αυτόματα με δεδομένα της εφαρμογής.',
-      'settingsAiCustomBaseUrl': 'Προσαρμοσμένη βασική URL',
-      'settingsAiCustomBaseUrlDesc':
-          'Βασική URL του δικού σου παρόχου (συμβατός με OpenAI ή Gemini).',
-      'settingsAiCustomBaseUrlHint': 'https://api.parochos-sou.tld/v1',
-      'settingsAiCompatibility': 'Προσαρμοσμένη συμβατότητα',
-      'settingsAiCompatibilityOpenAi': 'Συμβατός με OpenAI',
-      'settingsAiCompatibilityGemini': 'Συμβατός με Gemini',
-      'aiCustomBaseUrlMissing':
-          '⚠️ Πρώτα ρύθμισε την προσαρμοσμένη βασική URL στις ρυθμίσεις AI.',
-      'settingsPageTransition': 'Μετάβαση σελίδας',
-      'settingsPageTransitionDesc':
-          'Επίλεξε τον τρόπο μετάβασης για την πλοήγηση',
-      'settingsUseMaterialYou': 'Material You',
-      'settingsUseMaterialYouDesc':
-          'Αυτόματη προσαρμογή στο χρώμα έμφασης του συστήματος',
-      'settingsCustomColorSeed': 'Προσαρμοσμένο χρώμα',
-      'settingsPageTransitionBounce': 'Αναπήδηση',
-      'settingsPageTransitionFade': 'Εξασθένιση',
-      'settingsPageTransitionSlide': 'Ολίσθηση',
-      'settingsPageTransitionZoom': 'Ζουμ',
-      'settingsPageTransitionBlur': 'Θόλωση',
-      'settingsPageTransitionEaseIn': 'Ease In',
-      'settingsPageTransitionEaseOut': 'Ease Out',
-      'settingsPageTransitionExpo': 'Expo',
-      'bgEditorUndo': 'Αναίρεση',
-      'bgEditorRedo': 'Επανάληψη',
-      'bgEditorRandomize': 'Τυχαίο',
-      'settingsApiKey': 'Κλειδί Gemini API',
-      'settingsApiKeyNotSet': 'Δεν έχει ρυθμιστεί — πάτησε για ρύθμιση',
-      'settingsApiKeyDialogTitle': 'Κλειδί Gemini API',
-      'settingsApiKeyDialogDesc':
-          'Απαιτείται για τον βοηθό AI. Βρες το κλειδί σου στο aistudio.google.com/app/apikey.',
-      'settingsApiKeySave': 'Αποθήκευση',
-      'settingsApiKeyRemove': 'Αφαίρεση',
-      'settingsApiKeyCancel': 'Ακύρωση',
-      'settingsSectionHidden': 'Κρυμμένα μαθήματα',
-      'settingsNoHidden': 'Δεν υπάρχουν κρυμμένα μαθήματα',
-      'settingsNoHiddenDesc': 'Άγγιξε ένα μάθημα για να το αποκρύψεις.',
-      'settingsUnhide': 'Εμφάνιση',
-      'settingsHiddenCount': '{n} μάθημα(τα) κρυμμένα',
-      'settingsSectionColors': 'Χρώματα μαθημάτων',
-      'settingsColorsDesc': 'Άγγιξε ένα μάθημα για να διαλέξεις χρώμα.',
-      'settingsNoSubjectsLoaded': 'Δεν έχουν φορτωθεί μαθήματα',
-      'settingsNoSubjectsLoadedDesc': 'Άνοιξε πρώτα το ωρολόγιό σου.',
-      'settingsCustomColor': 'Προσαρμοσμένο',
-      'settingsDefaultColor': 'Προεπιλεγμένο χρώμα',
-      'settingsColorFor': 'Χρώμα για "{s}"',
-      'settingsColorReset': 'Επαναφορά στην προεπιλογή',
-      'settingsColorCustomPicker': 'Επιλογή προσαρμοσμένου χρώματος',
-      'settingsColorApply': 'Εφαρμογή χρώματος',
-      'settingsColorRed': 'Κόκκινο',
-      'settingsColorGreen': 'Πράσινο',
-      'settingsColorBlue': 'Μπλε',
-      'settingsThemeMode': 'Συνδυασμός χρωμάτων',
-      'settingsThemeLight': 'Φωτεινό',
-      'settingsThemeSystem': 'Σύστημα',
-      'settingsThemeDark': 'Σκοτεινό',
-      'settingsSectionTimetable': 'Ωρολόγιο',
-      'settingsShowCancelled': 'Εμφάνιση ακυρωμένων μαθημάτων',
-      'settingsShowCancelledDesc':
-          'Τα ακυρωμένα μαθήματα εμφανίζονται στο ωρολόγιο',
-      'settingsCancelledColor': 'Χρώμα ακύρωσης',
-      'settingsCancelledColorDesc': 'Προσαρμογή χρώματος για ακυρωμένα μαθήματα',
-      'settingsMonochromeLessons': 'Μονόχρωμα μαθήματα',
-      'settingsMonochromeLessonsDesc':
-          'Χρήση Material You χρωμάτων αντί για μεμονωμένα χρώματα',
-      'settingsDemoMode': 'Λειτουργία demo',
-      'settingsDemoModeDesc':
-          'Χρησιμοποιεί τοπικά δεδομένα demo αντί για τους διακομιστές του σχολείου (άμεση ενεργοποίηση).',
-      'settingsBackgroundAnimations': 'Κινούμενα στοιχεία φόντου',
-      'settingsBackgroundAnimationsDesc':
-          'Εμφάνιση κινούμενων εφέ διαβάθμισης στο φόντο',
-      'settingsBackgroundGyroscope': 'Αντίδραση γυροσκοπίου',
-      'settingsBackgroundGyroscopeDesc':
-          'Κάνει το φόντο να αντιδρά στην κίνηση της συσκευής',
-      'settingsBackgroundStyle': 'Στυλ κίνησης',
-      'settingsBackgroundStyleOrbs': 'Σφαίρες',
-      'settingsBackgroundStyleSpace': 'Διάστημα',
-      'settingsBackgroundStyleBubbles': 'Φυσαλίδες',
-      'settingsBackgroundStyleLines': 'Γραμμές',
-      'settingsBackgroundStyleThreeD': '3D σχήματα',
-      'settingsBackgroundStyleNebula': 'Νεφέλωμα',
-      'settingsBackgroundStylePrism': 'Πρίσμα',
-      'settingsBackgroundStyleWaves': 'Κύματα',
-      'settingsBackgroundStyleGrid': 'Πλέγμα',
-      'settingsBackgroundStyleRings': 'Δακτύλιοι',
-      'settingsBackgroundStyleCustom': 'Προσαρμοσμένο',
-      'settingsCustomBackgrounds': 'Προσαρμοσμένα φόντα',
-      'settingsCustomBackgroundsDesc':
-          'Δημιουργία, αποθήκευση, εισαγωγή και εξαγωγή',
-      'settingsCustomBackgroundsSelected': 'Επιλεγμένο: {name}',
-
-      'bgEditorTitle': 'Επεξεργαστής φόντου',
-      'bgEditorPreviewTab': 'Προεπισκόπηση',
-      'bgEditorDesignTab': 'Σχεδίαση',
-      'bgEditorLibraryTab': 'Βιβλιοθήκη',
-      'bgEditorStartPoints': 'Σημεία εκκίνησης',
-      'bgEditorUpdatedAt': 'Ενημερώθηκε',
-      'bgEditorEdit': 'Επεξεργασία',
-      'bgEditorLivePreview': 'Ζωντανή προεπισκόπηση',
-      'bgEditorUnsavedTitle': 'Μη αποθηκευμένες αλλαγές',
-      'bgEditorUnsavedDesc':
-          'Αποθήκευση αλλαγών, απόρριψη ή συνέχεια επεξεργασίας;',
-      'bgEditorDiscard': 'Απόρριψη',
-      'bgEditorSave': 'Αποθήκευση',
-      'bgEditorSaved': 'Αποθηκεύτηκε.',
-      'bgEditorSaveFailed': 'Αποτυχία αποθήκευσης.',
-      'bgEditorUseInApp': 'Χρήση στην εφαρμογή',
-      'bgEditorApplied': 'Εφαρμόστηκε ως φόντο.',
-      'bgEditorLibrary': 'Βιβλιοθήκη',
-      'bgEditorNew': 'Νέο',
-      'bgEditorNewName': 'Νέο φόντο',
-      'bgEditorDuplicate': 'Αντιγραφή',
-      'bgEditorDelete': 'Διαγραφή',
-      'bgEditorDeleteTitle': 'Διαγραφή φόντου;',
-      'bgEditorDeleteDesc': 'Αυτό το φόντο θα διαγραφεί οριστικά.',
-      'bgEditorDeleteConfirm': 'Διαγραφή',
-
-      'bgEditorExportTitle': 'Εξαγωγή',
-      'bgEditorExportSelected': 'Εξαγωγή επιλεγμένου',
-      'bgEditorExportAll': 'Εξαγωγή όλων',
-      'bgEditorExported': 'Το JSON αντιγράφηκε στο πρόχειρο.',
-      'bgEditorExportedAll': 'Όλα τα φόντα αντιγράφηκαν ως JSON.',
-
-      'bgEditorImportTitle': 'Εισαγωγή',
-      'bgEditorImportFromClipboard': 'Από το πρόχειρο',
-      'bgEditorImportFromFile': 'Από αρχείο',
-      'bgEditorImportClipboardEmpty': 'Το πρόχειρο είναι κενό.',
-      'bgEditorImportedCount': 'Εισήχθησαν {n} φόντο(α).',
-      'bgEditorImportFailed': 'Η εισαγωγή απέτυχε.',
-
-      'bgEditorMeta': 'Μεταδεδομένα',
-      'bgEditorName': 'Όνομα',
-      'bgEditorBase': 'Βασική διαβάθμιση',
-      'bgEditorUseThemeColors': 'Χρήση χρωμάτων θέματος',
-      'bgEditorUseThemeColorsDesc': 'Χρησιμοποιεί χρώματα από το τρέχον θέμα.',
-      'bgEditorGradientLinear': 'Γραμμική',
-      'bgEditorGradientRadial': 'Ακτινική',
-      'bgEditorBaseOpacity': 'Αδιαφάνεια βάσης',
-      'bgEditorGradientAngle': 'Γωνία',
-      'bgEditorRadialCenterX': 'Κέντρο X',
-      'bgEditorRadialCenterY': 'Κέντρο Y',
-      'bgEditorRadialRadius': 'Ακτίνα',
-      'bgEditorColorN': 'Χρώμα {n}',
-
-      'bgEditorOrbs': 'Σφαίρες',
-      'bgEditorOrbsEnabled': 'Ενεργοποίηση σφαιρών',
-      'bgEditorOrbsThemeDesc': 'Χρησιμοποιεί χρώματα θέματος για τις σφαίρες.',
-      'bgEditorRandomizeSeed': 'Τυχαίο seed',
-      'bgEditorOrbsCount': 'Πλήθος',
-      'bgEditorOrbsSize': 'Μέγεθος',
-      'bgEditorOrbsVariance': 'Διακύμανση',
-      'bgEditorOrbsOpacity': 'Αδιαφάνεια',
-      'bgEditorOrbsSoftness': 'Απαλότητα',
-      'bgEditorOrbColorN': 'Χρώμα σφαίρας {n}',
-
-      'bgEditorEffects': 'Μοτίβο & εφέ',
-      'bgEditorPatternNone': 'Κανένα',
-      'bgEditorPatternLines': 'Γραμμές',
-      'bgEditorPatternGrid': 'Πλέγμα',
-      'bgEditorPatternOpacity': 'Αδιαφάνεια μοτίβου',
-      'bgEditorPatternScale': 'Κλίμακα',
-      'bgEditorPatternAngle': 'Γωνία μοτίβου',
-      'bgEditorNoise': 'Θόρυβος',
-      'bgEditorVignette': 'Βινιέτα',
-
-      'bgEditorMotion': 'Κίνηση',
-      'bgEditorAnimate': 'Κίνηση',
-      'bgEditorSpeed': 'Ταχύτητα',
-      'bgEditorParallax': 'Παράλλαξη',
-
-      'bgEditorAiTitle': 'Γεννήτρια AI',
-      'bgEditorAiDesc': 'Περιέγραψε ένα στυλ — το AI δημιουργεί νέο φόντο.',
-      'bgEditorAiHint': 'π.χ. « νέφος νέον, απαλό, σκοτεινό, μπλε/ροζ »',
-      'bgEditorAiGenerate': 'Δημιουργία με AI',
-      'bgEditorAiSystem': '''
-You generate ONE Flutter background preset.
-Output ONLY valid JSON (no markdown, no commentary).
-
-Return a single JSON object with this schema:
-{
-    "version": 1,
-    "name": "...",
-    "base": {
-        "type": "linear"|"radial",
-        "useThemeColors": true|false,
-        "colors": ["#RRGGBB", ...],
-        "opacity": 0.0-1.0,
-        "angleDeg": 0-360,
-        "centerX": -1..1,
-        "centerY": -1..1,
-        "radius": 0.3-2.5
-    },
-    "orbs": {
-        "enabled": true|false,
-        "useThemeColors": true|false,
-        "colors": ["#RRGGBB", ...],
-        "count": 0-18,
-        "seed": 0-2147483647,
-        "size": 40-480,
-        "sizeVariance": 0.0-1.0,
-        "opacity": 0.0-1.0,
-        "softness": 0.0-1.0
-    },
-    "pattern": {
-        "type": "none"|"lines"|"grid",
-        "opacity": 0.0-1.0,
-        "scale": 0.4-3.5,
-        "angleDeg": 0-360
-    },
-    "noise": 0.0-0.5,
-    "vignette": 0.0-1.0,
-    "animate": true|false,
-    "animationSpeed": 0.0-3.0,
-    "parallaxStrength": 0.0-1.0
-}
-
-Keep values reasonable and visually pleasing. Prefer 2-3 base colors.
-Use "useThemeColors": true unless the prompt asks for specific colors.
-''',
-      'bgEditorAiUserPrefix': 'Description:',
-      'bgEditorAiUserSchemaHint':
-          'Return JSON only. Do not wrap in code fences.',
-      'bgEditorAiGeneratedName': 'Φόντο AI',
-      'bgEditorAiSuccess': 'Δημιουργήθηκε φόντο AI.',
-      'bgEditorAiError': 'AI: ',
-      'settingsGlassEffect': 'θόλωση',
-      'settingsGlassEffectDesc':
-          'Ενεργοποιεί ήπια θόλωσης σε όλο το περιβάλλον',
-      'settingsProgressivePush': 'Σταδιακή ειδοποίηση push',
-      'settingsProgressivePushDesc':
-          'Εμφανίζει το τρέχον μάθημα ως μόνιμη ειδοποίηση',
-      'settingsDailyBriefingPush': 'Ειδοποίηση ημερήσιας σύνοψης',
-      'settingsDailyBriefingPushDesc':
-          'Εμφανίζει το πρωί μια σύντομη προεπισκόπηση της σχολικής ημέρας',
-      'settingsImportantChangesPush': 'Σημαντικές αλλαγές',
-      'settingsImportantChangesPushDesc':
-          'Ειδοποιεί για ακυρώσεις, αλλαγές αιθουσών και αναπληρώσεις',
-      'settingsRefreshPushWidgetNow': 'Ανανέωση push και widget τώρα',
-      'settingsRefreshPushWidgetNowDesc':
-          'Φορτώνει αμέσως τα πιο πρόσφατα δεδομένα από την προσωρινή μνήμη του API και ενημερώνει το widget και το push',
-      'settingsBackgroundLoading': 'Τα δεδομένα φορτώνονται στο παρασκήνιο...',
-      'settingsSectionUpdates': 'Ενημερώσεις',
-      'settingsSectionAbout': 'Σχετικά',
-      'appName': 'Untis+',
-      'settingsAppVersion': 'Έκδοση',
-      'settingsBuild': 'Build',
-      'settingsSectionSubjects': 'Μαθήματα & Χρώματα',
-      'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
-      'settingsGithubUpdateCheck': 'Έλεγχος για ενημερώσεις στο GitHub',
-      'settingsGithubUpdateCheckDesc':
-          'Ελέγχει την πιο πρόσφατη έκδοση από το ninocss/UntisPlus.',
-      'settingsGithubDirectDownload':
-          'Λήψη της πιο πρόσφατης έκδοσης απευθείας',
-      'settingsGithubDirectDownloadDesc':
-          'Κατά τον έλεγχο ανοίγει αμέσως το νεότερο APK/αρχείο έκδοσης.',
-      'settingsGithubChecking': 'Έλεγχος για ενημερώσεις...',
-      'settingsGithubUpdateFound': 'Βρέθηκε νέα έκδοση: {v}',
-      'settingsGithubDownloadNow': 'Λήψη',
-      'settingsGithubNoDownloadAsset':
-          'Δεν βρέθηκε άμεσο αρχείο λήψης. Άνοιγμα σελίδας έκδοσης...',
-      'settingsGithubDownloadStarted':
-          'Η λήψη/η έκδοση άνοιξε στον περιηγητή σου.',
-      'settingsGithubOpenFailed':
-          'Δεν ήταν δυνατό να ανοίξει ο σύνδεσμος λήψης.',
-      'settingsGithubCheckFailed':
-          'Ο έλεγχος ενημερώσεων απέτυχε. Δοκίμασε ξανά αργότερα.',
-      'settingsGithubNoUpdate': 'Έχεις ήδη την πιο πρόσφατη έκδοση.',
-      'settingsGithubCurrentVersion': 'Εγκατεστημένη έκδοση',
-      'settingsGithubLatestVersion': 'Τελευταία έκδοση',
-      'settingsGithubInstallQuestion':
-          'Θέλεις να κατεβάσεις και να εγκαταστήσεις αυτήν την ενημέρωση τώρα;',
-      'settingsGithubInstallNow': 'Εγκατάσταση τώρα',
-      'settingsGithubInstallLater': 'Αργότερα',
-      'settingsGithubInstallPrompted':
-          'Η λήψη ξεκίνησε. Η προτροπή εγκατάστασης εμφανίζεται μετά τη λήψη.',
-      'settingsGithubOpenReleasePage': 'Άνοιγμα σελίδας έκδοσης στο GitHub',
-      'settingsBackupIncludeApiKeys': 'Συμπερίληψη API keys',
-      'settingsBackupIncludeApiKeysDesc':
-          'Ενεργοποίησέ το μόνο αν το αντίγραφο αποθηκεύεται με ασφάλεια.',
-      'settingsBackupExportAllFile': 'Εξαγωγή όλων των ρυθμίσεων σε αρχείο',
-      'settingsBackupExportAllClipboard':
-          'Αντιγραφή όλων των ρυθμίσεων στο πρόχειρο',
-      'settingsBackupImportAllTitle': 'Εισαγωγή όλων των ρυθμίσεων',
-      'settingsBackupImportAllFile': 'Εισαγωγή από αρχείο',
-      'settingsBackupImportAllClipboard': 'Εισαγωγή από πρόχειρο',
-      'settingsBackupExportDialogTitle': 'Αποθήκευση αντιγράφου ρυθμίσεων',
-      'settingsBackupExportSuccess': 'Το αντίγραφο αποθηκεύτηκε.',
-      'settingsBackupExportClipboardSuccess':
-          'Το backup JSON αντιγράφηκε στο πρόχειρο.',
-      'settingsBackupImportSuccess': 'Το αντίγραφο εισήχθη.',
-      'settingsBackupImportFailed':
-          'Η εισαγωγή απέτυχε. Έλεγξε το JSON και το schema.',
-      'settingsBackupClipboardEmpty': 'Το πρόχειρο είναι άδειο.',
-      'settingsBackupConfirmTitle': 'Επιβεβαίωση εισαγωγής',
-      'settingsBackupConfirmDesc':
-          'Η εισαγωγή αντικαθιστά τις τρέχουσες ρυθμίσεις και ενημερώνει άμεσα την εφαρμογή.',
-      'settingsBackupConfirmAction': 'Εισαγωγή',
-
-      'aiSystemPersona':
-          'Είσαι ο "Βοηθός Προγράμματος", ένας φιλικός και ενθαρρυντικός βοηθός AI για μαθητές.',
-      'aiSystemRules': '''ΚΑΝΟΝΕΣ:
-- Απάντησε με βάση τα δεδομένα του ωρολογίου και των εξετάσεων παραπάνω.
-- ΜΗΝ επινοείς μαθήματα, ώρες, καθηγητές ή άλλες πληροφορίες.
-- Λάβε υπόψη σου εξετάσεις/τεστ στις απαντήσεις σου, αν χρειάζεται.
-- Αν κάτι δεν μπορεί να προκύψει από τα δεδομένα, πες το ανοιχτά.
-- Σεβάσου τις ενδείξεις [ΑΚΥΡΩΘΗΚΕ] (αυτά τα μαθήματα δεν γίνονται).
-- "Ελεύθερες ώρες" = τα κενά ανάμεσα σε δύο μαθήματα.
-- Απάντησε στα ελληνικά, με φιλικό, χρήσιμο και σύντομο τρόπο.
-- Μην ξεκινάς αυτόματα με «Ναι,» - απάντησε απευθείας.
-- Μπορείς να χρησιμοποιήσεις Markdown για μορφοποίηση (π.χ. λίστες, **έντονα**).''',
+      'classPickerHeaderDesc':
+          'Selecciona un horario. Los favoritos se muestran arriba.',
+      'classPickerDefaultBadge': 'Predeterminado',
+      'classPickerSetDefault': 'Establecer como predeterminado',
+      'classPickerOtherClasses': 'Otras clases',
+      'classPickerRemoveFavorite': 'Eliminar de favoritos',
+      'classPickerAddFavorite': 'Guardar en favoritos',
     },
   };
 }

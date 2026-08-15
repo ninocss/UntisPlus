@@ -14,11 +14,30 @@ class _AnimatedBackground extends StatelessWidget {
         return ValueListenableBuilder<int>(
           valueListenable: backgroundAnimationStyleNotifier,
           builder: (context, style, _) {
-            return Stack(
-              children: [
-                Positioned.fill(child: _AnimatedBackgroundScene(style: style)),
-                child,
-              ],
+            return ValueListenableBuilder<bool>(
+              valueListenable: appBgBlurEnabledNotifier,
+              builder: (context, bgBlurEnabled, _) {
+                return ValueListenableBuilder<double>(
+                  valueListenable: appBgBlurAmountNotifier,
+                  builder: (context, bgBlurAmount, _) {
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: _AnimatedBackgroundScene(style: style),
+                        ),
+                        if (bgBlurEnabled && bgBlurAmount > 0)
+                          Positioned.fill(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: bgBlurAmount, sigmaY: bgBlurAmount),
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                        child,
+                      ],
+                    );
+                  },
+                );
+              },
             );
           },
         );
@@ -26,6 +45,7 @@ class _AnimatedBackground extends StatelessWidget {
     );
   }
 }
+
 
 class _AnimatedBackgroundScene extends StatefulWidget {
   final int style;

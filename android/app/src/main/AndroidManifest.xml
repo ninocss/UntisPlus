@@ -44,7 +44,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_3d"
+            android:icon="@mipmap/ic_launcher"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -57,7 +57,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_chrom"
+            android:icon="@mipmap/ic_launcher"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -70,7 +70,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_galaxy"
+            android:icon="@mipmap/ic_launcher"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -83,7 +83,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_gradiant"
+            android:icon="@mipmap/ic_launcher"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -96,7 +96,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_marmor"
+            android:icon="@mipmap/ic_launcher"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -109,7 +109,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_paper"
+            android:icon="@mipmap/ic_launcher"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

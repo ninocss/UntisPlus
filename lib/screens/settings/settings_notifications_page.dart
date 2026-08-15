@@ -8,6 +8,7 @@ class SettingsNotificationsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
@@ -19,105 +20,60 @@ class SettingsNotificationsPage extends StatelessWidget {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: progressivePushNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                    value: value,
-                    onChanged: _settingsSetProgressivePush,
-                    title: Text(
-                      l.settingsProgressivePush,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsProgressivePushDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: dailyBriefingPushNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                    value: value,
-                    onChanged: _settingsSetDailyBriefingPush,
-                    title: Text(
-                      l.settingsDailyBriefingPush,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsDailyBriefingPushDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              color: cs.surfaceContainerHigh,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: importantChangesPushNotifier,
-                builder: (context, value, _) {
-                  return SwitchListTile.adaptive(
-
-                        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((Set<WidgetState> states) {
-                          if (states.contains(WidgetState.selected)) {
-                            return const Icon(Icons.check);
-                          }
-                          return const Icon(Icons.close);
-                        }),
-
-                    value: value,
-                    onChanged: _settingsSetImportantChangesPush,
-                    title: Text(
-                      l.settingsImportantChangesPush,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      l.settingsImportantChangesPushDesc,
-                      style: GoogleFonts.outfit(),
-                    ),
-                  );
-                },
-              ),
+            SettingsGroup(
+              title: l.settingsHubNotifications,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: progressivePushNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.timelapse_rounded,
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onPrimaryContainer,
+                      title: l.settingsProgressivePush,
+                      subtitle: l.settingsProgressivePushDesc,
+                      value: value,
+                      onChanged: _settingsSetProgressivePush,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: dailyBriefingPushNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.wb_sunny_rounded,
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onSecondaryContainer,
+                      title: l.settingsDailyBriefingPush,
+                      subtitle: l.settingsDailyBriefingPushDesc,
+                      value: value,
+                      onChanged: _settingsSetDailyBriefingPush,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: importantChangesPushNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.notifications_active_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsImportantChangesPush,
+                      subtitle: l.settingsImportantChangesPushDesc,
+                      value: value,
+                      onChanged: _settingsSetImportantChangesPush,
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),

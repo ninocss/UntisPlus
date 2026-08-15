@@ -85,10 +85,6 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   DateTime _currentMonday = DateTime.now();
   bool _loading = true;
   bool _thinking = false;
-  bool _showTypingHint = false;
-  bool _showBanner = true;
-  bool _bannerExpanded = false;
-  String _loadedHistoryDate = '';
 
   @override
   void initState() {
@@ -176,6 +172,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   }
 
   _AiSearchResult _parseSearchResult({required String query, required String reply}) {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final fallbackHeadline = reply.split(RegExp(r'[\n\.\!\?]')).first.trim();
     final fallbackSummary = reply.trim().isEmpty ? query : reply.trim();
     try {
@@ -216,7 +213,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     return _AiSearchResult(
       query: query,
       headline: fallbackHeadline.isEmpty
-          ? (appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Neue Suche' : 'New search')
+          ? l.aiNewSearch
           : fallbackHeadline,
       summary: fallbackSummary,
       tags: const [],
@@ -233,18 +230,6 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         3: <dynamic>[],
         4: <dynamic>[],
       };
-
-  String _weekCacheKey() {
-    final monday = DateFormat('yyyyMMdd').format(_currentMonday);
-    return [
-      'weekCacheV1',
-      schoolUrl,
-      schoolName,
-      personType.toString(),
-      personId.toString(),
-      monday,
-    ].join('|');
-  }
 
   Map<int, List<dynamic>> _decodeWeek(Map<dynamic, dynamic> week) {
     final tempWeek = _emptyWeekData();
@@ -334,32 +319,6 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
         .where((value) => value > 0)
         .fold<int?>(null, (max, value) => max == null || value > max ? value : max);
     return lastEnd != null && nowMin > _toMinutes(lastEnd);
-  }
-
-  String _contextDateLabel() {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final icu = _icuLocale(appLocaleNotifier.value);
-    return DateFormat('EEEE, dd.MM', icu).format(DateTime.now());
-  }
-
-  int _lessonCountToday() => _todayLessons().length;
-
-  int _examCountThisWeek() {
-    final monday = DateTime(
-      _currentMonday.year,
-      _currentMonday.month,
-      _currentMonday.day,
-    );
-    final friday = monday.add(const Duration(days: 4));
-    final mondayStamp = int.parse(DateFormat('yyyyMMdd').format(monday));
-    final fridayStamp = int.parse(DateFormat('yyyyMMdd').format(friday));
-
-    return _exams.where((ex) {
-      final raw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
-          .toString();
-      final stamp = int.tryParse(raw);
-      return stamp != null && stamp >= mondayStamp && stamp <= fridayStamp;
-    }).length;
   }
 
   Future<void> _loadContext() async {
@@ -465,42 +424,6 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     });
   }
 
-  String _contextBannerText() {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final lessonCount = _lessonCountToday();
-    final examCount = _examCountThisWeek();
-    final lessonText = lessonCount == 1
-        ? (appLocaleNotifier.value.toLowerCase().startsWith('de') ? '1 Stunde' : '1 lesson')
-        : (appLocaleNotifier.value.toLowerCase().startsWith('de') ? '$lessonCount Stunden' : '$lessonCount lessons');
-    final examText = examCount == 1
-        ? (appLocaleNotifier.value.toLowerCase().startsWith('de') ? '1 Prüfung diese Woche' : '1 exam this week')
-        : (appLocaleNotifier.value.toLowerCase().startsWith('de') ? '$examCount Prüfungen diese Woche' : '$examCount exams this week');
-    return '${_contextDateLabel()}  •  $lessonText  •  $examText';
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 280),
-          curve: _kSoftBounce,
-        );
-      }
-    });
-  }
-
-  void _scrollToFirstChip() {
-    final context = _firstChipKey.currentContext;
-    if (context == null) return;
-    Scrollable.ensureVisible(
-      context,
-      duration: const Duration(milliseconds: 280),
-      curve: _kSoftBounce,
-      alignment: 0.5,
-    );
-  }
-
   Future<void> _openSettings() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SettingsAiPage()),
@@ -582,7 +505,7 @@ ANTWORTFORMAT:
             customCompatibility: aiCustomCompatibility,
           );
 
-    String _normalizedBaseUrl(String value) {
+    String normalizedBaseUrl(String value) {
       var out = value.trim();
       while (out.endsWith('/')) {
         out = out.substring(0, out.length - 1);
@@ -590,8 +513,8 @@ ANTWORTFORMAT:
       return out;
     }
 
-    String _openAiCompatibleEndpoint(String rawBaseUrl) {
-      final base = _normalizedBaseUrl(rawBaseUrl);
+    String openAiCompatibleEndpoint(String rawBaseUrl) {
+      final base = normalizedBaseUrl(rawBaseUrl);
       if (base.isEmpty) return '';
       if (base.endsWith('/chat/completions')) return base;
       if (base.endsWith('/v1')) return '$base/chat/completions';
@@ -599,8 +522,8 @@ ANTWORTFORMAT:
       return '$base/v1/chat/completions';
     }
 
-    String _geminiCompatibleEndpoint(String rawBaseUrl, String model) {
-      final base = _normalizedBaseUrl(rawBaseUrl);
+    String geminiCompatibleEndpoint(String rawBaseUrl, String model) {
+      final base = normalizedBaseUrl(rawBaseUrl);
       if (base.isEmpty) return '';
       if (base.contains('/models/')) return base;
       if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
@@ -608,7 +531,7 @@ ANTWORTFORMAT:
       return '$base/v1beta/models/$model:generateContent';
     }
 
-    Future<String> _requestGeminiResponse({
+    Future<String> requestGeminiResponse({
       required String endpoint,
       required String apiKey,
       required String systemPrompt,
@@ -675,7 +598,7 @@ ANTWORTFORMAT:
       return reply;
     }
 
-    Future<String> _requestOpenAiCompatibleResponse({
+    Future<String> requestOpenAiCompatibleResponse({
       required String endpoint,
       required String apiKey,
       required String model,
@@ -750,7 +673,7 @@ ANTWORTFORMAT:
 
     switch (provider) {
       case 'openai':
-        return _requestOpenAiCompatibleResponse(
+        return requestOpenAiCompatibleResponse(
           endpoint: 'https://api.openai.com/v1/chat/completions',
           apiKey: apiKey,
           model: model,
@@ -758,7 +681,7 @@ ANTWORTFORMAT:
           userQuery: userQuery,
         );
       case 'mistral':
-        return _requestOpenAiCompatibleResponse(
+        return requestOpenAiCompatibleResponse(
           endpoint: 'https://api.mistral.ai/v1/chat/completions',
           apiKey: apiKey,
           model: model,
@@ -772,15 +695,15 @@ ANTWORTFORMAT:
         }
         final compat = _normalizeAiCustomCompatibility(aiCustomCompatibility);
         if (compat == 'gemini') {
-          return _requestGeminiResponse(
-            endpoint: _geminiCompatibleEndpoint(baseUrl, model),
+          return requestGeminiResponse(
+            endpoint: geminiCompatibleEndpoint(baseUrl, model),
             apiKey: apiKey,
             systemPrompt: systemPrompt,
             userQuery: userQuery,
           );
         }
-        return _requestOpenAiCompatibleResponse(
-          endpoint: _openAiCompatibleEndpoint(baseUrl),
+        return requestOpenAiCompatibleResponse(
+          endpoint: openAiCompatibleEndpoint(baseUrl),
           apiKey: apiKey,
           model: model,
           systemPrompt: systemPrompt,
@@ -788,7 +711,7 @@ ANTWORTFORMAT:
         );
       case 'gemini':
       default:
-        return _requestGeminiResponse(
+        return requestGeminiResponse(
           endpoint:
               'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
           apiKey: apiKey,
@@ -840,7 +763,8 @@ ANTWORTFORMAT:
   }
 
   String _formatExamsForAi() {
-    if (_exams.isEmpty) return 'Keine Prüfungen eingetragen.';
+    final l = AppL10n.of(appLocaleNotifier.value);
+    if (_exams.isEmpty) return l.examsNoneEntered;
     final buf = StringBuffer();
     for (final ex in _exams) {
       final subject = ex['subject'] ?? ex['subjectName'] ?? '?';
@@ -929,101 +853,14 @@ ANTWORTFORMAT:
 
   List<String> _buildContextualChips() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
     final chips = <String>[l.aiSuggestions.first];
-    if (_hasTodayLessons) chips.add(isGerman ? 'Wann ist heute Schluss?' : 'When do I finish today?');
-    if (_hasCancellations) chips.add(isGerman ? 'Was fällt heute aus?' : 'What is cancelled today?');
-    if (_hasUpcomingExams) chips.add(isGerman ? 'Welche Prüfungen hab ich bald?' : 'Which exams are coming up?');
-    if (_isBeforeSchool) chips.add(isGerman ? 'Was hab ich heute als erstes?' : 'What is my first lesson today?');
-    if (_isDuringSchool) chips.add(isGerman ? 'Wann ist meine nächste Stunde?' : 'When is my next lesson?');
-    if (_isAfterSchool) chips.add(isGerman ? 'Was hab ich morgen?' : 'What do I have tomorrow?');
+    if (_hasTodayLessons) chips.add(l.aiPromptWhenFinishToday);
+    if (_hasCancellations) chips.add(l.aiPromptWhatCancelledToday);
+    if (_hasUpcomingExams) chips.add(l.aiPromptUpcomingExams);
+    if (_isBeforeSchool) chips.add(l.aiPromptFirstLessonToday);
+    if (_isDuringSchool) chips.add(l.aiPromptNextLesson);
+    if (_isAfterSchool) chips.add(l.aiPromptTomorrowSchedule);
     return chips.toSet().take(5).toList();
-  }
-
-  Widget _buildContextBanner(ColorScheme cs) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
-      child: !_showBanner
-          ? const SizedBox.shrink()
-          : InkWell(
-              onTap: () => setState(() => _bannerExpanded = !_bannerExpanded),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                key: const ValueKey('context_banner'),
-                margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer.withValues(alpha: 0.86),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
-                ),
-                child: AnimatedCrossFade(
-                  firstChild: Row(
-                    children: [
-                      Icon(Icons.event_note_rounded, color: cs.onPrimaryContainer),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _contextBannerText(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w700,
-                            color: cs.onPrimaryContainer,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => setState(() => _showBanner = false),
-                        icon: Icon(Icons.close_rounded, color: cs.onPrimaryContainer),
-                        visualDensity: VisualDensity.compact,
-                        tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
-                            ? 'Ausblenden'
-                            : 'Dismiss',
-                      ),
-                    ],
-                  ),
-                  secondChild: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.event_note_rounded, color: cs.onPrimaryContainer),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _contextBannerText(),
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                color: cs.onPrimaryContainer,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => setState(() => _showBanner = false),
-                            icon: Icon(Icons.close_rounded, color: cs.onPrimaryContainer),
-                            visualDensity: VisualDensity.compact,
-                            tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
-                                ? 'Ausblenden'
-                                : 'Dismiss',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        appLocaleNotifier.value.toLowerCase().startsWith('de')
-                            ? 'Ergebnisse werden als Karten und Stundenblöcke angezeigt.'
-                            : 'Results appear as cards and lesson blocks.',
-                        style: GoogleFonts.outfit(fontSize: 13, color: cs.onPrimaryContainer.withValues(alpha: 0.92)),
-                      ),
-                    ],
-                  ),
-                  crossFadeState: _bannerExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                  duration: const Duration(milliseconds: 220),
-                ),
-              ),
-            ),
-    );
   }
 
   Future<void> _handleMenuAction(String action) async {
@@ -1104,7 +941,7 @@ ANTWORTFORMAT:
   }
 
   Widget _buildSearchLoadingState(ColorScheme cs) {
-    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
+    final l = AppL10n.of(appLocaleNotifier.value);
     return SingleChildScrollView(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -1128,7 +965,7 @@ ANTWORTFORMAT:
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _latestQuery.isEmpty ? (isGerman ? 'Suche läuft…' : 'Search running…') : _latestQuery,
+                        _latestQuery.isEmpty ? l.aiSearchRunning : _latestQuery,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
@@ -1142,9 +979,7 @@ ANTWORTFORMAT:
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  isGerman
-                      ? 'Die KI formt gerade Karten und Stundenblöcke aus deinem Stundenplan.'
-                      : 'The AI is shaping cards and lesson blocks from your timetable.',
+                  l.aiSearchShapingDesc,
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -1170,11 +1005,13 @@ ANTWORTFORMAT:
   }
 
   Widget _buildTypingBubble(ColorScheme cs) {
-    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
-    final messages = isGerman
-        ? ['Analysiert den Stundenplan…', 'Sortiert Ergebnisse…', 'Fast fertig…']
-        : ['Analyzing timetable…', 'Sorting results…', 'Almost done…'];
-    final text = messages.isEmpty ? '' : messages[_typingHintIndex % messages.length];
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final messages = [
+      l.aiStepAnalyzingTimetable,
+      l.aiStepSortingResults,
+      l.aiStepAlmostDone,
+    ];
+    final text = messages[_typingHintIndex % messages.length];
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -1216,7 +1053,7 @@ ANTWORTFORMAT:
   }
 
   Widget _buildSearchBar(ColorScheme cs) {
-    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
+    final l = AppL10n.of(appLocaleNotifier.value);
     final mq = MediaQuery.of(context);
     final keyboardHeight = mq.viewInsets.bottom;
     final isKeyboardOpen = keyboardHeight > 0;
@@ -1253,7 +1090,7 @@ ANTWORTFORMAT:
                 color: cs.onSurface,
               ),
               decoration: InputDecoration(
-                hintText: isGerman ? 'Stunden, Freistunden, Prüfungen …' : 'Lessons, free periods, exams ...',
+                hintText: l.aiSearchHintPlaceholder,
                 hintStyle: GoogleFonts.outfit(
                   color: cs.onSurfaceVariant,
                 ),
@@ -1275,7 +1112,7 @@ ANTWORTFORMAT:
                       setState(() => _inputController.clear());
                     },
               icon: Icon(Icons.clear_rounded, color: cs.onSurfaceVariant),
-              tooltip: isGerman ? 'Leeren' : 'Clear',
+              tooltip: l.aiClearInput,
             ),
           ],
           const SizedBox(width: 8),
@@ -1311,7 +1148,7 @@ ANTWORTFORMAT:
 
   Widget _buildResultHeader(ColorScheme cs) {
     final result = _latestResult;
-    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
+    final l = AppL10n.of(appLocaleNotifier.value);
     if (result == null) {
       if (_thinking) {
         return _buildSearchLoadingState(cs);
@@ -1401,7 +1238,7 @@ ANTWORTFORMAT:
                 Icon(Icons.bar_chart_rounded, size: 18, color: cs.primary),
                 const SizedBox(width: 8),
                 Text(
-                  isGerman ? 'Übersicht' : 'Overview',
+                  l.aiOverview,
                   style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: cs.onSurface),
                 ),
               ],
@@ -1430,7 +1267,7 @@ ANTWORTFORMAT:
                 Icon(Icons.school_rounded, size: 18, color: cs.primary),
                 const SizedBox(width: 8),
                 Text(
-                  isGerman ? 'Stunden' : 'Lessons',
+                  l.aiLessons,
                   style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: cs.onSurface),
                 ),
               ],
@@ -1503,7 +1340,7 @@ ANTWORTFORMAT:
   }
 
   Widget _buildEmptyState(ColorScheme cs) {
-    final isGerman = appLocaleNotifier.value.toLowerCase().startsWith('de');
+    final l = AppL10n.of(appLocaleNotifier.value);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
@@ -1519,14 +1356,12 @@ ANTWORTFORMAT:
           ),
           const SizedBox(height: 20),
           Text(
-            isGerman ? 'Was möchtest du wissen?' : 'What do you want to know?',
+            l.aiEmptyPromptTitle,
             style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -0.5),
           ),
           const SizedBox(height: 8),
           Text(
-            isGerman
-                ? 'Frag nach Stunden, Prüfungen oder freien Räumen.'
-                : 'Ask about lessons, exams or free rooms.',
+            l.aiEmptyPromptSubtitle,
             style: GoogleFonts.outfit(fontSize: 15, color: cs.onSurfaceVariant, fontWeight: FontWeight.w500),
           ),
         ],
@@ -1553,34 +1388,24 @@ ANTWORTFORMAT:
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
-            tooltip: appLocaleNotifier.value.toLowerCase().startsWith('de')
-                ? 'Mehr'
-                : 'More',
+            tooltip: l.aiMore,
             onSelected: _handleMenuAction,
             itemBuilder: (context) => [
               PopupMenuItem<String>(
                 value: 'settings',
-                child: Text(
-                  appLocaleNotifier.value.toLowerCase().startsWith('de')
-                      ? 'KI-Einstellungen'
-                      : 'AI settings',
-                ),
+                child: Text(l.aiSettingsMenu),
               ),
               PopupMenuItem<String>(
                 value: 'prompt',
-                child: Text(
-                  appLocaleNotifier.value.toLowerCase().startsWith('de')
-                      ? 'System-Prompt'
-                      : 'System prompt',
-                ),
+                child: Text(l.settingsAiPrompt),
               ),
               PopupMenuItem<String>(
                 value: 'clear',
-                child: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Ergebnis leeren' : 'Clear result'),
+                child: Text(l.aiClearResult),
               ),
               PopupMenuItem<String>(
                 value: 'refresh',
-                child: Text(appLocaleNotifier.value.toLowerCase().startsWith('de') ? 'Neu suchen' : 'Search again'),
+                child: Text(l.aiSearchAgain),
               ),
             ],
           ),
@@ -1736,106 +1561,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     });
   }
 
-  Duration _getTransitionDuration(int index) {
-    switch (index) {
-      case 0: return const Duration(milliseconds: 500); // Bounce
-      case 1: return const Duration(milliseconds: 350); // Fade
-      case 2: return const Duration(milliseconds: 400); // Slide
-      case 3: return const Duration(milliseconds: 450); // Zoom
-      case 4: return const Duration(milliseconds: 400); // Blur
-      case 5: return const Duration(milliseconds: 400); // EaseIn
-      case 6: return const Duration(milliseconds: 400); // EaseOut
-      case 7: return const Duration(milliseconds: 500); // Expo
-      default: return const Duration(milliseconds: 400);
-    }
-  }
-
-  Curve _getTransitionCurve(int index) {
-    switch (index) {
-      case 0: return _kSmoothBounce; // Bounce
-      case 1: return Curves.easeInOut; // Fade
-      case 2: return Curves.easeInOut; // Slide
-      case 3: return _kSmoothBounce; // Zoom
-      case 4: return Curves.easeInOut; // Blur
-      case 5: return Curves.easeIn; // EaseIn
-      case 6: return Curves.easeOut; // EaseOut
-      case 7: return Curves.easeInOutCubic; // Expo
-      default: return Curves.easeInOut;
-    }
-  }
-
-  Widget _buildTabTransition(Widget child, Animation<double> animation, int transitionIndex) {
-    switch (transitionIndex) {
-      case 0: // Bounce
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.35, 0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: _kSmoothBounce)),
-          child: FadeTransition(opacity: animation, child: child),
-        );
-      case 1: // Fade
-        return FadeTransition(opacity: animation, child: child);
-      case 2: // Slide
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.15, 0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
-          child: FadeTransition(opacity: animation, child: child),
-        );
-      case 3: // Zoom
-        return ScaleTransition(
-          scale: Tween<double>(begin: 0.7, end: 1.0).animate(
-            CurvedAnimation(parent: animation, curve: _kSmoothBounce),
-          ),
-          child: FadeTransition(opacity: animation, child: child),
-        );
-      case 4: // Blur
-        return FadeTransition(
-          opacity: animation,
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(
-              sigmaX: 12 * (1 - animation.value),
-              sigmaY: 12 * (1 - animation.value),
-            ),
-            child: child,
-          ),
-        );
-      case 5: // EaseIn
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.2),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeIn)),
-          child: FadeTransition(opacity: animation, child: child),
-        );
-      case 6: // EaseOut
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, -0.2),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-          child: FadeTransition(opacity: animation, child: child),
-        );
-      case 7: // Expo
-        return ScaleTransition(
-          scale: Tween<double>(begin: 0.6, end: 1.0).animate(
-            CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic),
-          ),
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.15),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic)),
-            child: FadeTransition(opacity: animation, child: child),
-          ),
-        );
-      default:
-        return FadeTransition(opacity: animation, child: child);
-    }
-  }
-
   Widget _buildPageWithBackground(BuildContext context, Widget page) {
     final cs = Theme.of(context).colorScheme;
 
@@ -1871,43 +1596,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         ),
         Positioned.fill(child: page),
       ],
-    );
-  }
-
-  Widget _buildTabTransitionStack(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: pageTransitionNotifier,
-      builder: (context, transitionIndex, _) {
-        return AnimatedSwitcher(
-          duration: _getTransitionDuration(transitionIndex),
-          switchInCurve: _getTransitionCurve(transitionIndex),
-          switchOutCurve: Curves.linear,
-          transitionBuilder: (child, animation) {
-            // The outgoing child gets a reverse animation (1→0).
-            // We only apply the fancy transition to the incoming child;
-            // the outgoing child just fades out instantly to avoid whitescreen.
-            final isIncoming = animation.status != AnimationStatus.reverse;
-            if (!isIncoming) {
-              return FadeTransition(opacity: animation, child: child);
-            }
-            return _buildTabTransition(child, animation, transitionIndex);
-          },
-          layoutBuilder: (currentChild, previousChildren) {
-            return Stack(
-              alignment: Alignment.center,
-              fit: StackFit.expand,
-              children: [
-                ...previousChildren,
-                if (currentChild != null) currentChild,
-              ],
-            );
-          },
-          child: KeyedSubtree(
-            key: ValueKey(_selectedIndex),
-            child: _buildPageWithBackground(context, _pages[_selectedIndex]),
-          ),
-        );
-      },
     );
   }
 
