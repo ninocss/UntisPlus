@@ -1089,8 +1089,9 @@ class _CustomBackgroundEditorScreenState
   Future<String> _requestAiBackgroundSpec(String prompt) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final provider = _normalizeAiProvider(aiProvider);
+    final isLocalProvider = provider == 'local';
     final apiKey = _activeAiApiKey().trim();
-    if (apiKey.isEmpty) {
+    if (!isLocalProvider && apiKey.isEmpty) {
       throw Exception('CONFIG: ${_providerLabelForError(l)}');
     }
 
@@ -1141,6 +1142,12 @@ class _CustomBackgroundEditorScreenState
           model: model,
           systemPrompt: systemPrompt,
           userPrompt: userPrompt,
+        );
+      case 'local':
+        return _requestLocalModelText(
+          systemPrompt: systemPrompt,
+          userQuery: userPrompt,
+          modelPath: aiLocalModelPath,
         );
       case 'gemini':
       default:

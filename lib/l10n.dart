@@ -255,6 +255,22 @@ class AppL10n {
       _t('settingsAiCompatibilityOpenAi');
   String get settingsAiCompatibilityGemini =>
       _t('settingsAiCompatibilityGemini');
+  String get settingsAiProviderLocal => _t('settingsAiProviderLocal');
+  String get settingsAiLocalModel => _t('settingsAiLocalModel');
+  String get settingsAiLocalModelDesc => _t('settingsAiLocalModelDesc');
+  String get settingsAiLocalModelDownload => _t('settingsAiLocalModelDownload');
+  String get settingsAiLocalModelDownloading => _t('settingsAiLocalModelDownloading');
+  String get settingsAiLocalModelInstalled => _t('settingsAiLocalModelInstalled');
+  String get settingsAiLocalModelDelete => _t('settingsAiLocalModelDelete');
+  String get settingsAiLocalModelActive => _t('settingsAiLocalModelActive');
+  String get settingsAiLocalModelError => _t('settingsAiLocalModelError');
+  String get aiLocalModelExamNotSupported =>
+      _t('aiLocalModelExamNotSupported');
+  String get aiLocalModelLoadError => _t('aiLocalModelLoadError');
+  String settingsAiLocalModelSize(double size) =>
+      _t('settingsAiLocalModelSize').replaceAll('{size}', size.toString());
+  String get settingsAiLocalModelDeleteConfirm =>
+      _t('settingsAiLocalModelDeleteConfirm');
   String get settingsApiKey => _t('settingsApiKey');
   String get settingsApiKeyNotSet => _t('settingsApiKeyNotSet');
   String get settingsApiKeyDialogTitle => _t('settingsApiKeyDialogTitle');
@@ -777,6 +793,7 @@ class AppL10n {
       'settingsAiProviderOpenAi': 'OpenAI',
       'settingsAiProviderMistral': 'Mistral AI',
       'settingsAiProviderCustom': 'Custom Anbieter',
+      'settingsAiProviderLocal': 'Lokal (On-Device)',
       'settingsAiModel': 'Modell',
       'settingsAiApiKey': 'API-Schlüssel',
       'settingsAiApiKeyNotSet': 'Nicht konfiguriert — Tippen zum Einrichten',
@@ -792,6 +809,20 @@ class AppL10n {
       'settingsAiPromptVariables': 'Prompt-Variablen',
       'settingsAiPromptVariablesDesc':
           'Liste aller Platzhalter, die automatisch mit Daten ersetzt werden.',
+      'settingsAiLocalModel': 'Lokales Modell',
+      'settingsAiLocalModelDesc': 'Wähle und lade ein Modell für On-Device-Inferenz herunter.',
+      'settingsAiLocalModelDownload': 'Herunterladen',
+      'settingsAiLocalModelDownloading': 'Wird heruntergeladen…',
+      'settingsAiLocalModelInstalled': 'Installiert',
+      'settingsAiLocalModelDelete': 'Löschen',
+      'settingsAiLocalModelActive': 'Aktiv',
+      'settingsAiLocalModelError': 'Download fehlgeschlagen.',
+      'aiLocalModelExamNotSupported':
+          'Lokale Modelle unterstützen das Importieren von Prüfungsbildern nicht. Bitte wähle einen Online-Anbieter.',
+      'aiLocalModelLoadError':
+          'Lokales Modell konnte nicht geladen werden. Bitte lade es erneut herunter.',
+      'settingsAiLocalModelSize': 'Größe: {size} GB',
+      'settingsAiLocalModelDeleteConfirm': 'Modell wirklich löschen?',
       'aiVar_today': 'Heutiges Datum in lokaler Schreibweise',
       'aiVar_today_iso': 'Heutiges Datum im Format YYYY-MM-DD',
       'aiVar_locale': 'Aktive App-Sprache (z.B. de, en)',
@@ -1364,6 +1395,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderOpenAi': 'OpenAI',
       'settingsAiProviderMistral': 'Mistral AI',
       'settingsAiProviderCustom': 'Custom Provider',
+      'settingsAiProviderLocal': 'Local (On-Device)',
       'settingsAiModel': 'Model',
       'settingsAiApiKey': 'API Key',
       'settingsAiApiKeyNotSet': 'Not configured - tap to set up',
@@ -1379,6 +1411,20 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariables': 'Prompt Variables',
       'settingsAiPromptVariablesDesc':
           'All placeholders that are automatically replaced with app data.',
+      'settingsAiLocalModel': 'Local Model',
+      'settingsAiLocalModelDesc': 'Select and download a model for on-device inference.',
+      'settingsAiLocalModelDownload': 'Download',
+      'settingsAiLocalModelDownloading': 'Downloading…',
+      'settingsAiLocalModelInstalled': 'Installed',
+      'settingsAiLocalModelDelete': 'Delete',
+      'settingsAiLocalModelActive': 'Active',
+      'settingsAiLocalModelError': 'Download failed.',
+      'aiLocalModelExamNotSupported':
+          'Local models do not support importing exam images. Please choose an online provider.',
+      'aiLocalModelLoadError':
+          'Local model could not be loaded. Please download it again.',
+      'settingsAiLocalModelSize': 'Size: {size} GB',
+      'settingsAiLocalModelDeleteConfirm': 'Delete this model?',
       'aiVar_today': 'Today\'s date in local format',
       'aiVar_today_iso': 'Today\'s date in YYYY-MM-DD format',
       'aiVar_locale': 'Active app language (e.g. de, en)',
@@ -1956,6 +2002,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderOpenAi': 'OpenAI',
       'settingsAiProviderMistral': 'Mistral AI',
       'settingsAiProviderCustom': 'Fournisseur personnalisé',
+      'settingsAiProviderLocal': 'Local (On-Device)',
       'settingsAiModel': 'Modèle',
       'settingsAiApiKey': 'Clé API',
       'settingsAiApiKeyNotSet': 'Non configuré — appuyer pour configurer',
@@ -1971,6 +2018,20 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariables': 'Variables d\'invite',
       'settingsAiPromptVariablesDesc':
           'Tous les espaces réservés remplacés automatiquement par des données de l\'app.',
+      'settingsAiLocalModel': 'Modèle local',
+      'settingsAiLocalModelDesc': 'Sélectionne et télécharge un modèle pour l\'inférence sur l\'appareil.',
+      'settingsAiLocalModelDownload': 'Télécharger',
+      'settingsAiLocalModelDownloading': 'Téléchargement…',
+      'settingsAiLocalModelInstalled': 'Installé',
+      'settingsAiLocalModelDelete': 'Supprimer',
+      'settingsAiLocalModelActive': 'Actif',
+      'settingsAiLocalModelError': 'Échec du téléchargement.',
+      'aiLocalModelExamNotSupported':
+          'Les modèles locaux ne prennent pas en charge l\'importation d\'images d\'examens. Choisis un fournisseur en ligne.',
+      'aiLocalModelLoadError':
+          'Le modèle local n\'a pas pu être chargé. Télécharge-le à nouveau.',
+      'settingsAiLocalModelSize': 'Taille : {size} Go',
+      'settingsAiLocalModelDeleteConfirm': 'Supprimer ce modèle ?',
       'aiVar_today': 'Date d\'aujourd\'hui en format local',
       'aiVar_today_iso': 'Date d\'aujourd\'hui au format YYYY-MM-DD',
       'aiVar_locale': 'Langue active de l\'app (ex. de, en)',
@@ -2555,6 +2616,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderOpenAi': 'OpenAI',
       'settingsAiProviderMistral': 'Mistral AI',
       'settingsAiProviderCustom': 'Proveedor personalizado',
+      'settingsAiProviderLocal': 'Local (On-Device)',
       'settingsAiModel': 'Modelo',
       'settingsAiApiKey': 'Clave API',
       'settingsAiApiKeyNotSet': 'No configurado — toca para configurar',
@@ -2571,6 +2633,20 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariables': 'Variables de instrucción',
       'settingsAiPromptVariablesDesc':
           'Todos los marcadores de posición reemplazados automáticamente con datos de la app.',
+      'settingsAiLocalModel': 'Modelo local',
+      'settingsAiLocalModelDesc': 'Selecciona y descarga un modelo para inferencia en el dispositivo.',
+      'settingsAiLocalModelDownload': 'Descargar',
+      'settingsAiLocalModelDownloading': 'Descargando…',
+      'settingsAiLocalModelInstalled': 'Instalado',
+      'settingsAiLocalModelDelete': 'Eliminar',
+      'settingsAiLocalModelActive': 'Activo',
+      'settingsAiLocalModelError': 'Error al descargar.',
+      'aiLocalModelExamNotSupported':
+          'Los modelos locales no admiten la importación de imágenes de exámenes. Elige un proveedor en línea.',
+      'aiLocalModelLoadError':
+          'No se pudo cargar el modelo local. Descárgalo de nuevo.',
+      'settingsAiLocalModelSize': 'Tamaño: {size} GB',
+      'settingsAiLocalModelDeleteConfirm': '¿Eliminar este modelo?',
       'aiVar_today': 'Fecha de hoy en formato local',
       'aiVar_today_iso': 'Fecha de hoy en formato YYYY-MM-DD',
       'aiVar_locale': 'Idioma activo de la app (p.ej. de, en)',

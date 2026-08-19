@@ -491,8 +491,9 @@ ANTWORTFORMAT:
   }) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final provider = _normalizeAiProvider(aiProvider);
+    final isLocalProvider = provider == 'local';
     final apiKey = _activeAiApiKey().trim();
-    if (apiKey.isEmpty) {
+    if (!isLocalProvider && apiKey.isEmpty) {
       throw Exception(
         'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
       );
@@ -709,6 +710,12 @@ ANTWORTFORMAT:
           systemPrompt: systemPrompt,
           userQuery: userQuery,
         );
+      case 'local':
+        return _requestLocalModelText(
+          systemPrompt: systemPrompt,
+          userQuery: userQuery,
+          modelPath: aiLocalModelPath,
+        );
       case 'gemini':
       default:
         return requestGeminiResponse(
@@ -787,9 +794,10 @@ ANTWORTFORMAT:
     if (text.isEmpty || _thinking) return;
 
     final generation = ++_searchGeneration;
-    if (_activeAiApiKey().trim().isEmpty) {
+    final provider = _normalizeAiProvider(aiProvider);
+    final isLocalProvider = provider == 'local';
+    if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
       final l = AppL10n.of(appLocaleNotifier.value);
-      final provider = _normalizeAiProvider(aiProvider);
       final reply = _providerAwareMissingApiKeyMessage(l, provider);
       if (!mounted) return;
       setState(() {

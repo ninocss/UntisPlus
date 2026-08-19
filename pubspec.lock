@@ -41,6 +41,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
+  change_case:
+    dependency: transitive
+    description:
+      name: change_case
+      sha256: e41ef3df58521194ef8d7649928954805aeb08061917cf658322305e61568003
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.0"
   characters:
     dependency: transitive
     description:
@@ -129,6 +137,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.14"
+  dio:
+    dependency: "direct main"
+    description:
+      name: dio
+      sha256: "0df44ebba85e503958eb75d07eedd3c86275a58c1d3eda2f2ce8f0a2c3abbb3c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.11.0"
+  dio_web_adapter:
+    dependency: transitive
+    description:
+      name: dio_web_adapter
+      sha256: "0786d0b7295a373de356fc0af4f6f1d0ab2844ed31b19dfc5e7556b70e24212c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.1"
   dynamic_color:
     dependency: "direct main"
     description:
@@ -241,6 +265,23 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.9.3+5"
+  fixnum:
+    dependency: transitive
+    description:
+      name: fixnum
+      sha256: b6dc7065e46c974bc7c5f143080a6764ec7a4be6da1285ececdc37be96de53be
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.1"
+  fllama:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: main
+      resolved-ref: "3b1351a957920bf2a0df3709cce1e3a7195c479e"
+      url: "https://github.com/Telosnex/fllama.git"
+    source: git
+    version: "0.0.1"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -320,6 +361,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  glob:
+    dependency: transitive
+    description:
+      name: glob
+      sha256: c3f1ee72c96f8f78935e18aa8cecced9ab132419e8625dc187e1c2408efc20de
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.3"
   google_fonts:
     dependency: "direct main"
     description:
@@ -352,6 +401,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.0"
+  html_unescape:
+    dependency: transitive
+    description:
+      name: html_unescape
+      sha256: "15362d7a18f19d7b742ef8dcb811f5fd2a2df98db9f80ea393c075189e0b61e3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
   http:
     dependency: "direct main"
     description:
@@ -448,6 +505,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.20.3"
+  jinja:
+    dependency: transitive
+    description:
+      name: jinja
+      sha256: dab58a5cd10e174bbbe33c33020d39281510ea795dc43c9afba359f6fd6a90f5
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.7"
   jni:
     dependency: transitive
     description:
@@ -560,6 +625,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.0"
+  native_toolchain_cmake:
+    dependency: transitive
+    description:
+      name: native_toolchain_cmake
+      sha256: de90e8952bad0684bdcff4d674c53d961f5cd1fdcf3a0255a669a35986c4ac1d
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.7"
   objective_c:
     dependency: transitive
     description:
@@ -609,7 +682,7 @@ packages:
     source: hosted
     version: "1.9.1"
   path_provider:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path_provider
       sha256: a7f4874f987173da295a61c181b8ee71dab59b332a486b391babf26a1b884825
@@ -837,6 +910,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.12"
+  textwrap:
+    dependency: transitive
+    description:
+      name: textwrap
+      sha256: fd5db6fda8e378c06742254d21a60ea435075e482ab73029c7de1b66a77b5989
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.1"
   timezone:
     dependency: "direct main"
     description:
@@ -917,6 +998,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.5"
+  uuid:
+    dependency: transitive
+    description:
+      name: uuid
+      sha256: "9b129329f58692f6e6578329498a8fe9fbe98f090beb764ffbb8ee2eadd01dcd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.6.0"
   vector_math:
     dependency: transitive
     description:
@@ -1014,5 +1103,5 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.12.0 <4.0.0"
+  dart: ">=3.13.0 <4.0.0"
   flutter: ">=3.44.0"

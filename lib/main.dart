@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
@@ -19,6 +20,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:otp_auth/otp_auth.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:fllama/fllama.dart';
+import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'services/notification_service.dart';
@@ -68,6 +72,460 @@ Future<void> _applyAndroidWindowBlur(bool enabled) async {
   } catch (_) {
     // Silently ignore on platforms/API levels that don't support it.
   }
+}
+
+
+/// Abstract interface for AI providers.
+abstract class AIProvider {
+  Stream<String> streamResponse({
+    required String systemPrompt,
+    required List<Map<String, String>> history,
+    required String model,
+  });
+
+  Future<void> dispose();
+}
+
+/// Base class for remote API providers (Gemini, OpenAI, Mistral, Custom).
+abstract class RemoteAIProvider implements AIProvider {
+  final String apiKey;
+  final String? baseUrl;
+  final bool useGeminiProtocol;
+
+  RemoteAIProvider({
+    required this.apiKey,
+    this.baseUrl,
+    required this.useGeminiProtocol,
+  });
+
+  @override
+  Future<void> dispose() async {}
+}
+
+/// Gemini / Google Generative AI provider.
+class GeminiProvider extends RemoteAIProvider {
+  GeminiProvider({required String apiKey})
+      : super(apiKey: apiKey, useGeminiProtocol: true);
+
+  @override
+  Stream<String> streamResponse({
+    required String systemPrompt,
+    required List<Map<String, String>> history,
+    required String model,
+  }) async* {
+    final contents = history.map((m) {
+      final role = m['role'] == 'user' ? 'user' : 'model';
+      return {
+        'role': role,
+        'parts': [
+          {'text': m['content'] ?? ''},
+        ],
+      };
+    }).toList();
+
+    final body = jsonEncode({
+      'systemInstruction': {
+        'parts': [
+          {'text': systemPrompt},
+        ],
+      },
+      'contents': contents,
+      'generationConfig': {'maxOutputTokens': 2600, 'temperature': 0.2},
+    });
+
+    final endpoint =
+        'https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
+
+    final request = http.Request('POST', Uri.parse(endpoint));
+    request.headers.addAll({'Content-Type': 'application/json'});
+    request.body = body;
+
+    final response = await http.Client().send(request);
+    final stream = response.stream.transform(utf8.decoder);
+
+    await for (final chunk in stream) {
+      for (final line in chunk.split('\n')) {
+        if (line.startsWith('data: ')) {
+          final data = line.substring(6);
+          if (data == '[DONE]') return;
+          try {
+            final json = jsonDecode(data);
+            final candidates = json['candidates'];
+            if (candidates is List && candidates.isNotEmpty) {
+              final content = candidates.first['content'];
+              final parts = content is Map ? content['parts'] : null;
+              if (parts is List) {
+                for (final part in parts) {
+                  if (part is Map && part['text'] is String) {
+                    yield part['text'] as String;
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (response.statusCode != 200) {
+      final errorBody = await response.stream.bytesToString();
+      throw Exception('API: $errorBody');
+    }
+  }
+}
+
+/// OpenAI-compatible provider (OpenAI, Mistral, Custom OpenAI-compatible).
+class OpenAICompatibleProvider extends RemoteAIProvider {
+  final String endpoint;
+
+  OpenAICompatibleProvider({
+    required String apiKey,
+    required this.endpoint,
+    String? baseUrl,
+  }) : super(apiKey: apiKey, baseUrl: baseUrl, useGeminiProtocol: false);
+
+  @override
+  Stream<String> streamResponse({
+    required String systemPrompt,
+    required List<Map<String, String>> history,
+    required String model,
+  }) async* {
+    final messages = [
+      {'role': 'system', 'content': systemPrompt},
+      ...history,
+    ];
+
+    final body = jsonEncode({
+      'model': model,
+      'messages': messages,
+      'temperature': 0.2,
+      'stream': true,
+    });
+
+    final request = http.Request('POST', Uri.parse(endpoint));
+    request.headers.addAll({
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $apiKey',
+    });
+    request.body = body;
+
+    final response = await http.Client().send(request);
+    final stream = response.stream.transform(utf8.decoder);
+
+    await for (final chunk in stream) {
+      for (final line in chunk.split('\n')) {
+        if (line.startsWith('data: ')) {
+          final data = line.substring(6).trim();
+          if (data == '[DONE]') return;
+          if (data.isEmpty) continue;
+          try {
+            final json = jsonDecode(data);
+            final choices = json['choices'];
+            if (choices is List && choices.isNotEmpty) {
+              final delta = choices.first['delta'];
+              if (delta is Map && delta['content'] is String) {
+                yield delta['content'] as String;
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final errorBody = await response.stream.bytesToString();
+      throw Exception('API: $errorBody');
+    }
+  }
+}
+
+/// On-device LLM provider using fllama (llama.cpp).
+class LocalModelProvider implements AIProvider {
+  final String modelPath;
+  bool _isLoading = false;
+  final StringBuffer _nativeLogs = StringBuffer();
+
+  LocalModelProvider({required this.modelPath});
+
+  @override
+  Stream<String> streamResponse({
+    required String systemPrompt,
+    required List<Map<String, String>> history,
+    required String model,
+  }) async* {
+    if (_isLoading) return;
+
+final file = File(modelPath);
+     if (await file.exists()) {
+       final length = await file.length();
+       if (length < 1024 * 1024) {
+         // Remove corrupted or incomplete model file
+         await file.delete();
+       }
+     }
+     if (!await file.exists() || await file.length() < 1024 * 1024) {
+       yield* _streamLocalModelError();
+       return;
+     }
+
+    final messages = <Message>[
+      Message(Role.system, systemPrompt),
+      for (final msg in history)
+        Message(
+          msg['role'] == 'user' ? Role.user : Role.assistant,
+          msg['content'] ?? '',
+        ),
+    ];
+
+    final request = OpenAiRequest(
+      messages: messages,
+      modelPath: modelPath,
+      contextSize: 512,
+      maxTokens: 2600,
+      numGpuLayers: 0,
+      temperature: 0.2,
+      topP: 0.95,
+      frequencyPenalty: 0.5,
+      presencePenalty: 0.5,
+      logger: (String line) {
+        if (_nativeLogs.length < 16000) _nativeLogs.write('$line\n');
+      },
+    );
+
+    _isLoading = true;
+    final controller = StreamController<String>.broadcast();
+    final buffer = StringBuffer();
+
+    fllamaChat(
+      request,
+      (String response, String openaiResponseJsonString, bool done) {
+        if (controller.isClosed) return;
+        if (response.isNotEmpty) {
+          buffer.write(response);
+        }
+        if (done) {
+          if (_isFllamaLoadError(buffer.toString())) {
+            final logTail = _nativeLogs.toString().trim();
+            debugPrint('[LocalModel] load failed. Native log tail:\n$logTail');
+            if (!controller.isClosed) {
+              controller.addError(
+                Exception('AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}'),
+              );
+              controller.close();
+            }
+          } else {
+            controller.close();
+          }
+        } else if (response.isNotEmpty && !_isFllamaLoadError(response)) {
+          controller.add(response);
+        }
+      },
+    ).catchError((Object error) {
+      if (!controller.isClosed) {
+        controller.addError(error);
+        controller.close();
+      }
+      return -1;
+    });
+
+    yield* controller.stream;
+  }
+
+  @override
+  Future<void> dispose() async {
+    _isLoading = false;
+  }
+}
+
+/// Returns true if [text] indicates that fllama failed to load the model.
+///
+/// fllama's own [fllamaOutputIndicatesLoadError] misses the
+/// "Failed to create inference context" message emitted by fllama.cpp when
+/// llama.cpp cannot load the GGUF file, so detect it explicitly as well.
+bool _isFllamaLoadError(String text) {
+  return fllamaOutputIndicatesLoadError(text) ||
+      text.contains('Error: Failed to create inference context');
+}
+
+/// Yields a single error to the chat stream when the local model file is
+/// missing or invalid.
+Stream<String> _streamLocalModelError() async* {
+  throw Exception(
+    'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}',
+  );
+}
+
+/// Runs a one-shot inference on the locally downloaded model and returns the
+/// full generated text. Used by non-chat AI features (exam import, search,
+/// background editor) when the local provider is active.
+Future<String> _requestLocalModelText({
+  required String systemPrompt,
+  required String userQuery,
+  required String modelPath,
+}) async {
+final file = File(modelPath);
+   if (await file.exists()) {
+     final length = await file.length();
+     if (length < 1024 * 1024) {
+       // Remove corrupted or incomplete model file
+       await file.delete();
+     }
+   }
+   if (!await file.exists() || await file.length() < 1024 * 1024) {
+     throw Exception(
+       'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}',
+     );
+   }
+  final nativeLogs = StringBuffer();
+  final request = OpenAiRequest(
+    messages: [
+      Message(Role.system, systemPrompt),
+      Message(Role.user, userQuery),
+    ],
+    modelPath: modelPath,
+    contextSize: 512,
+    maxTokens: 2600,
+    numGpuLayers: 0,
+    temperature: 0.2,
+    topP: 0.95,
+    frequencyPenalty: 0.5,
+    presencePenalty: 0.5,
+    logger: (String line) {
+      if (nativeLogs.length < 16000) nativeLogs.write('$line\n');
+    },
+  );
+
+  final buffer = StringBuffer();
+  final completer = Completer<String>();
+
+  fllamaChat(
+    request,
+    (String response, String openaiResponseJsonString, bool done) {
+      if (completer.isCompleted) return;
+      if (response.isNotEmpty) {
+        buffer.write(response);
+      }
+      if (done) {
+        completer.complete(buffer.toString().trim());
+      }
+    },
+  ).catchError((Object error) {
+    if (!completer.isCompleted) {
+      completer.completeError(error);
+    }
+    return -1;
+  });
+
+  final result = await completer.future;
+  if (_isFllamaLoadError(result)) {
+    final logTail = nativeLogs.toString().trim();
+    debugPrint('[LocalModel] load failed. Native log tail:\n$logTail');
+    final detail = _lastMeaningfulNativeLine(logTail);
+    throw Exception(
+      detail == null
+          ? 'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}'
+          : 'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}\n($detail)',
+    );
+  }
+  if (result.isEmpty) {
+    throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+  }
+  return result;
+}
+
+/// Extracts the last useful line from the fllama native log to help diagnose
+/// load failures (e.g. the real llama.cpp error).
+String? _lastMeaningfulNativeLine(String log) {
+  final lines = log.split('\n').where((l) => l.trim().isNotEmpty).toList();
+  if (lines.isEmpty) return null;
+  final last = lines.last.trim();
+  if (last.length > 200) return last.substring(last.length - 200);
+  return last;
+}
+
+/// Factory to create AI provider instances.
+AIProvider createAIProvider({
+  required String provider,
+  required String model,
+  required String apiKey,
+  String? customBaseUrl,
+  String? customCompatibility,
+  String? localModelPath,
+}) {
+  switch (provider) {
+    case 'gemini':
+      return GeminiProvider(apiKey: apiKey);
+    case 'openai':
+      return OpenAICompatibleProvider(
+        apiKey: apiKey,
+        endpoint: 'https://api.openai.com/v1/chat/completions',
+      );
+    case 'mistral':
+      return OpenAICompatibleProvider(
+        apiKey: apiKey,
+        endpoint: 'https://api.mistral.ai/v1/chat/completions',
+      );
+    case 'custom':
+      final compat = _normalizeAiCustomCompatibility(customCompatibility ?? 'openai');
+      if (compat == 'gemini') {
+        final baseUrl = customBaseUrl ?? '';
+        final endpoint =
+            baseUrl.contains('/models/')
+                ? baseUrl
+                : baseUrl.contains('/v1beta')
+                    ? '$baseUrl/models/$model:streamGenerateContent?alt=sse&key=$apiKey'
+                    : baseUrl.contains('/v1')
+                        ? '$baseUrl/models/$model:streamGenerateContent?alt=sse&key=$apiKey'
+                        : '$baseUrl/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
+        return OpenAICompatibleProvider(
+          apiKey: apiKey,
+          endpoint: endpoint,
+          baseUrl: baseUrl,
+        );
+      }
+      return OpenAICompatibleProvider(
+        apiKey: apiKey,
+        endpoint: openAiCompatibleEndpoint(customBaseUrl ?? ''),
+        baseUrl: customBaseUrl,
+      );
+    case 'local':
+      if (localModelPath == null || localModelPath.isEmpty) {
+        throw Exception('Local model path not configured');
+      }
+      return LocalModelProvider(modelPath: localModelPath);
+    default:
+      return GeminiProvider(apiKey: apiKey);
+  }
+}
+
+
+/// Normalizes a base URL by removing trailing slashes.
+String normalizedBaseUrl(String value) {
+  var out = value.trim();
+  while (out.endsWith('/')) {
+    out = out.substring(0, out.length - 1);
+  }
+  return out;
+}
+
+/// Returns the OpenAI-compatible chat completions endpoint for a given base URL.
+String openAiCompatibleEndpoint(String rawBaseUrl) {
+  final base = normalizedBaseUrl(rawBaseUrl);
+  if (base.isEmpty) return '';
+  if (base.endsWith('/chat/completions')) return base;
+  if (base.endsWith('/v1')) return '$base/chat/completions';
+  if (base.endsWith('/v1/chat')) return '$base/completions';
+  return '$base/v1/chat/completions';
+}
+
+/// Returns the Gemini-compatible endpoint for a given base URL and model.
+String geminiCompatibleEndpoint(String rawBaseUrl, String model) {
+  final base = normalizedBaseUrl(rawBaseUrl);
+  if (base.isEmpty) return '';
+  if (base.contains('/models/')) return base;
+  if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
+  if (base.contains('/v1')) return '$base/models/$model:generateContent';
+  return '$base/v1beta/models/$model:generateContent';
 }
 
 
@@ -536,11 +994,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   int _viewMode = 0;
   // Carousel state for week switching
   double _carouselOffset = 0.0;
+  int _weekAnimationDirection = 1;
   AnimationController? _carouselAnimController;
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
-  // Day swipe carousel state
-  double _dayOffset = 0.0;
-  AnimationController? _dayAnimController;
 
   String? _tempSessionId;
   int? _viewingClassId;
@@ -954,6 +1410,28 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+  void _onSwipeLeft() {
+    if (_tabController.index < 4) {
+      HapticFeedback.selectionClick();
+      _tabController.animateTo(_tabController.index + 1);
+    } else {
+      HapticFeedback.selectionClick();
+      _nextWeek();
+      _tabController.animateTo(0, duration: Duration.zero);
+    }
+  }
+
+  void _onSwipeRight() {
+    if (_tabController.index > 0) {
+      HapticFeedback.selectionClick();
+      _tabController.animateTo(_tabController.index - 1);
+    } else {
+      HapticFeedback.selectionClick();
+      _prevWeek();
+      _tabController.animateTo(4, duration: Duration.zero);
+    }
+  }
+
   Future<void> _toggleView() async {
     HapticFeedback.selectionClick();
     setState(() => _viewMode = (_viewMode + 1) % 2);
@@ -1141,139 +1619,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
-  // ── DAY CAROUSEL ─────────────────────────────────────────────────
-  Widget _buildDayCarousel() {
-    return GestureDetector(
-      onHorizontalDragStart: _onDayDragStart,
-      onHorizontalDragUpdate: _onDayDragUpdate,
-      onHorizontalDragEnd: _onDayDragEnd,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          final offset = _dayOffset.clamp(-w, w);
-          final double progress = (offset / w).abs().clamp(0.0, 1.0);
-          final double curveP = Curves.easeOut.transform(progress);
+  // --- Week carousel ---
 
-          final double currentScale = 1.0 - (0.04 * curveP);
-          final double currentOpacity = ((1.0 - progress) * 2.0).clamp(0.0, 1.0);
-          final int currentDay = _tabController.index;
-          final bool goingRight = offset > 0;
-          final int adjacentDay = goingRight ? currentDay - 1 : currentDay + 1;
-          final bool adjacentExists = adjacentDay >= 0 && adjacentDay <= 4;
-          final double incomingScale = 0.96 + (0.04 * curveP);
-          final double incomingOpacity = (progress * 2.0).clamp(0.0, 1.0);
-
-          return ClipRect(
-            child: Stack(
-              children: [
-                // Adjacent (incoming) day
-                if (adjacentExists && offset != 0.0)
-                  Transform.translate(
-                    offset: Offset(goingRight ? -w + offset : w + offset, 0),
-                    child: Transform.scale(
-                      scale: incomingScale,
-                      child: Opacity(
-                        opacity: incomingOpacity,
-                        child: SizedBox(width: w, child: _buildGridView(adjacentDay)),
-                      ),
-                    ),
-                  ),
-                // Current day
-                Transform.translate(
-                  offset: Offset(offset, 0),
-                  child: Transform.scale(
-                    scale: currentScale,
-                    child: Opacity(
-                      opacity: currentOpacity,
-                      child: SizedBox(
-                        width: w,
-                        child: KeyedSubtree(
-                          key: ValueKey('day-$currentDay'),
-                          child: _buildGridView(currentDay),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _onDayDragStart(DragStartDetails _) {
-    _dayAnimController?.stop();
-    setState(() => _dayOffset = 0.0);
-  }
-
-  void _onDayDragUpdate(DragUpdateDetails details) {
-    final current = _tabController.index;
-    final dx = details.delta.dx;
-    if (dx > 0 && current == 0) return;
-    if (dx < 0 && current == 4) return;
-    setState(() => _dayOffset += dx);
-  }
-
-  void _onDayDragEnd(DragEndDetails details) {
-    final width = (context.findRenderObject() as RenderBox?)?.size.width ?? 400.0;
-    final velocity = details.primaryVelocity ?? 0;
-    final threshold = width * 0.12;
-
-    if (_dayOffset < -threshold || velocity < -200) {
-      _snapDayCarousel(-1, width);
-    } else if (_dayOffset > threshold || velocity > 200) {
-      _snapDayCarousel(1, width);
-    } else {
-      _snapDayCarousel(0, width);
-    }
-  }
-
-  void _snapDayCarousel(int direction, double width) {
-    if (direction != 0) {
-      // Update tab immediately so TabBar highlights the right day
-      if (direction < 0 && _tabController.index == 4) {
-        HapticFeedback.selectionClick();
-        _nextWeek();
-        _tabController.index = 0;
-      } else if (direction > 0 && _tabController.index == 0) {
-        HapticFeedback.selectionClick();
-        _prevWeek();
-        _tabController.index = 4;
-      } else {
-        HapticFeedback.selectionClick();
-        _tabController.index = (_tabController.index - direction).clamp(0, 4);
-      }
-    }
-
-    final target = direction == 0 ? 0.0 : (direction < 0 ? -width : width);
-    _dayAnimController?.dispose();
-    _dayAnimController = AnimationController(
-      vsync: this,
-      duration: direction == 0
-          ? const Duration(milliseconds: 250)
-          : const Duration(milliseconds: 300),
-    );
-    final anim = Tween<double>(begin: _dayOffset, end: target).animate(
-      CurvedAnimation(
-        parent: _dayAnimController!,
-        curve: direction == 0 ? Curves.easeOutCubic : Curves.easeOutQuart,
-      ),
-    );
-    _dayAnimController!.addListener(() {
-      if (!mounted) return;
-      setState(() => _dayOffset = anim.value);
-    });
-    _dayAnimController!.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted) {
-        setState(() => _dayOffset = 0.0);
-      }
-    });
-    _dayAnimController!.forward();
-  }
-
-  // ── WEEK CAROUSEL ─────────────────────────────────────────────────
   Widget _buildWeekCarousel() {
     return GestureDetector(
       onHorizontalDragStart: _onCarouselDragStart,
@@ -1283,59 +1630,36 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           final offset = _carouselOffset.clamp(-w, w);
-          final double progress = (offset / w).abs().clamp(0.0, 1.0);
-          
-          final double currentScale = 1.0 - (0.05 * Curves.easeOut.transform(progress));
-          final double currentOpacity = ((1.0 - progress) * 1.5).clamp(0.0, 1.0);
-          final double incomingScale = 0.95 + (0.05 * Curves.easeOut.transform(1.0 - progress));
-          final double incomingOpacity = (progress * 1.5).clamp(0.0, 1.0);
+          const double peek = 64.0;
 
           return ClipRect(
             child: Stack(
               children: [
                 if (offset > 0)
                   Transform.translate(
-                    offset: Offset(-w + offset, 0),
-                    child: Transform.scale(
-                      scale: incomingScale,
-                      child: Opacity(
-                        opacity: incomingOpacity,
-                        child: SizedBox(
-                          width: w,
-                          child: _buildAdjacentWeekView(-1),
-                        ),
-                      ),
+                    offset: Offset(-w + peek + offset, 0),
+                    child: SizedBox(
+                      width: w,
+                      child: _buildAdjacentWeekView(-1),
                     ),
                   ),
                 if (offset < 0)
                   Transform.translate(
-                    offset: Offset(w + offset, 0),
-                    child: Transform.scale(
-                      scale: incomingScale,
-                      child: Opacity(
-                        opacity: incomingOpacity,
-                        child: SizedBox(
-                          width: w,
-                          child: _buildAdjacentWeekView(1),
-                        ),
-                      ),
+                    offset: Offset(w - peek + offset, 0),
+                    child: SizedBox(
+                      width: w,
+                      child: _buildAdjacentWeekView(1),
                     ),
                   ),
                 Transform.translate(
                   offset: Offset(offset, 0),
-                  child: Transform.scale(
-                    scale: currentScale,
-                    child: Opacity(
-                      opacity: currentOpacity,
-                      child: SizedBox(
-                        width: w,
-                        child: KeyedSubtree(
-                          key: ValueKey(
-                            'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
-                          ),
-                          child: _buildWeekView(),
-                        ),
+                  child: SizedBox(
+                    width: w,
+                    child: KeyedSubtree(
+                      key: ValueKey(
+                        'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
                       ),
+                      child: _buildWeekView(),
                     ),
                   ),
                 ),
@@ -1364,12 +1688,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final width = context.findRenderObject() != null
         ? (context.findRenderObject()! as RenderBox).size.width
         : 400.0;
-    final threshold = width * 0.12;
+    final threshold = width * 0.25;
     final velocity = details.primaryVelocity ?? 0;
 
-    if (_carouselOffset < -threshold || velocity < -200) {
+    if (_carouselOffset < -threshold || velocity < -400) {
       _animateCarouselTo(-1, width);
-    } else if (_carouselOffset > threshold || velocity > 200) {
+    } else if (_carouselOffset > threshold || velocity > 400) {
       _animateCarouselTo(1, width);
     } else {
       _animateCarouselTo(0, width);
@@ -1428,6 +1752,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final cacheKey = _mondayKey(newMonday);
         final cached = _adjacentWeekCache[cacheKey];
         setState(() {
+          _weekAnimationDirection = direction > 0 ? -1 : 1;
           _currentMonday = newMonday;
           if (cached != null) {
             _weekData = cached;
@@ -1453,7 +1778,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     _tabController.dispose();
     _carouselAnimController?.dispose();
-    _dayAnimController?.dispose();
     super.dispose();
   }
 
@@ -4224,9 +4548,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   ),
                 ),
               )
-             : _viewMode == 1
-             ? _buildWeekCarousel()
-            : _buildDayCarousel(),
+: _viewMode == 1
+              ? _buildWeekCarousel()
+             : GestureDetector(
+                 onHorizontalDragEnd: (details) {
+                   final velocity = details.primaryVelocity ?? 0;
+                   if (velocity < -400) _onSwipeLeft();
+                   if (velocity > 400) _onSwipeRight();
+                 },
+                 child: TabBarView(
+                   controller: _tabController,
+                   physics: const NeverScrollableScrollPhysics(),
+                   children: List.generate(
+                     5,
+                     (dayIndex) => _buildGridView(dayIndex),
+                   ),
+                 ),
+               ),
       ),
     );
   }
@@ -4688,6 +5026,10 @@ class _ExamsPageState extends State<ExamsPage> {
           fileBytes: fileBytes,
           mimeType: mimeType,
         );
+      case 'local':
+        throw Exception(
+          'CONFIG: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelExamNotSupported}',
+        );
       case 'gemini':
       default:
         return _requestExamImportWithGemini(
@@ -4960,7 +5302,8 @@ class _ExamsPageState extends State<ExamsPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final providerUsesGeminiProtocol = _providerUsesGeminiProtocol();
     final provider = _normalizeAiProvider(aiProvider);
-    if (_activeAiApiKey().trim().isEmpty) {
+    final isLocalProvider = provider == 'local';
+    if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_providerAwareMissingApiKeyMessage(l, provider)),
@@ -6038,83 +6381,35 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
   }
 
-  Future<String> _requestProviderResponse(String systemPrompt) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    final apiKey = _activeAiApiKey().trim();
-    if (apiKey.isEmpty) {
-      throw Exception(
-        'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
-      );
-    }
-
-    final model = aiModel.trim().isNotEmpty
-        ? aiModel.trim()
-        : _defaultModelForProvider(
-            provider,
-            customCompatibility: aiCustomCompatibility,
-          );
-
-    switch (provider) {
-      case 'openai':
-        return _requestOpenAiCompatibleResponse(
-          endpoint: 'https://api.openai.com/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-        );
-      case 'mistral':
-        return _requestOpenAiCompatibleResponse(
-          endpoint: 'https://api.mistral.ai/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-        );
-      case 'custom':
-        final baseUrl = aiCustomBaseUrl.trim();
-        if (baseUrl.isEmpty) {
-          throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
-        }
-        final compat = _normalizeAiCustomCompatibility(aiCustomCompatibility);
-        if (compat == 'gemini') {
-          return _requestGeminiResponse(
-            endpoint: _geminiCompatibleEndpoint(baseUrl, model),
-            apiKey: apiKey,
-            systemPrompt: systemPrompt,
-          );
-        }
-        return _requestOpenAiCompatibleResponse(
-          endpoint: _openAiCompatibleEndpoint(baseUrl),
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-        );
-      case 'gemini':
-      default:
-        return _requestGeminiResponse(
-          endpoint:
-              'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
-          apiKey: apiKey,
-          systemPrompt: systemPrompt,
-        );
-    }
-  }
-
   Future<void> _send() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _thinking) return;
 
-    if (_activeAiApiKey().trim().isEmpty) {
-      final l = AppL10n.of(appLocaleNotifier.value);
-      final provider = _normalizeAiProvider(aiProvider);
-      setState(() {
-        _messages.add({
-          'role': 'assistant',
-          'content': _providerAwareMissingApiKeyMessage(l, provider),
-        });
-      });
-      return;
-    }
+    final provider = _normalizeAiProvider(aiProvider);
+    final isLocalProvider = provider == 'local';
+    final apiKey = _activeAiApiKey().trim();
+
+if (isLocalProvider && aiLocalModelPath.isEmpty) {
+       final l = AppL10n.of(appLocaleNotifier.value);
+       setState(() {
+         _messages.add({
+           'role': 'assistant',
+           'content': l.aiLocalModelLoadError,
+         });
+       });
+       return;
+     }
+     
+     if (!isLocalProvider && apiKey.isEmpty) {
+       final l = AppL10n.of(appLocaleNotifier.value);
+       setState(() {
+         _messages.add({
+           'role': 'assistant',
+           'content': _providerAwareMissingApiKeyMessage(l, provider),
+         });
+       });
+       return;
+     }
 
     _inputController.clear();
     setState(() {
@@ -6123,27 +6418,77 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     });
     _scrollToBottom();
 
+    AIProvider? aiProviderInstance;
     try {
-      final reply = await _requestProviderResponse(_resolvedSystemPrompt());
+      aiProviderInstance = createAIProvider(
+        provider: provider,
+        model: aiModel.trim().isNotEmpty
+            ? aiModel.trim()
+            : _defaultModelForProvider(
+                provider,
+                customCompatibility: aiCustomCompatibility,
+              ),
+        apiKey: apiKey,
+        customBaseUrl: aiCustomBaseUrl,
+        customCompatibility: aiCustomCompatibility,
+        localModelPath: isLocalProvider ? aiLocalModelPath : null,
+      );
+
+      final history = _historyForProvider();
+      final systemPrompt = _resolvedSystemPrompt();
+      final model = aiModel.trim().isNotEmpty
+          ? aiModel.trim()
+          : _defaultModelForProvider(
+              provider,
+              customCompatibility: aiCustomCompatibility,
+            );
+
       setState(() {
-        _messages.add({'role': 'assistant', 'content': reply});
+        _messages.add({'role': 'assistant', 'content': ''});
       });
+
+      final stream = aiProviderInstance.streamResponse(
+        systemPrompt: systemPrompt,
+        history: history,
+        model: model,
+      );
+
+      await for (final chunk in stream) {
+        if (!mounted) break;
+        setState(() {
+          final lastIndex = _messages.length - 1;
+          if (lastIndex >= 0 && _messages[lastIndex]['role'] == 'assistant') {
+            final currentContent = _messages[lastIndex]['content'] as String? ?? '';
+            _messages[lastIndex]['content'] = currentContent + chunk;
+          }
+        });
+        _scrollToBottom();
+      }
     } catch (e) {
       final message = e.toString();
       final l = AppL10n.of(appLocaleNotifier.value);
       final isApiError = message.contains('API:');
       final isConfigError = message.contains('CONFIG:');
       setState(() {
-        _messages.add({
-          'role': 'assistant',
-          'content': isConfigError
+        if (_messages.isNotEmpty && _messages.last['role'] == 'assistant') {
+          _messages.last['content'] = isConfigError
               ? message.replaceFirst('Exception: CONFIG: ', '')
               : isApiError
               ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-              : '${l.aiConnectionError} $e',
-        });
+              : '${l.aiConnectionError} $e';
+        } else {
+          _messages.add({
+            'role': 'assistant',
+            'content': isConfigError
+                ? message.replaceFirst('Exception: CONFIG: ', '')
+                : isApiError
+                ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
+                : '${l.aiConnectionError} $e',
+          });
+        }
       });
     } finally {
+      await aiProviderInstance?.dispose();
       if (mounted) setState(() => _thinking = false);
       _scrollToBottom();
     }

@@ -17,6 +17,12 @@ dependencies:
   shared_preferences: ^2.5.5
   dynamic_color: ^1.8.1
   flutter_launcher_icons: ^0.14.4
+  dio: ^5.7.0
+  fllama:
+    git:
+      url: https://github.com/Telosnex/fllama.git
+      ref: main
+  path_provider: ^2.1.5
   
   cupertino_icons: ^1.0.8
   simple_animations: ^5.2.0

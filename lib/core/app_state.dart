@@ -20,15 +20,76 @@ String aiModel = 'gemini-2.5-flash';
 String aiSystemPromptTemplate = '';
 String aiCustomBaseUrl = '';
 String aiCustomCompatibility = 'openai';
+String aiLocalModelPath = '';
 
 const List<String> kSupportedAiProviders = [
   'gemini',
   'openai',
   'mistral',
   'custom',
+  'local',
 ];
 
 const List<String> kSupportedAiCustomCompatibilities = ['openai', 'gemini'];
+
+/// Available local models for on-device inference.
+class LocalModelInfo {
+  final String id;
+  final String name;
+  final String url;
+  final double sizeGb;
+  final String description;
+
+  const LocalModelInfo({
+    required this.id,
+    required this.name,
+    required this.url,
+    required this.sizeGb,
+    required this.description,
+  });
+}
+
+const List<LocalModelInfo> kLocalModels = [
+  LocalModelInfo(
+    id: 'gemma-3-1b-it-q4_k_m',
+    name: 'Gemma 3 1B-IT (Q4_K_M)',
+    url: 'https://huggingface.co/bartowski/google_gemma-3-1b-it-GGUF/resolve/main/google_gemma-3-1b-it-Q4_K_M.gguf',
+    sizeGb: 0.8,
+    description: 'Klein, schnell, ideal für Mobilgeräte',
+  ),
+  LocalModelInfo(
+    id: 'llama-3.2-1b-instruct-q4_k_m',
+    name: 'Llama 3.2 1B-Instruct (Q4_K_M)',
+    url: 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+    sizeGb: 0.8,
+    description: 'Ausgewogen, gute Qualität',
+  ),
+  LocalModelInfo(
+    id: 'qwen-2.5-1.5b-instruct-q4_k_m',
+    name: 'Qwen 2.5 1.5B-Instruct (Q4_K_M)',
+    url: 'https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
+    sizeGb: 1.0,
+    description: 'Stark bei Mehrsprachigkeit',
+  ),
+  LocalModelInfo(
+    id: 'llama-3.2-3b-instruct-q4_k_m',
+    name: 'Llama 3.2 3B-Instruct (Q4_K_M)',
+    url: 'https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf',
+    sizeGb: 2.0,
+    description: 'Höhere Qualität, mehr Speicher',
+  ),
+  LocalModelInfo(
+    id: 'phi-3.5-mini-instruct-q4_k_m',
+    name: 'Phi-3.5-mini-Instruct (Q4_K_M)',
+    url: 'https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf',
+    sizeGb: 2.4,
+    description: 'Sehr stark, aber größer',
+  ),
+];
+
+LocalModelInfo _defaultLocalModel() => kLocalModels.first;
+
+List<String> _localModelIds() => kLocalModels.map((m) => m.id).toList();
 
 String _normalizeAiProvider(String value) {
   return kSupportedAiProviders.contains(value) ? value : 'gemini';
@@ -57,6 +118,8 @@ List<String> _modelsForProvider(
         return const ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
       }
       return const ['gpt-4o-mini', 'gpt-4o', 'mistral-small-latest'];
+    case 'local':
+      return _localModelIds();
     case 'gemini':
     default:
       return const ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
@@ -67,6 +130,9 @@ String _defaultModelForProvider(
   String provider, {
   String? customCompatibility,
 }) {
+  if (_normalizeAiProvider(provider) == 'local') {
+    return _defaultLocalModel().id;
+  }
   return _modelsForProvider(
     provider,
     customCompatibility: customCompatibility,
@@ -95,6 +161,8 @@ String _localizedAiProviderLabel(AppL10n l, String provider) {
       return l.settingsAiProviderMistral;
     case 'custom':
       return l.settingsAiProviderCustom;
+    case 'local':
+      return l.settingsAiProviderLocal;
     case 'gemini':
     default:
       return l.settingsAiProviderGemini;
