@@ -1,35 +1,21 @@
-# Version v4.3.0
+# Version v5.0.0
 
-This release brings a significant visual refresh to Untis+, with updates to the navigation bar, top bar, and lesson displays. We've also introduced new theming options, including custom Material You colors, and improved how events and holidays are presented. Under the hood, we've enhanced animations, caching, and added an in-app changelog for future updates. ✨
+Untis+ has received a significant overhaul with version 5.0.0! This release introduces a fresh, modern design, a new app icon, and several user experience enhancements to make your daily school life even smoother. We hope you enjoy the new look and feel! ✨
 
 ## What's New
-*   Introduce custom color support for Material You, allowing for a more personalized app experience.
-*   Add in-app changelog functionality, making it easier to see what's new in future updates directly within the app, likely accessible from the "About & Updates" settings.
+*   Introduce a new "day carousel" on the main navigation screen, making it easier to browse your schedule.
 
 ## Improvements
-*   Redesign the navigation bar and top bar for a fresh, modern look.
-*   Enhance the design of lesson displays, including clearer presentation of cancelled lessons.
-*   Display dates on weekdays for improved timetable readability.
-*   Implement a monochrome design option for lessons.
-*   Refine the design of the Exams section.
-*   Add a blurring effect to the background for a more polished visual experience.
-*   Update various animations throughout the app for a smoother feel.
-*   Improve the handling and display of events and holidays.
-*   Update general app design and theming across various screens.
-
-## Fixes
-*   No explicit bug fixes were mentioned in the provided changes.
+*   Revamp the app's visual design with a modern "frosted glass" aesthetic, applied across various screens and UI elements.
+*   Update the app icon to a fresh new look, visible on your device's home screen.
+*   Enhance notifications to be localized, ensuring messages are displayed in your preferred language.
+*   Refine the onboarding experience for new users, providing a smoother initial setup.
+*   Improve the custom background editor, likely offering a more intuitive or powerful way to personalize your app's look.
 
 ## Technical Notes
-*   Update CI/CD workflows for `dart_build.yml` and `changelog.yml` to streamline development processes.
-*   Bump the app version to v4.3.0.
-*   Refine internal design tokens and shared UI components for consistency.
-*   Update caching mechanisms for likely performance improvements.
-*   Update Android build configuration and manifest.
-*   Add new adaptive launcher icons for Android, offering various visual styles (3D, Chrome, Galaxy, Gradient, Marmor, Paper).
-*   Update `pubspec.yaml` dependencies.
-*   Make internal changes to the background service, potentially improving reliability or efficiency.
-*   Update automated changelog files (`changelog.json`).
-
-> **Why refactoring matters**
-> This release includes several internal changes, such as updates to our CI/CD workflows, internal design tokens, and caching mechanisms. These behind-the-scenes improvements are crucial for the long-term health of the Untis+ project. They help ensure the app remains stable, performant, and easier for developers to maintain and extend. By streamlining our development processes and refining core components, we're laying a stronger foundation for delivering exciting new features and continued improvements in the future.
+*   Update various core dependencies and the Android build system for improved performance and compatibility.
+*   Adjust internal code analysis rules to maintain code quality.
+*   Refactor internal UI components and design tokens to support the new visual style and improve maintainability.
+*   Update the `.gitignore` file to exclude new or changed development artifacts.
+*   Make minor updates to internal scripts.
+*   Update the `README.md` documentation.
