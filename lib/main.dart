@@ -55,13 +55,8 @@ part 'widgets/changelog_bottom_sheet.dart';
 
 int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
-/// Platform channel for window-level UI effects (e.g. Android frosted blur).
 const MethodChannel _uiChannel = MethodChannel('untisplus/ui');
 
-/// Sends the desired backdrop blur radius to the native Android window.
-/// On Android 12+ (API 31) this calls [Window.setBackdropBlurRadius].
-/// Android 17 renders it as the full frosted-glass system effect.
-/// Radius 0 disables the effect; ignored on older API levels and non-Android.
 Future<void> _applyAndroidWindowBlur(bool enabled) async {
   if (kIsWeb) return;
   try {
