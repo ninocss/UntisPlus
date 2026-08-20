@@ -1434,7 +1434,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _tutorialStep = 0;
   StreamSubscription<NotificationActionEvent>? _notificationActionSub;
 
-  static const List<int> _tutorialTargets = [0, 1, 2, 3];
+  List<int> get _tutorialTargets => [0, 1, 2, 3];
 
   @override
   void initState() {
@@ -1677,8 +1677,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(22),
                     child: _withOptionalBackdropBlur(
-                      sigmaX: 22,
-                      sigmaY: 22,
+                      sigma: 22,
                       child: const SizedBox.shrink(),
                       childBuilder: (blur) => Container(
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -1930,79 +1929,86 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: _BouncyButton(
                 onTap: () => _onNavTap(0),
                 scaleTarget: 0.88,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 480),
-                  curve: _kSoftBounce,
-                  height: _ExpressiveNavBarState._barHeight,
-                  width: _ExpressiveNavBarState._barHeight,
-                    decoration: BoxDecoration(
-                      color: timetableSelected
-                          ? cs.primary
-                          : cs.surfaceContainerHigh.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(
-                        timetableSelected ? 22 : 18,
-                      ),
-                      border: Border.all(
-                        color: _isTutorialTarget(0)
-                            ? cs.tertiary
-                            : timetableSelected
-                            ? cs.primary.withValues(alpha: 0.38)
-                            : cs.outlineVariant.withValues(alpha: 0.30),
-                        width: _isTutorialTarget(0) ? 2.0 : 0.8,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: timetableSelected
-                              ? cs.primary.withValues(alpha: 0.30)
-                              : cs.shadow.withValues(alpha: 0.12),
-                          blurRadius: timetableSelected ? 22 : 12,
-                          offset: Offset(0, timetableSelected ? 6 : 4),
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: blurEnabledNotifier,
+                  builder: (context, blurEnabled, _) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 480),
+                      curve: _kSoftBounce,
+                      height: _ExpressiveNavBarState._barHeight,
+                      width: _ExpressiveNavBarState._barHeight,
+                      decoration: BoxDecoration(
+                        color: timetableSelected
+                            ? cs.primary
+                            : (blurEnabled
+                                ? cs.surfaceContainerHigh.withValues(alpha: 0.95)
+                                : cs.surfaceContainerHigh),
+                        borderRadius: BorderRadius.circular(
+                          timetableSelected ? 22 : 18,
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 420),
-                        switchInCurve: _kSmoothBounce,
-                        switchOutCurve: _kSoftBounce,
-                        transitionBuilder: (child, anim) {
-                          final slide = Tween<Offset>(
-                            begin: const Offset(0, 0.15),
-                            end: Offset.zero,
-                          ).animate(anim);
-                          return FadeTransition(
-                            opacity: anim,
-                            child: SlideTransition(
-                              position: slide,
-                              child: ScaleTransition(
-                                scale: Tween<double>(
-                                  begin: 0.85,
-                                  end: 1.0,
-                                ).animate(anim),
-                                child: child,
-                              ),
-                            ),
-                          );
-                        },
-                        child: AnimatedRotation(
-                          turns: timetableSelected ? 0 : -0.03,
-                          duration: const Duration(milliseconds: 400),
-                          curve: _kSmoothBounce,
-                          child: Icon(
-                            timetableSelected
-                                ? Icons.watch_later_rounded
-                                : Icons.watch_later_outlined,
-                            key: ValueKey('timetable_$timetableSelected'),
+                        border: Border.all(
+                          color: _isTutorialTarget(0)
+                              ? cs.tertiary
+                              : timetableSelected
+                              ? cs.primary.withValues(alpha: 0.38)
+                              : cs.outlineVariant.withValues(alpha: 0.30),
+                          width: _isTutorialTarget(0) ? 2.0 : 0.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
                             color: timetableSelected
-                                ? cs.onPrimary
-                                : cs.onSurfaceVariant,
-                            size: timetableSelected ? 34 : 28,
+                                ? cs.primary.withValues(alpha: 0.30)
+                                : cs.shadow.withValues(alpha: 0.12),
+                            blurRadius: timetableSelected ? 22 : 12,
+                            offset: Offset(0, timetableSelected ? 6 : 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 420),
+                          switchInCurve: _kSmoothBounce,
+                          switchOutCurve: _kSoftBounce,
+                          transitionBuilder: (child, anim) {
+                            final slide = Tween<Offset>(
+                              begin: const Offset(0, 0.15),
+                              end: Offset.zero,
+                            ).animate(anim);
+                            return FadeTransition(
+                              opacity: anim,
+                              child: SlideTransition(
+                                position: slide,
+                                child: ScaleTransition(
+                                  scale: Tween<double>(
+                                    begin: 0.85,
+                                    end: 1.0,
+                                  ).animate(anim),
+                                  child: child,
+                                ),
+                              ),
+                            );
+                          },
+                          child: AnimatedRotation(
+                            turns: timetableSelected ? 0 : -0.03,
+                            duration: const Duration(milliseconds: 400),
+                            curve: _kSmoothBounce,
+                            child: Icon(
+                              timetableSelected
+                                  ? Icons.watch_later_rounded
+                                  : Icons.watch_later_outlined,
+                              key: ValueKey('timetable_$timetableSelected'),
+                              color: timetableSelected
+                                  ? cs.onPrimary
+                                  : cs.onSurfaceVariant,
+                              size: timetableSelected ? 34 : 28,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
+              ),
             ),
           ],
         ),

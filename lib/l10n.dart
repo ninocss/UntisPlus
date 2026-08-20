@@ -16,6 +16,7 @@ class AppL10n {
 
   // ── Navigation ──────────────────────────────────────────────────────────────
   String get navWeek => _t('navWeek');
+  String get navHomework => _t('navHomework');
   String get navExams => _t('navExams');
   String get navInfo => _t('navInfo');
   String get navMenu => _t('navMenu');
@@ -126,6 +127,9 @@ class AppL10n {
   String get detailClass => _t('detailClass');
   String get detailLesson => _t('detailLesson');
   String get detailInfo => _t('detailInfo');
+  String get detailNotesForStudents => _t('detailNotesForStudents');
+  String get detailLessonNotes => _t('detailLessonNotes');
+  String get detailHomework => _t('detailHomework');
   String get detailCancelled => _t('detailCancelled');
   String get detailRegular => _t('detailRegular');
   String get detailHideSubject => _t('detailHideSubject');
@@ -149,6 +153,15 @@ class AppL10n {
   String get examsDelete => _t('examsDelete');
   String get examsToday => _t('examsToday');
   String get examsTomorrow => _t('examsTomorrow');
+
+  // ── Homework ────────────────────────────────────────────────────────────────
+  String get homeworkTitle => _t('homeworkTitle');
+  String get homeworkReload => _t('homeworkReload');
+  String get homeworkNone => _t('homeworkNone');
+  String get homeworkNoneHint => _t('homeworkNoneHint');
+  String get homeworkMarkDone => _t('homeworkMarkDone');
+  String get homeworkMarkUndone => _t('homeworkMarkUndone');
+  String get homeworkDue => _t('homeworkDue');
   String get examsOwn => _t('examsOwn');
   String get examsUnknown => _t('examsUnknown');
   String get examsNoneEntered => _t('examsNoneEntered');
@@ -576,6 +589,7 @@ class AppL10n {
     // ── GERMAN ────────────────────────────────────────────────────────────────
     'de': {
       'navWeek': 'Woche',
+      'navHomework': 'Hausaufgaben',
       'navExams': 'Exams',
       'navInfo': 'Info',
       'navMenu': 'Menü',
@@ -702,6 +716,9 @@ class AppL10n {
       'detailClass': 'Klasse',
       'detailLesson': 'Stunde',
       'detailInfo': 'Hinweis',
+      'detailNotesForStudents': 'Schülernotizen',
+      'detailLessonNotes': 'Unterrichtsnotizen',
+      'detailHomework': 'Hausaufgaben',
       'detailCancelled': 'FÄLLT AUS',
       'detailRegular': 'Reguläre Stunde',
       'detailHideSubject': 'Fach dauerhaft ausblenden',
@@ -741,6 +758,14 @@ class AppL10n {
       'examsActionImport': 'Importieren (Scan/PDF)',
       'examsActionExport': 'Exportieren (JSON)',
       'examsActionScan': 'Scannen',
+
+      'homeworkTitle': 'Hausaufgaben',
+      'homeworkReload': 'Neu laden',
+      'homeworkNone': 'Keine Hausaufgaben gefunden',
+      'homeworkNoneHint': 'Du bist fertig! Genieße deine Freizeit.',
+      'homeworkMarkDone': 'Als erledigt markieren',
+      'homeworkMarkUndone': 'Als nicht erledigt markieren',
+      'homeworkDue': 'Fällig am',
 
       'infoTitle': 'Schulinfos',
       'infoReload': 'Neu laden',
@@ -1198,6 +1223,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
     // ── ENGLISH ───────────────────────────────────────────────────────────────
     'en': {
       'navWeek': 'Week',
+      'navHomework': 'Homework',
       'navExams': 'Exams',
       'navInfo': 'Info',
       'navMenu': 'Menu',
@@ -1311,6 +1337,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'detailClass': 'Class',
       'detailLesson': 'Lesson',
       'detailInfo': 'Note',
+      'detailNotesForStudents': 'Notes for students',
+      'detailLessonNotes': 'Lesson notes',
+      'detailHomework': 'Homework',
       'detailCancelled': 'CANCELLED',
       'detailRegular': 'Regular lesson',
       'detailHideSubject': 'Permanently hide subject',
@@ -1350,6 +1379,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsActionImport': 'Import (Scan/PDF)',
       'examsActionExport': 'Export (JSON)',
       'examsActionScan': 'Scan',
+
+      'homeworkTitle': 'Homework',
+      'homeworkReload': 'Reload',
+      'homeworkNone': 'No homework found',
+      'homeworkNoneHint': "You're all done! Enjoy your free time.",
+      'homeworkMarkDone': 'Mark as done',
+      'homeworkMarkUndone': 'Mark as undone',
+      'homeworkDue': 'Due on',
 
       'infoTitle': 'School Info',
       'infoReload': 'Reload',
@@ -1797,6 +1834,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
     // ── FRENCH ────────────────────────────────────────────────────────────────
     'fr': {
       'navWeek': 'Semaine',
+      'navHomework': 'Devoirs',
       'navExams': 'Examens',
       'navInfo': 'Infos',
       'navMenu': 'Menu',
@@ -1914,6 +1952,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'detailClass': 'Classe',
       'detailLesson': 'Cours',
       'detailInfo': 'Remarque',
+      'detailNotesForStudents': 'Notes pour les étudiants',
+      'detailLessonNotes': 'Notes de cours',
+      'detailHomework': 'Devoirs',
       'detailCancelled': 'ANNULÉ',
       'detailRegular': 'Cours régulier',
       'detailHideSubject': 'Masquer la matière définitivement',
@@ -1953,6 +1994,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsActionImport': 'Importer (Scan/PDF)',
       'examsActionExport': 'Exporter (JSON)',
       'examsActionScan': 'Scanner',
+
+      'homeworkTitle': 'Devoirs',
+      'homeworkReload': 'Recharger',
+      'homeworkNone': 'Aucun devoir trouvé',
+      'homeworkNoneHint': 'Tu as fini ! Profite de ton temps libre.',
+      'homeworkMarkDone': 'Marquer comme fait',
+      'homeworkMarkUndone': 'Marquer comme non fait',
+      'homeworkDue': 'Dû le',
 
       'infoTitle': 'Infos école',
       'infoReload': 'Recharger',
@@ -2410,6 +2459,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
     // ── SPANISH ───────────────────────────────────────────────────────────────
     'es': {
       'navWeek': 'Semana',
+      'navHomework': 'Deberes',
       'navExams': 'Exámenes',
       'navInfo': 'Info',
       'navMenu': 'Menú',
@@ -2528,6 +2578,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'detailClass': 'Clase',
       'detailLesson': 'Clase',
       'detailInfo': 'Nota',
+      'detailNotesForStudents': 'Notas para estudiantes',
+      'detailLessonNotes': 'Notas de clase',
+      'detailHomework': 'Deberes',
       'detailCancelled': 'CANCELADO',
       'detailRegular': 'Clase regular',
       'detailHideSubject': 'Ocultar asignatura permanentemente',
@@ -2567,6 +2620,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsActionImport': 'Importar (Escaneo/PDF)',
       'examsActionExport': 'Exportar (JSON)',
       'examsActionScan': 'Escanear',
+
+      'homeworkTitle': 'Deberes',
+      'homeworkReload': 'Recargar',
+      'homeworkNone': 'No se encontraron deberes',
+      'homeworkNoneHint': '¡Has terminado! Disfruta de tu tiempo libre.',
+      'homeworkMarkDone': 'Marcar como hecho',
+      'homeworkMarkUndone': 'Marcar como no hecho',
+      'homeworkDue': 'Vence el',
 
       'infoTitle': 'Info escolar',
       'infoReload': 'Recargar',

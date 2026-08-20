@@ -29,7 +29,7 @@ import 'services/notification_service.dart';
 import 'services/background_service.dart';
 import 'services/backup_service.dart';
 import 'services/demo_mode_service.dart';
-import 'widgets/rounded_blur_app_bar.dart';
+import 'services/homework_service.dart';
 
 part 'core/school_models.dart';
 part 'core/design_tokens.dart';
@@ -52,6 +52,7 @@ part 'screens/settings/settings_about_updates_page.dart';
 part 'widgets/animated_background.dart';
 part 'widgets/custom_background_view.dart';
 part 'widgets/changelog_bottom_sheet.dart';
+part 'widgets/rounded_blur_app_bar.dart';
 
 int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
@@ -99,8 +100,8 @@ abstract class RemoteAIProvider implements AIProvider {
 
 /// Gemini / Google Generative AI provider.
 class GeminiProvider extends RemoteAIProvider {
-  GeminiProvider({required String apiKey})
-      : super(apiKey: apiKey, useGeminiProtocol: true);
+  GeminiProvider({required super.apiKey})
+      : super(useGeminiProtocol: true);
 
   @override
   Stream<String> streamResponse({
@@ -174,10 +175,10 @@ class OpenAICompatibleProvider extends RemoteAIProvider {
   final String endpoint;
 
   OpenAICompatibleProvider({
-    required String apiKey,
+    required super.apiKey,
     required this.endpoint,
-    String? baseUrl,
-  }) : super(apiKey: apiKey, baseUrl: baseUrl, useGeminiProtocol: false);
+    super.baseUrl,
+  }) : super(useGeminiProtocol: false);
 
   @override
   Stream<String> streamResponse({
@@ -591,6 +592,8 @@ void main() async {
       (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
   useMaterialYouNotifier.value =
       prefs.getBool('useMaterialYou') ?? true;
+  isAmoledNotifier.value =
+      prefs.getBool('isAmoled') ?? false;
   customColorSeedNotifier.value =
       prefs.getInt('customColorSeed') ?? 0xFF0F766E;
   dailyBriefingPushNotifier.value = prefs.getBool('dailyBriefingPush') ?? true;
@@ -989,7 +992,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   int _viewMode = 0;
   // Carousel state for week switching
   double _carouselOffset = 0.0;
-  int _weekAnimationDirection = 1;
   AnimationController? _carouselAnimController;
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
 
@@ -1434,6 +1436,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     await prefs.setInt('viewMode', _viewMode);
   }
 
+  Future<void> _fetchHomeworkAndNotes() async {
+    if (demoModeNotifier.value) return;
+    if (_currentSessionId.isEmpty || schoolUrl.isEmpty) return;
+
+    try {
+      final res = await HomeworkService.fetchHomeworkAndNotes(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: _currentSessionId,
+        personId: personId,
+        personType: personType,
+        startDate: _currentMonday,
+        endDate: _currentMonday.add(const Duration(days: 6)),
+      );
+      homeworksNotifier.value = res['homeworks']!;
+      lessonNotesNotifier.value = res['lessonNotes']!;
+    } catch (e) {
+      print('Error fetching homework and notes: $e');
+    }
+  }
+
+  void _onLessonTap(BuildContext context, Map<dynamic, dynamic> lesson) {
+    _showLessonDetail(context, lesson);
+  }
+
   Future<void> _onRefresh() => _fetchFullWeek(silent: true);
 
   void _onHiddenSubjectsChanged() => setState(() {});
@@ -1747,7 +1774,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final cacheKey = _mondayKey(newMonday);
         final cached = _adjacentWeekCache[cacheKey];
         setState(() {
-          _weekAnimationDirection = direction > 0 ? -1 : 1;
           _currentMonday = newMonday;
           if (cached != null) {
             _weekData = cached;
@@ -2395,7 +2421,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     required bool useStripes,
   }) {
     final cardRadius = BorderRadius.circular(borderRadius);
-    final cs = Theme.of(context).colorScheme;
 
     return Container(
       decoration: BoxDecoration(
@@ -2403,18 +2428,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         boxShadow: isNow
             ? [
                 BoxShadow(
-                  color: cs.shadow.withValues(alpha: 0.12),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+                  color: fgColor.withValues(alpha: 0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ]
-            : [
-                BoxShadow(
-                  color: cs.shadow.withValues(alpha: 0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+            : null,
       ),
       child: ClipRRect(
         borderRadius: cardRadius,
@@ -2423,16 +2442,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             // Base background
             Container(
               decoration: BoxDecoration(
-                color: isCancelled ? bgColor.withValues(alpha: 0.5) : bgColor,
+                color: isCancelled ? bgColor.withValues(alpha: 0.4) : bgColor,
                 borderRadius: cardRadius,
                 border: Border.all(
-                  color: fgColor.withValues(alpha: 0.16),
-                  width: 0.8,
+                  color: fgColor.withValues(alpha: isDark ? 0.25 : 0.15),
+                  width: 1.0,
                 ),
               ),
             ),
 
-            // Left accent bar instead of gradient
+            // Left accent bar
             Positioned(
               left: 0,
               top: 0,
@@ -2440,7 +2459,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               width: accentWidth,
               child: Container(
                 decoration: BoxDecoration(
-                  color: fgColor,
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      fgColor,
+                      fgColor.withValues(alpha: 0.7),
+                    ],
+                  ),
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(borderRadius),
                     bottomLeft: Radius.circular(borderRadius),
@@ -2848,7 +2874,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       : _autoLessonColor(sk, isDark);
                                   final bgColor = isCancelled
                                       ? Color.alphaBlend(
-                                          cancelledColor.withValues(alpha: 0.10),
+                                          cancelledColor.withValues(alpha: isDark ? 0.14 : 0.10),
                                           cs.surfaceContainerHighest,
                                         )
                                       : Color.alphaBlend(
@@ -3308,7 +3334,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                               : _autoLessonColor(sk2, isDark2);
                                           final bgColor = isCancelled
                                               ? Color.alphaBlend(
-                                                  cancelledColor2.withValues(alpha: 0.10),
+                                                  cancelledColor2.withValues(alpha: isDark2 ? 0.14 : 0.10),
                                                   cs.surfaceContainerHighest,
                                                 )
                                               : Color.alphaBlend(
@@ -3325,7 +3351,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                             dim: dim,
                                             child: GestureDetector(
                                               onTap: () =>
-                                                  _showLessonDetail(context, l),
+                                                  _onLessonTap(context, l),
                                               child: _buildTimetableLessonCard(
                                                 context: context,
                                                 isCancelled: isCancelled,
@@ -3511,6 +3537,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     try {
       await _fetchMasterData();
+      await _fetchHomeworkAndNotes();
     } catch (e) {
       if (hasCachedWeek) {
         if (!mounted) return;
@@ -4563,7 +4590,324 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ),
     );
   }
+}
 
+// --- HAUSAUFGABEN ---
+
+class HomeworkPage extends StatefulWidget {
+  const HomeworkPage({super.key});
+
+  @override
+  State<HomeworkPage> createState() => _HomeworkPageState();
+}
+
+class _HomeworkPageState extends State<HomeworkPage> {
+  List<Map<String, dynamic>> _homeworks = [];
+  Set<String> _doneIds = {};
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (demoModeNotifier.value) {
+      if (mounted) {
+        setState(() {
+          _homeworks = [
+            {
+              'id': 1,
+              'text': 'Read Chapter 4 and answer questions 1-5',
+              'date': 20260820,
+              'dueDate': 20260825,
+              '_lesson': {
+                'su': [{'longname': 'English'}]
+              }
+            },
+            {
+              'id': 2,
+              'text': 'Math Exercises p. 42, No. 1-10',
+              'date': 20260821,
+              'dueDate': 20260823,
+              '_lesson': {
+                'su': [{'longname': 'Mathematics'}]
+              }
+            }
+          ];
+          _loading = false;
+        });
+      }
+      return;
+    }
+
+    final done = await HomeworkService.getDoneIds();
+    final res = await HomeworkService.fetchHomeworkAndNotes(
+      schoolUrl: schoolUrl,
+      schoolName: schoolName,
+      sessionId: sessionID,
+      personId: personId,
+      personType: personType,
+    );
+
+    homeworksNotifier.value = res['homeworks']!;
+    lessonNotesNotifier.value = res['lessonNotes']!;
+
+    if (mounted) {
+      setState(() {
+        _homeworks = res['homeworks']!;
+        _doneIds = done;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleDone(int id, bool done) async {
+    await HomeworkService.toggleDone(id, done);
+    final newDone = await HomeworkService.getDoneIds();
+    if (mounted) {
+      setState(() {
+        _doneIds = newDone;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppL10n.of(appLocaleNotifier.value);
+
+    return Scaffold(
+      appBar: RoundedBlurAppBar(
+        title: Text(
+          l.homeworkTitle,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () {
+              setState(() => _loading = true);
+              _load();
+            },
+            tooltip: l.homeworkReload,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: _AnimatedBackground(child: const SizedBox.expand()),
+          ),
+          Positioned.fill(
+            child: _loading
+                ? Center(child: CircularProgressIndicator(color: cs.primary))
+                : _homeworks.isEmpty
+                    ? _buildEmptyState(cs, l)
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                        itemCount: _homeworks.length,
+                        itemBuilder: (context, index) {
+                          final hw = _homeworks[index];
+                          final id = hw['id'] as int;
+                          final isDone = _doneIds.contains(id.toString());
+                          return _buildHomeworkCard(context, hw, isDone);
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ColorScheme cs, AppL10n l) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _withOptionalBackdropBlur(
+            sigma: 12,
+            child: const SizedBox.shrink(),
+            childBuilder: (enabled) => Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.25),
+                shape: BoxShape.circle,
+                border: Border.all(color: cs.primary.withValues(alpha: 0.1)),
+              ),
+              child: Icon(
+                Icons.assignment_turned_in_rounded,
+                size: 64,
+                color: cs.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            l.homeworkNone,
+            style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 50),
+            child: Text(
+              l.homeworkNoneHint,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                color: cs.onSurfaceVariant,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHomeworkCard(
+    BuildContext context,
+    Map<String, dynamic> hw,
+    bool isDone,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final subject = hw['_lesson']?['su']?.first?['longname'] ??
+        hw['_lesson']?['su']?.first?['name'] ??
+        '???';
+    final text = hw['text'] ?? '';
+    final dueDate = hw['dueDate'].toString();
+
+    String formatDate(String d) {
+      if (d.length != 8) return d;
+      return '${d.substring(6, 8)}.${d.substring(4, 6)}.${d.substring(0, 4)}';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _withOptionalBackdropBlur(
+        sigma: 20,
+        child: const SizedBox.shrink(),
+        childBuilder: (enabled) => Container(
+          decoration: BoxDecoration(
+            color: isDone
+                ? cs.surfaceContainerLowest.withValues(alpha: 0.4)
+                : cs.surfaceContainerLow.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDone
+                  ? cs.tertiary.withValues(alpha: 0.15)
+                  : cs.outlineVariant.withValues(alpha: 0.35),
+              width: 1.2,
+            ),
+            boxShadow: [
+              if (!isDone)
+                BoxShadow(
+                  color: cs.shadow.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: InkWell(
+              onTap: () => _toggleDone(hw['id'], !isDone),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      margin: const EdgeInsets.only(top: 2),
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: isDone ? cs.tertiary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDone ? cs.tertiary : cs.outlineVariant,
+                          width: 2,
+                        ),
+                      ),
+                      child: isDone
+                          ? Icon(Icons.check_rounded, size: 18, color: cs.onTertiary)
+                          : null,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            subject,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 19,
+                              color: isDone ? cs.onSurface.withValues(alpha: 0.4) : cs.onSurface,
+                              decoration: isDone ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            text,
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              height: 1.5,
+                              color: isDone
+                                  ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                                  : cs.onSurfaceVariant,
+                              decoration: isDone ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isDone
+                                  ? cs.tertiary.withValues(alpha: 0.08)
+                                  : cs.primaryContainer.withValues(alpha: 0.4),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.event_rounded,
+                                  size: 14,
+                                  color: isDone ? cs.tertiary.withValues(alpha: 0.6) : cs.primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${l.homeworkDue}: ${formatDate(dueDate)}',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: isDone ? cs.tertiary.withValues(alpha: 0.6) : cs.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // --- PRÜFUNGEN ---
@@ -6200,32 +6544,6 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
     return resolved;
   }
 
-  String _normalizedBaseUrl(String value) {
-    var out = value.trim();
-    while (out.endsWith('/')) {
-      out = out.substring(0, out.length - 1);
-    }
-    return out;
-  }
-
-  String _openAiCompatibleEndpoint(String rawBaseUrl) {
-    final base = _normalizedBaseUrl(rawBaseUrl);
-    if (base.isEmpty) return '';
-    if (base.endsWith('/chat/completions')) return base;
-    if (base.endsWith('/v1')) return '$base/chat/completions';
-    if (base.endsWith('/v1/chat')) return '$base/completions';
-    return '$base/v1/chat/completions';
-  }
-
-  String _geminiCompatibleEndpoint(String rawBaseUrl, String model) {
-    final base = _normalizedBaseUrl(rawBaseUrl);
-    if (base.isEmpty) return '';
-    if (base.contains('/models/')) return base;
-    if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
-    if (base.contains('/v1')) return '$base/models/$model:generateContent';
-    return '$base/v1beta/models/$model:generateContent';
-  }
-
   List<Map<String, String>> _historyForProvider() {
     return _messages
         .map(
@@ -6235,145 +6553,6 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
           },
         )
         .toList();
-  }
-
-  Future<String> _requestGeminiResponse({
-    required String endpoint,
-    required String apiKey,
-    required String systemPrompt,
-  }) async {
-    final contents = _messages.map((m) {
-      final role = (m['role'] == 'user') ? 'user' : 'model';
-      return {
-        'role': role,
-        'parts': [
-          {'text': m['content'] ?? ''},
-        ],
-      };
-    }).toList();
-
-    final body = jsonEncode({
-      'systemInstruction': {
-        'parts': [
-          {'text': systemPrompt},
-        ],
-      },
-      'contents': contents,
-      'generationConfig': {'maxOutputTokens': 2600, 'temperature': 0.2},
-    });
-
-    final endpointUri = Uri.parse(endpoint);
-    final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
-      ..putIfAbsent('key', () => apiKey);
-    final uri = endpointUri.replace(queryParameters: mergedParams);
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
-      body: body,
-    );
-
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) payload = decoded;
-    } catch (_) {}
-
-    if (response.statusCode != 200) {
-      final message = payload?['error']?['message'] ?? response.statusCode;
-      throw Exception('API: $message');
-    }
-
-    var reply = '';
-    final candidates = payload?['candidates'];
-    if (candidates is List && candidates.isNotEmpty) {
-      final content = candidates.first['content'];
-      final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
-      if (parts is List) {
-        reply = parts
-            .map((p) => (p is Map<String, dynamic>) ? p['text'] : null)
-            .whereType<String>()
-            .join();
-      }
-    }
-
-    reply = reply.trim();
-    if (reply.isEmpty) {
-      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
-    }
-    return reply;
-  }
-
-  Future<String> _requestOpenAiCompatibleResponse({
-    required String endpoint,
-    required String apiKey,
-    required String model,
-    required String systemPrompt,
-  }) async {
-    final messages = [
-      {'role': 'system', 'content': systemPrompt},
-      ..._historyForProvider(),
-    ];
-
-    final body = jsonEncode({
-      'model': model,
-      'messages': messages,
-      'temperature': 0.2,
-    });
-
-    final response = await http.post(
-      Uri.parse(endpoint),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: body,
-    );
-
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) payload = decoded;
-    } catch (_) {}
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = payload?['error']?['message'] ?? response.statusCode;
-      throw Exception('API: $message');
-    }
-
-    final choices = payload?['choices'];
-    if (choices is! List || choices.isEmpty) {
-      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
-    }
-
-    final first = choices.first;
-    if (first is! Map<String, dynamic>) {
-      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
-    }
-
-    final message = first['message'];
-    if (message is Map<String, dynamic>) {
-      final content = message['content'];
-      if (content is String && content.trim().isNotEmpty) {
-        return content.trim();
-      }
-      if (content is List) {
-        final text = content
-            .map((part) {
-              if (part is Map<String, dynamic>) {
-                return part['text']?.toString() ?? '';
-              }
-              return '';
-            })
-            .join()
-            .trim();
-        if (text.isNotEmpty) return text;
-      }
-    }
-
-    final legacyText = first['text']?.toString().trim() ?? '';
-    if (legacyText.isNotEmpty) return legacyText;
-    throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
   }
 
   Future<void> _send() async {
@@ -6453,7 +6632,7 @@ if (isLocalProvider && aiLocalModelPath.isEmpty) {
         setState(() {
           final lastIndex = _messages.length - 1;
           if (lastIndex >= 0 && _messages[lastIndex]['role'] == 'assistant') {
-            final currentContent = _messages[lastIndex]['content'] as String? ?? '';
+            final String currentContent = _messages[lastIndex]['content'] ?? '';
             _messages[lastIndex]['content'] = currentContent + chunk;
           }
         });
@@ -6522,8 +6701,7 @@ if (isLocalProvider && aiLocalModelPath.isEmpty) {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: _withOptionalBackdropBlur(
-        sigmaX: 24,
-        sigmaY: 24,
+        sigma: 24,
         child: const SizedBox.shrink(),
         childBuilder: (enabled) => Container(
           height: MediaQuery.of(context).size.height * 0.82,
@@ -6826,7 +7004,7 @@ if (isLocalProvider && aiLocalModelPath.isEmpty) {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: cs.shadow.withValues(alpha: 0.12),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -6979,10 +7157,33 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
   final isCancelled = (lesson['code'] ?? '') == 'cancelled';
   final info = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
   final lessonNr = lesson['lsnumber']?.toString() ?? '';
+  final studentNotes = (lesson['lsText'] ?? lesson['lstext'] ?? '').toString().trim();
   final subjectKey = lesson['_subjectShort']?.toString() ?? '';
   final eventName = lesson['_eventName']?.toString() ?? '';
   final classNames = lesson['_classNames']?.toString() ?? '';
   final activityType = lesson['_activityType']?.toString() ?? '';
+
+  // Attach homework and class-register notes for this specific lesson. The
+  // lesson id alone is not unique across dates, so match on date as well.
+  final lessonId = lesson['id'] ?? lesson['lsid'];
+  final dateInt = lesson['date'] as int?;
+
+  final homework = homeworksNotifier.value
+      .where((h) => h['lessonId'] == lessonId)
+      .map((h) => h['text']?.toString() ?? '')
+      .where((t) => t.isNotEmpty)
+      .join('\n');
+
+  final registerNotes = lessonNotesNotifier.value
+      .where((n) {
+        final noteLessonId = n['lessonId'];
+        final noteDate = n['date'] as int?;
+        return noteLessonId == lessonId &&
+            (noteDate == null || noteDate == dateInt);
+      })
+      .map((n) => n['text']?.toString() ?? '')
+      .where((t) => t.isNotEmpty)
+      .join('\n');
 
   showModalBottomSheet(
     context: context,
@@ -7001,6 +7202,9 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
       eventName: eventName,
       classNames: classNames,
       activityType: activityType,
+      studentNotes: studentNotes,
+      registerNotes: registerNotes,
+      homework: homework,
       onHideSubject: () {
         Navigator.of(context).pop();
         _hideSubject(subjectKey);
@@ -7049,6 +7253,7 @@ class _AnimatedLessonCard extends StatelessWidget {
 class _LessonDetailSheet extends StatelessWidget {
   final String subject, subjectShort, room, teacher, time, info, lessonNr;
   final String eventName, classNames, activityType;
+  final String studentNotes, registerNotes, homework;
   final bool isCancelled;
   final VoidCallback? onHideSubject;
 
@@ -7064,8 +7269,31 @@ class _LessonDetailSheet extends StatelessWidget {
     this.eventName = '',
     this.classNames = '',
     this.activityType = '',
+    this.studentNotes = '',
+    this.registerNotes = '',
+    this.homework = '',
     this.onHideSubject,
   });
+
+  Widget _topActionButton(
+    BuildContext context,
+    IconData icon,
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, size: 20, color: color),
+      ),
+    );
+  }
 
   Widget _row(
     BuildContext context,
@@ -7128,7 +7356,7 @@ class _LessonDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
-    final cancelledColor = Color(cancelledLessonColorNotifier.value);
+    final cancelledColor = Color(cancelledLessonColorNotifier.value).harmonizeWith(cs.primary);
     return _sheetSurface(
       context: context,
       blur: blurEnabledNotifier.value,
@@ -7155,62 +7383,77 @@ class _LessonDetailSheet extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            if (isCancelled)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: cancelledColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.cancel_outlined, size: 16, color: cancelledColor),
-                    const SizedBox(width: 6),
-                    Text(
-                      l.detailCancelled,
-                      style: GoogleFonts.outfit(
-                        color: cancelledColor,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
+            Row(
+              children: [
+                if (isCancelled)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
                     ),
-                  ],
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: cs.tertiaryContainer,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.check_circle_outline,
-                      size: 16,
-                      color: cs.tertiary,
+                    decoration: BoxDecoration(
+                      color: cancelledColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      l.detailRegular,
-                      style: GoogleFonts.outfit(
-                        color: cs.tertiary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.cancel_outlined,
+                          size: 16,
+                          color: cancelledColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          l.detailCancelled,
+                          style: GoogleFonts.outfit(
+                            color: cancelledColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 16,
+                          color: cs.tertiary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          l.detailRegular,
+                          style: GoogleFonts.outfit(
+                            color: cs.tertiary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const Spacer(),
+                _topActionButton(
+                  context,
+                  Icons.visibility_off_outlined,
+                  cs.onSurface.withValues(alpha: 0.6),
+                  onTap: onHideSubject,
                 ),
-              ),
+              ],
+            ),
 
             const SizedBox(height: 16),
 
@@ -7245,6 +7488,62 @@ class _LessonDetailSheet extends StatelessWidget {
               _row(context, Icons.category_rounded, 'Art', activityType),
             if (lessonNr.isNotEmpty && lessonNr != '0')
               _row(context, Icons.tag_rounded, l.detailLesson, lessonNr),
+            if (studentNotes.isNotEmpty)
+              InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => StudentNotesPage(
+                        notes: studentNotes,
+                        registerNotes: registerNotes,
+                      ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: _row(
+                  context,
+                  Icons.notes_rounded,
+                  l.detailNotesForStudents,
+                  studentNotes,
+                ),
+              ),
+            if (registerNotes.isNotEmpty)
+              InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => StudentNotesPage(
+                        notes: studentNotes,
+                        registerNotes: registerNotes,
+                      ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: _row(
+                  context,
+                  Icons.book_rounded,
+                  l.detailLessonNotes,
+                  registerNotes,
+                  iconColor: cs.primary,
+                ),
+              ),
+            if (homework.isNotEmpty)
+              InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const HomeworkPage()),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: _row(
+                  context,
+                  Icons.assignment_rounded,
+                  l.detailHomework,
+                  homework,
+                ),
+              ),
             if (info.isNotEmpty)
               _row(
                 context,
@@ -7254,31 +7553,145 @@ class _LessonDetailSheet extends StatelessWidget {
                 iconColor: cs.tertiary,
               ),
 
-            const SizedBox(height: 16),
-            Divider(color: cs.outlineVariant.withValues(alpha: 0.5), height: 1),
-            const SizedBox(height: 12),
+            const SizedBox(height: 48),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-            OutlinedButton.icon(
-              onPressed: onHideSubject,
-              icon: const Icon(Icons.visibility_off_outlined, size: 18),
-              label: Text(
-                l.detailHideSubject,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: cs.onSurface.withValues(alpha: 0.6),
-                side: BorderSide(
-                  color: cs.outlineVariant.withValues(alpha: 0.5),
-                ),
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+// --- NOTIZEN DETAIL SEITE ---
+
+class StudentNotesPage extends StatelessWidget {
+  /// Planned lesson text from the timetable (`lsText`).
+  final String notes;
+
+  /// Actual notes from the class register (WebUntis lessonNotes).
+  final String registerNotes;
+
+  const StudentNotesPage({
+    super.key,
+    required this.notes,
+    this.registerNotes = '',
+  });
+
+  Widget _noteSectionHeader(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required Color iconColor,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(icon, size: 22, color: iconColor),
+        ),
+        const SizedBox(width: 18),
+        Expanded(
+          child: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+              color: cs.onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppL10n.of(appLocaleNotifier.value);
+
+    return Scaffold(
+      appBar: RoundedBlurAppBar(
+        title: Text(
+          l.detailNotesForStudents,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: _AnimatedBackground(child: const SizedBox.expand()),
+          ),
+          Positioned.fill(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+              child: _withOptionalBackdropBlur(
+                sigma: 24,
+                child: const SizedBox.shrink(),
+                childBuilder: (enabled) => Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerLow.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(36),
+                    border: Border.all(
+                      color: cs.outlineVariant.withValues(alpha: 0.35),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (notes.isNotEmpty) ...[
+                        _noteSectionHeader(
+                          context,
+                          icon: Icons.notes_rounded,
+                          title: l.detailNotesForStudents,
+                          iconColor: cs.tertiary,
+                        ),
+                        const SizedBox(height: 28),
+                        Text(
+                          notes,
+                          style: GoogleFonts.outfit(
+                            fontSize: 17.5,
+                            height: 1.7,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurface.withValues(alpha: 0.95),
+                          ),
+                        ),
+                      ],
+                      if (notes.isNotEmpty && registerNotes.isNotEmpty)
+                        const SizedBox(height: 36),
+                      if (registerNotes.isNotEmpty) ...[
+                        _noteSectionHeader(
+                          context,
+                          icon: Icons.book_rounded,
+                          title: l.detailLessonNotes,
+                          iconColor: cs.primary,
+                        ),
+                        const SizedBox(height: 28),
+                        Text(
+                          registerNotes,
+                          style: GoogleFonts.outfit(
+                            fontSize: 17.5,
+                            height: 1.7,
+                            fontWeight: FontWeight.w500,
+                            color: cs.onSurface.withValues(alpha: 0.95),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -7306,7 +7719,7 @@ class LessonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final cancelledColor = Color(cancelledLessonColorNotifier.value);
+    final cancelledColor = Color(cancelledLessonColorNotifier.value).harmonizeWith(cs.primary);
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 0,
@@ -7321,8 +7734,7 @@ class LessonCard extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(32),
           child: _withOptionalBackdropBlur(
-            sigmaX: 12,
-            sigmaY: 12,
+            sigma: 12,
             child: const SizedBox.shrink(),
             childBuilder: (enabled) => Container(
               padding: const EdgeInsets.all(24),
@@ -7755,41 +8167,47 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       return const [];
     }
 
-    final documentedCandidates = <List<dynamic>>[
-      await fetchNewsWidgetMessages(),
-      await fetchInboxMessages(),
-    ];
+    final results = await Future.wait([
+      fetchInboxMessages(),
+      fetchNewsWidgetMessages(),
+    ]);
 
-    final candidates = <List<dynamic>>[
-      ...documentedCandidates,
-      await tryJsonRpc('getMessagesOfDay2017', {
-        'date': DateFormat('yyyyMMdd').format(DateTime.now()),
-      }),
-      await tryGet(
-        '/WebUntis/api/public/messages?startDate=$startStr&endDate=$endStr',
-      ),
-      await tryGet(
-        '/WebUntis/api/messages?startDate=$startStr&endDate=$endStr',
-      ),
-      await tryGet(
-        '/WebUntis/api/public/notifications?startDate=$startStr&endDate=$endStr',
-      ),
-      await tryGet(
-        '/WebUntis/api/public/notices?startDate=$startStr&endDate=$endStr',
-      ),
-      await tryJsonRpc('getMessagesOfDay', {
-        'date': DateFormat('yyyyMMdd').format(DateTime.now()),
-      }),
-      await tryJsonRpc('getMessages', {
-        'startDate': startStr,
-        'endDate': endStr,
-      }),
-    ];
+    final inboxMessages = results[0];
+    List<dynamic> schoolMessages = results[1];
 
-    final raw = candidates.firstWhere(
-      (entry) => entry.isNotEmpty,
-      orElse: () => const [],
-    );
+    if (schoolMessages.isEmpty) {
+      final schoolFallbacks = [
+        () => tryJsonRpc('getMessagesOfDay2017', {
+              'date': DateFormat('yyyyMMdd').format(DateTime.now()),
+            }),
+        () => tryGet(
+              '/WebUntis/api/public/messages?startDate=$startStr&endDate=$endStr',
+            ),
+        () => tryGet(
+              '/WebUntis/api/messages?startDate=$startStr&endDate=$endStr',
+            ),
+        () => tryGet(
+              '/WebUntis/api/public/notifications?startDate=$startStr&endDate=$endStr',
+            ),
+        () => tryGet(
+              '/WebUntis/api/public/notices?startDate=$startStr&endDate=$endStr',
+            ),
+        () => tryJsonRpc('getMessagesOfDay', {
+              'date': DateFormat('yyyyMMdd').format(DateTime.now()),
+            }),
+        () => tryJsonRpc('getMessages', {
+              'startDate': startStr,
+              'endDate': endStr,
+            }),
+      ];
+
+      for (final fallback in schoolFallbacks) {
+        schoolMessages = await fallback();
+        if (schoolMessages.isNotEmpty) break;
+      }
+    }
+
+    final raw = [...inboxMessages, ...schoolMessages];
     final seen = <String>{};
     final items = <_SchoolNotificationItem>[];
 
@@ -9012,7 +9430,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setBool('progressivePush', v);
     if (!v) {
       await NotificationService().cancelNotification(
-        kCurrentLessonNotificationId,
+        NotificationIds.currentLesson,
       );
     } else {
       updateUntisData().catchError((_) {});
@@ -9025,7 +9443,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await prefs.setBool('dailyBriefingPush', v);
     if (!v) {
       await NotificationService().cancelNotification(
-        kDailyBriefingNotificationId,
+        NotificationIds.dailyBriefing,
       );
     } else {
       updateUntisData().catchError((_) {});
@@ -9434,8 +9852,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _glassContainer(
               context: context,
               borderRadius: BorderRadius.circular(24),
-              sigmaX: 18,
-              sigmaY: 18,
+              sigma: 18,
               color: cs.surface.withValues(alpha: 0.52),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -9590,8 +10007,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Stack(
                   children: [
                     _withOptionalBackdropBlur(
-                      sigmaX: 24,
-                      sigmaY: 24,
+                      sigma: 24,
                       child: const SizedBox.shrink(),
                       childBuilder: (enabled) {
                         final isDark =
@@ -10461,10 +10877,8 @@ class SubjectColorsPage extends StatelessWidget {
   ) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final fallback = _autoLessonColor(
-      subject,
-      Theme.of(context).brightness == Brightness.dark,
-    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fallback = _autoLessonColor(subject, isDark);
 
     double red = ((current ?? fallback).r * 255.0);
     double green = ((current ?? fallback).g * 255.0);

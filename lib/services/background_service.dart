@@ -611,12 +611,12 @@ Future<void> checkGithubUpdateAndNotify() async {
             : true);
 
     if (!hasUpdate) {
-      await NotificationService().cancelNotification(kUpdateNotificationId);
+      await NotificationService().cancelNotification(NotificationIds.update);
       return;
     }
 
     await NotificationService().showUpdateNotification(
-      id: kUpdateNotificationId,
+      id: NotificationIds.update,
       title: _localizedUpdateTitle(locale),
       body: _localizedUpdateBody(locale, latestVersion),
       locale: locale,
@@ -744,7 +744,7 @@ Future<void> updateUntisData() async {
 
   if (lessons.isEmpty) {
     await NotificationService().cancelNotification(
-      kCurrentLessonNotificationId,
+      NotificationIds.currentLesson,
     );
     return;
   }
@@ -872,7 +872,7 @@ Future<void> updateUntisData() async {
 
   if (!hasActiveLesson && currentTimeInt > (lessons.last['endTime'] as int)) {
     await NotificationService().cancelNotification(
-      kCurrentLessonNotificationId,
+      NotificationIds.currentLesson,
     );
     return;
   }
@@ -939,7 +939,7 @@ Future<void> updateUntisData() async {
   if (isProgressivePushEnabled) {
     if (hasActiveLesson) {
       await NotificationService().showProgressiveNotification(
-        id: kCurrentLessonNotificationId,
+        id: NotificationIds.currentLesson,
         title: currentLessonName,
         body: timeRemaining,
         subText: null,
@@ -951,12 +951,12 @@ Future<void> updateUntisData() async {
       );
     } else {
       await NotificationService().cancelNotification(
-        kCurrentLessonNotificationId,
+        NotificationIds.currentLesson,
       );
     }
   } else {
     await NotificationService().cancelNotification(
-      kCurrentLessonNotificationId,
+      NotificationIds.currentLesson,
     );
   }
 }

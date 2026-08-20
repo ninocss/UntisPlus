@@ -223,6 +223,28 @@ class SettingsAppearancePage extends StatelessWidget {
                   },
                 ),
                 ValueListenableBuilder<bool>(
+                  valueListenable: isAmoledNotifier,
+                  builder: (context, isAmoled, _) {
+                    return ValueListenableBuilder<ThemeMode>(
+                      valueListenable: themeModeNotifier,
+                      builder: (context, mode, _) {
+                        final isDark = mode == ThemeMode.dark ||
+                            (mode == ThemeMode.system &&
+                                MediaQuery.of(context).platformBrightness == Brightness.dark);
+                        return SettingsSwitchTile(
+                          icon: Icons.dark_mode_rounded,
+                          iconBackgroundColor: cs.surfaceContainerHighest,
+                          iconColor: isDark ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.5),
+                          title: "Pitch Black (AMOLED)",
+                          subtitle: "Tiefschwarzer Hintergrund im Darkmode für OLED-Displays.",
+                          value: isAmoled,
+                          onChanged: isDark ? _settingsSetIsAmoled : (v) {},
+                        );
+                      },
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
                   valueListenable: useMaterialYouNotifier,
                   builder: (context, useMaterialYou, _) {
                     if (useMaterialYou) return const SizedBox.shrink();

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+part of '../main.dart';
 
 class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget? title;
@@ -6,8 +6,8 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget? leading;
   final double height;
   final bool centerTitle;
-  final double borderRadius; // Kept for API compatibility but ignored
-  final bool useBlur; // Kept for API compatibility but ignored
+  final double borderRadius;
+  final bool useBlur;
   final PreferredSizeWidget? bottom;
 
   const RoundedBlurAppBar({
@@ -28,13 +28,31 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      centerTitle: centerTitle,
-      leading: leading,
-      actions: actions,
-      title: title,
-      bottom: bottom,
-      // Material 3 handles scrolledUnderElevation and surfaceTint automatically
+    final cs = Theme.of(context).colorScheme;
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: blurEnabledNotifier,
+      builder: (context, blurEnabled, _) {
+        final isBlurActive = useBlur && blurEnabled;
+
+        return AppBar(
+          centerTitle: centerTitle,
+          leading: leading,
+          actions: actions,
+          title: title,
+          bottom: bottom,
+          backgroundColor: isBlurActive
+              ? cs.surface.withValues(alpha: 0.55)
+              : (blurEnabled ? Colors.transparent : cs.surface),
+          elevation: 0,
+          scrolledUnderElevation: isBlurActive ? 0 : 4,
+          flexibleSpace: _blurEffect(
+            enabled: useBlur,
+            sigma: 30,
+            child: Container(color: Colors.transparent),
+          ),
+        );
+      },
     );
   }
 }

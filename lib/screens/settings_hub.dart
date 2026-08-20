@@ -75,6 +75,12 @@ Future<void> _settingsSetUseMaterialYou(bool value) async {
   await prefs.setBool('useMaterialYou', value);
 }
 
+Future<void> _settingsSetIsAmoled(bool value) async {
+  isAmoledNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('isAmoled', value);
+}
+
 Future<void> _settingsSetCustomColorSeed(int value) async {
   customColorSeedNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -99,7 +105,7 @@ Future<void> _settingsSetProgressivePush(bool value) async {
   await prefs.setBool('progressivePush', value);
   if (!value) {
     await NotificationService().cancelNotification(
-      kCurrentLessonNotificationId,
+      NotificationIds.currentLesson,
     );
   } else {
     updateUntisData().catchError((_) {});
@@ -112,7 +118,7 @@ Future<void> _settingsSetDailyBriefingPush(bool value) async {
   await prefs.setBool('dailyBriefingPush', value);
   if (!value) {
     await NotificationService().cancelNotification(
-      kDailyBriefingNotificationId,
+      NotificationIds.dailyBriefing,
     );
   } else {
     updateUntisData().catchError((_) {});
@@ -315,6 +321,8 @@ Future<void> _settingsSyncFromPrefs() async {
       (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
   useMaterialYouNotifier.value =
       prefs.getBool('useMaterialYou') ?? true;
+  isAmoledNotifier.value =
+      prefs.getBool('isAmoled') ?? false;
   customColorSeedNotifier.value =
       prefs.getInt('customColorSeed') ?? 0xFF0F766E;
   progressivePushNotifier.value =

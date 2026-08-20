@@ -57,7 +57,7 @@
 | Streamlined Onboarding Flow | Done |
 | Multi-Account / Multi-School Support | Planned |
 | Dynamic Lockscreen & Next-Lesson Widgets | Planned |
-| Native Offline/Local AI Model Integration | Done |
+| Native Offline/Local AI Model Integration | Planned |
 | Dynamic Smart Alarm Sync (Wake up based on timetable changes) | Planned |
 
 ---
@@ -71,9 +71,6 @@
 | **`dynamic_color`** | Material You dynamic theme integration |
 | **`home_widget`** | Native Android and iOS widget connectivity |
 | **`flutter_local_notifications`** | Time-critical lesson alerts and schedule update tracking |
-| **`dio`** | Local model downloads with progress and cancellation |
-| **`fllama`** | On-device inference via llama.cpp |
-| **`path_provider`** | Local model storage locations |
 
 ---
 

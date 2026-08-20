@@ -1239,8 +1239,7 @@ class _CustomBackgroundEditorScreenState
       child: _glassContainer(
         context: context,
         borderRadius: BorderRadius.circular(radius),
-        sigmaX: 20,
-        sigmaY: 20,
+        sigma: 20,
         color: cs.surface.withValues(alpha: 0.46),
         gradient: LinearGradient(
           begin: Alignment.topLeft,

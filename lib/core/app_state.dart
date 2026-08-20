@@ -203,6 +203,7 @@ final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
 final ValueNotifier<int> pageTransitionNotifier = ValueNotifier(0);
 final ValueNotifier<bool> useMaterialYouNotifier = ValueNotifier(true);
+final ValueNotifier<bool> isAmoledNotifier = ValueNotifier(false);
 final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
 
 String _icuLocale(String locale) {
@@ -217,6 +218,16 @@ String _icuLocale(String locale) {
       return 'de_DE';
   }
 }
+
+/// Latest fetched homework assignments, available app-wide so lesson detail
+/// sheets can attach homework to the corresponding lesson.
+final ValueNotifier<List<Map<String, dynamic>>> homeworksNotifier =
+    ValueNotifier(const []);
+
+/// Latest fetched lesson notes (class register remarks), available app-wide so
+/// lesson detail sheets can attach register notes to the corresponding lesson.
+final ValueNotifier<List<Map<String, dynamic>>> lessonNotesNotifier =
+    ValueNotifier(const []);
 
 final ValueNotifier<Set<String>> hiddenSubjectsNotifier = ValueNotifier({});
 

@@ -16,14 +16,34 @@ Widget _springEntry({
   return child;
 }
 
+Widget _blurEffect({
+  required Widget child,
+  double sigma = 30,
+  BorderRadiusGeometry borderRadius = BorderRadius.zero,
+  bool enabled = true,
+}) {
+  return ValueListenableBuilder<bool>(
+    valueListenable: blurEnabledNotifier,
+    builder: (context, blurEnabled, _) {
+      if (!enabled || !blurEnabled) return child;
+      return ClipRRect(
+        borderRadius: borderRadius is BorderRadius ? borderRadius : BorderRadius.zero,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 Widget _glassContainer({
   required BuildContext context,
   required Widget child,
   BorderRadiusGeometry borderRadius = const BorderRadius.all(
     Radius.circular(32),
   ),
-  double sigmaX = 65,
-  double sigmaY = 65,
+  double sigma = 30,
   Color? color,
   Gradient? gradient,
   Border? border,
@@ -32,45 +52,45 @@ Widget _glassContainer({
   return ValueListenableBuilder<bool>(
     valueListenable: blurEnabledNotifier,
     builder: (context, blurEnabled, _) {
-      final surfaceColor = color ?? cs.surfaceContainerLow.withValues(alpha: 0.4);
+      final surfaceColor = color ?? cs.surfaceContainerLow.withValues(alpha: 0.45);
       final decor = BoxDecoration(
         borderRadius: borderRadius,
         color: blurEnabled ? surfaceColor : (color ?? cs.surfaceContainerHigh),
         border: border ??
             Border.all(
-              color: cs.outlineVariant.withValues(alpha: blurEnabled ? 0.25 : 0.4),
+              color: cs.outlineVariant.withValues(alpha: blurEnabled ? 0.35 : 0.45),
               width: 1,
             ),
+        gradient: gradient,
       );
 
-      Widget content = Container(
-        decoration: decor,
-        child: child,
+      return _blurEffect(
+        sigma: sigma,
+        borderRadius: borderRadius,
+        enabled: true,
+        child: Container(
+          decoration: decor,
+          child: child,
+        ),
       );
-
-      if (blurEnabled) {
-        content = ClipRRect(
-          borderRadius: borderRadius is BorderRadius ? borderRadius : BorderRadius.zero,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: sigmaX, sigmaY: sigmaY),
-            child: content,
-          ),
-        );
-      }
-      return content;
     },
   );
 }
 
 Widget _withOptionalBackdropBlur({
-  required double sigmaX,
-  required double sigmaY,
+  double sigma = 30,
   required Widget child,
   required Widget Function(bool enabled) childBuilder,
 }) {
   return ValueListenableBuilder<bool>(
     valueListenable: blurEnabledNotifier,
-    builder: (context, enabled, _) => childBuilder(enabled),
+    builder: (context, enabled, _) {
+      return _blurEffect(
+        sigma: sigma,
+        enabled: enabled,
+        child: childBuilder(enabled),
+      );
+    },
   );
 }
 
@@ -90,26 +110,53 @@ Widget _sheetSurface({
     builder: (context, blurEnabled, _) {
       final isBlurActive = blur && blurEnabled;
       final decor = BoxDecoration(
-        color: isBlurActive ? cs.surfaceContainerLowest.withValues(alpha: 0.5) : cs.surfaceContainerLow,
+        color: isBlurActive ? cs.surfaceContainerLowest.withValues(alpha: 0.6) : cs.surfaceContainerLow,
         borderRadius: borderRadius,
-        border: isBlurActive ? Border(top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3), width: 1.5)) : null,
+        border: isBlurActive ? Border(top: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35), width: 1.5)) : null,
       );
       
-      Widget content = Container(
-        decoration: decor,
-        child: child,
+      return _blurEffect(
+        sigma: 45,
+        borderRadius: borderRadius,
+        enabled: blur,
+        child: Container(
+          decoration: decor,
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+Widget _dialogSurface({
+  required BuildContext context,
+  required Widget child,
+  bool blur = true,
+  BorderRadiusGeometry borderRadius = const BorderRadius.all(Radius.circular(28)),
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return ValueListenableBuilder<bool>(
+    valueListenable: blurEnabledNotifier,
+    builder: (context, blurEnabled, _) {
+      final isBlurActive = blur && blurEnabled;
+      final decor = BoxDecoration(
+        color: isBlurActive ? cs.surfaceContainerHigh.withValues(alpha: 0.72) : cs.surfaceContainerHigh,
+        borderRadius: borderRadius,
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: isBlurActive ? 0.3 : 0.5),
+          width: 1,
+        ),
       );
       
-      if (isBlurActive) {
-        content = ClipRRect(
-          borderRadius: borderRadius is BorderRadius ? borderRadius : const BorderRadius.vertical(top: Radius.circular(32)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 75, sigmaY: 75),
-            child: content,
-          ),
-        );
-      }
-      return content;
+      return _blurEffect(
+        sigma: 32,
+        borderRadius: borderRadius,
+        enabled: blur,
+        child: Container(
+          decoration: decor,
+          child: child,
+        ),
+      );
     },
   );
 }
@@ -126,8 +173,8 @@ Color _autoLessonColor(String subject, bool isDark) {
   final hsl = HSLColor.fromColor(base);
   final adjusted = hsl.withLightness(
     isDark
-        ? (hsl.lightness + 0.05).clamp(0.0, 1.0)
-        : (hsl.lightness - 0.04).clamp(0.0, 1.0),
+        ? (hsl.lightness + 0.12).clamp(0.0, 1.0)
+        : (hsl.lightness - 0.05).clamp(0.0, 1.0),
   );
   return adjusted.toColor();
 }
@@ -186,6 +233,25 @@ Future<T?> _showUnifiedSheet<T>({
         child: content,
       );
     },
+  );
+}
+
+Future<T?> _showGlassDialog<T>({
+  required BuildContext context,
+  required Widget child,
+  bool barrierDismissible = true,
+}) {
+  return showDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: _dialogSurface(
+        context: ctx,
+        child: child,
+      ),
+    ),
   );
 }
 
@@ -320,14 +386,14 @@ class SettingsGroup extends StatelessWidget {
               ),
             ),
           ],
-          Card(
-            elevation: 0,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
+          _glassContainer(
+            context: context,
+            borderRadius: BorderRadius.circular(22),
+            color: cs.surfaceContainerLow.withValues(alpha: 0.5),
+            border: Border.all(
+              color: cs.primary.withValues(alpha: 0.20),
+              width: 1,
             ),
-            color: cs.surfaceContainerLow,
-            clipBehavior: Clip.antiAlias,
             child: Padding(
               padding: padding ?? EdgeInsets.zero,
               child: Column(

@@ -406,6 +406,8 @@ class DemoModeService {
       '_teacher': teacher,
       '_room': room,
       'code': code,
+      'lstext': startTime == 800 ? 'Please bring your textbooks.' : '',
+      'homework': startTime == 800 ? 'Complete exercise 5 on page 12.' : '',
     };
   }
 

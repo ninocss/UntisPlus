@@ -27,8 +27,9 @@ class _AnimatedBackground extends StatelessWidget {
                         ),
                         if (bgBlurEnabled && bgBlurAmount > 0)
                           Positioned.fill(
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: bgBlurAmount, sigmaY: bgBlurAmount),
+                            child: _blurEffect(
+                              enabled: true,
+                              sigma: bgBlurAmount,
                               child: const SizedBox.expand(),
                             ),
                           ),

@@ -248,7 +248,7 @@ class _CustomBackgroundPainter extends CustomPainter {
 
     final alpha = (intensity * (_isDark ? 0.18 : 0.14)).clamp(0.0, 0.12);
     final paint = Paint()
-      ..color = (_isDark ? Colors.white : Colors.black).withValues(alpha: alpha)
+      ..color = cs.onSurface.withValues(alpha: alpha)
       ..strokeWidth = 1.0
       ..strokeCap = StrokeCap.round;
 
