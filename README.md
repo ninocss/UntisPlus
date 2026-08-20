@@ -1,7 +1,7 @@
 # UntisPlus
 
 <p align="center">
-  <img src="assets/icon_with_bg.png" alt="UntisPlus Logo" width="120" style="border-radius: 24px;"/>
+  <img src="assets/icon.png" alt="UntisPlus Logo" width="120" style="border-radius: 24px;"/>
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 
 | Welcome | Timetable | Lesson Details |
 | :---: | :---: | :---: |
-| <img src="assets/github/Welcome.png" width="240" alt="Welcome" /> | <img src="assets/github/Timetable.png" width="240" alt="Timetable" /> | <img src="assets/github/lesson_inspect.png" width="240" alt="Lesson details" /> |
+| <img src="assets/github/welcome.png" width="240" alt="Welcome" /> | <img src="assets/github/timetable.png" width="240" alt="Timetable" /> | <img src="assets/github/lesson_inspect.png" width="240" alt="Lesson details" /> |
 
 | AI Assistant | Appearance | Ready to Go |
 | :---: | :---: | :---: |
