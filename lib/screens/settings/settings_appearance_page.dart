@@ -523,6 +523,19 @@ class SettingsAppearancePage extends StatelessWidget {
                   },
                 ),
                 SettingsTile(
+                  icon: Icons.dashboard_customize_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsLessonDesignTitle,
+                  subtitle: l.settingsLessonDesignDesc,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      _buildBouncyRoute(const SettingsTimetablePage()),
+                    );
+                  },
+                ),
+                SettingsTile(
                   icon: Icons.translate_rounded,
                   iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
                   iconColor: cs.onPrimaryContainer,

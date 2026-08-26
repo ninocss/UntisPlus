@@ -33,8 +33,8 @@ jobs:
         id: changelog
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-2.5-flash
-          GEMINI_FALLBACK_MODEL: gemini-2.5-flash-lite
+          GEMINI_MODEL: 	gemini-3.5-flash
+          GEMINI_FALLBACK_MODEL: 	gemini-3.5-flash-lite
           COMMIT_COUNT: ${{ github.event.inputs.commit_count }}
           RELEASE_VERSION: ${{ github.event.inputs.release_version }}
           INCLUDE_REFACTOR: ${{ github.event.inputs.include_refactor }}

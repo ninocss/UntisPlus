@@ -596,6 +596,34 @@ void main() async {
       prefs.getBool('isAmoled') ?? false;
   customColorSeedNotifier.value =
       prefs.getInt('customColorSeed') ?? 0xFF0F766E;
+  lessonCardStyleNotifier.value =
+      (prefs.getInt('lessonCardStyle') ?? 0).clamp(0, 4);
+  lessonGlowEnabledNotifier.value =
+      prefs.getBool('lessonGlowEnabled') ?? true;
+  lessonGlowModeNotifier.value =
+      (prefs.getInt('lessonGlowMode') ?? 0).clamp(0, 1);
+  lessonGlowIntensityNotifier.value =
+      prefs.getDouble('lessonGlowIntensity') ?? 1.0;
+  lessonBlurEnabledNotifier.value =
+      prefs.getBool('lessonBlurEnabled') ?? false;
+  lessonBlurAmountNotifier.value =
+      prefs.getDouble('lessonBlurAmount') ?? 12.0;
+  lessonCardOpacityNotifier.value =
+      prefs.getDouble('lessonCardOpacity') ?? 0.9;
+  lessonBorderRadiusNotifier.value =
+      prefs.getDouble('lessonBorderRadius') ?? 12.0;
+  lessonAccentStyleNotifier.value =
+      (prefs.getInt('lessonAccentStyle') ?? 0).clamp(0, 3);
+  lessonShowTeacherNotifier.value =
+      prefs.getBool('lessonShowTeacher') ?? true;
+  lessonShowRoomNotifier.value =
+      prefs.getBool('lessonShowRoom') ?? true;
+  lessonCompactModeNotifier.value =
+      prefs.getBool('lessonCompactMode') ?? false;
+  lessonDimPastNotifier.value =
+      prefs.getBool('lessonDimPast') ?? true;
+  lessonCancelledPatternNotifier.value =
+      prefs.getBool('lessonCancelledPattern') ?? true;
   dailyBriefingPushNotifier.value = prefs.getBool('dailyBriefingPush') ?? true;
   importantChangesPushNotifier.value =
       prefs.getBool('importantChangesPush') ?? true;
@@ -1315,6 +1343,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
     demoModeNotifier.addListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
+    lessonCardStyleNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonGlowEnabledNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonGlowModeNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonGlowIntensityNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonBlurEnabledNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonBlurAmountNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonCardOpacityNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonBorderRadiusNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonAccentStyleNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonShowTeacherNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonShowRoomNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonCompactModeNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonDimPastNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonCancelledPatternNotifier.addListener(_onHiddenSubjectsChanged);
     if (sessionID.isNotEmpty || demoModeNotifier.value) {
       _fetchFullWeek();
       _prefetchAdjacentWeeks();
@@ -1796,7 +1838,21 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     subjectColorsNotifier.removeListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.removeListener(_onHiddenSubjectsChanged);
     demoModeNotifier.removeListener(_onDemoModeChanged);
-    pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
+    pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
+    lessonCardStyleNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonGlowEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonGlowModeNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonGlowIntensityNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonBlurEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonBlurAmountNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonCardOpacityNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonBorderRadiusNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonAccentStyleNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonShowTeacherNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonShowRoomNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonCompactModeNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonDimPastNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonCancelledPatternNotifier.removeListener(_onHiddenSubjectsChanged);
     _tabController.dispose();
     _carouselAnimController?.dispose();
     super.dispose();
@@ -2392,7 +2448,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   ];
 
   Widget _dimPastLesson({required Widget child, required bool dim}) {
-    if (!dim) return child;
+    if (!dim || !lessonDimPastNotifier.value) return child;
     return Opacity(
       opacity: 0.45,
       child: ColorFiltered(
@@ -2412,121 +2468,309 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     required String teacher,
     required String room,
     required bool isNow,
-    required double borderRadius,
-    required EdgeInsets padding,
-    required double accentWidth,
-    required double subjectFontSize,
-    required double teacherFontSize,
-    required double roomFontSize,
-    required bool useStripes,
+    double? borderRadius,
+    EdgeInsets? padding,
+    double accentWidth = 3.5,
+    double subjectFontSize = 11.5,
+    double teacherFontSize = 9.5,
+    double roomFontSize = 9.5,
+    bool useStripes = true,
   }) {
-    final cardRadius = BorderRadius.circular(borderRadius);
+    final cs = Theme.of(context).colorScheme;
+    final effectiveRadius = borderRadius ?? lessonBorderRadiusNotifier.value;
+    final cardRadius = BorderRadius.circular(effectiveRadius);
+
+    final glowEnabled = lessonGlowEnabledNotifier.value;
+    final glowMode = lessonGlowModeNotifier.value;
+    final glowIntensity = lessonGlowIntensityNotifier.value;
+    final cardStyle = lessonCardStyleNotifier.value;
+    final blurEnabled = (lessonBlurEnabledNotifier.value || cardStyle == 1) && blurEnabledNotifier.value;
+    final blurSigma = lessonBlurAmountNotifier.value;
+    final cardOpacity = lessonCardOpacityNotifier.value;
+    final accentStyle = lessonAccentStyleNotifier.value;
+    final showTeacher = lessonShowTeacherNotifier.value;
+    final showRoom = lessonShowRoomNotifier.value;
+    final compact = lessonCompactModeNotifier.value;
+    final showPattern = isCancelled && useStripes && lessonCancelledPatternNotifier.value;
+
+    final effectivePadding = padding != null
+        ? (compact
+            ? EdgeInsets.fromLTRB(
+                padding.left.clamp(3.0, 6.0),
+                (padding.top * 0.7).clamp(2.0, 5.0),
+                padding.right.clamp(3.0, 6.0),
+                (padding.bottom * 0.7).clamp(2.0, 5.0),
+              )
+            : padding)
+        : (compact
+            ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
+            : const EdgeInsets.fromLTRB(8, 5, 6, 5));
+
+    final effectiveSubjectFontSize =
+        compact ? (subjectFontSize * 0.92).clamp(8.5, 14.0) : subjectFontSize;
+    final effectiveTeacherFontSize =
+        compact ? (teacherFontSize * 0.90).clamp(7.5, 12.0) : teacherFontSize;
+    final effectiveRoomFontSize =
+        compact ? (roomFontSize * 0.90).clamp(7.5, 12.0) : roomFontSize;
+
+    List<BoxShadow>? shadows;
+    if (glowEnabled) {
+      if (isNow) {
+        shadows = [
+          BoxShadow(
+            color: fgColor.withValues(
+              alpha: (0.38 * glowIntensity).clamp(0.0, 1.0),
+            ),
+            blurRadius: (14 * glowIntensity).clamp(2.0, 30.0),
+            spreadRadius: (1.5 * glowIntensity).clamp(0.0, 6.0),
+            offset: const Offset(0, 3),
+          ),
+        ];
+      } else if (glowMode == 1) {
+        shadows = [
+          BoxShadow(
+            color: fgColor.withValues(
+              alpha: (0.16 * glowIntensity).clamp(0.0, 1.0),
+            ),
+            blurRadius: (8 * glowIntensity).clamp(2.0, 20.0),
+            spreadRadius: (0.5 * glowIntensity).clamp(0.0, 4.0),
+            offset: const Offset(0, 2),
+          ),
+        ];
+      }
+    }
+
+    Color effectiveFillColor;
+    Gradient? effectiveGradient;
+    Border? effectiveBorder;
+    Color effectiveTextColor =
+        isCancelled ? fgColor.withValues(alpha: 0.6) : fgColor;
+    Color effectiveSecondaryTextColor = isCancelled
+        ? fgColor.withValues(alpha: 0.48)
+        : fgColor.withValues(alpha: 0.75);
+
+    switch (cardStyle) {
+      case 1:
+        effectiveFillColor = isCancelled
+            ? bgColor.withValues(
+                alpha: (0.28 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : cs.surfaceContainerLowest.withValues(
+                alpha: (0.52 * cardOpacity).clamp(0.0, 1.0),
+              );
+        effectiveBorder = Border.all(
+          color: isCancelled
+              ? fgColor.withValues(alpha: 0.40)
+              : fgColor.withValues(alpha: isDark ? 0.42 : 0.28),
+          width: 1.2,
+        );
+        break;
+      case 2:
+        effectiveFillColor = Colors.transparent;
+        effectiveGradient = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isCancelled
+              ? [
+                  fgColor.withValues(
+                    alpha: (0.25 * cardOpacity).clamp(0.0, 1.0),
+                  ),
+                  bgColor.withValues(
+                    alpha: (0.45 * cardOpacity).clamp(0.0, 1.0),
+                  ),
+                ]
+              : [
+                  fgColor.withValues(
+                    alpha:
+                        ((isDark ? 0.35 : 0.25) * cardOpacity).clamp(0.0, 1.0),
+                  ),
+                  bgColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0)),
+                ],
+        );
+        effectiveBorder = Border.all(
+          color: fgColor.withValues(alpha: isDark ? 0.30 : 0.18),
+          width: 1.0,
+        );
+        break;
+      case 3:
+        effectiveFillColor = isCancelled
+            ? cs.surfaceContainerLowest.withValues(
+                alpha: (0.35 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : cs.surfaceContainerLow.withValues(
+                alpha: (0.60 * cardOpacity).clamp(0.0, 1.0),
+              );
+        effectiveBorder = Border.all(
+          color: isCancelled
+              ? fgColor.withValues(alpha: 0.50)
+              : fgColor.withValues(alpha: isDark ? 0.85 : 0.70),
+          width: 1.8,
+        );
+        break;
+      case 4:
+        effectiveFillColor = isCancelled
+            ? fgColor.withValues(alpha: 0.45)
+            : fgColor.withValues(alpha: cardOpacity.clamp(0.6, 1.0));
+        effectiveBorder = null;
+        final lum = effectiveFillColor.computeLuminance();
+        final solidText = lum > 0.45 ? Colors.black87 : Colors.white;
+        effectiveTextColor = solidText;
+        effectiveSecondaryTextColor = solidText.withValues(alpha: 0.78);
+        break;
+      case 0:
+      default:
+        effectiveFillColor = isCancelled
+            ? bgColor.withValues(
+                alpha: (0.40 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : bgColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0));
+        effectiveBorder = Border.all(
+          color: fgColor.withValues(alpha: isDark ? 0.25 : 0.15),
+          width: 1.0,
+        );
+        break;
+    }
+
+    final double effectiveAccentWidth = accentStyle == 0
+        ? accentWidth
+        : (accentStyle == 1 ? 1.8 : 0.0);
+
+    Widget cardContent = Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: effectiveFillColor,
+            gradient: effectiveGradient,
+            borderRadius: cardRadius,
+            border: effectiveBorder,
+          ),
+        ),
+        if (showPattern)
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _StripedHatchPainter(
+                color: fgColor.withValues(alpha: isDark ? 0.18 : 0.12),
+                stripeWidth: 2.0,
+                gap: 7.0,
+              ),
+            ),
+          ),
+        if (accentStyle == 0 || accentStyle == 1)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: effectiveAccentWidth,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    fgColor,
+                    fgColor.withValues(alpha: 0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(effectiveRadius),
+                  bottomLeft: Radius.circular(effectiveRadius),
+                ),
+              ),
+            ),
+          ),
+        Padding(
+          padding: effectivePadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (accentStyle == 2) ...[
+                    Container(
+                      width: 6.5,
+                      height: 6.5,
+                      margin: const EdgeInsets.only(right: 4.5),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: fgColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: fgColor.withValues(alpha: 0.6),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  Flexible(
+                    child: Text(
+                      subject,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: effectiveSubjectFontSize,
+                        fontWeight: FontWeight.w800,
+                        color: effectiveTextColor,
+                        decoration:
+                            isCancelled ? TextDecoration.lineThrough : null,
+                        decorationColor: fgColor.withValues(alpha: 0.6),
+                        decorationThickness: 1.6,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (showTeacher && teacher.isNotEmpty)
+                Text(
+                  teacher,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    fontSize: effectiveTeacherFontSize,
+                    fontWeight: FontWeight.w600,
+                    color: effectiveSecondaryTextColor,
+                  ),
+                ),
+              if (showRoom && room.isNotEmpty)
+                Text(
+                  room,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    fontSize: effectiveRoomFontSize,
+                    fontWeight: FontWeight.w600,
+                    color: effectiveSecondaryTextColor,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (blurEnabled) {
+      cardContent = ClipRRect(
+        borderRadius: cardRadius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+          child: cardContent,
+        ),
+      );
+    } else {
+      cardContent = ClipRRect(
+        borderRadius: cardRadius,
+        child: cardContent,
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: cardRadius,
-        boxShadow: isNow
-            ? [
-                BoxShadow(
-                  color: fgColor.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
+        boxShadow: shadows,
       ),
-      child: ClipRRect(
-        borderRadius: cardRadius,
-        child: Stack(
-          children: [
-            // Base background
-            Container(
-              decoration: BoxDecoration(
-                color: isCancelled ? bgColor.withValues(alpha: 0.4) : bgColor,
-                borderRadius: cardRadius,
-                border: Border.all(
-                  color: fgColor.withValues(alpha: isDark ? 0.25 : 0.15),
-                  width: 1.0,
-                ),
-              ),
-            ),
-
-            // Left accent bar
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: accentWidth,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      fgColor,
-                      fgColor.withValues(alpha: 0.7),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(borderRadius),
-                    bottomLeft: Radius.circular(borderRadius),
-                  ),
-                ),
-              ),
-            ),
-
-            // Content
-            Padding(
-              padding: padding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    subject,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontSize: subjectFontSize,
-                      fontWeight: FontWeight.w800,
-                      color: isCancelled ? fgColor.withValues(alpha: 0.6) : fgColor,
-                      decoration: isCancelled ? TextDecoration.lineThrough : null,
-                      decorationColor: fgColor.withValues(alpha: 0.5),
-                      decorationThickness: 1.6,
-                    ),
-                  ),
-                  if (teacher.isNotEmpty)
-                    Text(
-                      teacher,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: teacherFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: isCancelled
-                            ? fgColor.withValues(alpha: 0.48)
-                            : fgColor.withValues(alpha: 0.72),
-                      ),
-                    ),
-                  if (room.isNotEmpty)
-                    Text(
-                      room,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: roomFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: isCancelled
-                            ? fgColor.withValues(alpha: 0.48)
-                            : fgColor.withValues(alpha: 0.72),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: cardContent,
     );
   }
 
@@ -2908,14 +3152,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       teacher: teacher,
                                       room: room,
                                       isNow: isNow,
-                                      borderRadius: 12,
                                       padding: const EdgeInsets.fromLTRB(
                                         8,
                                         5,
                                         6,
                                         5,
                                       ),
-                                      accentWidth: 3,
+                                      accentWidth: 3.5,
                                       subjectFontSize: 11.5,
                                       teacherFontSize: 9.5,
                                       roomFontSize: 9.5,
@@ -3362,17 +3605,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                 teacher: teacher,
                                                 room: room,
                                                 isNow: isNow,
-                                                borderRadius: 12,
                                                 padding: const EdgeInsets.fromLTRB(
                                                   8,
-                                                  4,
                                                   5,
-                                                  4,
+                                                  6,
+                                                  5,
                                                 ),
-                                                accentWidth: 3,
-                                                subjectFontSize: 10,
-                                                teacherFontSize: 9,
-                                                roomFontSize: 9,
+                                                accentWidth: 3.5,
+                                                subjectFontSize: 11.5,
+                                                teacherFontSize: 9.5,
+                                                roomFontSize: 9.5,
                                                 useStripes: true,
                                               ),
                                             ),
@@ -7719,75 +7961,155 @@ class LessonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final cancelledColor = Color(cancelledLessonColorNotifier.value).harmonizeWith(cs.primary);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      color: Colors.transparent, // Let child background handle color
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(32),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cancelledColor =
+        Color(cancelledLessonColorNotifier.value).harmonizeWith(cs.primary);
+
+    final effectiveRadius = (lessonBorderRadiusNotifier.value * 2.0).clamp(16.0, 36.0);
+    final cardRadius = BorderRadius.circular(effectiveRadius);
+
+    final showTeacher = lessonShowTeacherNotifier.value;
+    final showRoom = lessonShowRoomNotifier.value;
+    final cardStyle = lessonCardStyleNotifier.value;
+    final blurEnabled = (lessonBlurEnabledNotifier.value || cardStyle == 1) && blurEnabledNotifier.value;
+    final blurSigma = lessonBlurAmountNotifier.value;
+    final cardOpacity = lessonCardOpacityNotifier.value;
+    final glowEnabled = lessonGlowEnabledNotifier.value && lessonGlowModeNotifier.value == 1;
+    final glowIntensity = lessonGlowIntensityNotifier.value;
+    final accentStyle = lessonAccentStyleNotifier.value;
+
+    final primaryColor = isCancelled ? cancelledColor : cs.primary;
+
+    List<BoxShadow>? shadows;
+    if (glowEnabled) {
+      shadows = [
+        BoxShadow(
+          color: primaryColor.withValues(
+            alpha: (0.18 * glowIntensity).clamp(0.0, 1.0),
+          ),
+          blurRadius: (12 * glowIntensity).clamp(2.0, 24.0),
+          spreadRadius: (0.8 * glowIntensity).clamp(0.0, 4.0),
+          offset: const Offset(0, 3),
+        ),
+      ];
+    }
+
+    Color surfaceColor;
+    Border? border;
+    if (isCancelled) {
+      surfaceColor = cancelledColor.withValues(alpha: (0.16 * cardOpacity).clamp(0.0, 1.0));
+      border = Border.all(
+        color: cancelledColor.withValues(alpha: 0.40),
+        width: 1.5,
+      );
+    } else if (cardStyle == 1 || blurEnabled) {
+      surfaceColor = cs.surfaceContainerLowest.withValues(alpha: (0.65 * cardOpacity).clamp(0.0, 1.0));
+      border = Border.all(
+        color: cs.outlineVariant.withValues(alpha: 0.45),
+        width: 1.5,
+      );
+    } else if (cardStyle == 3) {
+      surfaceColor = cs.surfaceContainerLow.withValues(alpha: (0.75 * cardOpacity).clamp(0.0, 1.0));
+      border = Border.all(
+        color: primaryColor.withValues(alpha: isDark ? 0.70 : 0.50),
+        width: 2.0,
+      );
+    } else {
+      surfaceColor = cs.surfaceContainerLow.withValues(alpha: cardOpacity.clamp(0.4, 1.0));
+      border = Border.all(
+        color: cs.outlineVariant.withValues(alpha: 0.35),
+        width: 1.5,
+      );
+    }
+
+    Widget cardBody = Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: cardRadius,
+        border: border,
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(32),
-        onTapDown: (_) => HapticFeedback.selectionClick(),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: _withOptionalBackdropBlur(
-            sigma: 12,
-            child: const SizedBox.shrink(),
-            childBuilder: (enabled) => Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isCancelled
-                    ? cancelledColor.withValues(alpha: enabled ? 0.18 : 0.22)
-                    : (enabled
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.surface.withValues(alpha: 0.88)
-                          : Theme.of(context).colorScheme.surface),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.45),
-                  width: 1.5,
+      child: Stack(
+        children: [
+          if (accentStyle == 0 || accentStyle == 1)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: accentStyle == 0 ? 5.0 : 2.5,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(effectiveRadius),
+                    bottomLeft: Radius.circular(effectiveRadius),
+                  ),
                 ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+            ),
+          Padding(
+            padding: const EdgeInsets.all(22),
+            child: Row(
+              children: [
+                if (accentStyle == 2) ...[
+                  Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primaryColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.6),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        time,
+                        style: GoogleFonts.outfit(
+                          color: isCancelled
+                              ? cancelledColor
+                              : cs.primary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subject,
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          color: isCancelled ? cancelledColor : null,
+                          decoration:
+                              isCancelled ? TextDecoration.lineThrough : null,
+                          decorationColor:
+                              cancelledColor.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      if (subjectShort.isNotEmpty)
                         Text(
-                          time,
+                          subjectShort,
                           style: GoogleFonts.outfit(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w800,
+                            color: isCancelled
+                                ? cancelledColor.withValues(alpha: 0.7)
+                                : cs.primary.withValues(alpha: 0.7),
+                            fontWeight: FontWeight.w600,
                             fontSize: 13,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subject,
-                          style: GoogleFonts.outfit(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        if (subjectShort.isNotEmpty)
-                          Text(
-                            subjectShort,
-                            style: GoogleFonts.outfit(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.7),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          if (showRoom && room.isNotEmpty) ...[
                             Icon(
                               Icons.room_outlined,
                               size: 15,
@@ -7802,43 +8124,73 @@ class LessonCard extends StatelessWidget {
                                 fontSize: 14,
                               ),
                             ),
-                            if (teacher.isNotEmpty) ...[
-                              const SizedBox(width: 12),
-                              Icon(
-                                Icons.person_outline_rounded,
-                                size: 15,
-                                color: cs.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                teacher,
-                                style: GoogleFonts.outfit(
-                                  color: cs.onSurface,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
                           ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isCancelled)
-                    Badge(
-                      label: Text(
-                        AppL10n.of(
-                          appLocaleNotifier.value,
-                        ).detailCancelledBadge,
+                          if (showTeacher && teacher.isNotEmpty) ...[
+                            if (showRoom && room.isNotEmpty)
+                              const SizedBox(width: 12),
+                            Icon(
+                              Icons.person_outline_rounded,
+                              size: 15,
+                              color: cs.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              teacher,
+                              style: GoogleFonts.outfit(
+                                color: cs.onSurface,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      backgroundColor: cancelledColor,
-                      textColor: cs.onError,
+                    ],
+                  ),
+                ),
+                if (isCancelled)
+                  Badge(
+                    label: Text(
+                      AppL10n.of(
+                        appLocaleNotifier.value,
+                      ).detailCancelledBadge,
                     ),
-                ],
-              ),
+                    backgroundColor: cancelledColor,
+                    textColor: cs.onError,
+                  ),
+              ],
             ),
           ),
+        ],
+      ),
+    );
+
+    if (blurEnabled) {
+      cardBody = ClipRRect(
+        borderRadius: cardRadius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+          child: cardBody,
         ),
+      );
+    } else {
+      cardBody = ClipRRect(
+        borderRadius: cardRadius,
+        child: cardBody,
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: cardRadius,
+        boxShadow: shadows,
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: cardRadius,
+        onTapDown: (_) => HapticFeedback.selectionClick(),
+        child: cardBody,
       ),
     );
   }

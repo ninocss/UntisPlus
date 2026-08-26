@@ -5,6 +5,41 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
+class _StripedHatchPainter extends CustomPainter {
+  final Color color;
+  final double stripeWidth;
+  final double gap;
+
+  const _StripedHatchPainter({
+    required this.color,
+    this.stripeWidth = 2.0,
+    this.gap = 8.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = stripeWidth
+      ..style = PaintingStyle.stroke;
+
+    final step = stripeWidth + gap;
+    for (double x = -size.height; x < size.width + size.height; x += step) {
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StripedHatchPainter oldDelegate) =>
+      oldDelegate.color != color ||
+      oldDelegate.stripeWidth != stripeWidth ||
+      oldDelegate.gap != gap;
+}
+
 Widget _springEntry({
   Key? key,
   required Widget child,

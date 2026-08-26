@@ -99,6 +99,93 @@ Future<void> _settingsSetMonochromeLessons(bool value) async {
   await prefs.setBool('monochromeLessons', value);
 }
 
+Future<void> _settingsSetLessonCardStyle(int style) async {
+  final normalized = style.clamp(0, 4);
+  lessonCardStyleNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('lessonCardStyle', normalized);
+}
+
+Future<void> _settingsSetLessonGlowEnabled(bool value) async {
+  lessonGlowEnabledNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonGlowEnabled', value);
+}
+
+Future<void> _settingsSetLessonGlowMode(int mode) async {
+  final normalized = mode.clamp(0, 1);
+  lessonGlowModeNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('lessonGlowMode', normalized);
+}
+
+Future<void> _settingsSetLessonGlowIntensity(double value) async {
+  lessonGlowIntensityNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('lessonGlowIntensity', value);
+}
+
+Future<void> _settingsSetLessonBlurEnabled(bool value) async {
+  lessonBlurEnabledNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonBlurEnabled', value);
+}
+
+Future<void> _settingsSetLessonBlurAmount(double value) async {
+  lessonBlurAmountNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('lessonBlurAmount', value);
+}
+
+Future<void> _settingsSetLessonCardOpacity(double value) async {
+  lessonCardOpacityNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('lessonCardOpacity', value);
+}
+
+Future<void> _settingsSetLessonBorderRadius(double value) async {
+  lessonBorderRadiusNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('lessonBorderRadius', value);
+}
+
+Future<void> _settingsSetLessonAccentStyle(int style) async {
+  final normalized = style.clamp(0, 3);
+  lessonAccentStyleNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('lessonAccentStyle', normalized);
+}
+
+Future<void> _settingsSetLessonShowTeacher(bool value) async {
+  lessonShowTeacherNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonShowTeacher', value);
+}
+
+Future<void> _settingsSetLessonShowRoom(bool value) async {
+  lessonShowRoomNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonShowRoom', value);
+}
+
+Future<void> _settingsSetLessonCompactMode(bool value) async {
+  lessonCompactModeNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonCompactMode', value);
+}
+
+Future<void> _settingsSetLessonDimPast(bool value) async {
+  lessonDimPastNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonDimPast', value);
+}
+
+Future<void> _settingsSetLessonCancelledPattern(bool value) async {
+  lessonCancelledPatternNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonCancelledPattern', value);
+}
+
 Future<void> _settingsSetProgressivePush(bool value) async {
   progressivePushNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -325,6 +412,34 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getBool('isAmoled') ?? false;
   customColorSeedNotifier.value =
       prefs.getInt('customColorSeed') ?? 0xFF0F766E;
+  lessonCardStyleNotifier.value =
+      (prefs.getInt('lessonCardStyle') ?? 0).clamp(0, 4);
+  lessonGlowEnabledNotifier.value =
+      prefs.getBool('lessonGlowEnabled') ?? true;
+  lessonGlowModeNotifier.value =
+      (prefs.getInt('lessonGlowMode') ?? 0).clamp(0, 1);
+  lessonGlowIntensityNotifier.value =
+      prefs.getDouble('lessonGlowIntensity') ?? 1.0;
+  lessonBlurEnabledNotifier.value =
+      prefs.getBool('lessonBlurEnabled') ?? false;
+  lessonBlurAmountNotifier.value =
+      prefs.getDouble('lessonBlurAmount') ?? 12.0;
+  lessonCardOpacityNotifier.value =
+      prefs.getDouble('lessonCardOpacity') ?? 0.9;
+  lessonBorderRadiusNotifier.value =
+      prefs.getDouble('lessonBorderRadius') ?? 12.0;
+  lessonAccentStyleNotifier.value =
+      (prefs.getInt('lessonAccentStyle') ?? 0).clamp(0, 3);
+  lessonShowTeacherNotifier.value =
+      prefs.getBool('lessonShowTeacher') ?? true;
+  lessonShowRoomNotifier.value =
+      prefs.getBool('lessonShowRoom') ?? true;
+  lessonCompactModeNotifier.value =
+      prefs.getBool('lessonCompactMode') ?? false;
+  lessonDimPastNotifier.value =
+      prefs.getBool('lessonDimPast') ?? true;
+  lessonCancelledPatternNotifier.value =
+      prefs.getBool('lessonCancelledPattern') ?? true;
   progressivePushNotifier.value =
       prefs.getBool('progressivePush') ?? progressivePushNotifier.value;
   dailyBriefingPushNotifier.value =

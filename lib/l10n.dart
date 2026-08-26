@@ -320,6 +320,45 @@ class AppL10n {
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
   String get settingsCancelledColor => _t('settingsCancelledColor');
   String get settingsCancelledColorDesc => _t('settingsCancelledColorDesc');
+  String get settingsLessonDesignTitle => _t('settingsLessonDesignTitle');
+  String get settingsLessonDesignDesc => _t('settingsLessonDesignDesc');
+  String get settingsLessonStyle => _t('settingsLessonStyle');
+  String get settingsLessonStyleDesc => _t('settingsLessonStyleDesc');
+  String get settingsLessonStyleModern => _t('settingsLessonStyleModern');
+  String get settingsLessonStyleGlass => _t('settingsLessonStyleGlass');
+  String get settingsLessonStyleGradient => _t('settingsLessonStyleGradient');
+  String get settingsLessonStyleOutline => _t('settingsLessonStyleOutline');
+  String get settingsLessonStyleSolid => _t('settingsLessonStyleSolid');
+  String get settingsLessonGlow => _t('settingsLessonGlow');
+  String get settingsLessonGlowDesc => _t('settingsLessonGlowDesc');
+  String get settingsLessonGlowMode => _t('settingsLessonGlowMode');
+  String get settingsLessonGlowModeActive => _t('settingsLessonGlowModeActive');
+  String get settingsLessonGlowModeAll => _t('settingsLessonGlowModeAll');
+  String get settingsLessonGlowIntensity => _t('settingsLessonGlowIntensity');
+  String get settingsLessonBlur => _t('settingsLessonBlur');
+  String get settingsLessonBlurDesc => _t('settingsLessonBlurDesc');
+  String get settingsLessonBlurAmount => _t('settingsLessonBlurAmount');
+  String get settingsLessonCardOpacity => _t('settingsLessonCardOpacity');
+  String get settingsLessonBorderRadius => _t('settingsLessonBorderRadius');
+  String get settingsLessonAccentStyle => _t('settingsLessonAccentStyle');
+  String get settingsLessonAccentBar => _t('settingsLessonAccentBar');
+  String get settingsLessonAccentThin => _t('settingsLessonAccentThin');
+  String get settingsLessonAccentDot => _t('settingsLessonAccentDot');
+  String get settingsLessonAccentNone => _t('settingsLessonAccentNone');
+  String get settingsLessonShowTeacher => _t('settingsLessonShowTeacher');
+  String get settingsLessonShowTeacherDesc => _t('settingsLessonShowTeacherDesc');
+  String get settingsLessonShowRoom => _t('settingsLessonShowRoom');
+  String get settingsLessonShowRoomDesc => _t('settingsLessonShowRoomDesc');
+  String get settingsLessonCompactMode => _t('settingsLessonCompactMode');
+  String get settingsLessonCompactModeDesc => _t('settingsLessonCompactModeDesc');
+  String get settingsLessonDimPast => _t('settingsLessonDimPast');
+  String get settingsLessonDimPastDesc => _t('settingsLessonDimPastDesc');
+  String get settingsLessonCancelledPattern => _t('settingsLessonCancelledPattern');
+  String get settingsLessonCancelledPatternDesc => _t('settingsLessonCancelledPatternDesc');
+  String get settingsLessonPreviewRegular => _t('settingsLessonPreviewRegular');
+  String get settingsLessonPreviewActive => _t('settingsLessonPreviewActive');
+  String get settingsLessonPreviewCancelled => _t('settingsLessonPreviewCancelled');
+  String get settingsLessonPreviewHeader => _t('settingsLessonPreviewHeader');
   String get settingsMonochromeLessons => _t('settingsMonochromeLessons');
   String get settingsMonochromeLessonsDesc => _t('settingsMonochromeLessonsDesc');
   String get settingsDemoMode => _t('settingsDemoMode');
@@ -907,6 +946,45 @@ class AppL10n {
           'Ausgefallene Stunden werden im Stundenplan angezeigt',
       'settingsCancelledColor': 'Ausgefallene Farbe',
       'settingsCancelledColorDesc': 'Farbe für ausgefallene Stunden anpassen',
+      'settingsLessonDesignTitle': 'Stunden- & Kartendesign',
+      'settingsLessonDesignDesc': 'Passe Stile, Glow, Blur und Details der Stundenkarten an.',
+      'settingsLessonStyle': 'Karten-Stil',
+      'settingsLessonStyleDesc': 'Wähle das visuelle Grunddesign der Stunden.',
+      'settingsLessonStyleModern': 'Modern (Getönt)',
+      'settingsLessonStyleGlass': 'Milchglas (Frosted)',
+      'settingsLessonStyleGradient': 'Farbverlauf',
+      'settingsLessonStyleOutline': 'Kontur / Minimal',
+      'settingsLessonStyleSolid': 'Kräftig / Vollton',
+      'settingsLessonGlow': 'Glow-Leuchteffekt',
+      'settingsLessonGlowDesc': 'Fügt einen leuchtenden Neonschein hinter den Stundenkarten hinzu.',
+      'settingsLessonGlowMode': 'Glow-Modus',
+      'settingsLessonGlowModeActive': 'Nur laufende Stunde',
+      'settingsLessonGlowModeAll': 'Alle Stunden',
+      'settingsLessonGlowIntensity': 'Glow-Intensität',
+      'settingsLessonBlur': 'Milchglas-Unschärfe (Blur)',
+      'settingsLessonBlurDesc': 'Hintergrund hinter den Stundenkarten weichzeichnen.',
+      'settingsLessonBlurAmount': 'Weichzeichner-Stärke',
+      'settingsLessonCardOpacity': 'Karten-Deckkraft',
+      'settingsLessonBorderRadius': 'Eckenrundung',
+      'settingsLessonAccentStyle': 'Akzentleiste',
+      'settingsLessonAccentBar': 'Klassischer Balken',
+      'settingsLessonAccentThin': 'Dünne Linie',
+      'settingsLessonAccentDot': 'Punkt-Indikator',
+      'settingsLessonAccentNone': 'Keine Leiste',
+      'settingsLessonShowTeacher': 'Lehrkraft anzeigen',
+      'settingsLessonShowTeacherDesc': 'Kürzel bzw. Name der Lehrkraft auf der Karte einblenden.',
+      'settingsLessonShowRoom': 'Raum anzeigen',
+      'settingsLessonShowRoomDesc': 'Raumnummer auf der Stundenkarte einblenden.',
+      'settingsLessonCompactMode': 'Kompakte Ansicht',
+      'settingsLessonCompactModeDesc': 'Reduzierte Abstände für mehr Übersicht bei vielen Stunden.',
+      'settingsLessonDimPast': 'Vergangene Stunden dimmen',
+      'settingsLessonDimPastDesc': 'Bereits vergangene Stunden am Tag dezent ausgrauen.',
+      'settingsLessonCancelledPattern': 'Ausfall-Schraffur',
+      'settingsLessonCancelledPatternDesc': 'Zeigt ein diagonales Schraffurmuster bei Entfällen.',
+      'settingsLessonPreviewRegular': 'Regulär',
+      'settingsLessonPreviewActive': 'Aktive Stunde',
+      'settingsLessonPreviewCancelled': 'Ausfall',
+      'settingsLessonPreviewHeader': 'Live-Vorschau',
       'settingsMonochromeLessons': 'Monochrome Stunden',
       'settingsMonochromeLessonsDesc':
           'Alle Stunden in Material-You-Farben statt Einzelfarben',
@@ -1521,6 +1599,45 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Cancelled lessons are shown in the timetable',
       'settingsCancelledColor': 'Cancelled color',
       'settingsCancelledColorDesc': 'Customize the color for cancelled lessons',
+      'settingsLessonDesignTitle': 'Lesson & Card Design',
+      'settingsLessonDesignDesc': 'Customize card styles, glow, blur, and layout details.',
+      'settingsLessonStyle': 'Card Style',
+      'settingsLessonStyleDesc': 'Choose the visual aesthetic for timetable lessons.',
+      'settingsLessonStyleModern': 'Modern (Tinted)',
+      'settingsLessonStyleGlass': 'Frosted Glass',
+      'settingsLessonStyleGradient': 'Gradient',
+      'settingsLessonStyleOutline': 'Outline / Minimal',
+      'settingsLessonStyleSolid': 'Solid Fill',
+      'settingsLessonGlow': 'Glow Aura Effect',
+      'settingsLessonGlowDesc': 'Adds an ambient glowing aura behind lesson cards.',
+      'settingsLessonGlowMode': 'Glow Mode',
+      'settingsLessonGlowModeActive': 'Active lesson only',
+      'settingsLessonGlowModeAll': 'All lessons',
+      'settingsLessonGlowIntensity': 'Glow Intensity',
+      'settingsLessonBlur': 'Frosted Glass Blur',
+      'settingsLessonBlurDesc': 'Blur the wallpaper background behind lesson cards.',
+      'settingsLessonBlurAmount': 'Blur Strength',
+      'settingsLessonCardOpacity': 'Card Opacity',
+      'settingsLessonBorderRadius': 'Corner Radius',
+      'settingsLessonAccentStyle': 'Accent Indicator',
+      'settingsLessonAccentBar': 'Classic Bar',
+      'settingsLessonAccentThin': 'Thin Line',
+      'settingsLessonAccentDot': 'Dot Badge',
+      'settingsLessonAccentNone': 'None',
+      'settingsLessonShowTeacher': 'Show Teacher',
+      'settingsLessonShowTeacherDesc': 'Display teacher name or initials on the card.',
+      'settingsLessonShowRoom': 'Show Room',
+      'settingsLessonShowRoomDesc': 'Display room number on the card.',
+      'settingsLessonCompactMode': 'Compact View',
+      'settingsLessonCompactModeDesc': 'Tighter padding and fonts for dense timetables.',
+      'settingsLessonDimPast': 'Dim Past Lessons',
+      'settingsLessonDimPastDesc': 'Grayscale and dim completed lessons during the day.',
+      'settingsLessonCancelledPattern': 'Cancellation Stripes',
+      'settingsLessonCancelledPatternDesc': 'Show a diagonal stripe pattern on cancelled lessons.',
+      'settingsLessonPreviewRegular': 'Regular',
+      'settingsLessonPreviewActive': 'Active Lesson',
+      'settingsLessonPreviewCancelled': 'Cancelled',
+      'settingsLessonPreviewHeader': 'Live Preview',
       'settingsMonochromeLessons': 'Monochrome lessons',
       'settingsMonochromeLessonsDesc':
           'Use Material You colors instead of individual subject colors',
@@ -2160,6 +2277,45 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Les cours annulés sont visibles dans l\'emploi du temps',
       'settingsCancelledColor': 'Couleur annulée',
       'settingsCancelledColorDesc': 'Personnaliser la couleur des cours annulés',
+      'settingsLessonDesignTitle': 'Design des cours & cartes',
+      'settingsLessonDesignDesc': 'Personnalisez le style, lueurs, flous et détails des cours.',
+      'settingsLessonStyle': 'Style de carte',
+      'settingsLessonStyleDesc': 'Choisissez l\'esthétique visuelle des cours.',
+      'settingsLessonStyleModern': 'Moderne (Teinté)',
+      'settingsLessonStyleGlass': 'Verre dépoli (Glass)',
+      'settingsLessonStyleGradient': 'Dégradé',
+      'settingsLessonStyleOutline': 'Contour / Minimal',
+      'settingsLessonStyleSolid': 'Plein / Contrasté',
+      'settingsLessonGlow': 'Effet de lueur (Glow)',
+      'settingsLessonGlowDesc': 'Ajoute un halo lumineux derrière les cartes de cours.',
+      'settingsLessonGlowMode': 'Mode de lueur',
+      'settingsLessonGlowModeActive': 'Cours actuel uniquement',
+      'settingsLessonGlowModeAll': 'Tous les cours',
+      'settingsLessonGlowIntensity': 'Intensité de la lueur',
+      'settingsLessonBlur': 'Flou de verre (Blur)',
+      'settingsLessonBlurDesc': 'Flouter l\'arrière-plan derrière les cartes.',
+      'settingsLessonBlurAmount': 'Force du flou',
+      'settingsLessonCardOpacity': 'Opacité de la carte',
+      'settingsLessonBorderRadius': 'Rayon des coins',
+      'settingsLessonAccentStyle': 'Bande d\'accentuation',
+      'settingsLessonAccentBar': 'Barre classique',
+      'settingsLessonAccentThin': 'Ligne fine',
+      'settingsLessonAccentDot': 'Point indicateur',
+      'settingsLessonAccentNone': 'Aucune',
+      'settingsLessonShowTeacher': 'Afficher le professeur',
+      'settingsLessonShowTeacherDesc': 'Afficher les initiales ou le nom de l\'enseignant.',
+      'settingsLessonShowRoom': 'Afficher la salle',
+      'settingsLessonShowRoomDesc': 'Afficher le numéro de salle sur la carte.',
+      'settingsLessonCompactMode': 'Mode compact',
+      'settingsLessonCompactModeDesc': 'Espacement réduit pour les emplois du temps chargés.',
+      'settingsLessonDimPast': 'Atténuer les cours passés',
+      'settingsLessonDimPastDesc': 'Griser discrètement les cours terminés de la journée.',
+      'settingsLessonCancelledPattern': 'Hachures d\'annulation',
+      'settingsLessonCancelledPatternDesc': 'Affiche des rayures diagonales en cas d\'annulation.',
+      'settingsLessonPreviewRegular': 'Normal',
+      'settingsLessonPreviewActive': 'Cours actuel',
+      'settingsLessonPreviewCancelled': 'Annulé',
+      'settingsLessonPreviewHeader': 'Aperçu en direct',
       'settingsMonochromeLessons': 'Cours monochromes',
       'settingsMonochromeLessonsDesc':
           'Utiliser les couleurs Material You au lieu de couleurs individuelles',
@@ -2787,6 +2943,45 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Las clases canceladas se muestran en el horario',
       'settingsCancelledColor': 'Color cancelado',
       'settingsCancelledColorDesc': 'Personalizar el color de las clases canceladas',
+      'settingsLessonDesignTitle': 'Diseño de clases y tarjetas',
+      'settingsLessonDesignDesc': 'Personaliza el estilo, brillo, desenfoque y detalles.',
+      'settingsLessonStyle': 'Estilo de tarjeta',
+      'settingsLessonStyleDesc': 'Elige la estética visual de las clases.',
+      'settingsLessonStyleModern': 'Moderno (Tintado)',
+      'settingsLessonStyleGlass': 'Efecto cristal (Glass)',
+      'settingsLessonStyleGradient': 'Degradado',
+      'settingsLessonStyleOutline': 'Contorno / Minimal',
+      'settingsLessonStyleSolid': 'Sólido',
+      'settingsLessonGlow': 'Efecto de brillo (Glow)',
+      'settingsLessonGlowDesc': 'Añade un aura brillante detrás de las tarjetas.',
+      'settingsLessonGlowMode': 'Modo de brillo',
+      'settingsLessonGlowModeActive': 'Solo clase actual',
+      'settingsLessonGlowModeAll': 'Todas las clases',
+      'settingsLessonGlowIntensity': 'Intensidad del brillo',
+      'settingsLessonBlur': 'Desenfoque de cristal',
+      'settingsLessonBlurDesc': 'Desenfoca el fondo detrás de las tarjetas de clase.',
+      'settingsLessonBlurAmount': 'Intensidad del desenfoque',
+      'settingsLessonCardOpacity': 'Opacidad de tarjeta',
+      'settingsLessonBorderRadius': 'Radio de esquinas',
+      'settingsLessonAccentStyle': 'Barra de acento',
+      'settingsLessonAccentBar': 'Barra clásica',
+      'settingsLessonAccentThin': 'Línea fina',
+      'settingsLessonAccentDot': 'Punto indicador',
+      'settingsLessonAccentNone': 'Ninguna',
+      'settingsLessonShowTeacher': 'Mostrar profesor',
+      'settingsLessonShowTeacherDesc': 'Mostrar nombre o iniciales del profesor en la tarjeta.',
+      'settingsLessonShowRoom': 'Mostrar aula',
+      'settingsLessonShowRoomDesc': 'Mostrar número de aula en la tarjeta.',
+      'settingsLessonCompactMode': 'Modo compacto',
+      'settingsLessonCompactModeDesc': 'Espaciado reducido para mayor densidad.',
+      'settingsLessonDimPast': 'Atenuar clases pasadas',
+      'settingsLessonDimPastDesc': 'Atenuar y poner en escala de grises las clases finalizadas.',
+      'settingsLessonCancelledPattern': 'Rayado de cancelación',
+      'settingsLessonCancelledPatternDesc': 'Muestra un patrón de rayas diagonales si la clase se cancela.',
+      'settingsLessonPreviewRegular': 'Normal',
+      'settingsLessonPreviewActive': 'Clase actual',
+      'settingsLessonPreviewCancelled': 'Cancelada',
+      'settingsLessonPreviewHeader': 'Vista previa en vivo',
       'settingsMonochromeLessons': 'Clases monocromáticas',
       'settingsMonochromeLessonsDesc':
           'Usar colores Material You en lugar de colores individuales',

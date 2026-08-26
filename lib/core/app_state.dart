@@ -16,7 +16,7 @@ String mistralApiKey = "";
 String customAiApiKey = "";
 
 String aiProvider = 'gemini';
-String aiModel = 'gemini-2.5-flash';
+String aiModel = 'gemini-3.6-flash';
 String aiSystemPromptTemplate = '';
 String aiCustomBaseUrl = '';
 String aiCustomCompatibility = 'openai';
@@ -112,17 +112,11 @@ List<String> _modelsForProvider(
         'mistral-medium-latest',
         'ministral-8b-latest',
       ];
-    case 'custom':
-      if (_normalizeAiCustomCompatibility(customCompatibility ?? 'openai') ==
-          'gemini') {
-        return const ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
-      }
-      return const ['gpt-4o-mini', 'gpt-4o', 'mistral-small-latest'];
     case 'local':
       return _localModelIds();
     case 'gemini':
     default:
-      return const ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'];
+      return const ['gemini-3.6-flash', 'gemini-3.6-pro', 'gemini-3.6-flash-lite'];
   }
 }
 
@@ -145,8 +139,6 @@ String _activeAiApiKey() {
       return openAiApiKey;
     case 'mistral':
       return mistralApiKey;
-    case 'custom':
-      return customAiApiKey;
     case 'gemini':
     default:
       return geminiApiKey;
@@ -159,8 +151,6 @@ String _localizedAiProviderLabel(AppL10n l, String provider) {
       return l.settingsAiProviderOpenAi;
     case 'mistral':
       return l.settingsAiProviderMistral;
-    case 'custom':
-      return l.settingsAiProviderCustom;
     case 'local':
       return l.settingsAiProviderLocal;
     case 'gemini':
@@ -172,8 +162,6 @@ String _localizedAiProviderLabel(AppL10n l, String provider) {
 String _providerAwareMissingApiKeyMessage(AppL10n l, String provider) {
   return '${l.aiNoApiKey} (${_localizedAiProviderLabel(l, provider)})';
 }
-
-
 
 
 final ValueNotifier<String> appLocaleNotifier = ValueNotifier('de');
@@ -205,6 +193,22 @@ final ValueNotifier<int> pageTransitionNotifier = ValueNotifier(0);
 final ValueNotifier<bool> useMaterialYouNotifier = ValueNotifier(true);
 final ValueNotifier<bool> isAmoledNotifier = ValueNotifier(false);
 final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
+
+// ── LESSON DESIGN & STYLING NOTIFIERS ───────────────────────────────────────
+final ValueNotifier<int> lessonCardStyleNotifier = ValueNotifier(0);
+final ValueNotifier<bool> lessonGlowEnabledNotifier = ValueNotifier(true);
+final ValueNotifier<int> lessonGlowModeNotifier = ValueNotifier(0);
+final ValueNotifier<double> lessonGlowIntensityNotifier = ValueNotifier(1.0);
+final ValueNotifier<bool> lessonBlurEnabledNotifier = ValueNotifier(false);
+final ValueNotifier<double> lessonBlurAmountNotifier = ValueNotifier(12.0);
+final ValueNotifier<double> lessonCardOpacityNotifier = ValueNotifier(0.9);
+final ValueNotifier<double> lessonBorderRadiusNotifier = ValueNotifier(12.0);
+final ValueNotifier<int> lessonAccentStyleNotifier = ValueNotifier(0);
+final ValueNotifier<bool> lessonShowTeacherNotifier = ValueNotifier(true);
+final ValueNotifier<bool> lessonShowRoomNotifier = ValueNotifier(true);
+final ValueNotifier<bool> lessonCompactModeNotifier = ValueNotifier(false);
+final ValueNotifier<bool> lessonDimPastNotifier = ValueNotifier(true);
+final ValueNotifier<bool> lessonCancelledPatternNotifier = ValueNotifier(true);
 
 String _icuLocale(String locale) {
   switch (locale) {

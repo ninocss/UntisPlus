@@ -408,8 +408,8 @@ jobs:
         id: ai_notes
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-2.5-flash
-          GEMINI_FALLBACK_MODEL: gemini-2.5-flash-lite
+          GEMINI_MODEL: gemini-3.5-flash
+          GEMINI_FALLBACK_MODEL: 	gemini-3.5-flash-lite
           RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
         run: |
           set -euo pipefail
