@@ -60,7 +60,7 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 | Homework & Lesson Notes Integration | Done |
 | Multi-Account / Multi-School Support | Planned |
 | Dynamic Lockscreen & Next-Lesson Widgets | Planned |
-| Native Offline/Local AI Model Integration | Planned |
+| Native Offline/Local AI Model Integration | Done |
 | Dynamic Smart Alarm Sync (Wake up based on timetable changes) | Planned |
 
 ---
