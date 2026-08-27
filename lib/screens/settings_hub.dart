@@ -632,14 +632,15 @@ class SettingsHubPage extends StatelessWidget {
         subtitle: l.settingsDemoMode,
         pageBuilder: () => const SettingsAccountPage(),
       ),
-      _SettingsHubItem(
-        icon: Icons.system_update_alt_rounded,
-        iconBackground: cs.secondaryContainer,
-        iconColor: cs.onSecondaryContainer,
-        title: l.settingsHubUpdatesAbout,
-        subtitle: l.settingsAppVersion,
-        pageBuilder: () => const SettingsAboutUpdatesPage(),
-      ),
+      if (!Platform.isIOS)
+        _SettingsHubItem(
+          icon: Icons.system_update_alt_rounded,
+          iconBackground: cs.secondaryContainer,
+          iconColor: cs.onSecondaryContainer,
+          title: l.settingsHubUpdatesAbout,
+          subtitle: l.settingsAppVersion,
+          pageBuilder: () => const SettingsAboutUpdatesPage(),
+        ),
     ];
 
     return Scaffold(

@@ -42,12 +42,14 @@ class BackgroundService {
       constraints: Constraints(networkType: NetworkType.connected),
     );
 
-    Workmanager().registerPeriodicTask(
-      'untis_github_update_check',
-      kGithubUpdateCheckTask,
-      frequency: const Duration(hours: 6),
-      constraints: Constraints(networkType: NetworkType.connected),
-    );
+    if (!Platform.isIOS) {
+      Workmanager().registerPeriodicTask(
+        'untis_github_update_check',
+        kGithubUpdateCheckTask,
+        frequency: const Duration(hours: 6),
+        constraints: Constraints(networkType: NetworkType.connected),
+      );
+    }
   }
 }
 
@@ -578,7 +580,7 @@ String _localizedUpdateBody(String locale, String latestVersion) {
 
 Future<void> checkGithubUpdateAndNotify() async {
   final prefs = await SharedPreferences.getInstance();
-  final installedVersion = prefs.getString('installedAppVersion') ?? '0.0.0';
+  final installedVersion = (await PackageInfo.fromPlatform()).version;
   final locale = prefs.getString('appLocale') ?? 'de';
 
   try {
