@@ -41,9 +41,11 @@ jobs:
       - name: Package Unsigned IPA
         run: |
           VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)"
+          cd build/ios/iphoneos
           mkdir -p Payload
-          cp -r build/ios/iphoneos/Runner.app Payload/
-          zip -ryq "UntisPlus-${VERSION}.ipa" Payload
+          cp -R Runner.app Payload/
+          zip -r -y "../../UntisPlus-${VERSION}.ipa" Payload
+          cd ../../..
           echo "IPA_PATH=UntisPlus-${VERSION}.ipa" >> $GITHUB_ENV
 
       - name: Upload Unsigned IPA

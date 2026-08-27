@@ -423,11 +423,13 @@ jobs:
 
       - name: Package Unsigned IPA
         run: |
-          mkdir -p ipa_artifacts
           TAG="${{ needs.meta.outputs.release_tag }}"
+          mkdir -p ipa_artifacts
+          cd build/ios/iphoneos
           mkdir -p Payload
-          cp -r build/ios/iphoneos/Runner.app Payload/
-          zip -ryq "ipa_artifacts/UntisPlus-${TAG}.ipa" Payload
+          cp -R Runner.app Payload/
+          zip -r -y "../../ipa_artifacts/UntisPlus-${TAG}.ipa" Payload
+          cd ../../..
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v6

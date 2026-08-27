@@ -10,7 +10,7 @@
       "subtitle": "A privacy-first companion app for WebUntis",
       "localizedDescription": "Untis+ is a privacy-first companion app for WebUntis. It provides features such as timetable management, homework tracking, and notifications to help students stay organized.",
       "iconURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
-      "tintColor": "#4A90D9",
+      "tintColor": "4A90D9",
       "category": "education",
       "versions": [
         {
