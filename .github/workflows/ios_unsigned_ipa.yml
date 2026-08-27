@@ -1,0 +1,54 @@
+name: Build Unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build from'
+        required: true
+        default: 'main'
+      artifact_name:
+        description: 'Name of the uploaded artifact'
+        required: true
+        default: 'unsigned-ipa'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  build_ipa:
+    name: Build Unsigned IPA
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package Unsigned IPA
+        run: |
+          VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)"
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -ryq "UntisPlus-${VERSION}.ipa" Payload
+          echo "IPA_PATH=UntisPlus-${VERSION}.ipa" >> $GITHUB_ENV
+
+      - name: Upload Unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.artifact_name }}
+          path: UntisPlus-*.ipa
+          retention-days: 30

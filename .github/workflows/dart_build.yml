@@ -28,7 +28,7 @@ on:
         default: true
         type: boolean
       build_artifacts:
-        description: 'Welche Android Artefakte bauen?'
+        description: 'Welche Artefakte bauen?'
         required: true
         default: 'apk'
         type: choice
@@ -36,6 +36,8 @@ on:
           - apk
           - aab
           - apk+aab
+          - ipa
+          - apk+ipa
           - none
       split_per_abi:
         description: 'APK per ABI splitten (armeabi-v7a, arm64-v8a, x86_64)'
@@ -65,6 +67,7 @@ jobs:
       run_tests: ${{ steps.meta.outputs.run_tests }}
       build_apk: ${{ steps.meta.outputs.build_apk }}
       build_aab: ${{ steps.meta.outputs.build_aab }}
+      build_ipa: ${{ steps.meta.outputs.build_ipa }}
       split_per_abi: ${{ steps.meta.outputs.split_per_abi }}
       last_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}
       app_version: ${{ steps.meta.outputs.app_version }}
@@ -130,6 +133,7 @@ jobs:
           build_artifacts="$(echo "${INPUT_BUILD_ARTIFACTS:-apk}" | tr -d '[:space:]')"
           build_apk="false"
           build_aab="false"
+          build_ipa="false"
           case "$build_artifacts" in
             apk)
               build_apk="true"
@@ -140,6 +144,13 @@ jobs:
             apk+aab)
               build_apk="true"
               build_aab="true"
+              ;;
+            ipa)
+              build_ipa="true"
+              ;;
+            apk+ipa)
+              build_apk="true"
+              build_ipa="true"
               ;;
             none)
               ;;
@@ -159,6 +170,7 @@ jobs:
             echo "run_tests=$run_tests"
             echo "build_apk=$build_apk"
             echo "build_aab=$build_aab"
+            echo "build_ipa=$build_ipa"
             echo "split_per_abi=$split_per_abi"
             echo "last_semver_tag=$last_tag"
             echo "app_version=$app_version"
@@ -174,6 +186,7 @@ jobs:
           echo "- run_tests: ${{ steps.meta.outputs.run_tests }}" >> $GITHUB_STEP_SUMMARY
           echo "- build_apk: ${{ steps.meta.outputs.build_apk }}" >> $GITHUB_STEP_SUMMARY
           echo "- build_aab: ${{ steps.meta.outputs.build_aab }}" >> $GITHUB_STEP_SUMMARY
+          echo "- build_ipa: ${{ steps.meta.outputs.build_ipa }}" >> $GITHUB_STEP_SUMMARY
           echo "- split_per_abi: ${{ steps.meta.outputs.split_per_abi }}" >> $GITHUB_STEP_SUMMARY
           echo "- latest_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}" >> $GITHUB_STEP_SUMMARY
 
@@ -384,6 +397,43 @@ jobs:
         with:
           name: release-aab
           path: aab_artifacts/
+          if-no-files-found: error
+
+  build_ipa:
+    name: Build Unsigned IPA
+    runs-on: macos-latest
+    timeout-minutes: 60
+    needs: [meta, quality_checks]
+    if: ${{ always() && needs.meta.outputs.build_ipa == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package Unsigned IPA
+        run: |
+          mkdir -p ipa_artifacts
+          TAG="${{ needs.meta.outputs.release_tag }}"
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -ryq "ipa_artifacts/UntisPlus-${TAG}.ipa" Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-ipa
+          path: ipa_artifacts/
           if-no-files-found: error
 
   release_notes:
@@ -617,8 +667,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    needs: [meta, quality_checks, build_apk, build_aab, release_notes]
-    if: ${{ always() && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.build_apk.result == 'success' || needs.build_apk.result == 'skipped') && (needs.build_aab.result == 'success' || needs.build_aab.result == 'skipped') && (needs.release_notes.result == 'success' || needs.release_notes.result == 'skipped') }}
+    needs: [meta, quality_checks, build_apk, build_aab, build_ipa, release_notes]
+    if: ${{ always() && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.build_apk.result == 'success' || needs.build_apk.result == 'skipped') && (needs.build_aab.result == 'success' || needs.build_aab.result == 'skipped') && (needs.build_ipa.result == 'success' || needs.build_ipa.result == 'skipped') && (needs.release_notes.result == 'success' || needs.release_notes.result == 'skipped') }}
     steps:
       - name: Download APK Artifacts
         if: ${{ needs.meta.outputs.build_apk == 'true' }}
@@ -632,6 +682,13 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: release-aab
+          path: release_assets
+
+      - name: Download IPA Artifact
+        if: ${{ needs.meta.outputs.build_ipa == 'true' }}
+        uses: actions/download-artifact@v7
+        with:
+          name: release-ipa
           path: release_assets
 
       - name: Download Gemini Notes Artifact
