@@ -190,44 +190,43 @@ class _OrbsLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t2 = _kSmoothBounce.transform(t.clamp(0.0, 1.0));
-    final t3 = _kSoftBounce.transform((1.0 - t).clamp(0.0, 1.0));
+    final phase = t * math.pi * 2;
     return Stack(
       clipBehavior: Clip.hardEdge,
       children: [
         Positioned(
-          top: -80 + t * 65,
-          right: -40 + t2 * 50,
+          top: -48 + math.sin(phase) * 32,
+          right: -15 + math.cos(phase * 0.8) * 25,
           child: _orb(240, cs.primaryContainer.withValues(alpha: 0.38)),
         ),
         Positioned(
-          bottom: -70 + t2 * 55,
-          left: -45 + t * 40,
+          bottom: -42 + math.sin(phase * 0.9 + 1.0) * 28,
+          left: -25 + math.cos(phase * 0.7 + 0.5) * 20,
           child: _orb(210, cs.secondaryContainer.withValues(alpha: 0.34)),
         ),
         Positioned(
-          top: 85 + t3 * 90,
-          right: 15 - t2 * 30,
+          top: 130 + math.sin(phase * 1.1 + 2.0) * 45,
+          right: 0 + math.cos(phase * 0.6 + 1.2) * 15,
           child: _orb(150, cs.tertiaryContainer.withValues(alpha: 0.27)),
         ),
         Positioned(
-          top: 175 + t2 * 80,
-          left: 8 + t * 45,
+          top: 215 + math.sin(phase * 0.75 + 3.0) * 40,
+          left: 30 + math.cos(phase * 0.85 + 2.0) * 22,
           child: _orb(170, cs.primaryContainer.withValues(alpha: 0.20)),
         ),
         Positioned(
-          bottom: 55 - t3 * 35,
-          right: 35 + t * 60,
+          bottom: 38 + math.sin(phase * 0.95 + 4.0) * 18,
+          right: 65 + math.cos(phase * 0.65 + 3.0) * 30,
           child: _orb(125, cs.secondaryContainer.withValues(alpha: 0.22)),
         ),
         Positioned(
-          top: 18 + t2 * 45,
-          left: -24 + t3 * 52,
+          top: 40 + math.sin(phase * 0.8 + 5.0) * 22,
+          left: 2 + math.cos(phase * 0.55 + 4.0) * 26,
           child: _orb(108, cs.tertiaryContainer.withValues(alpha: 0.2)),
         ),
         Positioned(
-          bottom: -32 + t * 34,
-          left: 95 + t2 * 26,
+          bottom: -15 + math.sin(phase * 1.05 + 6.0) * 17,
+          left: 108 + math.cos(phase * 0.72 + 5.0) * 13,
           child: _orb(92, cs.primary.withValues(alpha: 0.12)),
         ),
       ],

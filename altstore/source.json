@@ -14,7 +14,7 @@
       "category": "education",
       "versions": [
         {
-          "version": "5.0.0",
+          "version": "5.0.1",
           "buildVersion": "1",
           "date": "2026-08-27",
           "localizedDescription": "Initial iOS release via AltStore.",

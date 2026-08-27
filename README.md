@@ -25,7 +25,7 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 | :--- | :--- |
 | **Data Policy** | Private by default. Credentials and schedule data never leave your device. |
 | **Current Version** | `5.0.1` |
-| **Target Platforms** | Android |
+| **Target Platforms** | Android, iOS |
 
 ---
 
@@ -116,6 +116,19 @@ flutter pub get
 flutter run
 ```
 
+---
+## Installation
+### Android
+1. [Download](https://github.com/ninocss/UntisPlus/releases/latest/download/UntisPlus-5.0.1-app-arm64-v8a-release.apk) APK from Releases
+2. Install APK
+
+### iOS
+1. Install AltStore Classic Using [Altserver](https://faq.altstore.io/altstore-classic) or [AltStore PAL (EU Only)](https://faq.altstore.io/altstore-pal).
+2. Add UntisPlus Source to AltStore
+```bash
+https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/altstore/source.json
+```
+3. Install and Sign using Apple ID(Signing has to be renewt every 7 days when using a non Developer AppleID) 
 ---
 
 ## Contributing
