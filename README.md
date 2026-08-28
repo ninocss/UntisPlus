@@ -147,3 +147,5 @@ Please give credits to UntisPlus (or your forked repo) in your work! ❤️
 ## Disclaimer
 
 UntisPlus is an independent developer project. It is not affiliated, associated, authorized, endorsed by, or in any way officially connected with WebUntis or any of its subsidiaries or affiliates.
+
+Thank you OseMine!
