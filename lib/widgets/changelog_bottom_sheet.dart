@@ -5,9 +5,9 @@ class ChangelogData {
 
   ChangelogData({required this.markdown});
 
-  factory ChangelogData.fromJson(Map<String, dynamic> json) {
+  factory ChangelogData.fromJson(Map<String, dynamic> json, AppL10n l) {
     return ChangelogData(
-      markdown: json['markdown'] ?? '# No data available',
+      markdown: json['markdown'] ?? l.changelogNoData,
     );
   }
 }
@@ -16,13 +16,13 @@ class ChangelogService {
   final String url =
       'https://raw.githubusercontent.com/ninocss/UntisPlus/main/changelog.json';
 
-  Future<ChangelogData> fetchChangelog() async {
+  Future<ChangelogData> fetchChangelog(AppL10n l) async {
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      return ChangelogData.fromJson(decoded);
+      return ChangelogData.fromJson(decoded, l);
     } else {
-      throw Exception('Failed to load changelog: ${response.statusCode}');
+      throw Exception('${l.changelogLoadError}: ${response.statusCode}');
     }
   }
 }
@@ -52,9 +52,10 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
   late Future<ChangelogData> _changelogFuture;
 
   @override
-  void initState() {
-    super.initState();
-    _changelogFuture = _service.fetchChangelog();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final l = AppL10n.of(appLocaleNotifier.value);
+    _changelogFuture = _service.fetchChangelog(l);
   }
 
   @override
@@ -178,11 +179,15 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                             ElevatedButton.icon(
                               onPressed: () {
                                 setState(() {
-                                  _changelogFuture = _service.fetchChangelog();
+                                  _changelogFuture = _service.fetchChangelog(
+                                    AppL10n.of(appLocaleNotifier.value),
+                                  );
                                 });
                               },
                               icon: const Icon(Icons.refresh_rounded),
-                              label: Text(AppL10n.of(appLocaleNotifier.value).changelogRetry),
+                              label: Text(
+                                AppL10n.of(appLocaleNotifier.value).changelogRetry,
+                              ),
                             ),
                           ],
                         ),

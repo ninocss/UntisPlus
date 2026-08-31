@@ -505,7 +505,14 @@ class SettingsHubPage extends StatelessWidget {
             children: [
               InkWell(
                 onTap: () {
-                  Navigator.push(context, _buildBouncyRoute(item.pageBuilder()));
+                  if (item.onTap != null) {
+                    item.onTap!();
+                  } else if (item.pageBuilder != null) {
+                    Navigator.push(
+                      context,
+                      _buildBouncyRoute(item.pageBuilder!()),
+                    );
+                  }
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -641,6 +648,19 @@ class SettingsHubPage extends StatelessWidget {
           subtitle: l.settingsAppVersion,
           pageBuilder: () => const SettingsAboutUpdatesPage(),
         ),
+      _SettingsHubItem(
+        icon: Icons.coffee_rounded,
+        iconBackground: Colors.brown.withValues(alpha: 0.15),
+        iconColor: Colors.brown,
+        title: l.settingsSupport,
+        subtitle: l.settingsSupportDesc,
+        onTap: () {
+          url_launcher.launchUrlString(
+            'https://ko-fi.com/nino161er',
+            mode: url_launcher.LaunchMode.externalApplication,
+          );
+        },
+      ),
     ];
 
     return Scaffold(
@@ -700,7 +720,11 @@ class SettingsHubPage extends StatelessWidget {
                   ),
                 );
               },
-              child: _buildGroupCard(cs, context, [items[5], items[7]]),
+              child: _buildGroupCard(cs, context, [
+                items[5],
+                if (!Platform.isIOS) items[7],
+                items.last,
+              ]),
             ),
           ],
         ),
@@ -715,7 +739,8 @@ class _SettingsHubItem {
   final Color iconColor;
   final String title;
   final String subtitle;
-  final Widget Function() pageBuilder;
+  final Widget Function()? pageBuilder;
+  final VoidCallback? onTap;
 
   const _SettingsHubItem({
     required this.icon,
@@ -723,6 +748,7 @@ class _SettingsHubItem {
     required this.iconColor,
     required this.title,
     required this.subtitle,
-    required this.pageBuilder,
+    this.pageBuilder,
+    this.onTap,
   });
 }

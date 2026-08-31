@@ -163,38 +163,6 @@ Widget _sheetSurface({
   );
 }
 
-Widget _dialogSurface({
-  required BuildContext context,
-  required Widget child,
-  bool blur = true,
-  BorderRadiusGeometry borderRadius = const BorderRadius.all(Radius.circular(28)),
-}) {
-  final cs = Theme.of(context).colorScheme;
-  return ValueListenableBuilder<bool>(
-    valueListenable: blurEnabledNotifier,
-    builder: (context, blurEnabled, _) {
-      final isBlurActive = blur && blurEnabled;
-      final decor = BoxDecoration(
-        color: isBlurActive ? cs.surfaceContainerHigh.withValues(alpha: 0.72) : cs.surfaceContainerHigh,
-        borderRadius: borderRadius,
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: isBlurActive ? 0.3 : 0.5),
-          width: 1,
-        ),
-      );
-      
-      return _blurEffect(
-        sigma: 32,
-        borderRadius: borderRadius,
-        enabled: blur,
-        child: Container(
-          decoration: decor,
-          child: child,
-        ),
-      );
-    },
-  );
-}
 
 List<Color> _subjectColorPalette(ColorScheme cs) {
   return untisPlusSubjectPalette(cs);

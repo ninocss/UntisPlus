@@ -1035,6 +1035,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   double _carouselOffset = 0.0;
   AnimationController? _carouselAnimController;
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
+  double _dayDragTotal = 0.0;
 
   String? _tempSessionId;
   int? _viewingClassId;
@@ -1432,35 +1433,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         m.contains('nicht erlaubtes datum');
   }
 
-  void _navigateToWeek(DateTime newMonday, int direction) {
-    final cacheKey = _mondayKey(newMonday);
-    final cached = _adjacentWeekCache[cacheKey];
-    setState(() {
-      _currentMonday = newMonday;
-      if (cached != null) {
-        _weekData = cached;
-        _showingCachedWeek = true;
-        _loading = false;
-      }
-    });
-    _fetchFullWeek();
-  }
-
-  void _prevWeek() {
-    HapticFeedback.selectionClick();
-    _navigateToWeek(
-      _currentMonday.subtract(const Duration(days: 7)),
-      -1,
-    );
-  }
-
-  void _nextWeek() {
-    HapticFeedback.selectionClick();
-    _navigateToWeek(
-      _currentMonday.add(const Duration(days: 7)),
-      1,
-    );
-  }
 
   void _onSwipeLeft() {
     if (_tabController.index < 4) {
@@ -1468,8 +1440,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       _tabController.animateTo(_tabController.index + 1);
     } else {
       HapticFeedback.selectionClick();
-      _nextWeek();
-      _tabController.animateTo(0, duration: Duration.zero);
+      final rb = context.findRenderObject() as RenderBox?;
+      final width = rb?.size.width ?? 400.0;
+      _animateCarouselTo(-1, width);
     }
   }
 
@@ -1479,8 +1452,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       _tabController.animateTo(_tabController.index - 1);
     } else {
       HapticFeedback.selectionClick();
-      _prevWeek();
-      _tabController.animateTo(4, duration: Duration.zero);
+      final rb = context.findRenderObject() as RenderBox?;
+      final width = rb?.size.width ?? 400.0;
+      _animateCarouselTo(1, width);
     }
   }
 
@@ -1674,7 +1648,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final adjMonday = _weekMondayFromDelta(direction);
     final cached = _getAdjacentWeekData(adjMonday);
     if (cached != null) {
-      return _buildWeekView(monday: adjMonday, weekData: cached);
+      if (_viewMode == 1) {
+        return _buildWeekView(monday: adjMonday, weekData: cached);
+      } else {
+        final dayIndex = direction > 0 ? 0 : 4;
+        return _buildGridView(dayIndex, monday: adjMonday, weekData: cached);
+      }
     }
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
@@ -1736,7 +1715,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       key: ValueKey(
                         'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
                       ),
-                      child: _buildWeekView(),
+                      child: _viewMode == 1
+                          ? _buildWeekView()
+                          : TabBarView(
+                              controller: _tabController,
+                              physics: const NeverScrollableScrollPhysics(),
+                              children: List.generate(
+                                5,
+                                (dayIndex) => _buildGridView(dayIndex),
+                              ),
+                            ),
                     ),
                   ),
                 ),
@@ -1751,13 +1739,33 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   void _onCarouselDragStart(DragStartDetails details) {
     setState(() {
       _carouselOffset = 0;
+      _dayDragTotal = 0;
     });
     _prefetchAdjacentWeeks();
   }
 
   void _onCarouselDragUpdate(DragUpdateDetails details) {
+    final dx = details.delta.dx;
+    if (_viewMode == 0) {
+      // If we are at the boundaries of the week OR already moving the carousel,
+      // update the carousel offset for a fluid week-switch animation.
+      bool atEdge = (_tabController.index == 4 && dx < 0) ||
+                    (_tabController.index == 0 && dx > 0);
+      
+      if (atEdge || _carouselOffset != 0) {
+        setState(() {
+          _carouselOffset += dx;
+        });
+        return;
+      }
+      
+      // Otherwise, accumulate the drag for a discrete day switch.
+      _dayDragTotal += dx;
+      return;
+    }
+    
     setState(() {
-      _carouselOffset += details.delta.dx;
+      _carouselOffset += dx;
     });
   }
 
@@ -1768,12 +1776,26 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final threshold = width * 0.25;
     final velocity = details.primaryVelocity ?? 0;
 
-    if (_carouselOffset < -threshold || velocity < -400) {
-      _animateCarouselTo(-1, width);
-    } else if (_carouselOffset > threshold || velocity > 400) {
-      _animateCarouselTo(1, width);
-    } else {
-      _animateCarouselTo(0, width);
+    // Handle carousel week switch
+    if (_carouselOffset != 0) {
+      if (_carouselOffset < -threshold || velocity < -400) {
+        _animateCarouselTo(-1, width);
+      } else if (_carouselOffset > threshold || velocity > 400) {
+        _animateCarouselTo(1, width);
+      } else {
+        _animateCarouselTo(0, width);
+      }
+      return;
+    }
+
+    // Handle discrete day switch (when not moving the carousel)
+    if (_viewMode == 0 && _dayDragTotal != 0) {
+      if (_dayDragTotal < -50 || velocity < -400) {
+        _onSwipeLeft();
+      } else if (_dayDragTotal > 50 || velocity > 400) {
+        _onSwipeRight();
+      }
+      _dayDragTotal = 0;
     }
   }
 
@@ -1805,7 +1827,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
-    final target = direction * width;
+    const double peek = 64.0;
+    final target = direction * (width - peek);
     _carouselAnimController?.dispose();
     _carouselAnimController = AnimationController(
       duration: const Duration(milliseconds: 280),
@@ -1836,6 +1859,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             _loading = false;
           }
           _carouselOffset = 0;
+          // Synchronize TabController index when jumping weeks
+          if (direction < 0) {
+            _tabController.animateTo(0, duration: Duration.zero);
+          } else {
+            _tabController.animateTo(4, duration: Duration.zero);
+          }
         });
         HapticFeedback.selectionClick();
         _fetchFullWeek();
@@ -2873,12 +2902,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return slots;
   }
 
-  Widget _buildGridView(int dayIndex) {
+  Widget _buildGridView(
+    int dayIndex, {
+    DateTime? monday,
+    Map<int, List<dynamic>>? weekData,
+  }) {
+    final wd = weekData ?? _weekData;
     final media = MediaQuery.of(context);
     final topContentPadding =
         media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
 
-    final lessons = (_weekData[dayIndex] ?? [])
+    final lessons = (wd[dayIndex] ?? [])
         .where(
           (l) => !hiddenSubjectsNotifier.value.contains(
             l['_subjectShort']?.toString() ?? '',
@@ -2888,7 +2922,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     int globalMin = 480;
     int globalMax = 1200;
-    for (final day in _weekData.values) {
+    for (final day in wd.values) {
       for (final l in day) {
         final s = _toMinutes((l['startTime'] as int?) ?? 480);
         final e = _toMinutes((l['endTime'] as int?) ?? 600);
@@ -2908,7 +2942,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ticks.add(m);
     }
 
-    const double timeColWidth = 56;
+    const double timeColWidth = 40;
     final timeRanges = _collectTimeRangesFromWeek();
 
     final now = DateTime.now();
@@ -2967,8 +3001,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 _formatMinutes(range.startMin),
                                 textAlign: TextAlign.right,
                                 style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                          fontWeight: FontWeight.w600,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
                                   color: csG.onSurfaceVariant.withValues(
                                             alpha: 0.54,
                                   ),
@@ -2978,7 +3012,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 _formatMinutes(range.endMin),
                                 textAlign: TextAlign.right,
                                 style: GoogleFonts.outfit(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w500,
                                   color: csG.onSurfaceVariant.withValues(
                                             alpha: 0.45,
@@ -3010,7 +3044,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       }).toList(),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             Expanded(
               child: SizedBox(
                 height: totalHeight,
@@ -3230,8 +3264,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     DateTime? monday,
     Map<int, List<dynamic>>? weekData,
   }) {
-    final m = monday ?? _currentMonday;
     final wd = weekData ?? _weekData;
+    final m = monday ?? _currentMonday;
     final media = MediaQuery.of(context);
     final topContentPadding = media.padding.top + kToolbarHeight + 10;
 
@@ -3255,7 +3289,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ticks.add(min);
     }
 
-    const double timeColWidth = 52.0;
+    const double timeColWidth = 40.0;
     const double minDayColWidth = 56.0;
     const double dayColGap = 4.0;
     final timeRanges = _collectTimeRangesFromData(wd);
@@ -3288,8 +3322,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(
-          left: 12,
-          right: 12,
+          left: 8,
+          right: 8,
           bottom: 32,
           top: topContentPadding,
         ),
@@ -3297,7 +3331,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           builder: (context, constraints) {
             final availableForDays = math.max(
               5 * minDayColWidth,
-              constraints.maxWidth - timeColWidth - 6 - (dayColGap * 4),
+              constraints.maxWidth - timeColWidth - 4 - (dayColGap * 4),
             );
             final dayColWidth = availableForDays / 5;
 
@@ -3306,7 +3340,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               children: [
                 Padding(
                   padding: const EdgeInsets.only(
-                    left: timeColWidth + 6,
+                    left: timeColWidth + 4,
                     bottom: 6,
                   ),
                   child: Row(
@@ -3432,7 +3466,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               }).toList(),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: List.generate(5, (dayIndex) {
@@ -4683,7 +4717,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               ),
               if (_showingCachedWeek)
                 Tooltip(
-                  message: 'Offline-Cache aktiv',
+                  message: l.timetableOfflineCache,
                   child: Container(
                     width: 8,
                     height: 8,
@@ -4825,23 +4859,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   ),
                 ),
               )
-: _viewMode == 1
-              ? _buildWeekCarousel()
-             : GestureDetector(
-                 onHorizontalDragEnd: (details) {
-                   final velocity = details.primaryVelocity ?? 0;
-                   if (velocity < -400) _onSwipeLeft();
-                   if (velocity > 400) _onSwipeRight();
-                 },
-                 child: TabBarView(
-                   controller: _tabController,
-                   physics: const NeverScrollableScrollPhysics(),
-                   children: List.generate(
-                     5,
-                     (dayIndex) => _buildGridView(dayIndex),
-                   ),
-                 ),
-               ),
+            : _buildWeekCarousel(),
       ),
     );
   }

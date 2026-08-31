@@ -1039,22 +1039,22 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                             spacing: 8,
                             children: [
                               ChoiceChip(
-                                label: const Text('Kompakt (6px)'),
+                                label: Text(l.settingsLessonBorderRadiusCompact),
                                 selected: (radius - 6).abs() < 1.5,
                                 onSelected: (_) => _settingsSetLessonBorderRadius(6),
                               ),
                               ChoiceChip(
-                                label: const Text('Standard (12px)'),
+                                label: Text(l.settingsLessonBorderRadiusStandard),
                                 selected: (radius - 12).abs() < 1.5,
                                 onSelected: (_) => _settingsSetLessonBorderRadius(12),
                               ),
                               ChoiceChip(
-                                label: const Text('Rund (18px)'),
+                                label: Text(l.settingsLessonBorderRadiusRound),
                                 selected: (radius - 18).abs() < 1.5,
                                 onSelected: (_) => _settingsSetLessonBorderRadius(18),
                               ),
                               ChoiceChip(
-                                label: const Text('Pill (24px)'),
+                                label: Text(l.settingsLessonBorderRadiusPill),
                                 selected: (radius - 24).abs() < 1.5,
                                 onSelected: (_) => _settingsSetLessonBorderRadius(24),
                               ),

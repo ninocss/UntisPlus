@@ -34,9 +34,7 @@ class UntisPlusApp extends StatelessWidget {
         iconTheme: IconThemeData(color: scheme.primary),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: (isAmoled && scheme.brightness == Brightness.dark)
-            ? Colors.black
-            : scheme.surfaceContainer,
+        backgroundColor: scheme.surfaceContainer,
         indicatorColor: scheme.secondaryContainer,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {

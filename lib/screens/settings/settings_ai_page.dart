@@ -468,6 +468,23 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     );
   }
 
+  String _getLocalModelDescription(LocalModelInfo model, AppL10n l) {
+    switch (model.id) {
+      case 'gemma-3-1b-it-q4_k_m':
+        return l.aiLocalModelDescSmall;
+      case 'llama-3.2-1b-instruct-q4_k_m':
+        return l.aiLocalModelDescBalanced;
+      case 'qwen-2.5-1.5b-instruct-q4_k_m':
+        return l.aiLocalModelDescMultilingual;
+      case 'llama-3.2-3b-instruct-q4_k_m':
+        return l.aiLocalModelDescHighQuality;
+      case 'phi-3.5-mini-instruct-q4_k_m':
+        return l.aiLocalModelDescStrong;
+      default:
+        return model.description;
+    }
+  }
+
   /// Build a single local model card with Material You Expressive styling.
   Widget _buildLocalModelCard(
     BuildContext ctx,
@@ -585,7 +602,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            model.description,
+                            _getLocalModelDescription(model, l),
                             style: tt.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                               height: 1.3,
@@ -1584,17 +1601,23 @@ void _showProviderDialog() {
   }
 
   void _clearChatHistory() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Verlauf löschen?'),
-        content: const Text('Alle bisherigen Chats werden dauerhaft gelöscht.'),
+        title: Text(l.aiClearHistoryTitle),
+        content: Text(l.aiClearHistoryDesc),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Abbrechen')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.examsCancel),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Theme.of(ctx).colorScheme.error),
-            child: const Text('Löschen'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: Text(l.examsDelete),
           ),
         ],
       ),
@@ -1604,7 +1627,9 @@ void _showProviderDialog() {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('aiChatHistory');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chat-Verlauf gelöscht.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.aiClearHistorySuccess)),
+        );
       }
     }
   }
@@ -1703,8 +1728,8 @@ void _showProviderDialog() {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onSecondaryContainer,
-                  title: 'Parameter',
-                  subtitle: 'Temperatur, Token-Limit & Top P',
+                  title: l.settingsAiParametersTitle,
+                  subtitle: l.settingsAiParametersDesc,
                   onTap: _showAdvancedSettingsDialog,
                 ),
               ],
@@ -1712,7 +1737,7 @@ void _showProviderDialog() {
 
             // ── GROUP 2: PERSÖNLICHKEIT ──
             SettingsGroup(
-              title: 'Anpassung',
+              title: l.settingsAiAdjustmentTitle,
               children: [
                 SettingsTile(
                   icon: Icons.face_rounded,
@@ -1720,12 +1745,12 @@ void _showProviderDialog() {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onTertiaryContainer,
-                  title: 'Persönlichkeit',
+                  title: l.settingsAiPersonaTitle,
                   subtitle: aiPersona == 'helpful' 
-                      ? 'Hilfreicher Assistent' 
+                      ? l.settingsAiPersonaHelpful 
                       : aiPersona == 'strict' 
-                          ? 'Strenger Lehrer' 
-                          : 'Schul-Buddy',
+                          ? l.settingsAiPersonaStrict 
+                          : l.settingsAiPersonaBuddy,
                   onTap: _showAiPersonaDialog,
                 ),
               ],
@@ -1779,7 +1804,7 @@ void _showProviderDialog() {
 
             // ── GROUP 4: DATEN ──
             SettingsGroup(
-              title: 'Daten',
+              title: l.settingsAiDataTitle,
               children: [
                 SettingsTile(
                   icon: Icons.delete_sweep_rounded,
@@ -1787,8 +1812,8 @@ void _showProviderDialog() {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onErrorContainer,
-                  title: 'Verlauf löschen',
-                  subtitle: 'Alle Chats vom Gerät entfernen',
+                  title: l.aiClearHistoryTileTitle,
+                  subtitle: l.aiClearHistoryTileDesc,
                   onTap: _clearChatHistory,
                 ),
               ],

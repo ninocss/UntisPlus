@@ -308,6 +308,43 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
                 ),
               ],
             ),
+
+            // ── GROUP 3: CREDITS ──
+            SettingsGroup(
+              title: l.settingsSectionCredits,
+              children: [
+                SettingsTile(
+                  icon: Icons.code_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: 'nino161er',
+                  subtitle: l.settingsCreditsDevelopers,
+                  onTap: () {
+                    url_launcher.launchUrlString(
+                      'https://github.com/nino161er',
+                      mode: url_launcher.LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+                SettingsTile(
+                  icon: Icons.code_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: 'OseMine',
+                  subtitle: l.settingsCreditsDevelopers,
+                  onTap: () {
+                    url_launcher.launchUrlString(
+                      'https://github.com/OseMine',
+                      mode: url_launcher.LaunchMode.externalApplication,
+                    );
+                  },
+                ),
+              ],
+            ),
           ],
         ),
       ),

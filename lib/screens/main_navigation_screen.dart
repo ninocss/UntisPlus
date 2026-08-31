@@ -2580,11 +2580,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     // ---- Secondary items (indices 1-4) shown in the pill bar ----
     final items = [
       _NavItem(
-        icon: Icons.assignment_outlined,
-        selectedIcon: Icons.assignment_rounded,
-        label: l.navExams,
-        pageIndex: 1,
-        tutorialHighlight: _isTutorialTarget(1),
+        icon: Icons.settings_outlined,
+        selectedIcon: Icons.settings_rounded,
+        label: l.navMenu,
+        pageIndex: 3,
+        tutorialHighlight: _isTutorialTarget(3),
       ),
       _NavItem(
         icon: Icons.campaign_outlined,
@@ -2594,11 +2594,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         tutorialHighlight: _isTutorialTarget(2),
       ),
       _NavItem(
-        icon: Icons.settings_outlined,
-        selectedIcon: Icons.settings_rounded,
-        label: l.navMenu,
-        pageIndex: 3,
-        tutorialHighlight: _isTutorialTarget(3),
+        icon: Icons.assignment_outlined,
+        selectedIcon: Icons.assignment_rounded,
+        label: l.navExams,
+        pageIndex: 1,
+        tutorialHighlight: _isTutorialTarget(1),
       ),
       _NavItem(
         icon: Icons.auto_awesome_outlined,
@@ -2610,7 +2610,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     // Which item in the secondary bar is selected? -1 = none (timetable active)
     final selectedBarIndex =
-        _selectedIndex == 0 ? -1 : _selectedIndex - 1;
+        items.indexWhere((item) => item.pageIndex == _selectedIndex);
 
     return Center(
       child: Padding(

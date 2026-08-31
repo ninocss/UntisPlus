@@ -20,6 +20,7 @@ class AppL10n {
   String get navExams => _t('navExams');
   String get navInfo => _t('navInfo');
   String get navMenu => _t('navMenu');
+  String get navAi => _t('navAi');
 
   // ── Login ───────────────────────────────────────────────────────────────────
   String get loginServer => _t('loginServer');
@@ -113,12 +114,14 @@ class AppL10n {
   String get freeRoomsSelectTime => _t('freeRoomsSelectTime');
   String get freeRoomsNoneFound => _t('freeRoomsNoneFound');
   String get freeRoomsNoRangesHint => _t('freeRoomsNoRangesHint');
+  String get noLesson => _t('noLesson');
+  String get timetableOfflineCache => _t('timetableOfflineCache');
   String freeRoomsCount(int n) => _t('freeRoomsCount').replaceAll('{n}', '$n');
+
   List<String> get weekDayShort =>
       List<String>.from(_strings[locale]!['weekDayShort'] as List);
   List<String> get weekDayFull =>
       List<String>.from(_strings[locale]!['weekDayFull'] as List);
-  String get noLesson => _t('noLesson');
 
   // ── Lesson Detail ───────────────────────────────────────────────────────────
   String get detailTime => _t('detailTime');
@@ -204,7 +207,17 @@ class AppL10n {
   String get infoEmptyHint => _t('infoEmptyHint');
   String get infoFetchError => _t('infoFetchError');
   String get infoOpenLink => _t('infoOpenLink');
-    String get navAi => _t('navAi');
+  String get notificationActionNextLessonLabel => _t('notificationActionNextLesson');
+  String get notificationActionFreeRooms => _t('notificationActionFreeRooms');
+  String get notificationActionOpenDay => _t('notificationActionOpenDay');
+  String get notificationChannelCurrentLessonName => _t('notificationChannelCurrentLessonName');
+  String get notificationChannelCurrentLessonDesc => _t('notificationChannelCurrentLessonDesc');
+  String get notificationChannelDailyBriefingName => _t('notificationChannelDailyBriefingName');
+  String get notificationChannelDailyBriefingDesc => _t('notificationChannelDailyBriefingDesc');
+  String get notificationChannelImportantChangesName => _t('notificationChannelImportantChangesName');
+  String get notificationChannelImportantChangesDesc => _t('notificationChannelImportantChangesDesc');
+  String get notificationChannelUpdatesName => _t('notificationChannelUpdatesName');
+  String get notificationChannelUpdatesDesc => _t('notificationChannelUpdatesDesc');
   String notificationActionCurrentLesson(String lesson) =>
       _t('notificationActionCurrentLesson').replaceAll('{lesson}', lesson);
   String notificationActionNextLesson(String lesson) =>
@@ -221,6 +234,16 @@ class AppL10n {
   String get aiApiError => _t('aiApiError');
   String get aiConnectionError => _t('aiConnectionError');
   String get aiCustomBaseUrlMissing => _t('aiCustomBaseUrlMissing');
+  String get aiClearHistoryTitle => _t('aiClearHistoryTitle');
+  String get aiClearHistoryDesc => _t('aiClearHistoryDesc');
+  String get aiClearHistorySuccess => _t('aiClearHistorySuccess');
+  String get aiClearHistoryTileTitle => _t('aiClearHistoryTileTitle');
+  String get aiClearHistoryTileDesc => _t('aiClearHistoryTileDesc');
+  String get aiLocalModelDescSmall => _t('aiLocalModelDescSmall');
+  String get aiLocalModelDescBalanced => _t('aiLocalModelDescBalanced');
+  String get aiLocalModelDescMultilingual => _t('aiLocalModelDescMultilingual');
+  String get aiLocalModelDescHighQuality => _t('aiLocalModelDescHighQuality');
+  String get aiLocalModelDescStrong => _t('aiLocalModelDescStrong');
   List<String> get aiSuggestions =>
       List<String>.from(_strings[locale]!['aiSuggestions'] as List);
 
@@ -237,6 +260,8 @@ class AppL10n {
   String get settingsHubDataBackupDesc => _t('settingsHubDataBackupDesc');
   String get settingsHubAccount => _t('settingsHubAccount');
   String get settingsHubUpdatesAbout => _t('settingsHubUpdatesAbout');
+  String get settingsSupport => _t('settingsSupport');
+  String get settingsSupportDesc => _t('settingsSupportDesc');
   String get settingsLanguage => _t('settingsLanguage');
   String get settingsSectionAI => _t('settingsSectionAI');
   String get settingsAiProvider => _t('settingsAiProvider');
@@ -245,6 +270,14 @@ class AppL10n {
   String get settingsAiProviderMistral => _t('settingsAiProviderMistral');
   String get settingsAiProviderCustom => _t('settingsAiProviderCustom');
   String get settingsAiModel => _t('settingsAiModel');
+  String get settingsAiParametersTitle => _t('settingsAiParametersTitle');
+  String get settingsAiParametersDesc => _t('settingsAiParametersDesc');
+  String get settingsAiAdjustmentTitle => _t('settingsAiAdjustmentTitle');
+  String get settingsAiPersonaTitle => _t('settingsAiPersonaTitle');
+  String get settingsAiPersonaHelpful => _t('settingsAiPersonaHelpful');
+  String get settingsAiPersonaStrict => _t('settingsAiPersonaStrict');
+  String get settingsAiPersonaBuddy => _t('settingsAiPersonaBuddy');
+  String get settingsAiDataTitle => _t('settingsAiDataTitle');
   String get settingsAiApiKey => _t('settingsAiApiKey');
   String get settingsAiApiKeyNotSet => _t('settingsAiApiKeyNotSet');
   String get settingsAiApiKeyDialogDesc => _t('settingsAiApiKeyDialogDesc');
@@ -274,8 +307,8 @@ class AppL10n {
     '[timetable_json]': _t('aiVar_timetable_json'),
     '[exams]': _t('aiVar_exams'),
     '[exams_json]': _t('aiVar_exams_json'),
-    '[current_lesson]': 'Informationen zur aktuellen Stunde',
-    '[next_lesson]': 'Informationen zur nächsten Stunde',
+    '[current_lesson]': _t('aiVar_current_lesson'),
+    '[next_lesson]': _t('aiVar_next_lesson'),
   };
   String get settingsAiCustomBaseUrl => _t('settingsAiCustomBaseUrl');
   String get settingsAiCustomBaseUrlDesc => _t('settingsAiCustomBaseUrlDesc');
@@ -357,6 +390,10 @@ class AppL10n {
   String get settingsLessonBlurAmount => _t('settingsLessonBlurAmount');
   String get settingsLessonCardOpacity => _t('settingsLessonCardOpacity');
   String get settingsLessonBorderRadius => _t('settingsLessonBorderRadius');
+  String get settingsLessonBorderRadiusCompact => _t('settingsLessonBorderRadiusCompact');
+  String get settingsLessonBorderRadiusStandard => _t('settingsLessonBorderRadiusStandard');
+  String get settingsLessonBorderRadiusRound => _t('settingsLessonBorderRadiusRound');
+  String get settingsLessonBorderRadiusPill => _t('settingsLessonBorderRadiusPill');
   String get settingsLessonAccentStyle => _t('settingsLessonAccentStyle');
   String get settingsLessonAccentBar => _t('settingsLessonAccentBar');
   String get settingsLessonAccentThin => _t('settingsLessonAccentThin');
@@ -439,6 +476,8 @@ class AppL10n {
   String get settingsBackgroundLoading => _t('settingsBackgroundLoading');
   String get settingsSectionUpdates => _t('settingsSectionUpdates');
   String get settingsSectionAbout => _t('settingsSectionAbout');
+  String get settingsSectionCredits => _t('settingsSectionCredits');
+  String get settingsCreditsDevelopers => _t('settingsCreditsDevelopers');
   String get appName => _t('appName');
   String get settingsAppVersion => _t('settingsAppVersion');
   String get settingsBuild => _t('settingsBuild');
@@ -598,6 +637,7 @@ class AppL10n {
   String get settingsChangelogSubtitle => _t('settingsChangelogSubtitle');
   String get changelogTitle => _t('changelogTitle');
   String get changelogLoadError => _t('changelogLoadError');
+  String get changelogNoData => _t('changelogNoData');
   String get changelogRetry => _t('changelogRetry');
 
   // ── AI Assistant & Querying ────────────────────────────────────────────────
@@ -649,10 +689,37 @@ class AppL10n {
     'de': {
       'navWeek': 'Woche',
       'navHomework': 'Hausaufgaben',
-      'navExams': 'Exams',
+      'navExams': 'Prüfungen',
       'navInfo': 'Info',
       'navMenu': 'Menü',
-    'navAi': 'KI',
+      'navAi': 'KI',
+      'timetableOfflineCache': 'Offline-Cache aktiv',
+
+      'aiClearHistoryTitle': 'Verlauf löschen?',
+      'aiClearHistoryDesc': 'Alle bisherigen Chats werden dauerhaft gelöscht.',
+      'aiClearHistorySuccess': 'Chat-Verlauf gelöscht.',
+      'aiLocalModelDescSmall': 'Klein, schnell, ideal für Mobilgeräte',
+      'aiLocalModelDescBalanced': 'Ausgewogen, gute Qualität',
+      'aiLocalModelDescMultilingual': 'Stark bei Mehrsprachigkeit',
+      'aiLocalModelDescHighQuality': 'Höhere Qualität, mehr Speicher',
+      'aiLocalModelDescStrong': 'Sehr stark, aber größer',
+
+      'notificationActionNextLesson': 'Nächste Stunde',
+      'notificationActionFreeRooms': 'Freie Räume',
+      'notificationActionOpenDay': 'Tag öffnen',
+      'notificationChannelCurrentLessonName': 'Aktuelle Stunde / Pause',
+      'notificationChannelCurrentLessonDesc': 'Laufender Status der aktuellen Stunde.',
+      'notificationChannelDailyBriefingName': 'Tagesbriefing',
+      'notificationChannelDailyBriefingDesc': 'Morgendlicher Überblick über den Schultag.',
+      'notificationChannelImportantChangesName': 'Stundenplan-Änderungen',
+      'notificationChannelImportantChangesDesc': 'Hinweise zu Ausfall oder Raumwechsel.',
+      'notificationChannelUpdatesName': 'App-Updates',
+      'notificationChannelUpdatesDesc': 'Hinweise zu App-Verbesserungen.',
+
+      'settingsLessonBorderRadiusCompact': 'Kompakt (6px)',
+      'settingsLessonBorderRadiusStandard': 'Standard (12px)',
+      'settingsLessonBorderRadiusRound': 'Rund (18px)',
+      'settingsLessonBorderRadiusPill': 'Pill (24px)',
 
       'loginServer': 'Server URL',
       'loginSchool': 'Schule',
@@ -836,7 +903,7 @@ class AppL10n {
           'Benachrichtigungen konnten nicht geladen werden. Bitte später erneut versuchen.',
       'infoOpenLink': 'Link öffnen',
       'notificationActionCurrentLesson': 'Aktuelle Stunde: {lesson}',
-      'notificationActionNextLesson': 'Nächste Stunde: {lesson}',
+      'notificationActionNextLessonLabel': 'Nächste Stunde',
       'notificationActionNoNextLesson':
           'Keine nächste Stunde für heute gefunden',
 
@@ -853,6 +920,8 @@ class AppL10n {
       'aiConnectionError': '⚠️ Verbindungsfehler:',
       'aiCustomBaseUrlMissing':
           '⚠️ Bitte setze zuerst die Custom Base URL in den KI-Einstellungen.',
+      'aiClearHistoryTileTitle': 'Verlauf löschen',
+      'aiClearHistoryTileDesc': 'Alle Chats vom Gerät entfernen',
       'aiSuggestions': [
         'Was hab ich morgen?',
         'Hab ich heute eine Freistunde?',
@@ -872,6 +941,8 @@ class AppL10n {
       'settingsHubDataBackupDesc': 'Alle App-Einstellungen sichern',
       'settingsHubAccount': 'Account & Demo',
       'settingsHubUpdatesAbout': 'Updates & Über',
+      'settingsSupport': 'Entwicklung unterstützen',
+      'settingsSupportDesc': 'Trink mir einen Kaffee auf Ko-fi',
       'settingsLanguage': 'Sprache',
       'settingsSectionAI': 'KI-Assistent',
       'settingsAiProvider': 'Anbieter',
@@ -881,6 +952,14 @@ class AppL10n {
       'settingsAiProviderCustom': 'Custom Anbieter',
       'settingsAiProviderLocal': 'Lokal (On-Device)',
       'settingsAiModel': 'Modell',
+      'settingsAiParametersTitle': 'Parameter',
+      'settingsAiParametersDesc': 'Temperatur, Token-Limit & Top P',
+      'settingsAiAdjustmentTitle': 'Anpassung',
+      'settingsAiPersonaTitle': 'Persönlichkeit',
+      'settingsAiPersonaHelpful': 'Hilfreicher Assistent',
+      'settingsAiPersonaStrict': 'Strenger Lehrer',
+      'settingsAiPersonaBuddy': 'Schul-Buddy',
+      'settingsAiDataTitle': 'Daten',
       'settingsAiApiKey': 'API-Schlüssel',
       'settingsAiApiKeyNotSet': 'Nicht konfiguriert — Tippen zum Einrichten',
       'settingsAiApiKeyDialogDesc':
@@ -925,6 +1004,8 @@ class AppL10n {
       'aiVar_timetable_json': 'Rohdaten des Stundenplans als JSON',
       'aiVar_exams': 'Formatierte Liste geplanter Prüfungen',
       'aiVar_exams_json': 'Prüfungsdaten als JSON',
+      'aiVar_current_lesson': 'Informationen zur aktuellen Stunde',
+      'aiVar_next_lesson': 'Informationen zur nächsten Stunde',
       'settingsAiCustomBaseUrl': 'Custom Base URL',
       'settingsAiCustomBaseUrlDesc':
           'Basis-URL deines eigenen Anbieters (OpenAI- oder Gemini-kompatibel).',
@@ -1207,6 +1288,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsBackgroundLoading': 'Daten werden im Hintergrund geladen...',
       'settingsSectionUpdates': 'Updates',
       'settingsSectionAbout': 'Über die App',
+      'settingsSectionCredits': 'Credits',
+      'settingsCreditsDevelopers': 'Entwickler',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsBuild': 'Build',
@@ -1277,6 +1360,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsChangelogSubtitle': 'Was ist neu in Untis+?',
       'changelogTitle': 'Neuigkeiten',
       'changelogLoadError': 'Fehler beim Laden',
+      'changelogNoData': '# Keine Daten verfügbar',
       'changelogRetry': 'Erneut versuchen',
 
       'aiNewSearch': 'Neue Suche',
@@ -1344,7 +1428,34 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'navExams': 'Exams',
       'navInfo': 'Info',
       'navMenu': 'Menu',
-    'navAi': 'AI',
+      'navAi': 'AI',
+      'timetableOfflineCache': 'Offline cache active',
+
+      'aiClearHistoryTitle': 'Clear history?',
+      'aiClearHistoryDesc': 'All previous chats will be permanently deleted.',
+      'aiClearHistorySuccess': 'Chat history cleared.',
+      'aiLocalModelDescSmall': 'Small, fast, ideal for mobile devices',
+      'aiLocalModelDescBalanced': 'Balanced, good quality',
+      'aiLocalModelDescMultilingual': 'Strong for multilingual use',
+      'aiLocalModelDescHighQuality': 'Higher quality, more memory',
+      'aiLocalModelDescStrong': 'Very strong but larger',
+
+      'notificationActionNextLesson': 'Next lesson',
+      'notificationActionFreeRooms': 'Free rooms',
+      'notificationActionOpenDay': 'Open day',
+      'notificationChannelCurrentLessonName': 'Current lesson / Break',
+      'notificationChannelCurrentLessonDesc': 'Ongoing status of the current lesson.',
+      'notificationChannelDailyBriefingName': 'Daily briefing',
+      'notificationChannelDailyBriefingDesc': 'Morning overview of your school day.',
+      'notificationChannelImportantChangesName': 'Timetable changes',
+      'notificationChannelImportantChangesDesc': 'Notifies about cancellations and room changes.',
+      'notificationChannelUpdatesName': 'App updates',
+      'notificationChannelUpdatesDesc': 'Notifications about app improvements.',
+
+      'settingsLessonBorderRadiusCompact': 'Compact (6px)',
+      'settingsLessonBorderRadiusStandard': 'Standard (12px)',
+      'settingsLessonBorderRadiusRound': 'Round (18px)',
+      'settingsLessonBorderRadiusPill': 'Pill (24px)',
 
       'loginServer': 'Server URL',
       'loginSchool': 'School',
@@ -1514,7 +1625,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'infoFetchError': 'Could not load notifications. Please try again later.',
       'infoOpenLink': 'Open link',
       'notificationActionCurrentLesson': 'Current lesson: {lesson}',
-      'notificationActionNextLesson': 'Next lesson: {lesson}',
+      'notificationActionNextLessonLabel': 'Next lesson',
       'notificationActionNoNextLesson': 'No next lesson found for today',
 
       'aiTitle': 'AI Assistant',
@@ -1530,6 +1641,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiConnectionError': '⚠️ Connection error:',
       'aiCustomBaseUrlMissing':
           '⚠️ Please configure the custom base URL in AI settings first.',
+      'aiClearHistoryTileTitle': 'Clear history',
+      'aiClearHistoryTileDesc': 'Remove all chats from device',
       'aiSuggestions': [
         "What do I have tomorrow?",
         "Do I have a free period today?",
@@ -1553,6 +1666,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderCustom': 'Custom Provider',
       'settingsAiProviderLocal': 'Local (On-Device)',
       'settingsAiModel': 'Model',
+      'settingsAiParametersTitle': 'Parameters',
+      'settingsAiParametersDesc': 'Temperature, Token Limit & Top P',
+      'settingsAiAdjustmentTitle': 'Adjustment',
+      'settingsAiPersonaTitle': 'Persona',
+      'settingsAiPersonaHelpful': 'Helpful Assistant',
+      'settingsAiPersonaStrict': 'Strict Teacher',
+      'settingsAiPersonaBuddy': 'School Buddy',
+      'settingsAiDataTitle': 'Data',
       'settingsAiApiKey': 'API Key',
       'settingsAiApiKeyNotSet': 'Not configured - tap to set up',
       'settingsAiApiKeyDialogDesc':
@@ -1597,6 +1718,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiVar_timetable_json': 'Raw timetable data as JSON',
       'aiVar_exams': 'Formatted list of upcoming exams',
       'aiVar_exams_json': 'Exam data as JSON',
+      'aiVar_current_lesson': 'Information about the current lesson',
+      'aiVar_next_lesson': 'Information about the next lesson',
       'settingsAiCustomBaseUrl': 'Custom Base URL',
       'settingsAiCustomBaseUrlDesc':
           'Base URL of your own provider (OpenAI-compatible or Gemini-compatible).',
@@ -1874,6 +1997,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsBackgroundLoading': 'Data is loading in the background...',
       'settingsSectionUpdates': 'Updates',
       'settingsSectionAbout': 'About',
+      'settingsSectionCredits': 'Credits',
+      'settingsCreditsDevelopers': 'Developers',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsBuild': 'Build',
@@ -1910,6 +2035,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubDataBackupDesc': 'Back up all app settings',
       'settingsHubAccount': 'Account & Demo',
       'settingsHubUpdatesAbout': 'Updates & About',
+      'settingsSupport': 'Support Development',
+      'settingsSupportDesc': 'Buy me a coffee on Ko-fi',
       'settingsBackupIncludeApiKeys': 'Include API keys',
       'settingsBackupIncludeApiKeysDesc':
           'Only enable this if you store the backup securely.',
@@ -1948,6 +2075,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsChangelogSubtitle': 'What is new in Untis+?',
       'changelogTitle': "What's New",
       'changelogLoadError': 'Failed to load',
+      'changelogNoData': '# No data available',
       'changelogRetry': 'Try again',
 
       'aiNewSearch': 'New search',
@@ -2008,12 +2136,44 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 
     // ── FRENCH ────────────────────────────────────────────────────────────────
     'fr': {
+      'gradesTotal': 'Total',
+      'gradesBestSubject': 'Meilleure matière',
+      'gradesAddDesc': 'Complétez votre aperçu des notes',
+      'gradesCountPlural': 'notes',
+      'gradesWeightLabelShort': 'Coef.',
       'navWeek': 'Semaine',
       'navHomework': 'Devoirs',
       'navExams': 'Examens',
       'navInfo': 'Infos',
       'navMenu': 'Menu',
       'navAi': 'IA',
+      'timetableOfflineCache': 'Cache hors ligne actif',
+
+      'aiClearHistoryTitle': 'Effacer l\'historique ?',
+      'aiClearHistoryDesc': 'Tous les chats précédents seront définitivement effacés.',
+      'aiClearHistorySuccess': 'Historique des chats effacé.',
+      'aiLocalModelDescSmall': 'Petit, rapide, idéal pour mobile',
+      'aiLocalModelDescBalanced': 'Équilibré, bonne qualité',
+      'aiLocalModelDescMultilingual': 'Fort pour le multilinguisme',
+      'aiLocalModelDescHighQuality': 'Haute qualité, plus de mémoire',
+      'aiLocalModelDescStrong': 'Très fort mais plus grand',
+
+      'notificationActionNextLesson': 'Cours suivant',
+      'notificationActionFreeRooms': 'Salles libres',
+      'notificationActionOpenDay': 'Ouvrir la journée',
+      'notificationChannelCurrentLessonName': 'Cours actuel / Pause',
+      'notificationChannelCurrentLessonDesc': 'Statut actuel du cours ou de la pause.',
+      'notificationChannelDailyBriefingName': 'Briefing quotidien',
+      'notificationChannelDailyBriefingDesc': 'Aperçu matinal de votre journée d\'école.',
+      'notificationChannelImportantChangesName': 'Changements d\'horaire',
+      'notificationChannelImportantChangesDesc': 'Signale les annulations et changements de salle.',
+      'notificationChannelUpdatesName': 'Mises à jour',
+      'notificationChannelUpdatesDesc': 'Informations sur les améliorations de l\'application.',
+
+      'settingsLessonBorderRadiusCompact': 'Compact (6px)',
+      'settingsLessonBorderRadiusStandard': 'Standard (12px)',
+      'settingsLessonBorderRadiusRound': 'Arrondi (18px)',
+      'settingsLessonBorderRadiusPill': 'Pilule (24px)',
 
       'loginServer': 'URL du serveur',
       'loginSchool': 'École',
@@ -2188,7 +2348,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Impossible de charger les notifications. Réessaie plus tard.',
       'infoOpenLink': 'Ouvrir le lien',
       'notificationActionCurrentLesson': 'Cours actuel : {lesson}',
-      'notificationActionNextLesson': 'Cours suivant : {lesson}',
+      'notificationActionNextLessonLabel': 'Cours suivant',
       'notificationActionNoNextLesson':
           'Aucun cours suivant trouvé pour aujourd’hui',
 
@@ -2202,6 +2362,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiNoReply': '⚠️ Aucune réponse reçue.',
       'aiApiError': '⚠️ Erreur API :',
       'aiConnectionError': '⚠️ Erreur de connexion :',
+      'aiClearHistoryTileTitle': 'Effacer l\'historique',
+      'aiClearHistoryTileDesc': 'Supprimer tous les chats de l\'appareil',
       'aiSuggestions': [
         "Qu'est-ce que j'ai demain ?",
         "Ai-je une heure libre aujourd'hui ?",
@@ -2221,6 +2383,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubDataBackupDesc': 'Sauvegarder tous les réglages',
       'settingsHubAccount': 'Compte & Démo',
       'settingsHubUpdatesAbout': 'Mises à jour & À propos',
+      'settingsSupport': 'Soutenir le développement',
+      'settingsSupportDesc': 'Offrez-moi un café sur Ko-fi',
       'settingsLanguage': 'Langue',
       'settingsSectionAI': 'Assistant IA',
       'settingsAiProvider': 'Fournisseur',
@@ -2230,6 +2394,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderCustom': 'Fournisseur personnalisé',
       'settingsAiProviderLocal': 'Local (On-Device)',
       'settingsAiModel': 'Modèle',
+      'settingsAiParametersTitle': 'Paramètres',
+      'settingsAiParametersDesc': 'Température, limite de jetons & Top P',
+      'settingsAiAdjustmentTitle': 'Ajustement',
+      'settingsAiPersonaTitle': 'Personnalité',
+      'settingsAiPersonaHelpful': 'Assistant utile',
+      'settingsAiPersonaStrict': 'Professeur strict',
+      'settingsAiPersonaBuddy': 'Copain d\'école',
+      'settingsAiDataTitle': 'Données',
       'settingsAiApiKey': 'Clé API',
       'settingsAiApiKeyNotSet': 'Non configuré — appuyer pour configurer',
       'settingsAiApiKeyDialogDesc':
@@ -2274,6 +2446,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiVar_timetable_json': 'Données brutes de l\'emploi du temps en JSON',
       'aiVar_exams': 'Liste formatée des examens à venir',
       'aiVar_exams_json': 'Données d\'examens en JSON',
+      'aiVar_current_lesson': 'Informations sur le cours actuel',
+      'aiVar_next_lesson': 'Informations sur le cours suivant',
       'settingsAiCustomBaseUrl': 'URL de base personnalisée',
       'settingsAiCustomBaseUrlDesc':
           'URL de base de ton propre fournisseur (compatible OpenAI ou Gemini).',
@@ -2556,6 +2730,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Charge immédiatement les dernières données du cache API et met à jour widget et push',
       'settingsBackgroundLoading': 'Les données se chargent en arrière-plan...',
       'settingsSectionAbout': 'À propos',
+      'settingsSectionCredits': 'Crédits',
+      'settingsCreditsDevelopers': 'Développeurs',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsBuild': 'Build',
@@ -2629,6 +2805,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsChangelogSubtitle': 'Quoi de neuf dans Untis+ ?',
       'changelogTitle': 'Nouveautés',
       'changelogLoadError': 'Erreur de chargement',
+      'changelogNoData': '# Aucune donnée disponible',
       'changelogRetry': 'Réessayer',
 
       'aiNewSearch': 'Nouvelle recherche',
@@ -2686,12 +2863,44 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 
     // ── SPANISH ───────────────────────────────────────────────────────────────
     'es': {
+      'gradesTotal': 'Total',
+      'gradesBestSubject': 'Mejor asignatura',
+      'gradesAddDesc': 'Completa tu resumen de notas',
+      'gradesCountPlural': 'notas',
+      'gradesWeightLabelShort': 'Peso',
       'navWeek': 'Semana',
       'navHomework': 'Deberes',
       'navExams': 'Exámenes',
       'navInfo': 'Info',
       'navMenu': 'Menú',
       'navAi': 'IA',
+      'timetableOfflineCache': 'Caché sin conexión activo',
+
+      'aiClearHistoryTitle': '¿Borrar historial?',
+      'aiClearHistoryDesc': 'Todos los chats anteriores se borrarán permanentemente.',
+      'aiClearHistorySuccess': 'Historial de chat borrado.',
+      'aiLocalModelDescSmall': 'Pequeño, rápido, ideal para móviles',
+      'aiLocalModelDescBalanced': 'Equilibrado, buena calidad',
+      'aiLocalModelDescMultilingual': 'Fuerte para uso multilingüe',
+      'aiLocalModelDescHighQuality': 'Mayor calidad, más memoria',
+      'aiLocalModelDescStrong': 'Muy fuerte pero más grande',
+
+      'notificationActionNextLesson': 'Siguiente clase',
+      'notificationActionFreeRooms': 'Aulas libres',
+      'notificationActionOpenDay': 'Abrir día',
+      'notificationChannelCurrentLessonName': 'Clase actual / Descanso',
+      'notificationChannelCurrentLessonDesc': 'Estado actual de la clase o descanso.',
+      'notificationChannelDailyBriefingName': 'Resumen diario',
+      'notificationChannelDailyBriefingDesc': 'Resumen matutino de tu día escolar.',
+      'notificationChannelImportantChangesName': 'Cambios de horario',
+      'notificationChannelImportantChangesDesc': 'Notifica sobre cancelaciones y cambios de aula.',
+      'notificationChannelUpdatesName': 'Actualizaciones',
+      'notificationChannelUpdatesDesc': 'Notificaciones sobre mejoras de la aplicación.',
+
+      'settingsLessonBorderRadiusCompact': 'Compacto (6px)',
+      'settingsLessonBorderRadiusStandard': 'Estándar (12px)',
+      'settingsLessonBorderRadiusRound': 'Redondo (18px)',
+      'settingsLessonBorderRadiusPill': 'Píldora (24px)',
 
       'loginServer': 'URL del servidor',
       'loginSchool': 'Escuela',
@@ -2867,7 +3076,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'No se pudieron cargar las notificaciones. Inténtalo más tarde.',
       'infoOpenLink': 'Abrir enlace',
       'notificationActionCurrentLesson': 'Clase actual: {lesson}',
-      'notificationActionNextLesson': 'Siguiente clase: {lesson}',
+      'notificationActionNextLessonLabel': 'Siguiente clase',
       'notificationActionNoNextLesson':
           'No se encontró una siguiente clase para hoy',
 
@@ -2881,6 +3090,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiNoReply': '⚠️ No se recibió respuesta.',
       'aiApiError': '⚠️ Error de API:',
       'aiConnectionError': '⚠️ Error de conexión:',
+      'aiClearHistoryTileTitle': 'Borrar historial',
+      'aiClearHistoryTileDesc': 'Eliminar todos los chats del dispositivo',
       'aiSuggestions': [
         '¿Qué tengo mañana?',
         '¿Tengo una hora libre hoy?',
@@ -2900,6 +3111,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubDataBackupDesc': 'Guardar toda la configuración',
       'settingsHubAccount': 'Cuenta & Demo',
       'settingsHubUpdatesAbout': 'Actualizaciones & Acerca de',
+      'settingsSupport': 'Apoyar el desarrollo',
+      'settingsSupportDesc': 'Cómprame un café en Ko-fi',
       'settingsLanguage': 'Idioma',
       'settingsSectionAI': 'Asistente IA',
       'settingsAiProvider': 'Proveedor',
@@ -2909,6 +3122,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderCustom': 'Proveedor personalizado',
       'settingsAiProviderLocal': 'Local (On-Device)',
       'settingsAiModel': 'Modelo',
+      'settingsAiParametersTitle': 'Parámetros',
+      'settingsAiParametersDesc': 'Temperatura, límite de tokens y Top P',
+      'settingsAiAdjustmentTitle': 'Ajuste',
+      'settingsAiPersonaTitle': 'Personalidad',
+      'settingsAiPersonaHelpful': 'Asistente útil',
+      'settingsAiPersonaStrict': 'Profesor estricto',
+      'settingsAiPersonaBuddy': 'Compañero de escuela',
+      'settingsAiDataTitle': 'Datos',
       'settingsAiApiKey': 'Clave API',
       'settingsAiApiKeyNotSet': 'No configurado — toca para configurar',
       'settingsAiApiKeyDialogDesc':
@@ -2954,6 +3175,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiVar_timetable_json': 'Datos brutos del horario en JSON',
       'aiVar_exams': 'Lista formateada de exámenes próximos',
       'aiVar_exams_json': 'Datos de exámenes en JSON',
+      'aiVar_current_lesson': 'Información sobre la clase actual',
+      'aiVar_next_lesson': 'Información sobre la siguiente clase',
       'settingsAiCustomBaseUrl': 'URL base personalizada',
       'settingsAiCustomBaseUrlDesc':
           'URL base de tu propio proveedor (compatible con OpenAI o Gemini).',
@@ -3236,6 +3459,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsBackgroundLoading':
           'Los datos se están cargando en segundo plano...',
       'settingsSectionAbout': 'Acerca de',
+      'settingsSectionCredits': 'Créditos',
+      'settingsCreditsDevelopers': 'Desarrolladores',
       'appName': 'Untis+',
       'settingsAppVersion': 'Versión',
       'settingsBuild': 'Build',
@@ -3307,6 +3532,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsChangelogSubtitle': '¿Qué hay de nuevo en Untis+?',
       'changelogTitle': 'Novedades',
       'changelogLoadError': 'Error al cargar',
+      'changelogNoData': '# No hay datos disponibles',
       'changelogRetry': 'Reintentar',
 
       'aiNewSearch': 'Nueva búsqueda',

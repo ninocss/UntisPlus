@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
+import '../l10n.dart';
 
 /// Identifiers for different notification types.
 abstract class NotificationIds {
@@ -330,85 +331,38 @@ class NotificationService {
   }
 
   String _getActionLabel(String locale, String actionId) {
-    switch (locale) {
-      case 'en':
-        if (actionId == 'open_next_lesson') return 'Next lesson';
-        if (actionId == 'open_free_rooms') return 'Free rooms';
-        if (actionId == 'open_day') return 'Open day';
-        return 'Timetable';
-      case 'fr':
-        if (actionId == 'open_next_lesson') return 'Cours suivant';
-        if (actionId == 'open_free_rooms') return 'Salles libres';
-        if (actionId == 'open_day') return 'Ouvrir la journée';
-        return 'Emploi du temps';
-      case 'es':
-        if (actionId == 'open_next_lesson') return 'Siguiente clase';
-        if (actionId == 'open_free_rooms') return 'Aulas libres';
-        if (actionId == 'open_day') return 'Abrir día';
-        return 'Horario';
-      case 'el':
-        if (actionId == 'open_next_lesson') return 'Επόμενο μάθημα';
-        if (actionId == 'open_free_rooms') return 'Ελεύθερες αίθουσες';
-        if (actionId == 'open_day') return 'Άνοιγμα ημέρας';
-        return 'Πρόγραμμα';
-      case 'de':
-      default:
-        if (actionId == 'open_next_lesson') return 'Nächste Stunde';
-        if (actionId == 'open_free_rooms') return 'Freie Räume';
-        if (actionId == 'open_day') return 'Tag öffnen';
-        return 'Stundenplan';
-    }
+    final l = AppL10n.of(locale);
+    if (actionId == 'open_next_lesson') return l.notificationActionNextLessonLabel;
+    if (actionId == 'open_free_rooms') return l.notificationActionFreeRooms;
+    if (actionId == 'open_day') return l.notificationActionOpenDay;
+    return l.timetableTitle;
   }
 
   String _getChannelName(String locale, String channelId) {
-    switch (locale) {
-      case 'en':
-        if (channelId == NotificationChannels.currentLesson) return 'Current lesson / Break';
-        if (channelId == NotificationChannels.dailyBriefing) return 'Daily briefing';
-        if (channelId == NotificationChannels.importantChanges) return 'Timetable changes';
-        return 'App updates';
-      case 'fr':
-        if (channelId == NotificationChannels.currentLesson) return 'Cours actuel / Pause';
-        if (channelId == NotificationChannels.dailyBriefing) return 'Briefing quotidien';
-        if (channelId == NotificationChannels.importantChanges) return 'Changements d\'horaire';
-        return 'Mises à jour';
-      case 'es':
-        if (channelId == NotificationChannels.currentLesson) return 'Clase actual / Descanso';
-        if (channelId == NotificationChannels.dailyBriefing) return 'Resumen diario';
-        if (channelId == NotificationChannels.importantChanges) return 'Cambios importantes';
-        return 'Actualizaciones';
-      case 'el':
-        if (channelId == NotificationChannels.currentLesson) return 'Τρέχον μάθημα / Διάλειμμα';
-        if (channelId == NotificationChannels.dailyBriefing) return 'Ημερήσια ενημέρωση';
-        if (channelId == NotificationChannels.importantChanges) return 'Σημαντικές αλλαγές';
-        return 'Ενημερώσεις';
-      case 'de':
-      default:
-        if (channelId == NotificationChannels.currentLesson) return 'Aktuelle Stunde / Pause';
-        if (channelId == NotificationChannels.dailyBriefing) return 'Tagesbriefing';
-        if (channelId == NotificationChannels.importantChanges) return 'Stundenplan-Änderungen';
-        return 'App-Updates';
+    final l = AppL10n.of(locale);
+    if (channelId == NotificationChannels.currentLesson) {
+      return l.notificationChannelCurrentLessonName;
     }
+    if (channelId == NotificationChannels.dailyBriefing) {
+      return l.notificationChannelDailyBriefingName;
+    }
+    if (channelId == NotificationChannels.importantChanges) {
+      return l.notificationChannelImportantChangesName;
+    }
+    return l.notificationChannelUpdatesName;
   }
 
   String _getChannelDesc(String locale, String channelId) {
-    switch (locale) {
-      case 'en':
-        if (channelId == NotificationChannels.currentLesson) return 'Ongoing status of the current lesson.';
-        if (channelId == NotificationChannels.dailyBriefing) return 'Morning overview of your school day.';
-        if (channelId == NotificationChannels.importantChanges) return 'Notifies about cancellations and room changes.';
-        return 'Notifications about app improvements.';
-      case 'fr':
-        if (channelId == NotificationChannels.currentLesson) return 'Statut actuel du cours ou de la pause.';
-        if (channelId == NotificationChannels.dailyBriefing) return 'Aperçu matinal de votre journée d\'école.';
-        if (channelId == NotificationChannels.importantChanges) return 'Signale les annulations et changements de salle.';
-        return 'Informations sur les améliorations de l\'application.';
-      case 'de':
-      default:
-        if (channelId == NotificationChannels.currentLesson) return 'Laufender Status der aktuellen Stunde.';
-        if (channelId == NotificationChannels.dailyBriefing) return 'Morgendlicher Überblick über den Schultag.';
-        if (channelId == NotificationChannels.importantChanges) return 'Hinweise zu Ausfall oder Raumwechsel.';
-        return 'Hinweise zu App-Verbesserungen.';
+    final l = AppL10n.of(locale);
+    if (channelId == NotificationChannels.currentLesson) {
+      return l.notificationChannelCurrentLessonDesc;
     }
+    if (channelId == NotificationChannels.dailyBriefing) {
+      return l.notificationChannelDailyBriefingDesc;
+    }
+    if (channelId == NotificationChannels.importantChanges) {
+      return l.notificationChannelImportantChangesDesc;
+    }
+    return l.notificationChannelUpdatesDesc;
   }
 }
