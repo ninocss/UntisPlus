@@ -582,76 +582,118 @@ class SettingsHubPage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Color getAccent(int index) {
+      switch (index) {
+        case 0:
+          return cs.primary;
+        case 1:
+          return cs.error;
+        case 2:
+          return cs.tertiary;
+        case 3:
+          return cs.secondary;
+        case 4:
+          return cs.surfaceTint;
+        case 5:
+          return isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
+        case 6:
+          return isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED);
+        case 7:
+          return isDark ? const Color(0xFFF472B6) : const Color(0xFFDB2777);
+        case 8:
+        default:
+          return isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A);
+      }
+    }
+
+    _SettingsHubItem makeItem({
+      required int index,
+      required IconData icon,
+      required String title,
+      required String subtitle,
+      Widget Function()? pageBuilder,
+      VoidCallback? onTap,
+    }) {
+      final accent = getAccent(index);
+      final bgAlpha = isDark ? 0.22 : 0.14;
+      final iconColor = isDark
+          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.18), accent)
+          : accent;
+
+      return _SettingsHubItem(
+        icon: icon,
+        iconBackground: accent.withValues(alpha: bgAlpha),
+        iconColor: iconColor,
+        title: title,
+        subtitle: subtitle,
+        pageBuilder: pageBuilder,
+        onTap: onTap,
+      );
+    }
+
     final items = <_SettingsHubItem>[
-      _SettingsHubItem(
+      makeItem(
+        index: 0,
         icon: Icons.calendar_view_week_rounded,
-        iconBackground: cs.primaryContainer,
-        iconColor: cs.onPrimaryContainer,
         title: l.settingsSectionTimetable,
         subtitle: l.settingsShowCancelled,
         pageBuilder: () => const SettingsTimetablePage(),
       ),
-      _SettingsHubItem(
+      makeItem(
+        index: 1,
         icon: Icons.notifications_active_rounded,
-        iconBackground: cs.secondaryContainer,
-        iconColor: cs.onSecondaryContainer,
         title: l.settingsHubNotifications,
         subtitle: l.settingsProgressivePush,
         pageBuilder: () => const SettingsNotificationsPage(),
       ),
-      _SettingsHubItem(
-        icon: Icons.palette_outlined,
-        iconBackground: cs.tertiaryContainer,
-        iconColor: cs.onTertiaryContainer,
+      makeItem(
+        index: 2,
+        icon: Icons.palette_rounded,
         title: l.settingsAppearance,
         subtitle: l.settingsCustomBackgrounds,
         pageBuilder: () => const SettingsAppearancePage(),
       ),
-      _SettingsHubItem(
-        icon: Icons.auto_awesome_motion_rounded,
-        iconBackground: cs.primaryContainer,
-        iconColor: cs.onPrimaryContainer,
+      makeItem(
+        index: 3,
+        icon: Icons.color_lens_rounded,
         title: l.settingsSectionSubjects,
         subtitle: l.settingsSectionColors,
         pageBuilder: () => const SettingsSubjectsPage(),
       ),
-      _SettingsHubItem(
-        icon: Icons.smart_toy_outlined,
-        iconBackground: cs.secondaryContainer,
-        iconColor: cs.onSecondaryContainer,
+      makeItem(
+        index: 4,
+        icon: Icons.auto_awesome_rounded,
         title: l.settingsSectionAI,
         subtitle: l.settingsAiProvider,
         pageBuilder: () => const SettingsAiPage(),
       ),
-      _SettingsHubItem(
+      makeItem(
+        index: 5,
         icon: Icons.cloud_sync_rounded,
-        iconBackground: cs.tertiaryContainer,
-        iconColor: cs.onTertiaryContainer,
         title: l.settingsHubDataBackup,
         subtitle: l.settingsHubDataBackupDesc,
         pageBuilder: () => const SettingsBackupPage(),
       ),
-      _SettingsHubItem(
-        icon: Icons.manage_accounts_outlined,
-        iconBackground: cs.primaryContainer,
-        iconColor: cs.onPrimaryContainer,
+      makeItem(
+        index: 6,
+        icon: Icons.manage_accounts_rounded,
         title: l.settingsHubAccount,
         subtitle: l.settingsDemoMode,
         pageBuilder: () => const SettingsAccountPage(),
       ),
       if (!Platform.isIOS)
-        _SettingsHubItem(
+        makeItem(
+          index: 7,
           icon: Icons.system_update_alt_rounded,
-          iconBackground: cs.secondaryContainer,
-          iconColor: cs.onSecondaryContainer,
           title: l.settingsHubUpdatesAbout,
           subtitle: l.settingsAppVersion,
           pageBuilder: () => const SettingsAboutUpdatesPage(),
         ),
-      _SettingsHubItem(
+      makeItem(
+        index: 8,
         icon: Icons.coffee_rounded,
-        iconBackground: Colors.brown.withValues(alpha: 0.15),
-        iconColor: Colors.brown,
         title: l.settingsSupport,
         subtitle: l.settingsSupportDesc,
         onTap: () {

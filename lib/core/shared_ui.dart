@@ -439,7 +439,7 @@ class SettingsTile extends StatelessWidget {
                   color: iconBackgroundColor ??
                       (destructive
                           ? cs.errorContainer
-                          : cs.primaryContainer.withValues(alpha: 0.7)),
+                          : cs.primary.withValues(alpha: 0.15)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -448,7 +448,7 @@ class SettingsTile extends StatelessWidget {
                   color: iconColor ??
                       (destructive
                           ? cs.onErrorContainer
-                          : cs.onPrimaryContainer),
+                          : cs.primary),
                 ),
               )
             : null);
@@ -538,13 +538,13 @@ class SettingsSwitchTile extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: iconBackgroundColor ?? cs.primaryContainer.withValues(alpha: 0.7),
+                  color: iconBackgroundColor ?? cs.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   icon,
                   size: 20,
-                  color: iconColor ?? cs.onPrimaryContainer,
+                  color: iconColor ?? cs.primary,
                 ),
               )
             : null);
