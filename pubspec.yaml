@@ -3,7 +3,7 @@ description: "A Flutter application for managing and viewing school schedules, h
 
 publish_to: 'none'
 
-version: 5.0.0
+version: 5.0.1
 
 environment:
   sdk: ^3.11.0
@@ -51,7 +51,7 @@ flutter:
 
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
   remove_alpha_ios: true
   image_path: "assets/icon.png"
   adaptive_icon_background: "#ffffff"

@@ -704,7 +704,9 @@ void main() async {
     ),
   );
 
-  unawaited(checkGithubUpdateAndNotify());
+  if (!Platform.isIOS) {
+    unawaited(checkGithubUpdateAndNotify());
+  }
 }
 
 Uri _webUntisRpcUri({String? serverUrl, String? school}) {

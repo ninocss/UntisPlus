@@ -1,7 +1,7 @@
 import 'package:home_widget/home_widget.dart';
 
 class WidgetService {
-  static const String appGroupId = 'com.ninocss.untisplus';
+  static const String appGroupId = 'group.com.ninocss.untisplus';
   static const String androidWidgetName = 'UntisWidgetProvider';
   static const String iOSWidgetName = 'UntisWidget';
 

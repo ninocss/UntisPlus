@@ -1,0 +1,29 @@
+{
+  "name": "Untis+",
+  "identifier": "com.ninocss.untisplus.source",
+  "sourceURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/altstore/source.json",
+  "apps": [
+    {
+      "name": "Untis+",
+      "bundleIdentifier": "com.ninocss.untisplus",
+      "developerName": "ninocss",
+      "subtitle": "A privacy-first companion app for WebUntis",
+      "localizedDescription": "Untis+ is a privacy-first companion app for WebUntis. It provides features such as timetable management, homework tracking, and notifications to help students stay organized.",
+      "iconURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "tintColor": "4A90D9",
+      "category": "education",
+      "versions": [
+        {
+          "version": "5.0.1",
+          "buildVersion": "1",
+          "date": "2026-08-27",
+          "localizedDescription": "Initial iOS release via AltStore.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/latest/download/UntisPlus.ipa",
+          "size": 0,
+          "minOSVersion": "15.0"
+        }
+      ]
+    }
+  ],
+  "news": []
+}
