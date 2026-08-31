@@ -12,8 +12,9 @@ class MainNavigationScreen extends StatefulWidget {
 
 class AiAssistantPage extends StatefulWidget {
   final VoidCallback? onBackToTimetable;
+  final void Function(Widget)? onOpenDrawer;
 
-  const AiAssistantPage({super.key, this.onBackToTimetable});
+  const AiAssistantPage({super.key, this.onBackToTimetable, this.onOpenDrawer});
 
   @override
   State<AiAssistantPage> createState() => _AiAssistantPageState();
@@ -94,12 +95,12 @@ class _ChatSession {
       );
 }
 
-class _AiAssistantPageState extends State<AiAssistantPage> {
+class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderStateMixin {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final _firstChipKey = GlobalKey();
   final FocusNode _promptFocusNode = FocusNode();
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late TabController _tabController;
   Timer? _typingHintTimer;
   int _typingHintIndex = 0;
   int _searchGeneration = 0;
@@ -124,6 +125,17 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _chatMode = _tabController.index == 1;
+        });
+        if (_chatMode) {
+          _scrollToBottom();
+        }
+      }
+    });
     _loadContext();
     _loadChatHistory();
     _promptFocusNode.addListener(() {
@@ -135,13 +147,25 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString('aiChatHistory');
-      if (raw != null) {
-        final List decoded = jsonDecode(raw);
-        setState(() {
-          _chatHistory.clear();
-          _chatHistory.addAll(decoded.map((j) => _ChatSession.fromJson(j)));
-          _chatHistory.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-        });
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          final sessions = <_ChatSession>[];
+          for (final item in decoded) {
+            if (item is Map<String, dynamic>) {
+              try {
+                sessions.add(_ChatSession.fromJson(item));
+              } catch (_) {
+                // Skip corrupted sessions
+              }
+            }
+          }
+          setState(() {
+            _chatHistory.clear();
+            _chatHistory.addAll(sessions);
+            _chatHistory.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          });
+        }
       }
     } catch (_) {}
   }
@@ -150,8 +174,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     if (_currentChatId != null) {
       final idx = _chatHistory.indexWhere((s) => s.id == _currentChatId);
       if (idx != -1) {
-        _chatHistory[idx].messages.clear();
-        _chatHistory[idx].messages.addAll(_chatMessages);
+        if (!identical(_chatHistory[idx].messages, _chatMessages)) {
+          _chatHistory[idx].messages.clear();
+          _chatHistory[idx].messages.addAll(_chatMessages);
+        }
       }
     }
     try {
@@ -168,8 +194,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       _latestResult = null;
       _latestQuery = '';
       _chatMode = true;
+      _tabController.animateTo(1);
     });
-    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+    // Check if we are inside a drawer (Navigator.canPop is true in drawers)
+    if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
   }
@@ -181,14 +209,16 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       _chatMessages.addAll(session.messages);
       _chatMode = true;
       _latestResult = null;
+      _tabController.animateTo(1);
     });
-    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+    if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _promptFocusNode.dispose();
     _typingHintTimer?.cancel();
     _inputController.dispose();
@@ -1028,7 +1058,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
           _ChatSession(
             id: _currentChatId!,
             title: text.length > 30 ? '${text.substring(0, 27)}...' : text,
-            messages: _chatMessages,
+            messages: List<Map<String, String>>.from(_chatMessages),
             timestamp: DateTime.now(),
           ),
         );
@@ -1188,6 +1218,41 @@ Halte deine Antworten eher kurz, aber präzise.''';
               ),
             ),
             const Divider(),
+            if (!_chatMode || _latestQuery.isNotEmpty || _latestResult != null) ...[
+              ListTile(
+                leading: const Icon(Icons.refresh_rounded),
+                title: Text(
+                  l.aiSearchAgain,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleMenuAction('refresh');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_sweep_outlined),
+                title: Text(
+                  l.aiClearResult,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _handleMenuAction('clear');
+                },
+              ),
+            ],
+            ListTile(
+              leading: const Icon(Icons.edit_note_rounded),
+              title: Text(
+                l.settingsAiPrompt,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _openPromptEditor();
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.settings_outlined),
               title: Text(
@@ -1332,14 +1397,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cs.surfaceContainerHighest.withValues(alpha: 0.8),
-            cs.surfaceContainerLow.withValues(alpha: 0.5),
-          ],
-        ),
+        color: cs.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
         boxShadow: [
@@ -1620,14 +1678,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
             width: double.infinity,
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  cs.surfaceContainerLow,
-                  cs.surfaceContainerHigh.withValues(alpha: 0.6),
-                ],
-              ),
+              color: cs.surfaceContainerHigh.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
                 color: cs.outlineVariant.withValues(alpha: 0.2),
@@ -1873,15 +1924,8 @@ Halte deine Antworten eher kurz, aber präzise.''';
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          gradient: isUser
-              ? LinearGradient(
-                  colors: [cs.primary, cs.primary.withValues(alpha: 0.8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
           color: isUser 
-              ? null 
+              ? cs.primary 
               : cs.surfaceContainerHighest.withValues(alpha: 0.4),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
@@ -1952,11 +1996,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [cs.primary, cs.tertiary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: cs.primaryContainer,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
@@ -1966,7 +2006,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
                 ),
               ],
             ),
-            child: const Icon(Icons.auto_awesome_rounded, size: 32, color: Colors.white),
+            child: Icon(Icons.auto_awesome_rounded, size: 32, color: cs.onPrimaryContainer),
           ),
           const SizedBox(height: 28),
           Text(
@@ -2059,78 +2099,46 @@ Halte deine Antworten eher kurz, aber präzise.''';
     }
 
     return Scaffold(
-      key: _scaffoldKey,
       resizeToAvoidBottomInset: false,
-      drawer: _buildSidebar(cs),
       appBar: RoundedBlurAppBar(
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          onPressed: () => widget.onOpenDrawer?.call(_buildSidebar(cs)),
         ),
         title: Text(
           _currentChatTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
         ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
-              ),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: cs.primary,
+          indicatorWeight: 3,
+          dividerColor: Colors.transparent,
+          labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 14),
+          unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+          tabs: [
+            Tab(
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: _ModeTab(
-                      label: 'Analyse',
-                      icon: Icons.analytics_rounded,
-                      selected: !_chatMode,
-                      onTap: () {
-                        if (!_thinking) setState(() => _chatMode = false);
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: _ModeTab(
-                      label: 'Chat',
-                      icon: Icons.chat_bubble_rounded,
-                      selected: _chatMode,
-                      onTap: () {
-                        if (!_thinking) setState(() => _chatMode = true);
-                      },
-                    ),
-                  ),
+                  const Icon(Icons.analytics_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.aiTabAnalysis),
                 ],
               ),
             ),
-          ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.chat_bubble_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.aiTabChat),
+                ],
+              ),
+            ),
+          ],
         ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            onSelected: _handleMenuAction,
-            itemBuilder: (context) => [
-              PopupMenuItem<String>(
-                value: 'prompt',
-                child: Text(l.settingsAiPrompt),
-              ),
-              PopupMenuItem<String>(
-                value: 'clear',
-                child: Text(l.aiClearResult),
-              ),
-              PopupMenuItem<String>(
-                value: 'refresh',
-                child: Text(l.aiSearchAgain),
-              ),
-            ],
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       body: _AnimatedBackground(
         child: _buildBody(cs),
@@ -2139,61 +2147,14 @@ Halte deine Antworten eher kurz, aber präzise.''';
   }
 }
 
-class _ModeTab extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ModeTab({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? cs.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
   bool _showTutorial = false;
   int _tutorialStep = 0;
   StreamSubscription<NotificationActionEvent>? _notificationActionSub;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  Widget? _currentDrawer;
 
   List<int> get _tutorialTargets => [0, 1, 2, 3];
 
@@ -2376,6 +2337,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     AiAssistantPage(
       key: ValueKey(sessionID),
       onBackToTimetable: () => _onNavTap(0),
+      onOpenDrawer: (drawer) {
+        setState(() => _currentDrawer = drawer);
+        _scaffoldKey.currentState?.openDrawer();
+      },
     ),
   ];
 
@@ -2392,6 +2357,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final l = AppL10n.of(appLocaleNotifier.value);
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: _currentDrawer,
       extendBody: true,
       resizeToAvoidBottomInset: false,
       body: Stack(

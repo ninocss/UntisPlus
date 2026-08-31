@@ -271,25 +271,6 @@ Future<T?> _showUnifiedSheet<T>({
   );
 }
 
-Future<T?> _showGlassDialog<T>({
-  required BuildContext context,
-  required Widget child,
-  bool barrierDismissible = true,
-}) {
-  return showDialog<T>(
-    context: context,
-    barrierDismissible: barrierDismissible,
-    builder: (ctx) => Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      child: _dialogSurface(
-        context: ctx,
-        child: child,
-      ),
-    ),
-  );
-}
-
 Future<T?> _showUnifiedOptionSheet<T>({
   required BuildContext context,
   required String title,

@@ -602,6 +602,8 @@ class AppL10n {
 
   // ── AI Assistant & Querying ────────────────────────────────────────────────
   String get aiTitle => _t('aiTitle');
+  String get aiTabAnalysis => _t('aiTabAnalysis');
+  String get aiTabChat => _t('aiTabChat');
   String get aiMore => _t('aiMore');
   String get aiSettingsMenu => _t('aiSettingsMenu');
   String get aiClearResult => _t('aiClearResult');
@@ -839,6 +841,8 @@ class AppL10n {
           'Keine nächste Stunde für heute gefunden',
 
       'aiTitle': 'KI-Assistent',
+      'aiTabAnalysis': 'Analyse',
+      'aiTabChat': 'Chat',
       'aiInputHint': 'Frage stellen…',
       'aiKnowsSchedule': 'Ich kenne deinen Stundenplan!',
       'aiAskAnything': 'Frag mich alles über deine Woche.',
@@ -1514,6 +1518,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'notificationActionNoNextLesson': 'No next lesson found for today',
 
       'aiTitle': 'AI Assistant',
+      'aiTabAnalysis': 'Analysis',
+      'aiTabChat': 'Chat',
       'aiInputHint': 'Ask a question…',
       'aiKnowsSchedule': 'I know your timetable!',
       'aiAskAnything': 'Ask me anything about your week.',
@@ -2187,6 +2193,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Aucun cours suivant trouvé pour aujourd’hui',
 
       'aiTitle': 'Assistant IA',
+      'aiTabAnalysis': 'Analyse',
+      'aiTabChat': 'Chat',
       'aiInputHint': 'Poser une question…',
       'aiKnowsSchedule': 'Je connais ton emploi du temps !',
       'aiAskAnything': 'Demande-moi tout sur ta semaine.',
@@ -2864,6 +2872,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'No se encontró una siguiente clase para hoy',
 
       'aiTitle': 'Asistente IA',
+      'aiTabAnalysis': 'Análisis',
+      'aiTabChat': 'Chat',
       'aiInputHint': 'Hacer una pregunta…',
       'aiKnowsSchedule': '¡Conozco tu horario!',
       'aiAskAnything': 'Pregúntame lo que quieras sobre tu semana.',

@@ -184,7 +184,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     const SizedBox(height: 12),
                     if (subjects.isNotEmpty)
                       DropdownButtonFormField<String>(
-                        value: subjects.contains(selectedSubject)
+                        initialValue: subjects.contains(selectedSubject)
                             ? selectedSubject
                             : null,
                         style: GoogleFonts.outfit(
