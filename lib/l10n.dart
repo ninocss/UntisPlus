@@ -162,6 +162,22 @@ class AppL10n {
   String get homeworkMarkDone => _t('homeworkMarkDone');
   String get homeworkMarkUndone => _t('homeworkMarkUndone');
   String get homeworkDue => _t('homeworkDue');
+  String get navGrades => _t('navGrades');
+  String get gradesTitle => _t('gradesTitle');
+  String get gradesAddTitle => _t('gradesAddTitle');
+  String get gradesEditTitle => _t('gradesEditTitle');
+  String get gradesSubjectLabel => _t('gradesSubjectLabel');
+  String get gradesGradeLabel => _t('gradesGradeLabel');
+  String get gradesWeightLabel => _t('gradesWeightLabel');
+  String get gradesTypeLabel => _t('gradesTypeLabel');
+  String get gradesAverage => _t('gradesAverage');
+  String get gradesTotal => _t('gradesTotal');
+  String get gradesBestSubject => _t('gradesBestSubject');
+  String get gradesAddDesc => _t('gradesAddDesc');
+  String get gradesCountPlural => _t('gradesCountPlural');
+  String get gradesWeightLabelShort => _t('gradesWeightLabelShort');
+  String get gradesNone => _t('gradesNone');
+  String get gradesNoneHint => _t('gradesNoneHint');
   String get examsOwn => _t('examsOwn');
   String get examsUnknown => _t('examsUnknown');
   String get examsNoneEntered => _t('examsNoneEntered');
@@ -197,7 +213,6 @@ class AppL10n {
       _t('notificationActionNoNextLesson');
 
   // ── AI Chat ─────────────────────────────────────────────────────────────────
-  String get aiTitle => _t('aiTitle');
   String get aiInputHint => _t('aiInputHint');
   String get aiKnowsSchedule => _t('aiKnowsSchedule');
   String get aiAskAnything => _t('aiAskAnything');
@@ -259,6 +274,8 @@ class AppL10n {
     '[timetable_json]': _t('aiVar_timetable_json'),
     '[exams]': _t('aiVar_exams'),
     '[exams_json]': _t('aiVar_exams_json'),
+    '[current_lesson]': 'Informationen zur aktuellen Stunde',
+    '[next_lesson]': 'Informationen zur nächsten Stunde',
   };
   String get settingsAiCustomBaseUrl => _t('settingsAiCustomBaseUrl');
   String get settingsAiCustomBaseUrlDesc => _t('settingsAiCustomBaseUrlDesc');
@@ -584,6 +601,11 @@ class AppL10n {
   String get changelogRetry => _t('changelogRetry');
 
   // ── AI Assistant & Querying ────────────────────────────────────────────────
+  String get aiTitle => _t('aiTitle');
+  String get aiMore => _t('aiMore');
+  String get aiSettingsMenu => _t('aiSettingsMenu');
+  String get aiClearResult => _t('aiClearResult');
+  String get aiSearchAgain => _t('aiSearchAgain');
   String get aiNewSearch => _t('aiNewSearch');
   String get aiSearchRunning => _t('aiSearchRunning');
   String get aiSearchShapingDesc => _t('aiSearchShapingDesc');
@@ -600,12 +622,8 @@ class AppL10n {
   String get aiPromptFirstLessonToday => _t('aiPromptFirstLessonToday');
   String get aiPromptNextLesson => _t('aiPromptNextLesson');
   String get aiPromptTomorrowSchedule => _t('aiPromptTomorrowSchedule');
-  String get aiClearResult => _t('aiClearResult');
-  String get aiSearchAgain => _t('aiSearchAgain');
   String get aiClearInput => _t('aiClearInput');
   String get aiLessons => _t('aiLessons');
-  String get aiMore => _t('aiMore');
-  String get aiSettingsMenu => _t('aiSettingsMenu');
   String get aiResultsCardDesc => _t('aiResultsCardDesc');
   String get aiDismiss => _t('aiDismiss');
   String get aiLessonsCountSingle => _t('aiLessonsCountSingle');
@@ -1296,6 +1314,23 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'classPickerOtherClasses': 'Andere Klassen',
       'classPickerRemoveFavorite': 'Favorit entfernen',
       'classPickerAddFavorite': 'Als Favorit speichern',
+
+      'navGrades': 'Noten',
+      'gradesTitle': 'Notentracker',
+      'gradesAddTitle': 'Note hinzufügen',
+      'gradesEditTitle': 'Note bearbeiten',
+      'gradesSubjectLabel': 'Fach',
+      'gradesGradeLabel': 'Note',
+      'gradesWeightLabel': 'Gewichtung',
+      'gradesTypeLabel': 'Art',
+      'gradesAverage': 'Schnitt',
+      'gradesTotal': 'Gesamt',
+      'gradesBestSubject': 'Bestes Fach',
+      'gradesAddDesc': 'Leistungsübersicht vervollständigen',
+      'gradesCountPlural': 'Noten',
+      'gradesWeightLabelShort': 'Gewicht',
+      'gradesNone': 'Keine Noten',
+      'gradesNoneHint': 'Tippe auf +, um deine erste Note einzutragen.',
     },
 
     // ── ENGLISH ───────────────────────────────────────────────────────────────
@@ -1946,6 +1981,23 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'classPickerOtherClasses': 'Other classes',
       'classPickerRemoveFavorite': 'Remove favorite',
       'classPickerAddFavorite': 'Add to favorites',
+
+      'navGrades': 'Grades',
+      'gradesTitle': 'Grade Tracker',
+      'gradesAddTitle': 'Add grade',
+      'gradesEditTitle': 'Edit grade',
+      'gradesSubjectLabel': 'Subject',
+      'gradesGradeLabel': 'Grade',
+      'gradesWeightLabel': 'Weight',
+      'gradesTypeLabel': 'Type',
+      'gradesAverage': 'Average',
+      'gradesTotal': 'Total',
+      'gradesBestSubject': 'Best Subject',
+      'gradesAddDesc': 'Complete your grade overview',
+      'gradesCountPlural': 'Grades',
+      'gradesWeightLabelShort': 'Weight',
+      'gradesNone': 'No grades',
+      'gradesNoneHint': 'Tap + to add your first grade.',
     },
 
     // ── FRENCH ────────────────────────────────────────────────────────────────
@@ -2610,6 +2662,18 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'classPickerOtherClasses': 'Autres classes',
       'classPickerRemoveFavorite': 'Retirer des favoris',
       'classPickerAddFavorite': 'Ajouter aux favoris',
+
+      'navGrades': 'Notes',
+      'gradesTitle': 'Suivi des notes',
+      'gradesAddTitle': 'Ajouter une note',
+      'gradesEditTitle': 'Modifier la note',
+      'gradesSubjectLabel': 'Matière',
+      'gradesGradeLabel': 'Note',
+      'gradesWeightLabel': 'Coefficient',
+      'gradesTypeLabel': 'Type',
+      'gradesAverage': 'Moyenne',
+      'gradesNone': 'Aucune note',
+      'gradesNoneHint': 'Appuyez sur + pour ajouter votre première note.',
     },
 
     // ── SPANISH ───────────────────────────────────────────────────────────────
@@ -3274,6 +3338,18 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'classPickerOtherClasses': 'Otras clases',
       'classPickerRemoveFavorite': 'Eliminar de favoritos',
       'classPickerAddFavorite': 'Guardar en favoritos',
+
+      'navGrades': 'Notas',
+      'gradesTitle': 'Seguimiento de notas',
+      'gradesAddTitle': 'Añadir nota',
+      'gradesEditTitle': 'Editar nota',
+      'gradesSubjectLabel': 'Asignatura',
+      'gradesGradeLabel': 'Nota',
+      'gradesWeightLabel': 'Peso',
+      'gradesTypeLabel': 'Tipo',
+      'gradesAverage': 'Promedio',
+      'gradesNone': 'Sin notas',
+      'gradesNoneHint': 'Toca + para añadir tu primera nota.',
     },
   };
 }

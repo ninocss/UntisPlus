@@ -21,6 +21,10 @@ String aiSystemPromptTemplate = '';
 String aiCustomBaseUrl = '';
 String aiCustomCompatibility = 'openai';
 String aiLocalModelPath = '';
+double aiTemperature = 0.2;
+int aiMaxTokens = 2600;
+double aiTopP = 0.95;
+String aiPersona = 'helpful';
 
 const List<String> kSupportedAiProviders = [
   'gemini',

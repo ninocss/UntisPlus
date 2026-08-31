@@ -45,6 +45,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     openAiApiKey = prefs.getString('openAiApiKey') ?? openAiApiKey;
     mistralApiKey = prefs.getString('mistralApiKey') ?? mistralApiKey;
     customAiApiKey = prefs.getString('customAiApiKey') ?? customAiApiKey;
+    aiTemperature = prefs.getDouble('aiTemperature') ?? aiTemperature;
+    aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
+    aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
+    aiPersona = prefs.getString('aiPersona') ?? aiPersona;
 
     final validModels = _modelsForProvider(
       aiProvider,
@@ -1194,52 +1198,81 @@ void _showProviderDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
     _showUnifiedSheet<void>(
       context: context,
+      isScrollControlled: true,
       child: Builder(
         builder: (ctx) {
+          final cs = Theme.of(ctx).colorScheme;
           return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(ctx).padding.bottom + 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 32,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 Text(
                   l.settingsAiPromptVariables,
                   style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 4),
+                Text(
+                  'Verwende diese Platzhalter in deinem System-Prompt.',
+                  style: GoogleFonts.outfit(fontSize: 13, color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: 20),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 380),
+                  constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.5),
                   child: ListView(
                     shrinkWrap: true,
                     children: l.aiPromptVariableDescriptions.entries
                         .map(
-                          (entry) => ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.label_important_outline),
-                            title: Text(
-                              entry.key,
-                              style: GoogleFonts.jetBrainsMono(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
+                          (entry) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
                             ),
-                            subtitle: Text(
-                              entry.value,
-                              style: GoogleFonts.outfit(fontSize: 12.5),
+                            child: ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              title: Text(
+                                entry.key,
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                  color: cs.primary,
+                                ),
+                              ),
+                              subtitle: Text(
+                                entry.value,
+                                style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
                             ),
                           ),
                         )
                         .toList(),
                   ),
                 ),
+                const SizedBox(height: 16),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel),
+                    child: Text(l.settingsApiKeyCancel, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
                   ),
                 ),
               ],
@@ -1330,8 +1363,255 @@ void _showProviderDialog() {
     );
   }
 
+  Future<void> _settingsSetAiTemperature(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('aiTemperature', value);
+    aiTemperature = value;
+  }
+
+  Future<void> _settingsSetAiMaxTokens(int value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('aiMaxTokens', value);
+    aiMaxTokens = value;
+  }
+
+  Future<void> _settingsSetAiTopP(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('aiTopP', value);
+    aiTopP = value;
+  }
+
+  Future<void> _settingsSetAiPersona(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('aiPersona', value);
+    aiPersona = value;
+  }
+
+  void _showAiPersonaDialog() {
+    _showUnifiedOptionSheet<String>(
+      context: context,
+      title: 'KI-Persönlichkeit',
+      options: [
+        _SheetOption(
+          value: 'helpful',
+          title: 'Hilfreicher Assistent',
+          icon: Icons.auto_awesome_rounded,
+          selected: aiPersona == 'helpful',
+        ),
+        _SheetOption(
+          value: 'strict',
+          title: 'Strenger Lehrer',
+          icon: Icons.school_rounded,
+          selected: aiPersona == 'strict',
+        ),
+        _SheetOption(
+          value: 'buddy',
+          title: 'Schul-Buddy',
+          icon: Icons.sentiment_satisfied_alt_rounded,
+          selected: aiPersona == 'buddy',
+        ),
+      ],
+    ).then((value) async {
+      if (value != null) {
+        await _settingsSetAiPersona(value);
+        await _reloadFromPrefs();
+      }
+    });
+  }
+
+  void _showAdvancedSettingsDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    double temp = aiTemperature;
+    int tokens = aiMaxTokens;
+    double topP = aiTopP;
+
+    _showUnifiedSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      child: StatefulBuilder(
+        builder: (ctx, setStateDialog) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              12,
+              24,
+              MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 32,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'KI-Parameter',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 22,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'Feineinstellung für die Antworten des Modells.',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                _buildSlider(
+                  label: 'Temperatur',
+                  value: temp,
+                  min: 0,
+                  max: 2,
+                  divisions: 20,
+                  suffix: temp.toStringAsFixed(1),
+                  desc: 'Höhere Werte machen Antworten kreativer, niedrigere präziser.',
+                  onChanged: (v) => setStateDialog(() => temp = v),
+                  cs: cs,
+                ),
+                const SizedBox(height: 24),
+                _buildSlider(
+                  label: 'Max. Tokens',
+                  value: tokens.toDouble(),
+                  min: 256,
+                  max: 8192,
+                  divisions: 31,
+                  suffix: tokens.toString(),
+                  desc: 'Maximale Länge einer einzelnen Antwort.',
+                  onChanged: (v) => setStateDialog(() => tokens = v.round()),
+                  cs: cs,
+                ),
+                const SizedBox(height: 24),
+                _buildSlider(
+                  label: 'Top P',
+                  value: topP,
+                  min: 0,
+                  max: 1,
+                  divisions: 20,
+                  suffix: topP.toStringAsFixed(2),
+                  desc: 'Kern-Sampling zur Begrenzung der Wortauswahl.',
+                  onChanged: (v) => setStateDialog(() => topP = v),
+                  cs: cs,
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(l.settingsApiKeyCancel, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton(
+                      onPressed: () async {
+                        await _settingsSetAiTemperature(temp);
+                        await _settingsSetAiMaxTokens(tokens);
+                        await _settingsSetAiTopP(topP);
+                        if (!ctx.mounted) return;
+                        Navigator.pop(ctx);
+                        _reloadFromPrefs();
+                      },
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                      child: Text(l.settingsApiKeySave, style: GoogleFonts.outfit(fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSlider({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required int divisions,
+    required String suffix,
+    required String desc,
+    required ValueChanged<double> onChanged,
+    required ColorScheme cs,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 15)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                suffix,
+                style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w700, fontSize: 13, color: cs.primary),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(desc, style: GoogleFonts.outfit(fontSize: 12, color: cs.onSurfaceVariant)),
+        const SizedBox(height: 8),
+        Slider(
+          value: value,
+          min: min,
+          max: max,
+          divisions: divisions,
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
+  void _clearChatHistory() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Verlauf löschen?'),
+        content: const Text('Alle bisherigen Chats werden dauerhaft gelöscht.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Abbrechen')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(ctx).colorScheme.error),
+            child: const Text('Löschen'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('aiChatHistory');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chat-Verlauf gelöscht.')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
@@ -1417,6 +1697,37 @@ void _showProviderDialog() {
                             : _settingsMaskKey(activeKey),
                     onTap: _showApiKeyDialog,
                   ),
+                SettingsTile(
+                  icon: Icons.tune_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: 'Parameter',
+                  subtitle: 'Temperatur, Token-Limit & Top P',
+                  onTap: _showAdvancedSettingsDialog,
+                ),
+              ],
+            ),
+
+            // ── GROUP 2: PERSÖNLICHKEIT ──
+            SettingsGroup(
+              title: 'Anpassung',
+              children: [
+                SettingsTile(
+                  icon: Icons.face_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: 'Persönlichkeit',
+                  subtitle: aiPersona == 'helpful' 
+                      ? 'Hilfreicher Assistent' 
+                      : aiPersona == 'strict' 
+                          ? 'Strenger Lehrer' 
+                          : 'Schul-Buddy',
+                  onTap: _showAiPersonaDialog,
+                ),
               ],
             ),
 
@@ -1439,7 +1750,7 @@ void _showProviderDialog() {
               ),
             ],
 
-            // ── GROUP 2: PROMPT CONFIGURATION ──
+            // ── GROUP 3: PROMPT CONFIGURATION ──
             SettingsGroup(
               title: l.settingsAiPrompt,
               children: [
@@ -1462,6 +1773,23 @@ void _showProviderDialog() {
                   title: l.settingsAiPromptVariables,
                   subtitle: l.settingsAiPromptVariablesDesc,
                   onTap: _showPromptVariablesDialog,
+                ),
+              ],
+            ),
+
+            // ── GROUP 4: DATEN ──
+            SettingsGroup(
+              title: 'Daten',
+              children: [
+                SettingsTile(
+                  icon: Icons.delete_sweep_rounded,
+                  iconBackgroundColor: cs.errorContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onErrorContainer,
+                  title: 'Verlauf löschen',
+                  subtitle: 'Alle Chats vom Gerät entfernen',
+                  onTap: _clearChatHistory,
                 ),
               ],
             ),

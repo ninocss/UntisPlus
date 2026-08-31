@@ -64,11 +64,42 @@ class _AiSearchResult {
   });
 }
 
+class _ChatSession {
+  final String id;
+  String title;
+  final List<Map<String, String>> messages;
+  final DateTime timestamp;
+
+  _ChatSession({
+    required this.id,
+    required this.title,
+    required this.messages,
+    required this.timestamp,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'messages': messages,
+        'timestamp': timestamp.toIso8601String(),
+      };
+
+  factory _ChatSession.fromJson(Map<String, dynamic> json) => _ChatSession(
+        id: json['id'],
+        title: json['title'] ?? 'Chat',
+        messages: List<Map<String, String>>.from(
+          (json['messages'] as List).map((m) => Map<String, String>.from(m)),
+        ),
+        timestamp: DateTime.parse(json['timestamp']),
+      );
+}
+
 class _AiAssistantPageState extends State<AiAssistantPage> {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final _firstChipKey = GlobalKey();
   final FocusNode _promptFocusNode = FocusNode();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Timer? _typingHintTimer;
   int _typingHintIndex = 0;
   int _searchGeneration = 0;
@@ -85,14 +116,75 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
   DateTime _currentMonday = DateTime.now();
   bool _loading = true;
   bool _thinking = false;
+  bool _chatMode = false;
+  final List<Map<String, String>> _chatMessages = [];
+  final List<_ChatSession> _chatHistory = [];
+  String? _currentChatId;
 
   @override
   void initState() {
     super.initState();
     _loadContext();
+    _loadChatHistory();
     _promptFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _loadChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('aiChatHistory');
+      if (raw != null) {
+        final List decoded = jsonDecode(raw);
+        setState(() {
+          _chatHistory.clear();
+          _chatHistory.addAll(decoded.map((j) => _ChatSession.fromJson(j)));
+          _chatHistory.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveChatHistory() async {
+    if (_currentChatId != null) {
+      final idx = _chatHistory.indexWhere((s) => s.id == _currentChatId);
+      if (idx != -1) {
+        _chatHistory[idx].messages.clear();
+        _chatHistory[idx].messages.addAll(_chatMessages);
+      }
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = jsonEncode(_chatHistory.map((s) => s.toJson()).toList());
+      await prefs.setString('aiChatHistory', raw);
+    } catch (_) {}
+  }
+
+  void _startNewChat() {
+    setState(() {
+      _currentChatId = null;
+      _chatMessages.clear();
+      _latestResult = null;
+      _latestQuery = '';
+      _chatMode = true;
+    });
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.pop(context);
+    }
+  }
+
+  void _loadSession(_ChatSession session) {
+    setState(() {
+      _currentChatId = session.id;
+      _chatMessages.clear();
+      _chatMessages.addAll(session.messages);
+      _chatMode = true;
+      _latestResult = null;
+    });
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -173,7 +265,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
 
   _AiSearchResult _parseSearchResult({required String query, required String reply}) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final fallbackHeadline = reply.split(RegExp(r'[\n\.\!\?]')).first.trim();
+    final fallbackHeadline = reply.split(RegExp(r'[\n.!?]')).first.trim();
     final fallbackSummary = reply.trim().isEmpty ? query : reply.trim();
     try {
       final decoded = jsonDecode(_extractJsonCandidate(reply));
@@ -467,6 +559,8 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
       '[exams]': _formatExamsForAi(),
       '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
+      '[current_lesson]': _currentLessonSummary(),
+      '[next_lesson]': _nextLessonSummary(),
     };
 
     var resolved = template;
@@ -483,6 +577,63 @@ ANTWORTFORMAT:
 - lessons ist eine Liste aus Objekten mit subject, subjectShort, room, teacher, time und status.
 - Nutze wenig Fließtext und formuliere Ergebnisse so, dass sie direkt als Suchergebnis-Karten gerendert werden können.
 - WICHTIG: Gib NUR Felder an, die für die Frage relevant sind. Wenn die Frage nach keiner Metrik oder keinen Stunden verlangt, lasse metrics bzw. lessons im JSON einfach weg oder gib leere Arrays zurück.''';
+  }
+
+  String _resolvedChatSystemPrompt() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final template = aiSystemPromptTemplate.trim().isNotEmpty
+        ? aiSystemPromptTemplate
+        : _buildDefaultAiPromptTemplate(l);
+    final friday = _currentMonday.add(const Duration(days: 4));
+    final vars = <String, String>{
+      '[today]': DateFormat('EEEE, dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(DateTime.now()),
+      '[today_iso]': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+      '[locale]': appLocaleNotifier.value,
+      '[school_name]': schoolName.isEmpty ? '-' : schoolName,
+      '[school_url]': schoolUrl.isEmpty ? '-' : schoolUrl,
+      '[person_type]': '$personType',
+      '[person_id]': '$personId',
+      '[demo_mode]': '${demoModeNotifier.value}',
+      '[current_monday]': DateFormat('dd.MM.yyyy').format(_currentMonday),
+      '[current_friday]': DateFormat('dd.MM.yyyy').format(friday),
+      '[day_summary_today]': _daySummaryForPrompt(DateTime.now()),
+      '[day_summary_tomorrow]': _daySummaryForPrompt(DateTime.now().add(const Duration(days: 1))),
+      '[timetable]': _formatWeekForAi(_weekData, _currentMonday),
+      '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
+      '[exams]': _formatExamsForAi(),
+      '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
+      '[current_lesson]': _currentLessonSummary(),
+      '[next_lesson]': _nextLessonSummary(),
+    };
+
+    var resolved = template;
+    final entries = vars.entries.toList()..sort((a, b) => b.key.length.compareTo(a.key.length));
+    for (final entry in entries) {
+      resolved = resolved.replaceAll(entry.key, entry.value);
+    }
+
+    String personaInstruction = '';
+    switch (aiPersona) {
+      case 'strict':
+        personaInstruction = 'Antworte wie ein strenger, aber gerechter Lehrer. Achte auf Disziplin und Ordnung.';
+        break;
+      case 'buddy':
+        personaInstruction = 'Antworte wie ein cooler Schulkamerad. Nutze Jugendsprache und sei sehr locker.';
+        break;
+      case 'helpful':
+      default:
+        personaInstruction = 'Antworte freundlich, professionell und hilfreich.';
+        break;
+    }
+
+    return '''$resolved
+
+Du bist ein hilfreicher Assistent für die Stundenplan-App "Untis+".
+$personaInstruction
+Antworte natürlich und freundlich im Chat. Du hast Zugriff auf den Stundenplan und die Prüfungen des Nutzers oben.
+Verwende Markdown für eine schöne Formatierung (Fettdruck, Listen, etc.).
+WICHTIG: Antworte in natürlicher Sprache, NIEMALS in JSON-Format, außer du wirst explizit darum gebeten.
+Halte deine Antworten eher kurz, aber präzise.''';
   }
 
   Future<String> _requestProviderResponse(
@@ -769,6 +920,41 @@ ANTWORTFORMAT:
     return value.toString();
   }
 
+  String _currentLessonSummary() {
+    final now = DateTime.now();
+    final todayIdx = now.weekday - 1;
+    if (todayIdx < 0 || todayIdx > 4) return 'Keine Schule heute.';
+    final lessons = _weekData[todayIdx] ?? [];
+    final nowMin = now.hour * 100 + now.minute;
+    for (final lsn in lessons.whereType<Map>()) {
+      final start = (lsn['startTime'] as int?) ?? 0;
+      final end = (lsn['endTime'] as int?) ?? 0;
+      if (nowMin >= start && nowMin <= end) {
+        final subj = lsn['_subjectLong'] ?? lsn['_subjectShort'] ?? '?';
+        final room = lsn['_room'] ?? '-';
+        return 'Aktuelle Stunde: $subj in Raum $room (bis ${_formatUntisTime(end.toString())})';
+      }
+    }
+    return 'Gerade findet kein Unterricht statt.';
+  }
+
+  String _nextLessonSummary() {
+    final now = DateTime.now();
+    final todayIdx = now.weekday - 1;
+    if (todayIdx < 0 || todayIdx > 4) return 'Nächste Stunde: Keine (heute ist keine Schule).';
+    final lessons = _weekData[todayIdx] ?? [];
+    final nowMin = now.hour * 100 + now.minute;
+    for (final lsn in lessons.whereType<Map>()) {
+      final start = (lsn['startTime'] as int?) ?? 0;
+      if (start > nowMin) {
+        final subj = lsn['_subjectLong'] ?? lsn['_subjectShort'] ?? '?';
+        final room = lsn['_room'] ?? '-';
+        return 'Nächste Stunde: $subj in Raum $room um ${_formatUntisTime(start.toString())}';
+      }
+    }
+    return 'Keine weiteren Stunden heute.';
+  }
+
   String _formatExamsForAi() {
     final l = AppL10n.of(appLocaleNotifier.value);
     if (_exams.isEmpty) return l.examsNoneEntered;
@@ -789,9 +975,245 @@ ANTWORTFORMAT:
     return buf.toString();
   }
 
+  void _scrollToBottom() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutQuart,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendChat(String text) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final provider = _normalizeAiProvider(aiProvider);
+    final isLocalProvider = provider == 'local';
+    final apiKey = _activeAiApiKey().trim();
+
+    if (isLocalProvider && aiLocalModelPath.isEmpty) {
+      setState(() {
+        _chatMessages.add({
+          'role': 'assistant',
+          'content': l.aiLocalModelLoadError,
+        });
+      });
+      return;
+    }
+
+    if (!isLocalProvider && apiKey.isEmpty) {
+      setState(() {
+        _chatMessages.add({
+          'role': 'assistant',
+          'content': _providerAwareMissingApiKeyMessage(l, provider),
+        });
+      });
+      return;
+    }
+
+    _inputController.clear();
+    setState(() {
+      _chatMessages.add({'role': 'user', 'content': text});
+      _thinking = true;
+    });
+
+    if (_currentChatId == null) {
+      _currentChatId = DateTime.now().millisecondsSinceEpoch.toString();
+      setState(() {
+        _chatHistory.insert(
+          0,
+          _ChatSession(
+            id: _currentChatId!,
+            title: text.length > 30 ? '${text.substring(0, 27)}...' : text,
+            messages: _chatMessages,
+            timestamp: DateTime.now(),
+          ),
+        );
+      });
+      _saveChatHistory();
+    }
+    _scrollToBottom();
+
+    AIProvider? aiProviderInstance;
+    try {
+      final model = aiModel.trim().isNotEmpty
+          ? aiModel.trim()
+          : _defaultModelForProvider(
+              provider,
+              customCompatibility: aiCustomCompatibility,
+            );
+
+      aiProviderInstance = createAIProvider(
+        provider: provider,
+        model: model,
+        apiKey: apiKey,
+        customBaseUrl: aiCustomBaseUrl,
+        customCompatibility: aiCustomCompatibility,
+        localModelPath: isLocalProvider ? aiLocalModelPath : null,
+      );
+
+      final systemPrompt = _resolvedChatSystemPrompt();
+
+      setState(() {
+        _chatMessages.add({'role': 'assistant', 'content': ''});
+      });
+
+      final stream = aiProviderInstance.streamResponse(
+        systemPrompt: systemPrompt,
+        history: _chatMessages.sublist(0, _chatMessages.length - 1),
+        model: model,
+      );
+
+      await for (final chunk in stream) {
+        if (!mounted) break;
+        setState(() {
+          final lastIndex = _chatMessages.length - 1;
+          if (lastIndex >= 0 && _chatMessages[lastIndex]['role'] == 'assistant') {
+            final String currentContent = _chatMessages[lastIndex]['content'] ?? '';
+            _chatMessages[lastIndex]['content'] = currentContent + chunk;
+          }
+        });
+        _scrollToBottom();
+      }
+      _saveChatHistory();
+    } catch (e) {
+      final message = e.toString();
+      final isApiError = message.contains('API:');
+      final isConfigError = message.contains('CONFIG:');
+      setState(() {
+        if (_chatMessages.isNotEmpty && _chatMessages.last['role'] == 'assistant') {
+          _chatMessages.last['content'] = isConfigError
+              ? message.replaceFirst('Exception: CONFIG: ', '')
+              : isApiError
+                  ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
+                  : '${l.aiConnectionError} $e';
+        }
+      });
+    } finally {
+      await aiProviderInstance?.dispose();
+      if (mounted) setState(() => _thinking = false);
+      _scrollToBottom();
+    }
+  }
+
+  String get _currentChatTitle {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    if (!_chatMode || _currentChatId == null) return l.aiTitle;
+    for (final s in _chatHistory) {
+      if (s.id == _currentChatId) return s.title;
+    }
+    return l.aiTitle;
+  }
+
+  Widget _buildSidebar(ColorScheme cs) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    return Drawer(
+      backgroundColor: cs.surface,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: _BouncyButton(
+                onTap: _startNewChat,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_rounded, color: cs.onPrimaryContainer),
+                      const SizedBox(width: 12),
+                      Text(
+                        "Neuer Chat",
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                          color: cs.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const Divider(indent: 16, endIndent: 16),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: _chatHistory.length,
+                itemBuilder: (context, index) {
+                  final session = _chatHistory[index];
+                  final isSelected = session.id == _currentChatId;
+                  return ListTile(
+                    leading: Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 20,
+                      color: isSelected ? cs.primary : cs.onSurfaceVariant,
+                    ),
+                    title: Text(
+                      session.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? cs.primary : cs.onSurface,
+                      ),
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    selected: isSelected,
+                    selectedTileColor: cs.primary.withValues(alpha: 0.1),
+                    onTap: () => _loadSession(session),
+                    trailing: isSelected ? null : IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                      onPressed: () {
+                        setState(() {
+                          _chatHistory.removeAt(index);
+                          if (_currentChatId == session.id) {
+                            _currentChatId = null;
+                            _chatMessages.clear();
+                          }
+                        });
+                        _saveChatHistory();
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: Text(
+                l.aiSettingsMenu,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _openSettings();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _send() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _thinking) return;
+
+    if (_chatMode) {
+      await _sendChat(text);
+      return;
+    }
 
     final generation = ++_searchGeneration;
     final provider = _normalizeAiProvider(aiProvider);
@@ -874,7 +1296,11 @@ ANTWORTFORMAT:
   Future<void> _handleMenuAction(String action) async {
     switch (action) {
       case 'clear':
-        await _clearCurrentResult();
+        if (_chatMode) {
+          setState(() => _chatMessages.clear());
+        } else {
+          await _clearCurrentResult();
+        }
         break;
       case 'settings':
         await _openSettings();
@@ -904,43 +1330,63 @@ ANTWORTFORMAT:
   Widget _buildSearchMetricCard(ColorScheme cs, _AiMetric metric) {
     final icon = _metricIcon(metric.label);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.76),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            cs.surfaceContainerHighest.withValues(alpha: 0.8),
+            cs.surfaceContainerLow.withValues(alpha: 0.5),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: cs.primary.withValues(alpha: 0.7)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 14, color: cs.primary),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
                   metric.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.outfit(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: cs.onSurfaceVariant,
+                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  metric.value,
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurface,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            metric.value,
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: cs.onSurface,
+              letterSpacing: -0.5,
             ),
           ),
         ],
@@ -1012,14 +1458,14 @@ ANTWORTFORMAT:
     );
   }
 
-  Widget _buildTypingBubble(ColorScheme cs) {
+  Widget _buildTypingBubble(ColorScheme cs, {bool isChat = false}) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final messages = [
       l.aiStepAnalyzingTimetable,
       l.aiStepSortingResults,
       l.aiStepAlmostDone,
     ];
-    final text = messages[_typingHintIndex % messages.length];
+    final text = isChat ? "KI schreibt..." : messages[_typingHintIndex % messages.length];
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -1098,7 +1544,7 @@ ANTWORTFORMAT:
                 color: cs.onSurface,
               ),
               decoration: InputDecoration(
-                hintText: l.aiSearchHintPlaceholder,
+                hintText: _chatMode ? l.aiInputHint : l.aiSearchHintPlaceholder,
                 hintStyle: GoogleFonts.outfit(
                   color: cs.onSurfaceVariant,
                 ),
@@ -1144,8 +1590,8 @@ ANTWORTFORMAT:
                       ),
                     )
                   : Icon(
-                      Icons.search_rounded,
-                      key: ValueKey<bool>(isFocused),
+                      _chatMode ? Icons.send_rounded : Icons.search_rounded,
+                      key: ValueKey<bool>(isFocused ^ _chatMode),
                     ),
             ),
           ),
@@ -1172,13 +1618,27 @@ ANTWORTFORMAT:
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: cs.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.18),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  cs.surfaceContainerLow,
+                  cs.surfaceContainerHigh.withValues(alpha: 0.6),
+                ],
               ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.2),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.shadow.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1186,52 +1646,61 @@ ANTWORTFORMAT:
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: cs.onPrimaryContainer.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: cs.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(Icons.auto_awesome_rounded, size: 18, color: cs.onPrimaryContainer),
+                      child: Icon(Icons.auto_awesome_rounded, size: 20, color: cs.primary),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Text(
                         result.headline,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
-                          fontSize: 20,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                          color: cs.onPrimaryContainer,
+                          letterSpacing: -0.7,
+                          color: cs.onSurface,
+                          height: 1.1,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 Text(
                   result.summary,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.outfit(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: cs.onPrimaryContainer.withValues(alpha: 0.92),
-                    height: 1.4,
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.9),
+                    height: 1.5,
                   ),
                 ),
                 if (result.tags.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: result.tags.take(4).map((tag) {
-                      return Chip(
-                        label: Text(tag, style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 12)),
-                        side: BorderSide.none,
-                        backgroundColor: cs.onPrimaryContainer.withValues(alpha: 0.12),
-                        labelStyle: TextStyle(color: cs.onPrimaryContainer),
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: cs.primary.withValues(alpha: 0.1)),
+                        ),
+                        child: Text(
+                          tag,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            color: cs.primary,
+                          ),
+                        ),
                       );
                     }).toList(),
                   ),
@@ -1240,47 +1709,55 @@ ANTWORTFORMAT:
             ),
           ),
           if (result.metrics.isNotEmpty) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Row(
               children: [
-                Icon(Icons.bar_chart_rounded, size: 18, color: cs.primary),
-                const SizedBox(width: 8),
+                Icon(Icons.bar_chart_rounded, size: 20, color: cs.primary),
+                const SizedBox(width: 10),
                 Text(
                   l.aiOverview,
-                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: cs.onSurface),
+                  style: GoogleFonts.outfit(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurface,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             LayoutBuilder(
               builder: (context, constraints) {
-                final isWide = constraints.maxWidth > 460;
+                final isWide = constraints.maxWidth > 500;
                 final columns = isWide ? 3 : 2;
                 return GridView.count(
                   crossAxisCount: columns,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 2.2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.6,
                   children: result.metrics.map((metric) => _buildSearchMetricCard(cs, metric)).toList(),
                 );
               },
             ),
           ],
           if (result.lessons.isNotEmpty) ...[
-            const SizedBox(height: 22),
+            const SizedBox(height: 26),
             Row(
               children: [
-                Icon(Icons.school_rounded, size: 18, color: cs.primary),
-                const SizedBox(width: 8),
+                Icon(Icons.school_rounded, size: 20, color: cs.primary),
+                const SizedBox(width: 10),
                 Text(
                   l.aiLessons,
-                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w800, color: cs.onSurface),
+                  style: GoogleFonts.outfit(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: cs.onSurface,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             ...result.lessons.map(
               (lesson) => LessonCard(
                 subject: lesson.subject,
@@ -1335,12 +1812,130 @@ ANTWORTFORMAT:
     return first ? chip : chip;
   }
 
+  Widget _buildChatView(ColorScheme cs) {
+    if (_chatMessages.isEmpty && !_thinking) {
+      return _buildEmptyState(cs);
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      itemCount: _chatMessages.length + (_thinking ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == _chatMessages.length) {
+          final isThinkingOfLastMessage = _chatMessages.isNotEmpty && _chatMessages.last['role'] == 'assistant' && _chatMessages.last['content']!.isEmpty;
+          if (isThinkingOfLastMessage) return const SizedBox.shrink();
+          return _buildTypingBubble(cs, isChat: true);
+        }
+        final msg = _chatMessages[index];
+        final isUser = msg['role'] == 'user';
+        return _buildChatBubble(cs, msg['content']!, isUser);
+      },
+    );
+  }
+
+  Widget _buildChatBubble(ColorScheme cs, String content, bool isUser) {
+    if (!isUser && content.isEmpty) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+              bottomLeft: Radius.circular(4),
+              bottomRight: Radius.circular(20),
+            ),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              _Dot(delay: 0),
+              SizedBox(width: 4),
+              _Dot(delay: 150),
+              SizedBox(width: 4),
+              _Dot(delay: 300),
+            ],
+          ),
+        ),
+      );
+    }
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.85,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: isUser
+              ? LinearGradient(
+                  colors: [cs.primary, cs.primary.withValues(alpha: 0.8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isUser 
+              ? null 
+              : cs.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(isUser ? 20 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 20),
+          ),
+          border: isUser ? null : Border.all(color: cs.outlineVariant.withValues(alpha: 0.1)),
+          boxShadow: isUser ? [
+            BoxShadow(
+              color: cs.primary.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            )
+          ] : null,
+        ),
+        child: isUser
+            ? Text(
+                content,
+                style: GoogleFonts.outfit(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onPrimary,
+                ),
+              )
+            : MarkdownBody(
+                data: content,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                  p: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: cs.onSurface,
+                    height: 1.5,
+                  ),
+                  strong: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    color: cs.primary,
+                  ),
+                  listBullet: GoogleFonts.outfit(
+                    color: cs.primary,
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
   Widget _buildBody(ColorScheme cs) {
     return Column(
       children: [
-        if (_latestResult == null && !_thinking) _buildChipRow(cs),
+        if (!_chatMode && _latestResult == null && !_thinking) _buildChipRow(cs),
         Expanded(
-          child: _buildResultHeader(cs),
+          child: _chatMode ? _buildChatView(cs) : _buildResultHeader(cs),
         ),
         _buildSearchBar(cs),
       ],
@@ -1350,29 +1945,103 @@ ANTWORTFORMAT:
   Widget _buildEmptyState(ColorScheme cs) {
     final l = AppL10n.of(appLocaleNotifier.value);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: cs.secondaryContainer,
-              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [cs.primary, cs.tertiary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: cs.primary.withValues(alpha: 0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            child: Icon(Icons.auto_awesome_rounded, size: 28, color: cs.onSecondaryContainer),
+            child: const Icon(Icons.auto_awesome_rounded, size: 32, color: Colors.white),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
           Text(
-            l.aiEmptyPromptTitle,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -0.5),
+            _chatMode ? "Dein KI-Chat" : l.aiEmptyPromptTitle,
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w900,
+              fontSize: 28,
+              letterSpacing: -1.0,
+              color: cs.onSurface,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
-            l.aiEmptyPromptSubtitle,
-            style: GoogleFonts.outfit(fontSize: 15, color: cs.onSurfaceVariant, fontWeight: FontWeight.w500),
+            _chatMode 
+                ? "Stelle Fragen zu deinem Schulalltag oder chatte einfach so mit der KI."
+                : l.aiEmptyPromptSubtitle,
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+            ),
           ),
+          const SizedBox(height: 40),
+          if (_chatMode) ...[
+            Text(
+              "Probiere es aus:",
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: cs.primary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildChatSuggestion(cs, "Wie kann ich meine Noten verbessern?", Icons.trending_up_rounded),
+            _buildChatSuggestion(cs, "Erkläre mir die Relativitätstheorie einfach.", Icons.lightbulb_outline_rounded),
+            _buildChatSuggestion(cs, "Schreibe eine Entschuldigung für Sport.", Icons.edit_note_rounded),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildChatSuggestion(ColorScheme cs, String text, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () => _sendQuickPrompt(text),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: cs.primary.withValues(alpha: 0.7)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  text,
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 12, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1390,19 +2059,62 @@ ANTWORTFORMAT:
     }
 
     return Scaffold(
+      key: _scaffoldKey,
       resizeToAvoidBottomInset: false,
+      drawer: _buildSidebar(cs),
       appBar: RoundedBlurAppBar(
-        title: Text(l.aiTitle, style: GoogleFonts.outfit(fontWeight: FontWeight.w800)),
+        leading: IconButton(
+          icon: const Icon(Icons.menu_rounded),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+        title: Text(
+          _currentChatTitle,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ModeTab(
+                      label: 'Analyse',
+                      icon: Icons.analytics_rounded,
+                      selected: !_chatMode,
+                      onTap: () {
+                        if (!_thinking) setState(() => _chatMode = false);
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: _ModeTab(
+                      label: 'Chat',
+                      icon: Icons.chat_bubble_rounded,
+                      selected: _chatMode,
+                      onTap: () {
+                        if (!_thinking) setState(() => _chatMode = true);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
-            tooltip: l.aiMore,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             onSelected: _handleMenuAction,
             itemBuilder: (context) => [
-              PopupMenuItem<String>(
-                value: 'settings',
-                child: Text(l.aiSettingsMenu),
-              ),
               PopupMenuItem<String>(
                 value: 'prompt',
                 child: Text(l.settingsAiPrompt),
@@ -1425,8 +2137,57 @@ ANTWORTFORMAT:
       ),
     );
   }
+}
 
+class _ModeTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ModeTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? cs.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;

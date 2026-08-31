@@ -40,6 +40,7 @@ part 'core/custom_backgrounds.dart';
 part 'screens/onboarding_flow.dart';
 part 'screens/custom_background_editor_screen.dart';
 part 'screens/main_navigation_screen.dart';
+part 'screens/grades_tracker_page.dart';
 part 'screens/settings_hub.dart';
 part 'screens/settings/settings_timetable_page.dart';
 part 'screens/settings/settings_notifications_page.dart';
@@ -126,7 +127,11 @@ class GeminiProvider extends RemoteAIProvider {
         ],
       },
       'contents': contents,
-      'generationConfig': {'maxOutputTokens': 2600, 'temperature': 0.2},
+      'generationConfig': {
+        'maxOutputTokens': aiMaxTokens,
+        'temperature': aiTemperature,
+        'topP': aiTopP,
+      },
     });
 
     final endpoint =
@@ -194,7 +199,9 @@ class OpenAICompatibleProvider extends RemoteAIProvider {
     final body = jsonEncode({
       'model': model,
       'messages': messages,
-      'temperature': 0.2,
+      'temperature': aiTemperature,
+      'max_tokens': aiMaxTokens,
+      'top_p': aiTopP,
       'stream': true,
     });
 
@@ -276,11 +283,11 @@ final file = File(modelPath);
     final request = OpenAiRequest(
       messages: messages,
       modelPath: modelPath,
-      contextSize: 512,
-      maxTokens: 2600,
+      contextSize: 1024,
+      maxTokens: aiMaxTokens,
       numGpuLayers: 0,
-      temperature: 0.2,
-      topP: 0.95,
+      temperature: aiTemperature,
+      topP: aiTopP,
       frequencyPenalty: 0.5,
       presencePenalty: 0.5,
       logger: (String line) {
@@ -379,11 +386,11 @@ final file = File(modelPath);
       Message(Role.user, userQuery),
     ],
     modelPath: modelPath,
-    contextSize: 512,
-    maxTokens: 2600,
+    contextSize: 1024,
+    maxTokens: aiMaxTokens,
     numGpuLayers: 0,
-    temperature: 0.2,
-    topP: 0.95,
+    temperature: aiTemperature,
+    topP: aiTopP,
     frequencyPenalty: 0.5,
     presencePenalty: 0.5,
     logger: (String line) {
@@ -664,6 +671,10 @@ void main() async {
   );
   aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? '';
   aiSystemPromptTemplate = prefs.getString('aiSystemPromptTemplate') ?? '';
+  aiTemperature = prefs.getDouble('aiTemperature') ?? 0.2;
+  aiMaxTokens = prefs.getInt('aiMaxTokens') ?? 2600;
+  aiTopP = prefs.getDouble('aiTopP') ?? 0.95;
+  aiPersona = prefs.getString('aiPersona') ?? 'helpful';
   final savedModel = prefs.getString('aiModel') ?? '';
   final availableModels = _modelsForProvider(
     aiProvider,
@@ -5161,7 +5172,8 @@ class ExamsPage extends StatefulWidget {
   State<ExamsPage> createState() => _ExamsPageState();
 }
 
-class _ExamsPageState extends State<ExamsPage> {
+class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
+  late TabController _tabController;
   List<Map<String, dynamic>> _apiExams = [];
   List<Map<String, dynamic>> _customExams = [];
   bool _loading = true;
@@ -5215,7 +5227,17 @@ class _ExamsPageState extends State<ExamsPage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _load();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -6085,7 +6107,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
       backgroundColor: cs.surface,
       appBar: RoundedBlurAppBar(
         title: Text(
-          l.examsTitle,
+          _tabController.index == 0 ? l.examsTitle : l.gradesTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
         ),
         centerTitle: true,
@@ -6093,92 +6115,114 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              tooltip: l.examsAddTitle,
+              tooltip: _tabController.index == 0 ? l.examsAddTitle : l.gradesAddTitle,
               icon: const Icon(Icons.add_rounded),
-              onPressed: _openExamActionsDropdown,
+              onPressed: _tabController.index == 0 ? _openExamActionsDropdown : () {
+                // To be implemented in GradesTrackerPage or as a callback
+                _gradesTrackerKey.currentState?.showAddGradeDialog();
+              },
             ),
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: cs.primary,
+          indicatorWeight: 3,
+          dividerColor: Colors.transparent,
+          labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 14),
+          unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+          onTap: (index) => setState(() {}),
+          tabs: [
+            Tab(text: l.navExams),
+            Tab(text: l.navGrades),
+          ],
+        ),
       ),
-      body: _AnimatedBackground(
-        child: RefreshIndicator(
-          onRefresh: _refreshExams,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            children: [
-              if (_loading) ...[
-                const SizedBox(height: 140),
-                const Center(child: CircularProgressIndicator()),
-              ] else if (exams.isEmpty) ...[
-                const SizedBox(height: 80),
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.assignment_outlined,
-                        size: 80,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _AnimatedBackground(
+            child: RefreshIndicator(
+              onRefresh: _refreshExams,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                children: [
+                  if (_loading) ...[
+                    const SizedBox(height: 140),
+                    const Center(child: CircularProgressIndicator()),
+                  ] else if (exams.isEmpty) ...[
+                    const SizedBox(height: 80),
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.assignment_outlined,
+                            size: 80,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            l.examsNone,
+                            style: GoogleFonts.outfit(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            l.examsNoneHint,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            l.examsReload,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        l.examsNone,
-                        style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                    ),
+                  ] else ...[
+                    if (upcoming.isNotEmpty) ...[
+                      _sectionHeader(cs, l.examsUpcoming, Icons.upcoming_rounded),
                       const SizedBox(height: 8),
-                      Text(
-                        l.examsNoneHint,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      ...upcoming.asMap().entries.map(
+                        (e) => _animatedExamCard(e.key, context, cs, e.value, true),
                       ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (past.isNotEmpty) ...[
+                      _sectionHeader(cs, l.examsPast, Icons.history_rounded),
                       const SizedBox(height: 8),
-                      Text(
-                        l.examsReload,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: cs.primary,
-                        ),
+                      ...past.asMap().entries.map(
+                        (e) =>
+                            _animatedExamCard(e.key, context, cs, e.value, false),
                       ),
                     ],
-                  ),
-                ),
-              ] else ...[
-                if (upcoming.isNotEmpty) ...[
-                  _sectionHeader(cs, l.examsUpcoming, Icons.upcoming_rounded),
-                  const SizedBox(height: 8),
-                  ...upcoming.asMap().entries.map(
-                    (e) => _animatedExamCard(e.key, context, cs, e.value, true),
-                  ),
-                  const SizedBox(height: 20),
+                  ],
                 ],
-                if (past.isNotEmpty) ...[
-                  _sectionHeader(cs, l.examsPast, Icons.history_rounded),
-                  const SizedBox(height: 8),
-                  ...past.asMap().entries.map(
-                    (e) =>
-                        _animatedExamCard(e.key, context, cs, e.value, false),
-                  ),
-                ],
-              ],
-            ],
+              ),
+            ),
           ),
-        ),
+          GradesTrackerPage(key: _gradesTrackerKey),
+        ],
       ),
     );
   }
+
+  final GlobalKey<_GradesTrackerPageState> _gradesTrackerKey = GlobalKey();
 
   Widget _sectionHeader(ColorScheme cs, String title, IconData icon) {
     return Row(
