@@ -380,20 +380,27 @@ class SettingsGroup extends StatelessWidget {
             ),
             child: Padding(
               padding: padding ?? EdgeInsets.zero,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (int i = 0; i < validChildren.length; i++) ...[
-                    validChildren[i],
-                    if (i < validChildren.length - 1)
-                      Divider(
-                        height: 1,
-                        indent: 58,
-                        endIndent: 16,
-                        color: cs.outlineVariant.withValues(alpha: 0.35),
-                      ),
+              child: Material(
+                type: MaterialType.transparency,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (int i = 0; i < validChildren.length; i++) ...[
+                      validChildren[i],
+                      if (i < validChildren.length - 1)
+                        Divider(
+                          height: 1,
+                          indent: 58,
+                          endIndent: 16,
+                          color: cs.outlineVariant.withValues(alpha: 0.35),
+                        ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -609,4 +616,3 @@ class SettingsSwitchTile extends StatelessWidget {
     );
   }
 }
-
