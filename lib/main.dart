@@ -5452,11 +5452,11 @@ class _HomeworkViewState extends State<_HomeworkView> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _filterChip(context, cs, 'Alle (${allItems.length})', 0),
+                        _filterChip(context, cs, '${l.homeworkFilterAll} (${allItems.length})', 0),
                         const SizedBox(width: 8),
-                        _filterChip(context, cs, 'Offen (${openItems.length})', 1),
+                        _filterChip(context, cs, '${l.homeworkFilterOpen} (${openItems.length})', 1),
                         const SizedBox(width: 8),
-                        _filterChip(context, cs, 'Erledigt (${doneItems.length})', 2),
+                        _filterChip(context, cs, '${l.homeworkFilterDone} (${doneItems.length})', 2),
                       ],
                     ),
                   ),
@@ -6627,7 +6627,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
         title: Text(
           _tabController.index == 0
               ? l.examsTitle
-              : (_tabController.index == 1 ? l.homeworkTitle : l.gradesTitle),
+              : (_tabController.index == 1 ? l.homeworkTitle : 'Grades'),
           style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
         ),
         centerTitle: true,
@@ -6745,8 +6745,12 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
               ),
             ),
           ),
-          const _HomeworkView(),
-          GradesTrackerPage(key: _gradesTrackerKey),
+          const _AnimatedBackground(
+            child: _HomeworkView(),
+          ),
+          _AnimatedBackground(
+            child: GradesTrackerPage(key: _gradesTrackerKey),
+          ),
         ],
       ),
     );
@@ -6789,7 +6793,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$count ${count == 1 ? "Prüfung" : "Prüfungen"} anstehend',
+                      l.examsUpcomingCount.replaceAll('{count}', '$count'),
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
@@ -6799,7 +6803,9 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                     if (nextSubject != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Nächste: $nextSubject ($nextDateStr)',
+                        l.examsUpcomingNext
+                            .replaceAll('\$subject', nextSubject)
+                            .replaceAll('\$date', nextDateStr!),
                         style: GoogleFonts.outfit(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

@@ -209,6 +209,14 @@ class AppL10n {
   String get homeworkSave => _t('homeworkSave');
   String get homeworkDelete => _t('homeworkDelete');
   String get homeworkCancel => _t('homeworkCancel');
+  String get homeworkFilterAll => _t('homeworkFilterAll');
+  String get homeworkFilterOpen => _t('homeworkFilterOpen');
+  String get homeworkFilterDone => _t('homeworkFilterDone');
+  String get examsUpcomingCount => _t('examsUpcomingCount');
+  String get examsUpcomingNext => _t('examsUpcomingNext');
+  String get gradesTypeSingle => _t('gradesTypeSingle');
+  String get gradesDateLabel => _t('gradesDateLabel');
+  String gradesCountLabel(int count) => _t('gradesCountLabel').replaceAll('{count}', '$count');
   String get homeworkImportTitle => _t('homeworkImportTitle');
   String get homeworkImportSuccess => _t('homeworkImportSuccess');
   String get homeworkImportError => _t('homeworkImportError');
@@ -473,6 +481,8 @@ class AppL10n {
   String get settingsAppBgBlur => _strings[locale]?['settingsAppBgBlur'] ?? _strings['de']?['settingsAppBgBlur'] ?? 'App-Hintergrundunschärfe';
   String get settingsAppBgBlurDesc => _strings[locale]?['settingsAppBgBlurDesc'] ?? _strings['de']?['settingsAppBgBlurDesc'] ?? 'Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.';
   String get settingsAppBgBlurAmount => _strings[locale]?['settingsAppBgBlurAmount'] ?? _strings['de']?['settingsAppBgBlurAmount'] ?? 'Stärke der Hintergrundunschärfe';
+  String get settingsIsAmoled => _t('settingsIsAmoled');
+  String get settingsIsAmoledDesc => _t('settingsIsAmoledDesc');
   String get settingsPageTransition => _t('settingsPageTransition');
   String get settingsPageTransitionDesc => _t('settingsPageTransitionDesc');
   String get settingsUseMaterialYou => _t('settingsUseMaterialYou');
@@ -706,6 +716,13 @@ class AppL10n {
   String get classPickerOtherClasses => _t('classPickerOtherClasses');
   String get classPickerRemoveFavorite => _t('classPickerRemoveFavorite');
   String get classPickerAddFavorite => _t('classPickerAddFavorite');
+  String get aiNewChat => _t('aiNewChat');
+  String get aiParameterTemperature => _t('aiParameterTemperature');
+  String get aiParameterMaxTokens => _t('aiParameterMaxTokens');
+  String get aiParameterTopP => _t('aiParameterTopP');
+  String aiOrbsCount(int count) => _t('aiOrbsCount').replaceAll('{count}', '$count');
+  String aiNoiseLevel(double pct) => _t('aiNoiseLevel').replaceAll('{pct}', '${pct.round()}');
+  String get aiGradientType => _t('aiGradientType');
 
   // ─────────────────────────────────────────────────────────────────────────────
   static const Map<String, Map<String, dynamic>> _strings = {
@@ -908,7 +925,6 @@ class AppL10n {
       'examsActionImport': 'Importieren (Scan/PDF)',
       'examsActionExport': 'Exportieren (JSON)',
       'examsActionScan': 'Scannen',
-
       'homeworkTitle': 'Hausaufgaben',
       'homeworkReload': 'Neu laden',
       'homeworkNone': 'Keine Hausaufgaben gefunden',
@@ -1320,6 +1336,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsUseMaterialYouDesc':
           'Farben automatisch an Systemakzentfarbe anpassen',
       'settingsCustomColorSeed': 'Farbe wählen',
+      'settingsIsAmoled': 'Pitch Black (AMOLED)',
+      'settingsIsAmoledDesc': 'Tiefschwarzer Hintergrund im Darkmode für OLED-Displays.',
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
@@ -1450,6 +1468,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'classPickerRemoveFavorite': 'Favorit entfernen',
       'classPickerAddFavorite': 'Als Favorit speichern',
 
+      'aiNewChat': 'Neuer Chat',
+      'aiParameterTemperature': 'Temperatur',
+      'aiParameterMaxTokens': 'Max. Tokens',
+      'aiParameterTopP': 'Top P',
+      'aiOrbsCount': '{count} Orbs',
+      'aiNoiseLevel': '{pct}% Rauschen',
+      'aiGradientType': 'Farbverlauf',
+
       'navGrades': 'Noten',
       'gradesTitle': 'Notentracker',
       'gradesAddTitle': 'Note hinzufügen',
@@ -1466,6 +1492,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesWeightLabelShort': 'Gewicht',
       'gradesNone': 'Keine Noten',
       'gradesNoneHint': 'Tippe auf +, um deine erste Note einzutragen.',
+      'homeworkFilterAll': 'Alle',
+      'homeworkFilterOpen': 'Offen',
+      'homeworkFilterDone': 'Erledigt',
+      'examsUpcomingCount': '{count} Prüfung{(count == 1 ? \"\" : \"en\")} anstehend',
+      'examsUpcomingNext': r'$subject ($date)',
+      'gradesTypeSingle': 'Einzelnote',
+      'gradesDateLabel': 'Datum',
+      'gradesCountLabel': '{count} Note{(count == 1 ? \"\" : \"n\")}',
     },
 
     // ── ENGLISH ───────────────────────────────────────────────────────────────
@@ -1654,6 +1688,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsActionImport': 'Import (Scan/PDF)',
       'examsActionExport': 'Export (JSON)',
       'examsActionScan': 'Scan',
+      'homeworkFilterAll': 'All',
+      'homeworkFilterOpen': 'Open',
+      'homeworkFilterDone': 'Done',
+      'examsUpcomingCount': '{count} upcoming{(count == 1 ? \"\" : \" exams\")}',
+      'examsUpcomingNext': r'Next: $subject ($date)',
+      'gradesTypeSingle': 'Single grade',
+      'gradesDateLabel': 'Date',
+      'gradesCountLabel': '{count} grade{(count == 1 ? \"\" : \"s\")}',
 
       'homeworkTitle': 'Homework',
       'homeworkReload': 'Reload',
@@ -2044,6 +2086,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsUseMaterialYou': 'Material You',
       'settingsUseMaterialYouDesc': 'Automatically adapt to your system accent color',
       'settingsCustomColorSeed': 'Custom color',
+      'settingsIsAmoled': 'Pitch Black (AMOLED)',
+      'settingsIsAmoledDesc': 'Deep black background in dark mode for OLED displays.',
       'settingsPageTransitionBounce': 'Bounce',
       'settingsPageTransitionFade': 'Fade',
       'settingsPageTransitionSlide': 'Slide',
@@ -2202,6 +2246,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesWeightLabelShort': 'Weight',
       'gradesNone': 'No grades',
       'gradesNoneHint': 'Tap + to add your first grade.',
+
+      'aiNewChat': 'New chat',
+      'aiParameterTemperature': 'Temperature',
+      'aiParameterMaxTokens': 'Max tokens',
+      'aiParameterTopP': 'Top P',
+      'aiOrbsCount': '{count} orbs',
+      'aiNoiseLevel': '{pct}% noise',
+      'aiGradientType': 'Gradient',
     },
 
     // ── FRENCH ────────────────────────────────────────────────────────────────
@@ -2534,6 +2586,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsUseMaterialYouDesc':
           "S'adapter automatiquement à la couleur d'accentuation du système",
       'settingsCustomColorSeed': 'Couleur personnalisée',
+      'settingsIsAmoled': 'Pitch Black (AMOLED)',
+      'settingsIsAmoledDesc': 'Arrière-plan noir profond en mode sombre pour les écrans OLED.',
       'settingsPageTransitionBounce': 'Rebond',
       'settingsPageTransitionFade': 'Fondu',
       'settingsPageTransitionSlide': 'Glissement',
@@ -2921,6 +2975,23 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'classPickerRemoveFavorite': 'Retirer des favoris',
       'classPickerAddFavorite': 'Ajouter aux favoris',
 
+      'aiNewChat': 'Nouveau chat',
+      'aiParameterTemperature': 'Température',
+      'aiParameterMaxTokens': 'Max. jetons',
+      'aiParameterTopP': 'Top P',
+      'aiOrbsCount': '{count} orbes',
+      'aiNoiseLevel': '{pct}% bruit',
+      'aiGradientType': 'Dégradé',
+
+      'homeworkFilterAll': 'Tous',
+      'homeworkFilterOpen': 'Ouverts',
+      'homeworkFilterDone': 'Terminés',
+      'examsUpcomingCount': '{count} examen{(count == 1 ? \"\" : \"s\")} à venir',
+      'examsUpcomingNext': r'Prochain: $subject ($date)',
+      'gradesTypeSingle': 'Note ponctuelle',
+      'gradesDateLabel': 'Date',
+      'gradesCountLabel': '{count} note{(count == 1 ? \"\" : \"s\")}',
+
       'navGrades': 'Notes',
       'gradesTitle': 'Suivi des notes',
       'gradesAddTitle': 'Ajouter une note',
@@ -2932,6 +3003,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesAverage': 'Moyenne',
       'gradesNone': 'Aucune note',
       'gradesNoneHint': 'Appuyez sur + pour ajouter votre première note.',
+
       'homeworkAddTitle': 'Ajouter un devoir',
       'homeworkEditTitle': 'Modifier le devoir',
       'homeworkSubjectLabel': 'Matière / Titre *',
@@ -3150,6 +3222,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsActionImport': 'Importar (Escaneo/PDF)',
       'examsActionExport': 'Exportar (JSON)',
       'examsActionScan': 'Escanear',
+      'homeworkFilterAll': 'Todos',
+      'homeworkFilterOpen': 'Pendientes',
+      'homeworkFilterDone': 'Completados',
+      'examsUpcomingCount': '{count} examen{(count == 1 ? \"\" : \"es\")} próximo{(count == 1 ? \"\" : \"s\")}',
+      'examsUpcomingNext': r'Próximo: $subject ($date)',
+      'gradesTypeSingle': 'Nota individual',
+      'gradesDateLabel': 'Fecha',
+      'gradesCountLabel': '{count} nota{(count == 1 ? \"\" : \"s\")}',
 
       'homeworkTitle': 'Deberes',
       'homeworkReload': 'Recargar',
@@ -3286,6 +3366,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsUseMaterialYouDesc':
           'Adaptar automáticamente al color de acento del sistema',
       'settingsCustomColorSeed': 'Color personalizado',
+      'settingsIsAmoled': 'Pitch Black (AMOLED)',
+      'settingsIsAmoledDesc': 'Fondo negro profundo en modo oscuro para pantallas OLED.',
       'settingsPageTransitionBounce': 'Rebote',
       'settingsPageTransitionFade': 'Fundido',
       'settingsPageTransitionSlide': 'Deslizamiento',
@@ -3671,6 +3753,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'classPickerRemoveFavorite': 'Eliminar de favoritos',
       'classPickerAddFavorite': 'Guardar en favoritos',
 
+      'aiNewChat': 'Nuevo chat',
+      'aiParameterTemperature': 'Temperatura',
+      'aiParameterMaxTokens': 'Máx. tokens',
+      'aiParameterTopP': 'Top P',
+      'aiOrbsCount': '{count} orbes',
+      'aiNoiseLevel': '{pct}% ruido',
+      'aiGradientType': 'Degradado',
+
       'navGrades': 'Notas',
       'gradesTitle': 'Seguimiento de notas',
       'gradesAddTitle': 'Añadir nota',
@@ -3682,6 +3772,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesAverage': 'Promedio',
       'gradesNone': 'Sin notas',
       'gradesNoneHint': 'Toca + para añadir tu primera nota.',
+
       'homeworkAddTitle': 'Añadir tarea',
       'homeworkEditTitle': 'Editar tarea',
       'homeworkSubjectLabel': 'Asignatura / Título *',

@@ -1161,7 +1161,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
                       Icon(Icons.add_rounded, color: cs.onPrimaryContainer),
                       const SizedBox(width: 12),
                       Text(
-                        "Neuer Chat",
+                        l.bgEditorNew,
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.w700,
                           color: cs.onPrimaryContainer,

@@ -902,7 +902,7 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                                     min: 5.0,
                                     max: 60.0,
                                     divisions: 11,
-                                    label: '$minutes min',
+                                    label: '${minutes} ${l.settingsLessonGlowNextLeadTime.toLowerCase()}',
                                     onChanged: (val) => _settingsSetLessonGlowNextMinutes(val.round()),
                                   ),
                                 ],

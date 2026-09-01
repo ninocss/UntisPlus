@@ -248,7 +248,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.book_rounded),
-                          hintText: "z.B. Mathematik",
+                          hintText: l.gradesSubjectLabel,
                           filled: true,
                           fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
                           border: OutlineInputBorder(
@@ -344,7 +344,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                       style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.label_important_rounded),
-                        hintText: "z.B. Klausur, Mündlich...",
+                        hintText: l.examsTypeLabel,
                         filled: true,
                         fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
                         border: OutlineInputBorder(
@@ -355,7 +355,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      "DATUM",
+                      l.gradesDateLabel.toUpperCase(),
                       style: GoogleFonts.outfit(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -811,7 +811,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           ),
                         ),
                         Text(
-                          grades.length == 1 ? "1 Note" : "${grades.length} ${l.gradesCountPlural}",
+                          grades.length == 1 ? l.gradesCountLabel(1) : l.gradesCountLabel(grades.length),
                           style: GoogleFonts.outfit(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -896,7 +896,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                       children: [
                         Expanded(
                           child: Text(
-                            g.type.isNotEmpty ? g.type : "Einzelnote",
+                            g.type.isNotEmpty ? g.type : l.gradesTypeSingle,
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.w800,
                               fontSize: 15,

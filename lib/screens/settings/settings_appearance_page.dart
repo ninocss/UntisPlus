@@ -235,8 +235,8 @@ class SettingsAppearancePage extends StatelessWidget {
                           icon: Icons.dark_mode_rounded,
                           iconBackgroundColor: cs.surfaceContainerHighest,
                           iconColor: isDark ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.5),
-                          title: "Pitch Black (AMOLED)",
-                          subtitle: "Tiefschwarzer Hintergrund im Darkmode für OLED-Displays.",
+                          title: l.settingsIsAmoled,
+                          subtitle: l.settingsIsAmoledDesc,
                           value: isAmoled,
                           onChanged: isDark ? _settingsSetIsAmoled : (v) {},
                         );

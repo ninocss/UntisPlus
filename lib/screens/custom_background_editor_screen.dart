@@ -1587,13 +1587,13 @@ class _CustomBackgroundEditorScreenState
                       child: Row(
                         children: [
                           _quickStatChip(
-                            label: _draft.base.type.name,
+                            label: l.aiGradientType,
                             icon: Icons.gradient_rounded,
                             onTap: () => _scrollToSection(_editSectionKey),
                           ),
                           const SizedBox(width: 8),
                           _quickStatChip(
-                            label: '${_draft.orbs.count} orbs',
+                            label: l.aiOrbsCount(_draft.orbs.count),
                             icon: Icons.blur_circular_rounded,
                             onTap: () => _scrollToSection(_editSectionKey),
                           ),
@@ -1606,7 +1606,7 @@ class _CustomBackgroundEditorScreenState
                           ),
                           const SizedBox(width: 8),
                           _quickStatChip(
-                            label: '${(_draft.noise * 100).round()}%',
+                            label: l.aiNoiseLevel((_draft.noise * 100).round().toDouble()),
                             icon: Icons.grain_rounded,
                             onTap: () => _scrollToSection(_editSectionKey),
                           ),

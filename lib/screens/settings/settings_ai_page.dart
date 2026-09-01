@@ -1405,25 +1405,26 @@ void _showProviderDialog() {
   }
 
   void _showAiPersonaDialog() {
+    final l = AppL10n.of(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
-      title: 'KI-Persönlichkeit',
+      title: l.settingsAiPersonaTitle,
       options: [
         _SheetOption(
           value: 'helpful',
-          title: 'Hilfreicher Assistent',
+          title: l.settingsAiPersonaHelpful,
           icon: Icons.auto_awesome_rounded,
           selected: aiPersona == 'helpful',
         ),
         _SheetOption(
           value: 'strict',
-          title: 'Strenger Lehrer',
+          title: l.settingsAiPersonaStrict,
           icon: Icons.school_rounded,
           selected: aiPersona == 'strict',
         ),
         _SheetOption(
           value: 'buddy',
-          title: 'Schul-Buddy',
+          title: l.settingsAiPersonaBuddy,
           icon: Icons.sentiment_satisfied_alt_rounded,
           selected: aiPersona == 'buddy',
         ),
@@ -1487,7 +1488,7 @@ void _showProviderDialog() {
                 ),
                 const SizedBox(height: 32),
                 _buildSlider(
-                  label: 'Temperatur',
+                  label: l.settingsAiParametersTitle,
                   value: temp,
                   min: 0,
                   max: 2,
@@ -1499,7 +1500,7 @@ void _showProviderDialog() {
                 ),
                 const SizedBox(height: 24),
                 _buildSlider(
-                  label: 'Max. Tokens',
+                  label: l.gradesWeightLabel,
                   value: tokens.toDouble(),
                   min: 256,
                   max: 8192,
@@ -1511,7 +1512,7 @@ void _showProviderDialog() {
                 ),
                 const SizedBox(height: 24),
                 _buildSlider(
-                  label: 'Top P',
+                  label: l.gradesTypeLabel,
                   value: topP,
                   min: 0,
                   max: 1,
