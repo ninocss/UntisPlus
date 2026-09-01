@@ -942,7 +942,7 @@ class AppL10n {
       'settingsHubAccount': 'Account & Demo',
       'settingsHubUpdatesAbout': 'Updates & Über',
       'settingsSupport': 'Entwicklung unterstützen',
-      'settingsSupportDesc': 'Trink mir einen Kaffee auf Ko-fi',
+      'settingsSupportDesc': 'Spendier mir einen Kaffee auf Ko-fi',
       'settingsLanguage': 'Sprache',
       'settingsSectionAI': 'KI-Assistent',
       'settingsAiProvider': 'Anbieter',
