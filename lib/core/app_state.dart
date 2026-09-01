@@ -203,6 +203,8 @@ final ValueNotifier<int> lessonCardStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> lessonGlowEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<int> lessonGlowModeNotifier = ValueNotifier(0);
 final ValueNotifier<double> lessonGlowIntensityNotifier = ValueNotifier(1.0);
+final ValueNotifier<bool> lessonGlowNextEnabledNotifier = ValueNotifier(false);
+final ValueNotifier<int> lessonGlowNextMinutesNotifier = ValueNotifier(20);
 final ValueNotifier<bool> lessonBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> lessonBlurAmountNotifier = ValueNotifier(12.0);
 final ValueNotifier<double> lessonCardOpacityNotifier = ValueNotifier(0.9);
@@ -236,6 +238,71 @@ final ValueNotifier<List<Map<String, dynamic>>> homeworksNotifier =
 /// lesson detail sheets can attach register notes to the corresponding lesson.
 final ValueNotifier<List<Map<String, dynamic>>> lessonNotesNotifier =
     ValueNotifier(const []);
+
+final ValueNotifier<List<Map<String, dynamic>>> customHomeworkNotifier =
+    ValueNotifier(const []);
+final ValueNotifier<List<Map<String, dynamic>>> customExamsNotifier =
+    ValueNotifier(const []);
+final ValueNotifier<List<Map<String, dynamic>>> customGradesNotifier =
+    ValueNotifier(const []);
+
+Future<void> loadCustomData() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final rawHw = prefs.getStringList('customHomework') ?? [];
+  customHomeworkNotifier.value = rawHw.map((e) {
+    try {
+      return Map<String, dynamic>.from(jsonDecode(e) as Map);
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }).where((e) => e.isNotEmpty).toList();
+
+  final rawExams = prefs.getStringList('customExams') ?? [];
+  customExamsNotifier.value = rawExams.map((e) {
+    try {
+      return Map<String, dynamic>.from(jsonDecode(e) as Map);
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }).where((e) => e.isNotEmpty).toList();
+
+  final rawGrades = prefs.getStringList('customGrades') ?? [];
+  customGradesNotifier.value = rawGrades.map((e) {
+    try {
+      return Map<String, dynamic>.from(jsonDecode(e) as Map);
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }).where((e) => e.isNotEmpty).toList();
+}
+
+Future<void> saveCustomHomework(List<Map<String, dynamic>> list) async {
+  customHomeworkNotifier.value = List.from(list);
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList(
+    'customHomework',
+    list.map((e) => jsonEncode(e)).toList(),
+  );
+}
+
+Future<void> saveCustomExams(List<Map<String, dynamic>> list) async {
+  customExamsNotifier.value = List.from(list);
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList(
+    'customExams',
+    list.map((e) => jsonEncode(e)).toList(),
+  );
+}
+
+Future<void> saveCustomGrades(List<Map<String, dynamic>> list) async {
+  customGradesNotifier.value = List.from(list);
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setStringList(
+    'customGrades',
+    list.map((e) => jsonEncode(e)).toList(),
+  );
+}
 
 final ValueNotifier<Set<String>> hiddenSubjectsNotifier = ValueNotifier({});
 

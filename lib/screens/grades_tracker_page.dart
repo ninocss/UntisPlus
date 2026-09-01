@@ -51,40 +51,64 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   void initState() {
     super.initState();
     _loadGrades();
+    customGradesNotifier.addListener(_onCustomGradesChanged);
+  }
+
+  @override
+  void dispose() {
+    customGradesNotifier.removeListener(_onCustomGradesChanged);
+    super.dispose();
+  }
+
+  void _onCustomGradesChanged() {
+    if (!mounted) return;
+    setState(() {
+      _grades = customGradesNotifier.value
+          .map((e) => _Grade.fromJson(e))
+          .toList();
+    });
   }
 
   Future<void> _loadGrades() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList('customGrades') ?? [];
+    final loaded = raw.map((e) => _Grade.fromJson(jsonDecode(e))).toList();
     setState(() {
-      _grades = raw.map((e) => _Grade.fromJson(jsonDecode(e))).toList();
+      _grades = loaded;
       _loading = false;
     });
+    customGradesNotifier.value = loaded.map((e) => e.toJson()).toList();
   }
 
   Future<void> _saveGrades() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      'customGrades',
-      _grades.map((e) => jsonEncode(e.toJson())).toList(),
-    );
+    await saveCustomGrades(_grades.map((e) => e.toJson()).toList());
   }
 
-  void showAddGradeDialog([_Grade? existing]) {
+  void showAddGradeDialog([dynamic subjectOrGrade, _Grade? existing]) {
+    String? initialSubject;
+    _Grade? grade;
+    if (subjectOrGrade is String) {
+      initialSubject = subjectOrGrade;
+      grade = existing;
+    } else if (subjectOrGrade is _Grade) {
+      grade = subjectOrGrade;
+    }
+
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
-    String selectedSubject = existing?.subject ??
+    String selectedSubject = (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
+        grade?.subject ??
         (knownSubjectsNotifier.value.isNotEmpty
             ? knownSubjectsNotifier.value.first
             : '');
     final valueController =
-        TextEditingController(text: existing?.value.toString() ?? '');
+        TextEditingController(text: grade?.value.toString() ?? '');
     final weightController =
-        TextEditingController(text: existing?.weight.toString() ?? '1.0');
-    final typeController = TextEditingController(text: existing?.type ?? '');
+        TextEditingController(text: grade?.weight.toString() ?? '1.0');
+    final typeController = TextEditingController(text: grade?.type ?? '');
     final subjectController = TextEditingController(text: selectedSubject);
-    DateTime selectedDate = existing?.date ?? DateTime.now();
+    DateTime selectedDate = grade?.date ?? DateTime.now();
 
     showModalBottomSheet(
       context: context,

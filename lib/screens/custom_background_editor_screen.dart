@@ -10,13 +10,14 @@ class CustomBackgroundEditorScreen extends StatefulWidget {
 
 class _CustomBackgroundEditorScreenState
     extends State<CustomBackgroundEditorScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late CustomBackgroundSpec _draft;
   late final TextEditingController _nameCtrl;
   late final TextEditingController _aiCtrl;
   late final TabController _tabController;
   late final AnimationController _previewCtrl;
   late final ScrollController _scrollController;
+  bool _isPreviewPaused = false;
 
   final GlobalKey _previewSectionKey = GlobalKey();
   final GlobalKey _editSectionKey = GlobalKey();
@@ -34,6 +35,7 @@ class _CustomBackgroundEditorScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _draft =
         _activeCustomBackgroundOrNull() ??
         CustomBackgroundSpec.defaults(name: 'Theme Aura');
@@ -56,6 +58,7 @@ class _CustomBackgroundEditorScreenState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     customBackgroundsNotifier.removeListener(_syncFromActive);
     selectedCustomBackgroundIdNotifier.removeListener(_syncFromActive);
     _tabController.dispose();
@@ -64,6 +67,25 @@ class _CustomBackgroundEditorScreenState
     _nameCtrl.dispose();
     _aiCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      if (!_isPreviewPaused) {
+        _isPreviewPaused = true;
+        _previewCtrl.stop(canceled: false);
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (_isPreviewPaused) {
+        _isPreviewPaused = false;
+        if (mounted) {
+          _previewCtrl.repeat();
+        }
+      }
+    }
   }
 
   void _syncFromActive() {

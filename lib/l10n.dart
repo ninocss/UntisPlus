@@ -199,6 +199,27 @@ class AppL10n {
   String get examsActionScan => _t('examsActionScan');
   String examsInDays(int n) => _t('examsDaysIn').replaceAll('{n}', '$n');
 
+  String get homeworkAddTitle => _t('homeworkAddTitle');
+  String get homeworkEditTitle => _t('homeworkEditTitle');
+  String get homeworkSubjectLabel => _t('homeworkSubjectLabel');
+  String get homeworkTaskLabel => _t('homeworkTaskLabel');
+  String get homeworkDueDateLabel => _t('homeworkDueDateLabel');
+  String get homeworkActionCustom => _t('homeworkActionCustom');
+  String get homeworkActionImport => _t('homeworkActionImport');
+  String get homeworkSave => _t('homeworkSave');
+  String get homeworkDelete => _t('homeworkDelete');
+  String get homeworkCancel => _t('homeworkCancel');
+  String get homeworkImportTitle => _t('homeworkImportTitle');
+  String get homeworkImportSuccess => _t('homeworkImportSuccess');
+  String get homeworkImportError => _t('homeworkImportError');
+  String get subjectOverviewTitle => _t('subjectOverviewTitle');
+  String get addGradeForSubject => _t('addGradeForSubject');
+  String get addExamForSubject => _t('addExamForSubject');
+  String get addHomeworkForSubject => _t('addHomeworkForSubject');
+  String get noGradesForSubject => _t('noGradesForSubject');
+  String get noExamsForSubject => _t('noExamsForSubject');
+  String get noHomeworkForSubject => _t('noHomeworkForSubject');
+
   // ── School Info / Notifications ────────────────────────────────────────────
   String get infoTitle => _t('infoTitle');
   String get infoReload => _t('infoReload');
@@ -385,6 +406,9 @@ class AppL10n {
   String get settingsLessonGlowModeActive => _t('settingsLessonGlowModeActive');
   String get settingsLessonGlowModeAll => _t('settingsLessonGlowModeAll');
   String get settingsLessonGlowIntensity => _t('settingsLessonGlowIntensity');
+  String get settingsLessonGlowNext => _t('settingsLessonGlowNext');
+  String get settingsLessonGlowNextDesc => _t('settingsLessonGlowNextDesc');
+  String get settingsLessonGlowNextLeadTime => _t('settingsLessonGlowNextLeadTime');
   String get settingsLessonBlur => _t('settingsLessonBlur');
   String get settingsLessonBlurDesc => _t('settingsLessonBlurDesc');
   String get settingsLessonBlurAmount => _t('settingsLessonBlurAmount');
@@ -892,6 +916,26 @@ class AppL10n {
       'homeworkMarkDone': 'Als erledigt markieren',
       'homeworkMarkUndone': 'Als nicht erledigt markieren',
       'homeworkDue': 'Fällig am',
+      'homeworkAddTitle': 'Hausaufgabe hinzufügen',
+      'homeworkEditTitle': 'Hausaufgabe bearbeiten',
+      'homeworkSubjectLabel': 'Fach *',
+      'homeworkTaskLabel': 'Aufgabe / Beschreibung *',
+      'homeworkDueDateLabel': 'Fällig am',
+      'homeworkActionCustom': 'Manuell',
+      'homeworkActionImport': 'Importieren (Scan/PDF)',
+      'homeworkSave': 'Speichern',
+      'homeworkDelete': 'Löschen',
+      'homeworkCancel': 'Abbrechen',
+      'homeworkImportTitle': 'Hausaufgaben scannen / hochladen',
+      'homeworkImportSuccess': 'Hausaufgaben erfolgreich importiert!',
+      'homeworkImportError': 'Fehler beim Import: ',
+      'subjectOverviewTitle': 'Fächer-Übersicht',
+      'addGradeForSubject': '+ Note',
+      'addExamForSubject': '+ Klausur',
+      'addHomeworkForSubject': '+ Hausaufgabe',
+      'noGradesForSubject': 'Keine Noten für dieses Fach',
+      'noExamsForSubject': 'Keine Prüfungen für dieses Fach',
+      'noHomeworkForSubject': 'Keine Hausaufgaben für dieses Fach',
 
       'infoTitle': 'Schulinfos',
       'infoReload': 'Neu laden',
@@ -1064,6 +1108,9 @@ class AppL10n {
       'settingsLessonGlowModeActive': 'Nur laufende Stunde',
       'settingsLessonGlowModeAll': 'Alle Stunden',
       'settingsLessonGlowIntensity': 'Glow-Intensität',
+      'settingsLessonGlowNext': 'Nächste Stunde leuchten',
+      'settingsLessonGlowNextDesc': 'Lässt die nächste Stunde bereits vor Stundenbeginn leuchten.',
+      'settingsLessonGlowNextLeadTime': 'Vorlaufzeit',
       'settingsLessonBlur': 'Milchglas-Unschärfe (Blur)',
       'settingsLessonBlurDesc': 'Hintergrund hinter den Stundenkarten weichzeichnen.',
       'settingsLessonBlurAmount': 'Weichzeichner-Stärke',
@@ -1615,6 +1662,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'homeworkMarkDone': 'Mark as done',
       'homeworkMarkUndone': 'Mark as undone',
       'homeworkDue': 'Due on',
+      'homeworkAddTitle': 'Add Homework',
+      'homeworkEditTitle': 'Edit Homework',
+      'homeworkSubjectLabel': 'Subject *',
+      'homeworkTaskLabel': 'Task / Description *',
+      'homeworkDueDateLabel': 'Due date',
+      'homeworkActionCustom': 'Manual',
+      'homeworkActionImport': 'Import (Scan/PDF)',
+      'homeworkSave': 'Save',
+      'homeworkDelete': 'Delete',
+      'homeworkCancel': 'Cancel',
+      'homeworkImportTitle': 'Scan / Upload Homework',
+      'homeworkImportSuccess': 'Homework successfully imported!',
+      'homeworkImportError': 'Import error: ',
+      'subjectOverviewTitle': 'Subject Overview',
+      'addGradeForSubject': '+ Grade',
+      'addExamForSubject': '+ Exam',
+      'addHomeworkForSubject': '+ Homework',
+      'noGradesForSubject': 'No grades for this subject',
+      'noExamsForSubject': 'No exams for this subject',
+      'noHomeworkForSubject': 'No homework for this subject',
 
       'infoTitle': 'School Info',
       'infoReload': 'Reload',
@@ -1778,6 +1845,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonGlowModeActive': 'Active lesson only',
       'settingsLessonGlowModeAll': 'All lessons',
       'settingsLessonGlowIntensity': 'Glow Intensity',
+      'settingsLessonGlowNext': 'Glow Next Subject',
+      'settingsLessonGlowNextDesc': 'Starts glowing before the next subject begins.',
+      'settingsLessonGlowNextLeadTime': 'Lead time',
       'settingsLessonBlur': 'Frosted Glass Blur',
       'settingsLessonBlurDesc': 'Blur the wallpaper background behind lesson cards.',
       'settingsLessonBlurAmount': 'Blur Strength',
@@ -2526,6 +2596,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonGlowModeActive': 'Cours actuel uniquement',
       'settingsLessonGlowModeAll': 'Tous les cours',
       'settingsLessonGlowIntensity': 'Intensité de la lueur',
+      'settingsLessonGlowNext': 'Faire briller le cours suivant',
+      'settingsLessonGlowNextDesc': 'Commence à briller avant le début du cours suivant.',
+      'settingsLessonGlowNextLeadTime': 'Délai d\'avance',
       'settingsLessonBlur': 'Flou de verre (Blur)',
       'settingsLessonBlurDesc': 'Flouter l\'arrière-plan derrière les cartes.',
       'settingsLessonBlurAmount': 'Force du flou',
@@ -2859,6 +2932,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesAverage': 'Moyenne',
       'gradesNone': 'Aucune note',
       'gradesNoneHint': 'Appuyez sur + pour ajouter votre première note.',
+      'homeworkAddTitle': 'Ajouter un devoir',
+      'homeworkEditTitle': 'Modifier le devoir',
+      'homeworkSubjectLabel': 'Matière / Titre *',
+      'homeworkTaskLabel': 'Tâche / Description',
+      'homeworkDueDateLabel': 'À rendre pour le',
+      'homeworkActionCustom': 'Ajouter manuellement',
+      'homeworkActionImport': 'Scanner avec l\'IA',
+      'homeworkSave': 'Enregistrer',
+      'homeworkDelete': 'Supprimer',
+      'homeworkCancel': 'Annuler',
+      'homeworkImportTitle': 'Scanner un devoir',
+      'homeworkImportSuccess': 'Devoirs scannés avec succès !',
+      'homeworkImportError': 'Erreur lors du scan des devoirs : ',
+      'subjectOverviewTitle': 'Aperçu de la matière',
+      'addGradeForSubject': '+ Note',
+      'addExamForSubject': '+ Examen',
+      'addHomeworkForSubject': '+ Devoir',
+      'noGradesForSubject': 'Aucune note enregistrée pour cette matière.',
+      'noExamsForSubject': 'Aucun examen prévu pour cette matière.',
+      'noHomeworkForSubject': 'Aucun devoir pour cette matière.',
     },
 
     // ── SPANISH ───────────────────────────────────────────────────────────────
@@ -3255,6 +3348,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonGlowModeActive': 'Solo clase actual',
       'settingsLessonGlowModeAll': 'Todas las clases',
       'settingsLessonGlowIntensity': 'Intensidad del brillo',
+      'settingsLessonGlowNext': 'Hacer brillar la siguiente clase',
+      'settingsLessonGlowNextDesc': 'Empieza a brillar antes de que comience la siguiente clase.',
+      'settingsLessonGlowNextLeadTime': 'Tiempo de antelación',
       'settingsLessonBlur': 'Desenfoque de cristal',
       'settingsLessonBlurDesc': 'Desenfoca el fondo detrás de las tarjetas de clase.',
       'settingsLessonBlurAmount': 'Intensidad del desenfoque',
@@ -3586,6 +3682,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesAverage': 'Promedio',
       'gradesNone': 'Sin notas',
       'gradesNoneHint': 'Toca + para añadir tu primera nota.',
+      'homeworkAddTitle': 'Añadir tarea',
+      'homeworkEditTitle': 'Editar tarea',
+      'homeworkSubjectLabel': 'Asignatura / Título *',
+      'homeworkTaskLabel': 'Tarea / Descripción',
+      'homeworkDueDateLabel': 'Para el día',
+      'homeworkActionCustom': 'Añadir manualmente',
+      'homeworkActionImport': 'Escanear con IA',
+      'homeworkSave': 'Guardar',
+      'homeworkDelete': 'Eliminar',
+      'homeworkCancel': 'Cancelar',
+      'homeworkImportTitle': 'Escanear tarea',
+      'homeworkImportSuccess': '¡Tareas escaneadas con éxito!',
+      'homeworkImportError': 'Error al escanear las tareas: ',
+      'subjectOverviewTitle': 'Resumen de la asignatura',
+      'addGradeForSubject': '+ Nota',
+      'addExamForSubject': '+ Examen',
+      'addHomeworkForSubject': '+ Tarea',
+      'noGradesForSubject': 'No hay notas registradas para esta asignatura.',
+      'noExamsForSubject': 'No hay exámenes programados para esta asignatura.',
+      'noHomeworkForSubject': 'No hay tareas pendientes para esta asignatura.',
     },
   };
 }

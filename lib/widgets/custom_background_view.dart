@@ -125,7 +125,8 @@ class _CustomBackgroundPainter extends CustomPainter {
     final rng = math.Random(orbs.seed);
 
     final speed = (spec.animate ? spec.animationSpeed : 0.0).clamp(0.0, 2.5);
-    final phase = (t * math.pi * 2 * (0.6 + speed)).toDouble();
+    final speedMultiplier = speed <= 0 ? 0 : (speed.round() == 0 ? 1 : speed.round());
+    final phase = (t * math.pi * 2 * speedMultiplier).toDouble();
 
     final parallaxStrength = spec.parallaxStrength.clamp(0.0, 1.0);
     final parallaxPx = Offset(

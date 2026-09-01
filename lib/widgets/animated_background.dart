@@ -58,17 +58,19 @@ class _AnimatedBackgroundScene extends StatefulWidget {
 }
 
 class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _ctrl;
   StreamSubscription<GyroscopeEvent>? _gyroSub;
   double _gyroTargetX = 0;
   double _gyroTargetY = 0;
   double _gyroX = 0;
   double _gyroY = 0;
+  bool _isPaused = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 16),
@@ -79,10 +81,32 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     backgroundGyroscopeNotifier.removeListener(_handleGyroscopeToggle);
     _gyroSub?.cancel();
     _ctrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      if (!_isPaused) {
+        _isPaused = true;
+        _ctrl.stop(canceled: false);
+        _stopGyroscope();
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (_isPaused) {
+        _isPaused = false;
+        if (mounted) {
+          _ctrl.repeat();
+          _handleGyroscopeToggle();
+        }
+      }
+    }
   }
 
   void _handleGyroscopeToggle() {
@@ -196,37 +220,37 @@ class _OrbsLayer extends StatelessWidget {
       children: [
         Positioned(
           top: -48 + math.sin(phase) * 32,
-          right: -15 + math.cos(phase * 0.8) * 25,
+          right: -15 + math.cos(phase) * 25,
           child: _orb(240, cs.primaryContainer.withValues(alpha: 0.38)),
         ),
         Positioned(
-          bottom: -42 + math.sin(phase * 0.9 + 1.0) * 28,
-          left: -25 + math.cos(phase * 0.7 + 0.5) * 20,
+          bottom: -42 + math.sin(phase + 1.0) * 28,
+          left: -25 + math.cos(phase + 0.5) * 20,
           child: _orb(210, cs.secondaryContainer.withValues(alpha: 0.34)),
         ),
         Positioned(
-          top: 130 + math.sin(phase * 1.1 + 2.0) * 45,
-          right: 0 + math.cos(phase * 0.6 + 1.2) * 15,
+          top: 130 + math.sin(phase + 2.0) * 45,
+          right: 0 + math.cos(phase + 1.2) * 15,
           child: _orb(150, cs.tertiaryContainer.withValues(alpha: 0.27)),
         ),
         Positioned(
-          top: 215 + math.sin(phase * 0.75 + 3.0) * 40,
-          left: 30 + math.cos(phase * 0.85 + 2.0) * 22,
+          top: 215 + math.sin(phase + 3.0) * 40,
+          left: 30 + math.cos(phase + 2.0) * 22,
           child: _orb(170, cs.primaryContainer.withValues(alpha: 0.20)),
         ),
         Positioned(
-          bottom: 38 + math.sin(phase * 0.95 + 4.0) * 18,
-          right: 65 + math.cos(phase * 0.65 + 3.0) * 30,
+          bottom: 38 + math.sin(phase + 4.0) * 18,
+          right: 65 + math.cos(phase + 3.0) * 30,
           child: _orb(125, cs.secondaryContainer.withValues(alpha: 0.22)),
         ),
         Positioned(
-          top: 40 + math.sin(phase * 0.8 + 5.0) * 22,
-          left: 2 + math.cos(phase * 0.55 + 4.0) * 26,
+          top: 40 + math.sin(phase + 5.0) * 22,
+          left: 2 + math.cos(phase + 4.0) * 26,
           child: _orb(108, cs.tertiaryContainer.withValues(alpha: 0.2)),
         ),
         Positioned(
-          bottom: -15 + math.sin(phase * 1.05 + 6.0) * 17,
-          left: 108 + math.cos(phase * 0.72 + 5.0) * 13,
+          bottom: -15 + math.sin(phase + 6.0) * 17,
+          left: 108 + math.cos(phase + 5.0) * 13,
           child: _orb(92, cs.primary.withValues(alpha: 0.12)),
         ),
       ],

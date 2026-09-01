@@ -595,6 +595,7 @@ void main() async {
   appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
   appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
   unawaited(_applyAndroidWindowBlur(blurEnabledNotifier.value));
+  await loadCustomData();
 
   pageTransitionNotifier.value =
       (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
@@ -612,6 +613,10 @@ void main() async {
       (prefs.getInt('lessonGlowMode') ?? 0).clamp(0, 1);
   lessonGlowIntensityNotifier.value =
       prefs.getDouble('lessonGlowIntensity') ?? 1.0;
+  lessonGlowNextEnabledNotifier.value =
+      prefs.getBool('lessonGlowNextEnabled') ?? false;
+  lessonGlowNextMinutesNotifier.value =
+      (prefs.getInt('lessonGlowNextMinutes') ?? 20).clamp(5, 120);
   lessonBlurEnabledNotifier.value =
       prefs.getBool('lessonBlurEnabled') ?? false;
   lessonBlurAmountNotifier.value =
@@ -1360,6 +1365,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonGlowEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonGlowModeNotifier.addListener(_onHiddenSubjectsChanged);
     lessonGlowIntensityNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonGlowNextEnabledNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonGlowNextMinutesNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.addListener(_onHiddenSubjectsChanged);
     lessonCardOpacityNotifier.addListener(_onHiddenSubjectsChanged);
@@ -1884,6 +1891,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonGlowEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonGlowModeNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonGlowIntensityNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonGlowNextEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonGlowNextMinutesNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonCardOpacityNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -3183,8 +3192,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                               : '?');
                                   final room = l['_room']?.toString() ?? '';
                                   final teacher = l['_teacher']?.toString() ?? '';
-                                  final isNow =
-                                      (startMin <= nowMin && nowMin < endMin);
+                                  final isCurrent = (startMin <= nowMin && nowMin < endMin);
+                                  final isNextGlowing = isToday &&
+                                      lessonGlowNextEnabledNotifier.value &&
+                                      (startMin - lessonGlowNextMinutesNotifier.value <= nowMin &&
+                                          nowMin < startMin);
+                                  final isNow = isCurrent || isNextGlowing;
 
                                   return GestureDetector(
                                     onTap: () => _showLessonDetail(context, l),
@@ -3632,9 +3645,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   ),
                                                   cs.surfaceContainerHighest,
                                                 );
-                                          final isNow = (dayIndex == todayIndex) &&
+                                          final isCurrent = (dayIndex == todayIndex) &&
                                               (slot.startMin <= nowMin &&
                                                   nowMin < slot.endMin);
+                                          final isNextGlowing = (dayIndex == todayIndex) &&
+                                              lessonGlowNextEnabledNotifier.value &&
+                                              (slot.startMin - lessonGlowNextMinutesNotifier.value <= nowMin &&
+                                                  nowMin < slot.startMin);
+                                          final isNow = isCurrent || isNextGlowing;
 
                                           return _dimPastLesson(
                                             dim: dim,
@@ -4862,86 +4880,450 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 }
 
-// --- HAUSAUFGABEN ---
+// --- HAUSAUFGABEN & PRÜFUNGEN ---
 
-class HomeworkPage extends StatefulWidget {
-  const HomeworkPage({super.key});
+Widget _chip(String label, Color bg, Color fg) => Container(
+  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+  decoration: BoxDecoration(
+    color: bg,
+    borderRadius: BorderRadius.circular(8),
+  ),
+  child: Text(
+    label,
+    style: GoogleFonts.outfit(
+      fontSize: 11,
+      fontWeight: FontWeight.w800,
+      color: fg,
+    ),
+  ),
+);
 
-  @override
-  State<HomeworkPage> createState() => _HomeworkPageState();
+Future<void> _showAddHomeworkDialog(
+  BuildContext context, {
+  Map<String, dynamic>? existing,
+  int? editIndex,
+  String? initialSubject,
+}) async {
+  final subjectCtrl = TextEditingController(
+    text: initialSubject ?? existing?['subject']?.toString() ?? '',
+  );
+  final taskCtrl = TextEditingController(
+    text: existing?['text']?.toString() ?? existing?['description']?.toString() ?? '',
+  );
+  DateTime selectedDate = () {
+    final s = existing?['dueDate']?.toString() ?? existing?['date']?.toString() ?? '';
+    if (s.length == 8) {
+      try {
+        return DateTime.parse(
+          '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
+        );
+      } catch (_) {}
+    }
+    return DateTime.now().add(const Duration(days: 1));
+  }();
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    sheetAnimationStyle: _kBottomSheetAnimationStyle,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDlg) {
+        final cs = Theme.of(ctx).colorScheme;
+        final l = AppL10n.of(appLocaleNotifier.value);
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: _glassContainer(
+            context: ctx,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.outlineVariant,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      existing == null ? l.homeworkAddTitle : l.homeworkEditTitle,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: subjectCtrl,
+                      decoration: InputDecoration(
+                        labelText: l.homeworkSubjectLabel,
+                        prefixIcon: const Icon(Icons.book_outlined),
+                        filled: true,
+                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: taskCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: l.homeworkTaskLabel,
+                        prefixIcon: const Padding(
+                          padding: EdgeInsets.only(bottom: 42),
+                          child: Icon(Icons.assignment_outlined),
+                        ),
+                        filled: true,
+                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setDlg(() => selectedDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today_outlined, size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${l.homeworkDueDateLabel}: ${DateFormat('dd. MMM yyyy', _icuLocale(appLocaleNotifier.value)).format(selectedDate)}',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (existing != null && editIndex != null)
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              final list = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
+                              if (editIndex >= 0 && editIndex < list.length) {
+                                list.removeAt(editIndex);
+                                await saveCustomHomework(list);
+                              }
+                            },
+                            child: Text(
+                              l.homeworkDelete,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                                color: cs.error,
+                              ),
+                            ),
+                          ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(
+                            l.homeworkCancel,
+                            style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        FilledButton(
+                          onPressed: () async {
+                            final subj = subjectCtrl.text.trim();
+                            final text = taskCtrl.text.trim();
+                            if (subj.isEmpty || text.isEmpty) return;
+                            final dateInt = int.parse(
+                              DateFormat('yyyyMMdd').format(selectedDate),
+                            );
+                            final list = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
+                            final item = <String, dynamic>{
+                              'id': existing?['id'] ?? 'hw_${DateTime.now().millisecondsSinceEpoch}',
+                              'subject': subj,
+                              'text': text,
+                              'dueDate': dateInt,
+                              'isDone': existing?['isDone'] ?? false,
+                              '_custom': true,
+                            };
+                            if (editIndex != null && editIndex >= 0 && editIndex < list.length) {
+                              list[editIndex] = item;
+                            } else {
+                              list.add(item);
+                            }
+                            await saveCustomHomework(list);
+                            Navigator.pop(ctx);
+                          },
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            l.homeworkSave,
+                            style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }
 
-class _HomeworkPageState extends State<HomeworkPage> {
-  List<Map<String, dynamic>> _homeworks = [];
-  Set<String> _doneIds = {};
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
+Future<void> _importHomeworkWithAI(BuildContext context) async {
+  final l = AppL10n.of(appLocaleNotifier.value);
+  final providerUsesGeminiProtocol = _providerUsesGeminiProtocolGlobal();
+  final provider = _normalizeAiProvider(aiProvider);
+  final isLocalProvider = provider == 'local';
+  if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_providerAwareMissingApiKeyMessage(l, provider))),
+    );
+    return;
   }
 
-  Future<void> _load() async {
-    if (demoModeNotifier.value) {
-      if (mounted) {
-        setState(() {
-          _homeworks = [
-            {
-              'id': 1,
-              'text': 'Read Chapter 4 and answer questions 1-5',
-              'date': 20260820,
-              'dueDate': 20260825,
-              '_lesson': {
-                'su': [{'longname': 'English'}]
-              }
-            },
-            {
-              'id': 2,
-              'text': 'Math Exercises p. 42, No. 1-10',
-              'date': 20260821,
-              'dueDate': 20260823,
-              '_lesson': {
-                'su': [{'longname': 'Mathematics'}]
-              }
-            }
-          ];
-          _loading = false;
-        });
-      }
-      return;
-    }
+  final source = await _showUnifiedOptionSheet<String>(
+    context: context,
+    title: l.homeworkImportTitle,
+    options: [
+      _SheetOption(
+        value: 'camera',
+        title: l.examsImportCamera,
+        icon: Icons.camera_alt_rounded,
+      ),
+      _SheetOption(
+        value: 'gallery',
+        title: l.examsImportGallery,
+        icon: Icons.image_rounded,
+      ),
+      _SheetOption(
+        value: 'file',
+        title: l.examsImportFile,
+        icon: Icons.picture_as_pdf_rounded,
+      ),
+    ],
+  );
 
-    final done = await HomeworkService.getDoneIds();
-    final res = await HomeworkService.fetchHomeworkAndNotes(
-      schoolUrl: schoolUrl,
-      schoolName: schoolName,
-      sessionId: sessionID,
-      personId: personId,
-      personType: personType,
+  if (source == null) return;
+
+  Uint8List? fileBytes;
+  String? mimeType;
+
+  if (source == 'camera' || source == 'gallery') {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+    );
+    if (picked == null) return;
+    fileBytes = await picked.readAsBytes();
+    mimeType = picked.path.toLowerCase().endsWith('.png')
+        ? 'image/png'
+        : 'image/jpeg';
+  } else {
+    final picked = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: providerUsesGeminiProtocol
+          ? ['pdf', 'png', 'jpg', 'jpeg']
+          : ['png', 'jpg', 'jpeg'],
+    );
+    if (picked == null) return;
+    fileBytes = await picked.readAsBytes();
+    final ext = picked.name.split('.').last.toLowerCase();
+    mimeType = ext == 'pdf'
+        ? 'application/pdf'
+        : (ext == 'png' ? 'image/png' : 'image/jpeg');
+  }
+
+  if (!context.mounted) return;
+
+  var loadingVisible = true;
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => const Center(child: CircularProgressIndicator()),
+  );
+
+  try {
+    final prompt = '''Du bist ein Assistent, der Hausaufgaben von Tafeln, Arbeitsblättern oder Notizen erfasst.
+Extrahiere alle Aufgaben aus dem angehängten Bild${providerUsesGeminiProtocol ? ' oder PDF' : ''}.
+Antworte AUSSCHLIESSLICH im folgenden JSON Array Format (kein Markdown-Block, nur reines JSON):
+[
+  {
+    "subject": "Mathe",
+    "text": "Seite 42 Nr 1-5",
+    "dueDate": "20260905"
+  }
+]
+WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr oder Datum, leite es ab. Wenn die Datei keine Hausaufgaben enthält, gib ein leeres Array [] zurück.''';
+
+    final text = await _requestAiVisionAnalysisGlobal(
+      prompt: prompt,
+      fileBytes: fileBytes,
+      mimeType: mimeType,
     );
 
-    homeworksNotifier.value = res['homeworks']!;
-    lessonNotesNotifier.value = res['lessonNotes']!;
-
-    if (mounted) {
-      setState(() {
-        _homeworks = res['homeworks']!;
-        _doneIds = done;
-        _loading = false;
-      });
+    if (!context.mounted) return;
+    if (loadingVisible) {
+      Navigator.pop(context);
+      loadingVisible = false;
     }
+
+    final jsonStart = text.indexOf('[');
+    final jsonEnd = text.lastIndexOf(']');
+    if (jsonStart != -1 && jsonEnd != -1) {
+      final jsonStr = text.substring(jsonStart, jsonEnd + 1);
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is! List) throw Exception(l.examsImportInvalidJson);
+
+      final items = decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+
+      final current = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
+      for (var e in items) {
+        current.add({
+          'id': 'hw_${DateTime.now().millisecondsSinceEpoch}_${current.length}',
+          'subject': e['subject']?.toString() ?? 'Unbekannt',
+          'text': e['text']?.toString() ?? '',
+          'dueDate': (e['dueDate']?.toString() ?? '').replaceAll('-', ''),
+          'isDone': false,
+          '_custom': true,
+        });
+      }
+      await saveCustomHomework(current);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.homeworkImportSuccess)),
+      );
+    } else {
+      throw Exception(l.examsImportInvalidJson);
+    }
+  } catch (e) {
+    if (!context.mounted) return;
+    if (loadingVisible) {
+      Navigator.pop(context);
+      loadingVisible = false;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${l.homeworkImportError}$e')),
+    );
+  }
+}
+
+bool _providerUsesGeminiProtocolGlobal() {
+  final provider = _normalizeAiProvider(aiProvider);
+  if (provider == 'gemini') return true;
+  if (provider == 'custom') {
+    return _normalizeAiCustomCompatibility(aiCustomCompatibility) == 'gemini';
+  }
+  return false;
+}
+
+Future<String> _requestAiVisionAnalysisGlobal({
+  required String prompt,
+  required Uint8List fileBytes,
+  required String mimeType,
+}) async {
+  final l = AppL10n.of(appLocaleNotifier.value);
+  final provider = _normalizeAiProvider(aiProvider);
+  final apiKey = _activeAiApiKey().trim();
+  if (apiKey.isEmpty) {
+    throw Exception('CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}');
   }
 
-  Future<void> _toggleDone(int id, bool done) async {
-    await HomeworkService.toggleDone(id, done);
-    final newDone = await HomeworkService.getDoneIds();
-    if (mounted) {
-      setState(() {
-        _doneIds = newDone;
-      });
+  final model = aiModel.trim().isNotEmpty
+      ? aiModel.trim()
+      : _defaultModelForProvider(
+          provider,
+          customCompatibility: aiCustomCompatibility,
+        );
+
+  if (provider == 'gemini') {
+    final endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent';
+    final endpointUri = Uri.parse(endpoint);
+    final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
+      ..putIfAbsent('key', () => apiKey);
+    final uri = endpointUri.replace(queryParameters: mergedParams);
+
+    final body = jsonEncode({
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [
+            {'text': prompt},
+            {
+              'inline_data': {
+                'mime_type': mimeType,
+                'data': base64Encode(fileBytes),
+              },
+            },
+          ],
+        },
+      ],
+      'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 2200},
+    });
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
+      body: body,
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('API error: ${response.statusCode}');
     }
+
+    final decoded = jsonDecode(response.body);
+    final candidates = decoded['candidates'] as List?;
+    if (candidates != null && candidates.isNotEmpty) {
+      final parts = candidates.first['content']?['parts'] as List?;
+      if (parts != null && parts.isNotEmpty) {
+        return parts.map((p) => p['text']?.toString() ?? '').join();
+      }
+    }
+    throw Exception(l.aiNoReply);
   }
+
+  throw Exception('Unsupported provider for vision: $provider');
+}
+
+class HomeworkPage extends StatelessWidget {
+  const HomeworkPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -4949,19 +5331,22 @@ class _HomeworkPageState extends State<HomeworkPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
 
     return Scaffold(
+      backgroundColor: cs.surface,
       appBar: RoundedBlurAppBar(
         title: Text(
           l.homeworkTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 24),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              setState(() => _loading = true);
-              _load();
-            },
-            tooltip: l.homeworkReload,
+            icon: const Icon(Icons.add_rounded),
+            onPressed: () => _showAddHomeworkDialog(context),
+            tooltip: l.homeworkAddTitle,
+          ),
+          IconButton(
+            icon: const Icon(Icons.document_scanner_rounded),
+            onPressed: () => _importHomeworkWithAI(context),
+            tooltip: l.homeworkActionImport,
           ),
           const SizedBox(width: 8),
         ],
@@ -4972,207 +5357,322 @@ class _HomeworkPageState extends State<HomeworkPage> {
           Positioned.fill(
             child: _AnimatedBackground(child: const SizedBox.expand()),
           ),
-          Positioned.fill(
-            child: _loading
-                ? Center(child: CircularProgressIndicator(color: cs.primary))
-                : _homeworks.isEmpty
-                    ? _buildEmptyState(cs, l)
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-                        itemCount: _homeworks.length,
-                        itemBuilder: (context, index) {
-                          final hw = _homeworks[index];
-                          final id = hw['id'] as int;
-                          final isDone = _doneIds.contains(id.toString());
-                          return _buildHomeworkCard(context, hw, isDone);
-                        },
-                      ),
+          const Positioned.fill(
+            child: _HomeworkView(),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildEmptyState(ColorScheme cs, AppL10n l) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _withOptionalBackdropBlur(
-            sigma: 12,
-            child: const SizedBox.shrink(),
-            childBuilder: (enabled) => Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer.withValues(alpha: 0.25),
-                shape: BoxShape.circle,
-                border: Border.all(color: cs.primary.withValues(alpha: 0.1)),
+class _HomeworkView extends StatefulWidget {
+  const _HomeworkView();
+
+  @override
+  State<_HomeworkView> createState() => _HomeworkViewState();
+}
+
+class _HomeworkViewState extends State<_HomeworkView> {
+  int _filterIndex = 0; // 0 = Alle, 1 = Offen, 2 = Erledigt
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppL10n.of(appLocaleNotifier.value);
+
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: homeworksNotifier,
+      builder: (context, apiHw, _) {
+        return ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: customHomeworkNotifier,
+          builder: (context, customHw, _) {
+            final allItems = <Map<String, dynamic>>[];
+
+            for (final hw in apiHw) {
+              final id = hw['id']?.toString() ?? '';
+              final subject = hw['_lesson']?['su']?.first?['longname'] ??
+                  hw['_lesson']?['su']?.first?['name'] ??
+                  'Unbekannt';
+              allItems.add({
+                'id': id,
+                'subject': subject,
+                'text': hw['text'] ?? '',
+                'dueDate': hw['dueDate'] ?? hw['date'] ?? 0,
+                'isDone': (hw['isDone'] == true) || (hw['_done'] == true),
+                '_source': 'untis',
+                '_raw': hw,
+              });
+            }
+
+            for (final hw in customHw) {
+              allItems.add({
+                'id': hw['id']?.toString() ?? '',
+                'subject': hw['subject'] ?? 'Unbekannt',
+                'text': hw['text'] ?? hw['description'] ?? '',
+                'dueDate': hw['dueDate'] ?? hw['date'] ?? 0,
+                'isDone': hw['isDone'] == true,
+                '_source': 'custom',
+                '_raw': hw,
+              });
+            }
+
+            allItems.sort((a, b) {
+              final da = int.tryParse(a['dueDate'].toString()) ?? 0;
+              final db = int.tryParse(b['dueDate'].toString()) ?? 0;
+              return da.compareTo(db);
+            });
+
+            final openItems = allItems.where((e) => e['isDone'] != true).toList();
+            final doneItems = allItems.where((e) => e['isDone'] == true).toList();
+
+            final filtered = _filterIndex == 1
+                ? openItems
+                : (_filterIndex == 2 ? doneItems : allItems);
+
+            return RefreshIndicator(
+              onRefresh: () async {
+                final res = await HomeworkService.fetchHomeworkAndNotes(
+                  schoolUrl: schoolUrl,
+                  schoolName: schoolName,
+                  sessionId: sessionID,
+                  personId: personId,
+                  personType: personType,
+                );
+                homeworksNotifier.value = res['homeworks']!;
+                lessonNotesNotifier.value = res['lessonNotes']!;
+              },
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _filterChip(context, cs, 'Alle (${allItems.length})', 0),
+                        const SizedBox(width: 8),
+                        _filterChip(context, cs, 'Offen (${openItems.length})', 1),
+                        const SizedBox(width: 8),
+                        _filterChip(context, cs, 'Erledigt (${doneItems.length})', 2),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (filtered.isEmpty) ...[
+                    const SizedBox(height: 60),
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.assignment_turned_in_outlined,
+                            size: 72,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            l.homeworkNone,
+                            style: GoogleFonts.outfit(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            l.homeworkNoneHint,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    ...filtered.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final hw = entry.value;
+                      return _springEntry(
+                        key: ValueKey('hw_${hw['id']}_$idx'),
+                        duration: Duration(milliseconds: 380 + idx * 60),
+                        offsetY: 24,
+                        startScale: 0.94,
+                        curve: _kSmoothBounce,
+                        child: _buildHomeworkCard(context, cs, l, hw),
+                      );
+                    }),
+                  ],
+                ],
               ),
-              child: Icon(
-                Icons.assignment_turned_in_rounded,
-                size: 64,
-                color: cs.primary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            l.homeworkNone,
-            style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 50),
-            child: Text(
-              l.homeworkNoneHint,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                color: cs.onSurfaceVariant,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _filterChip(BuildContext context, ColorScheme cs, String label, int index) {
+    final selected = _filterIndex == index;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: GoogleFonts.outfit(
+          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          color: selected ? cs.onPrimary : cs.onSurface,
+        ),
       ),
+      selected: selected,
+      selectedColor: cs.primary,
+      backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+      onSelected: (_) => setState(() => _filterIndex = index),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      showCheckmark: false,
     );
   }
 
   Widget _buildHomeworkCard(
     BuildContext context,
+    ColorScheme cs,
+    AppL10n l,
     Map<String, dynamic> hw,
-    bool isDone,
   ) {
-    final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final subject = hw['_lesson']?['su']?.first?['longname'] ??
-        hw['_lesson']?['su']?.first?['name'] ??
-        '???';
-    final text = hw['text'] ?? '';
-    final dueDate = hw['dueDate'].toString();
+    final isDone = hw['isDone'] == true;
+    final isCustom = hw['_source'] == 'custom';
+    final subject = hw['subject']?.toString() ?? 'Unbekannt';
+    final text = hw['text']?.toString() ?? '';
+    final dueDateRaw = hw['dueDate']?.toString() ?? '';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = _autoLessonColor(subject, isDark);
 
     String formatDate(String d) {
       if (d.length != 8) return d;
       return '${d.substring(6, 8)}.${d.substring(4, 6)}.${d.substring(0, 4)}';
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _withOptionalBackdropBlur(
-        sigma: 20,
-        child: const SizedBox.shrink(),
-        childBuilder: (enabled) => Container(
-          decoration: BoxDecoration(
-            color: isDone
-                ? cs.surfaceContainerLowest.withValues(alpha: 0.4)
-                : cs.surfaceContainerLow.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: isDone
-                  ? cs.tertiary.withValues(alpha: 0.15)
-                  : cs.outlineVariant.withValues(alpha: 0.35),
-              width: 1.2,
-            ),
-            boxShadow: [
-              if (!isDone)
-                BoxShadow(
-                  color: cs.shadow.withValues(alpha: 0.04),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      color: isDone
+          ? cs.surfaceContainerLowest.withValues(alpha: 0.3)
+          : accent.withValues(alpha: isDark ? 0.16 : 0.1),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: isDone
+              ? cs.outlineVariant.withValues(alpha: 0.2)
+              : accent.withValues(alpha: 0.45),
+          width: 1.5,
+        ),
+      ),
+      child: InkWell(
+        onTap: () async {
+          final isUntis = hw['_source'] == 'untis';
+          final hwId = hw['id'];
+          if (isCustom) {
+            final list = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
+            final idx = list.indexWhere((e) => e['id'] == hwId);
+            if (idx != -1) {
+              list[idx]['isDone'] = !isDone;
+              await saveCustomHomework(list);
+            }
+          } else if (isUntis) {
+            final numericId = int.tryParse(hwId.toString());
+            if (numericId != null) {
+              await HomeworkService.toggleDone(numericId, !isDone);
+              final currentApi = List<Map<String, dynamic>>.from(homeworksNotifier.value);
+              for (var item in currentApi) {
+                if (item['id'] == numericId) {
+                  item['_done'] = !isDone;
+                }
+              }
+              homeworksNotifier.value = currentApi;
+            }
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                width: 26,
+                height: 26,
+                margin: const EdgeInsets.only(top: 2),
+                decoration: BoxDecoration(
+                  color: isDone ? cs.tertiary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDone ? cs.tertiary : cs.outlineVariant,
+                    width: 2,
+                  ),
                 ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: InkWell(
-              onTap: () => _toggleDone(hw['id'], !isDone),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
+                child: isDone
+                    ? Icon(Icons.check_rounded, size: 18, color: cs.onTertiary)
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      margin: const EdgeInsets.only(top: 2),
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: isDone ? cs.tertiary : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isDone ? cs.tertiary : cs.outlineVariant,
-                          width: 2,
-                        ),
-                      ),
-                      child: isDone
-                          ? Icon(Icons.check_rounded, size: 18, color: cs.onTertiary)
-                          : null,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            subject,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 19,
-                              color: isDone ? cs.onSurface.withValues(alpha: 0.4) : cs.onSurface,
-                              decoration: isDone ? TextDecoration.lineThrough : null,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            text,
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              height: 1.5,
-                              color: isDone
-                                  ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                                  : cs.onSurfaceVariant,
-                              decoration: isDone ? TextDecoration.lineThrough : null,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    Row(
+                      children: [
+                        _chip(subject, accent.withValues(alpha: 0.2), accent),
+                        if (isCustom) ...[
+                          const SizedBox(width: 6),
+                          _chip(l.examsOwn, cs.tertiaryContainer, cs.tertiary),
+                        ],
+                        const Spacer(),
+                        if (dueDateRaw.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: isDone
-                                  ? cs.tertiary.withValues(alpha: 0.08)
+                                  ? cs.surfaceContainerHighest
                                   : cs.primaryContainer.withValues(alpha: 0.4),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.event_rounded,
-                                  size: 14,
-                                  color: isDone ? cs.tertiary.withValues(alpha: 0.6) : cs.primary,
-                                ),
-                                const SizedBox(width: 8),
+                                Icon(Icons.event_rounded, size: 12, color: cs.primary),
+                                const SizedBox(width: 4),
                                 Text(
-                                  '${l.homeworkDue}: ${formatDate(dueDate)}',
+                                  formatDate(dueDateRaw),
                                   style: GoogleFonts.outfit(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: isDone ? cs.tertiary.withValues(alpha: 0.6) : cs.primary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: cs.primary,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      text,
+                      style: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                        color: isDone ? cs.onSurface.withValues(alpha: 0.45) : cs.onSurface,
+                        decoration: isDone ? TextDecoration.lineThrough : null,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -5180,7 +5680,235 @@ class _HomeworkPageState extends State<HomeworkPage> {
   }
 }
 
-// --- PRÜFUNGEN ---
+Future<void> _showAddExamDialog(
+  BuildContext context, {
+  Map<String, dynamic>? existing,
+  int? editIndex,
+  String? initialSubject,
+}) async {
+  final subjectCtrl = TextEditingController(
+    text: initialSubject ?? existing?['subject']?.toString() ?? '',
+  );
+  final typeCtrl = TextEditingController(
+    text: existing?['examType']?.toString() ?? '',
+  );
+  final descCtrl = TextEditingController(
+    text: existing?['description']?.toString() ?? '',
+  );
+  DateTime selectedDate = () {
+    final s = existing?['date']?.toString() ?? '';
+    if (s.length == 8) {
+      try {
+        return DateTime.parse(
+          '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
+        );
+      } catch (_) {}
+    }
+    return DateTime.now();
+  }();
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    sheetAnimationStyle: _kBottomSheetAnimationStyle,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDlg) {
+        final cs = Theme.of(ctx).colorScheme;
+        final l = AppL10n.of(appLocaleNotifier.value);
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: _glassContainer(
+            context: ctx,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.outlineVariant,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      existing == null ? l.examsAddTitle : l.examsEditTitle,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: subjectCtrl,
+                      decoration: InputDecoration(
+                        labelText: l.examsSubjectLabel,
+                        prefixIcon: const Icon(Icons.book_outlined),
+                        filled: true,
+                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: typeCtrl,
+                      decoration: InputDecoration(
+                        labelText: l.examsTypeLabel,
+                        prefixIcon: const Icon(Icons.label_outline),
+                        filled: true,
+                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setDlg(() => selectedDate = picked);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today_outlined, size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              DateFormat('dd. MMM yyyy', _icuLocale(appLocaleNotifier.value)).format(selectedDate),
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: l.examsNotesLabel,
+                        prefixIcon: const Padding(
+                          padding: EdgeInsets.only(bottom: 42),
+                          child: Icon(Icons.notes_rounded),
+                        ),
+                        filled: true,
+                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (existing != null && editIndex != null)
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              final list = List<Map<String, dynamic>>.from(customExamsNotifier.value);
+                              if (editIndex >= 0 && editIndex < list.length) {
+                                list.removeAt(editIndex);
+                                await saveCustomExams(list);
+                              }
+                            },
+                            child: Text(
+                              l.examsDelete,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.08,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(
+                            l.examsCancel,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.08,
+                            ),
+                          ),
+                        ),
+                        FilledButton(
+                          onPressed: () async {
+                            final subj = subjectCtrl.text.trim();
+                            if (subj.isEmpty) return;
+                            final dateInt = int.parse(
+                              DateFormat('yyyyMMdd').format(selectedDate),
+                            );
+                            final newExam = <String, dynamic>{
+                              'subject': subj,
+                              'examType': typeCtrl.text.trim(),
+                              'date': dateInt,
+                              'description': descCtrl.text.trim(),
+                              '_custom': true,
+                            };
+                            final list = List<Map<String, dynamic>>.from(customExamsNotifier.value);
+                            if (editIndex != null && editIndex >= 0 && editIndex < list.length) {
+                              list[editIndex] = newExam;
+                            } else {
+                              list.add(newExam);
+                            }
+                            await saveCustomExams(list);
+                            Navigator.pop(ctx);
+                          },
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            l.examsSave,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+// --- PRÜFUNGEN PAGE ---
 
 class ExamsPage extends StatefulWidget {
   const ExamsPage({super.key});
@@ -5233,7 +5961,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     );
 
     if (selected == 'custom') {
-      _showAddExamDialog();
+      _showAddExamDialog(context);
     } else if (selected == 'import') {
       _importExamsWithAI();
     } else if (selected == 'export') {
@@ -5241,20 +5969,57 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _openHomeworkActionsDropdown() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final selected = await _showUnifiedOptionSheet<String>(
+      context: context,
+      title: l.homeworkAddTitle,
+      fitContentHeight: true,
+      bottomMargin: 0,
+      options: [
+        _SheetOption(
+          value: 'custom',
+          title: l.homeworkActionCustom,
+          icon: Icons.edit_note_rounded,
+        ),
+        _SheetOption(
+          value: 'import',
+          title: l.homeworkActionImport,
+          icon: Icons.upload_file_rounded,
+        ),
+      ],
+    );
+
+    if (selected == 'custom') {
+      _showAddHomeworkDialog(context);
+    } else if (selected == 'import') {
+      _importHomeworkWithAI(context);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
+    customExamsNotifier.addListener(_onCustomExamsNotifierChanged);
     _load();
   }
 
   @override
   void dispose() {
+    customExamsNotifier.removeListener(_onCustomExamsNotifierChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onCustomExamsNotifierChanged() {
+    if (!mounted) return;
+    setState(() {
+      _customExams = List.from(customExamsNotifier.value);
+    });
   }
 
   Future<void> _load() async {
@@ -5265,7 +6030,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   Future<void> _loadCustomExams() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList('customExams') ?? [];
-    _customExams = raw
+    final list = raw
         .map((e) {
           try {
             return Map<String, dynamic>.from(jsonDecode(e) as Map);
@@ -5275,14 +6040,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
         })
         .where((e) => e.isNotEmpty)
         .toList();
-  }
-
-  Future<void> _saveCustomExams() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      'customExams',
-      _customExams.map((e) => jsonEncode(e)).toList(),
-    );
+    _customExams = list;
+    customExamsNotifier.value = list;
   }
 
   Future<void> _fetchApiExams() async {
@@ -5663,261 +6422,6 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _showAddExamDialog([
-    Map<String, dynamic>? existing,
-    int? editIndex,
-  ]) async {
-    final subjectCtrl = TextEditingController(
-      text: existing?['subject']?.toString() ?? '',
-    );
-    final typeCtrl = TextEditingController(
-      text: existing?['examType']?.toString() ?? '',
-    );
-    final descCtrl = TextEditingController(
-      text: existing?['description']?.toString() ?? '',
-    );
-    DateTime selectedDate = () {
-      final s = existing?['date']?.toString() ?? '';
-      if (s.length == 8) {
-        try {
-          return DateTime.parse(
-            '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
-          );
-        } catch (_) {}
-      }
-      return DateTime.now();
-    }();
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      sheetAnimationStyle: _kBottomSheetAnimationStyle,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) {
-          final cs = Theme.of(ctx).colorScheme;
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            ),
-            child: _glassContainer(
-              context: ctx,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: cs.outlineVariant,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        existing == null
-                            ? AppL10n.of(appLocaleNotifier.value).examsAddTitle
-                            : AppL10n.of(
-                                appLocaleNotifier.value,
-                              ).examsEditTitle,
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: subjectCtrl,
-                        decoration: InputDecoration(
-                          labelText: AppL10n.of(
-                            appLocaleNotifier.value,
-                          ).examsSubjectLabel,
-                          prefixIcon: const Icon(Icons.book_outlined),
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.45,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: typeCtrl,
-                        decoration: InputDecoration(
-                          labelText: AppL10n.of(
-                            appLocaleNotifier.value,
-                          ).examsTypeLabel,
-                          prefixIcon: const Icon(Icons.label_outline),
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.45,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: ctx,
-                            initialDate: selectedDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2030),
-                          );
-                          if (picked != null) {
-                            setDlg(() => selectedDate = picked);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(ctx)
-                                .colorScheme
-                                .surfaceContainerHighest
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.calendar_today_outlined,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                DateFormat(
-                                  'dd. MMM yyyy',
-                                  _icuLocale(appLocaleNotifier.value),
-                                ).format(selectedDate),
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: descCtrl,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          labelText: AppL10n.of(
-                            appLocaleNotifier.value,
-                          ).examsNotesLabel,
-                          prefixIcon: const Padding(
-                            padding: EdgeInsets.only(bottom: 42),
-                            child: Icon(Icons.notes_rounded),
-                          ),
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.45,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (existing != null && editIndex != null)
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                setState(
-                                  () => _customExams.removeAt(editIndex),
-                                );
-                                _saveCustomExams();
-                              },
-                              child: Text(
-                                AppL10n.of(appLocaleNotifier.value).examsDelete,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.08,
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                              ),
-                            ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: Text(
-                              AppL10n.of(appLocaleNotifier.value).examsCancel,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.08,
-                              ),
-                            ),
-                          ),
-                          FilledButton(
-                            onPressed: () {
-                              final subj = subjectCtrl.text.trim();
-                              if (subj.isEmpty) return;
-                              final dateInt = int.parse(
-                                DateFormat('yyyyMMdd').format(selectedDate),
-                              );
-                              final newExam = <String, dynamic>{
-                                'subject': subj,
-                                'examType': typeCtrl.text.trim(),
-                                'date': dateInt,
-                                'description': descCtrl.text.trim(),
-                                '_custom': true,
-                              };
-                              setState(() {
-                                if (editIndex != null) {
-                                  _customExams[editIndex] = newExam;
-                                } else {
-                                  _customExams.add(newExam);
-                                }
-                              });
-                              _saveCustomExams();
-                              Navigator.pop(ctx);
-                            },
-                            style: FilledButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: Text(
-                              AppL10n.of(appLocaleNotifier.value).examsSave,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Future<void> _importExamsWithAI() async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final providerUsesGeminiProtocol = _providerUsesGeminiProtocol();
@@ -5932,7 +6436,6 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       return;
     }
 
-    // Choose source
     final source = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.examsImportTitle,
@@ -6034,19 +6537,17 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
 
-        setState(() {
-          for (var e in exams) {
-            final newExam = <String, dynamic>{
-              'subject': e['subject']?.toString() ?? 'Unbekannt',
-              'examType': e['examType']?.toString() ?? 'Klausur',
-              'date': (e['date']?.toString() ?? '').replaceAll('-', ''),
-              'description': e['description']?.toString() ?? '',
-              '_custom': true,
-            };
-            _customExams.add(newExam);
-          }
-        });
-        _saveCustomExams();
+        final current = List<Map<String, dynamic>>.from(customExamsNotifier.value);
+        for (var e in exams) {
+          current.add({
+            'subject': e['subject']?.toString() ?? 'Unbekannt',
+            'examType': e['examType']?.toString() ?? 'Klausur',
+            'date': (e['date']?.toString() ?? '').replaceAll('-', ''),
+            'description': e['description']?.toString() ?? '',
+            '_custom': true,
+          });
+        }
+        await saveCustomExams(current);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l.examsImportSuccess)));
@@ -6124,7 +6625,9 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
       backgroundColor: cs.surface,
       appBar: RoundedBlurAppBar(
         title: Text(
-          _tabController.index == 0 ? l.examsTitle : l.gradesTitle,
+          _tabController.index == 0
+              ? l.examsTitle
+              : (_tabController.index == 1 ? l.homeworkTitle : l.gradesTitle),
           style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
         ),
         centerTitle: true,
@@ -6132,11 +6635,18 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              tooltip: _tabController.index == 0 ? l.examsAddTitle : l.gradesAddTitle,
+              tooltip: _tabController.index == 0
+                  ? l.examsAddTitle
+                  : (_tabController.index == 1 ? l.homeworkAddTitle : l.gradesAddTitle),
               icon: const Icon(Icons.add_rounded),
-              onPressed: _tabController.index == 0 ? _openExamActionsDropdown : () {
-                // To be implemented in GradesTrackerPage or as a callback
-                _gradesTrackerKey.currentState?.showAddGradeDialog();
+              onPressed: () {
+                if (_tabController.index == 0) {
+                  _openExamActionsDropdown();
+                } else if (_tabController.index == 1) {
+                  _openHomeworkActionsDropdown();
+                } else {
+                  _gradesTrackerKey.currentState?.showAddGradeDialog();
+                }
               },
             ),
           ),
@@ -6151,6 +6661,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           onTap: (index) => setState(() {}),
           tabs: [
             Tab(text: l.navExams),
+            Tab(text: l.navHomework),
             Tab(text: l.navGrades),
           ],
         ),
@@ -6167,6 +6678,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                   parent: BouncingScrollPhysics(),
                 ),
                 children: [
+                  _buildExamStatsHeader(cs, l, upcoming),
                   if (_loading) ...[
                     const SizedBox(height: 140),
                     const Center(child: CircularProgressIndicator()),
@@ -6233,8 +6745,76 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
               ),
             ),
           ),
+          const _HomeworkView(),
           GradesTrackerPage(key: _gradesTrackerKey),
         ],
+      ),
+    );
+  }
+
+  Widget _buildExamStatsHeader(ColorScheme cs, AppL10n l, List<Map<String, dynamic>> upcoming) {
+    final count = upcoming.length;
+    final next = upcoming.isNotEmpty ? upcoming.first : null;
+    final nextSubject = next != null ? _examSubject(next) : null;
+    final nextDateStr = next != null ? _formatExamDate(next['date'] ?? next['examDate'] ?? '') : null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _withOptionalBackdropBlur(
+        sigma: 20,
+        child: const SizedBox.shrink(),
+        childBuilder: (enabled) => Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: cs.primaryContainer.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: cs.primary.withValues(alpha: 0.2),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.assignment_turned_in_rounded, color: cs.primary, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$count ${count == 1 ? "Prüfung" : "Prüfungen"} anstehend',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    if (nextSubject != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Nächste: $nextSubject ($nextDateStr)',
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -6272,6 +6852,44 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
       startScale: 0.93,
       curve: _kSmoothBounce,
       child: _examCard(context, cs, exam, showCountdown),
+    );
+  }
+
+  Widget _countdownChip(ColorScheme cs, int? daysUntil) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    if (daysUntil == null) return const SizedBox.shrink();
+    String text;
+    Color bg;
+    Color fg = Colors.white;
+
+    if (daysUntil == 0) {
+      text = l.examsToday;
+      bg = cs.error;
+    } else if (daysUntil == 1) {
+      text = l.examsTomorrow;
+      bg = cs.tertiary;
+    } else if (daysUntil > 1) {
+      text = l.examsInDays(daysUntil);
+      bg = cs.primary;
+    } else {
+      text = l.examsPast;
+      bg = cs.onSurfaceVariant.withValues(alpha: 0.5);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.outfit(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: fg,
+        ),
+      ),
     );
   }
 
@@ -6348,8 +6966,9 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
             ? () {
                 HapticFeedback.selectionClick();
                 _showAddExamDialog(
-                  Map<String, dynamic>.from(exam)..remove('_source'),
-                  customIndex,
+                  context,
+                  existing: Map<String, dynamic>.from(exam)..remove('_source'),
+                  editIndex: customIndex,
                 );
               }
             : null,
@@ -6362,14 +6981,20 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
+                    Row(
                       children: [
-                        if (type.isNotEmpty)
-                          _chip(type, accent.withValues(alpha: 0.2), accent),
-                        if (isCustom)
-                          _chip(l.examsOwn, cs.tertiaryContainer, cs.tertiary),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            if (type.isNotEmpty)
+                              _chip(type, accent.withValues(alpha: 0.2), accent),
+                            if (isCustom)
+                              _chip(l.examsOwn, cs.tertiaryContainer, cs.tertiary),
+                          ],
+                        ),
+                        const Spacer(),
+                        if (showCountdown) _countdownChip(cs, daysUntil),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -6441,21 +7066,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
     );
   }
 
-  Widget _chip(String label, Color bg, Color fg) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: bg,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      label,
-      style: GoogleFonts.outfit(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        color: fg,
-      ),
-    ),
-  );
+
 
   Widget _infoRow(IconData icon, String text) {
     final onVar = Theme.of(context).colorScheme.onSurfaceVariant;
@@ -7553,6 +8164,220 @@ class _AnimatedLessonCard extends StatelessWidget {
   }
 }
 
+Color _colorForGrade(double value) {
+  if (value <= 1.5) return const Color(0xFF4CAF50);
+  if (value <= 2.5) return const Color(0xFF8BC34A);
+  if (value <= 3.5) return const Color(0xFFFFC107);
+  if (value <= 4.5) return const Color(0xFFFF9800);
+  return const Color(0xFFF44336);
+}
+
+String _formatExamDateStr(String s) {
+  if (s.length == 8) {
+    try {
+      final d = DateTime.parse('${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}');
+      return DateFormat('dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(d);
+    } catch (_) {}
+  }
+  return s;
+}
+
+void _showAddGradeDialogGlobal(BuildContext context, [String? initialSubject]) {
+  final state = context.findAncestorStateOfType<_GradesTrackerPageState>();
+  if (state != null) {
+    state.showAddGradeDialog(initialSubject);
+    return;
+  }
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    sheetAnimationStyle: _kBottomSheetAnimationStyle,
+    builder: (ctx) {
+      final l = AppL10n.of(appLocaleNotifier.value);
+      final cs = Theme.of(ctx).colorScheme;
+      String selectedSubject = (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
+          (knownSubjectsNotifier.value.isNotEmpty ? knownSubjectsNotifier.value.first : '');
+      final valueController = TextEditingController();
+      final weightController = TextEditingController(text: '1.0');
+      final typeController = TextEditingController();
+      final subjectController = TextEditingController(text: selectedSubject);
+      DateTime selectedDate = DateTime.now();
+
+      return StatefulBuilder(
+        builder: (ctx, setDlg) {
+          final double? previewValue = double.tryParse(valueController.text.replaceAll(',', '.'));
+          final Color previewColor = previewValue != null ? _colorForGrade(previewValue) : cs.primary;
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: _glassContainer(
+              context: ctx,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: cs.onSurface.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l.gradesAddTitle,
+                            style: GoogleFonts.outfit(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ),
+                        if (previewValue != null)
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: previewColor.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: previewColor.withValues(alpha: 0.4), width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                previewValue.toString().replaceAll('.0', ''),
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 22,
+                                  color: previewColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: subjectController,
+                      decoration: InputDecoration(
+                        labelText: l.gradesSubjectLabel,
+                        prefixIcon: const Icon(Icons.book_rounded),
+                        filled: true,
+                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextField(
+                            controller: valueController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            onChanged: (_) => setDlg(() {}),
+                            style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
+                            decoration: InputDecoration(
+                              labelText: l.gradesGradeLabel,
+                              prefixIcon: const Icon(Icons.grade_rounded),
+                              filled: true,
+                              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: weightController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
+                            decoration: InputDecoration(
+                              labelText: l.gradesWeightLabel,
+                              prefixIcon: const Icon(Icons.scale_rounded),
+                              filled: true,
+                              fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: typeController,
+                      decoration: InputDecoration(
+                        labelText: l.gradesTypeLabel,
+                        prefixIcon: const Icon(Icons.label_rounded),
+                        filled: true,
+                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      onPressed: () async {
+                        final val = double.tryParse(valueController.text.replaceAll(',', '.')) ?? 0;
+                        final weight = double.tryParse(weightController.text.replaceAll(',', '.')) ?? 1.0;
+                        final subj = subjectController.text.trim();
+                        if (val <= 0 || subj.isEmpty) return;
+
+                        final newGrade = {
+                          'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                          'subject': subj,
+                          'value': val,
+                          'weight': weight,
+                          'type': typeController.text,
+                          'date': selectedDate.toIso8601String(),
+                        };
+
+                        final current = List<Map<String, dynamic>>.from(customGradesNotifier.value);
+                        current.add(newGrade);
+                        await saveCustomGrades(current);
+                        Navigator.pop(ctx);
+                      },
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: Text(
+                        l.examsSave,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 class _LessonDetailSheet extends StatelessWidget {
   final String subject, subjectShort, room, teacher, time, info, lessonNr;
   final String eventName, classNames, activityType;
@@ -7856,10 +8681,449 @@ class _LessonDetailSheet extends StatelessWidget {
                 iconColor: cs.tertiary,
               ),
 
+            _buildSubjectOverviewSection(context, cs, l),
+
             const SizedBox(height: 48),
           ],
         ),
       ),
+    );
+  }
+
+  bool _isSameSubject(String? candidate, String subject, String subjectShort) {
+    if (candidate == null || candidate.trim().isEmpty) return false;
+    final c = candidate.trim().toLowerCase();
+    final s = subject.trim().toLowerCase();
+    final ss = subjectShort.trim().toLowerCase();
+    if (s.isNotEmpty && (c == s || c.contains(s) || s.contains(c))) return true;
+    if (ss.isNotEmpty && (c == ss || c.contains(ss) || ss.contains(c))) return true;
+    return false;
+  }
+
+  Widget _buildSubjectOverviewSection(
+    BuildContext context,
+    ColorScheme cs,
+    AppL10n l,
+  ) {
+    final targetSubject = subject.isNotEmpty ? subject : subjectShort;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Divider(color: cs.outlineVariant.withValues(alpha: 0.5), height: 1),
+        const SizedBox(height: 20),
+
+        Row(
+          children: [
+            Icon(Icons.dashboard_rounded, size: 20, color: cs.primary),
+            const SizedBox(width: 8),
+            Text(
+              l.subjectOverviewTitle,
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: cs.primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // --- 1. NOTEN / GRADES ---
+        ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: customGradesNotifier,
+          builder: (ctx, grades, _) {
+            final subjGrades = grades.where(
+              (g) => _isSameSubject(g['subject']?.toString(), subject, subjectShort),
+            ).toList();
+
+            double? avg;
+            if (subjGrades.isNotEmpty) {
+              double totalVal = 0;
+              double totalWeight = 0;
+              for (var g in subjGrades) {
+                final v = (g['value'] as num?)?.toDouble() ?? 0;
+                final w = (g['weight'] as num?)?.toDouble() ?? 1.0;
+                totalVal += v * w;
+                totalWeight += w;
+              }
+              if (totalWeight > 0) avg = totalVal / totalWeight;
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.grade_rounded, size: 18, color: cs.secondary),
+                      const SizedBox(width: 8),
+                      Text(
+                        l.navGrades,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (avg != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: cs.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Ø ${avg.toStringAsFixed(2)}',
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          _showAddGradeDialogGlobal(context, targetSubject);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_rounded, size: 14, color: cs.onPrimaryContainer),
+                              const SizedBox(width: 4),
+                              Text(
+                                l.addGradeForSubject,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: cs.onPrimaryContainer,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (subjGrades.isEmpty)
+                    Text(
+                      l.noGradesForSubject,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: subjGrades.map((g) {
+                        final val = (g['value'] as num?)?.toDouble() ?? 0;
+                        final type = g['type']?.toString() ?? '';
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _colorForGrade(val).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _colorForGrade(val).withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            '${val.toString().replaceAll('.0', '')}${type.isNotEmpty ? ' ($type)' : ''}',
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: _colorForGrade(val),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+
+        // --- 2. KLAUSUREN / EXAMS ---
+        ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: customExamsNotifier,
+          builder: (ctx, customExams, _) {
+            final subjExams = customExams.where(
+              (e) => _isSameSubject(e['subject']?.toString(), subject, subjectShort),
+            ).toList();
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.assignment_outlined, size: 18, color: cs.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        l.navExams,
+                        style: GoogleFonts.outfit(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Spacer(),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          _showAddExamDialog(context, initialSubject: targetSubject);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_rounded, size: 14, color: cs.onPrimaryContainer),
+                              const SizedBox(width: 4),
+                              Text(
+                                l.addExamForSubject,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: cs.onPrimaryContainer,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (subjExams.isEmpty)
+                    Text(
+                      l.noExamsForSubject,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    )
+                  else
+                    Column(
+                      children: subjExams.map((e) {
+                        final type = e['examType']?.toString() ?? e['type']?.toString() ?? 'Prüfung';
+                        final dateStr = e['date']?.toString() ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            children: [
+                              Icon(Icons.calendar_today_rounded, size: 14, color: cs.primary),
+                              const SizedBox(width: 6),
+                              Text(
+                                '$type: ${_formatExamDateStr(dateStr)}',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+
+        // --- 3. HAUSAUFGABEN / HOMEWORK ---
+        ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: homeworksNotifier,
+          builder: (ctx, apiHw, _) {
+            return ValueListenableBuilder<List<Map<String, dynamic>>>(
+              valueListenable: customHomeworkNotifier,
+              builder: (ctx, customHw, _) {
+                final allHw = <Map<String, dynamic>>[];
+
+                for (var h in apiHw) {
+                  final subj = h['_lesson']?['su']?.first?['longname'] ??
+                      h['_lesson']?['su']?.first?['name'] ??
+                      '';
+                  if (_isSameSubject(subj, subject, subjectShort)) {
+                    allHw.add({
+                      'id': h['id'],
+                      'text': h['text'] ?? '',
+                      'dueDate': h['dueDate'] ?? h['date'] ?? 0,
+                      'isDone': h['isDone'] == true || h['_done'] == true,
+                      '_source': 'untis',
+                    });
+                  }
+                }
+
+                for (var h in customHw) {
+                  if (_isSameSubject(h['subject']?.toString(), subject, subjectShort)) {
+                    allHw.add({
+                      'id': h['id'],
+                      'text': h['text'] ?? h['description'] ?? '',
+                      'dueDate': h['dueDate'] ?? h['date'] ?? 0,
+                      'isDone': h['isDone'] == true,
+                      '_source': 'custom',
+                    });
+                  }
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.edit_note_rounded, size: 18, color: cs.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            l.homeworkTitle,
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const Spacer(),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              _showAddHomeworkDialog(context, initialSubject: targetSubject);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: cs.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.add_rounded, size: 14, color: cs.onPrimaryContainer),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    l.addHomeworkForSubject,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: cs.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      if (allHw.isEmpty)
+                        Text(
+                          l.noHomeworkForSubject,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        )
+                      else
+                        Column(
+                          children: allHw.map((hwItem) {
+                            final isDone = hwItem['isDone'] == true;
+                            final text = hwItem['text']?.toString() ?? '';
+                            final isCustom = hwItem['_source'] == 'custom';
+                            final hwId = hwItem['id'];
+                            return InkWell(
+                              onTap: () async {
+                                if (isCustom) {
+                                  final list = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
+                                  final idx = list.indexWhere((e) => e['id'] == hwId);
+                                  if (idx != -1) {
+                                    list[idx]['isDone'] = !isDone;
+                                    await saveCustomHomework(list);
+                                  }
+                                } else {
+                                  final numericId = int.tryParse(hwId.toString());
+                                  if (numericId != null) {
+                                    await HomeworkService.toggleDone(numericId, !isDone);
+                                    final currentApi = List<Map<String, dynamic>>.from(homeworksNotifier.value);
+                                    for (var item in currentApi) {
+                                      if (item['id'] == numericId) {
+                                        item['_done'] = !isDone;
+                                      }
+                                    }
+                                    homeworksNotifier.value = currentApi;
+                                  }
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isDone ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                                      size: 18,
+                                      color: isDone ? cs.tertiary : cs.outlineVariant,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        text,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDone ? cs.onSurface.withValues(alpha: 0.45) : cs.onSurface,
+                                          decoration: isDone ? TextDecoration.lineThrough : null,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 }

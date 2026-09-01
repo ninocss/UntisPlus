@@ -125,6 +125,19 @@ Future<void> _settingsSetLessonGlowIntensity(double value) async {
   await prefs.setDouble('lessonGlowIntensity', value);
 }
 
+Future<void> _settingsSetLessonGlowNextEnabled(bool value) async {
+  lessonGlowNextEnabledNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonGlowNextEnabled', value);
+}
+
+Future<void> _settingsSetLessonGlowNextMinutes(int minutes) async {
+  final normalized = minutes.clamp(5, 120);
+  lessonGlowNextMinutesNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('lessonGlowNextMinutes', normalized);
+}
+
 Future<void> _settingsSetLessonBlurEnabled(bool value) async {
   lessonBlurEnabledNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -420,6 +433,10 @@ Future<void> _settingsSyncFromPrefs() async {
       (prefs.getInt('lessonGlowMode') ?? 0).clamp(0, 1);
   lessonGlowIntensityNotifier.value =
       prefs.getDouble('lessonGlowIntensity') ?? 1.0;
+  lessonGlowNextEnabledNotifier.value =
+      prefs.getBool('lessonGlowNextEnabled') ?? false;
+  lessonGlowNextMinutesNotifier.value =
+      (prefs.getInt('lessonGlowNextMinutes') ?? 20).clamp(5, 120);
   lessonBlurEnabledNotifier.value =
       prefs.getBool('lessonBlurEnabled') ?? false;
   lessonBlurAmountNotifier.value =

@@ -844,6 +844,80 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   valueListenable: lessonGlowEnabledNotifier,
                   builder: (context, glowEnabled, _) {
                     if (!glowEnabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<bool>(
+                      valueListenable: lessonGlowNextEnabledNotifier,
+                      builder: (context, glowNext, _) {
+                        return SettingsSwitchTile(
+                          icon: Icons.schedule_rounded,
+                          iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                          iconColor: cs.onTertiaryContainer,
+                          title: l.settingsLessonGlowNext,
+                          subtitle: l.settingsLessonGlowNextDesc,
+                          value: glowNext,
+                          onChanged: _settingsSetLessonGlowNextEnabled,
+                        );
+                      },
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: lessonGlowEnabledNotifier,
+                  builder: (context, glowEnabled, _) {
+                    if (!glowEnabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<bool>(
+                      valueListenable: lessonGlowNextEnabledNotifier,
+                      builder: (context, glowNext, _) {
+                        if (!glowNext) return const SizedBox.shrink();
+                        return ValueListenableBuilder<int>(
+                          valueListenable: lessonGlowNextMinutesNotifier,
+                          builder: (context, minutes, _) {
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        l.settingsLessonGlowNextLeadTime,
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                          color: cs.onSurface,
+                                        ),
+                                      ),
+                                      Text(
+                                        '$minutes min',
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                          color: cs.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Slider(
+                                    value: minutes.toDouble().clamp(5.0, 60.0),
+                                    min: 5.0,
+                                    max: 60.0,
+                                    divisions: 11,
+                                    label: '$minutes min',
+                                    onChanged: (val) => _settingsSetLessonGlowNextMinutes(val.round()),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: lessonGlowEnabledNotifier,
+                  builder: (context, glowEnabled, _) {
+                    if (!glowEnabled) return const SizedBox.shrink();
                     return ValueListenableBuilder<double>(
                       valueListenable: lessonGlowIntensityNotifier,
                       builder: (context, intensity, _) {
