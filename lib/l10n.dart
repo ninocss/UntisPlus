@@ -201,6 +201,8 @@ class AppL10n {
 
   String get homeworkAddTitle => _t('homeworkAddTitle');
   String get homeworkEditTitle => _t('homeworkEditTitle');
+  String get homeworkAddDesc => _t('homeworkAddDesc');
+  String get examsAddDesc => _t('examsAddDesc');
   String get homeworkSubjectLabel => _t('homeworkSubjectLabel');
   String get homeworkTaskLabel => _t('homeworkTaskLabel');
   String get homeworkDueDateLabel => _t('homeworkDueDateLabel');
@@ -216,7 +218,13 @@ class AppL10n {
   String get examsUpcomingNext => _t('examsUpcomingNext');
   String get gradesTypeSingle => _t('gradesTypeSingle');
   String get gradesDateLabel => _t('gradesDateLabel');
-  String gradesCountLabel(int count) => _t('gradesCountLabel').replaceAll('{count}', '$count');
+  String gradesCountLabel(int count) {
+    final raw = _t('gradesCountLabel');
+    if (raw == 'gradesCountLabel') {
+      return count == 1 ? '1 Note' : '$count Noten';
+    }
+    return raw.replaceAll('{count}', '$count');
+  }
   String get homeworkImportTitle => _t('homeworkImportTitle');
   String get homeworkImportSuccess => _t('homeworkImportSuccess');
   String get homeworkImportError => _t('homeworkImportError');
@@ -925,6 +933,14 @@ class AppL10n {
       'examsActionImport': 'Importieren (Scan/PDF)',
       'examsActionExport': 'Exportieren (JSON)',
       'examsActionScan': 'Scannen',
+      'homeworkFilterAll': 'Alle',
+      'homeworkFilterOpen': 'Offen',
+      'homeworkFilterDone': 'Erledigt',
+      'examsUpcomingCount': '{count} anstehende Prüfung(en)',
+      'examsUpcomingNext': 'Nächste: {subject} am {date}',
+      'gradesTypeSingle': 'Einzelnote',
+      'gradesDateLabel': 'Datum',
+      'gradesCountLabel': '{count} Note(n)',
       'homeworkTitle': 'Hausaufgaben',
       'homeworkReload': 'Neu laden',
       'homeworkNone': 'Keine Hausaufgaben gefunden',
@@ -1488,18 +1504,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesTotal': 'Gesamt',
       'gradesBestSubject': 'Bestes Fach',
       'gradesAddDesc': 'Leistungsübersicht vervollständigen',
+      'homeworkAddDesc': 'Aufgaben und Abgaben verwalten',
+      'examsAddDesc': 'Anstehende Prüfungen eintragen',
       'gradesCountPlural': 'Noten',
       'gradesWeightLabelShort': 'Gewicht',
       'gradesNone': 'Keine Noten',
       'gradesNoneHint': 'Tippe auf +, um deine erste Note einzutragen.',
-      'homeworkFilterAll': 'Alle',
-      'homeworkFilterOpen': 'Offen',
-      'homeworkFilterDone': 'Erledigt',
-      'examsUpcomingCount': '{count} Prüfung{(count == 1 ? \"\" : \"en\")} anstehend',
-      'examsUpcomingNext': r'$subject ($date)',
-      'gradesTypeSingle': 'Einzelnote',
-      'gradesDateLabel': 'Datum',
-      'gradesCountLabel': '{count} Note{(count == 1 ? \"\" : \"n\")}',
     },
 
     // ── ENGLISH ───────────────────────────────────────────────────────────────
@@ -1691,11 +1701,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'homeworkFilterAll': 'All',
       'homeworkFilterOpen': 'Open',
       'homeworkFilterDone': 'Done',
-      'examsUpcomingCount': '{count} upcoming{(count == 1 ? \"\" : \" exams\")}',
-      'examsUpcomingNext': r'Next: $subject ($date)',
+      'examsUpcomingCount': '{count} upcoming exam(s)',
+      'examsUpcomingNext': 'Next: {subject} ({date})',
       'gradesTypeSingle': 'Single grade',
       'gradesDateLabel': 'Date',
-      'gradesCountLabel': '{count} grade{(count == 1 ? \"\" : \"s\")}',
+      'gradesCountLabel': '{count} grade(s)',
 
       'homeworkTitle': 'Homework',
       'homeworkReload': 'Reload',
@@ -2242,6 +2252,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesTotal': 'Total',
       'gradesBestSubject': 'Best Subject',
       'gradesAddDesc': 'Complete your grade overview',
+      'homeworkAddDesc': 'Manage tasks and deadlines',
+      'examsAddDesc': 'Schedule upcoming exams',
       'gradesCountPlural': 'Grades',
       'gradesWeightLabelShort': 'Weight',
       'gradesNone': 'No grades',
@@ -2451,6 +2463,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'examsActionImport': 'Importer (Scan/PDF)',
       'examsActionExport': 'Exporter (JSON)',
       'examsActionScan': 'Scanner',
+      'homeworkFilterAll': 'Tous',
+      'homeworkFilterOpen': 'En cours',
+      'homeworkFilterDone': 'Terminés',
+      'examsUpcomingCount': '{count} examen(s) à venir',
+      'examsUpcomingNext': 'Prochain: {subject} le {date}',
+      'gradesTypeSingle': 'Note individuelle',
+      'gradesDateLabel': 'Date',
+      'gradesCountLabel': '{count} note(s)',
 
       'homeworkTitle': 'Devoirs',
       'homeworkReload': 'Recharger',
@@ -2983,15 +3003,6 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiNoiseLevel': '{pct}% bruit',
       'aiGradientType': 'Dégradé',
 
-      'homeworkFilterAll': 'Tous',
-      'homeworkFilterOpen': 'Ouverts',
-      'homeworkFilterDone': 'Terminés',
-      'examsUpcomingCount': '{count} examen{(count == 1 ? \"\" : \"s\")} à venir',
-      'examsUpcomingNext': r'Prochain: $subject ($date)',
-      'gradesTypeSingle': 'Note ponctuelle',
-      'gradesDateLabel': 'Date',
-      'gradesCountLabel': '{count} note{(count == 1 ? \"\" : \"s\")}',
-
       'navGrades': 'Notes',
       'gradesTitle': 'Suivi des notes',
       'gradesAddTitle': 'Ajouter une note',
@@ -3000,6 +3011,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesGradeLabel': 'Note',
       'gradesWeightLabel': 'Coefficient',
       'gradesTypeLabel': 'Type',
+      'homeworkAddDesc': 'Gérer les devoirs et échéances',
+      'examsAddDesc': 'Planifier les examens à venir',
       'gradesAverage': 'Moyenne',
       'gradesNone': 'Aucune note',
       'gradesNoneHint': 'Appuyez sur + pour ajouter votre première note.',
@@ -3225,11 +3238,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'homeworkFilterAll': 'Todos',
       'homeworkFilterOpen': 'Pendientes',
       'homeworkFilterDone': 'Completados',
-      'examsUpcomingCount': '{count} examen{(count == 1 ? \"\" : \"es\")} próximo{(count == 1 ? \"\" : \"s\")}',
-      'examsUpcomingNext': r'Próximo: $subject ($date)',
+      'examsUpcomingCount': '{count} examen(es) próximo(s)',
+      'examsUpcomingNext': 'Próximo: {subject} ({date})',
       'gradesTypeSingle': 'Nota individual',
       'gradesDateLabel': 'Fecha',
-      'gradesCountLabel': '{count} nota{(count == 1 ? \"\" : \"s\")}',
+      'gradesCountLabel': '{count} nota(s)',
 
       'homeworkTitle': 'Deberes',
       'homeworkReload': 'Recargar',
@@ -3769,6 +3782,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesGradeLabel': 'Nota',
       'gradesWeightLabel': 'Peso',
       'gradesTypeLabel': 'Tipo',
+      'homeworkAddDesc': 'Gestionar tareas y entregas',
+      'examsAddDesc': 'Programar próximos exámenes',
       'gradesAverage': 'Promedio',
       'gradesNone': 'Sin notas',
       'gradesNoneHint': 'Toca + para añadir tu primera nota.',

@@ -634,27 +634,38 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
       ColorScheme cs, String label, String value, IconData icon, Color color) {
     return _glassContainer(
       context: context,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       color: cs.surfaceContainerLow.withValues(alpha: 0.5),
+      border: Border.all(
+        color: cs.outlineVariant.withValues(alpha: 0.25),
+        width: 1,
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 14),
-            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 14),
+            ),
+            const SizedBox(width: 8),
             Text(
               "$label: ",
               style: GoogleFonts.outfit(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                color: cs.onSurfaceVariant,
               ),
             ),
             Text(
               value,
               style: GoogleFonts.outfit(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w900,
                 color: cs.onSurface,
               ),
@@ -672,57 +683,51 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 60),
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [cs.primary, cs.tertiary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          _glassContainer(
+            context: context,
+            borderRadius: BorderRadius.circular(32),
+            color: cs.primary.withValues(alpha: 0.12),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.3), width: 1.5),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Icon(
+                Icons.auto_graph_rounded,
+                size: 64,
+                color: cs.primary,
               ),
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [
-                BoxShadow(
-                  color: cs.primary.withValues(alpha: 0.3),
-                  blurRadius: 24,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.auto_graph_rounded,
-              size: 64,
-              color: Colors.white,
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
           Text(
             l.gradesNone,
             style: GoogleFonts.outfit(
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.w900,
               color: cs.onSurface,
-              letterSpacing: -1,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             l.gradesNoneHint,
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+              fontSize: 14.5,
+              fontWeight: FontWeight.w500,
+              color: cs.onSurfaceVariant,
               height: 1.4,
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
           FilledButton.icon(
-            onPressed: () => showAddGradeDialog(),
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              showAddGradeDialog();
+            },
             icon: const Icon(Icons.add_rounded),
             label: Text(
               l.gradesAddTitle,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 15),
             ),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -739,202 +744,205 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = _autoLessonColor(subject, isDark);
+    final gradeColor = _colorForGrade(average);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _glassContainer(
+        context: context,
+        borderRadius: BorderRadius.circular(28),
         color: cs.surfaceContainerLow.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    color.withValues(alpha: 0.2),
-                    color.withValues(alpha: 0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3), width: 1.2),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withValues(alpha: isDark ? 0.22 : 0.14),
+                      color.withValues(alpha: isDark ? 0.06 : 0.02),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        subject.isNotEmpty ? subject[0].toUpperCase() : '?',
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 24,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          subject,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 20,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                        Text(
-                          grades.length == 1 ? l.gradesCountLabel(1) : l.gradesCountLabel(grades.length),
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _glassContainer(
-                    context: context,
-                    borderRadius: BorderRadius.circular(16),
-                    color: color.withValues(alpha: 0.15),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      child: Text(
-                        average.toStringAsFixed(2),
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          color: color,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: grades.length,
-              padding: EdgeInsets.zero,
-              separatorBuilder: (context, index) => Divider(
-                height: 1,
-                indent: 24,
-                endIndent: 24,
-                color: cs.outlineVariant.withValues(alpha: 0.2),
-              ),
-              itemBuilder: (context, index) {
-                final g = grades[index];
-                final gradeColor = _colorForGrade(g.value);
-                return Dismissible(
-                  key: Key(g.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 24),
-                    decoration: BoxDecoration(
-                      color: cs.error.withValues(alpha: 0.8),
-                    ),
-                    child: const Icon(Icons.delete_rounded, color: Colors.white),
-                  ),
-                  onDismissed: (_) {
-                    setState(() => _grades.removeWhere((item) => item.id == g.id));
-                    _saveGrades();
-                    HapticFeedback.mediumImpact();
-                  },
-                  child: ListTile(
-                    onTap: () => showAddGradeDialog(g),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    leading: Container(
-                      width: 42,
-                      height: 42,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
-                        color: gradeColor.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: gradeColor.withValues(alpha: 0.3), width: 1.5),
+                        color: color,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Center(
                         child: Text(
-                          g.value.toString().replaceAll('.0', ''),
+                          subject.isNotEmpty ? subject[0].toUpperCase() : '?',
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            subject,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 19,
+                              color: cs.onSurface,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            grades.length == 1 ? l.gradesCountLabel(1) : l.gradesCountLabel(grades.length),
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _glassContainer(
+                      context: context,
+                      borderRadius: BorderRadius.circular(16),
+                      color: gradeColor.withValues(alpha: 0.15),
+                      border: Border.all(color: gradeColor.withValues(alpha: 0.35), width: 1),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        child: Text(
+                          average.toStringAsFixed(2),
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.w900,
-                            fontSize: 18,
+                            fontSize: 19,
                             color: gradeColor,
                           ),
                         ),
                       ),
                     ),
-                    title: Row(
-                      children: [
-                        Expanded(
+                  ],
+                ),
+              ),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: grades.length,
+                padding: EdgeInsets.zero,
+                separatorBuilder: (context, index) => Divider(
+                  height: 1,
+                  indent: 20,
+                  endIndent: 20,
+                  color: cs.outlineVariant.withValues(alpha: 0.2),
+                ),
+                itemBuilder: (context, index) {
+                  final g = grades[index];
+                  final gColor = _colorForGrade(g.value);
+                  return Dismissible(
+                    key: Key(g.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 24),
+                      decoration: BoxDecoration(
+                        color: cs.error.withValues(alpha: 0.85),
+                      ),
+                      child: const Icon(Icons.delete_rounded, color: Colors.white),
+                    ),
+                    onDismissed: (_) {
+                      setState(() => _grades.removeWhere((item) => item.id == g.id));
+                      _saveGrades();
+                      HapticFeedback.mediumImpact();
+                    },
+                    child: ListTile(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        showAddGradeDialog(g);
+                      },
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: gColor.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: gColor.withValues(alpha: 0.35), width: 1.5),
+                        ),
+                        child: Center(
                           child: Text(
-                            g.type.isNotEmpty ? g.type : l.gradesTypeSingle,
+                            g.value.toString().replaceAll('.0', ''),
                             style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              color: cs.onSurface,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 17,
+                              color: gColor,
                             ),
                           ),
                         ),
-                        if (g.weight != 1.0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: cs.primaryContainer.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                            "${l.gradesWeightLabelShort}: ${g.weight}",
-                            style: GoogleFonts.outfit(
-                                fontSize: 11, fontWeight: FontWeight.w800, color: cs.primary),
-                          ),
-                          ),
-                      ],
-                    ),
-                      subtitle: Text(
-                      DateFormat('dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(g.date),
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                       ),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              g.type.isNotEmpty ? g.type : l.gradesTypeSingle,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14.5,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                          ),
+                          if (g.weight != 1.0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: cs.primaryContainer.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                "${l.gradesWeightLabelShort}: ${g.weight}",
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: cs.primary,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text(
+                        DateFormat('dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(g.date),
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                      trailing: Icon(Icons.edit_note_rounded, size: 20, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
                     ),
-                    trailing: Icon(Icons.edit_note_rounded, size: 22, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+                  );
+                },
+              ),
+              const SizedBox(height: 6),
+            ],
+          ),
         ),
       ),
     );

@@ -4904,9 +4904,13 @@ Future<void> _showAddHomeworkDialog(
   int? editIndex,
   String? initialSubject,
 }) async {
-  final subjectCtrl = TextEditingController(
-    text: initialSubject ?? existing?['subject']?.toString() ?? '',
-  );
+  final l = AppL10n.of(appLocaleNotifier.value);
+  String selectedSubject = (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
+      existing?['subject']?.toString() ??
+      (knownSubjectsNotifier.value.isNotEmpty
+          ? knownSubjectsNotifier.value.first
+          : '');
+  final subjectCtrl = TextEditingController(text: selectedSubject);
   final taskCtrl = TextEditingController(
     text: existing?['text']?.toString() ?? existing?['description']?.toString() ?? '',
   );
@@ -4925,13 +4929,17 @@ Future<void> _showAddHomeworkDialog(
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    useSafeArea: true,
     backgroundColor: Colors.transparent,
     sheetAnimationStyle: _kBottomSheetAnimationStyle,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDlg) {
         final cs = Theme.of(ctx).colorScheme;
-        final l = AppL10n.of(appLocaleNotifier.value);
+        final subjects = knownSubjectsNotifier.value.toList()..sort();
+        if (selectedSubject.isNotEmpty && !subjects.contains(selectedSubject)) {
+          subjects.add(selectedSubject);
+          subjects.sort();
+        }
+
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -4939,125 +4947,249 @@ Future<void> _showAddHomeworkDialog(
           child: _glassContainer(
             context: ctx,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
                       width: 42,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: cs.outlineVariant,
-                        borderRadius: BorderRadius.circular(999),
+                        color: cs.onSurface.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      existing == null ? l.homeworkAddTitle : l.homeworkEditTitle,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: subjectCtrl,
-                      decoration: InputDecoration(
-                        labelText: l.homeworkSubjectLabel,
-                        prefixIcon: const Icon(Icons.book_outlined),
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: taskCtrl,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: l.homeworkTaskLabel,
-                        prefixIcon: const Padding(
-                          padding: EdgeInsets.only(bottom: 42),
-                          child: Icon(Icons.assignment_outlined),
-                        ),
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: ctx,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setDlg(() => selectedDate = picked);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.calendar_today_outlined, size: 20),
-                            const SizedBox(width: 12),
                             Text(
-                              '${l.homeworkDueDateLabel}: ${DateFormat('dd. MMM yyyy', _icuLocale(appLocaleNotifier.value)).format(selectedDate)}',
+                              existing == null ? l.homeworkAddTitle : l.homeworkEditTitle,
                               style: GoogleFonts.outfit(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              l.homeworkAddDesc,
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: cs.primary.withValues(alpha: 0.4),
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.assignment_rounded,
+                            color: cs.primary,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    l.homeworkSubjectLabel.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: cs.primary,
+                      letterSpacing: 1.2,
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (existing != null && editIndex != null)
-                          TextButton(
+                  ),
+                  const SizedBox(height: 12),
+                  if (subjects.isNotEmpty)
+                    DropdownButtonFormField<String>(
+                      initialValue: subjects.contains(selectedSubject)
+                          ? selectedSubject
+                          : null,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                        fontSize: 16,
+                      ),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.book_rounded),
+                        filled: true,
+                        fillColor:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                      ),
+                      items: subjects
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        setDlg(() {
+                          selectedSubject = v ?? '';
+                          subjectCtrl.text = selectedSubject;
+                        });
+                      },
+                    )
+                  else
+                    TextField(
+                      controller: subjectCtrl,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.book_rounded),
+                        hintText: l.homeworkSubjectLabel,
+                        filled: true,
+                        fillColor:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                  Text(
+                    l.homeworkTaskLabel.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: cs.primary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: taskCtrl,
+                    maxLines: 3,
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    decoration: InputDecoration(
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(bottom: 42),
+                        child: Icon(Icons.assignment_rounded),
+                      ),
+                      hintText: l.homeworkTaskLabel,
+                      filled: true,
+                      fillColor:
+                          cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    l.homeworkDueDateLabel.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: cs.primary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
+                      );
+                      if (picked != null) {
+                        setDlg(() => selectedDate = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today_rounded, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            DateFormat(
+                              'dd. MMMM yyyy',
+                              _icuLocale(appLocaleNotifier.value),
+                            ).format(selectedDate),
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Row(
+                    children: [
+                      if (existing != null && editIndex != null)
+                        Expanded(
+                          child: OutlinedButton(
                             onPressed: () async {
                               Navigator.pop(ctx);
-                              final list = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
+                              final list = List<Map<String, dynamic>>.from(
+                                customHomeworkNotifier.value,
+                              );
                               if (editIndex >= 0 && editIndex < list.length) {
                                 list.removeAt(editIndex);
                                 await saveCustomHomework(list);
                               }
                             },
-                            child: Text(
-                              l.homeworkDelete,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                color: cs.error,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: cs.error,
+                              side: BorderSide(
+                                color: cs.error.withValues(alpha: 0.5),
+                                width: 1.5,
+                              ),
+                              minimumSize: const Size(0, 60),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
-                          ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: Text(
-                            l.homeworkCancel,
-                            style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                            child: const Icon(Icons.delete_outline_rounded),
                           ),
                         ),
-                        FilledButton(
+                      if (existing != null && editIndex != null)
+                        const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: FilledButton(
                           onPressed: () async {
                             final subj = subjectCtrl.text.trim();
                             final text = taskCtrl.text.trim();
@@ -5065,16 +5197,21 @@ Future<void> _showAddHomeworkDialog(
                             final dateInt = int.parse(
                               DateFormat('yyyyMMdd').format(selectedDate),
                             );
-                            final list = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
+                            final list = List<Map<String, dynamic>>.from(
+                              customHomeworkNotifier.value,
+                            );
                             final item = <String, dynamic>{
-                              'id': existing?['id'] ?? 'hw_${DateTime.now().millisecondsSinceEpoch}',
+                              'id': existing?['id'] ??
+                                  'hw_${DateTime.now().millisecondsSinceEpoch}',
                               'subject': subj,
                               'text': text,
                               'dueDate': dateInt,
                               'isDone': existing?['isDone'] ?? false,
                               '_custom': true,
                             };
-                            if (editIndex != null && editIndex >= 0 && editIndex < list.length) {
+                            if (editIndex != null &&
+                                editIndex >= 0 &&
+                                editIndex < list.length) {
                               list[editIndex] = item;
                             } else {
                               list.add(item);
@@ -5083,19 +5220,23 @@ Future<void> _showAddHomeworkDialog(
                             Navigator.pop(ctx);
                           },
                           style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 60),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
                           child: Text(
                             l.homeworkSave,
-                            style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -5450,13 +5591,14 @@ class _HomeworkViewState extends State<_HomeworkView> {
                 children: [
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
                     child: Row(
                       children: [
-                        _filterChip(context, cs, '${l.homeworkFilterAll} (${allItems.length})', 0),
+                        _filterChip(context, cs, '${l.homeworkFilterAll} (${allItems.length})', Icons.clear_all_rounded, 0),
                         const SizedBox(width: 8),
-                        _filterChip(context, cs, '${l.homeworkFilterOpen} (${openItems.length})', 1),
+                        _filterChip(context, cs, '${l.homeworkFilterOpen} (${openItems.length})', Icons.radio_button_unchecked_rounded, 1),
                         const SizedBox(width: 8),
-                        _filterChip(context, cs, '${l.homeworkFilterDone} (${doneItems.length})', 2),
+                        _filterChip(context, cs, '${l.homeworkFilterDone} (${doneItems.length})', Icons.check_circle_rounded, 2),
                       ],
                     ),
                   ),
@@ -5468,18 +5610,25 @@ class _HomeworkViewState extends State<_HomeworkView> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.assignment_turned_in_outlined,
-                            size: 72,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: cs.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.assignment_turned_in_rounded,
+                              size: 56,
+                              color: cs.primary.withValues(alpha: 0.6),
+                            ),
                           ),
                           const SizedBox(height: 16),
                           Text(
                             l.homeworkNone,
                             style: GoogleFonts.outfit(
                               fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w800,
+                              color: cs.onSurface,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -5517,22 +5666,47 @@ class _HomeworkViewState extends State<_HomeworkView> {
     );
   }
 
-  Widget _filterChip(BuildContext context, ColorScheme cs, String label, int index) {
+  Widget _filterChip(BuildContext context, ColorScheme cs, String label, IconData icon, int index) {
     final selected = _filterIndex == index;
-    return ChoiceChip(
-      label: Text(
-        label,
-        style: GoogleFonts.outfit(
-          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-          color: selected ? cs.onPrimary : cs.onSurface,
+    return _glassContainer(
+      context: context,
+      borderRadius: BorderRadius.circular(14),
+      color: selected
+          ? cs.primary
+          : cs.surfaceContainerHighest.withValues(alpha: 0.4),
+      border: Border.all(
+        color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.3),
+        width: 1,
+      ),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _filterIndex = index);
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  fontSize: 13,
+                  color: selected ? cs.onPrimary : cs.onSurface,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      selected: selected,
-      selectedColor: cs.primary,
-      backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-      onSelected: (_) => setState(() => _filterIndex = index),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      showCheckmark: false,
     );
   }
 
@@ -5555,124 +5729,145 @@ class _HomeworkViewState extends State<_HomeworkView> {
       return '${d.substring(6, 8)}.${d.substring(4, 6)}.${d.substring(0, 4)}';
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      color: isDone
-          ? cs.surfaceContainerLowest.withValues(alpha: 0.3)
-          : accent.withValues(alpha: isDark ? 0.16 : 0.1),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _glassContainer(
+        context: context,
         borderRadius: BorderRadius.circular(24),
-        side: BorderSide(
+        color: isDone
+            ? cs.surfaceContainerLowest.withValues(alpha: 0.35)
+            : accent.withValues(alpha: isDark ? 0.14 : 0.08),
+        border: Border.all(
           color: isDone
-              ? cs.outlineVariant.withValues(alpha: 0.2)
-              : accent.withValues(alpha: 0.45),
-          width: 1.5,
+              ? cs.outlineVariant.withValues(alpha: 0.25)
+              : accent.withValues(alpha: 0.4),
+          width: 1.2,
         ),
-      ),
-      child: InkWell(
-        onTap: () async {
-          final isUntis = hw['_source'] == 'untis';
-          final hwId = hw['id'];
-          if (isCustom) {
-            final list = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
-            final idx = list.indexWhere((e) => e['id'] == hwId);
-            if (idx != -1) {
-              list[idx]['isDone'] = !isDone;
-              await saveCustomHomework(list);
-            }
-          } else if (isUntis) {
-            final numericId = int.tryParse(hwId.toString());
-            if (numericId != null) {
-              await HomeworkService.toggleDone(numericId, !isDone);
-              final currentApi = List<Map<String, dynamic>>.from(homeworksNotifier.value);
-              for (var item in currentApi) {
-                if (item['id'] == numericId) {
-                  item['_done'] = !isDone;
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(24),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () async {
+              HapticFeedback.selectionClick();
+              final isUntis = hw['_source'] == 'untis';
+              final hwId = hw['id'];
+              if (isCustom) {
+                final list = List<Map<String, dynamic>>.from(customHomeworkNotifier.value);
+                final idx = list.indexWhere((e) => e['id'] == hwId);
+                if (idx != -1) {
+                  list[idx]['isDone'] = !isDone;
+                  await saveCustomHomework(list);
+                }
+              } else if (isUntis) {
+                final numericId = int.tryParse(hwId.toString());
+                if (numericId != null) {
+                  await HomeworkService.toggleDone(numericId, !isDone);
+                  final currentApi = List<Map<String, dynamic>>.from(homeworksNotifier.value);
+                  for (var item in currentApi) {
+                    if (item['id'] == numericId) {
+                      item['_done'] = !isDone;
+                    }
+                  }
+                  homeworksNotifier.value = currentApi;
                 }
               }
-              homeworksNotifier.value = currentApi;
-            }
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                width: 26,
-                height: 26,
-                margin: const EdgeInsets.only(top: 2),
-                decoration: BoxDecoration(
-                  color: isDone ? cs.tertiary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isDone ? cs.tertiary : cs.outlineVariant,
-                    width: 2,
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    width: 28,
+                    height: 28,
+                    margin: const EdgeInsets.only(top: 2),
+                    decoration: BoxDecoration(
+                      color: isDone ? cs.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDone ? cs.primary : accent.withValues(alpha: 0.6),
+                        width: 2,
+                      ),
+                      boxShadow: isDone
+                          ? [
+                              BoxShadow(
+                                color: cs.primary.withValues(alpha: 0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: isDone
+                        ? Icon(Icons.check_rounded, size: 20, color: cs.onPrimary)
+                        : null,
                   ),
-                ),
-                child: isDone
-                    ? Icon(Icons.check_rounded, size: 18, color: cs.onTertiary)
-                    : null,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _chip(subject, accent.withValues(alpha: 0.2), accent),
-                        if (isCustom) ...[
-                          const SizedBox(width: 6),
-                          _chip(l.examsOwn, cs.tertiaryContainer, cs.tertiary),
-                        ],
-                        const Spacer(),
-                        if (dueDateRaw.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isDone
-                                  ? cs.surfaceContainerHighest
-                                  : cs.primaryContainer.withValues(alpha: 0.4),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.event_rounded, size: 12, color: cs.primary),
-                                const SizedBox(width: 4),
-                                Text(
-                                  formatDate(dueDateRaw),
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.primary,
-                                  ),
+                        Row(
+                          children: [
+                            _chip(subject, accent.withValues(alpha: 0.2), accent),
+                            if (isCustom) ...[
+                              const SizedBox(width: 6),
+                              _chip(l.examsOwn, cs.tertiaryContainer, cs.tertiary),
+                            ],
+                            const Spacer(),
+                            if (dueDateRaw.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isDone
+                                      ? cs.surfaceContainerHighest.withValues(alpha: 0.5)
+                                      : cs.primaryContainer.withValues(alpha: 0.45),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                              ],
-                            ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.event_rounded,
+                                      size: 12,
+                                      color: isDone ? cs.onSurfaceVariant : cs.primary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      formatDate(dueDateRaw),
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDone ? cs.onSurfaceVariant : cs.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          text,
+                          style: GoogleFonts.outfit(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            height: 1.35,
+                            color: isDone
+                                ? cs.onSurface.withValues(alpha: 0.45)
+                                : cs.onSurface,
+                            decoration: isDone ? TextDecoration.lineThrough : null,
                           ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      text,
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        height: 1.4,
-                        color: isDone ? cs.onSurface.withValues(alpha: 0.45) : cs.onSurface,
-                        decoration: isDone ? TextDecoration.lineThrough : null,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -5686,9 +5881,12 @@ Future<void> _showAddExamDialog(
   int? editIndex,
   String? initialSubject,
 }) async {
-  final subjectCtrl = TextEditingController(
-    text: initialSubject ?? existing?['subject']?.toString() ?? '',
-  );
+  String selectedSubject = (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
+      existing?['subject']?.toString() ??
+      (knownSubjectsNotifier.value.isNotEmpty
+          ? knownSubjectsNotifier.value.first
+          : '');
+  final subjectCtrl = TextEditingController(text: selectedSubject);
   final typeCtrl = TextEditingController(
     text: existing?['examType']?.toString() ?? '',
   );
@@ -5717,6 +5915,11 @@ Future<void> _showAddExamDialog(
       builder: (ctx, setDlg) {
         final cs = Theme.of(ctx).colorScheme;
         final l = AppL10n.of(appLocaleNotifier.value);
+        final subjects = knownSubjectsNotifier.value.toList()..sort();
+        if (selectedSubject.isNotEmpty && !subjects.contains(selectedSubject)) {
+          subjects.add(selectedSubject);
+          subjects.sort();
+        }
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -5724,143 +5927,275 @@ Future<void> _showAddExamDialog(
           child: _glassContainer(
             context: ctx,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
                       width: 42,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: cs.outlineVariant,
-                        borderRadius: BorderRadius.circular(999),
+                        color: cs.onSurface.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      existing == null ? l.examsAddTitle : l.examsEditTitle,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: subjectCtrl,
-                      decoration: InputDecoration(
-                        labelText: l.examsSubjectLabel,
-                        prefixIcon: const Icon(Icons.book_outlined),
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: typeCtrl,
-                      decoration: InputDecoration(
-                        labelText: l.examsTypeLabel,
-                        prefixIcon: const Icon(Icons.label_outline),
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: ctx,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setDlg(() => selectedDate = picked);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.calendar_today_outlined, size: 20),
-                            const SizedBox(width: 12),
                             Text(
-                              DateFormat('dd. MMM yyyy', _icuLocale(appLocaleNotifier.value)).format(selectedDate),
+                              existing == null ? l.examsAddTitle : l.examsEditTitle,
                               style: GoogleFonts.outfit(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              l.examsAddDesc,
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 15,
+                                color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descCtrl,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: l.examsNotesLabel,
-                        prefixIcon: const Padding(
-                          padding: EdgeInsets.only(bottom: 42),
-                          child: Icon(Icons.notes_rounded),
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: cs.primary.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: cs.primary.withValues(alpha: 0.4),
+                            width: 2,
+                          ),
                         ),
+                        child: Center(
+                          child: Icon(
+                            Icons.edit_calendar_rounded,
+                            color: cs.primary,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    l.examsSubjectLabel.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: cs.primary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (subjects.isNotEmpty)
+                    DropdownButtonFormField<String>(
+                      initialValue: subjects.contains(selectedSubject)
+                          ? selectedSubject
+                          : null,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                        fontSize: 16,
+                      ),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.book_rounded),
                         filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                        fillColor:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.4),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                      ),
+                      items: subjects
+                          .map(
+                            (s) => DropdownMenuItem(value: s, child: Text(s)),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        setDlg(() {
+                          selectedSubject = v ?? '';
+                          subjectCtrl.text = selectedSubject;
+                        });
+                      },
+                    )
+                  else
+                    TextField(
+                      controller: subjectCtrl,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.book_rounded),
+                        hintText: l.examsSubjectLabel,
+                        filled: true,
+                        fillColor:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
                           borderSide: BorderSide.none,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (existing != null && editIndex != null)
-                          TextButton(
+                  const SizedBox(height: 24),
+                  Text(
+                    l.examsTypeLabel.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: cs.primary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: typeCtrl,
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.label_important_rounded),
+                      hintText: l.examsTypeLabel,
+                      filled: true,
+                      fillColor:
+                          cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    l.gradesDateLabel.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: cs.primary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: selectedDate,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
+                      );
+                      if (picked != null) {
+                        setDlg(() => selectedDate = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today_rounded, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            DateFormat(
+                              'dd. MMMM yyyy',
+                              _icuLocale(appLocaleNotifier.value),
+                            ).format(selectedDate),
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    l.examsNotesLabel.toUpperCase(),
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: cs.primary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 3,
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    decoration: InputDecoration(
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(bottom: 42),
+                        child: Icon(Icons.notes_rounded),
+                      ),
+                      hintText: l.examsNotesLabel,
+                      filled: true,
+                      fillColor:
+                          cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Row(
+                    children: [
+                      if (existing != null && editIndex != null)
+                        Expanded(
+                          child: OutlinedButton(
                             onPressed: () async {
                               Navigator.pop(ctx);
-                              final list = List<Map<String, dynamic>>.from(customExamsNotifier.value);
+                              final list = List<Map<String, dynamic>>.from(
+                                customExamsNotifier.value,
+                              );
                               if (editIndex >= 0 && editIndex < list.length) {
                                 list.removeAt(editIndex);
                                 await saveCustomExams(list);
                               }
                             },
-                            child: Text(
-                              l.examsDelete,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.08,
-                                color: Theme.of(context).colorScheme.error,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: cs.error,
+                              side: BorderSide(
+                                color: cs.error.withValues(alpha: 0.5),
+                                width: 1.5,
+                              ),
+                              minimumSize: const Size(0, 60),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
-                          ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: Text(
-                            l.examsCancel,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.08,
-                            ),
+                            child: const Icon(Icons.delete_outline_rounded),
                           ),
                         ),
-                        FilledButton(
+                      if (existing != null && editIndex != null)
+                        const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: FilledButton(
                           onPressed: () async {
                             final subj = subjectCtrl.text.trim();
                             if (subj.isEmpty) return;
@@ -5868,14 +6203,20 @@ Future<void> _showAddExamDialog(
                               DateFormat('yyyyMMdd').format(selectedDate),
                             );
                             final newExam = <String, dynamic>{
+                              'id': existing?['id'] ??
+                                  'exam_${DateTime.now().millisecondsSinceEpoch}',
                               'subject': subj,
                               'examType': typeCtrl.text.trim(),
                               'date': dateInt,
                               'description': descCtrl.text.trim(),
                               '_custom': true,
                             };
-                            final list = List<Map<String, dynamic>>.from(customExamsNotifier.value);
-                            if (editIndex != null && editIndex >= 0 && editIndex < list.length) {
+                            final list = List<Map<String, dynamic>>.from(
+                              customExamsNotifier.value,
+                            );
+                            if (editIndex != null &&
+                                editIndex >= 0 &&
+                                editIndex < list.length) {
                               list[editIndex] = newExam;
                             } else {
                               list.add(newExam);
@@ -5884,21 +6225,23 @@ Future<void> _showAddExamDialog(
                             Navigator.pop(ctx);
                           },
                           style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 60),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
                           child: Text(
                             l.examsSave,
                             style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -6698,8 +7041,8 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                             l.examsNone,
                             style: GoogleFonts.outfit(
                               fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w800,
+                              color: cs.onSurface,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -6711,13 +7054,16 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                               color: cs.onSurfaceVariant,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l.examsReload,
-                            style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: cs.primary,
+                          const SizedBox(height: 12),
+                          TextButton.icon(
+                            onPressed: _refreshExams,
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: Text(
+                              l.examsReload,
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -6725,7 +7071,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                     ),
                   ] else ...[
                     if (upcoming.isNotEmpty) ...[
-                      _sectionHeader(cs, l.examsUpcoming, Icons.upcoming_rounded),
+                      _sectionHeader(cs, l.examsUpcoming, Icons.upcoming_rounded, upcoming.length),
                       const SizedBox(height: 8),
                       ...upcoming.asMap().entries.map(
                         (e) => _animatedExamCard(e.key, context, cs, e.value, true),
@@ -6733,7 +7079,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                       const SizedBox(height: 20),
                     ],
                     if (past.isNotEmpty) ...[
-                      _sectionHeader(cs, l.examsPast, Icons.history_rounded),
+                      _sectionHeader(cs, l.examsPast, Icons.history_rounded, past.length),
                       const SizedBox(height: 8),
                       ...past.asMap().entries.map(
                         (e) =>
@@ -6762,30 +7108,56 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
     final nextSubject = next != null ? _examSubject(next) : null;
     final nextDateStr = next != null ? _formatExamDate(next['date'] ?? next['examDate'] ?? '') : null;
 
+    final upcomingTitle = l.examsUpcomingCount.contains('{count}')
+        ? l.examsUpcomingCount.replaceAll('{count}', '$count')
+        : (count == 1 ? '1 anstehende Prüfung' : '$count anstehende Prüfungen');
+
+    final nextSubText = nextSubject != null && nextDateStr != null
+        ? l.examsUpcomingNext
+            .replaceAll(r'$subject', nextSubject)
+            .replaceAll(r'$date', nextDateStr)
+            .replaceAll('{subject}', nextSubject)
+            .replaceAll('{date}', nextDateStr)
+        : null;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: _withOptionalBackdropBlur(
-        sigma: 20,
-        child: const SizedBox.shrink(),
-        childBuilder: (enabled) => Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: cs.primaryContainer.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: cs.primary.withValues(alpha: 0.2),
-              width: 1.2,
-            ),
-          ),
+      child: _glassContainer(
+        context: context,
+        borderRadius: BorderRadius.circular(24),
+        color: cs.primaryContainer.withValues(alpha: 0.25),
+        border: Border.all(
+          color: cs.primary.withValues(alpha: 0.25),
+          width: 1.2,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      cs.primary,
+                      cs.primary.withValues(alpha: 0.75),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: cs.primary.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Icon(Icons.assignment_turned_in_rounded, color: cs.primary, size: 28),
+                child: const Center(
+                  child: Icon(Icons.assignment_turned_in_rounded, color: Colors.white, size: 26),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -6793,26 +7165,33 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      l.examsUpcomingCount.replaceAll('{count}', '$count'),
+                      upcomingTitle,
                       style: GoogleFonts.outfit(
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.w900,
                         color: cs.onSurface,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    if (nextSubject != null) ...[
+                    if (nextSubText != null) ...[
                       const SizedBox(height: 4),
-                      Text(
-                        l.examsUpcomingNext
-                            .replaceAll('\$subject', nextSubject)
-                            .replaceAll('\$date', nextDateStr!),
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Icon(Icons.near_me_rounded, size: 13, color: cs.primary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              nextSubText,
+                              style: GoogleFonts.outfit(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -6827,20 +7206,49 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
 
   final GlobalKey<_GradesTrackerPageState> _gradesTrackerKey = GlobalKey();
 
-  Widget _sectionHeader(ColorScheme cs, String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: cs.primary),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w800,
-            fontSize: 15,
-            color: cs.primary,
+  Widget _sectionHeader(ColorScheme cs, String title, IconData icon, [int? count]) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 16, color: cs.primary),
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: cs.onSurface,
+              letterSpacing: -0.2,
+            ),
+          ),
+          if (count != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: cs.primary,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -6936,15 +7344,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
         final d = DateTime.parse(
           '${ds.substring(0, 4)}-${ds.substring(4, 6)}-${ds.substring(6, 8)}',
         );
-        daysUntil = d
-            .difference(
-              DateTime(
-                DateTime.now().year,
-                DateTime.now().month,
-                DateTime.now().day,
-              ),
-            )
-            .inDays;
+        daysUntil = d.difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
       } catch (_) {}
     }
 
@@ -6958,144 +7358,158 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
       );
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _glassContainer(
+        context: context,
         borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: accent.withValues(alpha: 0.5), width: 1.5),
-      ),
-      child: InkWell(
-        onTap: isCustom && customIndex != null
-            ? () {
-                HapticFeedback.selectionClick();
-                _showAddExamDialog(
-                  context,
-                  existing: Map<String, dynamic>.from(exam)..remove('_source'),
-                  editIndex: customIndex,
-                );
-              }
-            : null,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            if (type.isNotEmpty)
-                              _chip(type, accent.withValues(alpha: 0.2), accent),
-                            if (isCustom)
-                              _chip(l.examsOwn, cs.tertiaryContainer, cs.tertiary),
-                          ],
-                        ),
-                        const Spacer(),
-                        if (showCountdown) _countdownChip(cs, daysUntil),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      subject.isNotEmpty ? subject : l.examsUnknown,
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    _infoRow(Icons.calendar_today_rounded, dateStr),
-                    if (timeStr.isNotEmpty)
-                      _infoRow(Icons.access_time_rounded, timeStr),
-                    if (rooms.isNotEmpty) _infoRow(Icons.room_outlined, rooms),
-                    if (teachers.isNotEmpty)
-                      _infoRow(Icons.person_outline_rounded, teachers),
-                    if (desc.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          desc,
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (showCountdown && daysUntil != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
+        color: accent.withValues(alpha: isDark ? 0.14 : 0.08),
+        border: Border.all(color: accent.withValues(alpha: 0.35), width: 1.2),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(24),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: isCustom && customIndex != null
+                ? () {
+                    HapticFeedback.selectionClick();
+                    _showAddExamDialog(
+                      context,
+                      existing: Map<String, dynamic>.from(exam)..remove('_source'),
+                      editIndex: customIndex,
+                    );
+                  }
+                : null,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: 6,
                     decoration: BoxDecoration(
-                      color: daysUntil == 0
-                          ? cs.errorContainer
-                          : daysUntil <= 3
-                          ? cs.errorContainer.withValues(alpha: 0.6)
-                          : accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      daysUntil == 0
-                          ? l.examsToday
-                          : daysUntil == 1
-                          ? l.examsTomorrow
-                          : l.examsInDays(daysUntil),
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: daysUntil <= 3 ? cs.error : accent,
+                      color: accent,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        bottomLeft: Radius.circular(24),
                       ),
                     ),
                   ),
-                ),
-            ],
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+                                  if (type.isNotEmpty)
+                                    _chip(type, accent.withValues(alpha: 0.2), accent),
+                                  if (isCustom)
+                                    _chip(l.examsOwn, cs.tertiaryContainer, cs.tertiary),
+                                ],
+                              ),
+                              const Spacer(),
+                              if (showCountdown && daysUntil != null)
+                                _countdownChip(cs, daysUntil),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            subject.isNotEmpty ? subject : l.examsUnknown,
+                            style: GoogleFonts.outfit(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.4,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 6,
+                            children: [
+                              _infoBadge(cs, Icons.calendar_today_rounded, dateStr),
+                              if (timeStr.isNotEmpty)
+                                _infoBadge(cs, Icons.access_time_rounded, timeStr),
+                              if (rooms.isNotEmpty)
+                                _infoBadge(cs, Icons.meeting_room_rounded, rooms),
+                              if (teachers.isNotEmpty)
+                                _infoBadge(cs, Icons.person_outline_rounded, teachers),
+                            ],
+                          ),
+                          if (desc.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: cs.outlineVariant.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.notes_rounded, size: 14, color: cs.onSurfaceVariant),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      desc,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: cs.onSurfaceVariant,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-
-
-  Widget _infoRow(IconData icon, String text) {
-    final onVar = Theme.of(context).colorScheme.onSurfaceVariant;
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
+  Widget _infoBadge(ColorScheme cs, IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: onVar),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.outfit(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: onVar,
-              ),
+          Icon(icon, size: 13, color: cs.primary),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurface,
             ),
           ),
         ],
       ),
     );
   }
+
 }
 
 // --- KI-ASSISTENT HILFSFUNKTIONEN ---
