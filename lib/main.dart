@@ -1655,24 +1655,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         return _buildGridView(dayIndex, monday: adjMonday, weekData: cached);
       }
     }
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final cs = Theme.of(context).colorScheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(strokeWidth: 2),
-          const SizedBox(height: 8),
-          Text(
-            '${l.timetableTitle} …',
-            style: GoogleFonts.outfit(
-              fontSize: 13,
-              color: cs.onSurfaceVariant.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
-    );
+    final emptyWeek = _emptyWeekData();
+    if (_viewMode == 1) {
+      return _buildWeekView(monday: adjMonday, weekData: emptyWeek);
+    } else {
+      final dayIndex = direction > 0 ? 0 : 4;
+      return _buildGridView(dayIndex, monday: adjMonday, weekData: emptyWeek);
+    }
   }
 
   // --- Week carousel ---
@@ -1857,6 +1846,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             _weekData = cached;
             _showingCachedWeek = true;
             _loading = false;
+          } else {
+            _weekData = _emptyWeekData();
+            _showingCachedWeek = false;
+            _loading = false;
           }
           _carouselOffset = 0;
           // Synchronize TabController index when jumping weeks
@@ -1867,7 +1860,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           }
         });
         HapticFeedback.selectionClick();
-        _fetchFullWeek();
+        _fetchFullWeek(silent: true);
         _prefetchAdjacentWeeks();
       }
     });
@@ -1994,9 +1987,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     return merged;
   }
-
-  List<_TimeRangeLabel> _collectTimeRangesFromWeek() =>
-      _collectTimeRangesFromData(_weekData);
 
   List<_TimeRangeLabel> _collectTimeRangesFromData(
     Map<int, List<dynamic>> weekData,
@@ -2908,6 +2898,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     Map<int, List<dynamic>>? weekData,
   }) {
     final wd = weekData ?? _weekData;
+    final m = monday ?? _currentMonday;
     final media = MediaQuery.of(context);
     final topContentPadding =
         media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
@@ -2943,10 +2934,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     const double timeColWidth = 40;
-    final timeRanges = _collectTimeRangesFromWeek();
+    final timeRanges = _collectTimeRangesFromData(wd);
 
     final now = DateTime.now();
-    final dayDate = _currentMonday.add(Duration(days: dayIndex));
+    final dayDate = m.add(Duration(days: dayIndex));
     final isToday =
         dayDate.year == now.year &&
         dayDate.month == now.month &&
