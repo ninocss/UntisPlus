@@ -319,11 +319,11 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onPrimaryContainer,
-                  title: 'nino161er',
+                  title: 'ninocss',
                   subtitle: l.settingsCreditsDevelopers,
                   onTap: () {
                     url_launcher.launchUrlString(
-                      'https://github.com/nino161er',
+                      'https://github.com/ninocss',
                       mode: url_launcher.LaunchMode.externalApplication,
                     );
                   },
