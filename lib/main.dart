@@ -25,6 +25,7 @@ import 'package:fllama/fllama.dart';
 import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
+import 'core/timetable_date_utils.dart';
 import 'services/notification_service.dart';
 import 'services/background_service.dart';
 import 'services/backup_service.dart';
@@ -1336,9 +1337,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
   }
 
-  DateTime _currentMonday = DateTime.now().subtract(
-    Duration(days: DateTime.now().weekday - 1),
-  );
+  DateTime _currentMonday = resolveDefaultTimetableMonday(DateTime.now());
 
   @override
   void initState() {
@@ -1346,7 +1345,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     _tabController = TabController(
       length: 5,
       vsync: this,
-      initialIndex: (DateTime.now().weekday - 1).clamp(0, 4),
+      initialIndex: resolveInitialTimetableDayIndex(DateTime.now()),
     );
     if (defaultClassId != null) {
       _viewingClassId = defaultClassId;
@@ -4696,9 +4695,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
         title: GestureDetector(
           onTap: () {
-            final now = DateTime.now();
-            final monday = now.subtract(Duration(days: now.weekday - 1));
-            final thisMonday = DateTime(monday.year, monday.month, monday.day);
+            final thisMonday = resolveDefaultTimetableMonday(DateTime.now());
             if (_currentMonday != thisMonday) {
               HapticFeedback.selectionClick();
               setState(() => _currentMonday = thisMonday);
