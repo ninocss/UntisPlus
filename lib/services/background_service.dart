@@ -10,6 +10,7 @@ import 'package:otp_auth/otp_auth.dart';
 import 'package:workmanager/workmanager.dart';
 import '../core/time_utils.dart';
 
+import 'demo_mode_service.dart';
 import 'notification_service.dart';
 
 const String kTimetableUpdateTask = 'update_timetable_task';
@@ -651,7 +652,10 @@ Future<void> updateUntisData() async {
   final now = DateTime.now();
   List<dynamic> lessons = [];
   if (isDemoMode) {
-    lessons = _buildDemoLessons24x7(now, locale);
+    final monday = DateTime(now.year, now.month, now.day).subtract(
+      Duration(days: now.weekday - 1),
+    );
+    lessons = DemoModeService.buildWeek(monday, locale: locale)[now.weekday - 1] ?? [];
   } else {
     String sessionId = "";
     final authUrl = Uri.parse(
@@ -965,7 +969,11 @@ Future<void> updateUntisData() async {
   }
 }
 
-List<Map<String, dynamic>> _buildDemoLessons24x7(DateTime now, String locale) {
+@Deprecated('Use DemoModeService.buildWeek instead.')
+List<Map<String, dynamic>> buildLegacyDemoLessons24x7(
+  DateTime now,
+  String locale,
+) {
   final date = int.parse(DateFormat('yyyyMMdd').format(now));
   final blocks = <Map<String, dynamic>>[];
 

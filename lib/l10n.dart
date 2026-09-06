@@ -109,6 +109,8 @@ class AppL10n {
   String get timetableSelectClass => _t('timetableSelectClass');
   String get timetableMyTimetable => _t('timetableMyTimetable');
   String get timetableSelectAnother => _t('timetableSelectAnother');
+  String get timetableMoreActions => _t('timetableMoreActions');
+  String get timetableExportImage => _t('timetableExportImage');
   String get timetableNoClassesFound => _t('timetableNoClassesFound');
   String get freeRoomsTitle => _t('freeRoomsTitle');
   String get freeRoomsSelectTime => _t('freeRoomsSelectTime');
@@ -738,7 +740,7 @@ class AppL10n {
     'de': {
       'navWeek': 'Woche',
       'navHomework': 'Hausaufgaben',
-      'navExams': 'Prüfungen',
+      'navExams': 'Schule',
       'navInfo': 'Info',
       'navMenu': 'Menü',
       'navAi': 'KI',
@@ -867,6 +869,8 @@ class AppL10n {
       'timetableSelectClass': 'Klasse wählen',
       'timetableMyTimetable': 'Mein Stundenplan',
       'timetableSelectAnother': 'Andere Klasse',
+      'timetableMoreActions': 'Weitere Aktionen',
+      'timetableExportImage': 'Stundenplan als Bild exportieren',
       'timetableNoClassesFound':
           'Keine Klassen gefunden oder Zugriff verweigert.',
       'freeRoomsTitle': 'Freie Räume',
@@ -1516,7 +1520,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
     'en': {
       'navWeek': 'Week',
       'navHomework': 'Homework',
-      'navExams': 'Exams',
+      'navExams': 'School',
       'navInfo': 'Info',
       'navMenu': 'Menu',
       'navAi': 'AI',
@@ -1639,6 +1643,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'timetableSelectClass': 'Select class',
       'timetableMyTimetable': 'My timetable',
       'timetableSelectAnother': 'Another class',
+      'timetableMoreActions': 'More actions',
+      'timetableExportImage': 'Export timetable as image',
       'timetableNoClassesFound': 'No classes found or access denied.',
       'freeRoomsTitle': 'Free Rooms',
       'freeRoomsSelectTime': 'Select time range',
@@ -2277,7 +2283,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesWeightLabelShort': 'Coef.',
       'navWeek': 'Semaine',
       'navHomework': 'Devoirs',
-      'navExams': 'Examens',
+      'navExams': 'École',
       'navInfo': 'Infos',
       'navMenu': 'Menu',
       'navAi': 'IA',
@@ -2403,6 +2409,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'timetableSelectClass': 'Sélectionner une classe',
       'timetableMyTimetable': 'Mon emploi du temps',
       'timetableSelectAnother': 'Autre classe',
+      'timetableMoreActions': 'Plus d’actions',
+      'timetableExportImage': "Exporter l’emploi du temps en image",
       'timetableNoClassesFound': 'Aucune classe trouvée ou accès refusé.',
       'freeRoomsTitle': 'Salles libres',
       'freeRoomsSelectTime': 'Choisir une plage horaire',
@@ -3048,7 +3056,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'gradesWeightLabelShort': 'Peso',
       'navWeek': 'Semana',
       'navHomework': 'Deberes',
-      'navExams': 'Exámenes',
+      'navExams': 'Escuela',
       'navInfo': 'Info',
       'navMenu': 'Menú',
       'navAi': 'IA',
@@ -3175,6 +3183,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'timetableSelectClass': 'Seleccionar clase',
       'timetableMyTimetable': 'Mi horario',
       'timetableSelectAnother': 'Otra clase',
+      'timetableMoreActions': 'Más acciones',
+      'timetableExportImage': 'Exportar horario como imagen',
       'timetableNoClassesFound': 'No se encontraron clases o acceso denegado.',
       'freeRoomsTitle': 'Aulas libres',
       'freeRoomsSelectTime': 'Elegir franja horaria',

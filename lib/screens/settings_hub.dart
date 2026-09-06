@@ -811,3 +811,13 @@ class _SettingsHubItem {
     this.onTap,
   });
 }
+
+Future<void> _settingsSetAppIcon(String icon) async {
+  const supported = {'default', '3d', 'chrom', 'galaxy', 'gradiant', 'marmor', 'paper'};
+  if (!supported.contains(icon)) return;
+  final applied = await _applyLauncherIcon(icon);
+  if (!applied && Platform.isAndroid) return;
+  appIconNotifier.value = icon;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('appIcon', icon);
+}

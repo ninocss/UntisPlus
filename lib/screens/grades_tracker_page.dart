@@ -33,14 +33,32 @@ class _Grade {
         'date': date.toIso8601String(),
       };
 
-  factory _Grade.fromJson(Map<String, dynamic> json) => _Grade(
-        id: json['id'],
-        subject: json['subject'],
-        value: (json['value'] as num).toDouble(),
-        weight: (json['weight'] as num).toDouble(),
-        type: json['type'] ?? '',
-        date: DateTime.parse(json['date']),
-      );
+  factory _Grade.fromJson(Map<String, dynamic> json) {
+    final value = json['value'];
+    final weight = json['weight'];
+    final parsedValue = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString().replaceAll(',', '.') ?? '');
+    final parsedWeight = weight is num
+        ? weight.toDouble()
+        : double.tryParse(weight?.toString().replaceAll(',', '.') ?? '');
+    final date = DateTime.tryParse(json['date']?.toString() ?? '');
+    final subject = json['subject']?.toString().trim() ?? '';
+
+    if (parsedValue == null || !parsedValue.isFinite ||
+        parsedWeight == null || !parsedWeight.isFinite || parsedWeight <= 0 ||
+        date == null || subject.isEmpty) {
+      throw const FormatException('Invalid saved grade');
+    }
+    return _Grade(
+      id: json['id']?.toString() ?? date.microsecondsSinceEpoch.toString(),
+      subject: subject,
+      value: parsedValue,
+      weight: parsedWeight,
+      type: json['type']?.toString() ?? '',
+      date: date,
+    );
+  }
 }
 
 class _GradesTrackerPageState extends State<GradesTrackerPage> {
@@ -64,7 +82,14 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     if (!mounted) return;
     setState(() {
       _grades = customGradesNotifier.value
-          .map((e) => _Grade.fromJson(e))
+          .map((e) {
+            try {
+              return _Grade.fromJson(e);
+            } on FormatException {
+              return null;
+            }
+          })
+          .whereType<_Grade>()
           .toList();
     });
   }
@@ -72,7 +97,14 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   Future<void> _loadGrades() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList('customGrades') ?? [];
-    final loaded = raw.map((e) => _Grade.fromJson(jsonDecode(e))).toList();
+    final loaded = <_Grade>[];
+    for (final encoded in raw) {
+      try {
+        loaded.add(_Grade.fromJson(Map<String, dynamic>.from(jsonDecode(encoded) as Map)));
+      } catch (_) {
+        // A malformed legacy entry must not prevent access to the grade tab.
+      }
+    }
     setState(() {
       _grades = loaded;
       _loading = false;
@@ -421,7 +453,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                               final val = double.tryParse(valueController.text.replaceAll(',', '.')) ?? 0;
                               final weight = double.tryParse(weightController.text.replaceAll(',', '.')) ?? 1.0;
                               final subj = subjectController.text.trim();
-                              if (val <= 0 || subj.isEmpty) return;
+                              if (!val.isFinite || val <= 0 ||
+                                  !weight.isFinite || weight <= 0 ||
+                                  subj.isEmpty) return;
 
                               final newGrade = _Grade(
                                 id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -435,7 +469,11 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                               setState(() {
                                 if (existing != null) {
                                   final idx = _grades.indexWhere((g) => g.id == existing.id);
-                                  _grades[idx] = newGrade;
+                                  if (idx >= 0) {
+                                    _grades[idx] = newGrade;
+                                  } else {
+                                    _grades.add(newGrade);
+                                  }
                                 } else {
                                   _grades.add(newGrade);
                                 }
@@ -484,7 +522,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
       sum += g.value * g.weight;
       weightSum += g.weight;
     }
-    return sum / weightSum;
+    return weightSum > 0 ? sum / weightSum : 0;
   }
 
   double get _overallAverage {

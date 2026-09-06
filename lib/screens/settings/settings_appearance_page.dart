@@ -97,6 +97,25 @@ class SettingsAppearancePage extends StatelessWidget {
     }
   }
 
+  void _showAppIconDialog(BuildContext context) {
+    const labels = {
+      'default': 'Standard', '3d': '3D', 'chrom': 'Chrom',
+      'galaxy': 'Galaxy', 'gradiant': 'Gradient', 'marmor': 'Marmor', 'paper': 'Paper',
+    };
+    _showUnifiedOptionSheet<String>(
+      context: context,
+      title: 'App-Symbol',
+      options: labels.entries.map((entry) => _SheetOption(
+        value: entry.key,
+        title: entry.value,
+        icon: Icons.app_shortcut_rounded,
+        selected: appIconNotifier.value == entry.key,
+      )).toList(),
+    ).then((value) {
+      if (value != null) _settingsSetAppIcon(value);
+    });
+  }
+
   IconData _transitionIcon(int index) {
     switch (index) {
       case 0:
@@ -534,6 +553,14 @@ class SettingsAppearancePage extends StatelessWidget {
                       _buildBouncyRoute(const SettingsTimetablePage()),
                     );
                   },
+                ),
+                SettingsTile(
+                  icon: Icons.app_shortcut_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+                  iconColor: cs.onSecondaryContainer,
+                  title: 'App-Symbol',
+                  subtitle: Platform.isAndroid ? 'Symbol für den Startbildschirm auswählen' : 'Derzeit auf Android verfügbar',
+                  onTap: () => _showAppIconDialog(context),
                 ),
                 SettingsTile(
                   icon: Icons.translate_rounded,

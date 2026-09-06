@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/physics.dart';
 import 'package:url_launcher/url_launcher_string.dart' as url_launcher;
 import 'package:flutter/services.dart';
@@ -31,6 +32,7 @@ import 'services/background_service.dart';
 import 'services/backup_service.dart';
 import 'services/demo_mode_service.dart';
 import 'services/homework_service.dart';
+import 'services/widget_service.dart';
 
 part 'core/school_models.dart';
 part 'core/design_tokens.dart';
@@ -58,7 +60,40 @@ part 'widgets/rounded_blur_app_bar.dart';
 
 int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
+/// WebUntis installations represent an absent teacher differently. Prefer
+/// explicit flags, but also support the status text used by older servers.
+bool _hasMissingTeacher(dynamic lesson) {
+  if (lesson is! Map) return false;
+  for (final key in const ['teacherMissing', 'teacherAbsent', 'isTeacherMissing', '_teacherMissing']) {
+    if (lesson[key] == true) return true;
+  }
+  final code = lesson['code']?.toString().toLowerCase() ?? '';
+  if (code == 'teacher_missing' || code == 'teacherabsent' || code == 'teacher_absent') {
+    return true;
+  }
+  final teachers = lesson['te'];
+  if (teachers is List && teachers.any((teacher) {
+    if (teacher is! Map) return false;
+    return teacher['missing'] == true || teacher['absent'] == true ||
+        teacher['status']?.toString().toLowerCase() == 'missing';
+  })) {
+    return true;
+  }
+  final info = '${lesson['info'] ?? ''} ${lesson['substText'] ?? ''}'.toLowerCase();
+  return RegExp(r'(teacher|lehrer).{0,24}(missing|absent|fehlt|fehlend)').hasMatch(info);
+}
+
 const MethodChannel _uiChannel = MethodChannel('untisplus/ui');
+
+void _registerNativeUiActions() {
+  _uiChannel.setMethodCallHandler((call) async {
+    if (call.method == 'openAssistant') {
+      final prompt = call.arguments?.toString().trim() ?? '';
+      pendingAssistantPromptNotifier.value = prompt.isEmpty ? null : prompt;
+      pendingAssistantOpenNotifier.value = true;
+    }
+  });
+}
 
 Future<void> _applyAndroidWindowBlur(bool enabled) async {
   if (kIsWeb) return;
@@ -69,6 +104,15 @@ Future<void> _applyAndroidWindowBlur(bool enabled) async {
     );
   } catch (_) {
     // Silently ignore on platforms/API levels that don't support it.
+  }
+}
+
+Future<bool> _applyLauncherIcon(String icon) async {
+  if (kIsWeb || !Platform.isAndroid) return false;
+  try {
+    return await _uiChannel.invokeMethod<bool>('setLauncherIcon', icon) ?? false;
+  } catch (_) {
+    return false;
   }
 }
 
@@ -535,6 +579,7 @@ String geminiCompatibleEndpoint(String rawBaseUrl, String model) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _registerNativeUiActions();
   if (!kIsWeb) {
     await NotificationService().init();
     BackgroundService.initialize();
@@ -579,6 +624,13 @@ void main() async {
       .toSet();
 
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
+  const supportedAppIcons = {
+    'default', '3d', 'chrom', 'galaxy', 'gradiant', 'marmor', 'paper',
+  };
+  final savedAppIcon = prefs.getString('appIcon') ?? 'default';
+  appIconNotifier.value = supportedAppIcons.contains(savedAppIcon)
+      ? savedAppIcon
+      : 'default';
   themeModeNotifier.value = ThemeMode.values[prefs.getInt('themeMode') ?? 0];
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
   cancelledLessonColorNotifier.value =
@@ -1042,6 +1094,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   AnimationController? _carouselAnimController;
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
   double _dayDragTotal = 0.0;
+  final GlobalKey _timetableExportKey = GlobalKey();
+  final Map<String, Map<dynamic, dynamic>> _temporaryLessonOriginals = {};
 
   String? _tempSessionId;
   int? _viewingClassId;
@@ -1436,7 +1490,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final m = message.toLowerCase();
     return m.contains('no allowed date') ||
         m.contains('no allowed dates') ||
-        m.contains('nicht erlaubtes datum');
+        m.contains('nicht erlaubtes datum') ||
+        m.contains('not within a school year') ||
+        m.contains('nicht in einem schuljahr');
   }
 
 
@@ -1472,19 +1528,25 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _fetchHomeworkAndNotes() async {
-    if (demoModeNotifier.value) return;
-    if (_currentSessionId.isEmpty || schoolUrl.isEmpty) return;
-
+    if (!demoModeNotifier.value &&
+        (_currentSessionId.isEmpty || schoolUrl.isEmpty)) {
+      return;
+    }
     try {
-      final res = await HomeworkService.fetchHomeworkAndNotes(
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
-        sessionId: _currentSessionId,
-        personId: personId,
-        personType: personType,
-        startDate: _currentMonday,
-        endDate: _currentMonday.add(const Duration(days: 6)),
-      );
+      final res = demoModeNotifier.value
+          ? DemoModeService.buildHomeworkAndNotes(
+              _currentMonday,
+              locale: appLocaleNotifier.value,
+            )
+          : await HomeworkService.fetchHomeworkAndNotes(
+              schoolUrl: schoolUrl,
+              schoolName: schoolName,
+              sessionId: _currentSessionId,
+              personId: personId,
+              personType: personType,
+              startDate: _currentMonday,
+              endDate: _currentMonday.add(const Duration(days: 6)),
+            );
       homeworksNotifier.value = res['homeworks']!;
       lessonNotesNotifier.value = res['lessonNotes']!;
     } catch (e) {
@@ -1497,6 +1559,173 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _onRefresh() => _fetchFullWeek(silent: true);
+
+  String _temporaryLessonKey(Map<dynamic, dynamic> lesson) =>
+      '${lesson['id'] ?? lesson['lsid'] ?? ''}-${lesson['date'] ?? ''}-${lesson['startTime'] ?? ''}';
+
+  void _replaceTemporaryLesson(
+    Map<dynamic, dynamic> previous,
+    Map<dynamic, dynamic> replacement,
+  ) {
+    final key = _temporaryLessonKey(previous);
+    for (final lessons in _weekData.values) {
+      final index = lessons.indexWhere((item) =>
+          identical(item, previous) ||
+          (item is Map && _temporaryLessonKey(item) == key));
+      if (index >= 0) lessons[index] = replacement;
+    }
+    currentWeekDataNotifier.value = Map<int, List<dynamic>>.from(_weekData);
+  }
+
+  Future<void> _editLessonTemporarily(Map<dynamic, dynamic> lesson) async {
+    final lessonKey = _temporaryLessonKey(lesson);
+    _temporaryLessonOriginals.putIfAbsent(
+      lessonKey,
+      () => Map<dynamic, dynamic>.from(lesson),
+    );
+    final subject = TextEditingController(text: lesson['_subjectShort']?.toString() ?? '');
+    final teacher = TextEditingController(text: lesson['_teacher']?.toString() ?? '');
+    final room = TextEditingController(text: lesson['_room']?.toString() ?? '');
+    var cancelled = (lesson['code'] ?? '') == 'cancelled';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Stunde temporär bearbeiten'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('Diese Änderung wird nicht an Untis übertragen und beim nächsten Laden verworfen.'),
+              const SizedBox(height: 12),
+              TextField(controller: subject, decoration: const InputDecoration(labelText: 'Fach')),
+              TextField(controller: teacher, decoration: const InputDecoration(labelText: 'Lehrkraft')),
+              TextField(controller: room, decoration: const InputDecoration(labelText: 'Raum')),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Ausfall'),
+                value: cancelled,
+                onChanged: (value) => setDialogState(() => cancelled = value),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                final original = _temporaryLessonOriginals.remove(lessonKey);
+                if (original != null && mounted) {
+                  setState(() => _replaceTemporaryLesson(
+                        lesson,
+                        Map<dynamic, dynamic>.from(original),
+                      ));
+                }
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Zurücksetzen'),
+            ),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Abbrechen')),
+            FilledButton(
+              onPressed: () {
+                if (!mounted) return;
+                final updated = Map<dynamic, dynamic>.from(lesson);
+                updated['_subjectShort'] = subject.text.trim();
+                updated['_subjectLong'] = subject.text.trim();
+                updated['_teacher'] = teacher.text.trim();
+                updated['_room'] = room.text.trim();
+                if (cancelled) {
+                  updated['code'] = 'cancelled';
+                } else if (updated['code'] == 'cancelled') {
+                  updated.remove('code');
+                }
+                setState(() {
+                  _replaceTemporaryLesson(lesson, updated);
+                });
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Nur lokal speichern'),
+            ),
+          ],
+        ),
+      ),
+    );
+    subject.dispose();
+    teacher.dispose();
+    room.dispose();
+  }
+
+  Future<void> _exportTimetableImage() async {
+    final boundary = _timetableExportKey.currentContext?.findRenderObject();
+    if (boundary is! RenderRepaintBoundary) return;
+    try {
+      final image = await boundary.toImage(
+        pixelRatio: MediaQuery.of(context).devicePixelRatio.clamp(1.0, 3.0).toDouble(),
+      );
+      final data = await image.toByteData(format: ImageByteFormat.png);
+      if (data == null) return;
+      final result = await FilePicker.saveFile(
+        dialogTitle: 'Stundenplan-Bild speichern',
+        fileName: 'untisplus-${DateFormat('yyyy-MM-dd').format(_currentMonday)}.png',
+        bytes: data.buffer.asUint8List(),
+      );
+      if (result != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stundenplan-Bild gespeichert')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bild konnte nicht exportiert werden')),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateHomeWidgets(Map<int, List<dynamic>> week) async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    final now = DateTime.now();
+    final todayLessons = List<dynamic>.from(week[now.weekday - 1] ?? [])
+      ..sort((a, b) => _toMinutes((a['startTime'] as int?) ?? 0)
+          .compareTo(_toMinutes((b['startTime'] as int?) ?? 0)));
+    String label(dynamic lesson) {
+      final subject = lesson['_subjectShort']?.toString();
+      return subject?.isNotEmpty == true ? subject! : 'Unterricht';
+    }
+    final nowMinutes = now.hour * 60 + now.minute;
+    dynamic current;
+    dynamic next;
+    for (final lesson in todayLessons) {
+      final start = _toMinutes((lesson['startTime'] as int?) ?? 0);
+      final end = _toMinutes((lesson['endTime'] as int?) ?? 0);
+      if (start <= nowMinutes && nowMinutes < end) {
+        current = lesson;
+      } else if (start > nowMinutes && next == null) {
+        next = lesson;
+      }
+    }
+    final schedule = todayLessons.take(7).map((lesson) {
+      final time = _formatUntisTime(lesson['startTime']?.toString() ?? '');
+      return '$time · ${label(lesson)}';
+    }).join('\n');
+    final remaining = current == null
+        ? ''
+        : '${(_toMinutes((current['endTime'] as int?) ?? 0) - nowMinutes).clamp(0, 999)} Min. verbleibend';
+    final homework = homeworksNotifier.value.where((item) => item['isDone'] != true).take(3).map((item) {
+      final subject = item['subject'] ?? item['_lesson']?['_subjectShort'] ?? '';
+      final text = item['text'] ?? item['homework'] ?? item['description'] ?? 'Aufgabe';
+      return '${subject.toString().isEmpty ? '' : '$subject · '}${text.toString()}';
+    }).join('\n');
+    try {
+      await WidgetService.updateWidgets(
+        currentLesson: current == null ? 'Keine aktuelle Stunde' : label(current),
+        nextLesson: next == null ? '' : 'Als Nächstes: ${label(next)}',
+        timeRemaining: remaining,
+        dailySchedule: schedule.isEmpty ? 'Heute keine Stunden' : schedule,
+        homeworkSummary: homework.isEmpty ? 'Keine offenen Hausaufgaben' : homework,
+        notificationSummary: 'Neue Mitteilungen in Untis+ öffnen',
+      );
+    } catch (_) {
+      // A widget update must never block timetable rendering.
+    }
+  }
 
   void _onHiddenSubjectsChanged() => setState(() {});
 
@@ -1520,7 +1749,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _prefetchAdjacentWeeks() async {
-    if (demoModeNotifier.value) return;
+    if (demoModeNotifier.value) {
+      for (final delta in [-1, 1, 2]) {
+        final monday = _weekMondayFromDelta(delta);
+        _adjacentWeekCache[_mondayKey(monday)] = DemoModeService.buildWeek(
+          monday,
+          locale: appLocaleNotifier.value,
+        );
+      }
+      return;
+    }
     final pid = _viewingClassId ?? personId;
     final pType = _viewingClassId != null ? 1 : personType;
     if (pid == 0) return;
@@ -1639,14 +1877,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
     final roList = (lesson['ro'] as List?) ?? [];
     if (roList.isNotEmpty) {
-      final firstRoom = roList.first as Map?;
-      if (firstRoom != null) {
-        final rId = firstRoom['id'] as int?;
-        lesson['_room'] = rId != null
-            ? (_roomMap[rId] ??
-                (firstRoom['name']?.toString() ?? '?'))
-            : '?';
-      }
+      final names = roList.map((ro) {
+        final rId = (ro as Map)['id'] as int?;
+        return rId != null
+            ? (_roomMap[rId] ?? (ro['name']?.toString() ?? '?'))
+            : (ro['name']?.toString() ?? '?');
+      }).where((name) => name != '?').toSet().toList();
+      lesson['_room'] = names.isNotEmpty ? names.join(', ') : '?';
     }
   }
 
@@ -1692,14 +1929,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           final offset = _carouselOffset.clamp(-w, w);
-          const double peek = 64.0;
 
           return ClipRect(
             child: Stack(
               children: [
                 if (offset > 0)
                   Transform.translate(
-                    offset: Offset(-w + peek + offset, 0),
+                    // Keep the adjacent week exactly one viewport away.  This
+                    // lets it meet the current week without a visible jump
+                    // when the animation hands over to the new data.
+                    offset: Offset(-w + offset, 0),
                     child: SizedBox(
                       width: w,
                       child: _buildAdjacentWeekView(-1),
@@ -1707,7 +1946,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   ),
                 if (offset < 0)
                   Transform.translate(
-                    offset: Offset(w - peek + offset, 0),
+                    offset: Offset(w + offset, 0),
                     child: SizedBox(
                       width: w,
                       child: _buildAdjacentWeekView(1),
@@ -1752,6 +1991,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   void _onCarouselDragUpdate(DragUpdateDetails details) {
     final dx = details.delta.dx;
+    final maxOffset = MediaQuery.of(context).size.width * 0.92;
     if (_viewMode == 0) {
       // If we are at the boundaries of the week OR already moving the carousel,
       // update the carousel offset for a fluid week-switch animation.
@@ -1760,7 +2000,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       
       if (atEdge || _carouselOffset != 0) {
         setState(() {
-          _carouselOffset += dx;
+          _carouselOffset = (_carouselOffset + dx).clamp(-maxOffset, maxOffset).toDouble();
         });
         return;
       }
@@ -1771,7 +2011,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
     
     setState(() {
-      _carouselOffset += dx;
+      _carouselOffset = (_carouselOffset + dx).clamp(-maxOffset, maxOffset).toDouble();
     });
   }
 
@@ -1833,17 +2073,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
-    const double peek = 64.0;
-    final target = direction * (width - peek);
+    // Finish exactly one viewport away so the incoming week is already at
+    // x = 0 when its data becomes the active week.
+    final target = direction * width;
     _carouselAnimController?.dispose();
     _carouselAnimController = AnimationController(
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 340),
       vsync: this,
     );
     final anim = Tween<double>(begin: _carouselOffset, end: target).animate(
       CurvedAnimation(
         parent: _carouselAnimController!,
-        curve: Curves.easeOutCubic,
+        curve: Curves.easeInOutCubicEmphasized,
       ),
     );
     _carouselAnimController!.addListener(() {
@@ -2186,24 +2427,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
-    final classes = await _fetchClasses();
-    List<List<dynamic>> timetables = [];
-    if (classes.isNotEmpty) {
-      final results = await Future.wait(
-        classes.map((c) => _fetchClassTimetable(c['id'] as int, dayDate)),
-        eagerError: false,
+    final List<List<String>> freeRoomsForRange;
+    if (demoModeNotifier.value) {
+      freeRoomsForRange = List.generate(
+        ranges.length,
+        DemoModeService.demoFreeRooms,
       );
-      timetables = results.whereType<List<dynamic>>().toList();
+    } else {
+      final classes = await _fetchClasses();
+      List<List<dynamic>> timetables = [];
+      if (classes.isNotEmpty) {
+        final results = await Future.wait(
+          classes.map((c) => _fetchClassTimetable(c['id'] as int, dayDate)),
+          eagerError: false,
+        );
+        timetables = results.whereType<List<dynamic>>().toList();
+      }
+      freeRoomsForRange = [
+        for (final range in ranges)
+          _computeFreeRooms(
+            timetables: timetables,
+            startMin: range.startMin,
+            endMin: range.endMin,
+          ),
+      ];
     }
-
-    final freeRoomsForRange = <List<String>>[
-      for (final range in ranges)
-        _computeFreeRooms(
-          timetables: timetables,
-          startMin: range.startMin,
-          endMin: range.endMin,
-        ),
-    ];
 
     if (!mounted) return;
     if (context.mounted) Navigator.of(context).pop();
@@ -2518,6 +2766,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     required String teacher,
     required String room,
     required bool isNow,
+    bool isTeacherMissing = false,
+    bool hasHomework = false,
+    bool hasExam = false,
     double? borderRadius,
     EdgeInsets? padding,
     double accentWidth = 3.5,
@@ -2541,7 +2792,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final showTeacher = lessonShowTeacherNotifier.value;
     final showRoom = lessonShowRoomNotifier.value;
     final compact = lessonCompactModeNotifier.value;
-    final showPattern = isCancelled && useStripes && lessonCancelledPatternNotifier.value;
+    final showPattern = (isCancelled || isTeacherMissing) &&
+        useStripes && lessonCancelledPatternNotifier.value;
 
     final effectivePadding = padding != null
         ? (compact
@@ -2770,6 +3022,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       ),
                     ),
                   ),
+                  if (hasExam || hasHomework) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      hasExam ? Icons.assignment_turned_in_rounded : Icons.assignment_rounded,
+                      size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                      color: effectiveTextColor.withValues(alpha: 0.8),
+                    ),
+                  ],
+                  if (isTeacherMissing) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.person_off_rounded,
+                      size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                      color: Colors.deepOrange.withValues(alpha: 0.9),
+                    ),
+                  ],
                 ],
               ),
               if (showTeacher && teacher.isNotEmpty)
@@ -2974,7 +3242,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final csG = Theme.of(context).colorScheme;
     return RefreshIndicator(
       onRefresh: _onRefresh,
-      displacement: 40,
+      // `displacement` is relative to the viewport, not `edgeOffset`.
+      // It must stay below the transparent app bar or the spinner is clipped.
+      displacement: topContentPadding + 40,
       edgeOffset: topContentPadding,
       color: csG.onPrimaryContainer,
       backgroundColor: csG.primaryContainer,
@@ -3158,6 +3428,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       Theme.of(context).brightness ==
                                       Brightness.dark;
                                   final isCancelled = (l['code'] ?? '') == 'cancelled';
+                                  final isTeacherMissing = _hasMissingTeacher(l);
                                   final sk = l['_subjectShort']?.toString() ?? '';
                                   final useMonochrome = monochromeLessonsNotifier.value;
                                   final cancelledColor = Color(cancelledLessonColorNotifier.value);
@@ -3199,8 +3470,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           nowMin < startMin);
                                   final isNow = isCurrent || isNextGlowing;
 
+                                  final lDateInt = int.tryParse(l['date']?.toString() ?? '') ?? 0;
+                                  final hasHomework = homeworksNotifier.value.any((hw) => hw['dueDate'] == lDateInt && (hw['subject'] == sk || hw['subject'] == subject)) ||
+                                                      customHomeworkNotifier.value.any((hw) => hw['dueDate'] == lDateInt && (hw['subject'] == sk || hw['subject'] == subject));
+                                  final hasExam = apiExamsNotifier.value.any((ex) => (ex['date'] ?? ex['examDate'] ?? 0) == lDateInt && (ex['subject'] == sk || ex['subjectName'] == sk || ex['subject'] == subject)) ||
+                                                   customExamsNotifier.value.any((ex) => (ex['date'] ?? 0) == lDateInt && (ex['subject'] == sk || ex['subject'] == subject));
+
                                   return GestureDetector(
                                     onTap: () => _showLessonDetail(context, l),
+                                    onLongPress: () => _editLessonTemporarily(l),
                                     child: _buildTimetableLessonCard(
                                       context: context,
                                       isCancelled: isCancelled,
@@ -3211,6 +3489,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       teacher: teacher,
                                       room: room,
                                       isNow: isNow,
+                                      isTeacherMissing: isTeacherMissing,
+                                      hasHomework: hasHomework,
+                                      hasExam: hasExam,
                                       padding: const EdgeInsets.fromLTRB(
                                         8,
                                         5,
@@ -3326,7 +3607,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final csW = Theme.of(context).colorScheme;
     return RefreshIndicator(
       onRefresh: _onRefresh,
-      displacement: 40,
+      // Keep the resting indicator below the transparent app bar.
+      displacement: topContentPadding + 40,
       edgeOffset: topContentPadding,
       color: csW.onPrimaryContainer,
       backgroundColor: csW.primaryContainer,
@@ -3347,9 +3629,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             );
             final dayColWidth = availableForDays / 5;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            // On small screens five day columns cannot fit alongside the time
+            // gutter. Keep their minimum readable width and scroll horizontally.
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: SizedBox(
+                width: timeColWidth + 4 + availableForDays + dayColGap,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                 Padding(
                   padding: const EdgeInsets.only(
                     left: timeColWidth + 4,
@@ -3604,6 +3893,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                               Brightness.dark;
                                           final isCancelled =
                                               (l['code'] ?? '') == 'cancelled';
+                                          final isTeacherMissing = _hasMissingTeacher(l);
                                           final subject =
                                               l['_subjectShort']
                                                       ?.toString()
@@ -3654,11 +3944,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   nowMin < slot.startMin);
                                           final isNow = isCurrent || isNextGlowing;
 
+                                          final lDateInt = int.tryParse(l['date']?.toString() ?? '') ?? 0;
+                                          final hasHomework = homeworksNotifier.value.any((hw) => hw['dueDate'] == lDateInt && (hw['subject'] == sk2 || hw['subject'] == subject)) ||
+                                                              customHomeworkNotifier.value.any((hw) => hw['dueDate'] == lDateInt && (hw['subject'] == sk2 || hw['subject'] == subject));
+                                          final hasExam = apiExamsNotifier.value.any((ex) => (ex['date'] ?? ex['examDate'] ?? 0) == lDateInt && (ex['subject'] == sk2 || ex['subjectName'] == sk2 || ex['subject'] == subject)) ||
+                                                           customExamsNotifier.value.any((ex) => (ex['date'] ?? 0) == lDateInt && (ex['subject'] == sk2 || ex['subject'] == subject));
+
                                           return _dimPastLesson(
                                             dim: dim,
                                             child: GestureDetector(
                                               onTap: () =>
                                                   _onLessonTap(context, l),
+                                              onLongPress: () => _editLessonTemporarily(l),
                                               child: _buildTimetableLessonCard(
                                                 context: context,
                                                 isCancelled: isCancelled,
@@ -3669,6 +3966,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                 teacher: teacher,
                                                 room: room,
                                                 isNow: isNow,
+                                                isTeacherMissing: isTeacherMissing,
+                                                hasHomework: hasHomework,
+                                                hasExam: hasExam,
                                                 padding: const EdgeInsets.fromLTRB(
                                                   8,
                                                   5,
@@ -3744,7 +4044,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     ),
                   ],
                 ),
-              ],
+                  ],
+                ),
+              ),
             );
           },
         ),
@@ -3810,8 +4112,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     });
 
     if (isDemoMode) {
-      final tempWeek = DemoModeService.buildWeek(_currentMonday, locale: 'en');
+      final tempWeek = DemoModeService.buildWeek(
+        _currentMonday,
+        locale: appLocaleNotifier.value,
+      );
       _applyKnownSubjectsFromWeek(tempWeek);
+      await _fetchHomeworkAndNotes();
       await _saveWeekToCache(
         requestPersonId: requestPersonId,
         requestPersonType: requestPersonType,
@@ -3824,6 +4130,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _loading = false;
         _loadError = null;
       });
+      currentWeekDataNotifier.value = tempWeek;
+      unawaited(_updateHomeWidgets(tempWeek));
       return;
     }
 
@@ -3839,6 +4147,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _showingCachedWeek = true;
         _loading = false;
       });
+      currentWeekDataNotifier.value = cachedWeek;
+      unawaited(_updateHomeWidgets(cachedWeek));
     }
 
     try {
@@ -3930,6 +4240,45 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             decodedResponse['error']['message']?.toString() ??
             "Unbekannter API-Fehler";
 
+        if (apiMsg.toLowerCase().contains('not within a school year') ||
+            apiMsg.toLowerCase().contains('nicht in einem schuljahr')) {
+          try {
+            final syRes = await http.post(
+              url,
+              headers: {
+                "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+                "Content-Type": "application/json",
+              },
+              body: jsonEncode({
+                "id": "sy_req",
+                "method": "getCurrentSchoolyear",
+                "params": {},
+                "jsonrpc": "2.0",
+              }),
+            );
+            if (syRes.statusCode == 200) {
+              final syDecoded = jsonDecode(syRes.body);
+              if (syDecoded['result'] != null) {
+                final sy = syDecoded['result'];
+                final syStart = sy['startDate'].toString();
+                if (syStart.length == 8) {
+                  final syStartDate = DateTime.parse(
+                    "${syStart.substring(0, 4)}-${syStart.substring(4, 6)}-${syStart.substring(6, 8)}",
+                  );
+                  // Adjust current monday to start of school year if we are far away
+                  if (_currentMonday.isBefore(syStartDate)) {
+                    _currentMonday = syStartDate.subtract(
+                      Duration(days: syStartDate.weekday - 1),
+                    );
+                    await _fetchFullWeek();
+                    return;
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
         if (errCode == -8504 ||
             apiMsg.toLowerCase().contains('not authenticated')) {
           final ok = await _reAuthenticate();
@@ -3937,6 +4286,45 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             await _fetchFullWeek();
             return;
           }
+        }
+
+        if (apiMsg.toLowerCase().contains('not within a school year') ||
+            apiMsg.toLowerCase().contains('nicht in einem schuljahr')) {
+          try {
+            final syRes = await http.post(
+              url,
+              headers: {
+                "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+                "Content-Type": "application/json",
+              },
+              body: jsonEncode({
+                "id": "sy_req",
+                "method": "getCurrentSchoolyear",
+                "params": {},
+                "jsonrpc": "2.0",
+              }),
+            );
+            if (syRes.statusCode == 200) {
+              final syDecoded = jsonDecode(syRes.body);
+              if (syDecoded['result'] != null) {
+                final sy = syDecoded['result'];
+                final syStart = sy['startDate'].toString();
+                if (syStart.length == 8) {
+                  final syStartDate = DateTime.parse(
+                    "${syStart.substring(0, 4)}-${syStart.substring(4, 6)}-${syStart.substring(6, 8)}",
+                  );
+                  // Adjust current monday to start of school year if we are far away
+                  if (_currentMonday.isBefore(syStartDate)) {
+                    _currentMonday = syStartDate.subtract(
+                      Duration(days: syStartDate.weekday - 1),
+                    );
+                    await _fetchFullWeek();
+                    return;
+                  }
+                }
+              }
+            }
+          } catch (_) {}
         }
 
         if (hasCachedWeek) {
@@ -4030,6 +4418,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             resolvedLesson['_activityType'] = (lesson['activityType'] ?? '').toString();
             resolvedLesson['_eventName'] = eventName;
             resolvedLesson['_lessonInfo'] = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
+            resolvedLesson['_teacherMissing'] = _hasMissingTeacher(lesson);
 
             tempWeek[dayIndex]!.add(resolvedLesson);
           }
@@ -4237,6 +4626,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _showingCachedWeek = false;
         _loading = false;
       });
+      currentWeekDataNotifier.value = tempWeek;
+      unawaited(_updateHomeWidgets(tempWeek));
     } catch (e) {
       debugPrint("Fehler beim Laden: $e");
       if (hasCachedWeek) {
@@ -4326,9 +4717,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     String? sid;
-    List<dynamic> classes = [];
+    List<dynamic> classes = demoModeNotifier.value
+        ? DemoModeService.demoClasses()
+        : [];
 
-    if (sessionID.isNotEmpty) {
+    if (!demoModeNotifier.value && sessionID.isNotEmpty) {
       try {
         classes = await fetchClassesForSession(sessionID);
         if (classes.isNotEmpty) {
@@ -4337,7 +4730,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       } catch (_) {}
     }
 
-    if (classes.isEmpty) {
+    if (!demoModeNotifier.value && classes.isEmpty) {
       try {
         final anonSid = await _authenticateAnonymous();
         if (anonSid != null && anonSid.isNotEmpty) {
@@ -4706,10 +5099,49 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: RoundedBlurAppBar(
-        leading: IconButton(
-          tooltip: l.timetableSelectAnother,
-          icon: const Icon(Icons.groups_rounded),
-          onPressed: _openClassSearch,
+        leading: PopupMenuButton<String>(
+          tooltip: l.timetableMoreActions,
+          icon: const Icon(Icons.more_vert_rounded),
+          onSelected: (action) {
+            switch (action) {
+              case 'classes':
+                _openClassSearch();
+                break;
+              case 'rooms':
+                _showFreeRoomsDialog();
+                break;
+              case 'export':
+                _exportTimetableImage();
+                break;
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'classes',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.groups_rounded),
+                title: Text(l.timetableSelectAnother),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'rooms',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.meeting_room_outlined),
+                title: Text(l.freeRoomsTitle),
+              ),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              value: 'export',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.ios_share_rounded),
+                title: Text(l.timetableExportImage),
+              ),
+            ),
+          ],
         ),
         title: GestureDetector(
           onTap: () {
@@ -4748,11 +5180,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            tooltip: l.freeRoomsTitle,
-            icon: const Icon(Icons.meeting_room_outlined),
-            onPressed: _showFreeRoomsDialog,
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
@@ -4874,7 +5301,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   ),
                 ),
               )
-            : _buildWeekCarousel(),
+            : RepaintBoundary(
+                key: _timetableExportKey,
+                child: _buildWeekCarousel(),
+              ),
       ),
     );
   }
@@ -4897,6 +5327,35 @@ Widget _chip(String label, Color bg, Color fg) => Container(
     ),
   ),
 );
+
+List<DateTime> _findSubjectDates(String subject) {
+  if (subject.isEmpty) return [];
+  final week = currentWeekDataNotifier.value;
+  final dates = <DateTime>{};
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+
+  for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
+    final lessons = week[dayIndex] ?? [];
+    for (final l in lessons) {
+      final sShort = l['_subjectShort']?.toString() ?? '';
+      final sLong = l['_subjectLong']?.toString() ?? '';
+      if (sShort == subject || sLong == subject || l['subject'] == subject) {
+        final dStr = l['date']?.toString() ?? '';
+        if (dStr.length == 8) {
+          final date = DateTime.parse(
+            '${dStr.substring(0, 4)}-${dStr.substring(4, 6)}-${dStr.substring(6, 8)}',
+          );
+          if (!date.isBefore(today)) {
+            dates.add(date);
+          }
+        }
+      }
+    }
+  }
+  final list = dates.toList()..sort();
+  return list.take(4).toList();
+}
 
 Future<void> _showAddHomeworkDialog(
   BuildContext context, {
@@ -5114,6 +5573,45 @@ Future<void> _showAddHomeworkDialog(
                     ),
                   ),
                   const SizedBox(height: 12),
+                  Builder(
+                    builder: (context) {
+                      final suggested = _findSubjectDates(selectedSubject);
+                      if (suggested.isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: suggested.map((d) {
+                              final isSelected = d.year == selectedDate.year &&
+                                  d.month == selectedDate.month &&
+                                  d.day == selectedDate.day;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    DateFormat('E, dd.MM.', appLocaleNotifier.value).format(d),
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (val) {
+                                    if (val) setDlg(() => selectedDate = d);
+                                  },
+                                  selectedColor: cs.primaryContainer,
+                                  labelStyle: TextStyle(
+                                    color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   InkWell(
                     onTap: () async {
                       final picked = await showDatePicker(
@@ -5573,13 +6071,18 @@ class _HomeworkViewState extends State<_HomeworkView> {
 
             return RefreshIndicator(
               onRefresh: () async {
-                final res = await HomeworkService.fetchHomeworkAndNotes(
-                  schoolUrl: schoolUrl,
-                  schoolName: schoolName,
-                  sessionId: sessionID,
-                  personId: personId,
-                  personType: personType,
-                );
+                final res = demoModeNotifier.value
+                    ? DemoModeService.buildHomeworkAndNotes(
+                        resolveDefaultTimetableMonday(DateTime.now()),
+                        locale: appLocaleNotifier.value,
+                      )
+                    : await HomeworkService.fetchHomeworkAndNotes(
+                        schoolUrl: schoolUrl,
+                        schoolName: schoolName,
+                        sessionId: sessionID,
+                        personId: personId,
+                        personType: personType,
+                      );
                 homeworksNotifier.value = res['homeworks']!;
                 lessonNotesNotifier.value = res['lessonNotes']!;
               },
@@ -6090,6 +6593,45 @@ Future<void> _showAddExamDialog(
                     ),
                   ),
                   const SizedBox(height: 12),
+                  Builder(
+                    builder: (context) {
+                      final suggested = _findSubjectDates(selectedSubject);
+                      if (suggested.isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: suggested.map((d) {
+                              final isSelected = d.year == selectedDate.year &&
+                                  d.month == selectedDate.month &&
+                                  d.day == selectedDate.day;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(
+                                    DateFormat('E, dd.MM.', appLocaleNotifier.value).format(d),
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (val) {
+                                    if (val) setDlg(() => selectedDate = d);
+                                  },
+                                  selectedColor: cs.primaryContainer,
+                                  labelStyle: TextStyle(
+                                    color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   InkWell(
                     onTap: () async {
                       final picked = await showDatePicker(
@@ -6433,6 +6975,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       results = await tryEndpoint('/WebUntis/api/exams/student/$personId');
     }
     _apiExams = results;
+    apiExamsNotifier.value = results;
   }
 
   List<Map<String, dynamic>> get _allExams {
@@ -6970,7 +7513,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
         title: Text(
           _tabController.index == 0
               ? l.examsTitle
-              : (_tabController.index == 1 ? l.homeworkTitle : 'Grades'),
+              : (_tabController.index == 1 ? l.homeworkTitle : l.gradesTitle),
           style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
         ),
         centerTitle: true,
@@ -7003,9 +7546,36 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
           onTap: (index) => setState(() {}),
           tabs: [
-            Tab(text: l.navExams),
-            Tab(text: l.navHomework),
-            Tab(text: l.navGrades),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.assignment_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.navExams),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.assignment_late_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.navHomework),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.auto_graph_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Text(l.navGrades),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -9331,13 +9901,28 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
 
   Future<void> _reload() async {
     if (demoModeNotifier.value) {
+      final fetched = DemoModeService.demoNotifications(
+        locale: appLocaleNotifier.value,
+      ).map((raw) {
+        return _SchoolNotificationItem(
+          id: raw['id'].toString(),
+          title: raw['title']?.toString() ?? '',
+          body: raw['message']?.toString() ?? '',
+          date: _parseNotificationDate(raw['date']),
+          author: raw['author']?.toString(),
+        );
+      }).toList();
       if (!mounted) return;
       setState(() {
-        _items = const [];
+        _items = fetched;
         _loading = false;
         _error = null;
         _lastUpdated = DateTime.now();
       });
+      if (!kIsWeb && Platform.isAndroid) {
+        final summary = fetched.take(3).map((item) => item.title).join('\n');
+        unawaited(WidgetService.updateNotificationWidget(summary));
+      }
       return;
     }
 
@@ -9374,6 +9959,12 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         _error = null;
         _lastUpdated = DateTime.now();
       });
+      if (!kIsWeb && Platform.isAndroid) {
+        final summary = fetched.take(3).map((item) => item.title).join('\n');
+        unawaited(WidgetService.updateNotificationWidget(
+          summary.isEmpty ? 'Keine neuen Mitteilungen' : summary,
+        ));
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {

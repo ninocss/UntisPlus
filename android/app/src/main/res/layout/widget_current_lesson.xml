@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_current_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/widget_m3_surface">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="UNTIS+ · JETZT" android:textColor="@color/widget_primary" android:textStyle="bold" android:textSize="12sp" />
+    <TextView android:id="@+id/widget_current_lesson" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/widget_on_surface" android:textStyle="bold" android:textSize="20sp" />
+    <TextView android:id="@+id/widget_next_lesson" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textColor="@color/widget_on_surface_variant" android:textSize="14sp" />
+    <TextView android:id="@+id/widget_time_remaining" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textColor="@color/widget_primary" android:textSize="13sp" />
+</LinearLayout>

@@ -10,11 +10,15 @@ class WidgetService {
     required String nextLesson,
     required String timeRemaining,
     required String dailySchedule,
+    required String homeworkSummary,
+    required String notificationSummary,
   }) async {
     await HomeWidget.saveWidgetData<String>('current_lesson', currentLesson);
     await HomeWidget.saveWidgetData<String>('next_lesson', nextLesson);
     await HomeWidget.saveWidgetData<String>('time_remaining', timeRemaining);
     await HomeWidget.saveWidgetData<String>('daily_schedule', dailySchedule);
+    await HomeWidget.saveWidgetData<String>('homework_summary', homeworkSummary);
+    await HomeWidget.saveWidgetData<String>('notification_summary', notificationSummary);
 
     await HomeWidget.updateWidget(
       name: 'UntisWidgetCurrentLesson',
@@ -22,9 +26,28 @@ class WidgetService {
       qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetCurrentLesson',
     );
     await HomeWidget.updateWidget(
+      name: 'UntisWidgetHomework',
+      iOSName: iOSWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetHomework',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetNotifications',
+      iOSName: iOSWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetNotifications',
+    );
+    await HomeWidget.updateWidget(
       name: 'UntisWidgetDailySchedule',
       iOSName: iOSWidgetName,
       qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetDailySchedule',
+    );
+  }
+
+  static Future<void> updateNotificationWidget(String summary) async {
+    await HomeWidget.saveWidgetData<String>('notification_summary', summary);
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetNotifications',
+      iOSName: iOSWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetNotifications',
     );
   }
 }

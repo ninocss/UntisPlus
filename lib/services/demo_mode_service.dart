@@ -387,6 +387,102 @@ class DemoModeService {
     ];
   }
 
+  /// Returns the same shape as [HomeworkService.fetchHomeworkAndNotes].
+  /// Keeping demo data in the WebUntis-shaped model means every consumer uses
+  /// its normal rendering and interaction path without needing an account.
+  static Map<String, List<Map<String, dynamic>>> buildHomeworkAndNotes(
+    DateTime monday, {
+    String locale = 'de',
+  }) {
+    final week = buildWeek(monday, locale: locale);
+    final math = Map<String, dynamic>.from(week[0]!.first as Map);
+    final english = Map<String, dynamic>.from(week[2]!.first as Map);
+    final chemistry = Map<String, dynamic>.from(week[4]![1] as Map);
+
+    return {
+      'homeworks': [
+        {
+          'id': 9001,
+          'lessonId': math['id'],
+          'text': 'Übung 5 auf Seite 12 bearbeiten.',
+          'dueDate': math['date'],
+          'isDone': false,
+          '_lesson': math,
+        },
+        {
+          'id': 9002,
+          'lessonId': english['id'],
+          'text': 'Die Vokabeln für die nächste Stunde wiederholen.',
+          'dueDate': english['date'],
+          'isDone': false,
+          '_lesson': english,
+        },
+        {
+          'id': 9003,
+          'lessonId': chemistry['id'],
+          'text': 'Das Laborprotokoll fertigstellen.',
+          'dueDate': chemistry['date'],
+          'isDone': false,
+          '_lesson': chemistry,
+        },
+      ],
+      'lessonNotes': [
+        {
+          'id': 9101,
+          'lessonId': math['id'],
+          'date': math['date'],
+          'text': 'Arbeitsblatt in der Stunde ausgeteilt.',
+          '_lesson': math,
+        },
+        {
+          'id': 9102,
+          'lessonId': chemistry['id'],
+          'date': chemistry['date'],
+          'text': 'Für den Versuch bitte Schutzbrille mitbringen.',
+          '_lesson': chemistry,
+        },
+      ],
+    };
+  }
+
+  /// Locally supplied notification payloads follow the public WebUntis
+  /// response format and therefore use the standard notification mapper.
+  static List<Map<String, dynamic>> demoNotifications({String locale = 'de'}) {
+    final today = DateTime.now();
+    return [
+      {
+        'id': 'demo-notice-1',
+        'title': 'Willkommen bei Untis+',
+        'message': 'Im Demo-Modus werden alle Funktionen mit lokalen Beispieldaten gezeigt.',
+        'date': _dateInt(today),
+        'author': 'Untis+',
+      },
+      {
+        'id': 'demo-notice-2',
+        'title': 'Stundenplan aktualisiert',
+        'message': 'Der Chemieunterricht am Freitag findet regulär statt.',
+        'date': _dateInt(today.subtract(const Duration(days: 1))),
+        'author': 'Sekretariat',
+      },
+    ];
+  }
+
+  static List<Map<String, dynamic>> demoClasses() => const [
+        {'id': 999001, 'name': 'Demo 10A', 'longName': 'Demo-Klasse 10A'},
+        {'id': 999002, 'name': 'Demo 10B', 'longName': 'Demo-Klasse 10B'},
+        {'id': 999003, 'name': 'Demo Q1', 'longName': 'Demo-Jahrgang Q1'},
+      ];
+
+  static List<String> demoFreeRooms(int rangeIndex) {
+    const rooms = [
+      ['A102', 'B201', 'Bibliothek'],
+      ['A102', 'C104', 'Medienraum'],
+      ['B201', 'Sporthalle klein'],
+      ['C104', 'Musikraum'],
+    ];
+    return List<String>.from(rooms[rangeIndex % rooms.length]);
+  }
+
   static Map<String, dynamic> _lesson(
     DateTime date,
     int startTime,
@@ -397,7 +493,10 @@ class DemoModeService {
     String room, {
     String code = '',
   }) {
+    final id = _dateInt(date) * 10000 + startTime;
     return {
+      'id': id,
+      'lsid': id,
       'date': _dateInt(date),
       'startTime': startTime,
       'endTime': endTime,
@@ -405,6 +504,9 @@ class DemoModeService {
       '_subjectLong': subjectLong,
       '_teacher': teacher,
       '_room': room,
+      'su': [
+        {'name': subjectShort, 'longname': subjectLong},
+      ],
       'code': code,
       'lstext': startTime == 800 ? 'Please bring your textbooks.' : '',
       'homework': startTime == 800 ? 'Complete exercise 5 on page 12.' : '',

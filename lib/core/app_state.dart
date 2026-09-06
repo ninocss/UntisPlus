@@ -189,6 +189,10 @@ final ValueNotifier<String?> pendingTimetableCurrentLessonNotifier =
 final ValueNotifier<String?> pendingTimetableNextLessonNotifier = ValueNotifier(
   null,
 );
+
+/// A native Assistant or App Action can request opening the in-app AI screen.
+final ValueNotifier<bool> pendingAssistantOpenNotifier = ValueNotifier(false);
+final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(null);
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);
@@ -237,6 +241,10 @@ final ValueNotifier<List<Map<String, dynamic>>> homeworksNotifier =
 /// Latest fetched lesson notes (class register remarks), available app-wide so
 /// lesson detail sheets can attach register notes to the corresponding lesson.
 final ValueNotifier<List<Map<String, dynamic>>> lessonNotesNotifier =
+    ValueNotifier(const []);
+
+/// Latest fetched exams from the school server.
+final ValueNotifier<List<Map<String, dynamic>>> apiExamsNotifier =
     ValueNotifier(const []);
 
 final ValueNotifier<List<Map<String, dynamic>>> customHomeworkNotifier =
@@ -324,6 +332,14 @@ Future<void> _unhideSubject(String key) async {
 final ValueNotifier<Map<String, int>> subjectColorsNotifier = ValueNotifier({});
 
 final ValueNotifier<Set<String>> knownSubjectsNotifier = ValueNotifier({});
+
+/// Launcher icon chosen by the user. Android applies this through aliases;
+/// other platforms keep the preference so a later native implementation can use it.
+final ValueNotifier<String> appIconNotifier = ValueNotifier('default');
+
+/// Latest loaded timetable week data.
+final ValueNotifier<Map<int, List<dynamic>>> currentWeekDataNotifier =
+    ValueNotifier({});
 
 Future<void> _setSubjectColor(String key, int colorValue) async {
   if (key.isEmpty) return;

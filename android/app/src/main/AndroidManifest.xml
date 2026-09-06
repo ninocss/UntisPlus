@@ -6,6 +6,22 @@
         android:label="Untis+"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <receiver android:name=".UntisWidgetCurrentLesson" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/untis_current_lesson_widget" />
+        </receiver>
+        <receiver android:name=".UntisWidgetDailySchedule" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/untis_daily_schedule_widget" />
+        </receiver>
+        <receiver android:name=".UntisWidgetHomework" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/untis_homework_widget" />
+        </receiver>
+        <receiver android:name=".UntisWidgetNotifications" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/untis_notifications_widget" />
+        </receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -19,9 +35,10 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="com.ninocss.untisplus.OPEN_ASSISTANT" />
+                <data android:scheme="untisplus" android:host="assistant" />
             </intent-filter>
         </activity>
 
@@ -29,7 +46,7 @@
         <activity-alias
             android:name=".IconDefault"
             android:targetActivity=".MainActivity"
-            android:enabled="false"
+            android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
             android:label="Untis+">
@@ -44,7 +61,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
+            android:icon="@drawable/ic_launcher_3d"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -57,7 +74,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
+            android:icon="@drawable/ic_launcher_chrom"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -70,7 +87,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
+            android:icon="@drawable/ic_launcher_galaxy"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -83,7 +100,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
+            android:icon="@drawable/ic_launcher_gradiant"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -96,7 +113,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
+            android:icon="@drawable/ic_launcher_marmor"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -109,7 +126,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher"
+            android:icon="@drawable/ic_launcher_paper"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

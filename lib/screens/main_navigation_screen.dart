@@ -138,9 +138,18 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
     });
     _loadContext();
     _loadChatHistory();
+    pendingAssistantPromptNotifier.addListener(_consumeNativeAssistantPrompt);
     _promptFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
+  }
+
+  void _consumeNativeAssistantPrompt() {
+    final prompt = pendingAssistantPromptNotifier.value?.trim() ?? '';
+    if (!mounted || prompt.isEmpty) return;
+    pendingAssistantPromptNotifier.value = null;
+    _inputController.text = prompt;
+    _send();
   }
 
   Future<void> _loadChatHistory() async {
@@ -218,6 +227,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
 
   @override
   void dispose() {
+    pendingAssistantPromptNotifier.removeListener(_consumeNativeAssistantPrompt);
     _tabController.dispose();
     _promptFocusNode.dispose();
     _typingHintTimer?.cancel();
@@ -2165,6 +2175,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _notificationActionSub = NotificationService().actionEvents.listen(
       _handleNotificationAction,
     );
+    pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
+    if (pendingAssistantOpenNotifier.value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openAssistantFromNative());
+    }
     final pending = NotificationService().consumePendingActionEvent();
     if (pending != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2210,6 +2224,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     _onNavTap(0);
     pendingTimetableActionNotifier.value = 'open_timetable';
+  }
+
+  void _openAssistantFromNative() {
+    if (!mounted || !pendingAssistantOpenNotifier.value) return;
+    pendingAssistantOpenNotifier.value = false;
+    _onNavTap(4);
   }
 
   Future<void> _finishTutorial() async {
@@ -2347,6 +2367,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void dispose() {
     _notificationActionSub?.cancel();
+    pendingAssistantOpenNotifier.removeListener(_openAssistantFromNative);
     super.dispose();
   }
 

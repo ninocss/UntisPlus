@@ -5,6 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.ComponentName
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import io.flutter.embedding.engine.FlutterEngine
@@ -48,6 +50,10 @@ class MainActivity : FlutterActivity() {
                     applyWindowBlur(radius)
                     result.success(null)
                 }
+                "setLauncherIcon" -> {
+                    val icon = call.arguments as? String
+                    result.success(icon?.let { setLauncherIcon(it) } ?: false)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -63,6 +69,29 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) {}
     }
 
+    private fun setLauncherIcon(icon: String): Boolean {
+        val aliases = mapOf(
+            "default" to ".IconDefault",
+            "3d" to ".Icon3D",
+            "chrom" to ".IconChrom",
+            "galaxy" to ".IconGalaxy",
+            "gradiant" to ".IconGradiant",
+            "marmor" to ".IconMarmor",
+            "paper" to ".IconPaper",
+        )
+        val target = aliases[icon] ?: return false
+        val manager = packageManager
+        aliases.values.forEach { alias ->
+            manager.setComponentEnabledSetting(
+                ComponentName(packageName, "$packageName$alias"),
+                if (alias == target) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP,
+            )
+        }
+        return true
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -70,6 +99,12 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        if (intent?.action == "com.ninocss.untisplus.OPEN_ASSISTANT" ||
+            intent?.data?.host == "assistant") {
+            uiChannel?.invokeMethod("openAssistant", intent?.data?.getQueryParameter("query"))
+            intent?.action = null
+            return
+        }
         val actionId = intent?.getStringExtra(EXTRA_ACTION_ID) ?: return
         val payload = mapOf(
             "actionId" to actionId,
