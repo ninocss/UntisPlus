@@ -1,10 +1,13 @@
 name: Flutter Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (leer = automatisch naechstes Minor, z.B. 3.1.0 -> 3.2.0)'
+        description: 'Release tag (leer = Version aus pubspec.yaml, z.B. v5.2.0)'
         required: false
         default: ''
         type: string
@@ -23,7 +26,7 @@ on:
         default: false
         type: boolean
       run_tests:
-        description: 'flutter analyze und flutter test ausfuehren'
+        description: 'Kompatibilitaetsoption; Releases fuehren immer flutter analyze und flutter test aus'
         required: true
         default: true
         type: boolean
@@ -101,6 +104,9 @@ jobs:
           }
 
           input_tag="$(echo "${INPUT_TAG:-}" | tr -d '[:space:]')"
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            input_tag="${GITHUB_REF_NAME}"
+          fi
 
           last_tag="$(git tag --list | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
           prefix=""
@@ -112,12 +118,23 @@ jobs:
             base="${last_tag#v}"
           fi
 
+          app_version="$(grep -E '^version:\s*' pubspec.yaml | head -n 1 | sed -E 's/^version:\s*//' | sed -E 's/[[:space:]]*\+.*//')"
+          if [ -z "$app_version" ]; then
+            echo 'pubspec.yaml has no valid version.'
+            exit 1
+          fi
+
           resolved_tag="$input_tag"
           if [ -z "$resolved_tag" ]; then
-            IFS='.' read -r major minor patch <<<"$base"
-            : "${major:=0}" "${minor:=0}" "${patch:=0}"
-            minor=$((minor + 1))
-            resolved_tag="${prefix}${major}.${minor}.0"
+            resolved_tag="v$app_version"
+          fi
+          if ! [[ "$resolved_tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must be semantic (for example v$app_version): $resolved_tag"
+            exit 1
+          fi
+          if [ "${resolved_tag#v}" != "$app_version" ]; then
+            echo "Release tag $resolved_tag does not match pubspec.yaml version $app_version."
+            exit 1
           fi
 
           resolved_name="$(echo "${INPUT_RELEASE_NAME:-}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
@@ -128,6 +145,10 @@ jobs:
           prerelease="$(normalize_bool "${INPUT_PRERELEASE:-}" "false")"
           draft="$(normalize_bool "${INPUT_DRAFT:-}" "false")"
           run_tests="$(normalize_bool "${INPUT_RUN_TESTS:-}" "true")"
+          if [ "$run_tests" != "true" ]; then
+            echo 'Quality checks are mandatory for published releases; ignoring run_tests=false.'
+            run_tests="true"
+          fi
           split_per_abi="$(normalize_bool "${INPUT_SPLIT_PER_ABI:-}" "true")"
 
           build_artifacts="$(echo "${INPUT_BUILD_ARTIFACTS:-apk}" | tr -d '[:space:]')"
@@ -159,7 +180,6 @@ jobs:
               ;;
           esac
 
-          app_version="$(grep -E '^version:\s*' pubspec.yaml | head -n 1 | sed -E 's/^version:\s*//' | sed -E 's/[[:space:]]*\+.*//')"
           echo "app_version=$app_version"
 
           {
@@ -230,10 +250,9 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "WARNING: Keystore secrets nicht vollstaendig konfiguriert."
-            echo "Der Build wird ohne Signierung laufen (unsigned release)."
-            echo "keystore_configured=false" >> $GITHUB_OUTPUT
-            exit 0
+            echo "Android signing secrets are required for a release."
+            echo "Refusing to publish an APK that cannot update an installed Untis+ app."
+            exit 1
           fi
 
           mkdir -p "$RUNNER_TEMP/android-signing"
@@ -277,6 +296,9 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Install Dependencies
+        run: flutter pub get
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -296,35 +318,55 @@ jobs:
         if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
         run: cp "$RUNNER_TEMP/android-signing/key.properties" android/key.properties
 
-      - name: Build Android APK
+      - name: Build Android APKs
         run: |
-          if [ "${{ needs.meta.outputs.split_per_abi }}" = "true" ]; then
-            flutter build apk --release --split-per-abi
-          else
-            flutter build apk --release
-          fi
+          # Keep a universal recovery APK and the ABI-specific APKs used by
+          # the in-app updater. All artifacts are signed by the same key.
+          flutter build apk --release
+          mkdir -p universal_apk
+          cp build/app/outputs/flutter-apk/app-release.apk universal_apk/
+          flutter build apk --release --split-per-abi
 
       - name: Prepare APK Artifacts
         run: |
           mkdir -p apk_artifacts
           TAG="${{ needs.meta.outputs.release_tag }}"
           
-          # Debugging Ausgabe der Build-Struktur
-          find build/app/outputs/flutter-apk/ -maxdepth 1 -name "*.apk"
-          
-          # Kopiere alle gefundenen APKs unabhängig von spezifischen Dateinamen
-          found=false
-          for f in build/app/outputs/flutter-apk/*.apk; do
-            if [ -f "$f" ]; then
-              cp "$f" "apk_artifacts/UntisPlus-${TAG}-$(basename "$f")"
-              found=true
+          cp universal_apk/app-release.apk "apk_artifacts/UntisPlus-${TAG}-universal.apk"
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            source="build/app/outputs/flutter-apk/app-${abi}-release.apk"
+            if [ ! -f "$source" ]; then
+              echo "Missing ABI APK: $source"
+              exit 1
             fi
+            cp "$source" "apk_artifacts/UntisPlus-${TAG}-${abi}.apk"
           done
-          
-          if [ "$found" = false ]; then
-            echo "Fehler: Keine APK-Dateien in build/app/outputs/flutter-apk/ gefunden."
-            exit 1
-          fi
+
+          (
+            cd apk_artifacts
+            sha256sum *.apk > SHA256SUMS.txt
+            assets="$({
+              for f in *.apk; do
+                abi="universal"
+                case "$f" in
+                  *-armeabi-v7a.apk) abi="armeabi-v7a" ;;
+                  *-arm64-v8a.apk) abi="arm64-v8a" ;;
+                  *-x86_64.apk) abi="x86_64" ;;
+                esac
+                jq -n --arg name "$f" --arg abi "$abi" \
+                  --arg sha "$(sha256sum "$f" | awk '{print $1}')" \
+                  --argjson size "$(stat -c%s "$f")" \
+                  '{name: $name, abi: $abi, sha256: $sha, size_bytes: $size}'
+              done
+            } | jq -s '.')"
+            jq -n \
+              --arg tag "$TAG" \
+              --arg version "${TAG#v}" \
+              --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --argjson assets "$assets" \
+              '{tag: $tag, version: $version, generated_at: $generated_at, assets: $assets}' \
+              > release-manifest.json
+          )
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v6
@@ -645,12 +687,46 @@ jobs:
             echo "has_ai_notes=true"
           } >> $GITHUB_OUTPUT
 
-      - name: Upload Gemini Notes Artifact
-        if: ${{ steps.ai_notes.outputs.has_ai_notes == 'true' }}
+      - name: Create deterministic fallback notes
+        if: ${{ steps.ai_notes.outputs.has_ai_notes != 'true' }}
+        env:
+          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          previous_tag="$(git tag --sort=-creatordate | grep -Fxv "$RELEASE_TAG" | head -n 1 || true)"
+          if [ -n "$previous_tag" ]; then
+            range="$previous_tag..HEAD"
+          else
+            range="HEAD"
+          fi
+          {
+            echo "# Release $RELEASE_TAG"
+            echo
+            echo "## Changes"
+            git log "$range" --no-merges --pretty=format:'- %s' | sed '/^[[:space:]]*$/d' | head -n 120
+            echo
+            echo
+            echo "## Verification"
+            echo "- Ran Flutter analysis and tests in the release workflow."
+            if [ -n "$previous_tag" ]; then
+              echo
+              echo "**Full Changelog:** https://github.com/${GITHUB_REPOSITORY}/compare/${previous_tag}...${RELEASE_TAG}"
+            fi
+          } > fallback_release_notes.md
+
+      - name: Select release notes
+        run: |
+          if [ "${{ steps.ai_notes.outputs.has_ai_notes }}" = "true" ]; then
+            cp gemini_release_notes.md release_notes.md
+          else
+            cp fallback_release_notes.md release_notes.md
+          fi
+
+      - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: gemini-release-notes
-          path: gemini_release_notes.md
+          name: release-notes
+          path: release_notes.md
           if-no-files-found: error
 
       - name: Release Notes Summary
@@ -692,39 +768,23 @@ jobs:
           name: release-ipa
           path: release_assets
 
-      - name: Download Gemini Notes Artifact
-        if: ${{ needs.release_notes.outputs.has_ai_notes == 'true' }}
+      - name: Download Release Notes Artifact
         uses: actions/download-artifact@v7
         with:
-          name: gemini-release-notes
+          name: release-notes
           path: release_assets
 
       - name: List Release Assets
         run: find release_assets -type f -ls
 
-      - name: Create GitHub Release (AI Notes)
-        if: ${{ needs.release_notes.outputs.has_ai_notes == 'true' }}
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.meta.outputs.release_tag }}
           name: ${{ needs.meta.outputs.release_name }}
-          body_path: release_assets/gemini_release_notes.md
+          body_path: release_assets/release_notes.md
           files: release_assets/*
           fail_on_unmatched_files: false
-          draft: ${{ needs.meta.outputs.draft == 'true' }}
-          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create GitHub Release (Fallback)
-        if: ${{ needs.release_notes.outputs.has_ai_notes != 'true' }}
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.meta.outputs.release_tag }}
-          name: ${{ needs.meta.outputs.release_name }}
-          files: release_assets/*
-          fail_on_unmatched_files: false
-          generate_release_notes: true
           draft: ${{ needs.meta.outputs.draft == 'true' }}
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
         env:

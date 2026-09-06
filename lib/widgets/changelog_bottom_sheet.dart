@@ -2,28 +2,101 @@ part of '../main.dart';
 
 class ChangelogData {
   final String markdown;
+  final String version;
+  final DateTime? publishedAt;
+  final String? releaseUrl;
 
-  ChangelogData({required this.markdown});
+  const ChangelogData({
+    required this.markdown,
+    required this.version,
+    this.publishedAt,
+    this.releaseUrl,
+  });
 
   factory ChangelogData.fromJson(Map<String, dynamic> json, AppL10n l) {
     return ChangelogData(
-      markdown: json['markdown'] ?? l.changelogNoData,
+      markdown: (json['markdown'] ?? '').toString().trim().isEmpty
+          ? l.changelogNoData
+          : json['markdown'].toString(),
+      version: (json['version'] ?? appVersion).toString(),
+      publishedAt: DateTime.tryParse(
+        (json['published_at'] ?? json['generated_at'] ?? '').toString(),
+      ),
+      releaseUrl: (json['release_url'] ?? '').toString().trim().isEmpty
+          ? null
+          : json['release_url'].toString(),
+    );
+  }
+
+  factory ChangelogData.fromGithubRelease(
+    Map<String, dynamic> json,
+    AppL10n l,
+  ) {
+    return ChangelogData(
+      markdown: (json['body'] ?? '').toString().trim().isEmpty
+          ? l.changelogNoData
+          : json['body'].toString(),
+      version: (json['tag_name'] ?? json['name'] ?? appVersion).toString(),
+      publishedAt: DateTime.tryParse(
+        (json['published_at'] ?? json['created_at'] ?? '').toString(),
+      ),
+      releaseUrl: (json['html_url'] ?? '').toString().trim().isEmpty
+          ? null
+          : json['html_url'].toString(),
     );
   }
 }
 
 class ChangelogService {
-  final String url =
+  static const _releaseUrl =
+      'https://api.github.com/repos/ninocss/UntisPlus/releases/latest';
+  static const _legacyUrl =
       'https://raw.githubusercontent.com/ninocss/UntisPlus/main/changelog.json';
 
   Future<ChangelogData> fetchChangelog(AppL10n l) async {
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      return ChangelogData.fromJson(decoded, l);
-    } else {
-      throw Exception('${l.changelogLoadError}: ${response.statusCode}');
+    try {
+      final response = await http.get(
+        Uri.parse(_releaseUrl),
+        headers: const {
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'UntisPlus changelog',
+        },
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map<String, dynamic>) {
+          final data = ChangelogData.fromGithubRelease(decoded, l);
+          if (data.markdown != l.changelogNoData) return data;
+        }
+      }
+    } catch (_) {
+      // A bundled changelog keeps this screen useful while offline.
     }
+    return _loadFallback(l);
+  }
+
+  Future<ChangelogData> _loadFallback(AppL10n l) async {
+    try {
+      final bundled = await rootBundle.loadString('changelog.json');
+      final decoded = jsonDecode(bundled);
+      if (decoded is Map<String, dynamic>) {
+        return ChangelogData.fromJson(decoded, l);
+      }
+    } catch (_) {
+      // Older app packages did not bundle changelog.json.
+    }
+
+    try {
+      final response = await http.get(Uri.parse(_legacyUrl));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map<String, dynamic>) {
+          return ChangelogData.fromJson(decoded, l);
+        }
+      }
+    } catch (_) {}
+
+    return ChangelogData(markdown: l.changelogNoData, version: appVersion);
   }
 }
 
@@ -123,12 +196,11 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: Icon(
-                      Icons.close_rounded,
-                      color: cs.onSurfaceVariant,
-                    ),
+                    icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
                     style: IconButton.styleFrom(
-                      backgroundColor: cs.onSurfaceVariant.withValues(alpha: 0.1),
+                      backgroundColor: cs.onSurfaceVariant.withValues(
+                        alpha: 0.1,
+                      ),
                     ),
                   ),
                 ],
@@ -142,9 +214,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(
-                      child: CircularProgressIndicator(
-                        color: cs.primary,
-                      ),
+                      child: CircularProgressIndicator(color: cs.primary),
                     );
                   }
                   if (snapshot.hasError) {
@@ -161,7 +231,9 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              AppL10n.of(appLocaleNotifier.value).changelogLoadError,
+                              AppL10n.of(
+                                appLocaleNotifier.value,
+                              ).changelogLoadError,
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
@@ -171,9 +243,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                             Text(
                               snapshot.error.toString(),
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: cs.onSurfaceVariant,
-                              ),
+                              style: TextStyle(color: cs.onSurfaceVariant),
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton.icon(
@@ -186,7 +256,9 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                               },
                               icon: const Icon(Icons.refresh_rounded),
                               label: Text(
-                                AppL10n.of(appLocaleNotifier.value).changelogRetry,
+                                AppL10n.of(
+                                  appLocaleNotifier.value,
+                                ).changelogRetry,
                               ),
                             ),
                           ],
@@ -196,48 +268,124 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                   }
 
                   final data = snapshot.data!;
-                  return Markdown(
-                    data: data.markdown,
-                    padding: EdgeInsets.fromLTRB(24, 20, 24, mq.padding.bottom + 24),
-                    physics: const BouncingScrollPhysics(),
-                    styleSheet: MarkdownStyleSheet(
-                      p: GoogleFonts.inter(
-                        fontSize: 15,
-                        color: cs.onSurface.withValues(alpha: 0.85),
-                        height: 1.5,
-                      ),
-                      h1: GoogleFonts.outfit(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: cs.onSurface,
-                      ),
-                      h2: GoogleFonts.outfit(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                      ),
-                      h3: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurface,
-                      ),
-                      listBullet: TextStyle(
-                        color: cs.primary,
-                        fontSize: 18,
-                      ),
-                      codeblockDecoration: BoxDecoration(
-                        color: cs.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: cs.outlineVariant.withValues(alpha: 0.5),
+                  final locale = switch (AppL10n.of(
+                    appLocaleNotifier.value,
+                  ).locale) {
+                    'en' => 'en_US',
+                    'fr' => 'fr_FR',
+                    'es' => 'es_ES',
+                    _ => 'de_DE',
+                  };
+                  final releaseDate = data.publishedAt == null
+                      ? null
+                      : DateFormat.yMMMd(
+                          locale,
+                        ).format(data.publishedAt!.toLocal());
+                  return Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.history_rounded,
+                              size: 17,
+                              color: cs.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                releaseDate == null
+                                    ? data.version
+                                    : '${data.version} · $releaseDate',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: cs.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                            if (data.releaseUrl != null)
+                              IconButton(
+                                tooltip: data.releaseUrl,
+                                onPressed: () => unawaited(
+                                  url_launcher.launchUrlString(
+                                    data.releaseUrl!,
+                                    mode: url_launcher
+                                        .LaunchMode
+                                        .externalApplication,
+                                  ),
+                                ),
+                                icon: Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 16,
+                                  color: cs.onPrimaryContainer,
+                                ),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                          ],
                         ),
                       ),
-                      code: GoogleFonts.firaCode(
-                        fontSize: 13,
-                        color: cs.primary,
-                        backgroundColor: Colors.transparent,
+                      Expanded(
+                        child: Markdown(
+                          data: data.markdown,
+                          padding: EdgeInsets.fromLTRB(
+                            24,
+                            20,
+                            24,
+                            mq.padding.bottom + 24,
+                          ),
+                          physics: const BouncingScrollPhysics(),
+                          styleSheet: MarkdownStyleSheet(
+                            p: GoogleFonts.inter(
+                              fontSize: 15,
+                              color: cs.onSurface.withValues(alpha: 0.85),
+                              height: 1.5,
+                            ),
+                            h1: GoogleFonts.outfit(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: cs.onSurface,
+                            ),
+                            h2: GoogleFonts.outfit(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ),
+                            h3: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurface,
+                            ),
+                            listBullet: TextStyle(
+                              color: cs.primary,
+                              fontSize: 18,
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: cs.surfaceContainerHigh,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            code: GoogleFonts.firaCode(
+                              fontSize: 13,
+                              color: cs.primary,
+                              backgroundColor: Colors.transparent,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   );
                 },
               ),

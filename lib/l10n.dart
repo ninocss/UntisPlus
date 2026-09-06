@@ -81,6 +81,11 @@ class AppL10n {
   String get onboardingFeatureAiDesc => _t('onboardingFeatureAiDesc');
   String get onboardingFeatureNotifyTitle => _t('onboardingFeatureNotifyTitle');
   String get onboardingFeatureNotifyDesc => _t('onboardingFeatureNotifyDesc');
+  String get onboardingFeatureUpdatesTitle =>
+      _t('onboardingFeatureUpdatesTitle');
+  String get onboardingFeatureUpdatesDesc => _t('onboardingFeatureUpdatesDesc');
+  String get onboardingFeatureBackupTitle => _t('onboardingFeatureBackupTitle');
+  String get onboardingFeatureBackupDesc => _t('onboardingFeatureBackupDesc');
   String get onboardingFinishSetup => _t('onboardingFinishSetup');
   String get onboardingUseDemoMode => _t('onboardingUseDemoMode');
   String get onboardingUseDemoModeDesc => _t('onboardingUseDemoModeDesc');
@@ -227,6 +232,7 @@ class AppL10n {
     }
     return raw.replaceAll('{count}', '$count');
   }
+
   String get homeworkImportTitle => _t('homeworkImportTitle');
   String get homeworkImportSuccess => _t('homeworkImportSuccess');
   String get homeworkImportError => _t('homeworkImportError');
@@ -246,17 +252,26 @@ class AppL10n {
   String get infoEmptyHint => _t('infoEmptyHint');
   String get infoFetchError => _t('infoFetchError');
   String get infoOpenLink => _t('infoOpenLink');
-  String get notificationActionNextLessonLabel => _t('notificationActionNextLesson');
+  String get notificationActionNextLessonLabel =>
+      _t('notificationActionNextLesson');
   String get notificationActionFreeRooms => _t('notificationActionFreeRooms');
   String get notificationActionOpenDay => _t('notificationActionOpenDay');
-  String get notificationChannelCurrentLessonName => _t('notificationChannelCurrentLessonName');
-  String get notificationChannelCurrentLessonDesc => _t('notificationChannelCurrentLessonDesc');
-  String get notificationChannelDailyBriefingName => _t('notificationChannelDailyBriefingName');
-  String get notificationChannelDailyBriefingDesc => _t('notificationChannelDailyBriefingDesc');
-  String get notificationChannelImportantChangesName => _t('notificationChannelImportantChangesName');
-  String get notificationChannelImportantChangesDesc => _t('notificationChannelImportantChangesDesc');
-  String get notificationChannelUpdatesName => _t('notificationChannelUpdatesName');
-  String get notificationChannelUpdatesDesc => _t('notificationChannelUpdatesDesc');
+  String get notificationChannelCurrentLessonName =>
+      _t('notificationChannelCurrentLessonName');
+  String get notificationChannelCurrentLessonDesc =>
+      _t('notificationChannelCurrentLessonDesc');
+  String get notificationChannelDailyBriefingName =>
+      _t('notificationChannelDailyBriefingName');
+  String get notificationChannelDailyBriefingDesc =>
+      _t('notificationChannelDailyBriefingDesc');
+  String get notificationChannelImportantChangesName =>
+      _t('notificationChannelImportantChangesName');
+  String get notificationChannelImportantChangesDesc =>
+      _t('notificationChannelImportantChangesDesc');
+  String get notificationChannelUpdatesName =>
+      _t('notificationChannelUpdatesName');
+  String get notificationChannelUpdatesDesc =>
+      _t('notificationChannelUpdatesDesc');
   String notificationActionCurrentLesson(String lesson) =>
       _t('notificationActionCurrentLesson').replaceAll('{lesson}', lesson);
   String notificationActionNextLesson(String lesson) =>
@@ -294,6 +309,20 @@ class AppL10n {
   String get settingsSectionGeneral => _t('settingsSectionGeneral');
   String get settingsAppearance => _t('settingsAppearance');
   String get settingsAppearanceDesc => _t('settingsAppearanceDesc');
+  String get settingsVisualTheme => _t('settingsVisualTheme');
+  String get settingsVisualThemeDesc => _t('settingsVisualThemeDesc');
+  String get themeDefault => _t('themeDefault');
+  String get themeDefaultDesc => _t('themeDefaultDesc');
+  String get themeManga => _t('themeManga');
+  String get themeMangaDesc => _t('themeMangaDesc');
+  String get themeVivid => _t('themeVivid');
+  String get themeVividDesc => _t('themeVividDesc');
+  String get themeGlass => _t('themeGlass');
+  String get themeGlassDesc => _t('themeGlassDesc');
+  String get themeCyber => _t('themeCyber');
+  String get themeCyberDesc => _t('themeCyberDesc');
+  String get themePaper => _t('themePaper');
+  String get themePaperDesc => _t('themePaperDesc');
   String get settingsHubNotifications => _t('settingsHubNotifications');
   String get settingsHubDataBackup => _t('settingsHubDataBackup');
   String get settingsHubDataBackupDesc => _t('settingsHubDataBackupDesc');
@@ -361,13 +390,14 @@ class AppL10n {
   String get settingsAiLocalModel => _t('settingsAiLocalModel');
   String get settingsAiLocalModelDesc => _t('settingsAiLocalModelDesc');
   String get settingsAiLocalModelDownload => _t('settingsAiLocalModelDownload');
-  String get settingsAiLocalModelDownloading => _t('settingsAiLocalModelDownloading');
-  String get settingsAiLocalModelInstalled => _t('settingsAiLocalModelInstalled');
+  String get settingsAiLocalModelDownloading =>
+      _t('settingsAiLocalModelDownloading');
+  String get settingsAiLocalModelInstalled =>
+      _t('settingsAiLocalModelInstalled');
   String get settingsAiLocalModelDelete => _t('settingsAiLocalModelDelete');
   String get settingsAiLocalModelActive => _t('settingsAiLocalModelActive');
   String get settingsAiLocalModelError => _t('settingsAiLocalModelError');
-  String get aiLocalModelExamNotSupported =>
-      _t('aiLocalModelExamNotSupported');
+  String get aiLocalModelExamNotSupported => _t('aiLocalModelExamNotSupported');
   String get aiLocalModelLoadError => _t('aiLocalModelLoadError');
   String settingsAiLocalModelSize(double size) =>
       _t('settingsAiLocalModelSize').replaceAll('{size}', size.toString());
@@ -426,37 +456,48 @@ class AppL10n {
   String get settingsLessonGlowIntensity => _t('settingsLessonGlowIntensity');
   String get settingsLessonGlowNext => _t('settingsLessonGlowNext');
   String get settingsLessonGlowNextDesc => _t('settingsLessonGlowNextDesc');
-  String get settingsLessonGlowNextLeadTime => _t('settingsLessonGlowNextLeadTime');
+  String get settingsLessonGlowNextLeadTime =>
+      _t('settingsLessonGlowNextLeadTime');
   String get settingsLessonBlur => _t('settingsLessonBlur');
   String get settingsLessonBlurDesc => _t('settingsLessonBlurDesc');
   String get settingsLessonBlurAmount => _t('settingsLessonBlurAmount');
   String get settingsLessonCardOpacity => _t('settingsLessonCardOpacity');
   String get settingsLessonBorderRadius => _t('settingsLessonBorderRadius');
-  String get settingsLessonBorderRadiusCompact => _t('settingsLessonBorderRadiusCompact');
-  String get settingsLessonBorderRadiusStandard => _t('settingsLessonBorderRadiusStandard');
-  String get settingsLessonBorderRadiusRound => _t('settingsLessonBorderRadiusRound');
-  String get settingsLessonBorderRadiusPill => _t('settingsLessonBorderRadiusPill');
+  String get settingsLessonBorderRadiusCompact =>
+      _t('settingsLessonBorderRadiusCompact');
+  String get settingsLessonBorderRadiusStandard =>
+      _t('settingsLessonBorderRadiusStandard');
+  String get settingsLessonBorderRadiusRound =>
+      _t('settingsLessonBorderRadiusRound');
+  String get settingsLessonBorderRadiusPill =>
+      _t('settingsLessonBorderRadiusPill');
   String get settingsLessonAccentStyle => _t('settingsLessonAccentStyle');
   String get settingsLessonAccentBar => _t('settingsLessonAccentBar');
   String get settingsLessonAccentThin => _t('settingsLessonAccentThin');
   String get settingsLessonAccentDot => _t('settingsLessonAccentDot');
   String get settingsLessonAccentNone => _t('settingsLessonAccentNone');
   String get settingsLessonShowTeacher => _t('settingsLessonShowTeacher');
-  String get settingsLessonShowTeacherDesc => _t('settingsLessonShowTeacherDesc');
+  String get settingsLessonShowTeacherDesc =>
+      _t('settingsLessonShowTeacherDesc');
   String get settingsLessonShowRoom => _t('settingsLessonShowRoom');
   String get settingsLessonShowRoomDesc => _t('settingsLessonShowRoomDesc');
   String get settingsLessonCompactMode => _t('settingsLessonCompactMode');
-  String get settingsLessonCompactModeDesc => _t('settingsLessonCompactModeDesc');
+  String get settingsLessonCompactModeDesc =>
+      _t('settingsLessonCompactModeDesc');
   String get settingsLessonDimPast => _t('settingsLessonDimPast');
   String get settingsLessonDimPastDesc => _t('settingsLessonDimPastDesc');
-  String get settingsLessonCancelledPattern => _t('settingsLessonCancelledPattern');
-  String get settingsLessonCancelledPatternDesc => _t('settingsLessonCancelledPatternDesc');
+  String get settingsLessonCancelledPattern =>
+      _t('settingsLessonCancelledPattern');
+  String get settingsLessonCancelledPatternDesc =>
+      _t('settingsLessonCancelledPatternDesc');
   String get settingsLessonPreviewRegular => _t('settingsLessonPreviewRegular');
   String get settingsLessonPreviewActive => _t('settingsLessonPreviewActive');
-  String get settingsLessonPreviewCancelled => _t('settingsLessonPreviewCancelled');
+  String get settingsLessonPreviewCancelled =>
+      _t('settingsLessonPreviewCancelled');
   String get settingsLessonPreviewHeader => _t('settingsLessonPreviewHeader');
   String get settingsMonochromeLessons => _t('settingsMonochromeLessons');
-  String get settingsMonochromeLessonsDesc => _t('settingsMonochromeLessonsDesc');
+  String get settingsMonochromeLessonsDesc =>
+      _t('settingsMonochromeLessonsDesc');
   String get settingsDemoMode => _t('settingsDemoMode');
   String get settingsDemoModeDesc => _t('settingsDemoModeDesc');
   String get settingsBackgroundAnimations => _t('settingsBackgroundAnimations');
@@ -488,9 +529,18 @@ class AppL10n {
       _t('settingsCustomBackgroundsSelected').replaceAll('{name}', name);
   String get settingsGlassEffect => _t('settingsGlassEffect');
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
-  String get settingsAppBgBlur => _strings[locale]?['settingsAppBgBlur'] ?? _strings['de']?['settingsAppBgBlur'] ?? 'App-Hintergrundunschärfe';
-  String get settingsAppBgBlurDesc => _strings[locale]?['settingsAppBgBlurDesc'] ?? _strings['de']?['settingsAppBgBlurDesc'] ?? 'Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.';
-  String get settingsAppBgBlurAmount => _strings[locale]?['settingsAppBgBlurAmount'] ?? _strings['de']?['settingsAppBgBlurAmount'] ?? 'Stärke der Hintergrundunschärfe';
+  String get settingsAppBgBlur =>
+      _strings[locale]?['settingsAppBgBlur'] ??
+      _strings['de']?['settingsAppBgBlur'] ??
+      'App-Hintergrundunschärfe';
+  String get settingsAppBgBlurDesc =>
+      _strings[locale]?['settingsAppBgBlurDesc'] ??
+      _strings['de']?['settingsAppBgBlurDesc'] ??
+      'Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.';
+  String get settingsAppBgBlurAmount =>
+      _strings[locale]?['settingsAppBgBlurAmount'] ??
+      _strings['de']?['settingsAppBgBlurAmount'] ??
+      'Stärke der Hintergrundunschärfe';
   String get settingsIsAmoled => _t('settingsIsAmoled');
   String get settingsIsAmoledDesc => _t('settingsIsAmoledDesc');
   String get settingsPageTransition => _t('settingsPageTransition');
@@ -504,7 +554,8 @@ class AppL10n {
   String get settingsPageTransitionZoom => _t('settingsPageTransitionZoom');
   String get settingsPageTransitionBlur => _t('settingsPageTransitionBlur');
   String get settingsPageTransitionEaseIn => _t('settingsPageTransitionEaseIn');
-  String get settingsPageTransitionEaseOut => _t('settingsPageTransitionEaseOut');
+  String get settingsPageTransitionEaseOut =>
+      _t('settingsPageTransitionEaseOut');
   String get settingsPageTransitionExpo => _t('settingsPageTransitionExpo');
   String get settingsProgressivePush => _t('settingsProgressivePush');
   String get settingsProgressivePushDesc => _t('settingsProgressivePushDesc');
@@ -541,6 +592,15 @@ class AppL10n {
       _t('settingsGithubNoDownloadAsset');
   String get settingsGithubDownloadStarted =>
       _t('settingsGithubDownloadStarted');
+  String get settingsGithubDownloading => _t('settingsGithubDownloading');
+  String get settingsGithubDownloadCancel => _t('settingsGithubDownloadCancel');
+  String get settingsGithubDownloadCancelled =>
+      _t('settingsGithubDownloadCancelled');
+  String get settingsGithubDownloadFailed => _t('settingsGithubDownloadFailed');
+  String get settingsGithubNoCompatibleAndroidApk =>
+      _t('settingsGithubNoCompatibleAndroidApk');
+  String get settingsGithubInstallPermissionRequired =>
+      _t('settingsGithubInstallPermissionRequired');
   String get settingsGithubOpenFailed => _t('settingsGithubOpenFailed');
   String get settingsGithubCheckFailed => _t('settingsGithubCheckFailed');
   String get settingsGithubNoUpdate => _t('settingsGithubNoUpdate');
@@ -552,6 +612,8 @@ class AppL10n {
   String get settingsGithubInstallLater => _t('settingsGithubInstallLater');
   String get settingsGithubInstallPrompted =>
       _t('settingsGithubInstallPrompted');
+  String get settingsGithubInstallerOpened =>
+      _t('settingsGithubInstallerOpened');
   String get settingsGithubOpenReleasePage =>
       _t('settingsGithubOpenReleasePage');
   String get settingsBackupIncludeApiKeys => _t('settingsBackupIncludeApiKeys');
@@ -730,8 +792,10 @@ class AppL10n {
   String get aiParameterTemperature => _t('aiParameterTemperature');
   String get aiParameterMaxTokens => _t('aiParameterMaxTokens');
   String get aiParameterTopP => _t('aiParameterTopP');
-  String aiOrbsCount(int count) => _t('aiOrbsCount').replaceAll('{count}', '$count');
-  String aiNoiseLevel(double pct) => _t('aiNoiseLevel').replaceAll('{pct}', '${pct.round()}');
+  String aiOrbsCount(int count) =>
+      _t('aiOrbsCount').replaceAll('{count}', '$count');
+  String aiNoiseLevel(double pct) =>
+      _t('aiNoiseLevel').replaceAll('{pct}', '${pct.round()}');
   String get aiGradientType => _t('aiGradientType');
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -759,11 +823,14 @@ class AppL10n {
       'notificationActionFreeRooms': 'Freie Räume',
       'notificationActionOpenDay': 'Tag öffnen',
       'notificationChannelCurrentLessonName': 'Aktuelle Stunde / Pause',
-      'notificationChannelCurrentLessonDesc': 'Laufender Status der aktuellen Stunde.',
+      'notificationChannelCurrentLessonDesc':
+          'Laufender Status der aktuellen Stunde.',
       'notificationChannelDailyBriefingName': 'Tagesbriefing',
-      'notificationChannelDailyBriefingDesc': 'Morgendlicher Überblick über den Schultag.',
+      'notificationChannelDailyBriefingDesc':
+          'Morgendlicher Überblick über den Schultag.',
       'notificationChannelImportantChangesName': 'Stundenplan-Änderungen',
-      'notificationChannelImportantChangesDesc': 'Hinweise zu Ausfall oder Raumwechsel.',
+      'notificationChannelImportantChangesDesc':
+          'Hinweise zu Ausfall oder Raumwechsel.',
       'notificationChannelUpdatesName': 'App-Updates',
       'notificationChannelUpdatesDesc': 'Hinweise zu App-Verbesserungen.',
 
@@ -836,6 +903,12 @@ class AppL10n {
       'onboardingFeatureNotifyTitle': 'Benachrichtigungen & Widgets',
       'onboardingFeatureNotifyDesc':
           'Bleib auf dem Laufenden, bevor die Schule startet.',
+      'onboardingFeatureUpdatesTitle': 'Direkte Updates',
+      'onboardingFeatureUpdatesDesc':
+          'Lade passende Android-Updates direkt aus den Einstellungen.',
+      'onboardingFeatureBackupTitle': 'Backup & Wiederherstellung',
+      'onboardingFeatureBackupDesc':
+          'Sichere deine Einstellungen und bringe sie auf ein neues Gerät.',
       'onboardingFinishSetup': 'Einrichtung abschließen',
       'onboardingUseDemoMode': 'Demo-Modus starten',
       'onboardingUseDemoModeDesc':
@@ -1016,6 +1089,21 @@ class AppL10n {
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Erscheinungsbild',
       'settingsAppearanceDesc': 'System (Hell/Dunkel)',
+      'settingsVisualTheme': 'App-Theme',
+      'settingsVisualThemeDesc':
+          'Ändert Farben, Formen, Schrift und Bewegung in der gesamten App.',
+      'themeDefault': 'Default',
+      'themeDefaultDesc': 'Der vertraute Untis+-Look',
+      'themeManga': 'Manga',
+      'themeMangaDesc': 'Papier, Raster und starke Ink-Konturen',
+      'themeVivid': 'Vivid',
+      'themeVividDesc': 'Leuchtende Farben und dynamische Verläufe',
+      'themeGlass': 'Glass',
+      'themeGlassDesc': 'Flüssige Glasflächen und Lichtreflexe',
+      'themeCyber': 'Cyber',
+      'themeCyberDesc': 'Neon, Raster und technische Panels',
+      'themePaper': 'Paper',
+      'themePaperDesc': 'Notizpapier, Tinte und Registerkarten',
       'settingsHubNotifications': 'Benachrichtigungen & Widgets',
       'settingsHubDataBackup': 'Daten & Backup',
       'settingsHubDataBackupDesc': 'Alle App-Einstellungen sichern',
@@ -1055,7 +1143,8 @@ class AppL10n {
       'settingsAiPromptVariablesDesc':
           'Liste aller Platzhalter, die automatisch mit Daten ersetzt werden.',
       'settingsAiLocalModel': 'Lokales Modell',
-      'settingsAiLocalModelDesc': 'Wähle und lade ein Modell für On-Device-Inferenz herunter.',
+      'settingsAiLocalModelDesc':
+          'Wähle und lade ein Modell für On-Device-Inferenz herunter.',
       'settingsAiLocalModelDownload': 'Herunterladen',
       'settingsAiLocalModelDownloading': 'Wird heruntergeladen…',
       'settingsAiLocalModelInstalled': 'Installiert',
@@ -1130,7 +1219,8 @@ class AppL10n {
       'settingsCancelledColor': 'Ausgefallene Farbe',
       'settingsCancelledColorDesc': 'Farbe für ausgefallene Stunden anpassen',
       'settingsLessonDesignTitle': 'Stunden- & Kartendesign',
-      'settingsLessonDesignDesc': 'Passe Stile, Glow, Blur und Details der Stundenkarten an.',
+      'settingsLessonDesignDesc':
+          'Passe Stile, Glow, Blur und Details der Stundenkarten an.',
       'settingsLessonStyle': 'Karten-Stil',
       'settingsLessonStyleDesc': 'Wähle das visuelle Grunddesign der Stunden.',
       'settingsLessonStyleModern': 'Modern (Getönt)',
@@ -1139,16 +1229,19 @@ class AppL10n {
       'settingsLessonStyleOutline': 'Kontur / Minimal',
       'settingsLessonStyleSolid': 'Kräftig / Vollton',
       'settingsLessonGlow': 'Glow-Leuchteffekt',
-      'settingsLessonGlowDesc': 'Fügt einen leuchtenden Neonschein hinter den Stundenkarten hinzu.',
+      'settingsLessonGlowDesc':
+          'Fügt einen leuchtenden Neonschein hinter den Stundenkarten hinzu.',
       'settingsLessonGlowMode': 'Glow-Modus',
       'settingsLessonGlowModeActive': 'Nur laufende Stunde',
       'settingsLessonGlowModeAll': 'Alle Stunden',
       'settingsLessonGlowIntensity': 'Glow-Intensität',
       'settingsLessonGlowNext': 'Nächste Stunde leuchten',
-      'settingsLessonGlowNextDesc': 'Lässt die nächste Stunde bereits vor Stundenbeginn leuchten.',
+      'settingsLessonGlowNextDesc':
+          'Lässt die nächste Stunde bereits vor Stundenbeginn leuchten.',
       'settingsLessonGlowNextLeadTime': 'Vorlaufzeit',
       'settingsLessonBlur': 'Milchglas-Unschärfe (Blur)',
-      'settingsLessonBlurDesc': 'Hintergrund hinter den Stundenkarten weichzeichnen.',
+      'settingsLessonBlurDesc':
+          'Hintergrund hinter den Stundenkarten weichzeichnen.',
       'settingsLessonBlurAmount': 'Weichzeichner-Stärke',
       'settingsLessonCardOpacity': 'Karten-Deckkraft',
       'settingsLessonBorderRadius': 'Eckenrundung',
@@ -1158,15 +1251,20 @@ class AppL10n {
       'settingsLessonAccentDot': 'Punkt-Indikator',
       'settingsLessonAccentNone': 'Keine Leiste',
       'settingsLessonShowTeacher': 'Lehrkraft anzeigen',
-      'settingsLessonShowTeacherDesc': 'Kürzel bzw. Name der Lehrkraft auf der Karte einblenden.',
+      'settingsLessonShowTeacherDesc':
+          'Kürzel bzw. Name der Lehrkraft auf der Karte einblenden.',
       'settingsLessonShowRoom': 'Raum anzeigen',
-      'settingsLessonShowRoomDesc': 'Raumnummer auf der Stundenkarte einblenden.',
+      'settingsLessonShowRoomDesc':
+          'Raumnummer auf der Stundenkarte einblenden.',
       'settingsLessonCompactMode': 'Kompakte Ansicht',
-      'settingsLessonCompactModeDesc': 'Reduzierte Abstände für mehr Übersicht bei vielen Stunden.',
+      'settingsLessonCompactModeDesc':
+          'Reduzierte Abstände für mehr Übersicht bei vielen Stunden.',
       'settingsLessonDimPast': 'Vergangene Stunden dimmen',
-      'settingsLessonDimPastDesc': 'Bereits vergangene Stunden am Tag dezent ausgrauen.',
+      'settingsLessonDimPastDesc':
+          'Bereits vergangene Stunden am Tag dezent ausgrauen.',
       'settingsLessonCancelledPattern': 'Ausfall-Schraffur',
-      'settingsLessonCancelledPatternDesc': 'Zeigt ein diagonales Schraffurmuster bei Entfällen.',
+      'settingsLessonCancelledPatternDesc':
+          'Zeigt ein diagonales Schraffurmuster bei Entfällen.',
       'settingsLessonPreviewRegular': 'Regulär',
       'settingsLessonPreviewActive': 'Aktive Stunde',
       'settingsLessonPreviewCancelled': 'Ausfall',
@@ -1340,8 +1438,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiSuccess': 'KI-Hintergrund erstellt.',
       'bgEditorAiError': 'KI: ',
       'settingsGlassEffect': 'Blur-Effekt',
-      'settingsGlassEffectDesc':
-          'Aktiviert Blur in der Oberfläche',
+      'settingsGlassEffectDesc': 'Aktiviert Blur in der Oberfläche',
       'settingsPageTransition': 'Seitenübergang',
       'settingsPageTransitionDesc': 'Wähle den Übergangsstil für Seitenwechsel',
       'settingsPageTransitionBounce': 'Bounce',
@@ -1357,7 +1454,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Farben automatisch an Systemakzentfarbe anpassen',
       'settingsCustomColorSeed': 'Farbe wählen',
       'settingsIsAmoled': 'Pitch Black (AMOLED)',
-      'settingsIsAmoledDesc': 'Tiefschwarzer Hintergrund im Darkmode für OLED-Displays.',
+      'settingsIsAmoledDesc':
+          'Tiefschwarzer Hintergrund im Darkmode für OLED-Displays.',
       'settingsProgressivePush': 'Progressive Push-Benachrichtigung',
       'settingsProgressivePushDesc':
           'Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen',
@@ -1393,6 +1491,15 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Kein direktes Download-Asset gefunden. Öffne Release-Seite...',
       'settingsGithubDownloadStarted':
           'Download/Release wurde im Browser geöffnet.',
+      'settingsGithubDownloading': 'Update wird heruntergeladen…',
+      'settingsGithubDownloadCancel': 'Download abbrechen',
+      'settingsGithubDownloadCancelled': 'Update-Download abgebrochen.',
+      'settingsGithubDownloadFailed':
+          'Update konnte nicht heruntergeladen werden.',
+      'settingsGithubNoCompatibleAndroidApk':
+          'Für die Architektur dieses Geräts ist keine Android-APK verfügbar.',
+      'settingsGithubInstallPermissionRequired':
+          'Erlaube Untis+ das Installieren unbekannter Apps und starte die Installation anschließend erneut.',
       'settingsGithubOpenFailed': 'Konnte den Download-Link nicht öffnen.',
       'settingsGithubCheckFailed':
           'Update-Prüfung fehlgeschlagen. Bitte später erneut versuchen.',
@@ -1405,6 +1512,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallLater': 'Später',
       'settingsGithubInstallPrompted':
           'Download gestartet. Nach dem Download erscheint der Installationsdialog.',
+      'settingsGithubInstallerOpened': 'System-Installationsdialog geöffnet.',
       'settingsGithubOpenReleasePage': 'GitHub Release-Seite öffnen',
       'settingsBackupIncludeApiKeys': 'API-Keys einschließen',
       'settingsBackupIncludeApiKeysDesc':
@@ -1539,11 +1647,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'notificationActionFreeRooms': 'Free rooms',
       'notificationActionOpenDay': 'Open day',
       'notificationChannelCurrentLessonName': 'Current lesson / Break',
-      'notificationChannelCurrentLessonDesc': 'Ongoing status of the current lesson.',
+      'notificationChannelCurrentLessonDesc':
+          'Ongoing status of the current lesson.',
       'notificationChannelDailyBriefingName': 'Daily briefing',
-      'notificationChannelDailyBriefingDesc': 'Morning overview of your school day.',
+      'notificationChannelDailyBriefingDesc':
+          'Morning overview of your school day.',
       'notificationChannelImportantChangesName': 'Timetable changes',
-      'notificationChannelImportantChangesDesc': 'Notifies about cancellations and room changes.',
+      'notificationChannelImportantChangesDesc':
+          'Notifies about cancellations and room changes.',
       'notificationChannelUpdatesName': 'App updates',
       'notificationChannelUpdatesDesc': 'Notifications about app improvements.',
 
@@ -1610,6 +1721,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Ask Gemini about your day, homework or exams.',
       'onboardingFeatureNotifyTitle': 'Notifications & Widgets',
       'onboardingFeatureNotifyDesc': 'Stay updated before school starts.',
+      'onboardingFeatureUpdatesTitle': 'Direct updates',
+      'onboardingFeatureUpdatesDesc':
+          'Download the right Android update directly from Settings.',
+      'onboardingFeatureBackupTitle': 'Backup & restore',
+      'onboardingFeatureBackupDesc':
+          'Keep your settings safe and move them to a new device.',
       'onboardingFinishSetup': 'Finish Setup',
       'onboardingUseDemoMode': 'Start demo mode',
       'onboardingUseDemoModeDesc':
@@ -1782,6 +1899,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Appearance',
       'settingsAppearanceDesc': 'System (Light/Dark)',
+      'settingsVisualTheme': 'App theme',
+      'settingsVisualThemeDesc':
+          'Changes colors, shapes, type and motion throughout the app.',
+      'themeDefault': 'Default',
+      'themeDefaultDesc': 'The familiar Untis+ look',
+      'themeManga': 'Manga',
+      'themeMangaDesc': 'Paper, halftone and bold ink outlines',
+      'themeVivid': 'Vivid',
+      'themeVividDesc': 'Bright colors and dynamic gradients',
+      'themeGlass': 'Glass',
+      'themeGlassDesc': 'Fluid glass surfaces and highlights',
+      'themeCyber': 'Cyber',
+      'themeCyberDesc': 'Neon, grids and technical panels',
+      'themePaper': 'Paper',
+      'themePaperDesc': 'Notebook paper, ink and index tabs',
       'settingsLanguage': 'Language',
       'settingsSectionAI': 'AI Assistant',
       'settingsAiProvider': 'Provider',
@@ -1814,7 +1946,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariablesDesc':
           'All placeholders that are automatically replaced with app data.',
       'settingsAiLocalModel': 'Local Model',
-      'settingsAiLocalModelDesc': 'Select and download a model for on-device inference.',
+      'settingsAiLocalModelDesc':
+          'Select and download a model for on-device inference.',
       'settingsAiLocalModelDownload': 'Download',
       'settingsAiLocalModelDownloading': 'Downloading…',
       'settingsAiLocalModelInstalled': 'Installed',
@@ -1889,25 +2022,30 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCancelledColor': 'Cancelled color',
       'settingsCancelledColorDesc': 'Customize the color for cancelled lessons',
       'settingsLessonDesignTitle': 'Lesson & Card Design',
-      'settingsLessonDesignDesc': 'Customize card styles, glow, blur, and layout details.',
+      'settingsLessonDesignDesc':
+          'Customize card styles, glow, blur, and layout details.',
       'settingsLessonStyle': 'Card Style',
-      'settingsLessonStyleDesc': 'Choose the visual aesthetic for timetable lessons.',
+      'settingsLessonStyleDesc':
+          'Choose the visual aesthetic for timetable lessons.',
       'settingsLessonStyleModern': 'Modern (Tinted)',
       'settingsLessonStyleGlass': 'Frosted Glass',
       'settingsLessonStyleGradient': 'Gradient',
       'settingsLessonStyleOutline': 'Outline / Minimal',
       'settingsLessonStyleSolid': 'Solid Fill',
       'settingsLessonGlow': 'Glow Aura Effect',
-      'settingsLessonGlowDesc': 'Adds an ambient glowing aura behind lesson cards.',
+      'settingsLessonGlowDesc':
+          'Adds an ambient glowing aura behind lesson cards.',
       'settingsLessonGlowMode': 'Glow Mode',
       'settingsLessonGlowModeActive': 'Active lesson only',
       'settingsLessonGlowModeAll': 'All lessons',
       'settingsLessonGlowIntensity': 'Glow Intensity',
       'settingsLessonGlowNext': 'Glow Next Subject',
-      'settingsLessonGlowNextDesc': 'Starts glowing before the next subject begins.',
+      'settingsLessonGlowNextDesc':
+          'Starts glowing before the next subject begins.',
       'settingsLessonGlowNextLeadTime': 'Lead time',
       'settingsLessonBlur': 'Frosted Glass Blur',
-      'settingsLessonBlurDesc': 'Blur the wallpaper background behind lesson cards.',
+      'settingsLessonBlurDesc':
+          'Blur the wallpaper background behind lesson cards.',
       'settingsLessonBlurAmount': 'Blur Strength',
       'settingsLessonCardOpacity': 'Card Opacity',
       'settingsLessonBorderRadius': 'Corner Radius',
@@ -1917,15 +2055,19 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonAccentDot': 'Dot Badge',
       'settingsLessonAccentNone': 'None',
       'settingsLessonShowTeacher': 'Show Teacher',
-      'settingsLessonShowTeacherDesc': 'Display teacher name or initials on the card.',
+      'settingsLessonShowTeacherDesc':
+          'Display teacher name or initials on the card.',
       'settingsLessonShowRoom': 'Show Room',
       'settingsLessonShowRoomDesc': 'Display room number on the card.',
       'settingsLessonCompactMode': 'Compact View',
-      'settingsLessonCompactModeDesc': 'Tighter padding and fonts for dense timetables.',
+      'settingsLessonCompactModeDesc':
+          'Tighter padding and fonts for dense timetables.',
       'settingsLessonDimPast': 'Dim Past Lessons',
-      'settingsLessonDimPastDesc': 'Grayscale and dim completed lessons during the day.',
+      'settingsLessonDimPastDesc':
+          'Grayscale and dim completed lessons during the day.',
       'settingsLessonCancelledPattern': 'Cancellation Stripes',
-      'settingsLessonCancelledPatternDesc': 'Show a diagonal stripe pattern on cancelled lessons.',
+      'settingsLessonCancelledPatternDesc':
+          'Show a diagonal stripe pattern on cancelled lessons.',
       'settingsLessonPreviewRegular': 'Regular',
       'settingsLessonPreviewActive': 'Active Lesson',
       'settingsLessonPreviewCancelled': 'Cancelled',
@@ -2095,15 +2237,17 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiSuccess': 'AI background created.',
       'bgEditorAiError': 'AI: ',
       'settingsGlassEffect': 'Blur Effect',
-      'settingsGlassEffectDesc':
-          'Enables blur effects across the interface',
+      'settingsGlassEffectDesc': 'Enables blur effects across the interface',
       'settingsPageTransition': 'Page Transition',
-      'settingsPageTransitionDesc': 'Choose the transition style for page navigation',
+      'settingsPageTransitionDesc':
+          'Choose the transition style for page navigation',
       'settingsUseMaterialYou': 'Material You',
-      'settingsUseMaterialYouDesc': 'Automatically adapt to your system accent color',
+      'settingsUseMaterialYouDesc':
+          'Automatically adapt to your system accent color',
       'settingsCustomColorSeed': 'Custom color',
       'settingsIsAmoled': 'Pitch Black (AMOLED)',
-      'settingsIsAmoledDesc': 'Deep black background in dark mode for OLED displays.',
+      'settingsIsAmoledDesc':
+          'Deep black background in dark mode for OLED displays.',
       'settingsPageTransitionBounce': 'Bounce',
       'settingsPageTransitionFade': 'Fade',
       'settingsPageTransitionSlide': 'Slide',
@@ -2147,6 +2291,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'No direct download asset found. Opening release page...',
       'settingsGithubDownloadStarted':
           'Download/release has been opened in your browser.',
+      'settingsGithubDownloading': 'Downloading update…',
+      'settingsGithubDownloadCancel': 'Cancel download',
+      'settingsGithubDownloadCancelled': 'Update download cancelled.',
+      'settingsGithubDownloadFailed': 'Could not download the update.',
+      'settingsGithubNoCompatibleAndroidApk':
+          'No Android APK is available for this device architecture.',
+      'settingsGithubInstallPermissionRequired':
+          'Allow Untis+ to install unknown apps, then start the installation again.',
       'settingsGithubOpenFailed': 'Could not open the download link.',
       'settingsGithubCheckFailed':
           'Update check failed. Please try again later.',
@@ -2159,6 +2311,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallLater': 'Later',
       'settingsGithubInstallPrompted':
           'Download started. The installation prompt appears after download.',
+      'settingsGithubInstallerOpened': 'System installation prompt opened.',
       'settingsGithubOpenReleasePage': 'Open GitHub release page',
       'settingsHubNotifications': 'Notifications & Widgets',
       'settingsHubDataBackup': 'Data & Backup',
@@ -2290,7 +2443,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'timetableOfflineCache': 'Cache hors ligne actif',
 
       'aiClearHistoryTitle': 'Effacer l\'historique ?',
-      'aiClearHistoryDesc': 'Tous les chats précédents seront définitivement effacés.',
+      'aiClearHistoryDesc':
+          'Tous les chats précédents seront définitivement effacés.',
       'aiClearHistorySuccess': 'Historique des chats effacé.',
       'aiLocalModelDescSmall': 'Petit, rapide, idéal pour mobile',
       'aiLocalModelDescBalanced': 'Équilibré, bonne qualité',
@@ -2302,13 +2456,17 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'notificationActionFreeRooms': 'Salles libres',
       'notificationActionOpenDay': 'Ouvrir la journée',
       'notificationChannelCurrentLessonName': 'Cours actuel / Pause',
-      'notificationChannelCurrentLessonDesc': 'Statut actuel du cours ou de la pause.',
+      'notificationChannelCurrentLessonDesc':
+          'Statut actuel du cours ou de la pause.',
       'notificationChannelDailyBriefingName': 'Briefing quotidien',
-      'notificationChannelDailyBriefingDesc': 'Aperçu matinal de votre journée d\'école.',
+      'notificationChannelDailyBriefingDesc':
+          'Aperçu matinal de votre journée d\'école.',
       'notificationChannelImportantChangesName': 'Changements d\'horaire',
-      'notificationChannelImportantChangesDesc': 'Signale les annulations et changements de salle.',
+      'notificationChannelImportantChangesDesc':
+          'Signale les annulations et changements de salle.',
       'notificationChannelUpdatesName': 'Mises à jour',
-      'notificationChannelUpdatesDesc': 'Informations sur les améliorations de l\'application.',
+      'notificationChannelUpdatesDesc':
+          'Informations sur les améliorations de l\'application.',
 
       'settingsLessonBorderRadiusCompact': 'Compact (6px)',
       'settingsLessonBorderRadiusStandard': 'Standard (12px)',
@@ -2376,6 +2534,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Demande à Gemini des infos sur ta journée, tes devoirs ou tes examens.',
       'onboardingFeatureNotifyTitle': 'Notifications & Widgets',
       'onboardingFeatureNotifyDesc': 'Reste informé avant le début des cours.',
+      'onboardingFeatureUpdatesTitle': 'Mises à jour directes',
+      'onboardingFeatureUpdatesDesc':
+          'Télécharge la bonne mise à jour Android depuis les réglages.',
+      'onboardingFeatureBackupTitle': 'Sauvegarde et restauration',
+      'onboardingFeatureBackupDesc':
+          'Conserve tes réglages et transfère-les sur un nouvel appareil.',
       'onboardingFinishSetup': 'Terminer la configuration',
       'onboardingUseDemoMode': 'Lancer le mode démo',
       'onboardingUseDemoModeDesc':
@@ -2528,6 +2692,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Application',
       'settingsAppearance': 'Apparence',
       'settingsAppearanceDesc': 'Système (Clair/Sombre)',
+      'settingsVisualTheme': 'Thème de l’application',
+      'settingsVisualThemeDesc':
+          'Modifie les couleurs, les formes, la typographie et les mouvements.',
+      'themeDefault': 'Par défaut',
+      'themeDefaultDesc': 'Le style Untis+ familier',
+      'themeManga': 'Manga',
+      'themeMangaDesc': 'Papier, trames et contours à l’encre',
+      'themeVivid': 'Vif',
+      'themeVividDesc': 'Couleurs lumineuses et dégradés dynamiques',
+      'themeGlass': 'Verre',
+      'themeGlassDesc': 'Surfaces fluides en verre et reflets',
+      'themeCyber': 'Cyber',
+      'themeCyberDesc': 'Néon, grilles et panneaux techniques',
+      'themePaper': 'Papier',
+      'themePaperDesc': 'Papier à notes, encre et onglets',
       'settingsHubNotifications': 'Notifications & Widgets',
       'settingsHubDataBackup': 'Données & Sauvegarde',
       'settingsHubDataBackupDesc': 'Sauvegarder tous les réglages',
@@ -2567,7 +2746,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariablesDesc':
           'Tous les espaces réservés remplacés automatiquement par des données de l\'app.',
       'settingsAiLocalModel': 'Modèle local',
-      'settingsAiLocalModelDesc': 'Sélectionne et télécharge un modèle pour l\'inférence sur l\'appareil.',
+      'settingsAiLocalModelDesc':
+          'Sélectionne et télécharge un modèle pour l\'inférence sur l\'appareil.',
       'settingsAiLocalModelDownload': 'Télécharger',
       'settingsAiLocalModelDownloading': 'Téléchargement…',
       'settingsAiLocalModelInstalled': 'Installé',
@@ -2615,7 +2795,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           "S'adapter automatiquement à la couleur d'accentuation du système",
       'settingsCustomColorSeed': 'Couleur personnalisée',
       'settingsIsAmoled': 'Pitch Black (AMOLED)',
-      'settingsIsAmoledDesc': 'Arrière-plan noir profond en mode sombre pour les écrans OLED.',
+      'settingsIsAmoledDesc':
+          'Arrière-plan noir profond en mode sombre pour les écrans OLED.',
       'settingsPageTransitionBounce': 'Rebond',
       'settingsPageTransitionFade': 'Fondu',
       'settingsPageTransitionSlide': 'Glissement',
@@ -2662,9 +2843,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelledDesc':
           'Les cours annulés sont visibles dans l\'emploi du temps',
       'settingsCancelledColor': 'Couleur annulée',
-      'settingsCancelledColorDesc': 'Personnaliser la couleur des cours annulés',
+      'settingsCancelledColorDesc':
+          'Personnaliser la couleur des cours annulés',
       'settingsLessonDesignTitle': 'Design des cours & cartes',
-      'settingsLessonDesignDesc': 'Personnalisez le style, lueurs, flous et détails des cours.',
+      'settingsLessonDesignDesc':
+          'Personnalisez le style, lueurs, flous et détails des cours.',
       'settingsLessonStyle': 'Style de carte',
       'settingsLessonStyleDesc': 'Choisissez l\'esthétique visuelle des cours.',
       'settingsLessonStyleModern': 'Moderne (Teinté)',
@@ -2673,13 +2856,15 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonStyleOutline': 'Contour / Minimal',
       'settingsLessonStyleSolid': 'Plein / Contrasté',
       'settingsLessonGlow': 'Effet de lueur (Glow)',
-      'settingsLessonGlowDesc': 'Ajoute un halo lumineux derrière les cartes de cours.',
+      'settingsLessonGlowDesc':
+          'Ajoute un halo lumineux derrière les cartes de cours.',
       'settingsLessonGlowMode': 'Mode de lueur',
       'settingsLessonGlowModeActive': 'Cours actuel uniquement',
       'settingsLessonGlowModeAll': 'Tous les cours',
       'settingsLessonGlowIntensity': 'Intensité de la lueur',
       'settingsLessonGlowNext': 'Faire briller le cours suivant',
-      'settingsLessonGlowNextDesc': 'Commence à briller avant le début du cours suivant.',
+      'settingsLessonGlowNextDesc':
+          'Commence à briller avant le début du cours suivant.',
       'settingsLessonGlowNextLeadTime': 'Délai d\'avance',
       'settingsLessonBlur': 'Flou de verre (Blur)',
       'settingsLessonBlurDesc': 'Flouter l\'arrière-plan derrière les cartes.',
@@ -2692,15 +2877,19 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonAccentDot': 'Point indicateur',
       'settingsLessonAccentNone': 'Aucune',
       'settingsLessonShowTeacher': 'Afficher le professeur',
-      'settingsLessonShowTeacherDesc': 'Afficher les initiales ou le nom de l\'enseignant.',
+      'settingsLessonShowTeacherDesc':
+          'Afficher les initiales ou le nom de l\'enseignant.',
       'settingsLessonShowRoom': 'Afficher la salle',
       'settingsLessonShowRoomDesc': 'Afficher le numéro de salle sur la carte.',
       'settingsLessonCompactMode': 'Mode compact',
-      'settingsLessonCompactModeDesc': 'Espacement réduit pour les emplois du temps chargés.',
+      'settingsLessonCompactModeDesc':
+          'Espacement réduit pour les emplois du temps chargés.',
       'settingsLessonDimPast': 'Atténuer les cours passés',
-      'settingsLessonDimPastDesc': 'Griser discrètement les cours terminés de la journée.',
+      'settingsLessonDimPastDesc':
+          'Griser discrètement les cours terminés de la journée.',
       'settingsLessonCancelledPattern': 'Hachures d\'annulation',
-      'settingsLessonCancelledPatternDesc': 'Affiche des rayures diagonales en cas d\'annulation.',
+      'settingsLessonCancelledPatternDesc':
+          'Affiche des rayures diagonales en cas d\'annulation.',
       'settingsLessonPreviewRegular': 'Normal',
       'settingsLessonPreviewActive': 'Cours actuel',
       'settingsLessonPreviewCancelled': 'Annulé',
@@ -2906,6 +3095,16 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Aucun fichier de téléchargement direct trouvé. Ouverture de la page de version...',
       'settingsGithubDownloadStarted':
           'Le téléchargement/la version a été ouvert(e) dans le navigateur.',
+      'settingsGithubDownloading': 'Téléchargement de la mise à jour…',
+      'settingsGithubDownloadCancel': 'Annuler le téléchargement',
+      'settingsGithubDownloadCancelled':
+          'Téléchargement de la mise à jour annulé.',
+      'settingsGithubDownloadFailed':
+          'Impossible de télécharger la mise à jour.',
+      'settingsGithubNoCompatibleAndroidApk':
+          'Aucun APK Android n’est disponible pour l’architecture de cet appareil.',
+      'settingsGithubInstallPermissionRequired':
+          'Autorise Untis+ à installer des applis inconnues, puis relance l’installation.',
       'settingsGithubOpenFailed':
           'Impossible d\'ouvrir le lien de téléchargement.',
       'settingsGithubCheckFailed':
@@ -2919,6 +3118,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallLater': 'Plus tard',
       'settingsGithubInstallPrompted':
           'Téléchargement démarré. La demande d\'installation apparaît après le téléchargement.',
+      'settingsGithubInstallerOpened':
+          'La demande d’installation système est ouverte.',
       'settingsGithubOpenReleasePage': 'Ouvrir la page des versions GitHub',
       'settingsBackupIncludeApiKeys': 'Inclure les clés API',
       'settingsBackupIncludeApiKeysDesc':
@@ -3063,7 +3264,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'timetableOfflineCache': 'Caché sin conexión activo',
 
       'aiClearHistoryTitle': '¿Borrar historial?',
-      'aiClearHistoryDesc': 'Todos los chats anteriores se borrarán permanentemente.',
+      'aiClearHistoryDesc':
+          'Todos los chats anteriores se borrarán permanentemente.',
       'aiClearHistorySuccess': 'Historial de chat borrado.',
       'aiLocalModelDescSmall': 'Pequeño, rápido, ideal para móviles',
       'aiLocalModelDescBalanced': 'Equilibrado, buena calidad',
@@ -3075,13 +3277,17 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'notificationActionFreeRooms': 'Aulas libres',
       'notificationActionOpenDay': 'Abrir día',
       'notificationChannelCurrentLessonName': 'Clase actual / Descanso',
-      'notificationChannelCurrentLessonDesc': 'Estado actual de la clase o descanso.',
+      'notificationChannelCurrentLessonDesc':
+          'Estado actual de la clase o descanso.',
       'notificationChannelDailyBriefingName': 'Resumen diario',
-      'notificationChannelDailyBriefingDesc': 'Resumen matutino de tu día escolar.',
+      'notificationChannelDailyBriefingDesc':
+          'Resumen matutino de tu día escolar.',
       'notificationChannelImportantChangesName': 'Cambios de horario',
-      'notificationChannelImportantChangesDesc': 'Notifica sobre cancelaciones y cambios de aula.',
+      'notificationChannelImportantChangesDesc':
+          'Notifica sobre cancelaciones y cambios de aula.',
       'notificationChannelUpdatesName': 'Actualizaciones',
-      'notificationChannelUpdatesDesc': 'Notificaciones sobre mejoras de la aplicación.',
+      'notificationChannelUpdatesDesc':
+          'Notificaciones sobre mejoras de la aplicación.',
 
       'settingsLessonBorderRadiusCompact': 'Compacto (6px)',
       'settingsLessonBorderRadiusStandard': 'Estándar (12px)',
@@ -3150,6 +3356,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingFeatureNotifyTitle': 'Notificaciones y Widgets',
       'onboardingFeatureNotifyDesc':
           'Mantente al día antes de que empieza la escuela.',
+      'onboardingFeatureUpdatesTitle': 'Actualizaciones directas',
+      'onboardingFeatureUpdatesDesc':
+          'Descarga la actualización de Android adecuada desde Ajustes.',
+      'onboardingFeatureBackupTitle': 'Copia y restauración',
+      'onboardingFeatureBackupDesc':
+          'Guarda tus ajustes y llévalos a un dispositivo nuevo.',
       'onboardingFinishSetup': 'Finalizar configuración',
       'onboardingUseDemoMode': 'Iniciar modo demo',
       'onboardingUseDemoModeDesc':
@@ -3302,6 +3514,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Aplicación',
       'settingsAppearance': 'Apariencia',
       'settingsAppearanceDesc': 'Sistema (Claro/Oscuro)',
+      'settingsVisualTheme': 'Tema de la aplicación',
+      'settingsVisualThemeDesc':
+          'Cambia colores, formas, tipografía y movimiento en toda la aplicación.',
+      'themeDefault': 'Predeterminado',
+      'themeDefaultDesc': 'El aspecto conocido de Untis+',
+      'themeManga': 'Manga',
+      'themeMangaDesc': 'Papel, semitonos y contornos de tinta',
+      'themeVivid': 'Vívido',
+      'themeVividDesc': 'Colores brillantes y degradados dinámicos',
+      'themeGlass': 'Cristal',
+      'themeGlassDesc': 'Superficies de cristal fluidas y reflejos',
+      'themeCyber': 'Cyber',
+      'themeCyberDesc': 'Neón, cuadrículas y paneles técnicos',
+      'themePaper': 'Papel',
+      'themePaperDesc': 'Papel de notas, tinta y pestañas',
       'settingsHubNotifications': 'Notificaciones & Widgets',
       'settingsHubDataBackup': 'Datos & Copia de seguridad',
       'settingsHubDataBackupDesc': 'Guardar toda la configuración',
@@ -3331,8 +3558,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiApiKeyDialogDesc':
           'Necesario para el asistente IA. Usa «Obtener clave API» para abrir la página correcta del proveedor seleccionado.',
       'settingsAiApiKeyGet': 'Obtener clave API',
-      'settingsAiApiKeyOpenFailed':
-          'No se pudo abrir la página de clave API.',
+      'settingsAiApiKeyOpenFailed': 'No se pudo abrir la página de clave API.',
       'settingsAiPrompt': 'Instrucción del sistema',
       'settingsAiPromptDesc':
           'Edita la instrucción predeterminada y usa variables como [timetable].',
@@ -3342,7 +3568,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiPromptVariablesDesc':
           'Todos los marcadores de posición reemplazados automáticamente con datos de la app.',
       'settingsAiLocalModel': 'Modelo local',
-      'settingsAiLocalModelDesc': 'Selecciona y descarga un modelo para inferencia en el dispositivo.',
+      'settingsAiLocalModelDesc':
+          'Selecciona y descarga un modelo para inferencia en el dispositivo.',
       'settingsAiLocalModelDownload': 'Descargar',
       'settingsAiLocalModelDownloading': 'Descargando…',
       'settingsAiLocalModelInstalled': 'Instalado',
@@ -3390,7 +3617,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Adaptar automáticamente al color de acento del sistema',
       'settingsCustomColorSeed': 'Color personalizado',
       'settingsIsAmoled': 'Pitch Black (AMOLED)',
-      'settingsIsAmoledDesc': 'Fondo negro profundo en modo oscuro para pantallas OLED.',
+      'settingsIsAmoledDesc':
+          'Fondo negro profundo en modo oscuro para pantallas OLED.',
       'settingsPageTransitionBounce': 'Rebote',
       'settingsPageTransitionFade': 'Fundido',
       'settingsPageTransitionSlide': 'Deslizamiento',
@@ -3437,9 +3665,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelledDesc':
           'Las clases canceladas se muestran en el horario',
       'settingsCancelledColor': 'Color cancelado',
-      'settingsCancelledColorDesc': 'Personalizar el color de las clases canceladas',
+      'settingsCancelledColorDesc':
+          'Personalizar el color de las clases canceladas',
       'settingsLessonDesignTitle': 'Diseño de clases y tarjetas',
-      'settingsLessonDesignDesc': 'Personaliza el estilo, brillo, desenfoque y detalles.',
+      'settingsLessonDesignDesc':
+          'Personaliza el estilo, brillo, desenfoque y detalles.',
       'settingsLessonStyle': 'Estilo de tarjeta',
       'settingsLessonStyleDesc': 'Elige la estética visual de las clases.',
       'settingsLessonStyleModern': 'Moderno (Tintado)',
@@ -3448,16 +3678,19 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonStyleOutline': 'Contorno / Minimal',
       'settingsLessonStyleSolid': 'Sólido',
       'settingsLessonGlow': 'Efecto de brillo (Glow)',
-      'settingsLessonGlowDesc': 'Añade un aura brillante detrás de las tarjetas.',
+      'settingsLessonGlowDesc':
+          'Añade un aura brillante detrás de las tarjetas.',
       'settingsLessonGlowMode': 'Modo de brillo',
       'settingsLessonGlowModeActive': 'Solo clase actual',
       'settingsLessonGlowModeAll': 'Todas las clases',
       'settingsLessonGlowIntensity': 'Intensidad del brillo',
       'settingsLessonGlowNext': 'Hacer brillar la siguiente clase',
-      'settingsLessonGlowNextDesc': 'Empieza a brillar antes de que comience la siguiente clase.',
+      'settingsLessonGlowNextDesc':
+          'Empieza a brillar antes de que comience la siguiente clase.',
       'settingsLessonGlowNextLeadTime': 'Tiempo de antelación',
       'settingsLessonBlur': 'Desenfoque de cristal',
-      'settingsLessonBlurDesc': 'Desenfoca el fondo detrás de las tarjetas de clase.',
+      'settingsLessonBlurDesc':
+          'Desenfoca el fondo detrás de las tarjetas de clase.',
       'settingsLessonBlurAmount': 'Intensidad del desenfoque',
       'settingsLessonCardOpacity': 'Opacidad de tarjeta',
       'settingsLessonBorderRadius': 'Radio de esquinas',
@@ -3467,15 +3700,19 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonAccentDot': 'Punto indicador',
       'settingsLessonAccentNone': 'Ninguna',
       'settingsLessonShowTeacher': 'Mostrar profesor',
-      'settingsLessonShowTeacherDesc': 'Mostrar nombre o iniciales del profesor en la tarjeta.',
+      'settingsLessonShowTeacherDesc':
+          'Mostrar nombre o iniciales del profesor en la tarjeta.',
       'settingsLessonShowRoom': 'Mostrar aula',
       'settingsLessonShowRoomDesc': 'Mostrar número de aula en la tarjeta.',
       'settingsLessonCompactMode': 'Modo compacto',
-      'settingsLessonCompactModeDesc': 'Espaciado reducido para mayor densidad.',
+      'settingsLessonCompactModeDesc':
+          'Espaciado reducido para mayor densidad.',
       'settingsLessonDimPast': 'Atenuar clases pasadas',
-      'settingsLessonDimPastDesc': 'Atenuar y poner en escala de grises las clases finalizadas.',
+      'settingsLessonDimPastDesc':
+          'Atenuar y poner en escala de grises las clases finalizadas.',
       'settingsLessonCancelledPattern': 'Rayado de cancelación',
-      'settingsLessonCancelledPatternDesc': 'Muestra un patrón de rayas diagonales si la clase se cancela.',
+      'settingsLessonCancelledPatternDesc':
+          'Muestra un patrón de rayas diagonales si la clase se cancela.',
       'settingsLessonPreviewRegular': 'Normal',
       'settingsLessonPreviewActive': 'Clase actual',
       'settingsLessonPreviewCancelled': 'Cancelada',
@@ -3681,6 +3918,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'No se encontró un archivo de descarga directa. Abriendo página de versiones...',
       'settingsGithubDownloadStarted':
           'La descarga/versión se abrió en el navegador.',
+      'settingsGithubDownloading': 'Descargando actualización…',
+      'settingsGithubDownloadCancel': 'Cancelar descarga',
+      'settingsGithubDownloadCancelled': 'Descarga de actualización cancelada.',
+      'settingsGithubDownloadFailed': 'No se pudo descargar la actualización.',
+      'settingsGithubNoCompatibleAndroidApk':
+          'No hay ningún APK Android para la arquitectura de este dispositivo.',
+      'settingsGithubInstallPermissionRequired':
+          'Permite a Untis+ instalar aplicaciones desconocidas y vuelve a iniciar la instalación.',
       'settingsGithubOpenFailed': 'No se pudo abrir el enlace de descarga.',
       'settingsGithubCheckFailed':
           'La comprobación de actualizaciones falló. Inténtalo de nuevo más tarde.',
@@ -3693,6 +3938,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGithubInstallLater': 'Más tarde',
       'settingsGithubInstallPrompted':
           'Descarga iniciada. El aviso de instalación aparece al terminar la descarga.',
+      'settingsGithubInstallerOpened':
+          'Se abrió el aviso de instalación del sistema.',
       'settingsGithubOpenReleasePage': 'Abrir página de versiones de GitHub',
       'settingsBackupIncludeApiKeys': 'Incluir claves API',
       'settingsBackupIncludeApiKeysDesc':

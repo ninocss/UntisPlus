@@ -19,6 +19,17 @@ Future<void> _settingsSetThemeMode(ThemeMode mode) async {
   await prefs.setInt('themeMode', ThemeMode.values.indexOf(mode));
 }
 
+Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
+  visualThemeNotifier.value = theme;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('visualTheme', theme.storageKey);
+  final enabled =
+      appThemeCapabilities(theme).supportsBlur &&
+      (themeBlurPreferencesNotifier.value[theme.storageKey] ?? true);
+  blurEnabledNotifier.value = enabled;
+  unawaited(_applyAndroidWindowBlur(enabled));
+}
+
 Future<void> _settingsSetShowCancelled(bool value) async {
   showCancelledNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -45,8 +56,15 @@ Future<void> _settingsSetBackgroundGyroscope(bool value) async {
 }
 
 Future<void> _settingsSetBlurEnabled(bool value) async {
+  final theme = visualThemeNotifier.value;
+  if (!appThemeCapabilities(theme).supportsBlur) return;
+  final updated = Map<String, bool>.from(themeBlurPreferencesNotifier.value)
+    ..[theme.storageKey] = value;
+  themeBlurPreferencesNotifier.value = updated;
   blurEnabledNotifier.value = value;
+  unawaited(_applyAndroidWindowBlur(value));
   final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('themeBlurPreferences', jsonEncode(updated));
   await prefs.setBool('blurEnabled', value);
 }
 
@@ -407,54 +425,67 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getString('appLocale') ?? appLocaleNotifier.value;
   themeModeNotifier.value =
       ThemeMode.values[(prefs.getInt('themeMode') ?? 0).clamp(0, 2)];
+  visualThemeNotifier.value = AppThemeIdX.fromStorage(
+    prefs.getString('visualTheme'),
+  );
   showCancelledNotifier.value =
       prefs.getBool('showCancelled') ?? showCancelledNotifier.value;
   backgroundAnimationsNotifier.value =
-      prefs.getBool('backgroundAnimations') ?? backgroundAnimationsNotifier.value;
+      prefs.getBool('backgroundAnimations') ??
+      backgroundAnimationsNotifier.value;
   backgroundAnimationStyleNotifier.value =
       (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 10);
   backgroundGyroscopeNotifier.value =
       prefs.getBool('backgroundGyroscope') ?? backgroundGyroscopeNotifier.value;
+  final savedThemeBlurs = <String, bool>{};
+  try {
+    final raw = jsonDecode(prefs.getString('themeBlurPreferences') ?? '{}');
+    if (raw is Map) {
+      raw.forEach((key, value) {
+        if (key is String && value is bool) savedThemeBlurs[key] = value;
+      });
+    }
+  } catch (_) {}
+  if (savedThemeBlurs.isNotEmpty) {
+    themeBlurPreferencesNotifier.value = savedThemeBlurs;
+  }
+  final activeTheme = visualThemeNotifier.value;
   blurEnabledNotifier.value =
-      prefs.getBool('blurEnabled') ?? blurEnabledNotifier.value;
-  pageTransitionNotifier.value =
-      (prefs.getInt('pageTransition') ?? 0).clamp(0, 7);
-  useMaterialYouNotifier.value =
-      prefs.getBool('useMaterialYou') ?? true;
-  isAmoledNotifier.value =
-      prefs.getBool('isAmoled') ?? false;
-  customColorSeedNotifier.value =
-      prefs.getInt('customColorSeed') ?? 0xFF0F766E;
-  lessonCardStyleNotifier.value =
-      (prefs.getInt('lessonCardStyle') ?? 0).clamp(0, 4);
-  lessonGlowEnabledNotifier.value =
-      prefs.getBool('lessonGlowEnabled') ?? true;
-  lessonGlowModeNotifier.value =
-      (prefs.getInt('lessonGlowMode') ?? 0).clamp(0, 1);
+      appThemeCapabilities(activeTheme).supportsBlur &&
+      (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
+  pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
+    0,
+    7,
+  );
+  useMaterialYouNotifier.value = prefs.getBool('useMaterialYou') ?? true;
+  isAmoledNotifier.value = prefs.getBool('isAmoled') ?? false;
+  customColorSeedNotifier.value = prefs.getInt('customColorSeed') ?? 0xFF0F766E;
+  lessonCardStyleNotifier.value = (prefs.getInt('lessonCardStyle') ?? 0).clamp(
+    0,
+    4,
+  );
+  lessonGlowEnabledNotifier.value = prefs.getBool('lessonGlowEnabled') ?? true;
+  lessonGlowModeNotifier.value = (prefs.getInt('lessonGlowMode') ?? 0).clamp(
+    0,
+    1,
+  );
   lessonGlowIntensityNotifier.value =
       prefs.getDouble('lessonGlowIntensity') ?? 1.0;
   lessonGlowNextEnabledNotifier.value =
       prefs.getBool('lessonGlowNextEnabled') ?? false;
   lessonGlowNextMinutesNotifier.value =
       (prefs.getInt('lessonGlowNextMinutes') ?? 20).clamp(5, 120);
-  lessonBlurEnabledNotifier.value =
-      prefs.getBool('lessonBlurEnabled') ?? false;
-  lessonBlurAmountNotifier.value =
-      prefs.getDouble('lessonBlurAmount') ?? 12.0;
-  lessonCardOpacityNotifier.value =
-      prefs.getDouble('lessonCardOpacity') ?? 0.9;
+  lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;
+  lessonBlurAmountNotifier.value = prefs.getDouble('lessonBlurAmount') ?? 12.0;
+  lessonCardOpacityNotifier.value = prefs.getDouble('lessonCardOpacity') ?? 0.9;
   lessonBorderRadiusNotifier.value =
       prefs.getDouble('lessonBorderRadius') ?? 12.0;
-  lessonAccentStyleNotifier.value =
-      (prefs.getInt('lessonAccentStyle') ?? 0).clamp(0, 3);
-  lessonShowTeacherNotifier.value =
-      prefs.getBool('lessonShowTeacher') ?? true;
-  lessonShowRoomNotifier.value =
-      prefs.getBool('lessonShowRoom') ?? true;
-  lessonCompactModeNotifier.value =
-      prefs.getBool('lessonCompactMode') ?? false;
-  lessonDimPastNotifier.value =
-      prefs.getBool('lessonDimPast') ?? true;
+  lessonAccentStyleNotifier.value = (prefs.getInt('lessonAccentStyle') ?? 0)
+      .clamp(0, 3);
+  lessonShowTeacherNotifier.value = prefs.getBool('lessonShowTeacher') ?? true;
+  lessonShowRoomNotifier.value = prefs.getBool('lessonShowRoom') ?? true;
+  lessonCompactModeNotifier.value = prefs.getBool('lessonCompactMode') ?? false;
+  lessonDimPastNotifier.value = prefs.getBool('lessonDimPast') ?? true;
   lessonCancelledPatternNotifier.value =
       prefs.getBool('lessonCancelledPattern') ?? true;
   progressivePushNotifier.value =
@@ -462,7 +493,8 @@ Future<void> _settingsSyncFromPrefs() async {
   dailyBriefingPushNotifier.value =
       prefs.getBool('dailyBriefingPush') ?? dailyBriefingPushNotifier.value;
   importantChangesPushNotifier.value =
-      prefs.getBool('importantChangesPush') ?? importantChangesPushNotifier.value;
+      prefs.getBool('importantChangesPush') ??
+      importantChangesPushNotifier.value;
   demoModeNotifier.value = prefs.getBool('demoMode') ?? demoModeNotifier.value;
 
   aiProvider = _normalizeAiProvider(
@@ -482,7 +514,7 @@ Future<void> _settingsSyncFromPrefs() async {
 
   hiddenSubjectsNotifier.value =
       (prefs.getStringList('hiddenSubjects') ?? const <String>[]).toSet();
-  
+
   defaultClassId = prefs.getInt('defaultClassId');
   defaultClassName = prefs.getString('defaultClassName');
   favoriteClassIds = (prefs.getStringList('favoriteClassIds') ?? [])
@@ -506,7 +538,11 @@ Future<void> _settingsSyncFromPrefs() async {
 class SettingsHubPage extends StatelessWidget {
   const SettingsHubPage({super.key});
 
-  Widget _buildGroupCard(ColorScheme cs, BuildContext context, List<_SettingsHubItem> groupItems) {
+  Widget _buildGroupCard(
+    ColorScheme cs,
+    BuildContext context,
+    List<_SettingsHubItem> groupItems,
+  ) {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -532,7 +568,10 @@ class SettingsHubPage extends StatelessWidget {
                   }
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -747,7 +786,11 @@ class SettingsHubPage extends StatelessWidget {
                   ),
                 );
               },
-              child: _buildGroupCard(cs, context, [items[0], items[3], items[2]]),
+              child: _buildGroupCard(cs, context, [
+                items[0],
+                items[3],
+                items[2],
+              ]),
             ),
             const SizedBox(height: 16),
             TweenAnimationBuilder<double>(
@@ -763,7 +806,11 @@ class SettingsHubPage extends StatelessWidget {
                   ),
                 );
               },
-              child: _buildGroupCard(cs, context, [items[1], items[4], items[6]]),
+              child: _buildGroupCard(cs, context, [
+                items[1],
+                items[4],
+                items[6],
+              ]),
             ),
             const SizedBox(height: 16),
             TweenAnimationBuilder<double>(
@@ -813,7 +860,15 @@ class _SettingsHubItem {
 }
 
 Future<void> _settingsSetAppIcon(String icon) async {
-  const supported = {'default', '3d', 'chrom', 'galaxy', 'gradiant', 'marmor', 'paper'};
+  const supported = {
+    'default',
+    '3d',
+    'chrom',
+    'galaxy',
+    'gradiant',
+    'marmor',
+    'paper',
+  };
   if (!supported.contains(icon)) return;
   final applied = await _applyLauncherIcon(icon);
   if (!applied && Platform.isAndroid) return;

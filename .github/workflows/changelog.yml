@@ -1,4 +1,4 @@
-name: Generate AI Changelog
+name: Generate Changelog
 
 on:
   workflow_dispatch:
@@ -19,6 +19,10 @@ on:
 
 permissions:
   contents: write
+
+concurrency:
+  group: changelog-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   generate:
@@ -41,11 +45,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "$GEMINI_API_KEY" ]; then
-            echo "ERROR: GEMINI_API_KEY is not set."
-            exit 1
-          fi
-
           COMMITS=$(git log -n "$COMMIT_COUNT" --no-merges --pretty=format:'- %s (%h)' --name-only)
           if [ -z "${COMMITS//[[:space:]]/}" ]; then
             COMMITS='- No recent commits found.'
@@ -59,6 +58,31 @@ jobs:
           REPO_SLUG="${GITHUB_REPOSITORY:-}"
 
           INCLUDE_REFACTOR_LOWER="$(echo "$INCLUDE_REFACTOR" | tr '[:upper:]' '[:lower:]')"
+
+          # Changelog publication must not depend on an optional AI key. The
+          # deterministic variant remains truthful and can be edited in a PR.
+          if [ -z "$GEMINI_API_KEY" ]; then
+            BODY=$(cat <<EOF
+          # Version $RELEASE_VERSION
+
+          ## Changes
+          $(git log -n "$COMMIT_COUNT" --no-merges --pretty=format:'- %s' | sed '/^[[:space:]]*$/d' | head -n 120)
+
+          ## Technical Notes
+          - This changelog was generated from the selected commit range without AI assistance.
+          EOF
+            )
+            echo "$BODY" > CHANGELOG.md
+            jq -n \
+              --arg markdown "$BODY" \
+              --arg version "$RELEASE_VERSION" \
+              --arg model "deterministic" \
+              --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              '{version: $version, generated_at: $date, model: $model, markdown: $markdown}' \
+              > changelog.json
+            echo "Generated deterministic changelog for $RELEASE_VERSION"
+            exit 0
+          fi
 
           PROMPT=$(cat <<'EOF'
           You are writing a changelog for a Flutter app called "Untis+".

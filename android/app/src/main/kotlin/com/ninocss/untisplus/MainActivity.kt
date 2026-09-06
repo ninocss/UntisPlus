@@ -8,7 +8,11 @@ import android.content.Intent
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
+import androidx.core.content.FileProvider
+import java.io.File
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
@@ -54,6 +58,15 @@ class MainActivity : FlutterActivity() {
                     val icon = call.arguments as? String
                     result.success(icon?.let { setLauncherIcon(it) } ?: false)
                 }
+                "getSupportedAbis" -> result.success(Build.SUPPORTED_ABIS.toList())
+                "installApk" -> {
+                    val path = (call.arguments as? Map<*, *>)?.get("path") as? String
+                    if (path.isNullOrBlank()) {
+                        result.error("invalid_path", "No APK path supplied.", null)
+                    } else {
+                        installApk(path, result)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -90,6 +103,51 @@ class MainActivity : FlutterActivity() {
             )
         }
         return true
+    }
+
+    /**
+     * Opens the Android package installer for an APK that was downloaded into
+     * the app cache. Keeping the file below cache/updates prevents arbitrary
+     * paths received through the platform channel from being exposed.
+     */
+    private fun installApk(path: String, result: MethodChannel.Result) {
+        val updatesDirectory = File(cacheDir, "updates").canonicalFile
+        val apk = File(path).canonicalFile
+        val isAllowedFile = apk.path.startsWith(updatesDirectory.path + File.separator) &&
+            apk.isFile &&
+            apk.name.endsWith(".apk", ignoreCase = true)
+        if (!isAllowedFile) {
+            result.error("invalid_path", "APK must be stored in the update cache.", null)
+            return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !packageManager.canRequestPackageInstalls()) {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            result.success("permission")
+            return
+        }
+
+        try {
+            val uri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                apk,
+            )
+            val intent = Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            result.success("installer")
+        } catch (error: Exception) {
+            result.error("installer_failed", error.message, null)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

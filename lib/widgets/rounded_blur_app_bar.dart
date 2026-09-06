@@ -29,11 +29,12 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
 
     return ValueListenableBuilder<bool>(
       valueListenable: blurEnabledNotifier,
       builder: (context, blurEnabled, _) {
-        final isBlurActive = useBlur && blurEnabled;
+        final isBlurActive = useBlur && tokens.supportsBlur && blurEnabled;
 
         return AppBar(
           centerTitle: centerTitle,
@@ -42,13 +43,15 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
           title: title,
           bottom: bottom,
           backgroundColor: isBlurActive
-              ? cs.surface.withValues(alpha: 0.55)
+              ? cs.surface.withValues(
+                  alpha: tokens.id == AppThemeId.glass ? 0.42 : 0.62,
+                )
               : (blurEnabled ? Colors.transparent : cs.surface),
           elevation: 0,
           scrolledUnderElevation: isBlurActive ? 0 : 4,
           flexibleSpace: _blurEffect(
             enabled: useBlur,
-            sigma: 30,
+            sigma: tokens.blurSigma,
             child: Container(color: Colors.transparent),
           ),
         );

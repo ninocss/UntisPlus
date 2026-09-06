@@ -2,10 +2,20 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
         android:label="Untis+"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_file_paths" />
+        </provider>
         <receiver android:name=".UntisWidgetCurrentLesson" android:exported="true">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/untis_current_lesson_widget" />
@@ -61,7 +71,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_launcher_3d"
+            android:icon="@mipmap/ic_launcher_3d"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -74,7 +84,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_launcher_chrom"
+            android:icon="@mipmap/ic_launcher_chrom"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -87,7 +97,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_launcher_galaxy"
+            android:icon="@mipmap/ic_launcher_galaxy"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -100,7 +110,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_launcher_gradiant"
+            android:icon="@mipmap/ic_launcher_gradiant"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -113,7 +123,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_launcher_marmor"
+            android:icon="@mipmap/ic_launcher_marmor"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -126,7 +136,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_launcher_paper"
+            android:icon="@mipmap/ic_launcher_paper"
             android:label="Untis+">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

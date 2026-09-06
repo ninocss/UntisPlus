@@ -8,109 +8,195 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-release
+  cancel-in-progress: false
+
 jobs:
   check_changes:
     runs-on: ubuntu-latest
     outputs:
       has_changes: ${{ steps.check.outputs.changed }}
+      nightly_tag: ${{ steps.meta.outputs.tag }}
+      nightly_date: ${{ steps.meta.outputs.date }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Check for changes in last 24h
-        id: check
+      - id: check
+        name: Check for changes in the last 24 hours
         run: |
-          # Prüft, ob es Commits in den letzten 24 Stunden gab
-          if [ $(git log --oneline --since="24 hours ago" | wc -l) -gt 0 ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
+          if git log --oneline --since='24 hours ago' | grep -q .; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
           else
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
           fi
 
-  build_and_release:
+      - id: meta
+        name: Resolve nightly metadata
+        run: |
+          date="$(date -u +'%Y-%m-%d')"
+          echo "date=$date" >> "$GITHUB_OUTPUT"
+          echo "tag=nightly-$date" >> "$GITHUB_OUTPUT"
+
+  build_android:
     needs: check_changes
     if: needs.check_changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Setup Java & Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/setup-java@v5
         with:
-          channel: 'stable'
+          distribution: zulu
+          java-version: '17'
 
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Build Android APK
-        run: flutter build apk --release
-
-      - name: Build Android ABI-APK
-        run: flutter build apk --release --split-per-abi
-
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-
-      - name: Create Nightly Release
-        uses: softprops/action-gh-release@v3
+      - uses: subosito/flutter-action@v2
         with:
-          tag_name: nightly-${{ steps.date.outputs.date }}
-          name: "Nightly Build: ${{ steps.date.outputs.date }}"
-          body: "Automatic nightly build for ${{ steps.date.outputs.date }}. This release includes the latest changes from the repository."
-          files: build/app/outputs/flutter-apk/*.apk
-          prerelease: true
-          generate_release_notes: true
+          channel: stable
+          cache: true
+
+      - name: Configure Android signing
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo 'Nightly APKs must use the production signing key.'
+            exit 1
+          fi
+          key_dir="$RUNNER_TEMP/android-signing"
+          mkdir -p "$key_dir"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$key_dir/upload-keystore.jks"
+          {
+            echo "storePassword=$KEY_STORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=$key_dir/upload-keystore.jks"
+          } > android/key.properties
+
+      - name: Install dependencies and build APKs
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build apk --release
+          mkdir -p universal_apk
+          cp build/app/outputs/flutter-apk/app-release.apk universal_apk/
+          flutter build apk --release --split-per-abi
+
+      - name: Prepare verified update assets
+        env:
+          TAG: ${{ needs.check_changes.outputs.nightly_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p release_assets
+          cp universal_apk/app-release.apk "release_assets/UntisPlus-${TAG}-universal.apk"
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            cp "build/app/outputs/flutter-apk/app-${abi}-release.apk" \
+              "release_assets/UntisPlus-${TAG}-${abi}.apk"
+          done
+          (
+            cd release_assets
+            sha256sum *.apk > SHA256SUMS.txt
+            assets="$({
+              for f in *.apk; do
+                abi="universal"
+                case "$f" in
+                  *-armeabi-v7a.apk) abi="armeabi-v7a" ;;
+                  *-arm64-v8a.apk) abi="arm64-v8a" ;;
+                  *-x86_64.apk) abi="x86_64" ;;
+                esac
+                jq -n --arg name "$f" --arg abi "$abi" \
+                  --arg sha "$(sha256sum "$f" | awk '{print $1}')" \
+                  --argjson size "$(stat -c%s "$f")" \
+                  '{name: $name, abi: $abi, sha256: $sha, size_bytes: $size}'
+              done
+            } | jq -s '.')"
+            jq -n --arg tag "$TAG" --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --argjson assets "$assets" \
+              '{tag: $tag, channel: "nightly", generated_at: $generated_at, assets: $assets}' \
+              > release-manifest.json
+          )
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: nightly-android
+          path: release_assets/
+          if-no-files-found: error
 
   build_ipa:
     needs: check_changes
     if: needs.check_changes.outputs.has_changes == 'true'
     runs-on: macos-latest
     timeout-minutes: 60
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
           cache: true
 
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
-
-      - name: Package Unsigned IPA
+      - name: Build unsigned IPA
+        env:
+          TAG: ${{ needs.check_changes.outputs.nightly_tag }}
         run: |
-          VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)"
-          mkdir -p Payload
-          cp -R build/ios/iphoneos/Runner.app Payload/
-          zip -r -y "UntisPlus-${VERSION}.ipa" Payload
-          rm -rf Payload
+          set -euo pipefail
+          flutter pub get
+          flutter build ios --release --no-codesign
+          mkdir -p release_assets/Payload
+          cp -R build/ios/iphoneos/Runner.app release_assets/Payload/
+          (cd release_assets && zip -r -y "UntisPlus-${TAG}.ipa" Payload && rm -rf Payload)
 
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-
-      - name: Append IPA to Nightly Release
-        uses: softprops/action-gh-release@v3
+      - uses: actions/upload-artifact@v6
         with:
-          tag_name: nightly-${{ steps.date.outputs.date }}
-          files: UntisPlus-*.ipa
-          fail_on_unmatched_files: false
+          name: nightly-ios
+          path: release_assets/*.ipa
+          if-no-files-found: error
+
+  release:
+    needs: [check_changes, build_android, build_ipa]
+    if: >-
+      needs.check_changes.outputs.has_changes == 'true' &&
+      needs.build_android.result == 'success' &&
+      needs.build_ipa.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: nightly-android
+          path: release_assets
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: nightly-ios
+          path: release_assets
+
+      - name: Write nightly notes
+        env:
+          NIGHTLY_DATE: ${{ needs.check_changes.outputs.nightly_date }}
+        run: |
+          {
+            echo "# Nightly build · $NIGHTLY_DATE"
+            echo
+            echo 'Automated, signed Android preview build from the latest changes.'
+            echo 'Use a stable release for everyday use; pre-releases are not selected by the in-app updater.'
+          } > release_assets/release_notes.md
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.check_changes.outputs.nightly_tag }}
+          name: Nightly Build · ${{ needs.check_changes.outputs.nightly_date }}
+          body_path: release_assets/release_notes.md
+          files: release_assets/*
+          prerelease: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

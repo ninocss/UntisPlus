@@ -1,6 +1,101 @@
 // settings_about_updates_page.dart
 part of '../../main.dart';
 
+@immutable
+class GithubReleaseAsset {
+  final String name;
+  final String downloadUrl;
+  final int sizeBytes;
+
+  const GithubReleaseAsset({
+    required this.name,
+    required this.downloadUrl,
+    this.sizeBytes = 0,
+  });
+}
+
+List<GithubReleaseAsset> githubReleaseAssetsFromApi(dynamic rawAssets) {
+  if (rawAssets is! List) return const [];
+  return rawAssets
+      .whereType<Map>()
+      .map((rawAsset) {
+        final name = (rawAsset['name'] ?? '').toString().trim();
+        final url = (rawAsset['browser_download_url'] ?? '').toString().trim();
+        final size = rawAsset['size'];
+        return GithubReleaseAsset(
+          name: name,
+          downloadUrl: url,
+          sizeBytes: size is num ? size.toInt() : 0,
+        );
+      })
+      .where((asset) {
+        final uri = Uri.tryParse(asset.downloadUrl);
+        return asset.name.isNotEmpty &&
+            uri != null &&
+            (uri.scheme == 'https' || uri.scheme == 'http');
+      })
+      .toList(growable: false);
+}
+
+bool _assetNameHasToken(String value, String token) {
+  final escaped = RegExp.escape(token);
+  final pattern =
+      '(^|[^a-z0-9_])$escaped(?=[^a-z0-9_]|'
+      r'$)';
+  return RegExp(pattern).hasMatch(value);
+}
+
+/// Selects the APK matching the device's ABI. A generic APK is considered
+/// only when it is explicitly universal or the release has a single APK.
+GithubReleaseAsset? selectCompatibleAndroidApk(
+  List<GithubReleaseAsset> assets,
+  List<String> supportedAbis,
+) {
+  final apks = assets
+      .where((asset) => asset.name.toLowerCase().endsWith('.apk'))
+      .toList();
+  if (apks.isEmpty) return null;
+
+  const aliasesByAbi = <String, List<String>>{
+    'arm64-v8a': ['arm64-v8a', 'arm64', 'aarch64'],
+    'armeabi-v7a': ['armeabi-v7a', 'armv7', 'arm32'],
+    'x86_64': ['x86_64', 'x86-64', 'x64'],
+    'x86': ['x86'],
+  };
+  final allArchitectureTokens = aliasesByAbi.values
+      .expand((aliases) => aliases)
+      .toSet();
+
+  for (final abi in supportedAbis.map((abi) => abi.toLowerCase().trim())) {
+    final aliases = aliasesByAbi[abi];
+    if (aliases == null) continue;
+    for (final asset in apks) {
+      final name = asset.name.toLowerCase();
+      if (aliases.any((alias) => _assetNameHasToken(name, alias))) {
+        return asset;
+      }
+    }
+  }
+
+  for (final asset in apks) {
+    final name = asset.name.toLowerCase();
+    final declaresArchitecture = allArchitectureTokens.any(
+      (token) => _assetNameHasToken(name, token),
+    );
+    final isUniversal =
+        name.contains('universal') ||
+        name.contains('all-abi') ||
+        name.contains('fat.apk') ||
+        name.contains('-release.apk');
+    if (!declaresArchitecture && isUniversal) return asset;
+  }
+  if (apks.length != 1) return null;
+  final onlyApkDeclaresArchitecture = allArchitectureTokens.any(
+    (token) => _assetNameHasToken(apks.single.name.toLowerCase(), token),
+  );
+  return onlyApkDeclaresArchitecture ? null : apks.single;
+}
+
 class SettingsAboutUpdatesPage extends StatefulWidget {
   const SettingsAboutUpdatesPage({super.key});
 
@@ -9,8 +104,42 @@ class SettingsAboutUpdatesPage extends StatefulWidget {
       _SettingsAboutUpdatesPageState();
 }
 
-class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
+class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
+    with WidgetsBindingObserver {
   bool _checking = false;
+  bool _downloading = false;
+  CancelToken? _downloadCancelToken;
+  double? _downloadProgress;
+  int _downloadReceived = 0;
+  int _downloadTotal = 0;
+  String _downloadAssetName = '';
+  DateTime? _lastProgressUpdate;
+  String? _pendingInstallPath;
+
+  bool get _isAndroid => !kIsWeb && Platform.isAndroid;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _downloadCancelToken?.cancel('Update screen was closed.');
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || _pendingInstallPath == null) {
+      return;
+    }
+    final path = _pendingInstallPath!;
+    _pendingInstallPath = null;
+    unawaited(_promptInstaller(AppL10n.of(appLocaleNotifier.value), path));
+  }
 
   List<int> _extractVersionParts(String input) {
     final cleaned = input.trim().replaceFirst(RegExp(r'^[vV]'), '');
@@ -34,17 +163,153 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
     return 0;
   }
 
-  String? _pickReleaseAssetUrl(List<dynamic> assets) {
-    String? fallback;
-    for (final asset in assets) {
-      if (asset is! Map<String, dynamic>) continue;
-      final name = (asset['name'] ?? '').toString().toLowerCase();
-      final url = (asset['browser_download_url'] ?? '').toString();
-      if (url.isEmpty) continue;
-      fallback ??= url;
-      if (name.endsWith('.apk')) return url;
+  Future<List<String>> _supportedAbis() async {
+    if (!_isAndroid) return const [];
+    try {
+      final raw = await _uiChannel.invokeMethod<List<dynamic>>(
+        'getSupportedAbis',
+      );
+      return raw
+              ?.map((abi) => abi.toString().trim())
+              .where((abi) => abi.isNotEmpty)
+              .toList(growable: false) ??
+          const [];
+    } catch (_) {
+      return const [];
     }
-    return fallback;
+  }
+
+  String _formatBytes(int value) {
+    if (value < 1024) return '$value B';
+    if (value < 1024 * 1024) return '${(value / 1024).toStringAsFixed(1)} KB';
+    return '${(value / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  Future<bool> _isApkFile(File file) async {
+    if (!await file.exists() || await file.length() < 1024) return false;
+    final handle = await file.open();
+    try {
+      final header = await handle.read(4);
+      return header.length == 4 && header[0] == 0x50 && header[1] == 0x4b;
+    } finally {
+      await handle.close();
+    }
+  }
+
+  void _cancelDownload() {
+    _downloadCancelToken?.cancel('Cancelled by user.');
+  }
+
+  Future<void> _promptInstaller(AppL10n l, String apkPath) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final installResult = await _uiChannel.invokeMethod<String>('installApk', {
+      'path': apkPath,
+    });
+    if (!mounted) return;
+    if (installResult == 'permission') {
+      _pendingInstallPath = apkPath;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          installResult == 'permission'
+              ? l.settingsGithubInstallPermissionRequired
+              : l.settingsGithubInstallerOpened,
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _downloadAndInstall(AppL10n l, GithubReleaseAsset asset) async {
+    if (_downloading) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final cacheDirectory = await getTemporaryDirectory();
+    final updatesDirectory = Directory(
+      '${cacheDirectory.path}${Platform.pathSeparator}updates',
+    );
+    await updatesDirectory.create(recursive: true);
+    final safeName = asset.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final target = File(
+      '${updatesDirectory.path}${Platform.pathSeparator}$safeName',
+    );
+    final temporary = File('${target.path}.part');
+    if (await temporary.exists()) await temporary.delete();
+
+    final cancelToken = CancelToken();
+    setState(() {
+      _downloading = true;
+      _downloadCancelToken = cancelToken;
+      _downloadProgress = asset.sizeBytes > 0 ? 0 : null;
+      _downloadReceived = 0;
+      _downloadTotal = asset.sizeBytes;
+      _downloadAssetName = asset.name;
+      _lastProgressUpdate = null;
+    });
+
+    try {
+      await Dio().download(
+        asset.downloadUrl,
+        temporary.path,
+        cancelToken: cancelToken,
+        options: Options(headers: const {'User-Agent': 'UntisPlus updater'}),
+        onReceiveProgress: (received, total) {
+          final now = DateTime.now();
+          if (_lastProgressUpdate != null &&
+              now.difference(_lastProgressUpdate!).inMilliseconds < 120 &&
+              total != received) {
+            return;
+          }
+          _lastProgressUpdate = now;
+          if (!mounted || cancelToken.isCancelled) return;
+          setState(() {
+            _downloadReceived = received;
+            _downloadTotal = total > 0 ? total : asset.sizeBytes;
+            _downloadProgress = total > 0 ? received / total : null;
+          });
+        },
+      );
+
+      if (!await _isApkFile(temporary)) {
+        throw const FormatException('Downloaded file is not a valid APK.');
+      }
+      if (await target.exists()) await target.delete();
+      await temporary.rename(target.path);
+
+      await _promptInstaller(l, target.path);
+    } on DioException catch (error) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            CancelToken.isCancel(error)
+                ? l.settingsGithubDownloadCancelled
+                : l.settingsGithubDownloadFailed,
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l.settingsGithubDownloadFailed),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (await temporary.exists()) await temporary.delete();
+      if (mounted) {
+        setState(() {
+          _downloading = false;
+          _downloadCancelToken = null;
+          _downloadProgress = null;
+          _downloadReceived = 0;
+          _downloadTotal = 0;
+          _downloadAssetName = '';
+        });
+      }
+    }
   }
 
   Future<bool> _confirmInstall(AppL10n l, String latestVersion) async {
@@ -132,19 +397,12 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
       final htmlUrl =
           (data['html_url'] ?? 'https://github.com/ninocss/UntisPlus/releases')
               .toString();
-      final assets =
-          (data['assets'] is List)
-              ? data['assets'] as List<dynamic>
-              : const <dynamic>[];
-      final assetUrl = _pickReleaseAssetUrl(assets);
-      final targetUrl = assetUrl ?? htmlUrl;
-      final latestVersion =
-          tag.isEmpty ? (data['name'] ?? '').toString() : tag;
+      final assets = githubReleaseAssetsFromApi(data['assets']);
+      final latestVersion = tag.isEmpty ? (data['name'] ?? '').toString() : tag;
       final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersion);
-      final hasUpdate =
-          hasComparableVersion
-              ? _compareVersionStrings(appVersion, latestVersion) < 0
-              : true;
+      final hasUpdate = hasComparableVersion
+          ? _compareVersionStrings(appVersion, latestVersion) < 0
+          : true;
 
       if (!hasUpdate) {
         if (!mounted) return;
@@ -157,9 +415,29 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
         return;
       }
 
+      final androidAsset = _isAndroid
+          ? selectCompatibleAndroidApk(assets, await _supportedAbis())
+          : null;
+      if (_isAndroid && androidAsset == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.settingsGithubNoCompatibleAndroidApk),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       final confirmed = await _confirmInstall(l, latestVersion);
       if (!confirmed) return;
 
+      if (_isAndroid) {
+        await _downloadAndInstall(l, androidAsset!);
+        return;
+      }
+
+      final targetUrl = assets.isNotEmpty ? assets.first.downloadUrl : htmlUrl;
       final launched = await url_launcher.launchUrlString(
         targetUrl,
         mode: url_launcher.LaunchMode.externalApplication,
@@ -219,16 +497,67 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage> {
                   iconColor: cs.onPrimaryContainer,
                   title: l.settingsGithubUpdateCheck,
                   subtitle: l.settingsGithubUpdateCheckDesc,
-                  trailing:
-                      _checking
-                          ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.2),
-                          )
-                          : const Icon(Icons.chevron_right_rounded),
-                  onTap: _checking ? null : _checkGithubUpdate,
+                  trailing: _checking
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
+                        )
+                      : _downloading
+                      ? IconButton(
+                          tooltip: l.settingsGithubDownloadCancel,
+                          onPressed: _cancelDownload,
+                          icon: const Icon(Icons.close_rounded),
+                        )
+                      : const Icon(Icons.chevron_right_rounded),
+                  onTap: _checking || _downloading ? null : _checkGithubUpdate,
                 ),
+                if (_downloading)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l.settingsGithubDownloading,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _downloadProgress == null
+                                  ? _formatBytes(_downloadReceived)
+                                  : '${(_downloadProgress! * 100).clamp(0, 100).toStringAsFixed(0)} %',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        LinearProgressIndicator(value: _downloadProgress),
+                        const SizedBox(height: 5),
+                        Text(
+                          _downloadTotal > 0
+                              ? '${_formatBytes(_downloadReceived)} / ${_formatBytes(_downloadTotal)} · $_downloadAssetName'
+                              : _downloadAssetName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontSize: 11.5,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 SettingsTile(
                   icon: Icons.open_in_new_rounded,
                   iconBackgroundColor: cs.secondaryContainer.withValues(

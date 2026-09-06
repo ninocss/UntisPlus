@@ -795,140 +795,142 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      child: Builder(builder: (sheetContext) {
-        final colors = Theme.of(sheetContext).colorScheme;
-        final blurOn = blurEnabledNotifier.value;
+      child: Builder(
+        builder: (sheetContext) {
+          final colors = Theme.of(sheetContext).colorScheme;
+          final blurOn = blurEnabledNotifier.value;
 
-        return _sheetSurface(
-          context: sheetContext,
-          blur: blurOn,
-          child: SizedBox(
-            height: sheetHeight,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
-              child: Column(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: colors.onSurfaceVariant.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(999),
+          return _sheetSurface(
+            context: sheetContext,
+            blur: blurOn,
+            child: SizedBox(
+              height: sheetHeight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: colors.onSurfaceVariant.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l.settingsBackgroundStyle,
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 22,
-                      letterSpacing: 0.2,
+                    const SizedBox(height: 16),
+                    Text(
+                      l.settingsBackgroundStyle,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 22,
+                        letterSpacing: 0.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: ListView.separated(
-                      physics: const ClampingScrollPhysics(),
-                      padding: const EdgeInsets.only(bottom: 12),
-                      itemCount: 11,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 10),
-                      itemBuilder: (ctx, idx) {
-                        final selected = idx == currentStyle;
-                        final baseColor = colors.primary;
-                        final tileColor = selected
-                            ? baseColor.withValues(alpha: blurOn ? 0.22 : 0.16)
-                            : colors.surfaceContainerHigh.withValues(
-                                alpha: blurOn ? 0.78 : 0.9,
-                              );
-                        final borderColor = selected
-                            ? baseColor.withValues(alpha: 0.55)
-                            : colors.outlineVariant.withValues(alpha: 0.5);
+                    const SizedBox(height: 14),
+                    Expanded(
+                      child: ListView.separated(
+                        physics: const ClampingScrollPhysics(),
+                        padding: const EdgeInsets.only(bottom: 12),
+                        itemCount: 11,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 10),
+                        itemBuilder: (ctx, idx) {
+                          final selected = idx == currentStyle;
+                          final baseColor = colors.primary;
+                          final tileColor = selected
+                              ? baseColor.withValues(
+                                  alpha: blurOn ? 0.22 : 0.16,
+                                )
+                              : colors.surfaceContainerHigh.withValues(
+                                  alpha: blurOn ? 0.78 : 0.9,
+                                );
+                          final borderColor = selected
+                              ? baseColor.withValues(alpha: 0.55)
+                              : colors.outlineVariant.withValues(alpha: 0.5);
 
-                        return Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(18),
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              Navigator.pop(sheetContext, idx);
-                            },
-                            child: Ink(
-                              decoration: BoxDecoration(
-                                color: tileColor,
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(
-                                  color: borderColor,
-                                  width: selected ? 1.4 : 1,
-                                ),
-                              ),
-                              child: ListTile(
-                                minTileHeight: 56,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 2,
-                                ),
-                                leading: Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: colors.primary.withValues(
-                                      alpha: selected ? 0.24 : 0.12,
-                                    ),
-                                    borderRadius: BorderRadius.circular(11),
-                                  ),
-                                  child: Icon(
-                                    _backgroundStyleIcon(idx),
-                                    color: colors.primary.withValues(
-                                      alpha: 0.96,
-                                    ),
-                                    size: 19,
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                Navigator.pop(sheetContext, idx);
+                              },
+                              child: Ink(
+                                decoration: BoxDecoration(
+                                  color: tileColor,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: borderColor,
+                                    width: selected ? 1.4 : 1,
                                   ),
                                 ),
-                                title: Text(
-                                  _backgroundStyleLabel(l, idx),
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: selected
-                                        ? FontWeight.w700
-                                        : FontWeight.w600,
-                                    fontSize: 15.2,
-                                    color: colors.onSurface.withValues(
-                                      alpha: 0.98,
-                                    ),
+                                child: ListTile(
+                                  minTileHeight: 56,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 2,
                                   ),
-                                ),
-                                trailing: selected
-                                    ? Icon(
-                                        Icons.check_circle_rounded,
-                                        color: colors.primary.withValues(
-                                          alpha: 0.98,
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.chevron_right_rounded,
-                                        color: colors.onSurfaceVariant
-                                            .withValues(alpha: 0.86),
+                                  leading: Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: colors.primary.withValues(
+                                        alpha: selected ? 0.24 : 0.12,
                                       ),
+                                      borderRadius: BorderRadius.circular(11),
+                                    ),
+                                    child: Icon(
+                                      _backgroundStyleIcon(idx),
+                                      color: colors.primary.withValues(
+                                        alpha: 0.96,
+                                      ),
+                                      size: 19,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    _backgroundStyleLabel(l, idx),
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: selected
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                      fontSize: 15.2,
+                                      color: colors.onSurface.withValues(
+                                        alpha: 0.98,
+                                      ),
+                                    ),
+                                  ),
+                                  trailing: selected
+                                      ? Icon(
+                                          Icons.check_circle_rounded,
+                                          color: colors.primary.withValues(
+                                            alpha: 0.98,
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.chevron_right_rounded,
+                                          color: colors.onSurfaceVariant
+                                              .withValues(alpha: 0.86),
+                                        ),
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
   }
 
   Future<void> _setBlurEnabled(bool enabled) async {
-    blurEnabledNotifier.value = enabled;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('blurEnabled', enabled);
+    await _settingsSetBlurEnabled(enabled);
   }
 
   Future<void> _setBackgroundGyroscopeEnabled(bool enabled) async {
@@ -1052,8 +1054,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       color: isActive
                           ? colors.primary
                           : isDone
-                              ? colors.primary.withValues(alpha: 0.55)
-                              : colors.surfaceContainerHighest,
+                          ? colors.primary.withValues(alpha: 0.55)
+                          : colors.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -1164,10 +1166,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   name,
                   style: GoogleFonts.outfit(
                     fontSize: 16,
-                    fontWeight:
-                        isSel ? FontWeight.w700 : FontWeight.w500,
-                    color:
-                        isSel ? colors.onPrimaryContainer : colors.onSurface,
+                    fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                    color: isSel ? colors.onPrimaryContainer : colors.onSurface,
                   ),
                 ),
               ),
@@ -1206,6 +1206,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _buildSectionLabel(l.settingsVisualTheme, colors),
+            const SizedBox(height: 8),
+            ValueListenableBuilder<AppThemeId>(
+              valueListenable: visualThemeNotifier,
+              builder: (context, selected, _) =>
+                  _buildOnboardingThemePicker(l, selected, colors),
+            ),
+            const SizedBox(height: 18),
             // Theme mode section
             _buildSectionLabel(l.settingsThemeMode, colors),
             const SizedBox(height: 8),
@@ -1243,8 +1251,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         children: [
                           ValueListenableBuilder<int>(
                             valueListenable: backgroundAnimationStyleNotifier,
-                            builder: (context, style, _) =>
-                                _buildChevronTile(
+                            builder: (context, style, _) => _buildChevronTile(
                               icon: _backgroundStyleIcon(style),
                               title: l.settingsBackgroundStyle,
                               subtitle: _backgroundStyleLabel(l, style),
@@ -1275,18 +1282,31 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  _buildSectionLabel(l.settingsGlassEffect, colors),
-                  const SizedBox(height: 8),
-                  ValueListenableBuilder<bool>(
-                    valueListenable: blurEnabledNotifier,
-                    builder: (context, val, _) => _buildToggleTile(
-                      icon: Icons.blur_on_rounded,
-                      title: l.settingsGlassEffect,
-                      subtitle: l.settingsGlassEffectDesc,
-                      value: val,
-                      onChanged: _setBlurEnabled,
-                      colors: colors,
-                    ),
+                  ValueListenableBuilder<AppThemeId>(
+                    valueListenable: visualThemeNotifier,
+                    builder: (context, theme, _) {
+                      if (!appThemeCapabilities(theme).supportsBlur) {
+                        return const SizedBox.shrink();
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildSectionLabel(l.settingsGlassEffect, colors),
+                          const SizedBox(height: 8),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: blurEnabledNotifier,
+                            builder: (context, val, _) => _buildToggleTile(
+                              icon: Icons.blur_on_rounded,
+                              title: l.settingsGlassEffect,
+                              subtitle: l.settingsGlassEffectDesc,
+                              value: val,
+                              onChanged: _setBlurEnabled,
+                              colors: colors,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1310,6 +1330,132 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
+  List<Color> _onboardingThemeColors(AppThemeId theme) => switch (theme) {
+    AppThemeId.defaultTheme => const [Color(0xFF0F766E), Color(0xFFD5F5EF)],
+    AppThemeId.manga => const [Color(0xFFF4ECDD), Color(0xFF17120C)],
+    AppThemeId.vivid => const [Color(0xFFFF4FC8), Color(0xFF4BE4FF)],
+    AppThemeId.glass => const [Color(0xFF76D6FF), Color(0xFFD8BCFF)],
+    AppThemeId.cyber => const [Color(0xFF02050A), Color(0xFF00F5FF)],
+    AppThemeId.paper => const [Color(0xFFFFF9E8), Color(0xFF9A4D24)],
+  };
+
+  String _onboardingThemeName(AppL10n l, AppThemeId theme) => switch (theme) {
+    AppThemeId.defaultTheme => l.themeDefault,
+    AppThemeId.manga => l.themeManga,
+    AppThemeId.vivid => l.themeVivid,
+    AppThemeId.glass => l.themeGlass,
+    AppThemeId.cyber => l.themeCyber,
+    AppThemeId.paper => l.themePaper,
+  };
+
+  Widget _buildOnboardingThemePicker(
+    AppL10n l,
+    AppThemeId selected,
+    ColorScheme colors,
+  ) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: AppThemeId.values.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 2.45,
+      ),
+      itemBuilder: (context, index) {
+        final theme = AppThemeId.values[index];
+        final active = theme == selected;
+        final preview = _onboardingThemeColors(theme);
+        final sharp = theme == AppThemeId.manga || theme == AppThemeId.cyber;
+        return Semantics(
+          selected: active,
+          button: true,
+          label: _onboardingThemeName(l, theme),
+          child: InkWell(
+            key: ValueKey('onboarding-theme-${theme.storageKey}'),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              unawaited(_settingsSetVisualTheme(theme));
+            },
+            borderRadius: BorderRadius.circular(sharp ? 3 : 14),
+            child: AnimatedContainer(
+              duration: MediaQuery.of(context).disableAnimations
+                  ? Duration.zero
+                  : const Duration(milliseconds: 220),
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHigh.withValues(alpha: 0.78),
+                borderRadius: BorderRadius.circular(sharp ? 3 : 14),
+                border: Border.all(
+                  color: active ? colors.primary : colors.outlineVariant,
+                  width: active ? 2 : 1,
+                ),
+                boxShadow: active && sharp
+                    ? [
+                        BoxShadow(
+                          color: preview.last.withValues(alpha: 0.72),
+                          offset: const Offset(3, 3),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: preview,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(sharp ? 1 : 10),
+                      border: sharp
+                          ? Border.all(color: preview.last, width: 1.5)
+                          : null,
+                    ),
+                    child: Icon(
+                      theme == AppThemeId.glass
+                          ? Icons.water_drop_rounded
+                          : theme == AppThemeId.paper
+                          ? Icons.sticky_note_2_rounded
+                          : Icons.palette_rounded,
+                      color: preview.last.computeLuminance() > 0.55
+                          ? Colors.black87
+                          : Colors.white,
+                      size: 17,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _onboardingThemeName(l, theme),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                  ),
+                  if (active)
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 17,
+                      color: colors.primary,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildThemeModeRow(AppL10n l, ThemeMode val, ColorScheme colors) {
     final modes = [
       (ThemeMode.light, Icons.light_mode_rounded, l.settingsThemeLight),
@@ -1322,9 +1468,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         final selected = val == mode;
         return Expanded(
           child: Padding(
-            padding: EdgeInsets.only(
-              right: mode == ThemeMode.dark ? 0 : 8,
-            ),
+            padding: EdgeInsets.only(right: mode == ThemeMode.dark ? 0 : 8),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -1555,7 +1699,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 hintStyle: GoogleFonts.outfit(color: colors.onSurfaceVariant),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.only(left: 12, right: 8),
-                  child: Icon(Icons.search_rounded, color: colors.onSurfaceVariant),
+                  child: Icon(
+                    Icons.search_rounded,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
                 prefixIconConstraints: const BoxConstraints(minWidth: 0),
                 border: InputBorder.none,
@@ -1578,122 +1725,128 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             child: _isSearching
                 ? const Center(child: CircularProgressIndicator())
                 : _searchResults.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(18),
-                              decoration: BoxDecoration(
-                                color: colors.surfaceContainerHigh
-                                    .withValues(alpha: 0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.search_rounded,
-                                size: 36,
-                                color: colors.onSurfaceVariant
-                                    .withValues(alpha: 0.5),
-                              ),
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: colors.surfaceContainerHigh.withValues(
+                              alpha: 0.5,
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              l.loginNoSchoolsFound,
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                color: colors.onSurfaceVariant,
-                              ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.search_rounded,
+                            size: 36,
+                            color: colors.onSurfaceVariant.withValues(
+                              alpha: 0.5,
                             ),
-                          ],
+                          ),
                         ),
-                      )
-                    : ListView.separated(
-                        itemCount: _searchResults.length,
-                        separatorBuilder: (_, $2) => const SizedBox(height: 6),
-                        itemBuilder: (context, index) {
-                          final s = _searchResults[index];
-                          return Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() {
-                                  _schoolController.text = s.loginName;
-                                  _serverController.text = s.serverUrl;
-                                  _searchResults = [];
-                                });
-                              },
+                        const SizedBox(height: 12),
+                        Text(
+                          l.loginNoSchoolsFound,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: _searchResults.length,
+                    separatorBuilder: (_, $2) => const SizedBox(height: 6),
+                    itemBuilder: (context, index) {
+                      final s = _searchResults[index];
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _schoolController.text = s.loginName;
+                              _serverController.text = s.serverUrl;
+                              _searchResults = [];
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceContainerHigh.withValues(
+                                alpha: 0.6,
+                              ),
                               borderRadius: BorderRadius.circular(14),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 12,
+                              border: Border.all(
+                                color: colors.outlineVariant.withValues(
+                                  alpha: 0.35,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: colors.surfaceContainerHigh
-                                      .withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: colors.outlineVariant
-                                        .withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: colors.primaryContainer.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.school_rounded,
+                                    size: 18,
+                                    color: colors.onPrimaryContainer,
                                   ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 38,
-                                      height: 38,
-                                      decoration: BoxDecoration(
-                                        color: colors.primaryContainer
-                                            .withValues(alpha: 0.7),
-                                        borderRadius: BorderRadius.circular(10),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        s.displayName,
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
                                       ),
-                                      child: Icon(
-                                        Icons.school_rounded,
-                                        size: 18,
-                                        color: colors.onPrimaryContainer,
+                                      Text(
+                                        s.address.isNotEmpty
+                                            ? s.address
+                                            : s.loginName,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 12,
+                                          color: colors.onSurfaceVariant,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            s.displayName,
-                                            style: GoogleFonts.outfit(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          Text(
-                                            s.address.isNotEmpty
-                                                ? s.address
-                                                : s.loginName,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 12,
-                                              color: colors.onSurfaceVariant,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(
-                                      Icons.chevron_right_rounded,
-                                      color: colors.onSurfaceVariant
-                                          .withValues(alpha: 0.6),
-                                      size: 20,
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: colors.onSurfaceVariant.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                  size: 20,
+                                ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       );
@@ -1822,11 +1975,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
               const SizedBox(height: 10),
             ],
-            _buildField(
-              _userController,
-              l.loginUsername,
-              Icons.person_rounded,
-            ),
+            _buildField(_userController, l.loginUsername, Icons.person_rounded),
             const SizedBox(height: 10),
             // Credential mode toggle
             Row(
@@ -2039,7 +2188,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           const SizedBox(height: 10),
                           TextButton.icon(
                             onPressed: _openApiKeyPortal,
-                            icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                            icon: const Icon(
+                              Icons.open_in_new_rounded,
+                              size: 14,
+                            ),
                             label: Text(
                               l.settingsAiApiKeyGet,
                               style: GoogleFonts.outfit(
@@ -2048,7 +2200,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                               ),
                             ),
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
@@ -2175,14 +2330,42 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final colors = Theme.of(context).colorScheme;
 
     final features = [
-      (Icons.calendar_month_rounded, l.onboardingFeatureTimetableTitle,
-          l.onboardingFeatureTimetableDesc, colors.primary),
-      (Icons.draw_rounded, l.onboardingFeatureExamsTitle,
-          l.onboardingFeatureExamsDesc, colors.secondary),
-      (Icons.auto_awesome_rounded, l.onboardingFeatureAiTitle,
-          l.onboardingFeatureAiDesc, colors.tertiary),
-      (Icons.notifications_active_rounded, l.onboardingFeatureNotifyTitle,
-          l.onboardingFeatureNotifyDesc, colors.primary),
+      (
+        Icons.calendar_month_rounded,
+        l.onboardingFeatureTimetableTitle,
+        l.onboardingFeatureTimetableDesc,
+        colors.primary,
+      ),
+      (
+        Icons.draw_rounded,
+        l.onboardingFeatureExamsTitle,
+        l.onboardingFeatureExamsDesc,
+        colors.secondary,
+      ),
+      (
+        Icons.auto_awesome_rounded,
+        l.onboardingFeatureAiTitle,
+        l.onboardingFeatureAiDesc,
+        colors.tertiary,
+      ),
+      (
+        Icons.notifications_active_rounded,
+        l.onboardingFeatureNotifyTitle,
+        l.onboardingFeatureNotifyDesc,
+        colors.primary,
+      ),
+      (
+        Icons.system_update_alt_rounded,
+        l.onboardingFeatureUpdatesTitle,
+        l.onboardingFeatureUpdatesDesc,
+        colors.secondary,
+      ),
+      (
+        Icons.backup_rounded,
+        l.onboardingFeatureBackupTitle,
+        l.onboardingFeatureBackupDesc,
+        colors.tertiary,
+      ),
     ];
 
     return _StepWrapper(
@@ -2234,9 +2417,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       decoration: BoxDecoration(
         color: colors.surfaceContainerHigh.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
@@ -2473,17 +2654,12 @@ class _StepWrapper extends StatelessWidget {
                 height: iconSize,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      cs.primaryContainer,
-                      cs.secondaryContainer,
-                    ],
+                    colors: [cs.primaryContainer, cs.secondaryContainer],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(iconSize / 3.2),
-                  border: Border.all(
-                    color: cs.primary.withValues(alpha: 0.18),
-                  ),
+                  border: Border.all(color: cs.primary.withValues(alpha: 0.18)),
                 ),
                 child: Icon(
                   icon,

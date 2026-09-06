@@ -57,35 +57,40 @@ const List<LocalModelInfo> kLocalModels = [
   LocalModelInfo(
     id: 'gemma-3-1b-it-q4_k_m',
     name: 'Gemma 3 1B-IT (Q4_K_M)',
-    url: 'https://huggingface.co/bartowski/google_gemma-3-1b-it-GGUF/resolve/main/google_gemma-3-1b-it-Q4_K_M.gguf',
+    url:
+        'https://huggingface.co/bartowski/google_gemma-3-1b-it-GGUF/resolve/main/google_gemma-3-1b-it-Q4_K_M.gguf',
     sizeGb: 0.8,
     description: '',
   ),
   LocalModelInfo(
     id: 'llama-3.2-1b-instruct-q4_k_m',
     name: 'Llama 3.2 1B-Instruct (Q4_K_M)',
-    url: 'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+    url:
+        'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
     sizeGb: 0.8,
     description: '',
   ),
   LocalModelInfo(
     id: 'qwen-2.5-1.5b-instruct-q4_k_m',
     name: 'Qwen 2.5 1.5B-Instruct (Q4_K_M)',
-    url: 'https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
+    url:
+        'https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
     sizeGb: 1.0,
     description: '',
   ),
   LocalModelInfo(
     id: 'llama-3.2-3b-instruct-q4_k_m',
     name: 'Llama 3.2 3B-Instruct (Q4_K_M)',
-    url: 'https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf',
+    url:
+        'https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf',
     sizeGb: 2.0,
     description: '',
   ),
   LocalModelInfo(
     id: 'phi-3.5-mini-instruct-q4_k_m',
     name: 'Phi-3.5-mini-Instruct (Q4_K_M)',
-    url: 'https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf',
+    url:
+        'https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf',
     sizeGb: 2.4,
     description: '',
   ),
@@ -120,7 +125,11 @@ List<String> _modelsForProvider(
       return _localModelIds();
     case 'gemini':
     default:
-      return const ['gemini-3.6-flash', 'gemini-3.6-pro', 'gemini-3.6-flash-lite'];
+      return const [
+        'gemini-3.6-flash',
+        'gemini-3.6-pro',
+        'gemini-3.6-flash-lite',
+      ];
   }
 }
 
@@ -167,13 +176,24 @@ String _providerAwareMissingApiKeyMessage(AppL10n l, String provider) {
   return '${l.aiNoApiKey} (${_localizedAiProviderLabel(l, provider)})';
 }
 
-
 final ValueNotifier<String> appLocaleNotifier = ValueNotifier('de');
 final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
   ThemeMode.system,
 );
+final ValueNotifier<AppThemeId> visualThemeNotifier = ValueNotifier(
+  AppThemeId.defaultTheme,
+);
+final ValueNotifier<Map<String, bool>> themeBlurPreferencesNotifier =
+    ValueNotifier({
+      AppThemeId.defaultTheme.storageKey: true,
+      AppThemeId.vivid.storageKey: true,
+      AppThemeId.glass.storageKey: true,
+      AppThemeId.cyber.storageKey: true,
+    });
 final ValueNotifier<bool> showCancelledNotifier = ValueNotifier(true);
-final ValueNotifier<int> cancelledLessonColorNotifier = ValueNotifier(0xFFFF1744);
+final ValueNotifier<int> cancelledLessonColorNotifier = ValueNotifier(
+  0xFFFF1744,
+);
 final ValueNotifier<bool> monochromeLessonsNotifier = ValueNotifier(false);
 final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
 final ValueNotifier<int> backgroundAnimationStyleNotifier = ValueNotifier(0);
@@ -192,7 +212,9 @@ final ValueNotifier<String?> pendingTimetableNextLessonNotifier = ValueNotifier(
 
 /// A native Assistant or App Action can request opening the in-app AI screen.
 final ValueNotifier<bool> pendingAssistantOpenNotifier = ValueNotifier(false);
-final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(null);
+final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(
+  null,
+);
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);
@@ -258,31 +280,40 @@ Future<void> loadCustomData() async {
   final prefs = await SharedPreferences.getInstance();
 
   final rawHw = prefs.getStringList('customHomework') ?? [];
-  customHomeworkNotifier.value = rawHw.map((e) {
-    try {
-      return Map<String, dynamic>.from(jsonDecode(e) as Map);
-    } catch (_) {
-      return <String, dynamic>{};
-    }
-  }).where((e) => e.isNotEmpty).toList();
+  customHomeworkNotifier.value = rawHw
+      .map((e) {
+        try {
+          return Map<String, dynamic>.from(jsonDecode(e) as Map);
+        } catch (_) {
+          return <String, dynamic>{};
+        }
+      })
+      .where((e) => e.isNotEmpty)
+      .toList();
 
   final rawExams = prefs.getStringList('customExams') ?? [];
-  customExamsNotifier.value = rawExams.map((e) {
-    try {
-      return Map<String, dynamic>.from(jsonDecode(e) as Map);
-    } catch (_) {
-      return <String, dynamic>{};
-    }
-  }).where((e) => e.isNotEmpty).toList();
+  customExamsNotifier.value = rawExams
+      .map((e) {
+        try {
+          return Map<String, dynamic>.from(jsonDecode(e) as Map);
+        } catch (_) {
+          return <String, dynamic>{};
+        }
+      })
+      .where((e) => e.isNotEmpty)
+      .toList();
 
   final rawGrades = prefs.getStringList('customGrades') ?? [];
-  customGradesNotifier.value = rawGrades.map((e) {
-    try {
-      return Map<String, dynamic>.from(jsonDecode(e) as Map);
-    } catch (_) {
-      return <String, dynamic>{};
-    }
-  }).where((e) => e.isNotEmpty).toList();
+  customGradesNotifier.value = rawGrades
+      .map((e) {
+        try {
+          return Map<String, dynamic>.from(jsonDecode(e) as Map);
+        } catch (_) {
+          return <String, dynamic>{};
+        }
+      })
+      .where((e) => e.isNotEmpty)
+      .toList();
 }
 
 Future<void> saveCustomHomework(List<Map<String, dynamic>> list) async {
@@ -397,4 +428,3 @@ Future<bool> _reAuthenticate() async {
 int? defaultClassId;
 String? defaultClassName;
 Set<int> favoriteClassIds = {};
-

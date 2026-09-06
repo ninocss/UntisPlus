@@ -10,6 +10,10 @@ class _AnimatedBackground extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: backgroundAnimationsNotifier,
       builder: (context, enabled, _) {
+        final tokens = untisThemeTokensOf(context);
+        if (tokens.id != AppThemeId.defaultTheme) {
+          return ThemedBackdrop(child: child, animate: enabled);
+        }
         if (!enabled) return child;
         return ValueListenableBuilder<int>(
           valueListenable: backgroundAnimationStyleNotifier,
@@ -46,7 +50,6 @@ class _AnimatedBackground extends StatelessWidget {
     );
   }
 }
-
 
 class _AnimatedBackgroundScene extends StatefulWidget {
   final int style;

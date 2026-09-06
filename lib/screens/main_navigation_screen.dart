@@ -79,23 +79,24 @@ class _ChatSession {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'messages': messages,
-        'timestamp': timestamp.toIso8601String(),
-      };
+    'id': id,
+    'title': title,
+    'messages': messages,
+    'timestamp': timestamp.toIso8601String(),
+  };
 
   factory _ChatSession.fromJson(Map<String, dynamic> json) => _ChatSession(
-        id: json['id'],
-        title: json['title'] ?? 'Chat',
-        messages: List<Map<String, String>>.from(
-          (json['messages'] as List).map((m) => Map<String, String>.from(m)),
-        ),
-        timestamp: DateTime.parse(json['timestamp']),
-      );
+    id: json['id'],
+    title: json['title'] ?? 'Chat',
+    messages: List<Map<String, String>>.from(
+      (json['messages'] as List).map((m) => Map<String, String>.from(m)),
+    ),
+    timestamp: DateTime.parse(json['timestamp']),
+  );
 }
 
-class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderStateMixin {
+class _AiAssistantPageState extends State<AiAssistantPage>
+    with TickerProviderStateMixin {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final _firstChipKey = GlobalKey();
@@ -227,7 +228,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
 
   @override
   void dispose() {
-    pendingAssistantPromptNotifier.removeListener(_consumeNativeAssistantPrompt);
+    pendingAssistantPromptNotifier.removeListener(
+      _consumeNativeAssistantPrompt,
+    );
     _tabController.dispose();
     _promptFocusNode.dispose();
     _typingHintTimer?.cancel();
@@ -246,10 +249,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
 
   String _extractJsonCandidate(String reply) {
     final trimmed = reply.trim();
-    final fenced = RegExp(r'```(?:json)?\s*([\s\S]*?)```', caseSensitive: false)
-        .firstMatch(trimmed)
-        ?.group(1)
-        ?.trim();
+    final fenced = RegExp(
+      r'```(?:json)?\s*([\s\S]*?)```',
+      caseSensitive: false,
+    ).firstMatch(trimmed)?.group(1)?.trim();
     if (fenced != null && fenced.isNotEmpty) return fenced;
 
     final start = trimmed.indexOf('{');
@@ -272,7 +275,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
 
   List<String> _stringListFrom(dynamic value) {
     if (value is List) {
-      return value.map((entry) => entry.toString().trim()).where((entry) => entry.isNotEmpty).toList(growable: false);
+      return value
+          .map((entry) => entry.toString().trim())
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
     }
     if (value is String && value.trim().isNotEmpty) {
       return [value.trim()];
@@ -284,26 +290,66 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
     final rawLessons = data['lessons'] ?? data['stunden'] ?? data['items'];
     if (rawLessons is! List) return const [];
 
-    return rawLessons.whereType<Map>().map((rawLesson) {
-      final lesson = rawLesson.cast<String, dynamic>();
-      final time = _firstNonEmptyString(lesson, const ['time', 'slot', 'range', 'period']);
-      final subject = _firstNonEmptyString(lesson, const ['subject', 'title', 'name']);
-      final subjectShort = _firstNonEmptyString(lesson, const ['subjectShort', 'short', 'abbr']);
-      final room = _firstNonEmptyString(lesson, const ['room', 'raum', 'location']);
-      final teacher = _firstNonEmptyString(lesson, const ['teacher', 'lehrer', 'person']);
-      final status = _firstNonEmptyString(lesson, const ['status', 'state']);
-      return _AiLessonCardData(
-        subject: subject.isEmpty ? (subjectShort.isEmpty ? '?' : subjectShort) : subject,
-        subjectShort: subjectShort,
-        room: room,
-        teacher: teacher,
-        time: time.isEmpty ? '—' : time,
-        isCancelled: status.toLowerCase().contains('cancel') || status.toLowerCase().contains('ausfall'),
-      );
-    }).where((lesson) => lesson.subject.isNotEmpty || lesson.room.isNotEmpty || lesson.teacher.isNotEmpty).toList(growable: false);
+    return rawLessons
+        .whereType<Map>()
+        .map((rawLesson) {
+          final lesson = rawLesson.cast<String, dynamic>();
+          final time = _firstNonEmptyString(lesson, const [
+            'time',
+            'slot',
+            'range',
+            'period',
+          ]);
+          final subject = _firstNonEmptyString(lesson, const [
+            'subject',
+            'title',
+            'name',
+          ]);
+          final subjectShort = _firstNonEmptyString(lesson, const [
+            'subjectShort',
+            'short',
+            'abbr',
+          ]);
+          final room = _firstNonEmptyString(lesson, const [
+            'room',
+            'raum',
+            'location',
+          ]);
+          final teacher = _firstNonEmptyString(lesson, const [
+            'teacher',
+            'lehrer',
+            'person',
+          ]);
+          final status = _firstNonEmptyString(lesson, const [
+            'status',
+            'state',
+          ]);
+          return _AiLessonCardData(
+            subject: subject.isEmpty
+                ? (subjectShort.isEmpty ? '?' : subjectShort)
+                : subject,
+            subjectShort: subjectShort,
+            room: room,
+            teacher: teacher,
+            time: time.isEmpty ? '—' : time,
+            isCancelled:
+                status.toLowerCase().contains('cancel') ||
+                status.toLowerCase().contains('ausfall'),
+          );
+        })
+        .where(
+          (lesson) =>
+              lesson.subject.isNotEmpty ||
+              lesson.room.isNotEmpty ||
+              lesson.teacher.isNotEmpty,
+        )
+        .toList(growable: false);
   }
 
-  _AiSearchResult _parseSearchResult({required String query, required String reply}) {
+  _AiSearchResult _parseSearchResult({
+    required String query,
+    required String reply,
+  }) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final fallbackHeadline = reply.split(RegExp(r'[\n.!?]')).first.trim();
     final fallbackSummary = reply.trim().isEmpty ? query : reply.trim();
@@ -315,25 +361,53 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
         if (metricSource is List) {
           for (final entry in metricSource.whereType<Map>()) {
             final metric = entry.cast<String, dynamic>();
-            final label = _firstNonEmptyString(metric, const ['label', 'name', 'title']);
-            final value = _firstNonEmptyString(metric, const ['value', 'amount', 'text']);
+            final label = _firstNonEmptyString(metric, const [
+              'label',
+              'name',
+              'title',
+            ]);
+            final value = _firstNonEmptyString(metric, const [
+              'value',
+              'amount',
+              'text',
+            ]);
             if (label.isNotEmpty && value.isNotEmpty) {
               metrics.add(_AiMetric(label: label, value: value));
             }
           }
         }
 
-        final tags = _stringListFrom(decoded['tags']).take(6).toList(growable: false);
+        final tags = _stringListFrom(
+          decoded['tags'],
+        ).take(6).toList(growable: false);
         final lessons = _lessonsFromParsedPayload(decoded);
 
         return _AiSearchResult(
           query: query,
-          headline: _firstNonEmptyString(decoded, const ['headline', 'title', 'summaryTitle']).isEmpty
+          headline:
+              _firstNonEmptyString(decoded, const [
+                'headline',
+                'title',
+                'summaryTitle',
+              ]).isEmpty
               ? fallbackHeadline
-              : _firstNonEmptyString(decoded, const ['headline', 'title', 'summaryTitle']),
-          summary: _firstNonEmptyString(decoded, const ['summary', 'text', 'result']).isEmpty
+              : _firstNonEmptyString(decoded, const [
+                  'headline',
+                  'title',
+                  'summaryTitle',
+                ]),
+          summary:
+              _firstNonEmptyString(decoded, const [
+                'summary',
+                'text',
+                'result',
+              ]).isEmpty
               ? fallbackSummary
-              : _firstNonEmptyString(decoded, const ['summary', 'text', 'result']),
+              : _firstNonEmptyString(decoded, const [
+                  'summary',
+                  'text',
+                  'result',
+                ]),
           tags: tags,
           metrics: metrics,
           lessons: lessons,
@@ -344,9 +418,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
 
     return _AiSearchResult(
       query: query,
-      headline: fallbackHeadline.isEmpty
-          ? l.aiNewSearch
-          : fallbackHeadline,
+      headline: fallbackHeadline.isEmpty ? l.aiNewSearch : fallbackHeadline,
       summary: fallbackSummary,
       tags: const [],
       metrics: const [],
@@ -356,12 +428,12 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
   }
 
   Map<int, List<dynamic>> _emptyWeekData() => {
-        0: <dynamic>[],
-        1: <dynamic>[],
-        2: <dynamic>[],
-        3: <dynamic>[],
-        4: <dynamic>[],
-      };
+    0: <dynamic>[],
+    1: <dynamic>[],
+    2: <dynamic>[],
+    3: <dynamic>[],
+    4: <dynamic>[],
+  };
 
   Map<int, List<dynamic>> _decodeWeek(Map<dynamic, dynamic> week) {
     final tempWeek = _emptyWeekData();
@@ -394,11 +466,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
 
   bool get _hasTodayLessons => _todayLessons().isNotEmpty;
 
-  bool get _hasCancellations =>
-      _todayLessons().whereType<Map>().any((lesson) {
-        final map = lesson.cast<dynamic, dynamic>();
-        return (map['code'] ?? '') == 'cancelled';
-      });
+  bool get _hasCancellations => _todayLessons().whereType<Map>().any((lesson) {
+    final map = lesson.cast<dynamic, dynamic>();
+    return (map['code'] ?? '') == 'cancelled';
+  });
 
   bool get _hasUpcomingExams {
     final monday = DateTime(
@@ -423,9 +494,14 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
     if (lessons.isEmpty) return false;
     final nowMin = DateTime.now().hour * 60 + DateTime.now().minute;
     final firstStart = lessons
-        .map((lesson) => int.tryParse(lesson['startTime']?.toString() ?? '') ?? 0)
+        .map(
+          (lesson) => int.tryParse(lesson['startTime']?.toString() ?? '') ?? 0,
+        )
         .where((value) => value > 0)
-        .fold<int?>(null, (min, value) => min == null || value < min ? value : min);
+        .fold<int?>(
+          null,
+          (min, value) => min == null || value < min ? value : min,
+        );
     return firstStart != null && nowMin < _toMinutes(firstStart);
   }
 
@@ -449,15 +525,20 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
     final lastEnd = lessons
         .map((lesson) => int.tryParse(lesson['endTime']?.toString() ?? '') ?? 0)
         .where((value) => value > 0)
-        .fold<int?>(null, (max, value) => max == null || value > max ? value : max);
+        .fold<int?>(
+          null,
+          (max, value) => max == null || value > max ? value : max,
+        );
     return lastEnd != null && nowMin > _toMinutes(lastEnd);
   }
 
   Future<void> _loadContext() async {
     final now = DateTime.now();
-    final monday = DateTime(now.year, now.month, now.day).subtract(
-      Duration(days: now.weekday - 1),
-    );
+    final monday = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
 
     Map<int, List<dynamic>> weekData = _emptyWeekData();
     List<Map<String, dynamic>> exams = [];
@@ -471,14 +552,16 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
     } else {
       try {
         final prefs = await SharedPreferences.getInstance();
-        final raw = prefs.getString([
-          'weekCacheV1',
-          schoolUrl,
-          schoolName,
-          personType.toString(),
-          personId.toString(),
-          DateFormat('yyyyMMdd').format(monday),
-        ].join('|'));
+        final raw = prefs.getString(
+          [
+            'weekCacheV1',
+            schoolUrl,
+            schoolName,
+            personType.toString(),
+            personId.toString(),
+            DateFormat('yyyyMMdd').format(monday),
+          ].join('|'),
+        );
         if (raw != null && raw.isNotEmpty) {
           final decoded = jsonDecode(raw);
           if (decoded is Map) {
@@ -512,16 +595,26 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
             final uri = Uri.parse(
               'https://$schoolUrl$path?startDate=$startStr&endDate=$endStr',
             );
-            final res = await http.get(uri, headers: {'Accept': 'application/json'});
+            final res = await http.get(
+              uri,
+              headers: {'Accept': 'application/json'},
+            );
             if (res.statusCode == 200) {
               final decoded = jsonDecode(res.body);
               List<dynamic> list = [];
               if (decoded is List) {
                 list = decoded;
               } else if (decoded is Map) {
-                list = (decoded['data'] ?? decoded['exams'] ?? decoded['result'] ?? []) as List;
+                list =
+                    (decoded['data'] ??
+                            decoded['exams'] ??
+                            decoded['result'] ??
+                            [])
+                        as List;
               }
-              return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+              return list
+                  .map((e) => Map<String, dynamic>.from(e as Map))
+                  .toList();
             }
           } catch (_) {}
           return [];
@@ -542,8 +635,16 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
     }
 
     exams.sort((a, b) {
-      final da = int.tryParse((a['date'] ?? a['examDate'] ?? a['startDate'] ?? 0).toString()) ?? 0;
-      final db = int.tryParse((b['date'] ?? b['examDate'] ?? b['startDate'] ?? 0).toString()) ?? 0;
+      final da =
+          int.tryParse(
+            (a['date'] ?? a['examDate'] ?? a['startDate'] ?? 0).toString(),
+          ) ??
+          0;
+      final db =
+          int.tryParse(
+            (b['date'] ?? b['examDate'] ?? b['startDate'] ?? 0).toString(),
+          ) ??
+          0;
       return da.compareTo(db);
     });
 
@@ -557,9 +658,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SettingsAiPage()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SettingsAiPage()));
   }
 
   Future<void> _openPromptEditor() async {
@@ -583,7 +684,10 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
         : _buildDefaultAiPromptTemplate(l);
     final friday = _currentMonday.add(const Duration(days: 4));
     final vars = <String, String>{
-      '[today]': DateFormat('EEEE, dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(DateTime.now()),
+      '[today]': DateFormat(
+        'EEEE, dd. MMMM yyyy',
+        _icuLocale(appLocaleNotifier.value),
+      ).format(DateTime.now()),
       '[today_iso]': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       '[locale]': appLocaleNotifier.value,
       '[school_name]': schoolName.isEmpty ? '-' : schoolName,
@@ -594,7 +698,9 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
       '[current_monday]': DateFormat('dd.MM.yyyy').format(_currentMonday),
       '[current_friday]': DateFormat('dd.MM.yyyy').format(friday),
       '[day_summary_today]': _daySummaryForPrompt(DateTime.now()),
-      '[day_summary_tomorrow]': _daySummaryForPrompt(DateTime.now().add(const Duration(days: 1))),
+      '[day_summary_tomorrow]': _daySummaryForPrompt(
+        DateTime.now().add(const Duration(days: 1)),
+      ),
       '[timetable]': _formatWeekForAi(_weekData, _currentMonday),
       '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
       '[exams]': _formatExamsForAi(),
@@ -604,7 +710,8 @@ class _AiAssistantPageState extends State<AiAssistantPage> with TickerProviderSt
     };
 
     var resolved = template;
-    final entries = vars.entries.toList()..sort((a, b) => b.key.length.compareTo(a.key.length));
+    final entries = vars.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
     for (final entry in entries) {
       resolved = resolved.replaceAll(entry.key, entry.value);
     }
@@ -626,7 +733,10 @@ ANTWORTFORMAT:
         : _buildDefaultAiPromptTemplate(l);
     final friday = _currentMonday.add(const Duration(days: 4));
     final vars = <String, String>{
-      '[today]': DateFormat('EEEE, dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(DateTime.now()),
+      '[today]': DateFormat(
+        'EEEE, dd. MMMM yyyy',
+        _icuLocale(appLocaleNotifier.value),
+      ).format(DateTime.now()),
       '[today_iso]': DateFormat('yyyy-MM-dd').format(DateTime.now()),
       '[locale]': appLocaleNotifier.value,
       '[school_name]': schoolName.isEmpty ? '-' : schoolName,
@@ -637,7 +747,9 @@ ANTWORTFORMAT:
       '[current_monday]': DateFormat('dd.MM.yyyy').format(_currentMonday),
       '[current_friday]': DateFormat('dd.MM.yyyy').format(friday),
       '[day_summary_today]': _daySummaryForPrompt(DateTime.now()),
-      '[day_summary_tomorrow]': _daySummaryForPrompt(DateTime.now().add(const Duration(days: 1))),
+      '[day_summary_tomorrow]': _daySummaryForPrompt(
+        DateTime.now().add(const Duration(days: 1)),
+      ),
       '[timetable]': _formatWeekForAi(_weekData, _currentMonday),
       '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
       '[exams]': _formatExamsForAi(),
@@ -647,7 +759,8 @@ ANTWORTFORMAT:
     };
 
     var resolved = template;
-    final entries = vars.entries.toList()..sort((a, b) => b.key.length.compareTo(a.key.length));
+    final entries = vars.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
     for (final entry in entries) {
       resolved = resolved.replaceAll(entry.key, entry.value);
     }
@@ -655,14 +768,17 @@ ANTWORTFORMAT:
     String personaInstruction = '';
     switch (aiPersona) {
       case 'strict':
-        personaInstruction = 'Antworte wie ein strenger, aber gerechter Lehrer. Achte auf Disziplin und Ordnung.';
+        personaInstruction =
+            'Antworte wie ein strenger, aber gerechter Lehrer. Achte auf Disziplin und Ordnung.';
         break;
       case 'buddy':
-        personaInstruction = 'Antworte wie ein cooler Schulkamerad. Nutze Jugendsprache und sei sehr locker.';
+        personaInstruction =
+            'Antworte wie ein cooler Schulkamerad. Nutze Jugendsprache und sei sehr locker.';
         break;
       case 'helpful':
       default:
-        personaInstruction = 'Antworte freundlich, professionell und hilfreich.';
+        personaInstruction =
+            'Antworte freundlich, professionell und hilfreich.';
         break;
     }
 
@@ -718,7 +834,8 @@ Halte deine Antworten eher kurz, aber präzise.''';
       final base = normalizedBaseUrl(rawBaseUrl);
       if (base.isEmpty) return '';
       if (base.contains('/models/')) return base;
-      if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
+      if (base.contains('/v1beta'))
+        return '$base/models/$model:generateContent';
       if (base.contains('/v1')) return '$base/models/$model:generateContent';
       return '$base/v1beta/models/$model:generateContent';
     }
@@ -774,7 +891,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
       final candidates = payload?['candidates'];
       if (candidates is List && candidates.isNotEmpty) {
         final content = candidates.first['content'];
-        final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
+        final parts = (content is Map<String, dynamic>)
+            ? content['parts']
+            : null;
         if (parts is List) {
           reply = parts
               .map((p) => (p is Map<String, dynamic>) ? p['text'] : null)
@@ -785,7 +904,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
 
       reply = reply.trim();
       if (reply.isEmpty) {
-        throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+        throw Exception(
+          'API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}',
+        );
       }
       return reply;
     }
@@ -830,12 +951,16 @@ Halte deine Antworten eher kurz, aber präzise.''';
 
       final choices = payload?['choices'];
       if (choices is! List || choices.isEmpty) {
-        throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+        throw Exception(
+          'API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}',
+        );
       }
 
       final first = choices.first;
       if (first is! Map<String, dynamic>) {
-        throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
+        throw Exception(
+          'API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}',
+        );
       }
 
       final message = first['message'];
@@ -947,7 +1072,8 @@ Halte deine Antworten eher kurz, aber präzise.''';
   }
 
   Object? _jsonSafeValue(Object? value) {
-    if (value == null || value is String || value is num || value is bool) return value;
+    if (value == null || value is String || value is num || value is bool)
+      return value;
     if (value is DateTime) return value.toIso8601String();
     if (value is List) return value.map(_jsonSafeValue).toList();
     if (value is Map) {
@@ -981,7 +1107,8 @@ Halte deine Antworten eher kurz, aber präzise.''';
   String _nextLessonSummary() {
     final now = DateTime.now();
     final todayIdx = now.weekday - 1;
-    if (todayIdx < 0 || todayIdx > 4) return 'Nächste Stunde: Keine (heute ist keine Schule).';
+    if (todayIdx < 0 || todayIdx > 4)
+      return 'Nächste Stunde: Keine (heute ist keine Schule).';
     final lessons = _weekData[todayIdx] ?? [];
     final nowMin = now.hour * 100 + now.minute;
     for (final lsn in lessons.whereType<Map>()) {
@@ -1002,10 +1129,12 @@ Halte deine Antworten eher kurz, aber präzise.''';
     for (final ex in _exams) {
       final subject = ex['subject'] ?? ex['subjectName'] ?? '?';
       final type = ex['type'] ?? 'Klausur';
-      final dateRaw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '').toString();
+      final dateRaw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
+          .toString();
       String dateStr = dateRaw;
       if (dateRaw.length == 8) {
-        dateStr = '${dateRaw.substring(6, 8)}.${dateRaw.substring(4, 6)}.${dateRaw.substring(0, 4)}';
+        dateStr =
+            '${dateRaw.substring(6, 8)}.${dateRaw.substring(4, 6)}.${dateRaw.substring(0, 4)}';
       }
       final name = ex['name'] ?? ex['text'] ?? '';
       buf.write('- $dateStr ($type): $subject');
@@ -1111,8 +1240,10 @@ Halte deine Antworten eher kurz, aber präzise.''';
         if (!mounted) break;
         setState(() {
           final lastIndex = _chatMessages.length - 1;
-          if (lastIndex >= 0 && _chatMessages[lastIndex]['role'] == 'assistant') {
-            final String currentContent = _chatMessages[lastIndex]['content'] ?? '';
+          if (lastIndex >= 0 &&
+              _chatMessages[lastIndex]['role'] == 'assistant') {
+            final String currentContent =
+                _chatMessages[lastIndex]['content'] ?? '';
             _chatMessages[lastIndex]['content'] = currentContent + chunk;
           }
         });
@@ -1124,12 +1255,13 @@ Halte deine Antworten eher kurz, aber präzise.''';
       final isApiError = message.contains('API:');
       final isConfigError = message.contains('CONFIG:');
       setState(() {
-        if (_chatMessages.isNotEmpty && _chatMessages.last['role'] == 'assistant') {
+        if (_chatMessages.isNotEmpty &&
+            _chatMessages.last['role'] == 'assistant') {
           _chatMessages.last['content'] = isConfigError
               ? message.replaceFirst('Exception: CONFIG: ', '')
               : isApiError
-                  ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-                  : '${l.aiConnectionError} $e';
+              ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
+              : '${l.aiConnectionError} $e';
         }
       });
     } finally {
@@ -1160,7 +1292,10 @@ Halte deine Antworten eher kurz, aber präzise.''';
               child: _BouncyButton(
                 onTap: _startNewChat,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: cs.primaryContainer,
                     borderRadius: BorderRadius.circular(16),
@@ -1202,33 +1337,44 @@ Halte deine Antworten eher kurz, aber präzise.''';
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.outfit(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: isSelected ? cs.primary : cs.onSurface,
                       ),
                     ),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     selected: isSelected,
                     selectedTileColor: cs.primary.withValues(alpha: 0.1),
                     onTap: () => _loadSession(session),
-                    trailing: isSelected ? null : IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                      onPressed: () {
-                        setState(() {
-                          _chatHistory.removeAt(index);
-                          if (_currentChatId == session.id) {
-                            _currentChatId = null;
-                            _chatMessages.clear();
-                          }
-                        });
-                        _saveChatHistory();
-                      },
-                    ),
+                    trailing: isSelected
+                        ? null
+                        : IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _chatHistory.removeAt(index);
+                                if (_currentChatId == session.id) {
+                                  _currentChatId = null;
+                                  _chatMessages.clear();
+                                }
+                              });
+                              _saveChatHistory();
+                            },
+                          ),
                   );
                 },
               ),
             ),
             const Divider(),
-            if (!_chatMode || _latestQuery.isNotEmpty || _latestResult != null) ...[
+            if (!_chatMode ||
+                _latestQuery.isNotEmpty ||
+                _latestResult != null) ...[
               ListTile(
                 leading: const Icon(Icons.refresh_rounded),
                 title: Text(
@@ -1339,8 +1485,8 @@ Halte deine Antworten eher kurz, aber präzise.''';
         final reply = isConfigError
             ? message.replaceFirst('Exception: CONFIG: ', '')
             : isApiError
-                ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-                : '${l.aiConnectionError} $e';
+            ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
+            : '${l.aiConnectionError} $e';
         _latestResult = _parseSearchResult(query: text, reply: reply);
       });
     } finally {
@@ -1390,15 +1536,33 @@ Halte deine Antworten eher kurz, aber präzise.''';
         break;
     }
   }
+
   IconData _metricIcon(String label) {
     final lower = label.toLowerCase();
-    if (lower.contains('stunde') || lower.contains('lesson') || lower.contains('kurs')) return Icons.school_rounded;
-    if (lower.contains('prüf') || lower.contains('exam') || lower.contains('test') || lower.contains('klausur')) return Icons.assignment_rounded;
-    if (lower.contains('raum') || lower.contains('room')) return Icons.meeting_room_rounded;
-    if (lower.contains('lehrer') || lower.contains('teacher')) return Icons.person_rounded;
-    if (lower.contains('frei') || lower.contains('free') || lower.contains('pause') || lower.contains('break')) return Icons.free_breakfast_rounded;
-    if (lower.contains('tag') || lower.contains('day') || lower.contains('heute')) return Icons.today_rounded;
-    if (lower.contains('zeit') || lower.contains('time')) return Icons.schedule_rounded;
+    if (lower.contains('stunde') ||
+        lower.contains('lesson') ||
+        lower.contains('kurs'))
+      return Icons.school_rounded;
+    if (lower.contains('prüf') ||
+        lower.contains('exam') ||
+        lower.contains('test') ||
+        lower.contains('klausur'))
+      return Icons.assignment_rounded;
+    if (lower.contains('raum') || lower.contains('room'))
+      return Icons.meeting_room_rounded;
+    if (lower.contains('lehrer') || lower.contains('teacher'))
+      return Icons.person_rounded;
+    if (lower.contains('frei') ||
+        lower.contains('free') ||
+        lower.contains('pause') ||
+        lower.contains('break'))
+      return Icons.free_breakfast_rounded;
+    if (lower.contains('tag') ||
+        lower.contains('day') ||
+        lower.contains('heute'))
+      return Icons.today_rounded;
+    if (lower.contains('zeit') || lower.contains('time'))
+      return Icons.schedule_rounded;
     return Icons.auto_awesome_rounded;
   }
 
@@ -1476,7 +1640,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
             decoration: BoxDecoration(
               color: cs.surfaceContainerHighest.withValues(alpha: 0.74),
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.22)),
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.22),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1511,8 +1677,16 @@ Halte deine Antworten eher kurz, aber präzise.''';
                 if (_latestQuery.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Chip(
-                    label: Text(_latestQuery, style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 12)),
-                    backgroundColor: cs.primaryContainer.withValues(alpha: 0.72),
+                    label: Text(
+                      _latestQuery,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                    backgroundColor: cs.primaryContainer.withValues(
+                      alpha: 0.72,
+                    ),
                     side: BorderSide.none,
                   ),
                 ],
@@ -1533,7 +1707,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
       l.aiStepSortingResults,
       l.aiStepAlmostDone,
     ];
-    final text = isChat ? "KI schreibt..." : messages[_typingHintIndex % messages.length];
+    final text = isChat
+        ? "KI schreibt..."
+        : messages[_typingHintIndex % messages.length];
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -1592,9 +1768,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.18),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
@@ -1613,12 +1787,13 @@ Halte deine Antworten eher kurz, aber präzise.''';
               ),
               decoration: InputDecoration(
                 hintText: _chatMode ? l.aiInputHint : l.aiSearchHintPlaceholder,
-                hintStyle: GoogleFonts.outfit(
-                  color: cs.onSurfaceVariant,
-                ),
+                hintStyle: GoogleFonts.outfit(color: cs.onSurfaceVariant),
                 filled: true,
                 fillColor: Colors.transparent,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(18),
                   borderSide: BorderSide.none,
@@ -1712,7 +1887,11 @@ Halte deine Antworten eher kurz, aber präzise.''';
                         color: cs.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(Icons.auto_awesome_rounded, size: 20, color: cs.primary),
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 20,
+                        color: cs.primary,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1748,11 +1927,16 @@ Halte deine Antworten eher kurz, aber präzise.''';
                     runSpacing: 8,
                     children: result.tags.take(4).map((tag) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: cs.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: cs.primary.withValues(alpha: 0.1)),
+                          border: Border.all(
+                            color: cs.primary.withValues(alpha: 0.1),
+                          ),
                         ),
                         child: Text(
                           tag,
@@ -1797,7 +1981,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   childAspectRatio: 1.6,
-                  children: result.metrics.map((metric) => _buildSearchMetricCard(cs, metric)).toList(),
+                  children: result.metrics
+                      .map((metric) => _buildSearchMetricCard(cs, metric))
+                      .toList(),
                 );
               },
             ),
@@ -1830,10 +2016,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
               ),
             ),
           ],
-          if (_thinking) ...[
-            const SizedBox(height: 8),
-            _buildTypingBubble(cs),
-          ],
+          if (_thinking) ...[const SizedBox(height: 8), _buildTypingBubble(cs)],
         ],
       ),
     );
@@ -1884,7 +2067,10 @@ Halte deine Antworten eher kurz, aber präzise.''';
       itemCount: _chatMessages.length + (_thinking ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == _chatMessages.length) {
-          final isThinkingOfLastMessage = _chatMessages.isNotEmpty && _chatMessages.last['role'] == 'assistant' && _chatMessages.last['content']!.isEmpty;
+          final isThinkingOfLastMessage =
+              _chatMessages.isNotEmpty &&
+              _chatMessages.last['role'] == 'assistant' &&
+              _chatMessages.last['content']!.isEmpty;
           if (isThinkingOfLastMessage) return const SizedBox.shrink();
           return _buildTypingBubble(cs, isChat: true);
         }
@@ -1910,7 +2096,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
               bottomLeft: Radius.circular(4),
               bottomRight: Radius.circular(20),
             ),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.15)),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.15),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1934,8 +2122,8 @@ Halte deine Antworten eher kurz, aber präzise.''';
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isUser 
-              ? cs.primary 
+          color: isUser
+              ? cs.primary
               : cs.surfaceContainerHighest.withValues(alpha: 0.4),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
@@ -1943,14 +2131,18 @@ Halte deine Antworten eher kurz, aber präzise.''';
             bottomLeft: Radius.circular(isUser ? 20 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 20),
           ),
-          border: isUser ? null : Border.all(color: cs.outlineVariant.withValues(alpha: 0.1)),
-          boxShadow: isUser ? [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            )
-          ] : null,
+          border: isUser
+              ? null
+              : Border.all(color: cs.outlineVariant.withValues(alpha: 0.1)),
+          boxShadow: isUser
+              ? [
+                  BoxShadow(
+                    color: cs.primary.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: isUser
             ? Text(
@@ -1964,21 +2156,20 @@ Halte deine Antworten eher kurz, aber präzise.''';
             : MarkdownBody(
                 data: content,
                 selectable: true,
-                styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                  p: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: cs.onSurface,
-                    height: 1.5,
-                  ),
-                  strong: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w800,
-                    color: cs.primary,
-                  ),
-                  listBullet: GoogleFonts.outfit(
-                    color: cs.primary,
-                  ),
-                ),
+                styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
+                    .copyWith(
+                      p: GoogleFonts.outfit(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: cs.onSurface,
+                        height: 1.5,
+                      ),
+                      strong: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w800,
+                        color: cs.primary,
+                      ),
+                      listBullet: GoogleFonts.outfit(color: cs.primary),
+                    ),
               ),
       ),
     );
@@ -1987,7 +2178,8 @@ Halte deine Antworten eher kurz, aber präzise.''';
   Widget _buildBody(ColorScheme cs) {
     return Column(
       children: [
-        if (!_chatMode && _latestResult == null && !_thinking) _buildChipRow(cs),
+        if (!_chatMode && _latestResult == null && !_thinking)
+          _buildChipRow(cs),
         Expanded(
           child: _chatMode ? _buildChatView(cs) : _buildResultHeader(cs),
         ),
@@ -2016,7 +2208,11 @@ Halte deine Antworten eher kurz, aber präzise.''';
                 ),
               ],
             ),
-            child: Icon(Icons.auto_awesome_rounded, size: 32, color: cs.onPrimaryContainer),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              size: 32,
+              color: cs.onPrimaryContainer,
+            ),
           ),
           const SizedBox(height: 28),
           Text(
@@ -2030,7 +2226,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
           ),
           const SizedBox(height: 10),
           Text(
-            _chatMode 
+            _chatMode
                 ? "Stelle Fragen zu deinem Schulalltag oder chatte einfach so mit der KI."
                 : l.aiEmptyPromptSubtitle,
             style: GoogleFonts.outfit(
@@ -2052,9 +2248,21 @@ Halte deine Antworten eher kurz, aber präzise.''';
               ),
             ),
             const SizedBox(height: 16),
-            _buildChatSuggestion(cs, "Wie kann ich meine Noten verbessern?", Icons.trending_up_rounded),
-            _buildChatSuggestion(cs, "Erkläre mir die Relativitätstheorie einfach.", Icons.lightbulb_outline_rounded),
-            _buildChatSuggestion(cs, "Schreibe eine Entschuldigung für Sport.", Icons.edit_note_rounded),
+            _buildChatSuggestion(
+              cs,
+              "Wie kann ich meine Noten verbessern?",
+              Icons.trending_up_rounded,
+            ),
+            _buildChatSuggestion(
+              cs,
+              "Erkläre mir die Relativitätstheorie einfach.",
+              Icons.lightbulb_outline_rounded,
+            ),
+            _buildChatSuggestion(
+              cs,
+              "Schreibe eine Entschuldigung für Sport.",
+              Icons.edit_note_rounded,
+            ),
           ],
         ],
       ),
@@ -2088,7 +2296,11 @@ Halte deine Antworten eher kurz, aber präzise.''';
                   ),
                 ),
               ),
-              Icon(Icons.arrow_forward_ios_rounded, size: 12, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 12,
+                color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
             ],
           ),
         ),
@@ -2103,7 +2315,12 @@ Halte deine Antworten eher kurz, aber präzise.''';
 
     if (_loading) {
       return Scaffold(
-        appBar: RoundedBlurAppBar(title: Text(l.aiTitle, style: GoogleFonts.outfit(fontWeight: FontWeight.w800))),
+        appBar: RoundedBlurAppBar(
+          title: Text(
+            l.aiTitle,
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          ),
+        ),
         body: Center(child: CircularProgressIndicator(color: cs.primary)),
       );
     }
@@ -2124,8 +2341,14 @@ Halte deine Antworten eher kurz, aber präzise.''';
           indicatorColor: cs.primary,
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
-          labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 14),
-          unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 14),
+          labelStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+          ),
+          unselectedLabelStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
           tabs: [
             Tab(
               child: Row(
@@ -2150,13 +2373,10 @@ Halte deine Antworten eher kurz, aber präzise.''';
           ],
         ),
       ),
-      body: _AnimatedBackground(
-        child: _buildBody(cs),
-      ),
+      body: _AnimatedBackground(child: _buildBody(cs)),
     );
   }
 }
-
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
@@ -2177,7 +2397,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
     if (pendingAssistantOpenNotifier.value) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _openAssistantFromNative());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _openAssistantFromNative(),
+      );
     }
     final pending = NotificationService().consumePendingActionEvent();
     if (pending != null) {
@@ -2313,16 +2535,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Widget _buildPageWithBackground(BuildContext context, Widget page) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
+    if (tokens.id != AppThemeId.defaultTheme) {
+      return ValueListenableBuilder<bool>(
+        valueListenable: backgroundAnimationsNotifier,
+        builder: (context, enabled, _) =>
+            ThemedBackdrop(child: page, animate: enabled),
+      );
+    }
 
     return Stack(
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: cs.surface,
-            ),
-          ),
+          child: DecoratedBox(decoration: BoxDecoration(color: cs.surface)),
         ),
         Positioned.fill(
           child: ValueListenableBuilder<bool>(
@@ -2335,7 +2561,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   return IgnorePointer(
                     ignoring: true,
                     child: Opacity(
-                      opacity: Theme.of(context).brightness == Brightness.dark ? 0.28 : 0.2,
+                      opacity: Theme.of(context).brightness == Brightness.dark
+                          ? 0.28
+                          : 0.2,
                       child: _AnimatedBackgroundScene(style: style),
                     ),
                   );
@@ -2388,12 +2616,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             data: mq.copyWith(
               padding: mq.padding.copyWith(bottom: mq.padding.bottom + 104),
             ),
-              child: IndexedStack(
-                index: _selectedIndex,
-                children: _pages
-                    .map((page) => _buildPageWithBackground(context, page))
-                    .toList(),
-              ),
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _pages
+                  .map((page) => _buildPageWithBackground(context, page))
+                  .toList(),
+            ),
           ),
           // Floating nav bar
           Positioned(
@@ -2457,8 +2685,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                   width: 34,
                                   height: 34,
                                   decoration: BoxDecoration(
-                                    color: cs.primaryContainer
-                                        .withValues(alpha: 0.8),
+                                    color: cs.primaryContainer.withValues(
+                                      alpha: 0.8,
+                                    ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Icon(
@@ -2487,8 +2716,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                       final active = i == _tutorialStep;
                                       final done = i < _tutorialStep;
                                       return AnimatedContainer(
-                                        duration:
-                                            const Duration(milliseconds: 300),
+                                        duration: const Duration(
+                                          milliseconds: 300,
+                                        ),
                                         margin: const EdgeInsets.only(left: 4),
                                         width: active ? 18 : 6,
                                         height: 6,
@@ -2496,11 +2726,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                           color: active
                                               ? cs.primary
                                               : done
-                                                  ? cs.primary
-                                                      .withValues(alpha: 0.4)
-                                                  : cs.surfaceContainerHighest,
-                                          borderRadius:
-                                              BorderRadius.circular(99),
+                                              ? cs.primary.withValues(
+                                                  alpha: 0.4,
+                                                )
+                                              : cs.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(
+                                            99,
+                                          ),
                                         ),
                                       );
                                     },
@@ -2630,8 +2862,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     ];
 
     // Which item in the secondary bar is selected? -1 = none (timetable active)
-    final selectedBarIndex =
-        items.indexWhere((item) => item.pageIndex == _selectedIndex);
+    final selectedBarIndex = items.indexWhere(
+      (item) => item.pageIndex == _selectedIndex,
+    );
 
     return Center(
       child: Padding(
@@ -2686,12 +2919,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       curve: _kSoftBounce,
                       height: _ExpressiveNavBarState._barHeight,
                       width: _ExpressiveNavBarState._barHeight,
-                      decoration: BoxDecoration(
+                      child: ThemedSurface(
+                        blur: !timetableSelected,
                         color: timetableSelected
                             ? cs.primary
-                            : (blurEnabled
-                                ? cs.surfaceContainerHigh.withValues(alpha: 0.95)
-                                : cs.surfaceContainerHigh),
+                            : cs.surfaceContainerHigh.withValues(
+                                alpha: blurEnabled ? 0.72 : 1,
+                              ),
                         borderRadius: BorderRadius.circular(
                           timetableSelected ? 22 : 18,
                         ),
@@ -2703,53 +2937,44 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                               : cs.outlineVariant.withValues(alpha: 0.30),
                           width: _isTutorialTarget(0) ? 2.0 : 0.8,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: timetableSelected
-                                ? cs.primary.withValues(alpha: 0.30)
-                                : cs.shadow.withValues(alpha: 0.12),
-                            blurRadius: timetableSelected ? 22 : 12,
-                            offset: Offset(0, timetableSelected ? 6 : 4),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 420),
-                          switchInCurve: _kSmoothBounce,
-                          switchOutCurve: _kSoftBounce,
-                          transitionBuilder: (child, anim) {
-                            final slide = Tween<Offset>(
-                              begin: const Offset(0, 0.15),
-                              end: Offset.zero,
-                            ).animate(anim);
-                            return FadeTransition(
-                              opacity: anim,
-                              child: SlideTransition(
-                                position: slide,
-                                child: ScaleTransition(
-                                  scale: Tween<double>(
-                                    begin: 0.85,
-                                    end: 1.0,
-                                  ).animate(anim),
-                                  child: child,
+                        child: Center(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 420),
+                            switchInCurve: _kSmoothBounce,
+                            switchOutCurve: _kSoftBounce,
+                            transitionBuilder: (child, anim) {
+                              final slide = Tween<Offset>(
+                                begin: const Offset(0, 0.15),
+                                end: Offset.zero,
+                              ).animate(anim);
+                              return FadeTransition(
+                                opacity: anim,
+                                child: SlideTransition(
+                                  position: slide,
+                                  child: ScaleTransition(
+                                    scale: Tween<double>(
+                                      begin: 0.85,
+                                      end: 1.0,
+                                    ).animate(anim),
+                                    child: child,
+                                  ),
                                 ),
+                              );
+                            },
+                            child: AnimatedRotation(
+                              turns: timetableSelected ? 0 : -0.03,
+                              duration: const Duration(milliseconds: 400),
+                              curve: _kSmoothBounce,
+                              child: Icon(
+                                timetableSelected
+                                    ? Icons.watch_later_rounded
+                                    : Icons.watch_later_outlined,
+                                key: ValueKey('timetable_$timetableSelected'),
+                                color: timetableSelected
+                                    ? cs.onPrimary
+                                    : cs.onSurfaceVariant,
+                                size: timetableSelected ? 34 : 28,
                               ),
-                            );
-                          },
-                          child: AnimatedRotation(
-                            turns: timetableSelected ? 0 : -0.03,
-                            duration: const Duration(milliseconds: 400),
-                            curve: _kSmoothBounce,
-                            child: Icon(
-                              timetableSelected
-                                  ? Icons.watch_later_rounded
-                                  : Icons.watch_later_outlined,
-                              key: ValueKey('timetable_$timetableSelected'),
-                              color: timetableSelected
-                                  ? cs.onPrimary
-                                  : cs.onSurfaceVariant,
-                              size: timetableSelected ? 34 : 28,
                             ),
                           ),
                         ),
@@ -2871,8 +3096,11 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       _fromWidths = _lastWidths = List.of(layout.widths);
       _morphController.value = 1.0;
     } else {
-      _fromWidths = _lastWidths =
-          List.generate(widget.items.length, (_) => _itemWidth, growable: false);
+      _fromWidths = _lastWidths = List.generate(
+        widget.items.length,
+        (_) => _itemWidth,
+        growable: false,
+      );
     }
   }
 
@@ -2965,27 +3193,23 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   Widget build(BuildContext context) {
     final cs = widget.colorScheme;
     final n = widget.items.length;
+    final tokens = untisThemeTokensOf(context);
+    final navRadius = BorderRadius.circular(
+      tokens.id == AppThemeId.manga ? 2 : 35,
+    );
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(35),
+    return ThemedSurface(
+      borderRadius: navRadius,
+      color: cs.surfaceContainerHigh.withValues(alpha: 0.66),
+      border: Border.all(
+        color: tokens.id == AppThemeId.manga
+            ? cs.outline
+            : cs.outlineVariant.withValues(alpha: 0.32),
+        width: tokens.borderWidth,
+      ),
       child: Container(
         height: _barHeight,
         padding: const EdgeInsets.symmetric(horizontal: _barHPad),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(35),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.18),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: cs.shadow.withValues(alpha: 0.08),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
         child: AnimatedBuilder(
           animation: Listenable.merge([
             _morphController,
@@ -3011,7 +3235,8 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
             _lastWidth = pillWidth;
 
             // Total bar content width
-            final totalW = widths.fold(0.0, (a, b) => a + b) +
+            final totalW =
+                widths.fold(0.0, (a, b) => a + b) +
                 (n - 1) * _itemGap; // gaps between items
             final pillAlpha = _pillAlpha.value;
 
@@ -3056,12 +3281,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     );
   }
 
-  Widget _buildItem(
-    int i,
-    double width,
-    double labelT,
-    ColorScheme cs,
-  ) {
+  Widget _buildItem(int i, double width, double labelT, ColorScheme cs) {
     final item = widget.items[i];
     final selected = widget.selectedIndex == i;
     final wiggle = _iconWiggle[i];
@@ -3104,8 +3324,8 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                     color: selected
                         ? cs.onPrimary
                         : item.tutorialHighlight
-                            ? cs.tertiary
-                            : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                        ? cs.tertiary
+                        : cs.onSurfaceVariant.withValues(alpha: 0.8),
                   ),
                 ),
               ),

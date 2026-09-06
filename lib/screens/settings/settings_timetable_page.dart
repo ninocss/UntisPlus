@@ -9,7 +9,8 @@ class SettingsTimetablePage extends StatefulWidget {
 }
 
 class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
-  int _previewState = 0; // 0 = Regular, 1 = Active (isNow with glow), 2 = Cancelled
+  int _previewState =
+      0; // 0 = Regular, 1 = Active (isNow with glow), 2 = Cancelled
 
   String _styleLabel(AppL10n l, int style) {
     switch (style) {
@@ -320,13 +321,20 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
     );
   }
 
-  Widget _buildLivePreview(BuildContext context, AppL10n l, ColorScheme cs, bool isDark) {
+  Widget _buildLivePreview(
+    BuildContext context,
+    AppL10n l,
+    ColorScheme cs,
+    bool isDark,
+  ) {
     final isCancelled = _previewState == 2;
     final isNow = _previewState == 1;
 
     final primaryFg = isCancelled
         ? Color(cancelledLessonColorNotifier.value)
-        : (monochromeLessonsNotifier.value ? cs.primary : const Color(0xFF00B8D4));
+        : (monochromeLessonsNotifier.value
+              ? cs.primary
+              : const Color(0xFF00B8D4));
 
     final primaryBg = isCancelled
         ? Color.alphaBlend(
@@ -465,7 +473,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
     final glowMode = lessonGlowModeNotifier.value;
     final glowIntensity = lessonGlowIntensityNotifier.value;
     final cardStyle = lessonCardStyleNotifier.value;
-    final blurEnabled = (lessonBlurEnabledNotifier.value || cardStyle == 1) && blurEnabledNotifier.value;
+    final blurEnabled =
+        (lessonBlurEnabledNotifier.value || cardStyle == 1) &&
+        blurEnabledNotifier.value;
     final blurSigma = lessonBlurAmountNotifier.value;
     final cardOpacity = lessonCardOpacityNotifier.value;
     final accentStyle = lessonAccentStyleNotifier.value;
@@ -512,8 +522,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
     Color effectiveFillColor;
     Gradient? effectiveGradient;
     Border? effectiveBorder;
-    Color effectiveTextColor =
-        isCancelled ? fgColor.withValues(alpha: 0.6) : fgColor;
+    Color effectiveTextColor = isCancelled
+        ? fgColor.withValues(alpha: 0.6)
+        : fgColor;
     Color effectiveSecondaryTextColor = isCancelled
         ? fgColor.withValues(alpha: 0.48)
         : fgColor.withValues(alpha: 0.75);
@@ -521,9 +532,7 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
     switch (cardStyle) {
       case 1:
         effectiveFillColor = isCancelled
-            ? bgColor.withValues(
-                alpha: (0.28 * cardOpacity).clamp(0.0, 1.0),
-              )
+            ? bgColor.withValues(alpha: (0.28 * cardOpacity).clamp(0.0, 1.0))
             : cs.surfaceContainerLowest.withValues(
                 alpha: (0.52 * cardOpacity).clamp(0.0, 1.0),
               );
@@ -550,8 +559,10 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                 ]
               : [
                   fgColor.withValues(
-                    alpha:
-                        ((isDark ? 0.35 : 0.25) * cardOpacity).clamp(0.0, 1.0),
+                    alpha: ((isDark ? 0.35 : 0.25) * cardOpacity).clamp(
+                      0.0,
+                      1.0,
+                    ),
                   ),
                   bgColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0)),
                 ],
@@ -589,9 +600,7 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
       case 0:
       default:
         effectiveFillColor = isCancelled
-            ? bgColor.withValues(
-                alpha: (0.40 * cardOpacity).clamp(0.0, 1.0),
-              )
+            ? bgColor.withValues(alpha: (0.40 * cardOpacity).clamp(0.0, 1.0))
             : bgColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0));
         effectiveBorder = Border.all(
           color: fgColor.withValues(alpha: isDark ? 0.25 : 0.15),
@@ -635,10 +644,7 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    fgColor,
-                    fgColor.withValues(alpha: 0.7),
-                  ],
+                  colors: [fgColor, fgColor.withValues(alpha: 0.7)],
                 ),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(effectiveRadius),
@@ -682,8 +688,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                         fontSize: subjectFontSize,
                         fontWeight: FontWeight.w800,
                         color: effectiveTextColor,
-                        decoration:
-                            isCancelled ? TextDecoration.lineThrough : null,
+                        decoration: isCancelled
+                            ? TextDecoration.lineThrough
+                            : null,
                         decorationColor: fgColor.withValues(alpha: 0.6),
                         decorationThickness: 1.6,
                       ),
@@ -732,17 +739,11 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
         ),
       );
     } else {
-      cardContent = ClipRRect(
-        borderRadius: cardRadius,
-        child: cardContent,
-      );
+      cardContent = ClipRRect(borderRadius: cardRadius, child: cardContent);
     }
 
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: cardRadius,
-        boxShadow: shadows,
-      ),
+      decoration: BoxDecoration(borderRadius: cardRadius, boxShadow: shadows),
       child: cardContent,
     );
   }
@@ -753,6 +754,84 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mq = MediaQuery.of(context);
+
+    if (!appThemeCapabilities(
+      visualThemeNotifier.value,
+    ).supportsAdvancedLessonStyle) {
+      return Scaffold(
+        appBar: RoundedBlurAppBar(
+          title: Text(
+            l.settingsLessonDesignTitle,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: cs.primary,
+            ),
+          ),
+        ),
+        body: _AnimatedBackground(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 80),
+            children: [
+              SettingsGroup(
+                title: l.settingsLessonDesignTitle,
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: lessonCompactModeNotifier,
+                    builder: (context, value, _) => SettingsSwitchTile(
+                      icon: Icons.density_small_rounded,
+                      title: l.settingsLessonCompactMode,
+                      subtitle: l.settingsLessonCompactModeDesc,
+                      value: value,
+                      onChanged: _settingsSetLessonCompactMode,
+                    ),
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: lessonShowTeacherNotifier,
+                    builder: (context, value, _) => SettingsSwitchTile(
+                      icon: Icons.person_outline_rounded,
+                      title: l.settingsLessonShowTeacher,
+                      subtitle: l.settingsLessonShowTeacherDesc,
+                      value: value,
+                      onChanged: _settingsSetLessonShowTeacher,
+                    ),
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: lessonShowRoomNotifier,
+                    builder: (context, value, _) => SettingsSwitchTile(
+                      icon: Icons.room_outlined,
+                      title: l.settingsLessonShowRoom,
+                      subtitle: l.settingsLessonShowRoomDesc,
+                      value: value,
+                      onChanged: _settingsSetLessonShowRoom,
+                    ),
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: lessonDimPastNotifier,
+                    builder: (context, value, _) => SettingsSwitchTile(
+                      icon: Icons.history_toggle_off_rounded,
+                      title: l.settingsLessonDimPast,
+                      subtitle: l.settingsLessonDimPastDesc,
+                      value: value,
+                      onChanged: _settingsSetLessonDimPast,
+                    ),
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: lessonCancelledPatternNotifier,
+                    builder: (context, value, _) => SettingsSwitchTile(
+                      icon: Icons.texture_rounded,
+                      title: l.settingsLessonCancelledPattern,
+                      subtitle: l.settingsLessonCancelledPatternDesc,
+                      value: value,
+                      onChanged: _settingsSetLessonCancelledPattern,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
@@ -778,7 +857,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   builder: (context, style, _) {
                     return SettingsTile(
                       icon: _styleIcon(style),
-                      iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onPrimaryContainer,
                       title: l.settingsLessonStyle,
                       subtitle: _styleLabel(l, style),
@@ -791,7 +872,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   builder: (context, compact, _) {
                     return SettingsSwitchTile(
                       icon: Icons.density_small_rounded,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onSecondaryContainer,
                       title: l.settingsLessonCompactMode,
                       subtitle: l.settingsLessonCompactModeDesc,
@@ -812,7 +895,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   builder: (context, glowEnabled, _) {
                     return SettingsSwitchTile(
                       icon: Icons.auto_awesome_rounded,
-                      iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onTertiaryContainer,
                       title: l.settingsLessonGlow,
                       subtitle: l.settingsLessonGlowDesc,
@@ -830,7 +915,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                       builder: (context, mode, _) {
                         return SettingsTile(
                           icon: Icons.tune_rounded,
-                          iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                          iconBackgroundColor: cs.tertiaryContainer.withValues(
+                            alpha: 0.7,
+                          ),
                           iconColor: cs.onTertiaryContainer,
                           title: l.settingsLessonGlowMode,
                           subtitle: _glowModeLabel(l, mode),
@@ -849,7 +936,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                       builder: (context, glowNext, _) {
                         return SettingsSwitchTile(
                           icon: Icons.schedule_rounded,
-                          iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                          iconBackgroundColor: cs.tertiaryContainer.withValues(
+                            alpha: 0.7,
+                          ),
                           iconColor: cs.onTertiaryContainer,
                           title: l.settingsLessonGlowNext,
                           subtitle: l.settingsLessonGlowNextDesc,
@@ -877,7 +966,8 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         l.settingsLessonGlowNextLeadTime,
@@ -902,8 +992,12 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                                     min: 5.0,
                                     max: 60.0,
                                     divisions: 11,
-                                    label: '${minutes} ${l.settingsLessonGlowNextLeadTime.toLowerCase()}',
-                                    onChanged: (val) => _settingsSetLessonGlowNextMinutes(val.round()),
+                                    label:
+                                        '${minutes} ${l.settingsLessonGlowNextLeadTime.toLowerCase()}',
+                                    onChanged: (val) =>
+                                        _settingsSetLessonGlowNextMinutes(
+                                          val.round(),
+                                        ),
                                   ),
                                 ],
                               ),
@@ -927,7 +1021,8 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     l.settingsLessonGlowIntensity,
@@ -972,7 +1067,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   builder: (context, blurEnabled, _) {
                     return SettingsSwitchTile(
                       icon: Icons.blur_on_rounded,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onSecondaryContainer,
                       title: l.settingsLessonBlur,
                       subtitle: l.settingsLessonBlurDesc,
@@ -994,7 +1091,8 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     l.settingsLessonBlurAmount,
@@ -1113,24 +1211,32 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                             spacing: 8,
                             children: [
                               ChoiceChip(
-                                label: Text(l.settingsLessonBorderRadiusCompact),
+                                label: Text(
+                                  l.settingsLessonBorderRadiusCompact,
+                                ),
                                 selected: (radius - 6).abs() < 1.5,
-                                onSelected: (_) => _settingsSetLessonBorderRadius(6),
+                                onSelected: (_) =>
+                                    _settingsSetLessonBorderRadius(6),
                               ),
                               ChoiceChip(
-                                label: Text(l.settingsLessonBorderRadiusStandard),
+                                label: Text(
+                                  l.settingsLessonBorderRadiusStandard,
+                                ),
                                 selected: (radius - 12).abs() < 1.5,
-                                onSelected: (_) => _settingsSetLessonBorderRadius(12),
+                                onSelected: (_) =>
+                                    _settingsSetLessonBorderRadius(12),
                               ),
                               ChoiceChip(
                                 label: Text(l.settingsLessonBorderRadiusRound),
                                 selected: (radius - 18).abs() < 1.5,
-                                onSelected: (_) => _settingsSetLessonBorderRadius(18),
+                                onSelected: (_) =>
+                                    _settingsSetLessonBorderRadius(18),
                               ),
                               ChoiceChip(
                                 label: Text(l.settingsLessonBorderRadiusPill),
                                 selected: (radius - 24).abs() < 1.5,
-                                onSelected: (_) => _settingsSetLessonBorderRadius(24),
+                                onSelected: (_) =>
+                                    _settingsSetLessonBorderRadius(24),
                               ),
                             ],
                           ),
@@ -1144,7 +1250,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   builder: (context, accent, _) {
                     return SettingsTile(
                       icon: _accentStyleIcon(accent),
-                      iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onPrimaryContainer,
                       title: l.settingsLessonAccentStyle,
                       subtitle: _accentStyleLabel(l, accent),
@@ -1157,7 +1265,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   builder: (context, showTeacher, _) {
                     return SettingsSwitchTile(
                       icon: Icons.person_outline_rounded,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onSecondaryContainer,
                       title: l.settingsLessonShowTeacher,
                       subtitle: l.settingsLessonShowTeacherDesc,
@@ -1171,7 +1281,9 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   builder: (context, showRoom, _) {
                     return SettingsSwitchTile(
                       icon: Icons.room_outlined,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onSecondaryContainer,
                       title: l.settingsLessonShowRoom,
                       subtitle: l.settingsLessonShowRoomDesc,
@@ -1252,10 +1364,8 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                       ),
                       title: l.settingsCancelledColor,
                       subtitle: l.settingsCancelledColorDesc,
-                      onTap: () => _showCancelledColorPicker(
-                        context,
-                        cancelledColor,
-                      ),
+                      onTap: () =>
+                          _showCancelledColorPicker(context, cancelledColor),
                     );
                   },
                 ),

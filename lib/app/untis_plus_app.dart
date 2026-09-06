@@ -4,18 +4,43 @@ class UntisPlusApp extends StatelessWidget {
   final Widget startScreen;
   const UntisPlusApp({super.key, required this.startScreen});
 
-  ThemeData _themeFrom(ColorScheme scheme, bool isAmoled, bool blurEnabled) {
-    final baseText = GoogleFonts.outfitTextTheme(
-      ThemeData(
-        useMaterial3: true,
-        colorScheme: scheme,
-      ).textTheme,
+  ThemeData _themeFrom(
+    ColorScheme scheme,
+    bool isAmoled,
+    bool blurEnabled,
+    AppThemeId visualTheme,
+  ) {
+    final tokens = UntisThemeTokens.forTheme(
+      visualTheme,
+      scheme.brightness,
+      scheme,
     );
+    final baseText = untisThemeTextTheme(visualTheme, scheme.brightness);
+    TextStyle displayFont({
+      Color? color,
+      double? fontSize,
+      FontWeight? fontWeight,
+      double? letterSpacing,
+    }) {
+      final base = visualTheme == AppThemeId.manga
+          ? GoogleFonts.bebasNeue()
+          : visualTheme == AppThemeId.cyber
+          ? GoogleFonts.ibmPlexMono()
+          : GoogleFonts.outfit();
+      return base.copyWith(
+        color: color,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        letterSpacing: letterSpacing,
+      );
+    }
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: (isAmoled && scheme.brightness == Brightness.dark)
+      extensions: [tokens],
+      scaffoldBackgroundColor:
+          (isAmoled && scheme.brightness == Brightness.dark)
           ? Colors.black
           : scheme.surfaceContainerLowest,
       textTheme: baseText,
@@ -25,7 +50,7 @@ class UntisPlusApp extends StatelessWidget {
         scrolledUnderElevation: 4,
         surfaceTintColor: scheme.primary,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.outfit(
+        titleTextStyle: displayFont(
           color: scheme.primary,
           fontSize: 22,
           fontWeight: FontWeight.w900,
@@ -34,7 +59,9 @@ class UntisPlusApp extends StatelessWidget {
         iconTheme: IconThemeData(color: scheme.primary),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surfaceContainer,
+        backgroundColor: blurEnabled && tokens.supportsBlur
+            ? scheme.surfaceContainer.withValues(alpha: 0.68)
+            : scheme.surfaceContainer,
         indicatorColor: scheme.secondaryContainer,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
@@ -44,13 +71,13 @@ class UntisPlusApp extends StatelessWidget {
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.outfit(
+            return displayFont(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: scheme.onSurface,
             );
           }
-          return GoogleFonts.outfit(
+          return displayFont(
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: scheme.onSurfaceVariant,
@@ -59,7 +86,7 @@ class UntisPlusApp extends StatelessWidget {
       ),
       cardTheme: CardThemeData(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(tokens.surfaceRadius),
         ),
         clipBehavior: Clip.antiAlias,
         elevation: 0,
@@ -73,7 +100,7 @@ class UntisPlusApp extends StatelessWidget {
             : scheme.surfaceContainerHigh,
         surfaceTintColor: scheme.primary,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(tokens.surfaceRadius + 6),
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
@@ -81,24 +108,26 @@ class UntisPlusApp extends StatelessWidget {
             ? scheme.surfaceContainerLow.withValues(alpha: 0.85)
             : scheme.surfaceContainerLow,
         surfaceTintColor: scheme.primary,
-        shape: const RoundedRectangleBorder(
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28),
+            top: Radius.circular(tokens.surfaceRadius + 6),
           ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(tokens.controlRadius),
+          ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(tokens.controlRadius),
+          ),
           elevation: 0,
           backgroundColor: scheme.surfaceContainerHigh,
           foregroundColor: scheme.onSurface,
@@ -107,15 +136,17 @@ class UntisPlusApp extends StatelessWidget {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(tokens.controlRadius),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(tokens.controlRadius),
+          ),
         ),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
@@ -123,7 +154,7 @@ class UntisPlusApp extends StatelessWidget {
           selectedBackgroundColor: scheme.secondaryContainer,
           selectedForegroundColor: scheme.onSecondaryContainer,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(tokens.controlRadius),
           ),
         ),
       ),
@@ -160,11 +191,15 @@ class UntisPlusApp extends StatelessWidget {
       ),
       listTileTheme: ListTileThemeData(
         dense: true,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.controlRadius),
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),
       snackBarTheme: SnackBarThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.controlRadius),
+        ),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -172,106 +207,155 @@ class UntisPlusApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<String>(
-      valueListenable: appLocaleNotifier,
-      builder: (context, locale, _) {
-        return ValueListenableBuilder<ThemeMode>(
-          valueListenable: themeModeNotifier,
-          builder: (context, themeMode, _) {
-            return ValueListenableBuilder<bool>(
-              valueListenable: useMaterialYouNotifier,
-              builder: (context, useMaterialYou, _) {
+    return ValueListenableBuilder<AppThemeId>(
+      valueListenable: visualThemeNotifier,
+      builder: (context, visualTheme, _) {
+        return ValueListenableBuilder<String>(
+          valueListenable: appLocaleNotifier,
+          builder: (context, locale, _) {
+            return ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeModeNotifier,
+              builder: (context, themeMode, _) {
                 return ValueListenableBuilder<bool>(
-                  valueListenable: isAmoledNotifier,
-                  builder: (context, isAmoled, _) {
+                  valueListenable: useMaterialYouNotifier,
+                  builder: (context, useMaterialYou, _) {
                     return ValueListenableBuilder<bool>(
-                      valueListenable: blurEnabledNotifier,
-                      builder: (context, blurEnabled, _) {
-                        return ValueListenableBuilder<int>(
-                          valueListenable: customColorSeedNotifier,
-                          builder: (context, seed, _) {
-                            return DynamicColorBuilder(
-                              builder: (lightDynamic, darkDynamic) {
-                                final lightScheme = (useMaterialYou &&
-                                        lightDynamic != null)
-                                    ? lightDynamic.harmonized()
-                                    : (useMaterialYou && darkDynamic != null)
+                      valueListenable: isAmoledNotifier,
+                      builder: (context, isAmoled, _) {
+                        return ValueListenableBuilder<bool>(
+                          valueListenable: blurEnabledNotifier,
+                          builder: (context, blurEnabled, _) {
+                            return ValueListenableBuilder<int>(
+                              valueListenable: customColorSeedNotifier,
+                              builder: (context, seed, _) {
+                                return DynamicColorBuilder(
+                                  builder: (lightDynamic, darkDynamic) {
+                                    final canUseDynamic =
+                                        visualTheme == AppThemeId.defaultTheme;
+                                    final lightScheme =
+                                        (canUseDynamic &&
+                                            useMaterialYou &&
+                                            lightDynamic != null)
+                                        ? lightDynamic.harmonized()
+                                        : (canUseDynamic &&
+                                              useMaterialYou &&
+                                              darkDynamic != null)
                                         ? ColorScheme.fromSeed(
                                             seedColor: darkDynamic.primary,
                                             brightness: Brightness.light,
                                             dynamicSchemeVariant:
                                                 DynamicSchemeVariant.vibrant,
                                           )
-                                        : ColorScheme.fromSeed(
-                                            seedColor: Color(seed),
-                                            brightness: Brightness.light,
-                                            dynamicSchemeVariant:
-                                                DynamicSchemeVariant.vibrant,
+                                        : untisThemeScheme(
+                                            visualTheme,
+                                            Brightness.light,
+                                            seed,
                                           );
 
-                                var darkScheme = (useMaterialYou &&
-                                        darkDynamic != null)
-                                    ? darkDynamic.harmonized()
-                                    : (useMaterialYou && lightDynamic != null)
+                                    var darkScheme =
+                                        (canUseDynamic &&
+                                            useMaterialYou &&
+                                            darkDynamic != null)
+                                        ? darkDynamic.harmonized()
+                                        : (canUseDynamic &&
+                                              useMaterialYou &&
+                                              lightDynamic != null)
                                         ? ColorScheme.fromSeed(
                                             seedColor: lightDynamic.primary,
                                             brightness: Brightness.dark,
                                             dynamicSchemeVariant:
                                                 DynamicSchemeVariant.vibrant,
                                           )
-                                        : ColorScheme.fromSeed(
-                                            seedColor: Color(seed),
-                                            brightness: Brightness.dark,
-                                            dynamicSchemeVariant:
-                                                DynamicSchemeVariant.vibrant,
+                                        : untisThemeScheme(
+                                            visualTheme,
+                                            Brightness.dark,
+                                            seed,
                                           );
 
-                                if (isAmoled) {
-                                  darkScheme = darkScheme.copyWith(
-                                    surface: Colors.black,
-                                    surfaceContainerLowest: Colors.black,
-                                    surfaceContainerLow: Color.alphaBlend(
-                                        darkScheme.primary.withValues(alpha: 0.08),
-                                        const Color(0xFF0A0A0A)),
-                                    surfaceContainer: Color.alphaBlend(
-                                        darkScheme.primary.withValues(alpha: 0.12),
-                                        const Color(0xFF111111)),
-                                    surfaceContainerHigh: Color.alphaBlend(
-                                        darkScheme.primary.withValues(alpha: 0.16),
-                                        const Color(0xFF1A1A1A)),
-                                    surfaceContainerHighest: Color.alphaBlend(
-                                        darkScheme.primary.withValues(alpha: 0.20),
-                                        const Color(0xFF222222)),
-                                  );
-                                }
+                                    if (isAmoled &&
+                                        visualTheme ==
+                                            AppThemeId.defaultTheme) {
+                                      darkScheme = darkScheme.copyWith(
+                                        surface: Colors.black,
+                                        surfaceContainerLowest: Colors.black,
+                                        surfaceContainerLow: Color.alphaBlend(
+                                          darkScheme.primary.withValues(
+                                            alpha: 0.08,
+                                          ),
+                                          const Color(0xFF0A0A0A),
+                                        ),
+                                        surfaceContainer: Color.alphaBlend(
+                                          darkScheme.primary.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          const Color(0xFF111111),
+                                        ),
+                                        surfaceContainerHigh: Color.alphaBlend(
+                                          darkScheme.primary.withValues(
+                                            alpha: 0.16,
+                                          ),
+                                          const Color(0xFF1A1A1A),
+                                        ),
+                                        surfaceContainerHighest:
+                                            Color.alphaBlend(
+                                              darkScheme.primary.withValues(
+                                                alpha: 0.20,
+                                              ),
+                                              const Color(0xFF222222),
+                                            ),
+                                      );
+                                    }
 
-                                final l = AppL10n.of(locale);
+                                    final l = AppL10n.of(locale);
 
-                                return MaterialApp(
-                                  debugShowCheckedModeBanner: false,
-                                  title: l.appName,
-                                  theme: _themeFrom(lightScheme, isAmoled, blurEnabled),
-                                  darkTheme: _themeFrom(darkScheme, isAmoled, blurEnabled),
-                                  themeMode: themeMode,
-                                  builder: (context, child) {
-                                    final isDark = Theme.of(context).brightness ==
-                                        Brightness.dark;
-                                    final overlayStyle = SystemUiOverlayStyle(
-                                      statusBarColor: Colors.transparent,
-                                      statusBarIconBrightness:
-                                          isDark ? Brightness.light : Brightness.dark,
-                                      statusBarBrightness:
-                                          isDark ? Brightness.dark : Brightness.light,
-                                      systemNavigationBarColor: Colors.transparent,
-                                      systemNavigationBarIconBrightness:
-                                          isDark ? Brightness.light : Brightness.dark,
-                                    );
-                                    return AnnotatedRegion<SystemUiOverlayStyle>(
-                                      value: overlayStyle,
-                                      child: child ?? const SizedBox.shrink(),
+                                    return MaterialApp(
+                                      debugShowCheckedModeBanner: false,
+                                      title: l.appName,
+                                      theme: _themeFrom(
+                                        lightScheme,
+                                        isAmoled,
+                                        blurEnabled,
+                                        visualTheme,
+                                      ),
+                                      darkTheme: _themeFrom(
+                                        darkScheme,
+                                        isAmoled,
+                                        blurEnabled,
+                                        visualTheme,
+                                      ),
+                                      themeMode: themeMode,
+                                      builder: (context, child) {
+                                        final isDark =
+                                            Theme.of(context).brightness ==
+                                            Brightness.dark;
+                                        final overlayStyle =
+                                            SystemUiOverlayStyle(
+                                              statusBarColor:
+                                                  Colors.transparent,
+                                              statusBarIconBrightness: isDark
+                                                  ? Brightness.light
+                                                  : Brightness.dark,
+                                              statusBarBrightness: isDark
+                                                  ? Brightness.dark
+                                                  : Brightness.light,
+                                              systemNavigationBarColor:
+                                                  Colors.transparent,
+                                              systemNavigationBarIconBrightness:
+                                                  isDark
+                                                  ? Brightness.light
+                                                  : Brightness.dark,
+                                            );
+                                        return AnnotatedRegion<
+                                          SystemUiOverlayStyle
+                                        >(
+                                          value: overlayStyle,
+                                          child:
+                                              child ?? const SizedBox.shrink(),
+                                        );
+                                      },
+                                      home: startScreen,
                                     );
                                   },
-                                  home: startScreen,
                                 );
                               },
                             );

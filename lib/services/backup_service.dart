@@ -21,6 +21,8 @@ class BackupService {
 
   static const Set<String> _stringKeys = {
     'appLocale',
+    'visualTheme',
+    'themeBlurPreferences',
     'aiProvider',
     'aiModel',
     'aiCustomCompatibility',

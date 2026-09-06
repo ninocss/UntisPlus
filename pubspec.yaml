@@ -3,7 +3,7 @@ description: "A Flutter application for managing and viewing school schedules, h
 
 publish_to: 'none'
 
-version: 5.1.2
+version: 5.2.0
 
 environment:
   sdk: ^3.11.0
@@ -48,6 +48,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/
+    - changelog.json
 
 flutter_launcher_icons:
   android: true
