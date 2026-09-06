@@ -20,14 +20,17 @@ Future<void> _settingsSetThemeMode(ThemeMode mode) async {
 }
 
 Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
-  visualThemeNotifier.value = theme;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('visualTheme', theme.storageKey);
   final enabled =
       appThemeCapabilities(theme).supportsBlur &&
       (themeBlurPreferencesNotifier.value[theme.storageKey] ?? true);
+  visualThemeNotifier.value = theme;
+  // Theme selection is reflected by ValueListenables synchronously. Keep the
+  // dependent blur state in the same update so unsupported themes never show
+  // a transient blur while preferences are being written.
   blurEnabledNotifier.value = enabled;
   unawaited(_applyAndroidWindowBlur(enabled));
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('visualTheme', theme.storageKey);
 }
 
 Future<void> _settingsSetShowCancelled(bool value) async {

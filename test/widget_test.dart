@@ -11,6 +11,9 @@ void main() {
     themeModeNotifier.value = ThemeMode.light;
     visualThemeNotifier.value = AppThemeId.defaultTheme;
     blurEnabledNotifier.value = true;
+    // An endless decorative animation is not relevant to theme selection and
+    // would keep pumpAndSettle from completing in this widget test.
+    backgroundAnimationsNotifier.value = false;
     themeBlurPreferencesNotifier.value = {
       'default': true,
       'vivid': true,

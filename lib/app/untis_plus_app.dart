@@ -324,6 +324,7 @@ class UntisPlusApp extends StatelessWidget {
                                         visualTheme,
                                       ),
                                       themeMode: themeMode,
+                                      themeAnimationDuration: Duration.zero,
                                       builder: (context, child) {
                                         final isDark =
                                             Theme.of(context).brightness ==
