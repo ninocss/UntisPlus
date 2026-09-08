@@ -83,4 +83,33 @@ void main() {
       ),
     );
   });
+
+  test('maps authentication RPC errors to authentication failures', () async {
+    final client = WebUntisClient(
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'error': {'message': 'Benutzer oder Passwort falsch'},
+          }),
+          200,
+        ),
+      ),
+      maxRetries: 0,
+    );
+
+    await expectLater(
+      client.rpc(
+        context: _context.copyWith(sessionId: ''),
+        method: 'authenticate',
+        params: const {},
+      ),
+      throwsA(
+        isA<WebUntisFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          WebUntisFailureKind.authentication,
+        ),
+      ),
+    );
+  });
 }

@@ -39,6 +39,7 @@ import 'core/app_providers.dart';
 import 'data/cache/offline_cache_store.dart';
 import 'data/security/credential_vault.dart';
 import 'data/webuntis/webuntis_client.dart';
+import 'data/webuntis/webuntis_session_manager.dart';
 import 'features/changes/data/change_repository.dart';
 import 'features/changes/domain/timetable_change.dart';
 import 'features/absences/data/absence_repository.dart';

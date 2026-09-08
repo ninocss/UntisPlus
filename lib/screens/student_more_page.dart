@@ -226,11 +226,25 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
 
   Future<void> _load() async {
     final accountId = activeUntisAccountId ?? 'legacy';
+    bool isCurrentAccount() =>
+        mounted && accountId == (activeUntisAccountId ?? 'legacy');
     final repository = AbsenceRepository(
       client: ref.read(webUntisClientProvider),
+      sessionManager: ref.read(webUntisSessionManagerProvider),
+      capabilities: ref.read(webUntisCapabilitiesProvider),
     );
+    UntisAccount? activeAccount;
+    for (final account in untisAccountsNotifier.value) {
+      if (account.id == activeUntisAccountId) {
+        activeAccount = account;
+        break;
+      }
+    }
+    final requestSchoolUrl = activeAccount?.schoolUrl ?? schoolUrl;
+    final requestSchoolName = activeAccount?.schoolName ?? schoolName;
+    final requestSessionId = activeAccount?.sessionId ?? sessionID;
     final cached = await repository.loadCached(accountId);
-    if (mounted) {
+    if (isCurrentAccount()) {
       setState(
         () => _state = cached.copyWith(
           phase: cached.hasData ? SyncPhase.refreshing : SyncPhase.loading,
@@ -244,14 +258,24 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
     final refreshed = await repository.refresh(
       accountId: accountId,
       context: WebUntisRequestContext(
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
-        sessionId: sessionID,
+        schoolUrl: requestSchoolUrl,
+        schoolName: requestSchoolName,
+        sessionId: requestSessionId,
       ),
+      account: activeAccount == null
+          ? null
+          : WebUntisAccountLogin(
+              accountId: activeAccount.id,
+              username: activeAccount.username,
+              schoolUrl: activeAccount.schoolUrl,
+              schoolName: activeAccount.schoolName,
+              personId: activeAccount.personId,
+              personType: activeAccount.personType,
+            ),
       start: schoolYearStart,
       end: now,
     );
-    if (mounted) setState(() => _state = refreshed);
+    if (isCurrentAccount()) setState(() => _state = refreshed);
   }
 
   @override

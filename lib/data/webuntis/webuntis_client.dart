@@ -15,6 +15,25 @@ class WebUntisRequestContext {
   final String schoolUrl;
   final String schoolName;
   final String sessionId;
+
+  WebUntisRequestContext copyWith({String? sessionId}) =>
+      WebUntisRequestContext(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: sessionId ?? this.sessionId,
+      );
+}
+
+class WebUntisRpcExchange {
+  const WebUntisRpcExchange({
+    required this.payload,
+    required this.headers,
+    required this.statusCode,
+  });
+
+  final Map<String, dynamic> payload;
+  final Map<String, String> headers;
+  final int statusCode;
 }
 
 /// Shared transport boundary for JSON-RPC and REST WebUntis APIs.
@@ -36,6 +55,23 @@ class WebUntisClient {
     required Object params,
     String requestId = 'untisplus',
     bool internal = false,
+  }) async {
+    final exchange = await rpcExchange(
+      context: context,
+      method: method,
+      params: params,
+      requestId: requestId,
+      internal: internal,
+    );
+    return exchange.payload;
+  }
+
+  Future<WebUntisRpcExchange> rpcExchange({
+    required WebUntisRequestContext context,
+    required String method,
+    required Object params,
+    String requestId = 'untisplus',
+    bool internal = false,
   }) {
     final uri = Uri.parse(
       'https://${context.schoolUrl}/WebUntis/'
@@ -49,7 +85,7 @@ class WebUntisClient {
       'jsonrpc': '2.0',
     });
     final dedupeKey = 'POST|$uri|$body|${context.sessionId}';
-    return _dedupe<Map<String, dynamic>>(dedupeKey, () async {
+    return _dedupe<WebUntisRpcExchange>(dedupeKey, () async {
       final response = await _send(
         () => _client.post(
           uri,
@@ -71,7 +107,10 @@ class WebUntisClient {
             : error.toString();
         final normalized = message.toLowerCase();
         throw WebUntisFailure(
-          normalized.contains('method') || normalized.contains('not found')
+          method == 'authenticate' || method == 'getUserData2017'
+              ? WebUntisFailureKind.authentication
+              : normalized.contains('method') ||
+                    normalized.contains('not found')
               ? WebUntisFailureKind.unsupported
               : normalized.contains('permission') ||
                     normalized.contains('right')
@@ -83,7 +122,11 @@ class WebUntisClient {
           statusCode: response.statusCode,
         );
       }
-      return decoded;
+      return WebUntisRpcExchange(
+        payload: decoded,
+        headers: response.headers,
+        statusCode: response.statusCode,
+      );
     });
   }
 
