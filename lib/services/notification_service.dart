@@ -39,7 +39,8 @@ class NotificationActionEvent {
   final Map<String, dynamic>? payload;
 
   @override
-  String toString() => 'NotificationActionEvent(actionId: $actionId, payload: $payload)';
+  String toString() =>
+      'NotificationActionEvent(actionId: $actionId, payload: $payload)';
 }
 
 /// A redesigned service for managing local and progressive notifications.
@@ -52,7 +53,8 @@ class NotificationService {
     'untisplus/notifications',
   );
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   final StreamController<NotificationActionEvent> _actionController =
       StreamController<NotificationActionEvent>.broadcast();
 
@@ -79,9 +81,14 @@ class NotificationService {
 
     tz.initializeTimeZones();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings();
-    const settings = InitializationSettings(android: androidSettings, iOS: iosSettings);
+    const settings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
 
     await _plugin.initialize(
       settings: settings,
@@ -139,14 +146,28 @@ class NotificationService {
     _actionController.add(event);
   }
 
-  /// Requests notification permissions (Android 13+).
-  Future<void> requestPermissions() async {
-    if (kIsWeb) return;
+  /// Requests notification permissions before an enabled setting can promise
+  /// an alert. Returning the result lets the settings UI avoid storing a
+  /// misleading enabled state when the operating system denies the request.
+  Future<bool> requestPermissions() async {
+    if (kIsWeb) return false;
     if (Platform.isAndroid) {
-      await _plugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
+      return await _plugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >()
+              ?.requestNotificationsPermission() ??
+          true;
     }
+    if (Platform.isIOS) {
+      return await _plugin
+              .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin
+              >()
+              ?.requestPermissions(alert: true, badge: true, sound: true) ??
+          true;
+    }
+    return true;
   }
 
   /// Shows a progressive notification for the current lesson or break.
@@ -174,22 +195,20 @@ class NotificationService {
     // Try native Android implementation for high-quality progress bars.
     if (Platform.isAndroid && hasProgress) {
       try {
-        final success = await _nativeChannel.invokeMethod<bool>(
-          'showProgressiveNotification',
-          {
-            'id': id,
-            'channelId': NotificationChannels.currentLesson,
-            'title': title,
-            'body': body,
-            'subText': subText,
-            'progress': currentProgress,
-            'maxProgress': maxProgress,
-            'endTimeMs': endTimeMs,
-            'locale': locale,
-            'currentLesson': title,
-            'nextLesson': nextLesson ?? '',
-          },
-        );
+        final success = await _nativeChannel
+            .invokeMethod<bool>('showProgressiveNotification', {
+              'id': id,
+              'channelId': NotificationChannels.currentLesson,
+              'title': title,
+              'body': body,
+              'subText': subText,
+              'progress': currentProgress,
+              'maxProgress': maxProgress,
+              'endTimeMs': endTimeMs,
+              'locale': locale,
+              'currentLesson': title,
+              'nextLesson': nextLesson ?? '',
+            });
         if (success ?? false) return;
       } catch (e) {
         debugPrint('Native progressive notification failed: $e');
@@ -200,7 +219,10 @@ class NotificationService {
     final androidDetails = AndroidNotificationDetails(
       NotificationChannels.currentLesson,
       _getChannelName(locale, NotificationChannels.currentLesson),
-      channelDescription: _getChannelDesc(locale, NotificationChannels.currentLesson),
+      channelDescription: _getChannelDesc(
+        locale,
+        NotificationChannels.currentLesson,
+      ),
       importance: Importance.low,
       priority: Priority.low,
       ongoing: true,
@@ -249,7 +271,10 @@ class NotificationService {
     final androidDetails = AndroidNotificationDetails(
       NotificationChannels.dailyBriefing,
       _getChannelName(locale, NotificationChannels.dailyBriefing),
-      channelDescription: _getChannelDesc(locale, NotificationChannels.dailyBriefing),
+      channelDescription: _getChannelDesc(
+        locale,
+        NotificationChannels.dailyBriefing,
+      ),
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
       styleInformation: BigTextStyleInformation(expandedBody),
@@ -280,7 +305,10 @@ class NotificationService {
     final androidDetails = AndroidNotificationDetails(
       NotificationChannels.importantChanges,
       _getChannelName(locale, NotificationChannels.importantChanges),
-      channelDescription: _getChannelDesc(locale, NotificationChannels.importantChanges),
+      channelDescription: _getChannelDesc(
+        locale,
+        NotificationChannels.importantChanges,
+      ),
       importance: Importance.high,
       priority: Priority.high,
       category: AndroidNotificationCategory.status,
@@ -332,7 +360,8 @@ class NotificationService {
 
   String _getActionLabel(String locale, String actionId) {
     final l = AppL10n.of(locale);
-    if (actionId == 'open_next_lesson') return l.notificationActionNextLessonLabel;
+    if (actionId == 'open_next_lesson')
+      return l.notificationActionNextLessonLabel;
     if (actionId == 'open_free_rooms') return l.notificationActionFreeRooms;
     if (actionId == 'open_day') return l.notificationActionOpenDay;
     return l.timetableTitle;

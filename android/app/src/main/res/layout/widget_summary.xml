@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_summary_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="16dp" android:background="@drawable/widget_m3_surface">
-    <TextView android:id="@+id/widget_summary_title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/widget_primary" android:textStyle="bold" android:textSize="12sp" />
-    <TextView android:id="@+id/widget_summary_body" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/widget_on_surface" android:textSize="15sp" android:lineSpacingExtra="3dp" />
-</LinearLayout>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_summary_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_expressive_surface"
+    android:padding="18dp">
+    <TextView android:id="@+id/widget_summary_title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/widget_primary" android:textSize="12sp" android:textStyle="bold" />
+    <TextView android:id="@+id/widget_summary_account" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface_variant" android:textSize="12sp" />
+    <TextView android:id="@+id/widget_summary_body" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_below="@id/widget_summary_title" android:layout_marginTop="14dp" android:ellipsize="end" android:maxLines="2" android:textColor="@color/widget_on_surface" android:textSize="17sp" android:textStyle="bold" />
+    <TextView android:id="@+id/widget_summary_status" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:background="@drawable/widget_status_pill" android:paddingHorizontal="10dp" android:paddingVertical="5dp" android:textColor="@color/widget_primary" android:textSize="11sp" />
+</RelativeLayout>

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'alarm_service.dart';
+
 class BackupService {
   static const int schemaVersion = 1;
 
@@ -30,6 +32,7 @@ class BackupService {
     'aiSystemPromptTemplate',
     'subjectColors',
     'selectedCustomBackgroundId',
+    'alarmConfigV1',
   };
 
   static const Set<String> _sensitiveStringKeys = {
@@ -183,6 +186,10 @@ class BackupService {
     for (final entry in stringListValues.entries) {
       await prefs.setStringList(entry.key, entry.value);
     }
+
+    // Native AlarmManager state is separate from Flutter preferences. Rebuild
+    // it immediately after restoring a backup instead of waiting for restart.
+    await AlarmService.instance.restore();
   }
 
   Map<String, T> _readTypedMap<T>(dynamic value) {

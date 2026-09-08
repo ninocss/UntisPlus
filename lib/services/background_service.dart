@@ -12,6 +12,8 @@ import '../core/time_utils.dart';
 
 import 'demo_mode_service.dart';
 import 'notification_service.dart';
+import 'alarm_service.dart';
+import 'widget_service.dart';
 
 const String kTimetableUpdateTask = 'update_timetable_task';
 const String kGithubUpdateCheckTask = 'check_github_updates_task';
@@ -651,11 +653,19 @@ Future<void> updateUntisData() async {
 
   final now = DateTime.now();
   List<dynamic> lessons = [];
+  var hasValidTimetableResult = isDemoMode;
   if (isDemoMode) {
-    final monday = DateTime(now.year, now.month, now.day).subtract(
-      Duration(days: now.weekday - 1),
-    );
-    lessons = DemoModeService.buildWeek(monday, locale: locale)[now.weekday - 1] ?? [];
+    // Keep enough future data for the smart alarm to bridge weekends and a
+    // fully cancelled day as well.
+    final firstDay = DateTime(now.year, now.month, now.day);
+    for (var offset = 0; offset < 15; offset++) {
+      final day = firstDay.add(Duration(days: offset));
+      final monday = day.subtract(Duration(days: day.weekday - 1));
+      lessons.addAll(
+        DemoModeService.buildWeek(monday, locale: locale)[day.weekday - 1] ??
+            const [],
+      );
+    }
   } else {
     String sessionId = "";
     final authUrl = Uri.parse(
@@ -699,6 +709,9 @@ Future<void> updateUntisData() async {
     if (personId == 0) return;
 
     final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
+    final finalPlanningDate = int.parse(
+      DateFormat('yyyyMMdd').format(now.add(const Duration(days: 14))),
+    );
 
     final timetableRes = await http.post(
       authUrl,
@@ -711,12 +724,9 @@ Future<void> updateUntisData() async {
         "method": "getTimetable",
         "params": {
           "options": {
-            "element": {
-              "id": personId,
-              "type": personType,
-            },
+            "element": {"id": personId, "type": personType},
             "startDate": todayDate,
-            "endDate": todayDate,
+            "endDate": finalPlanningDate,
             "showLsText": true,
             "showSubstText": true,
             "showInfo": true,
@@ -733,10 +743,31 @@ Future<void> updateUntisData() async {
     final dynamic result = decoded['result'];
     if (result is List) {
       lessons = result;
+      hasValidTimetableResult = true;
     } else if (result is Map && result['timetable'] is List) {
       lessons = result['timetable'];
+      hasValidTimetableResult = true;
     }
   }
+
+  // A malformed or incomplete server response must never silently remove an
+  // already confirmed smart alarm. An actual empty timetable remains valid.
+  if (!hasValidTimetableResult) return;
+
+  // The alarm must see the raw server plan: hiding a subject is a display
+  // preference, not a reason to sleep through a real lesson.
+  await AlarmService.instance.syncSmartAlarmWithTimetable(lessons, now: now);
+
+  // The notification/status UI below intentionally remains limited to today.
+  final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
+  lessons = lessons
+      .whereType<Map>()
+      .where(
+        (lesson) =>
+            lesson['date'] is num &&
+            (lesson['date'] as num).toInt() == todayDate,
+      )
+      .toList(growable: false);
 
   // Respect user-hidden subjects and the "show cancelled" setting
   final hiddenSubjects = prefs.getStringList('hiddenSubjects') ?? <String>[];
@@ -966,6 +997,196 @@ Future<void> updateUntisData() async {
     await NotificationService().cancelNotification(
       NotificationIds.currentLesson,
     );
+  }
+
+  // Widgets intentionally update independently of notification permissions.
+  // Keep the payload compact: the native expressive layouts enforce the same
+  // short hierarchy when the device is offline or the widget is very small.
+  final activeAccountId = prefs.getString('activeUntisAccountId') ?? 'active';
+  final rawAccounts = prefs.getString('untisAccountsV1') ?? '[]';
+  var accountLabel = schoolName;
+  try {
+    final accounts = jsonDecode(rawAccounts);
+    if (accounts is List) {
+      for (final raw in accounts) {
+        if (raw is Map && raw['id']?.toString() == activeAccountId) {
+          accountLabel = raw['username']?.toString().trim().isNotEmpty == true
+              ? raw['username'].toString()
+              : raw['schoolName']?.toString() ?? schoolName;
+          break;
+        }
+      }
+    }
+  } catch (_) {}
+  await WidgetService.updateWidgets(
+    currentLesson: currentLessonName,
+    nextLesson: nextLessonName,
+    timeRemaining: timeRemaining,
+    dailySchedule: lessons
+        .take(3)
+        .map(
+          (lesson) =>
+              '${formatUntisTime(lesson['startTime'].toString())} · ${lessonDisplayName(lesson)}',
+        )
+        .join('\n'),
+    homeworkSummary: 'Öffne Untis+ für Aufgaben',
+    notificationSummary: 'Öffne Untis+ für Mitteilungen',
+    accountId: activeAccountId,
+    accountLabel: accountLabel,
+    status: DateFormat('HH:mm').format(now),
+  );
+  if (!isDemoMode) {
+    await _refreshInactiveWidgetAccounts(prefs, now: now, locale: locale);
+  }
+}
+
+/// Widget-bound accounts do not become notification accounts. This compact
+/// refresh only writes their widget payload and deliberately leaves alarms,
+/// change tracking and push state bound to the active account above.
+Future<void> _refreshInactiveWidgetAccounts(
+  SharedPreferences prefs, {
+  required DateTime now,
+  required String locale,
+}) async {
+  final activeId = prefs.getString('activeUntisAccountId');
+  final raw = prefs.getString('untisAccountsV1') ?? '[]';
+  dynamic decoded;
+  try {
+    decoded = jsonDecode(raw);
+  } catch (_) {
+    return;
+  }
+  if (decoded is! List) return;
+  final today = int.parse(DateFormat('yyyyMMdd').format(now));
+  for (final entry in decoded) {
+    if (entry is! Map) continue;
+    final id = entry['id']?.toString() ?? '';
+    final url = entry['schoolUrl']?.toString() ?? '';
+    final school = entry['schoolName']?.toString() ?? '';
+    final user = entry['username']?.toString() ?? '';
+    final password = entry['password']?.toString() ?? '';
+    final personId = (entry['personId'] as num?)?.toInt() ?? 0;
+    final personType = (entry['personType'] as num?)?.toInt() ?? 5;
+    if (id.isEmpty ||
+        id == activeId ||
+        url.isEmpty ||
+        school.isEmpty ||
+        user.isEmpty ||
+        password.isEmpty ||
+        personId == 0) {
+      continue;
+    }
+    try {
+      final endpoint = Uri.parse(
+        'https://$url/WebUntis/jsonrpc.do?school=$school',
+      );
+      String session = '';
+      if (entry['credentialMode']?.toString() == 'loginKey') {
+        session =
+            await _loginWithWebUntisSecret(
+              schoolUrl: url,
+              schoolName: school,
+              user: user,
+              secret: password,
+            ) ??
+            '';
+      } else {
+        final auth = await http.post(
+          endpoint,
+          body: jsonEncode({
+            'id': 'widget_$id',
+            'method': 'authenticate',
+            'params': {
+              'user': user,
+              'password': password,
+              'client': 'UntisPlusWidget',
+            },
+            'jsonrpc': '2.0',
+          }),
+        );
+        if (auth.statusCode == 200) {
+          session =
+              jsonDecode(auth.body)['result']?['sessionId']?.toString() ?? '';
+        }
+      }
+      if (session.isEmpty) continue;
+      final response = await http.post(
+        endpoint,
+        headers: {
+          'Cookie': 'JSESSIONID=$session; schoolname=$school',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'id': 'widget_plan_$id',
+          'method': 'getTimetable',
+          'params': {
+            'options': {
+              'element': {'id': personId, 'type': personType},
+              'startDate': today,
+              'endDate': today,
+              'showLsText': true,
+            },
+          },
+          'jsonrpc': '2.0',
+        }),
+      );
+      if (response.statusCode != 200) continue;
+      final result = jsonDecode(response.body)['result'];
+      final source = result is List
+          ? result
+          : result is Map && result['timetable'] is List
+          ? result['timetable'] as List
+          : const <dynamic>[];
+      final lessons = source.whereType<Map>().toList()
+        ..sort(
+          (a, b) => ((a['startTime'] as num?)?.toInt() ?? 0).compareTo(
+            (b['startTime'] as num?)?.toInt() ?? 0,
+          ),
+        );
+      final nowValue = now.hour * 100 + now.minute;
+      Map? current;
+      Map? next;
+      for (final lesson in lessons) {
+        final start = (lesson['startTime'] as num?)?.toInt() ?? 0;
+        final end = (lesson['endTime'] as num?)?.toInt() ?? 0;
+        if (start <= nowValue && nowValue < end) current = lesson;
+        if (start > nowValue && next == null) next = lesson;
+      }
+      String label(Map? lesson) {
+        if (lesson == null) return '';
+        final subjects = lesson['su'];
+        if (subjects is List && subjects.isNotEmpty && subjects.first is Map) {
+          final subject =
+              (subjects.first as Map)['longName'] ??
+              (subjects.first as Map)['name'];
+          if (subject?.toString().trim().isNotEmpty == true)
+            return subject.toString().trim();
+        }
+        return lesson['_subjectShort']?.toString() ?? 'Unterricht';
+      }
+
+      await WidgetService.updateWidgets(
+        currentLesson: current == null ? 'Freistunde' : label(current),
+        nextLesson: next == null
+            ? 'Heute keine weitere Stunde'
+            : 'Nächste: ${label(next)}',
+        timeRemaining: '',
+        dailySchedule: lessons
+            .take(3)
+            .map(
+              (lesson) =>
+                  '${formatUntisTime(lesson['startTime'].toString())} · ${label(lesson)}',
+            )
+            .join('\n'),
+        homeworkSummary: 'Öffne Untis+ für Aufgaben',
+        notificationSummary: 'Öffne Untis+ für Mitteilungen',
+        accountId: id,
+        accountLabel: user,
+        status: DateFormat('HH:mm').format(now),
+      );
+    } catch (_) {
+      // Retain the last confirmed widget payload for an unavailable account.
+    }
   }
 }
 

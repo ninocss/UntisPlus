@@ -12,7 +12,14 @@ class _AnimatedBackground extends StatelessWidget {
       builder: (context, enabled, _) {
         final tokens = untisThemeTokensOf(context);
         if (tokens.id != AppThemeId.defaultTheme) {
-          return ThemedBackdrop(child: child, animate: enabled);
+          return ValueListenableBuilder<int>(
+            valueListenable: backgroundAnimationStyleNotifier,
+            builder: (context, style, _) => ThemedBackdrop(
+              child: child,
+              animate: enabled,
+              backgroundStyle: style,
+            ),
+          );
         }
         if (!enabled) return child;
         return ValueListenableBuilder<int>(

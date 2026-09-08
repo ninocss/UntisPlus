@@ -858,7 +858,9 @@ class SettingsAppearancePage extends StatelessWidget {
                   subtitle: Platform.isAndroid
                       ? 'Symbol für den Startbildschirm auswählen'
                       : 'Derzeit auf Android verfügbar',
-                  onTap: () => _showAppIconDialog(context),
+                  onTap: Platform.isAndroid
+                      ? () => _showAppIconDialog(context)
+                      : null,
                 ),
                 SettingsTile(
                   icon: Icons.translate_rounded,

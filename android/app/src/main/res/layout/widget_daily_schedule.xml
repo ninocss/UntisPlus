@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_schedule_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@drawable/widget_m3_surface">
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="HEUTE · UNTIS+" android:textColor="@color/widget_primary" android:textStyle="bold" android:textSize="12sp" />
-    <TextView android:id="@+id/widget_daily_schedule" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="@color/widget_on_surface" android:textSize="15sp" android:lineSpacingExtra="3dp" />
-</LinearLayout>
+    android:background="@drawable/widget_expressive_surface"
+    android:padding="18dp">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="HEUTE" android:textColor="@color/widget_primary" android:textSize="12sp" android:textStyle="bold" />
+    <TextView android:id="@+id/widget_schedule_account" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentEnd="true" android:ellipsize="end" android:maxLines="1" android:textColor="@color/widget_on_surface_variant" android:textSize="12sp" />
+    <TextView android:id="@+id/widget_daily_schedule" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_below="@id/widget_schedule_account" android:layout_marginTop="12dp" android:ellipsize="end" android:lineSpacingExtra="4dp" android:maxLines="3" android:textColor="@color/widget_on_surface" android:textSize="15sp" />
+    <TextView android:id="@+id/widget_schedule_status" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:background="@drawable/widget_status_pill" android:paddingHorizontal="10dp" android:paddingVertical="5dp" android:textColor="@color/widget_primary" android:textSize="11sp" />
+</RelativeLayout>

@@ -5,5 +5,7 @@ struct UntisWidgetBundle: WidgetBundle {
     var body: some Widget {
         UntisCurrentLessonWidget()
         UntisDailyScheduleWidget()
+        UntisHomeworkWidget()
+        UntisNotificationsWidget()
     }
 }

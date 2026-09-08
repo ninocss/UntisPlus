@@ -25,13 +25,13 @@ class _Grade {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'subject': subject,
-        'value': value,
-        'weight': weight,
-        'type': type,
-        'date': date.toIso8601String(),
-      };
+    'id': id,
+    'subject': subject,
+    'value': value,
+    'weight': weight,
+    'type': type,
+    'date': date.toIso8601String(),
+  };
 
   factory _Grade.fromJson(Map<String, dynamic> json) {
     final value = json['value'];
@@ -45,9 +45,13 @@ class _Grade {
     final date = DateTime.tryParse(json['date']?.toString() ?? '');
     final subject = json['subject']?.toString().trim() ?? '';
 
-    if (parsedValue == null || !parsedValue.isFinite ||
-        parsedWeight == null || !parsedWeight.isFinite || parsedWeight <= 0 ||
-        date == null || subject.isEmpty) {
+    if (parsedValue == null ||
+        !parsedValue.isFinite ||
+        parsedWeight == null ||
+        !parsedWeight.isFinite ||
+        parsedWeight <= 0 ||
+        date == null ||
+        subject.isEmpty) {
       throw const FormatException('Invalid saved grade');
     }
     return _Grade(
@@ -96,11 +100,15 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
   Future<void> _loadGrades() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList('customGrades') ?? [];
+    final raw = prefs.getStringList(_accountDataKey('customGrades')) ?? [];
     final loaded = <_Grade>[];
     for (final encoded in raw) {
       try {
-        loaded.add(_Grade.fromJson(Map<String, dynamic>.from(jsonDecode(encoded) as Map)));
+        loaded.add(
+          _Grade.fromJson(
+            Map<String, dynamic>.from(jsonDecode(encoded) as Map),
+          ),
+        );
       } catch (_) {
         // A malformed legacy entry must not prevent access to the grade tab.
       }
@@ -129,15 +137,18 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
-    String selectedSubject = (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
+    String selectedSubject =
+        (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
         grade?.subject ??
         (knownSubjectsNotifier.value.isNotEmpty
             ? knownSubjectsNotifier.value.first
             : '');
-    final valueController =
-        TextEditingController(text: grade?.value.toString() ?? '');
-    final weightController =
-        TextEditingController(text: grade?.weight.toString() ?? '1.0');
+    final valueController = TextEditingController(
+      text: grade?.value.toString() ?? '',
+    );
+    final weightController = TextEditingController(
+      text: grade?.weight.toString() ?? '1.0',
+    );
     final typeController = TextEditingController(text: grade?.type ?? '');
     final subjectController = TextEditingController(text: selectedSubject);
     DateTime selectedDate = grade?.date ?? DateTime.now();
@@ -149,17 +160,23 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) {
-          final double? previewValue = double.tryParse(valueController.text.replaceAll(',', '.'));
-          final Color previewColor = previewValue != null 
+          final double? previewValue = double.tryParse(
+            valueController.text.replaceAll(',', '.'),
+          );
+          final Color previewColor = previewValue != null
               ? _colorForGrade(previewValue)
               : cs.primary;
           final subjects = knownSubjectsNotifier.value.toList()..sort();
 
           return Padding(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
             child: _glassContainer(
               context: ctx,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(28),
                 child: Column(
@@ -184,7 +201,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                existing == null ? l.gradesAddTitle : l.gradesEditTitle,
+                                existing == null
+                                    ? l.gradesAddTitle
+                                    : l.gradesEditTitle,
                                 style: GoogleFonts.outfit(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
@@ -196,7 +215,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                 style: GoogleFonts.outfit(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                                  color: cs.onSurfaceVariant.withValues(
+                                    alpha: 0.7,
+                                  ),
                                 ),
                               ),
                             ],
@@ -211,7 +232,10 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                               decoration: BoxDecoration(
                                 color: previewColor.withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: previewColor.withValues(alpha: 0.4), width: 2),
+                                border: Border.all(
+                                  color: previewColor.withValues(alpha: 0.4),
+                                  width: 2,
+                                ),
                               ),
                               child: Center(
                                 child: Text(
@@ -251,8 +275,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.book_rounded),
                           filled: true,
-                          fillColor:
-                              cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                          fillColor: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.4,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide.none,
@@ -282,7 +307,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           prefixIcon: const Icon(Icons.book_rounded),
                           hintText: l.gradesSubjectLabel,
                           filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                          fillColor: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.4,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide.none,
@@ -309,13 +336,20 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                               const SizedBox(height: 12),
                               TextField(
                                 controller: valueController,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 onChanged: (_) => setDlg(() {}),
-                                style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                ),
                                 decoration: InputDecoration(
                                   prefixIcon: const Icon(Icons.star_rounded),
                                   filled: true,
-                                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                                  fillColor: cs.surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(20),
                                     borderSide: BorderSide.none,
@@ -343,12 +377,19 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                               const SizedBox(height: 12),
                               TextField(
                                 controller: weightController,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 18),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                ),
                                 decoration: InputDecoration(
                                   prefixIcon: const Icon(Icons.scale_rounded),
                                   filled: true,
-                                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                                  fillColor: cs.surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(20),
                                     borderSide: BorderSide.none,
@@ -378,7 +419,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         prefixIcon: const Icon(Icons.label_important_rounded),
                         hintText: l.examsTypeLabel,
                         filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                        fillColor: cs.surfaceContainerHighest.withValues(
+                          alpha: 0.4,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: BorderSide.none,
@@ -408,9 +451,14 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                       },
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
-                          color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                          color: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.4,
+                          ),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -418,8 +466,14 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             const Icon(Icons.calendar_today_rounded, size: 20),
                             const SizedBox(width: 12),
                             Text(
-                              DateFormat('dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(selectedDate),
-                              style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 16),
+                              DateFormat(
+                                'dd. MMMM yyyy',
+                                _icuLocale(appLocaleNotifier.value),
+                              ).format(selectedDate),
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
                             ),
                           ],
                         ),
@@ -432,15 +486,24 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () {
-                                setState(() => _grades.removeWhere((g) => g.id == existing.id));
+                                setState(
+                                  () => _grades.removeWhere(
+                                    (g) => g.id == existing.id,
+                                  ),
+                                );
                                 _saveGrades();
                                 Navigator.pop(ctx);
                               },
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: cs.error,
-                                side: BorderSide(color: cs.error.withValues(alpha: 0.5), width: 1.5),
+                                side: BorderSide(
+                                  color: cs.error.withValues(alpha: 0.5),
+                                  width: 1.5,
+                                ),
                                 minimumSize: const Size(0, 60),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                               ),
                               child: const Icon(Icons.delete_outline_rounded),
                             ),
@@ -450,15 +513,29 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           flex: 3,
                           child: FilledButton(
                             onPressed: () {
-                              final val = double.tryParse(valueController.text.replaceAll(',', '.')) ?? 0;
-                              final weight = double.tryParse(weightController.text.replaceAll(',', '.')) ?? 1.0;
+                              final val =
+                                  double.tryParse(
+                                    valueController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  0;
+                              final weight =
+                                  double.tryParse(
+                                    weightController.text.replaceAll(',', '.'),
+                                  ) ??
+                                  1.0;
                               final subj = subjectController.text.trim();
-                              if (!val.isFinite || val <= 0 ||
-                                  !weight.isFinite || weight <= 0 ||
-                                  subj.isEmpty) return;
+                              if (!val.isFinite ||
+                                  val <= 0 ||
+                                  !weight.isFinite ||
+                                  weight <= 0 ||
+                                  subj.isEmpty)
+                                return;
 
                               final newGrade = _Grade(
-                                id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+                                id:
+                                    existing?.id ??
+                                    DateTime.now().millisecondsSinceEpoch
+                                        .toString(),
                                 subject: subj,
                                 value: val,
                                 weight: weight,
@@ -468,7 +545,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
                               setState(() {
                                 if (existing != null) {
-                                  final idx = _grades.indexWhere((g) => g.id == existing.id);
+                                  final idx = _grades.indexWhere(
+                                    (g) => g.id == existing.id,
+                                  );
                                   if (idx >= 0) {
                                     _grades[idx] = newGrade;
                                   } else {
@@ -483,13 +562,20 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             },
                             style: FilledButton.styleFrom(
                               minimumSize: const Size(0, 60),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                               elevation: 8,
                               shadowColor: cs.primary.withValues(alpha: 0.4),
                             ),
                             child: Text(
-                              existing == null ? l.examsSave : "Änderungen speichern",
-                              style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 16),
+                              existing == null
+                                  ? l.examsSave
+                                  : "Änderungen speichern",
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
@@ -545,131 +631,146 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     final grouped = _groupedGrades;
     final subjects = grouped.keys.toList()..sort();
 
-    return _AnimatedBackground(
-      child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _grades.isEmpty
-              ? _buildEmptyState(cs, l)
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 132),
+    return _loading
+        ? const Center(child: CircularProgressIndicator())
+        : _grades.isEmpty
+        ? _buildEmptyState(cs, l)
+        : ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 132),
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
                   children: [
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        children: [
-                          // Stats
-                          _buildStatBadge(
-                            cs,
-                            l.gradesAverage,
-                            _overallAverage.toStringAsFixed(2),
-                            Icons.analytics_rounded,
-                            _colorForGrade(_overallAverage),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildStatBadge(
-                            cs,
-                            l.gradesTotal,
-                            _grades.length.toString(),
-                            Icons.numbers_rounded,
-                            cs.primary,
-                          ),
-                          
-                          // Best Subject (if any)
-                          ...(() {
-                            final grouped = _groupedGrades;
-                            if (grouped.length < 2) return <Widget>[];
-                            String bestSubject = "";
-                            double bestAvg = 99;
-                            grouped.forEach((s, g) {
-                              final a = _calculateAverage(g);
-                              if (a < bestAvg) {
-                                bestAvg = a;
-                                bestSubject = s;
-                              }
-                            });
-                            if (bestSubject.isEmpty) return <Widget>[];
-                            return [
-                              const SizedBox(width: 8),
-                              _buildStatBadge(
-                                cs,
-                                l.gradesBestSubject,
-                                bestSubject,
-                                Icons.workspace_premium_rounded,
-                                Colors.amber,
-                              ),
-                            ];
-                          })(),
+                    // Stats
+                    _buildStatBadge(
+                      cs,
+                      l.gradesAverage,
+                      _overallAverage.toStringAsFixed(2),
+                      Icons.analytics_rounded,
+                      _colorForGrade(_overallAverage),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildStatBadge(
+                      cs,
+                      l.gradesTotal,
+                      _grades.length.toString(),
+                      Icons.numbers_rounded,
+                      cs.primary,
+                    ),
 
-                          // Subject quick filters
-                          if (subjects.length > 2) ...[
-                            const SizedBox(width: 16),
-                            Container(
-                              width: 1,
-                              height: 16,
-                              color: cs.outlineVariant.withValues(alpha: 0.5),
+                    // Best Subject (if any)
+                    ...(() {
+                      final grouped = _groupedGrades;
+                      if (grouped.length < 2) return <Widget>[];
+                      String bestSubject = "";
+                      double bestAvg = 99;
+                      grouped.forEach((s, g) {
+                        final a = _calculateAverage(g);
+                        if (a < bestAvg) {
+                          bestAvg = a;
+                          bestSubject = s;
+                        }
+                      });
+                      if (bestSubject.isEmpty) return <Widget>[];
+                      return [
+                        const SizedBox(width: 8),
+                        _buildStatBadge(
+                          cs,
+                          l.gradesBestSubject,
+                          bestSubject,
+                          Icons.workspace_premium_rounded,
+                          Colors.amber,
+                        ),
+                      ];
+                    })(),
+
+                    // Subject quick filters
+                    if (subjects.length > 2) ...[
+                      const SizedBox(width: 16),
+                      Container(
+                        width: 1,
+                        height: 16,
+                        color: cs.outlineVariant.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(width: 16),
+                      ...subjects.map((s) {
+                        final isDark =
+                            Theme.of(context).brightness == Brightness.dark;
+                        final color = _autoLessonColor(s, isDark);
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _glassContainer(
+                            context: context,
+                            borderRadius: BorderRadius.circular(12),
+                            color: color.withValues(alpha: 0.1),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.2),
                             ),
-                            const SizedBox(width: 16),
-                            ...subjects.map((s) {
-                              final isDark = Theme.of(context).brightness == Brightness.dark;
-                              final color = _autoLessonColor(s, isDark);
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: _glassContainer(
-                                  context: context,
-                                  borderRadius: BorderRadius.circular(12),
-                                  color: color.withValues(alpha: 0.1),
-                                  border: Border.all(color: color.withValues(alpha: 0.2)),
-                                  child: InkWell(
-                                    onTap: () => HapticFeedback.selectionClick(),
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.book_rounded, size: 13, color: color),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            s,
-                                            style: GoogleFonts.outfit(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 11,
-                                              color: isDark ? color.withValues(alpha: 0.9) : color,
-                                            ),
-                                          ),
-                                        ],
+                            child: InkWell(
+                              onTap: () => HapticFeedback.selectionClick(),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.book_rounded,
+                                      size: 13,
+                                      color: color,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      s,
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 11,
+                                        color: isDark
+                                            ? color.withValues(alpha: 0.9)
+                                            : color,
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              );
-                            }),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ...subjects.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final subj = entry.value;
-                      final subjGrades = grouped[subj]!
-                        ..sort((a, b) => b.date.compareTo(a.date));
-                      final avg = _calculateAverage(subjGrades);
-                      return _springEntry(
-                        key: ValueKey('grade_subject_$subj'),
-                        duration: Duration(milliseconds: 400 + (index * 80)),
-                        offsetY: 20,
-                        child: _buildSubjectCard(cs, subj, subjGrades, avg),
-                      );
-                    }),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
                   ],
                 ),
-    );
+              ),
+              const SizedBox(height: 16),
+              ...subjects.asMap().entries.map((entry) {
+                final index = entry.key;
+                final subj = entry.value;
+                final subjGrades = grouped[subj]!
+                  ..sort((a, b) => b.date.compareTo(a.date));
+                final avg = _calculateAverage(subjGrades);
+                return _springEntry(
+                  key: ValueKey('grade_subject_$subj'),
+                  duration: Duration(milliseconds: 400 + (index * 80)),
+                  offsetY: 20,
+                  child: _buildSubjectCard(cs, subj, subjGrades, avg),
+                );
+              }),
+            ],
+          );
   }
 
   Widget _buildStatBadge(
-      ColorScheme cs, String label, String value, IconData icon, Color color) {
+    ColorScheme cs,
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return _glassContainer(
       context: context,
       borderRadius: BorderRadius.circular(14),
@@ -725,7 +826,10 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
             context: context,
             borderRadius: BorderRadius.circular(32),
             color: cs.primary.withValues(alpha: 0.12),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.3), width: 1.5),
+            border: Border.all(
+              color: cs.primary.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
             child: Padding(
               padding: const EdgeInsets.all(28),
               child: Icon(
@@ -765,11 +869,16 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
             icon: const Icon(Icons.add_rounded),
             label: Text(
               l.gradesAddTitle,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 15),
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+              ),
             ),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
             ),
           ),
         ],
@@ -778,7 +887,11 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   }
 
   Widget _buildSubjectCard(
-      ColorScheme cs, String subject, List<_Grade> grades, double average) {
+    ColorScheme cs,
+    String subject,
+    List<_Grade> grades,
+    double average,
+  ) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = _autoLessonColor(subject, isDark);
@@ -790,7 +903,10 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
         context: context,
         borderRadius: BorderRadius.circular(28),
         color: cs.surfaceContainerLow.withValues(alpha: 0.5),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3), width: 1.2),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.3),
+          width: 1.2,
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(28),
           child: Column(
@@ -850,7 +966,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            grades.length == 1 ? l.gradesCountLabel(1) : l.gradesCountLabel(grades.length),
+                            grades.length == 1
+                                ? l.gradesCountLabel(1)
+                                : l.gradesCountLabel(grades.length),
                             style: GoogleFonts.outfit(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
@@ -864,9 +982,15 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                       context: context,
                       borderRadius: BorderRadius.circular(16),
                       color: gradeColor.withValues(alpha: 0.15),
-                      border: Border.all(color: gradeColor.withValues(alpha: 0.35), width: 1),
+                      border: Border.all(
+                        color: gradeColor.withValues(alpha: 0.35),
+                        width: 1,
+                      ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         child: Text(
                           average.toStringAsFixed(2),
                           style: GoogleFonts.outfit(
@@ -903,10 +1027,15 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                       decoration: BoxDecoration(
                         color: cs.error.withValues(alpha: 0.85),
                       ),
-                      child: const Icon(Icons.delete_rounded, color: Colors.white),
+                      child: const Icon(
+                        Icons.delete_rounded,
+                        color: Colors.white,
+                      ),
                     ),
                     onDismissed: (_) {
-                      setState(() => _grades.removeWhere((item) => item.id == g.id));
+                      setState(
+                        () => _grades.removeWhere((item) => item.id == g.id),
+                      );
                       _saveGrades();
                       HapticFeedback.mediumImpact();
                     },
@@ -915,14 +1044,20 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         HapticFeedback.selectionClick();
                         showAddGradeDialog(g);
                       },
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 6,
+                      ),
                       leading: Container(
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
                           color: gColor.withValues(alpha: 0.14),
                           shape: BoxShape.circle,
-                          border: Border.all(color: gColor.withValues(alpha: 0.35), width: 1.5),
+                          border: Border.all(
+                            color: gColor.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
                         ),
                         child: Center(
                           child: Text(
@@ -949,9 +1084,14 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           ),
                           if (g.weight != 1.0)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
-                                color: cs.primaryContainer.withValues(alpha: 0.5),
+                                color: cs.primaryContainer.withValues(
+                                  alpha: 0.5,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -966,14 +1106,21 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         ],
                       ),
                       subtitle: Text(
-                        DateFormat('dd. MMMM yyyy', _icuLocale(appLocaleNotifier.value)).format(g.date),
+                        DateFormat(
+                          'dd. MMMM yyyy',
+                          _icuLocale(appLocaleNotifier.value),
+                        ).format(g.date),
                         style: GoogleFonts.outfit(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: cs.onSurfaceVariant,
                         ),
                       ),
-                      trailing: Icon(Icons.edit_note_rounded, size: 20, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
+                      trailing: Icon(
+                        Icons.edit_note_rounded,
+                        size: 20,
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                      ),
                     ),
                   );
                 },

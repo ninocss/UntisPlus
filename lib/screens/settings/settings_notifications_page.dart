@@ -4,6 +4,29 @@ part of '../../main.dart';
 class SettingsNotificationsPage extends StatelessWidget {
   const SettingsNotificationsPage({super.key});
 
+  Future<void> _setEnabled(
+    BuildContext context,
+    bool enabled,
+    Future<void> Function(bool) persist,
+  ) async {
+    if (enabled) {
+      await NotificationService().init();
+      final granted = await NotificationService().requestPermissions();
+      if (!granted) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Benachrichtigungen sind in den Systemeinstellungen nicht erlaubt.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    await persist(enabled);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -25,6 +48,34 @@ class SettingsNotificationsPage extends StatelessWidget {
             SettingsGroup(
               title: l.settingsHubNotifications,
               children: [
+                SettingsTile(
+                  icon: Icons.widgets_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: 'Widgets & Vorschau',
+                  subtitle: 'Varianten, Vorschau und Kontozuordnung.',
+                  onTap: () => Navigator.push(
+                    context,
+                    _buildBouncyRoute(const SettingsWidgetsPage()),
+                  ),
+                ),
+                if (Platform.isAndroid)
+                  SettingsTile(
+                    icon: Icons.alarm_rounded,
+                    iconBackgroundColor: cs.primaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onPrimaryContainer,
+                    title: 'Wecker & Smart-Wecker',
+                    subtitle:
+                        'Exakte Android-Wecker, die sich an Ausfälle anpassen.',
+                    onTap: () => Navigator.push(
+                      context,
+                      _buildBouncyRoute(const SettingsAlarmPage()),
+                    ),
+                  ),
                 ValueListenableBuilder<bool>(
                   valueListenable: progressivePushNotifier,
                   builder: (context, value, _) {
@@ -37,7 +88,11 @@ class SettingsNotificationsPage extends StatelessWidget {
                       title: l.settingsProgressivePush,
                       subtitle: l.settingsProgressivePushDesc,
                       value: value,
-                      onChanged: _settingsSetProgressivePush,
+                      onChanged: (enabled) => _setEnabled(
+                        context,
+                        enabled,
+                        _settingsSetProgressivePush,
+                      ),
                     );
                   },
                 ),
@@ -53,7 +108,11 @@ class SettingsNotificationsPage extends StatelessWidget {
                       title: l.settingsDailyBriefingPush,
                       subtitle: l.settingsDailyBriefingPushDesc,
                       value: value,
-                      onChanged: _settingsSetDailyBriefingPush,
+                      onChanged: (enabled) => _setEnabled(
+                        context,
+                        enabled,
+                        _settingsSetDailyBriefingPush,
+                      ),
                     );
                   },
                 ),
@@ -69,7 +128,11 @@ class SettingsNotificationsPage extends StatelessWidget {
                       title: l.settingsImportantChangesPush,
                       subtitle: l.settingsImportantChangesPushDesc,
                       value: value,
-                      onChanged: _settingsSetImportantChangesPush,
+                      onChanged: (enabled) => _setEnabled(
+                        context,
+                        enabled,
+                        _settingsSetImportantChangesPush,
+                      ),
                     );
                   },
                 ),

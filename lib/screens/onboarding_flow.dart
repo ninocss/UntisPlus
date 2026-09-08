@@ -3,7 +3,11 @@ part of '../main.dart';
 // --- LOGIN SEITE ---
 
 class OnboardingFlow extends StatefulWidget {
-  const OnboardingFlow({super.key});
+  /// Account-only mode is used from settings: it deliberately skips language,
+  /// appearance and AI setup so adding a second login is a short flow.
+  final bool accountOnly;
+
+  const OnboardingFlow({super.key, this.accountOnly = false});
 
   @override
   State<OnboardingFlow> createState() => _OnboardingFlowState();
@@ -11,7 +15,7 @@ class OnboardingFlow extends StatefulWidget {
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
   final PageController _pageController = PageController();
-  static const int _totalOnboardingSteps = 5;
+  int get _totalOnboardingSteps => widget.accountOnly ? 1 : 5;
   static const String _credentialModePassword = 'password';
   static const String _credentialModeLoginKey = 'loginKey';
   int _currentPage = 0;
@@ -76,7 +80,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   void _onPageChanged() {
     final page = _pageController.page?.round() ?? _currentPage;
-    if (page == 2) {
+    if (!widget.accountOnly && page == 2) {
       _schoolSearchFocusNode.requestFocus();
     }
   }
@@ -581,8 +585,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _handleLogin() async {
     HapticFeedback.heavyImpact();
-    setState(() => _isLogginIn = true);
     final l = AppL10n.of(appLocaleNotifier.value);
+
+    if (_serverController.text.trim().isEmpty ||
+        _schoolController.text.trim().isEmpty ||
+        _userController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
+      _showError(l.loginFailed);
+      return;
+    }
+    setState(() => _isLogginIn = true);
 
     schoolUrl = _serverController.text;
     schoolName = _schoolController.text;
@@ -640,10 +652,25 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         await prefs.setInt('personId', personId);
         await prefs.setBool('demoMode', false);
         demoModeNotifier.value = false;
+        await saveOrUpdateUntisAccount(
+          username: _userController.text,
+          password: _passwordController.text,
+          credentialMode: _useLoginKey
+              ? _credentialModeLoginKey
+              : _credentialModePassword,
+        );
 
         updateUntisData().catchError((_) {});
 
-        if (mounted) _nextPage();
+        if (!mounted) return;
+        if (widget.accountOnly) {
+          Navigator.of(context).pushAndRemoveUntil(
+            _buildBouncyRoute(const MainNavigationScreen()),
+            (route) => false,
+          );
+        } else {
+          _nextPage();
+        }
       } else {
         _showError(l.loginFailed);
       }
@@ -992,11 +1019,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     physics: const NeverScrollableScrollPhysics(),
                     onPageChanged: (idx) => setState(() => _currentPage = idx),
                     children: [
-                      _buildLanguageStep(),
-                      _buildThemeStep(),
-                      _buildLoginStep(),
-                      _buildGeminiStep(),
-                      _buildTutorialStep(),
+                      if (widget.accountOnly)
+                        _buildLoginStep()
+                      else ...[
+                        _buildLanguageStep(),
+                        _buildThemeStep(),
+                        _buildLoginStep(),
+                        _buildGeminiStep(),
+                        _buildTutorialStep(),
+                      ],
                     ],
                   ),
                 ),
@@ -1868,31 +1899,35 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isLogginIn ? null : _activateDemoMode,
-                  icon: const Icon(Icons.science_rounded, size: 17),
-                  label: Text(l.onboardingUseDemoMode),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+              if (!widget.accountOnly) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isLogginIn ? null : _activateDemoMode,
+                    icon: const Icon(Icons.science_rounded, size: 17),
+                    label: Text(l.onboardingUseDemoMode),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 46),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            l.onboardingUseDemoModeDesc,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              color: colors.onSurfaceVariant,
+          if (!widget.accountOnly) ...[
+            const SizedBox(height: 6),
+            Text(
+              l.onboardingUseDemoModeDesc,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                color: colors.onSurfaceVariant,
+              ),
             ),
-          ),
+          ],
         ],
       );
     } else {

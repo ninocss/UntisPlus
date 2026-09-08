@@ -373,7 +373,13 @@ class _ThemePatternPainter extends CustomPainter {
 class ThemedBackdrop extends StatelessWidget {
   final Widget child;
   final bool animate;
-  const ThemedBackdrop({super.key, required this.child, required this.animate});
+  final int? backgroundStyle;
+  const ThemedBackdrop({
+    super.key,
+    required this.child,
+    required this.animate,
+    this.backgroundStyle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -381,12 +387,18 @@ class ThemedBackdrop extends StatelessWidget {
     if (tokens.id == AppThemeId.defaultTheme) return child;
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    final sceneStyle = switch (tokens.id) {
+    final themeSceneStyle = switch (tokens.id) {
       AppThemeId.vivid => 6,
       AppThemeId.glass => 0,
       AppThemeId.cyber => 8,
       _ => -1,
     };
+    // Vivid and Cyber own their visual scene; letting the global background
+    // style override it made both themes collapse into the same backdrop.
+    // Default/Glass may still honor a user-selected scene.
+    final sceneStyle = appThemeCapabilities(tokens.id).supportsCustomBackgrounds
+        ? (backgroundStyle ?? themeSceneStyle)
+        : themeSceneStyle;
     return Stack(
       children: [
         Positioned.fill(

@@ -23,12 +23,24 @@ struct UntisScheduleProvider: TimelineProvider {
         completion(timeline)
     }
 
-    private func loadEntry() -> UntisScheduleEntry {
-        let defaults = UserDefaults(suiteName: "group.com.ninocss.untisplus") ?? UserDefaults.standard
+    func loadEntry(accountId: String? = nil) -> UntisScheduleEntry {
         return UntisScheduleEntry(
             date: Date(),
-            dailySchedule: defaults.string(forKey: "daily_schedule") ?? "No schedule data"
+            dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? "No schedule data"
         )
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct UntisAccountScheduleProvider: AppIntentTimelineProvider {
+    func placeholder(in context: Context) -> UntisScheduleEntry { UntisScheduleProvider().placeholder(in: context) }
+    func snapshot(for configuration: UntisAccountIntent, in context: Context) async -> UntisScheduleEntry {
+        UntisScheduleProvider().loadEntry(accountId: untisAccountId(configuration.account))
+    }
+    func timeline(for configuration: UntisAccountIntent, in context: Context) async -> Timeline<UntisScheduleEntry> {
+        let entry = UntisScheduleProvider().loadEntry(accountId: untisAccountId(configuration.account))
+        let update = Calendar.current.date(byAdding: .minute, value: 30, to: Date())!
+        return Timeline(entries: [entry], policy: .after(update))
     }
 }
 
@@ -36,8 +48,14 @@ struct UntisDailyScheduleWidget: Widget {
     let kind: String = "UntisWidgetDailySchedule"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: UntisScheduleProvider()) { entry in
-            UntisDailyScheduleView(entry: entry)
+        if #available(iOSApplicationExtension 17.0, *) {
+            AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountScheduleProvider()) { entry in
+                UntisDailyScheduleView(entry: entry)
+            }
+        } else {
+            StaticConfiguration(kind: kind, provider: UntisScheduleProvider()) { entry in
+                UntisDailyScheduleView(entry: entry)
+            }
         }
         .configurationDisplayName("Daily Schedule")
         .description("Shows your full day schedule.")

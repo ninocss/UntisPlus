@@ -29,6 +29,7 @@ import 'core/time_utils.dart';
 import 'core/timetable_date_utils.dart';
 import 'services/notification_service.dart';
 import 'services/background_service.dart';
+import 'services/alarm_service.dart';
 import 'services/backup_service.dart';
 import 'services/demo_mode_service.dart';
 import 'services/homework_service.dart';
@@ -48,10 +49,12 @@ part 'screens/grades_tracker_page.dart';
 part 'screens/settings_hub.dart';
 part 'screens/settings/settings_timetable_page.dart';
 part 'screens/settings/settings_notifications_page.dart';
+part 'screens/settings/settings_alarm_page.dart';
 part 'screens/settings/settings_appearance_page.dart';
 part 'screens/settings/settings_subjects_page.dart';
 part 'screens/settings/settings_ai_page.dart';
 part 'screens/settings/settings_backup_page.dart';
+part 'screens/settings/settings_widgets_page.dart';
 part 'screens/settings/settings_account_page.dart';
 part 'screens/settings/settings_about_updates_page.dart';
 part 'widgets/animated_background.dart';
@@ -106,6 +109,24 @@ void _registerNativeUiActions() {
       pendingAssistantOpenNotifier.value = true;
     }
   });
+}
+
+/// Invoked by the native exact pre-wake alarm. It deliberately reuses the
+/// existing authenticated WebUntis sync, then tells Android the final plan.
+@pragma('vm:entry-point')
+void alarmRefreshDispatcher() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await updateUntisData();
+  } catch (_) {
+    // The native scheduler retains the last confirmed alarm on a failed sync.
+  } finally {
+    try {
+      await const MethodChannel(
+        'untisplus/alarm_refresh',
+      ).invokeMethod<void>('completed');
+    } catch (_) {}
+  }
 }
 
 Future<void> _applyAndroidWindowBlur(bool enabled) async {
@@ -616,6 +637,13 @@ void main() async {
   await prefs.setString('installedAppVersion', appVersion);
   showChangelogOnStartup = prefs.getBool('showChangelogPending') ?? false;
   demoModeNotifier.value = prefs.getBool('demoMode') ?? false;
+  // Demo mode is an explicit temporary choice; do not silently replace it
+  // with the last saved account during startup.
+  if (!demoModeNotifier.value) {
+    await initializeUntisAccounts(prefs);
+  } else {
+    untisAccountsNotifier.value = List.unmodifiable(_readUntisAccounts(prefs));
+  }
   final bool isLoggedIn = prefs.containsKey('sessionId');
   final bool onboardingCompleted =
       prefs.getBool('onboardingCompleted') ?? false;
@@ -687,7 +715,12 @@ void main() async {
   appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
   appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
   unawaited(_applyAndroidWindowBlur(blurEnabledNotifier.value));
-  await loadCustomData();
+  await loadAccountPersonalData();
+  if (!kIsWeb && Platform.isAndroid) {
+    // Re-arm durable Android alarms after process death/app update. Missing
+    // special access is surfaced by the alarm settings page.
+    await AlarmService.instance.restore();
+  }
 
   pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
     0,
@@ -729,20 +762,6 @@ void main() async {
       prefs.getBool('importantChangesPush') ?? true;
 
   await loadCustomBackgroundsFromPrefs(prefs);
-
-  hiddenSubjectsNotifier.value = (prefs.getStringList('hiddenSubjects') ?? [])
-      .toSet();
-  try {
-    final colorsJson = prefs.getString('subjectColors');
-    if (colorsJson != null) {
-      final decoded = jsonDecode(colorsJson);
-      if (decoded is Map) {
-        subjectColorsNotifier.value = decoded.map(
-          (k, v) => MapEntry(k.toString(), (v as num).toInt()),
-        );
-      }
-    }
-  } catch (_) {}
 
   geminiApiKey = prefs.getString('geminiApiKey') ?? '';
   final hasProviderConfig = prefs.containsKey('aiProvider');
@@ -1129,6 +1148,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   AnimationController? _carouselAnimController;
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
   double _dayDragTotal = 0.0;
+  bool _isWeekCarouselAnimating = false;
+  int _weekFetchGeneration = 0;
+  bool _isExportingTimetable = false;
   final GlobalKey _timetableExportKey = GlobalKey();
   final Map<String, Map<dynamic, dynamic>> _temporaryLessonOriginals = {};
 
@@ -1530,6 +1552,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _onSwipeLeft() {
+    if (_isWeekCarouselAnimating) return;
     if (_tabController.index < 4) {
       HapticFeedback.selectionClick();
       _tabController.animateTo(_tabController.index + 1);
@@ -1542,6 +1565,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _onSwipeRight() {
+    if (_isWeekCarouselAnimating) return;
     if (_tabController.index > 0) {
       HapticFeedback.selectionClick();
       _tabController.animateTo(_tabController.index - 1);
@@ -1710,14 +1734,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _exportTimetableImage() async {
-    final boundary = _timetableExportKey.currentContext?.findRenderObject();
-    if (boundary is! RenderRepaintBoundary) return;
     try {
+      // The on-screen timetable reserves space for the transparent app bar.
+      // Temporarily remove that viewport-only padding from the repaint boundary
+      // so the saved image starts with the actual timetable content.
+      setState(() => _isExportingTimetable = true);
+      await WidgetsBinding.instance.endOfFrame;
+      final boundary = _timetableExportKey.currentContext?.findRenderObject();
+      if (boundary is! RenderRepaintBoundary) return;
       final image = await boundary.toImage(
         pixelRatio: MediaQuery.of(
           context,
         ).devicePixelRatio.clamp(1.0, 3.0).toDouble(),
       );
+      if (mounted) setState(() => _isExportingTimetable = false);
       final data = await image.toByteData(format: ImageByteFormat.png);
       if (data == null) return;
       final result = await FilePicker.saveFile(
@@ -1737,11 +1767,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           const SnackBar(content: Text('Bild konnte nicht exportiert werden')),
         );
       }
+    } finally {
+      if (mounted && _isExportingTimetable) {
+        setState(() => _isExportingTimetable = false);
+      }
     }
   }
 
   Future<void> _updateHomeWidgets(Map<int, List<dynamic>> week) async {
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (kIsWeb) return;
     final now = DateTime.now();
     final todayLessons = List<dynamic>.from(week[now.weekday - 1] ?? [])
       ..sort(
@@ -1791,6 +1825,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         })
         .join('\n');
     try {
+      UntisAccount? activeAccount;
+      for (final account in untisAccountsNotifier.value) {
+        if (account.id == activeUntisAccountId) {
+          activeAccount = account;
+          break;
+        }
+      }
       await WidgetService.updateWidgets(
         currentLesson: current == null
             ? 'Keine aktuelle Stunde'
@@ -1802,6 +1843,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             ? 'Keine offenen Hausaufgaben'
             : homework,
         notificationSummary: 'Neue Mitteilungen in Untis+ öffnen',
+        accountId: activeUntisAccountId ?? 'active',
+        accountLabel: activeAccount?.label ?? schoolName,
+        status: DateFormat('HH:mm').format(now),
       );
     } catch (_) {
       // A widget update must never block timetable rendering.
@@ -2064,6 +2108,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _onCarouselDragStart(DragStartDetails details) {
+    if (_isWeekCarouselAnimating) return;
     setState(() {
       _carouselOffset = 0;
       _dayDragTotal = 0;
@@ -2072,6 +2117,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _onCarouselDragUpdate(DragUpdateDetails details) {
+    if (_isWeekCarouselAnimating) return;
     final dx = details.delta.dx;
     final maxOffset = MediaQuery.of(context).size.width * 0.92;
     if (_viewMode == 0) {
@@ -2103,6 +2149,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _onCarouselDragEnd(DragEndDetails details) {
+    if (_isWeekCarouselAnimating) return;
     final width = context.findRenderObject() != null
         ? (context.findRenderObject()! as RenderBox).size.width
         : 400.0;
@@ -2133,6 +2180,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _animateCarouselTo(int direction, double width) {
+    if (_isWeekCarouselAnimating) return;
+    final mondayBeforeAnimation = _currentMonday;
+    _isWeekCarouselAnimating = true;
     if (direction == 0) {
       _carouselAnimController?.dispose();
       _carouselAnimController = AnimationController(
@@ -2154,6 +2204,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           setState(() {
             _carouselOffset = 0;
           });
+          _isWeekCarouselAnimating = false;
         }
       });
       _carouselAnimController!.forward();
@@ -2181,8 +2232,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     _carouselAnimController!.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
         final newMonday = direction > 0
-            ? _currentMonday.subtract(const Duration(days: 7))
-            : _currentMonday.add(const Duration(days: 7));
+            ? mondayBeforeAnimation.subtract(const Duration(days: 7))
+            : mondayBeforeAnimation.add(const Duration(days: 7));
         final cacheKey = _mondayKey(newMonday);
         final cached = _adjacentWeekCache[cacheKey];
         setState(() {
@@ -2200,6 +2251,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             _tabController.animateTo(4, duration: Duration.zero);
           }
         });
+        _isWeekCarouselAnimating = false;
         HapticFeedback.selectionClick();
         _fetchFullWeek();
         _prefetchAdjacentWeeks();
@@ -2330,9 +2382,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     return merged;
   }
-
-  List<_TimeRangeLabel> _collectTimeRangesFromWeek() =>
-      _collectTimeRangesFromData(_weekData);
 
   List<_TimeRangeLabel> _collectTimeRangesFromData(
     Map<int, List<dynamic>> weekData,
@@ -3319,9 +3368,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     Map<int, List<dynamic>>? weekData,
   }) {
     final wd = weekData ?? _weekData;
+    final m = monday ?? _currentMonday;
     final media = MediaQuery.of(context);
-    final topContentPadding =
-        media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
+    final topContentPadding = _isExportingTimetable
+        ? 10.0
+        : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
 
     final lessons = (wd[dayIndex] ?? [])
         .where(
@@ -3354,10 +3405,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     const double timeColWidth = 40;
-    final timeRanges = _collectTimeRangesFromWeek();
+    // During a week swipe, render time and date labels from the incoming
+    // cached week as well. Reading the active week here made those rails lag
+    // behind the cards until the snap animation had already completed.
+    final timeRanges = _collectTimeRangesFromData(wd);
 
     final now = DateTime.now();
-    final dayDate = _currentMonday.add(Duration(days: dayIndex));
+    final dayDate = m.add(Duration(days: dayIndex));
     final isToday =
         dayDate.year == now.year &&
         dayDate.month == now.month &&
@@ -3752,7 +3806,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final wd = weekData ?? _weekData;
     final m = monday ?? _currentMonday;
     final media = MediaQuery.of(context);
-    final topContentPadding = media.padding.top + kToolbarHeight + 10;
+    final topContentPadding = _isExportingTimetable
+        ? 10.0
+        : media.padding.top + kToolbarHeight + 10;
 
     int globalMin = 480;
     int globalMax = 900;
@@ -4395,6 +4451,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _fetchFullWeek({bool silent = false}) async {
+    final requestGeneration = ++_weekFetchGeneration;
+    final requestedMonday = _currentMonday;
+    bool isCurrentRequest() =>
+        mounted &&
+        requestGeneration == _weekFetchGeneration &&
+        _currentMonday == requestedMonday;
+
     if (personId == 0 && personType == 0) {}
 
     _holidays = [];
@@ -4420,7 +4483,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     if (isDemoMode) {
       final tempWeek = DemoModeService.buildWeek(
-        _currentMonday,
+        requestedMonday,
         locale: appLocaleNotifier.value,
       );
       _applyKnownSubjectsFromWeek(tempWeek);
@@ -4429,8 +4492,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         requestPersonId: requestPersonId,
         requestPersonType: requestPersonType,
         weekData: tempWeek,
+        monday: requestedMonday,
       );
-      if (!mounted) return;
+      if (!isCurrentRequest()) return;
       setState(() {
         _weekData = tempWeek;
         _showingCachedWeek = false;
@@ -4446,6 +4510,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       requestPersonId: requestPersonId,
       requestPersonType: requestPersonType,
     );
+    if (!isCurrentRequest()) return;
     final hasCachedWeek = cachedWeek != null;
     if (hasCachedWeek && mounted) {
       _applyKnownSubjectsFromWeek(cachedWeek);
@@ -4462,6 +4527,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       await _fetchMasterData();
       await _fetchHomeworkAndNotes();
     } catch (e) {
+      if (!isCurrentRequest()) return;
       if (hasCachedWeek) {
         if (!mounted) return;
         setState(() {
@@ -4481,8 +4547,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
-    DateTime friday = _currentMonday.add(const Duration(days: 4));
-    int startDate = int.parse(DateFormat('yyyyMMdd').format(_currentMonday));
+    if (!isCurrentRequest()) return;
+
+    DateTime friday = requestedMonday.add(const Duration(days: 4));
+    int startDate = int.parse(DateFormat('yyyyMMdd').format(requestedMonday));
     int endDate = int.parse(DateFormat('yyyyMMdd').format(friday));
 
     final url = Uri.parse(
@@ -4514,6 +4582,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           "jsonrpc": "2.0",
         }),
       );
+
+      if (!isCurrentRequest()) return;
 
       if (response.statusCode != 200) {
         if (hasCachedWeek) {
@@ -4571,6 +4641,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     "${syStart.substring(0, 4)}-${syStart.substring(4, 6)}-${syStart.substring(6, 8)}",
                   );
                   // Adjust current monday to start of school year if we are far away
+                  if (!isCurrentRequest()) return;
                   if (_currentMonday.isBefore(syStartDate)) {
                     _currentMonday = syStartDate.subtract(
                       Duration(days: syStartDate.weekday - 1),
@@ -4620,6 +4691,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     "${syStart.substring(0, 4)}-${syStart.substring(4, 6)}-${syStart.substring(6, 8)}",
                   );
                   // Adjust current monday to start of school year if we are far away
+                  if (!isCurrentRequest()) return;
                   if (_currentMonday.isBefore(syStartDate)) {
                     _currentMonday = syStartDate.subtract(
                       Duration(days: syStartDate.weekday - 1),
@@ -4633,6 +4705,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           } catch (_) {}
         }
 
+        if (!isCurrentRequest()) return;
         if (hasCachedWeek) {
           if (!mounted) return;
           setState(() {
@@ -4720,10 +4793,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 _subjectShortMap[subId] ??
                 (eventName.isNotEmpty ? eventName : '');
             resolvedLesson['_teacher'] = teacherResolved;
-            resolvedLesson['_room'] =
-                (lesson['ro'] as List?)?.firstOrNull?['name'] ??
-                _roomMap[roId] ??
-                '';
+            // WebUntis returns `ro` as either a list, a single map or just an
+            // ID depending on the timetable endpoint. Normalize every form so
+            // a week fetched after the carousel snap cannot lose room #2.
+            final rawRooms = lesson['ro'];
+            final roomEntries = rawRooms is Iterable
+                ? rawRooms
+                : rawRooms == null
+                ? const <dynamic>[]
+                : <dynamic>[rawRooms];
+            final roomNames = roomEntries
+                .map((rawRoom) {
+                  if (rawRoom is Map) {
+                    final id = int.tryParse(rawRoom['id']?.toString() ?? '');
+                    return (rawRoom['name']?.toString() ?? _roomMap[id] ?? '')
+                        .trim();
+                  }
+                  final id = int.tryParse(rawRoom.toString());
+                  return _roomMap[id] ?? '';
+                })
+                .where((name) => name.isNotEmpty)
+                .toSet()
+                .toList(growable: false);
+            resolvedLesson['_room'] = roomNames.isNotEmpty
+                ? roomNames.join(', ')
+                : (_roomMap[roId] ?? '');
             resolvedLesson['_classNames'] =
                 (lesson['kl'] as List?)
                     ?.map((k) => k['name']?.toString() ?? '')
@@ -4754,7 +4848,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         // Fallback 1: Public weekly endpoint often contains teacher IDs in
         // period elements (type=2) even when JSON-RPC omits `te`.
         try {
-          final weeklyDate = DateFormat('yyyy-MM-dd').format(_currentMonday);
+          final weeklyDate = DateFormat('yyyy-MM-dd').format(requestedMonday);
           final publicUri = Uri.https(
             schoolUrl,
             '/WebUntis/api/public/timetable/weekly/data',
@@ -4930,11 +5024,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         requestPersonId: requestPersonId,
         requestPersonType: requestPersonType,
         weekData: tempWeek,
+        monday: requestedMonday,
       );
 
       await _fetchHolidays();
 
-      if (!mounted) return;
+      if (!isCurrentRequest()) return;
       setState(() {
         _weekData = tempWeek;
         _showingCachedWeek = false;
@@ -4944,6 +5039,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       unawaited(_updateHomeWidgets(tempWeek));
     } catch (e) {
       debugPrint("Fehler beim Laden: $e");
+      if (!isCurrentRequest()) return;
       if (hasCachedWeek) {
         if (!mounted) return;
         setState(() {
@@ -6357,6 +6453,7 @@ class HomeworkPage extends StatelessWidget {
           l.homeworkTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 24),
         ),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -6640,6 +6737,57 @@ class _HomeworkViewState extends State<_HomeworkView> {
       return '${d.substring(6, 8)}.${d.substring(4, 6)}.${d.substring(0, 4)}';
     }
 
+    Future<void> toggleDone() async {
+      HapticFeedback.selectionClick();
+      final hwId = hw['id'];
+      if (isCustom) {
+        final list = List<Map<String, dynamic>>.from(
+          customHomeworkNotifier.value,
+        );
+        final idx = list.indexWhere((e) => e['id'] == hwId);
+        if (idx != -1) {
+          list[idx]['isDone'] = !isDone;
+          await saveCustomHomework(list);
+        }
+        return;
+      }
+
+      final numericId = int.tryParse(hwId.toString());
+      if (numericId == null) return;
+      await HomeworkService.toggleDone(numericId, !isDone);
+      final currentApi = List<Map<String, dynamic>>.from(
+        homeworksNotifier.value,
+      );
+      for (var item in currentApi) {
+        if (item['id'] == numericId) item['_done'] = !isDone;
+      }
+      homeworksNotifier.value = currentApi;
+    }
+
+    Future<void> openHomework() async {
+      HapticFeedback.selectionClick();
+      if (!isCustom) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Diese Hausaufgabe wird von Untis verwaltet.'),
+          ),
+        );
+        return;
+      }
+      final list = List<Map<String, dynamic>>.from(
+        customHomeworkNotifier.value,
+      );
+      final editIndex = list.indexWhere(
+        (item) => item['id']?.toString() == hw['id']?.toString(),
+      );
+      if (editIndex == -1) return;
+      await _showAddHomeworkDialog(
+        context,
+        existing: list[editIndex],
+        editIndex: editIndex,
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: _glassContainer(
@@ -6659,72 +6807,50 @@ class _HomeworkViewState extends State<_HomeworkView> {
           borderRadius: BorderRadius.circular(24),
           child: InkWell(
             borderRadius: BorderRadius.circular(24),
-            onTap: () async {
-              HapticFeedback.selectionClick();
-              final isUntis = hw['_source'] == 'untis';
-              final hwId = hw['id'];
-              if (isCustom) {
-                final list = List<Map<String, dynamic>>.from(
-                  customHomeworkNotifier.value,
-                );
-                final idx = list.indexWhere((e) => e['id'] == hwId);
-                if (idx != -1) {
-                  list[idx]['isDone'] = !isDone;
-                  await saveCustomHomework(list);
-                }
-              } else if (isUntis) {
-                final numericId = int.tryParse(hwId.toString());
-                if (numericId != null) {
-                  await HomeworkService.toggleDone(numericId, !isDone);
-                  final currentApi = List<Map<String, dynamic>>.from(
-                    homeworksNotifier.value,
-                  );
-                  for (var item in currentApi) {
-                    if (item['id'] == numericId) {
-                      item['_done'] = !isDone;
-                    }
-                  }
-                  homeworksNotifier.value = currentApi;
-                }
-              }
-            },
+            onTap: openHomework,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    width: 28,
-                    height: 28,
-                    margin: const EdgeInsets.only(top: 2),
-                    decoration: BoxDecoration(
-                      color: isDone ? cs.primary : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isDone
-                            ? cs.primary
-                            : accent.withValues(alpha: 0.6),
-                        width: 2,
+                  InkResponse(
+                    onTap: toggleDone,
+                    radius: 22,
+                    containedInkWell: true,
+                    borderRadius: BorderRadius.circular(10),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      width: 28,
+                      height: 28,
+                      margin: const EdgeInsets.only(top: 2),
+                      decoration: BoxDecoration(
+                        color: isDone ? cs.primary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDone
+                              ? cs.primary
+                              : accent.withValues(alpha: 0.6),
+                          width: 2,
+                        ),
+                        boxShadow: isDone
+                            ? [
+                                BoxShadow(
+                                  color: cs.primary.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
                       ),
-                      boxShadow: isDone
-                          ? [
-                              BoxShadow(
-                                color: cs.primary.withValues(alpha: 0.3),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
+                      child: isDone
+                          ? Icon(
+                              Icons.check_rounded,
+                              size: 20,
+                              color: cs.onPrimary,
+                            )
                           : null,
                     ),
-                    child: isDone
-                        ? Icon(
-                            Icons.check_rounded,
-                            size: 20,
-                            color: cs.onPrimary,
-                          )
-                        : null,
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -7370,7 +7496,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
 
   Future<void> _loadCustomExams() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList('customExams') ?? [];
+    final raw = prefs.getStringList(_accountDataKey('customExams')) ?? [];
     final list = raw
         .map((e) {
           try {
@@ -8016,7 +8142,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.assignment_rounded, size: 18),
+                  const Icon(Icons.assignment_late_rounded, size: 18),
                   const SizedBox(width: 8),
                   Text(l.navExams),
                 ],
@@ -8026,7 +8152,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.assignment_late_rounded, size: 18),
+                  const Icon(Icons.assignment_rounded, size: 18),
                   const SizedBox(width: 8),
                   Text(l.navHomework),
                 ],
@@ -8048,108 +8174,96 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
       body: TabBarView(
         controller: _tabController,
         children: [
-          _AnimatedBackground(
-            child: RefreshIndicator(
-              onRefresh: _refreshExams,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                children: [
-                  _buildExamStatsHeader(cs, l, upcoming),
-                  if (_loading) ...[
-                    const SizedBox(height: 140),
-                    const Center(child: CircularProgressIndicator()),
-                  ] else if (exams.isEmpty) ...[
-                    const SizedBox(height: 80),
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.assignment_outlined,
-                            size: 80,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+          RefreshIndicator(
+            onRefresh: _refreshExams,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              children: [
+                _buildExamStatsHeader(cs, l, upcoming),
+                if (_loading) ...[
+                  const SizedBox(height: 140),
+                  const Center(child: CircularProgressIndicator()),
+                ] else if (exams.isEmpty) ...[
+                  const SizedBox(height: 80),
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.assignment_outlined,
+                          size: 80,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          l.examsNone,
+                          style: GoogleFonts.outfit(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: cs.onSurface,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l.examsNone,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          l.examsNoneHint,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: _refreshExams,
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: Text(
+                            l.examsReload,
                             style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onSurface,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l.examsNoneHint,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton.icon(
-                            onPressed: _refreshExams,
-                            icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: Text(
-                              l.examsReload,
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ] else ...[
-                    if (upcoming.isNotEmpty) ...[
-                      _sectionHeader(
-                        cs,
-                        l.examsUpcoming,
-                        Icons.upcoming_rounded,
-                        upcoming.length,
-                      ),
-                      const SizedBox(height: 8),
-                      ...upcoming.asMap().entries.map(
-                        (e) => _animatedExamCard(
-                          e.key,
-                          context,
-                          cs,
-                          e.value,
-                          true,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    if (past.isNotEmpty) ...[
-                      _sectionHeader(
-                        cs,
-                        l.examsPast,
-                        Icons.history_rounded,
-                        past.length,
-                      ),
-                      const SizedBox(height: 8),
-                      ...past.asMap().entries.map(
-                        (e) => _animatedExamCard(
-                          e.key,
-                          context,
-                          cs,
-                          e.value,
-                          false,
-                        ),
-                      ),
-                    ],
+                  ),
+                ] else ...[
+                  if (upcoming.isNotEmpty) ...[
+                    _sectionHeader(
+                      cs,
+                      l.examsUpcoming,
+                      Icons.upcoming_rounded,
+                      upcoming.length,
+                    ),
+                    const SizedBox(height: 8),
+                    ...upcoming.asMap().entries.map(
+                      (e) =>
+                          _animatedExamCard(e.key, context, cs, e.value, true),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  if (past.isNotEmpty) ...[
+                    _sectionHeader(
+                      cs,
+                      l.examsPast,
+                      Icons.history_rounded,
+                      past.length,
+                    ),
+                    const SizedBox(height: 8),
+                    ...past.asMap().entries.map(
+                      (e) =>
+                          _animatedExamCard(e.key, context, cs, e.value, false),
+                    ),
                   ],
                 ],
-              ),
+              ],
             ),
           ),
-          const _AnimatedBackground(child: _HomeworkView()),
-          _AnimatedBackground(child: GradesTrackerPage(key: _gradesTrackerKey)),
+          const _HomeworkView(),
+          GradesTrackerPage(key: _gradesTrackerKey),
         ],
       ),
     );
@@ -8761,7 +8875,7 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
 
   Future<void> _loadExams() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList('customExams') ?? [];
+    final raw = prefs.getStringList(_accountDataKey('customExams')) ?? [];
     final customExams = raw
         .map((e) {
           try {
@@ -10475,7 +10589,9 @@ class SchoolNotificationsPage extends StatefulWidget {
 }
 
 class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
-  List<_SchoolNotificationItem> _items = const [];
+  List<_SchoolNotificationItem> _newsItems = const [];
+  List<_SchoolNotificationItem> _inboxItems = const [];
+  bool _showInbox = false;
   bool _loading = true;
   String? _error;
   DateTime? _lastUpdated;
@@ -10502,7 +10618,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           }).toList();
       if (!mounted) return;
       setState(() {
-        _items = fetched;
+        _newsItems = fetched;
+        _inboxItems = const [];
         _loading = false;
         _error = null;
         _lastUpdated = DateTime.now();
@@ -10522,7 +10639,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           schoolName.isEmpty) {
         if (!mounted) return;
         setState(() {
-          _items = const [];
+          _newsItems = const [];
+          _inboxItems = const [];
           _loading = false;
           _error = null;
           _lastUpdated = DateTime.now();
@@ -10542,13 +10660,17 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       final fetched = await _fetchSchoolNotifications();
       if (!mounted) return;
       setState(() {
-        _items = fetched;
+        _newsItems = fetched.news;
+        _inboxItems = fetched.inbox;
         _loading = false;
         _error = null;
         _lastUpdated = DateTime.now();
       });
       if (!kIsWeb && Platform.isAndroid) {
-        final summary = fetched.take(3).map((item) => item.title).join('\n');
+        final summary = fetched.news
+            .take(3)
+            .map((item) => item.title)
+            .join('\n');
         unawaited(
           WidgetService.updateNotificationWidget(
             summary.isEmpty ? 'Keine neuen Mitteilungen' : summary,
@@ -10565,7 +10687,10 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     }
   }
 
-  Future<List<_SchoolNotificationItem>> _fetchSchoolNotifications() async {
+  Future<
+    ({List<_SchoolNotificationItem> inbox, List<_SchoolNotificationItem> news})
+  >
+  _fetchSchoolNotifications() async {
     final start = DateTime.now().subtract(const Duration(days: 45));
     final end = DateTime.now().add(const Duration(days: 90));
     final startStr = DateFormat('yyyyMMdd').format(start);
@@ -10632,28 +10757,60 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       if (response == null || response.body.trim().isEmpty) return null;
 
       final raw = response.body.trim();
-      if (!raw.startsWith('{') && raw.isNotEmpty) {
-        return raw.replaceAll('"', '').trim();
-      }
-
+      if (!raw.startsWith('{')) return raw.replaceAll('"', '').trim();
       try {
         final decoded = jsonDecode(raw);
-        if (decoded is String && decoded.trim().isNotEmpty) {
+        if (decoded is String && decoded.trim().isNotEmpty)
           return decoded.trim();
-        }
         if (decoded is Map) {
-          final candidate =
+          final token =
               decoded['token'] ??
               decoded['jwt'] ??
               decoded['jwt_token'] ??
               decoded['accessToken'];
-          if (candidate != null && candidate.toString().trim().isNotEmpty) {
-            return candidate.toString().trim();
+          if (token != null && token.toString().trim().isNotEmpty) {
+            return token.toString().trim();
           }
         }
       } catch (_) {}
-
       return null;
+    }
+
+    Future<List<Map<String, dynamic>>> fetchInboxMessages() async {
+      final token = await fetchJwtToken();
+      if (token == null || token.isEmpty) return const [];
+      final uri = Uri.parse(
+        'https://$schoolUrl/WebUntis/api/rest/view/v1/messages',
+      );
+      final response = await requestWithCookieFallback(
+        (headers) => http.get(
+          uri,
+          headers: {...headers, 'Authorization': 'Bearer $token'},
+        ),
+      );
+      if (response == null || response.body.trim().isEmpty) return const [];
+      try {
+        final decoded = jsonDecode(response.body);
+        final incoming = decoded is Map ? decoded['incomingMessages'] : null;
+        if (incoming is! List) return const [];
+        return incoming
+            .whereType<Map>()
+            .map((raw) {
+              final map = Map<String, dynamic>.from(raw);
+              final sender = map['sender'];
+              return {
+                ...map,
+                'message': map['contentPreview'] ?? map['message'] ?? '',
+                'author': sender is Map
+                    ? sender['displayName'] ?? sender['name']
+                    : null,
+                'date': map['sentDateTime'] ?? map['date'],
+              };
+            })
+            .toList(growable: false);
+      } catch (_) {
+        return const [];
+      }
     }
 
     Future<List<Map<String, dynamic>>> fetchNewsWidgetMessages() async {
@@ -10692,48 +10849,6 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       }
 
       return out;
-    }
-
-    Future<List<Map<String, dynamic>>> fetchInboxMessages() async {
-      final token = await fetchJwtToken();
-      if (token == null || token.isEmpty) return const [];
-
-      final uri = Uri.parse(
-        'https://$schoolUrl/WebUntis/api/rest/view/v1/messages',
-      );
-      final response = await requestWithCookieFallback(
-        (headers) => http.get(
-          uri,
-          headers: {...headers, 'Authorization': 'Bearer $token'},
-        ),
-      );
-
-      if (response == null || response.body.trim().isEmpty) return const [];
-
-      try {
-        final decoded = jsonDecode(response.body);
-        if (decoded is! Map) return const [];
-        final incoming = decoded['incomingMessages'];
-        if (incoming is! List) return const [];
-
-        return incoming
-            .whereType<Map>()
-            .map((raw) {
-              final map = Map<String, dynamic>.from(raw);
-              final sender = map['sender'];
-              return {
-                ...map,
-                'message': map['contentPreview'] ?? map['message'] ?? '',
-                'author': sender is Map
-                    ? sender['displayName'] ?? sender['name']
-                    : null,
-                'date': map['sentDateTime'] ?? map['date'],
-              };
-            })
-            .toList(growable: false);
-      } catch (_) {
-        return const [];
-      }
     }
 
     Future<List<dynamic>> tryGet(String path, {bool retry = true}) async {
@@ -10792,13 +10907,15 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       return const [];
     }
 
-    final results = await Future.wait([
+    // WebUntis distinguishes personal Mitteilungen from its public Start
+    // feed. Fetch both in parallel and keep them separate in the UI so a
+    // reload cannot silently replace one category with the other.
+    final initialResults = await Future.wait([
       fetchInboxMessages(),
       fetchNewsWidgetMessages(),
     ]);
-
-    final inboxMessages = results[0];
-    List<dynamic> schoolMessages = results[1];
+    final inboxMessages = initialResults[0];
+    List<dynamic> schoolMessages = initialResults[1];
 
     if (schoolMessages.isEmpty) {
       final schoolFallbacks = [
@@ -10832,72 +10949,75 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       }
     }
 
-    final raw = [...inboxMessages, ...schoolMessages];
-    final seen = <String>{};
-    final items = <_SchoolNotificationItem>[];
+    List<_SchoolNotificationItem> toItems(List<dynamic> raw) {
+      final seen = <String>{};
+      final items = <_SchoolNotificationItem>[];
 
-    for (final entry in raw) {
-      if (entry is! Map) continue;
-      final map = Map<String, dynamic>.from(entry);
+      for (final entry in raw) {
+        if (entry is! Map) continue;
+        final map = Map<String, dynamic>.from(entry);
 
-      final title =
-          (map['title'] ??
-                  map['subject'] ??
-                  map['headline'] ??
-                  map['name'] ??
-                  '')
-              .toString()
-              .trim();
-      final body =
-          (map['message'] ??
-                  map['text'] ??
-                  map['content'] ??
-                  map['description'] ??
-                  '')
-              .toString()
-              .trim();
-      if (title.isEmpty && body.isEmpty) continue;
+        final title =
+            (map['title'] ??
+                    map['subject'] ??
+                    map['headline'] ??
+                    map['name'] ??
+                    '')
+                .toString()
+                .trim();
+        final body =
+            (map['message'] ??
+                    map['text'] ??
+                    map['content'] ??
+                    map['description'] ??
+                    '')
+                .toString()
+                .trim();
+        if (title.isEmpty && body.isEmpty) continue;
 
-      final id =
-          (map['id'] ?? map['messageId'] ?? map['uuid'] ?? '$title-$body')
-              .toString();
-      if (seen.contains(id)) continue;
-      seen.add(id);
+        final id =
+            (map['id'] ?? map['messageId'] ?? map['uuid'] ?? '$title-$body')
+                .toString();
+        if (seen.contains(id)) continue;
+        seen.add(id);
 
-      final dt = _parseNotificationDate(
-        map['date'] ??
-            map['startDate'] ??
-            map['publishDate'] ??
-            map['timestamp'] ??
-            map['created'] ??
-            map['createdAt'] ??
-            map['lastModified'],
-      );
+        final dt = _parseNotificationDate(
+          map['date'] ??
+              map['startDate'] ??
+              map['publishDate'] ??
+              map['timestamp'] ??
+              map['created'] ??
+              map['createdAt'] ??
+              map['lastModified'],
+        );
 
-      items.add(
-        _SchoolNotificationItem(
-          id: id,
-          title: title.isEmpty
-              ? AppL10n.of(appLocaleNotifier.value).infoTitle
-              : title,
-          body: body,
-          date: dt,
-          author:
-              (map['author'] ?? map['createdBy'] ?? map['publisher'] ?? '')
-                  .toString()
-                  .trim()
-                  .isEmpty
-              ? null
-              : (map['author'] ?? map['createdBy'] ?? map['publisher'])
+        items.add(
+          _SchoolNotificationItem(
+            id: id,
+            title: title.isEmpty
+                ? AppL10n.of(appLocaleNotifier.value).infoTitle
+                : title,
+            body: body,
+            date: dt,
+            author:
+                (map['author'] ?? map['createdBy'] ?? map['publisher'] ?? '')
                     .toString()
-                    .trim(),
-          url: _pickNotificationUrl(map),
-        ),
-      );
+                    .trim()
+                    .isEmpty
+                ? null
+                : (map['author'] ?? map['createdBy'] ?? map['publisher'])
+                      .toString()
+                      .trim(),
+            url: _pickNotificationUrl(map),
+          ),
+        );
+      }
+
+      items.sort((a, b) => b.sortValue.compareTo(a.sortValue));
+      return items;
     }
 
-    items.sort((a, b) => b.sortValue.compareTo(a.sortValue));
-    return items;
+    return (inbox: toItems(inboxMessages), news: toItems(schoolMessages));
   }
 
   DateTime? _parseNotificationDate(dynamic raw) {
@@ -10968,6 +11088,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final activeItems = _showInbox ? _inboxItems : _newsItems;
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
@@ -11023,7 +11144,25 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                       ),
                     ),
                   const SizedBox(height: 6),
-                  if (_items.isEmpty)
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.campaign_rounded),
+                        label: Text('Start'),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.mail_outline_rounded),
+                        label: Text('Mitteilungen'),
+                      ),
+                    ],
+                    selected: {_showInbox},
+                    onSelectionChanged: (selection) =>
+                        setState(() => _showInbox = selection.first),
+                  ),
+                  const SizedBox(height: 12),
+                  if (activeItems.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
@@ -11052,7 +11191,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                       ),
                     )
                   else
-                    ..._items.map((item) {
+                    ...activeItems.map((item) {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(14),
@@ -11069,7 +11208,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             Row(
                               children: [
                                 Icon(
-                                  Icons.campaign_rounded,
+                                  _showInbox
+                                      ? Icons.mail_outline_rounded
+                                      : Icons.campaign_rounded,
                                   size: 18,
                                   color: cs.primary,
                                 ),

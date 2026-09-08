@@ -11,6 +11,7 @@ class SettingsAccountPage extends StatefulWidget {
 class _SettingsAccountPageState extends State<SettingsAccountPage> {
   String _username = '';
   String _serverUrl = '';
+  String? _switchingAccountId;
 
   @override
   void initState() {
@@ -25,6 +26,52 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
       _username = prefs.getString('username') ?? '';
       _serverUrl = prefs.getString('schoolUrl') ?? '';
     });
+  }
+
+  Future<void> _switchAccount(UntisAccount account) async {
+    if (account.id == activeUntisAccountId || _switchingAccountId != null) {
+      return;
+    }
+    setState(() => _switchingAccountId = account.id);
+    await switchUntisAccount(account.id);
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      _buildBouncyRoute(const MainNavigationScreen()),
+      (route) => false,
+    );
+  }
+
+  Future<void> _removeActiveAccount() async {
+    final activeId = activeUntisAccountId;
+    if (activeId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Konto entfernen?'),
+        content: const Text(
+          'Das Konto wird nur von diesem Gerät entfernt. Deine übrigen App-Einstellungen bleiben erhalten.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Entfernen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final hasNextAccount = await removeUntisAccount(activeId);
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      _buildBouncyRoute(
+        hasNextAccount ? const MainNavigationScreen() : const OnboardingFlow(),
+      ),
+      (route) => false,
+    );
   }
 
   @override
@@ -106,15 +153,60 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                   ),
                 ),
                 SettingsTile(
-                  icon: Icons.logout_rounded,
+                  icon: Icons.person_remove_rounded,
                   iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.8),
                   iconColor: cs.onErrorContainer,
-                  title: l.settingsLogout,
+                  title: 'Dieses Konto entfernen',
+                  subtitle: 'Von diesem Gerät abmelden',
                   destructive: true,
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _settingsLogout(context),
+                  onTap: _removeActiveAccount,
                 ),
               ],
+            ),
+
+            ValueListenableBuilder<List<UntisAccount>>(
+              valueListenable: untisAccountsNotifier,
+              builder: (context, accounts, _) => SettingsGroup(
+                title: 'Konten',
+                children: [
+                  for (final account in accounts)
+                    SettingsTile(
+                      icon: account.id == activeUntisAccountId
+                          ? Icons.check_circle_rounded
+                          : Icons.account_circle_outlined,
+                      iconBackgroundColor: account.id == activeUntisAccountId
+                          ? cs.primaryContainer
+                          : cs.surfaceContainerHighest,
+                      iconColor: account.id == activeUntisAccountId
+                          ? cs.onPrimaryContainer
+                          : cs.onSurfaceVariant,
+                      title: account.label,
+                      subtitle: '${account.schoolName} · ${account.schoolUrl}',
+                      trailing: _switchingAccountId == account.id
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : account.id == activeUntisAccountId
+                          ? const Icon(Icons.check_rounded)
+                          : const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _switchAccount(account),
+                    ),
+                  SettingsTile(
+                    icon: Icons.person_add_alt_1_rounded,
+                    title: 'Konto hinzufügen',
+                    subtitle: 'Weiteres WebUntis-Konto verbinden',
+                    trailing: const Icon(Icons.add_rounded),
+                    onTap: () => Navigator.of(context).push(
+                      _buildBouncyRoute(
+                        const OnboardingFlow(accountOnly: true),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             // ── GROUP 2: DEMO MODE ──

@@ -572,7 +572,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           }
         }
 
-        final rawExams = prefs.getStringList('customExams') ?? [];
+        final rawExams =
+            prefs.getStringList(_accountDataKey('customExams')) ?? [];
         final customExams = rawExams
             .map((e) {
               try {
@@ -2438,6 +2439,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     pendingTimetableCurrentLessonNotifier.value = event.currentLesson;
     pendingTimetableNextLessonNotifier.value = event.nextLesson;
 
+    // An update notification used to fall through to the timetable. Keep its
+    // payload self-contained so tapping it always lands at the release view
+    // where the download action is available.
+    if (event.payload?['type']?.toString() == 'update' ||
+        actionId == 'open_updates') {
+      _onNavTap(3);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(
+          context,
+        ).push(_buildBouncyRoute(const SettingsAboutUpdatesPage()));
+      });
+      return;
+    }
+
     if (actionId == 'open_free_rooms' || actionId == 'open_next_lesson') {
       _onNavTap(0);
       pendingTimetableActionNotifier.value = actionId;
@@ -2537,10 +2553,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
     if (tokens.id != AppThemeId.defaultTheme) {
-      return ValueListenableBuilder<bool>(
-        valueListenable: backgroundAnimationsNotifier,
-        builder: (context, enabled, _) =>
-            ThemedBackdrop(child: page, animate: enabled),
+      return ValueListenableBuilder<int>(
+        valueListenable: backgroundAnimationStyleNotifier,
+        builder: (context, style, _) => ValueListenableBuilder<bool>(
+          valueListenable: backgroundAnimationsNotifier,
+          builder: (context, enabled, _) => ThemedBackdrop(
+            child: page,
+            animate: enabled,
+            backgroundStyle: style,
+          ),
+        ),
       );
     }
 
@@ -3199,6 +3221,10 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     );
 
     return ThemedSurface(
+      // Vivid's backdrop is deliberately animated. Blurring the dock over it
+      // caused a one-frame alpha jump while the entrance animation was still
+      // running, and is costly on weaker devices.
+      blur: tokens.id != AppThemeId.vivid,
       borderRadius: navRadius,
       color: cs.surfaceContainerHigh.withValues(alpha: 0.66),
       border: Border.all(

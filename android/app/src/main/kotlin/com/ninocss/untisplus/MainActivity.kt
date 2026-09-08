@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.media.RingtoneManager
 import androidx.core.content.FileProvider
 import java.io.File
 import io.flutter.embedding.engine.FlutterEngine
@@ -21,6 +22,8 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val NOTIFICATION_CHANNEL = "untisplus/notifications"
         private const val UI_CHANNEL = "untisplus/ui"
+        private const val ALARM_CHANNEL = "untisplus/alarm"
+        private const val RINGTONE_PICK_REQUEST = 8341
         
         private const val EXTRA_ACTION_ID = "notification_action_id"
         private const val EXTRA_CURRENT_LESSON = "notification_current_lesson"
@@ -29,6 +32,8 @@ class MainActivity : FlutterActivity() {
 
     private var notificationChannel: MethodChannel? = null
     private var uiChannel: MethodChannel? = null
+    private var alarmChannel: MethodChannel? = null
+    private var ringtoneResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -71,6 +76,29 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        alarmChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ALARM_CHANNEL)
+        alarmChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "replacePlans" -> {
+                    val maps = (call.arguments as? Map<*, *>)?.get("plans") as? List<*>
+                    val plans = org.json.JSONArray()
+                    maps?.forEach { value ->
+                        if (value is Map<*, *>) plans.put(org.json.JSONObject(value))
+                    }
+                    AlarmScheduler.replacePlans(this, plans)
+                    result.success(null)
+                }
+                "getReadiness" -> result.success(alarmReadiness())
+                "openPermissionSettings" -> {
+                    val type = (call.arguments as? Map<*, *>)?.get("type") as? String
+                    openAlarmPermissionSettings(type)
+                    result.success(null)
+                }
+                "pickRingtone" -> pickAlarmRingtone(call.arguments as? Map<*, *>, result)
+                else -> result.notImplemented()
+            }
+        }
+
         handleIntent(intent)
     }
 
@@ -80,6 +108,66 @@ class MainActivity : FlutterActivity() {
             val method = window.javaClass.getMethod("setBackdropBlurRadius", Int::class.javaPrimitiveType)
             method.invoke(window, radius.coerceAtLeast(0))
         } catch (_: Exception) {}
+    }
+
+    private fun alarmReadiness(): Map<String, Boolean> {
+        val manager = getSystemService(NotificationManager::class.java)
+        val fullScreenAllowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            manager.canUseFullScreenIntent()
+        } else true
+        return mapOf(
+            "exactAlarms" to AlarmScheduler.canScheduleExact(this),
+            "fullScreenIntent" to fullScreenAllowed,
+            "dndAccess" to manager.isNotificationPolicyAccessGranted,
+            "notifications" to (Build.VERSION.SDK_INT < Build.VERSION_CODES.N || manager.areNotificationsEnabled()),
+        )
+    }
+
+    private fun openAlarmPermissionSettings(type: String?) {
+        val intent = when (type) {
+            "exact" -> Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName"))
+            "fullscreen" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))
+            } else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+            "dnd" -> Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+            else -> Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+        }
+        try { startActivity(intent) } catch (_: Exception) {}
+    }
+
+    private fun pickAlarmRingtone(args: Map<*, *>?, result: MethodChannel.Result) {
+        if (ringtoneResult != null) {
+            result.error("picker_busy", "The ringtone picker is already open.", null)
+            return
+        }
+        val current = args?.get("currentUri") as? String
+        ringtoneResult = result
+        val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+            if (!current.isNullOrBlank()) {
+                putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(current))
+            }
+        }
+        try {
+            startActivityForResult(intent, RINGTONE_PICK_REQUEST)
+        } catch (error: Exception) {
+            ringtoneResult = null
+            result.error("picker_failed", error.message, null)
+        }
+    }
+
+    @Deprecated("Deprecated in AndroidX Activity but required by FlutterActivity's current host API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != RINGTONE_PICK_REQUEST) return
+        val result = ringtoneResult ?: return
+        ringtoneResult = null
+        val uri = if (resultCode == RESULT_OK) {
+            data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)?.toString()
+        } else null
+        result.success(uri)
     }
 
     private fun setLauncherIcon(icon: String): Boolean {

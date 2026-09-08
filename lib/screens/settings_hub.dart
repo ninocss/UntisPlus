@@ -250,6 +250,13 @@ Future<void> _settingsSetImportantChangesPush(bool value) async {
   importantChangesPushNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool('importantChangesPush', value);
+  if (value) {
+    updateUntisData().catchError((_) {});
+  } else {
+    await NotificationService().cancelNotification(
+      NotificationIds.importantChanges,
+    );
+  }
 }
 
 Future<void> _settingsSetDemoMode(BuildContext context, bool enabled) async {
@@ -275,20 +282,6 @@ Future<void> _settingsSetDemoMode(BuildContext context, bool enabled) async {
       (route) => false,
     );
   }
-}
-
-Future<void> _settingsLogout(BuildContext context) async {
-  HapticFeedback.heavyImpact();
-  defaultClassId = null;
-  defaultClassName = null;
-  favoriteClassIds = {};
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.clear();
-  if (!context.mounted) return;
-  Navigator.of(context).pushAndRemoveUntil(
-    _buildBouncyRoute(const OnboardingFlow()),
-    (route) => false,
-  );
 }
 
 String _settingsAiCompatibilityLabel(AppL10n l, String value) {
@@ -515,8 +508,7 @@ Future<void> _settingsSyncFromPrefs() async {
   mistralApiKey = prefs.getString('mistralApiKey') ?? mistralApiKey;
   customAiApiKey = prefs.getString('customAiApiKey') ?? customAiApiKey;
 
-  hiddenSubjectsNotifier.value =
-      (prefs.getStringList('hiddenSubjects') ?? const <String>[]).toSet();
+  await loadAccountPersonalData();
 
   defaultClassId = prefs.getInt('defaultClassId');
   defaultClassName = prefs.getString('defaultClassName');
@@ -524,16 +516,6 @@ Future<void> _settingsSyncFromPrefs() async {
       .map((idStr) => int.tryParse(idStr))
       .whereType<int>()
       .toSet();
-
-  try {
-    final colorsJson = prefs.getString('subjectColors');
-    if (colorsJson != null) {
-      final decoded = jsonDecode(colorsJson) as Map<String, dynamic>;
-      subjectColorsNotifier.value = decoded.map(
-        (k, v) => MapEntry(k, (v as num).toInt()),
-      );
-    }
-  } catch (_) {}
 
   await loadCustomBackgroundsFromPrefs(prefs);
 }
@@ -742,16 +724,23 @@ class SettingsHubPage extends StatelessWidget {
         subtitle: l.settingsDemoMode,
         pageBuilder: () => const SettingsAccountPage(),
       ),
+      makeItem(
+        index: 7,
+        icon: Icons.widgets_rounded,
+        title: 'Widgets',
+        subtitle: 'Vorschau und Kontozuordnung',
+        pageBuilder: () => const SettingsWidgetsPage(),
+      ),
       if (!Platform.isIOS)
         makeItem(
-          index: 7,
+          index: 8,
           icon: Icons.system_update_alt_rounded,
           title: l.settingsHubUpdatesAbout,
           subtitle: l.settingsAppVersion,
           pageBuilder: () => const SettingsAboutUpdatesPage(),
         ),
       makeItem(
-        index: 8,
+        index: 9,
         icon: Icons.coffee_rounded,
         title: l.settingsSupport,
         subtitle: l.settingsSupportDesc,
@@ -813,6 +802,7 @@ class SettingsHubPage extends StatelessWidget {
                 items[1],
                 items[4],
                 items[6],
+                items[7],
               ]),
             ),
             const SizedBox(height: 16),
@@ -831,7 +821,7 @@ class SettingsHubPage extends StatelessWidget {
               },
               child: _buildGroupCard(cs, context, [
                 items[5],
-                if (!Platform.isIOS) items[7],
+                if (!Platform.isIOS) items[8],
                 items.last,
               ]),
             ),

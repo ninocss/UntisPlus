@@ -15,6 +15,7 @@ class UntisPlusApp extends StatelessWidget {
       scheme.brightness,
       scheme,
     );
+    final useBlur = blurEnabled && tokens.supportsBlur;
     final baseText = untisThemeTextTheme(visualTheme, scheme.brightness);
     TextStyle displayFont({
       Color? color,
@@ -59,7 +60,7 @@ class UntisPlusApp extends StatelessWidget {
         iconTheme: IconThemeData(color: scheme.primary),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: blurEnabled && tokens.supportsBlur
+        backgroundColor: useBlur
             ? scheme.surfaceContainer.withValues(alpha: 0.68)
             : scheme.surfaceContainer,
         indicatorColor: scheme.secondaryContainer,
@@ -90,12 +91,12 @@ class UntisPlusApp extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         elevation: 0,
-        color: blurEnabled
+        color: useBlur
             ? scheme.surfaceContainerLow.withValues(alpha: 0.8)
             : scheme.surfaceContainerLow,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: blurEnabled
+        backgroundColor: useBlur
             ? scheme.surfaceContainerHigh.withValues(alpha: 0.85)
             : scheme.surfaceContainerHigh,
         surfaceTintColor: scheme.primary,
@@ -104,7 +105,7 @@ class UntisPlusApp extends StatelessWidget {
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: blurEnabled
+        backgroundColor: useBlur
             ? scheme.surfaceContainerLow.withValues(alpha: 0.85)
             : scheme.surfaceContainerLow,
         surfaceTintColor: scheme.primary,
@@ -311,6 +312,8 @@ class UntisPlusApp extends StatelessWidget {
                                     return MaterialApp(
                                       debugShowCheckedModeBanner: false,
                                       title: l.appName,
+                                      scrollBehavior:
+                                          const _UntisScrollBehavior(),
                                       theme: _themeFrom(
                                         lightScheme,
                                         isAmoled,
@@ -373,4 +376,17 @@ class UntisPlusApp extends StatelessWidget {
       },
     );
   }
+}
+
+/// Keeps the platform scroll physics but suppresses Android's overscroll
+/// glow/stretch, which otherwise flashes behind text at the end of a page.
+class _UntisScrollBehavior extends MaterialScrollBehavior {
+  const _UntisScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 }

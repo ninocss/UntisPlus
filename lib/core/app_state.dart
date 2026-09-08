@@ -10,6 +10,340 @@ String schoolUrl = "";
 String schoolName = "";
 int personId = 0;
 int personType = 0;
+
+/// A locally stored WebUntis login. Credentials remain on-device, just like
+/// the previous single-account setup; this only makes the old profile
+/// switchable instead of overwriting it when another account is added.
+class UntisAccount {
+  final String id;
+  final String username;
+  final String schoolUrl;
+  final String schoolName;
+  final String password;
+  final String credentialMode;
+  final String sessionId;
+  final int personId;
+  final int personType;
+  final DateTime lastUsedAt;
+
+  const UntisAccount({
+    required this.id,
+    required this.username,
+    required this.schoolUrl,
+    required this.schoolName,
+    required this.password,
+    required this.credentialMode,
+    required this.sessionId,
+    required this.personId,
+    required this.personType,
+    required this.lastUsedAt,
+  });
+
+  String get label => username.isEmpty ? schoolName : username;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'username': username,
+    'schoolUrl': schoolUrl,
+    'schoolName': schoolName,
+    'password': password,
+    'credentialMode': credentialMode,
+    'sessionId': sessionId,
+    'personId': personId,
+    'personType': personType,
+    'lastUsedAt': lastUsedAt.toIso8601String(),
+  };
+
+  factory UntisAccount.fromJson(Map<String, dynamic> json) {
+    return UntisAccount(
+      id: json['id']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      schoolUrl: json['schoolUrl']?.toString() ?? '',
+      schoolName: json['schoolName']?.toString() ?? '',
+      password: json['password']?.toString() ?? '',
+      credentialMode: json['credentialMode']?.toString() ?? 'password',
+      sessionId: json['sessionId']?.toString() ?? '',
+      personId: (json['personId'] as num?)?.toInt() ?? 0,
+      personType: (json['personType'] as num?)?.toInt() ?? 5,
+      lastUsedAt:
+          DateTime.tryParse(json['lastUsedAt']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
+  UntisAccount copyWith({String? sessionId, DateTime? lastUsedAt}) =>
+      UntisAccount(
+        id: id,
+        username: username,
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        password: password,
+        credentialMode: credentialMode,
+        sessionId: sessionId ?? this.sessionId,
+        personId: personId,
+        personType: personType,
+        lastUsedAt: lastUsedAt ?? this.lastUsedAt,
+      );
+}
+
+const String _accountsStorageKey = 'untisAccountsV1';
+const String _activeAccountStorageKey = 'activeUntisAccountId';
+String? activeUntisAccountId;
+final ValueNotifier<List<UntisAccount>> untisAccountsNotifier = ValueNotifier(
+  const [],
+);
+
+/// Personal planning data follows the selected account. App appearance and
+/// language deliberately remain shared device preferences.
+String _accountDataKey(String key) {
+  final accountId = activeUntisAccountId;
+  return accountId == null ? key : 'account.$accountId.$key';
+}
+
+Future<void> _copyLegacyAccountData(
+  SharedPreferences prefs,
+  String accountId,
+) async {
+  for (final key in const [
+    'customHomework',
+    'customExams',
+    'customGrades',
+    'hiddenSubjects',
+  ]) {
+    final scopedKey = 'account.$accountId.$key';
+    if (!prefs.containsKey(scopedKey) && prefs.containsKey(key)) {
+      await prefs.setStringList(
+        scopedKey,
+        prefs.getStringList(key) ?? const [],
+      );
+    }
+  }
+  const colorKey = 'subjectColors';
+  final scopedColorKey = 'account.$accountId.$colorKey';
+  if (!prefs.containsKey(scopedColorKey) && prefs.containsKey(colorKey)) {
+    await prefs.setString(scopedColorKey, prefs.getString(colorKey) ?? '{}');
+  }
+}
+
+Future<void> _syncActiveAccountDataForBackground(
+  SharedPreferences prefs,
+) async {
+  for (final key in const ['hiddenSubjects']) {
+    await prefs.setStringList(
+      key,
+      prefs.getStringList(_accountDataKey(key)) ?? const [],
+    );
+  }
+}
+
+List<UntisAccount> _readUntisAccounts(SharedPreferences prefs) {
+  try {
+    final decoded = jsonDecode(prefs.getString(_accountsStorageKey) ?? '[]');
+    if (decoded is! List) return const [];
+    return decoded
+        .whereType<Map>()
+        .map((item) => UntisAccount.fromJson(Map<String, dynamic>.from(item)))
+        .where(
+          (account) =>
+              account.id.isNotEmpty &&
+              account.schoolUrl.isNotEmpty &&
+              account.schoolName.isNotEmpty,
+        )
+        .toList(growable: false);
+  } catch (_) {
+    return const [];
+  }
+}
+
+Future<void> _writeUntisAccounts(
+  SharedPreferences prefs,
+  List<UntisAccount> accounts,
+) async {
+  final ordered = List<UntisAccount>.from(accounts)
+    ..sort((a, b) => b.lastUsedAt.compareTo(a.lastUsedAt));
+  untisAccountsNotifier.value = List.unmodifiable(ordered);
+  await prefs.setString(
+    _accountsStorageKey,
+    jsonEncode(ordered.map((account) => account.toJson()).toList()),
+  );
+  unawaited(
+    WidgetService.publishAccountCatalog(
+      ordered.map(
+        (account) => {
+          'id': account.id,
+          'label': account.label,
+          'school': account.schoolName,
+        },
+      ),
+    ),
+  );
+}
+
+Future<void> _writeActiveAccountFields(
+  SharedPreferences prefs,
+  UntisAccount account,
+) async {
+  sessionID = account.sessionId;
+  schoolUrl = account.schoolUrl;
+  schoolName = account.schoolName;
+  personId = account.personId;
+  personType = account.personType;
+  activeUntisAccountId = account.id;
+  demoModeNotifier.value = false;
+  await Future.wait([
+    prefs.setString(_activeAccountStorageKey, account.id),
+    prefs.setString('sessionId', account.sessionId),
+    prefs.setString('schoolUrl', account.schoolUrl),
+    prefs.setString('schoolName', account.schoolName),
+    prefs.setString('username', account.username),
+    prefs.setString('password', account.password),
+    prefs.setString('loginCredentialMode', account.credentialMode),
+    prefs.setInt('personId', account.personId),
+    prefs.setInt('personType', account.personType),
+    prefs.setBool('demoMode', false),
+  ]);
+}
+
+/// Migrates the former one-account preference layout on first launch.
+Future<void> initializeUntisAccounts(SharedPreferences prefs) async {
+  var accounts = _readUntisAccounts(prefs);
+  if (accounts.isEmpty) {
+    final username = prefs.getString('username') ?? '';
+    final url = prefs.getString('schoolUrl') ?? '';
+    final name = prefs.getString('schoolName') ?? '';
+    if (username.isNotEmpty && url.isNotEmpty && name.isNotEmpty) {
+      final migrated = UntisAccount(
+        id: 'legacy-${DateTime.now().microsecondsSinceEpoch}',
+        username: username,
+        schoolUrl: url,
+        schoolName: name,
+        password: prefs.getString('password') ?? '',
+        credentialMode: prefs.getString('loginCredentialMode') ?? 'password',
+        sessionId: prefs.getString('sessionId') ?? '',
+        personId: prefs.getInt('personId') ?? 0,
+        personType: prefs.getInt('personType') ?? 5,
+        lastUsedAt: DateTime.now(),
+      );
+      accounts = [migrated];
+      await _writeUntisAccounts(prefs, accounts);
+      await _writeActiveAccountFields(prefs, migrated);
+      await _copyLegacyAccountData(prefs, migrated.id);
+      return;
+    }
+  }
+
+  untisAccountsNotifier.value = List.unmodifiable(accounts);
+  unawaited(
+    WidgetService.publishAccountCatalog(
+      accounts.map(
+        (account) => {
+          'id': account.id,
+          'label': account.label,
+          'school': account.schoolName,
+        },
+      ),
+    ),
+  );
+  if (accounts.isEmpty) return;
+  final requestedId = prefs.getString(_activeAccountStorageKey);
+  UntisAccount active = accounts.first;
+  for (final account in accounts) {
+    if (account.id == requestedId) {
+      active = account;
+      break;
+    }
+  }
+  await _writeActiveAccountFields(prefs, active);
+}
+
+Future<void> saveOrUpdateUntisAccount({
+  required String username,
+  required String password,
+  required String credentialMode,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final accounts = _readUntisAccounts(prefs).toList();
+  final matchingIndex = accounts.indexWhere(
+    (account) =>
+        account.username.toLowerCase() == username.trim().toLowerCase() &&
+        account.schoolUrl.toLowerCase() == schoolUrl.trim().toLowerCase() &&
+        account.schoolName.toLowerCase() == schoolName.trim().toLowerCase(),
+  );
+  final account = UntisAccount(
+    id: matchingIndex >= 0
+        ? accounts[matchingIndex].id
+        : 'account-${DateTime.now().microsecondsSinceEpoch}',
+    username: username.trim(),
+    schoolUrl: schoolUrl.trim(),
+    schoolName: schoolName.trim(),
+    password: password,
+    credentialMode: credentialMode,
+    sessionId: sessionID,
+    personId: personId,
+    personType: personType,
+    lastUsedAt: DateTime.now(),
+  );
+  if (matchingIndex >= 0) {
+    accounts[matchingIndex] = account;
+  } else {
+    accounts.add(account);
+  }
+  await _writeUntisAccounts(prefs, accounts);
+  await _writeActiveAccountFields(prefs, account);
+  await loadAccountPersonalData();
+  await _syncActiveAccountDataForBackground(prefs);
+}
+
+Future<void> switchUntisAccount(String accountId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final accounts = _readUntisAccounts(prefs).toList();
+  final index = accounts.indexWhere((account) => account.id == accountId);
+  if (index < 0) return;
+  final account = accounts[index].copyWith(lastUsedAt: DateTime.now());
+  accounts[index] = account;
+  await _writeUntisAccounts(prefs, accounts);
+  await _writeActiveAccountFields(prefs, account);
+  await _syncActiveAccountDataForBackground(prefs);
+  await loadAccountPersonalData();
+  currentWeekDataNotifier.value = const {};
+  homeworksNotifier.value = const [];
+  lessonNotesNotifier.value = const [];
+  apiExamsNotifier.value = const [];
+}
+
+Future<bool> removeUntisAccount(String accountId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final accounts = _readUntisAccounts(
+    prefs,
+  ).where((account) => account.id != accountId).toList();
+  await _writeUntisAccounts(prefs, accounts);
+  if (activeUntisAccountId != accountId) return accounts.isNotEmpty;
+  if (accounts.isNotEmpty) {
+    await switchUntisAccount(accounts.first.id);
+    return true;
+  }
+  activeUntisAccountId = null;
+  sessionID = '';
+  schoolUrl = '';
+  schoolName = '';
+  personId = 0;
+  personType = 0;
+  demoModeNotifier.value = false;
+  await Future.wait([
+    prefs.remove(_activeAccountStorageKey),
+    prefs.remove('sessionId'),
+    prefs.remove('schoolUrl'),
+    prefs.remove('schoolName'),
+    prefs.remove('username'),
+    prefs.remove('password'),
+    prefs.remove('loginCredentialMode'),
+    prefs.remove('personId'),
+    prefs.remove('personType'),
+    prefs.setBool('demoMode', false),
+  ]);
+  return false;
+}
+
 String geminiApiKey = "";
 String openAiApiKey = "";
 String mistralApiKey = "";
@@ -279,7 +613,7 @@ final ValueNotifier<List<Map<String, dynamic>>> customGradesNotifier =
 Future<void> loadCustomData() async {
   final prefs = await SharedPreferences.getInstance();
 
-  final rawHw = prefs.getStringList('customHomework') ?? [];
+  final rawHw = prefs.getStringList(_accountDataKey('customHomework')) ?? [];
   customHomeworkNotifier.value = rawHw
       .map((e) {
         try {
@@ -291,7 +625,7 @@ Future<void> loadCustomData() async {
       .where((e) => e.isNotEmpty)
       .toList();
 
-  final rawExams = prefs.getStringList('customExams') ?? [];
+  final rawExams = prefs.getStringList(_accountDataKey('customExams')) ?? [];
   customExamsNotifier.value = rawExams
       .map((e) {
         try {
@@ -303,7 +637,7 @@ Future<void> loadCustomData() async {
       .where((e) => e.isNotEmpty)
       .toList();
 
-  final rawGrades = prefs.getStringList('customGrades') ?? [];
+  final rawGrades = prefs.getStringList(_accountDataKey('customGrades')) ?? [];
   customGradesNotifier.value = rawGrades
       .map((e) {
         try {
@@ -316,11 +650,34 @@ Future<void> loadCustomData() async {
       .toList();
 }
 
+Future<void> loadAccountPersonalData() async {
+  final prefs = await SharedPreferences.getInstance();
+  await loadCustomData();
+  hiddenSubjectsNotifier.value =
+      (prefs.getStringList(_accountDataKey('hiddenSubjects')) ?? const [])
+          .toSet();
+  try {
+    final colorsJson = prefs.getString(_accountDataKey('subjectColors'));
+    if (colorsJson == null) {
+      subjectColorsNotifier.value = const {};
+      return;
+    }
+    final decoded = jsonDecode(colorsJson);
+    if (decoded is Map) {
+      subjectColorsNotifier.value = decoded.map(
+        (key, value) => MapEntry(key.toString(), (value as num).toInt()),
+      );
+    }
+  } catch (_) {
+    subjectColorsNotifier.value = const {};
+  }
+}
+
 Future<void> saveCustomHomework(List<Map<String, dynamic>> list) async {
   customHomeworkNotifier.value = List.from(list);
   final prefs = await SharedPreferences.getInstance();
   await prefs.setStringList(
-    'customHomework',
+    _accountDataKey('customHomework'),
     list.map((e) => jsonEncode(e)).toList(),
   );
 }
@@ -329,7 +686,7 @@ Future<void> saveCustomExams(List<Map<String, dynamic>> list) async {
   customExamsNotifier.value = List.from(list);
   final prefs = await SharedPreferences.getInstance();
   await prefs.setStringList(
-    'customExams',
+    _accountDataKey('customExams'),
     list.map((e) => jsonEncode(e)).toList(),
   );
 }
@@ -338,7 +695,7 @@ Future<void> saveCustomGrades(List<Map<String, dynamic>> list) async {
   customGradesNotifier.value = List.from(list);
   final prefs = await SharedPreferences.getInstance();
   await prefs.setStringList(
-    'customGrades',
+    _accountDataKey('customGrades'),
     list.map((e) => jsonEncode(e)).toList(),
   );
 }
@@ -350,14 +707,22 @@ Future<void> _hideSubject(String key) async {
   final updated = Set<String>.from(hiddenSubjectsNotifier.value)..add(key);
   hiddenSubjectsNotifier.value = updated;
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList('hiddenSubjects', updated.toList());
+  await prefs.setStringList(
+    _accountDataKey('hiddenSubjects'),
+    updated.toList(),
+  );
+  await _syncActiveAccountDataForBackground(prefs);
 }
 
 Future<void> _unhideSubject(String key) async {
   final updated = Set<String>.from(hiddenSubjectsNotifier.value)..remove(key);
   hiddenSubjectsNotifier.value = updated;
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList('hiddenSubjects', updated.toList());
+  await prefs.setStringList(
+    _accountDataKey('hiddenSubjects'),
+    updated.toList(),
+  );
+  await _syncActiveAccountDataForBackground(prefs);
 }
 
 final ValueNotifier<Map<String, int>> subjectColorsNotifier = ValueNotifier({});
@@ -379,7 +744,7 @@ Future<void> _setSubjectColor(String key, int colorValue) async {
   subjectColorsNotifier.value = updated;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(
-    'subjectColors',
+    _accountDataKey('subjectColors'),
     jsonEncode(Map<String, dynamic>.from(updated)),
   );
 }
@@ -390,7 +755,7 @@ Future<void> _clearSubjectColor(String key) async {
   subjectColorsNotifier.value = updated;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(
-    'subjectColors',
+    _accountDataKey('subjectColors'),
     jsonEncode(Map<String, dynamic>.from(updated)),
   );
 }
@@ -418,6 +783,17 @@ Future<bool> _reAuthenticate() async {
     if (newSession != null && newSession.isNotEmpty) {
       sessionID = newSession;
       await prefs.setString('sessionId', sessionID);
+      final accounts = _readUntisAccounts(prefs).toList();
+      final index = accounts.indexWhere(
+        (account) => account.id == activeUntisAccountId,
+      );
+      if (index >= 0) {
+        accounts[index] = accounts[index].copyWith(
+          sessionId: sessionID,
+          lastUsedAt: DateTime.now(),
+        );
+        await _writeUntisAccounts(prefs, accounts);
+      }
       return true;
     }
   } catch (_) {}
