@@ -41,10 +41,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     aiSystemPromptTemplate =
         prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
     aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
-    geminiApiKey = prefs.getString('geminiApiKey') ?? geminiApiKey;
-    openAiApiKey = prefs.getString('openAiApiKey') ?? openAiApiKey;
-    mistralApiKey = prefs.getString('mistralApiKey') ?? mistralApiKey;
-    customAiApiKey = prefs.getString('customAiApiKey') ?? customAiApiKey;
+    await loadSecureAiApiKeys(prefs);
     aiTemperature = prefs.getDouble('aiTemperature') ?? aiTemperature;
     aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
     aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
@@ -114,8 +111,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   /// to the advertised model size). Prevents activating a truncated/corrupt
   /// download that llama.cpp would reject with "Failed to create inference
   /// context".
-  Future<bool> _isValidModelFile(String path,
-      {LocalModelInfo? model}) async {
+  Future<bool> _isValidModelFile(String path, {LocalModelInfo? model}) async {
     try {
       final file = File(path);
       if (!await file.exists()) return false;
@@ -142,10 +138,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   Future<void> _downloadLocalModel(LocalModelInfo model) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final path = await _getLocalModelPath(model.id);
-    
+
     // Check if already downloading
     if (_downloadingModels.contains(model.id)) return;
-    
+
     // Check if already downloaded and valid
     if (await _isValidModelFile(path, model: model)) {
       setState(() {
@@ -184,8 +180,9 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             if (last == null || now.difference(last).inMilliseconds > 200) {
               final lastReceived = _lastReceived[model.id] ?? received;
               final deltaMs = now.difference(last ?? now).inMilliseconds;
-              _downloadSpeed[model.id] =
-                  deltaMs > 0 ? (received - lastReceived) * 1000 / deltaMs : 0;
+              _downloadSpeed[model.id] = deltaMs > 0
+                  ? (received - lastReceived) * 1000 / deltaMs
+                  : 0;
               _lastReceived[model.id] = received;
               _lastProgressUpdate[model.id] = now;
               setState(() {
@@ -198,9 +195,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           }
         },
         cancelToken: cancelToken,
-        options: Options(
-          headers: {'User-Agent': 'UntisPlus/1.0'},
-        ),
+        options: Options(headers: {'User-Agent': 'UntisPlus/1.0'}),
       );
 
       // Verify the downloaded file is a valid GGUF model before promoting it
@@ -255,9 +250,9 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
       });
       _markDownloadStateChanged();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${l.aiConnectionError} $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${l.aiConnectionError} $e')));
       }
     } finally {
       _downloadTokens.remove(model.id);
@@ -286,7 +281,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   Future<void> _deleteLocalModel(LocalModelInfo model) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final path = await _getLocalModelPath(model.id);
-    
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -296,7 +291,9 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: Theme.of(ctx).colorScheme.errorContainer.withValues(alpha: 0.6),
+            color: Theme.of(
+              ctx,
+            ).colorScheme.errorContainer.withValues(alpha: 0.6),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -307,10 +304,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         ),
         title: Text(
           l.settingsAiLocalModelDeleteConfirm,
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w700,
-            fontSize: 17,
-          ),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 17),
           textAlign: TextAlign.center,
         ),
         actionsAlignment: MainAxisAlignment.center,
@@ -507,19 +501,34 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         final Border cardBorder;
         if (isActive) {
           cardColor = cs.primaryContainer.withValues(alpha: 0.5);
-          cardBorder = Border.all(color: cs.primary.withValues(alpha: 0.55), width: 1.4);
+          cardBorder = Border.all(
+            color: cs.primary.withValues(alpha: 0.55),
+            width: 1.4,
+          );
         } else if (hasError) {
           cardColor = cs.errorContainer.withValues(alpha: 0.35);
-          cardBorder = Border.all(color: cs.error.withValues(alpha: 0.3), width: 1);
+          cardBorder = Border.all(
+            color: cs.error.withValues(alpha: 0.3),
+            width: 1,
+          );
         } else if (isDownloading) {
           cardColor = cs.primaryContainer.withValues(alpha: 0.28);
-          cardBorder = Border.all(color: cs.primary.withValues(alpha: 0.4), width: 1);
+          cardBorder = Border.all(
+            color: cs.primary.withValues(alpha: 0.4),
+            width: 1,
+          );
         } else if (downloaded) {
           cardColor = cs.secondaryContainer.withValues(alpha: 0.32);
-          cardBorder = Border.all(color: cs.outlineVariant.withValues(alpha: 0.35), width: 1);
+          cardBorder = Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+            width: 1,
+          );
         } else {
           cardColor = cs.surfaceContainerHigh.withValues(alpha: 0.55);
-          cardBorder = Border.all(color: cs.outlineVariant.withValues(alpha: 0.35), width: 1);
+          cardBorder = Border.all(
+            color: cs.outlineVariant.withValues(alpha: 0.35),
+            width: 1,
+          );
         }
 
         return AnimatedContainer(
@@ -775,7 +784,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         ),
         child: Row(
           children: [
-            Icon(Icons.error_outline_rounded, size: 20, color: cs.onErrorContainer),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 20,
+              color: cs.onErrorContainer,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -810,9 +823,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   if (!await _isValidModelFile(path, model: model)) {
                     if (ctx.mounted) {
                       ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(
-                          content: Text(l.aiLocalModelLoadError),
-                        ),
+                        SnackBar(content: Text(l.aiLocalModelLoadError)),
                       );
                     }
                     return;
@@ -909,10 +920,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               borderRadius: BorderRadius.circular(999),
               child: Stack(
                 children: [
-                  Container(
-                    height: 10,
-                    color: cs.surfaceContainerHighest,
-                  ),
+                  Container(height: 10, color: cs.surfaceContainerHighest),
                   FractionallySizedBox(
                     widthFactor: value.clamp(0.0, 1.0),
                     child: Container(
@@ -977,7 +985,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     return '$bytes B';
   }
 
-void _showProviderDialog() {
+  void _showProviderDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
@@ -990,12 +998,12 @@ void _showProviderDialog() {
               icon: provider == 'gemini'
                   ? Icons.auto_awesome_rounded
                   : provider == 'openai'
-                      ? Icons.chat_bubble_outline_rounded
-                      : provider == 'mistral'
-                          ? Icons.cloud_rounded
-                          : provider == 'local'
-                              ? Icons.memory_rounded
-                              : Icons.settings_ethernet_rounded,
+                  ? Icons.chat_bubble_outline_rounded
+                  : provider == 'mistral'
+                  ? Icons.cloud_rounded
+                  : provider == 'local'
+                  ? Icons.memory_rounded
+                  : Icons.settings_ethernet_rounded,
               selected: aiProvider == provider,
             ),
           )
@@ -1220,7 +1228,12 @@ void _showProviderDialog() {
         builder: (ctx) {
           final cs = Theme.of(ctx).colorScheme;
           return Padding(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(ctx).padding.bottom + 20),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              12,
+              20,
+              MediaQuery.of(ctx).padding.bottom + 20,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1247,11 +1260,16 @@ void _showProviderDialog() {
                 const SizedBox(height: 4),
                 Text(
                   'Verwende diese Platzhalter in deinem System-Prompt.',
-                  style: GoogleFonts.outfit(fontSize: 13, color: cs.onSurfaceVariant),
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.5),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.5,
+                  ),
                   child: ListView(
                     shrinkWrap: true,
                     children: l.aiPromptVariableDescriptions.entries
@@ -1259,9 +1277,13 @@ void _showProviderDialog() {
                           (entry) => Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
-                              color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
+                              color: cs.surfaceContainerHigh.withValues(
+                                alpha: 0.5,
+                              ),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(alpha: 0.2),
+                              ),
                             ),
                             child: ListTile(
                               dense: true,
@@ -1276,7 +1298,10 @@ void _showProviderDialog() {
                               ),
                               subtitle: Text(
                                 entry.value,
-                                style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w500),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
@@ -1289,7 +1314,10 @@ void _showProviderDialog() {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                    child: Text(
+                      l.settingsApiKeyCancel,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ],
@@ -1494,7 +1522,8 @@ void _showProviderDialog() {
                   max: 2,
                   divisions: 20,
                   suffix: temp.toStringAsFixed(1),
-                  desc: 'Höhere Werte machen Antworten kreativer, niedrigere präziser.',
+                  desc:
+                      'Höhere Werte machen Antworten kreativer, niedrigere präziser.',
                   onChanged: (v) => setStateDialog(() => temp = v),
                   cs: cs,
                 ),
@@ -1528,7 +1557,10 @@ void _showProviderDialog() {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: Text(l.settingsApiKeyCancel, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                      child: Text(
+                        l.settingsApiKeyCancel,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     FilledButton(
@@ -1541,10 +1573,18 @@ void _showProviderDialog() {
                         _reloadFromPrefs();
                       },
                       style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                       ),
-                      child: Text(l.settingsApiKeySave, style: GoogleFonts.outfit(fontWeight: FontWeight.w800)),
+                      child: Text(
+                        l.settingsApiKeySave,
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+                      ),
                     ),
                   ],
                 ),
@@ -1573,7 +1613,13 @@ void _showProviderDialog() {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 15)),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+              ),
+            ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
@@ -1582,13 +1628,20 @@ void _showProviderDialog() {
               ),
               child: Text(
                 suffix,
-                style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w700, fontSize: 13, color: cs.primary),
+                style: GoogleFonts.jetBrainsMono(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: cs.primary,
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 4),
-        Text(desc, style: GoogleFonts.outfit(fontSize: 12, color: cs.onSurfaceVariant)),
+        Text(
+          desc,
+          style: GoogleFonts.outfit(fontSize: 12, color: cs.onSurfaceVariant),
+        ),
         const SizedBox(height: 8),
         Slider(
           value: value,
@@ -1628,16 +1681,15 @@ void _showProviderDialog() {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('aiChatHistory');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.aiClearHistorySuccess)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.aiClearHistorySuccess)));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
@@ -1702,10 +1754,9 @@ void _showProviderDialog() {
                     ),
                     iconColor: cs.onSecondaryContainer,
                     title: l.settingsAiCustomBaseUrl,
-                    subtitle:
-                        aiCustomBaseUrl.isEmpty
-                            ? l.settingsAiCustomBaseUrlHint
-                            : aiCustomBaseUrl,
+                    subtitle: aiCustomBaseUrl.isEmpty
+                        ? l.settingsAiCustomBaseUrlHint
+                        : aiCustomBaseUrl,
                     onTap: _showBaseUrlDialog,
                   ),
                 ],
@@ -1717,10 +1768,9 @@ void _showProviderDialog() {
                     ),
                     iconColor: cs.onSecondaryContainer,
                     title: l.settingsAiApiKey,
-                    subtitle:
-                        activeKey.isEmpty
-                            ? l.settingsAiApiKeyNotSet
-                            : _settingsMaskKey(activeKey),
+                    subtitle: activeKey.isEmpty
+                        ? l.settingsAiApiKeyNotSet
+                        : _settingsMaskKey(activeKey),
                     onTap: _showApiKeyDialog,
                   ),
                 SettingsTile(
@@ -1747,11 +1797,11 @@ void _showProviderDialog() {
                   ),
                   iconColor: cs.onTertiaryContainer,
                   title: l.settingsAiPersonaTitle,
-                  subtitle: aiPersona == 'helpful' 
-                      ? l.settingsAiPersonaHelpful 
-                      : aiPersona == 'strict' 
-                          ? l.settingsAiPersonaStrict 
-                          : l.settingsAiPersonaBuddy,
+                  subtitle: aiPersona == 'helpful'
+                      ? l.settingsAiPersonaHelpful
+                      : aiPersona == 'strict'
+                      ? l.settingsAiPersonaStrict
+                      : l.settingsAiPersonaBuddy,
                   onTap: _showAiPersonaDialog,
                 ),
               ],
@@ -1809,9 +1859,7 @@ void _showProviderDialog() {
               children: [
                 SettingsTile(
                   icon: Icons.delete_sweep_rounded,
-                  iconBackgroundColor: cs.errorContainer.withValues(
-                    alpha: 0.7,
-                  ),
+                  iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
                   iconColor: cs.onErrorContainer,
                   title: l.aiClearHistoryTileTitle,
                   subtitle: l.aiClearHistoryTileDesc,

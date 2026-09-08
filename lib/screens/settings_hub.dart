@@ -8,6 +8,7 @@ const Map<String, String> _settingsLocaleLabels = {
 };
 
 Future<void> _settingsSetLocale(String code) async {
+  await ensureDateFormattingForLocale(code);
   appLocaleNotifier.value = code;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('appLocale', code);
@@ -385,26 +386,7 @@ Future<void> _settingsSetAiSystemPromptTemplate(String value) async {
 }
 
 Future<void> _settingsSetProviderApiKey(String key) async {
-  final prefs = await SharedPreferences.getInstance();
-  switch (_normalizeAiProvider(aiProvider)) {
-    case 'openai':
-      openAiApiKey = key;
-      await prefs.setString('openAiApiKey', key);
-      break;
-    case 'mistral':
-      mistralApiKey = key;
-      await prefs.setString('mistralApiKey', key);
-      break;
-    case 'custom':
-      customAiApiKey = key;
-      await prefs.setString('customAiApiKey', key);
-      break;
-    case 'gemini':
-    default:
-      geminiApiKey = key;
-      await prefs.setString('geminiApiKey', key);
-      break;
-  }
+  await setSecureAiApiKey(aiProvider, key);
 }
 
 String _settingsMaskKey(String key) {
@@ -503,10 +485,7 @@ Future<void> _settingsSyncFromPrefs() async {
   aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
   aiSystemPromptTemplate =
       prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
-  geminiApiKey = prefs.getString('geminiApiKey') ?? geminiApiKey;
-  openAiApiKey = prefs.getString('openAiApiKey') ?? openAiApiKey;
-  mistralApiKey = prefs.getString('mistralApiKey') ?? mistralApiKey;
-  customAiApiKey = prefs.getString('customAiApiKey') ?? customAiApiKey;
+  await loadSecureAiApiKeys(prefs);
 
   await loadAccountPersonalData();
 

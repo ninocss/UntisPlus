@@ -52,9 +52,14 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     }
   }
 
-  Future<String> _getValidatedExportContent() async {
+  Future<String?> _getValidatedExportContent() async {
+    final passphrase = _includeApiKeys
+        ? await _requestPassphrase(confirm: true)
+        : null;
+    if (_includeApiKeys && passphrase == null) return null;
     final content = await _backupService.exportAllToJsonText(
       includeApiKeys: _includeApiKeys,
+      passphrase: passphrase,
     );
     if (content.trim().isEmpty) {
       throw Exception('Exported content is empty');
@@ -70,6 +75,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     try {
       await _setBusyWhile(() async {
         final content = await _getValidatedExportContent();
+        if (content == null) return;
         final bytes = utf8.encode(content);
 
         final result = await FilePicker.saveFile(
@@ -81,7 +87,10 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         _showSnack(l.settingsBackupExportSuccess);
       });
     } catch (e) {
-      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})', isError: true);
+      _showSnack(
+        '${l.settingsBackupImportFailed} (${e.toString()})',
+        isError: true,
+      );
     }
   }
 
@@ -89,6 +98,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     await _setBusyWhile(() async {
       final content = await _getValidatedExportContent();
+      if (content == null) return;
       await Clipboard.setData(ClipboardData(text: content));
       _showSnack(l.settingsBackupExportClipboardSuccess);
     });
@@ -114,7 +124,16 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
 
         final confirmed = await _confirmImport();
         if (!confirmed) return;
-        await _backupService.importAllFromJsonText(content);
+        final passphrase = _backupService.requiresPassphrase(content)
+            ? await _requestPassphrase()
+            : null;
+        if (_backupService.requiresPassphrase(content) && passphrase == null) {
+          return;
+        }
+        await _backupService.importAllFromJsonText(
+          content,
+          passphrase: passphrase,
+        );
         await _settingsSyncFromPrefs();
         _showSnack(l.settingsBackupImportSuccess);
       });
@@ -142,7 +161,16 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         }
         final confirmed = await _confirmImport();
         if (!confirmed) return;
-        await _backupService.importAllFromJsonText(text);
+        final passphrase = _backupService.requiresPassphrase(text)
+            ? await _requestPassphrase()
+            : null;
+        if (_backupService.requiresPassphrase(text) && passphrase == null) {
+          return;
+        }
+        await _backupService.importAllFromJsonText(
+          text,
+          passphrase: passphrase,
+        );
         await _settingsSyncFromPrefs();
         _showSnack(l.settingsBackupImportSuccess);
       });
@@ -158,32 +186,158 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final result = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            title: Text(
-              l.settingsBackupConfirmTitle,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-            ),
-            content: Text(
-              l.settingsBackupConfirmDesc,
-              style: GoogleFonts.outfit(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(l.settingsApiKeyCancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(l.settingsBackupConfirmAction),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          l.settingsBackupConfirmTitle,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+        ),
+        content: Text(l.settingsBackupConfirmDesc, style: GoogleFonts.outfit()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.settingsApiKeyCancel),
           ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.settingsBackupConfirmAction),
+          ),
+        ],
+      ),
     );
     return result ?? false;
+  }
+
+  Future<String?> _requestPassphrase({bool confirm = false}) async {
+    final password = TextEditingController();
+    final confirmation = TextEditingController();
+    String? validationError;
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            confirm
+                ? _studentCopy(
+                    de: 'Backup verschlüsseln',
+                    en: 'Encrypt backup',
+                    fr: 'Chiffrer la sauvegarde',
+                    es: 'Cifrar copia de seguridad',
+                  )
+                : _studentCopy(
+                    de: 'Backup entschlüsseln',
+                    en: 'Decrypt backup',
+                    fr: 'Déchiffrer la sauvegarde',
+                    es: 'Descifrar copia de seguridad',
+                  ),
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                confirm
+                    ? _studentCopy(
+                        de: 'API-Schlüssel werden ausschließlich AES-256-GCM-verschlüsselt exportiert. Das Passwort kann nicht wiederhergestellt werden.',
+                        en: 'API keys are exported only with AES-256-GCM encryption. The password cannot be recovered.',
+                        fr: 'Les clés API sont exportées uniquement avec un chiffrement AES-256-GCM. Le mot de passe ne peut pas être récupéré.',
+                        es: 'Las claves API solo se exportan cifradas con AES-256-GCM. La contraseña no se puede recuperar.',
+                      )
+                    : _studentCopy(
+                        de: 'Dieses Backup enthält verschlüsselte API-Schlüssel.',
+                        en: 'This backup contains encrypted API keys.',
+                        fr: 'Cette sauvegarde contient des clés API chiffrées.',
+                        es: 'Esta copia contiene claves API cifradas.',
+                      ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: password,
+                obscureText: true,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: _studentCopy(
+                    de: 'Backup-Passwort',
+                    en: 'Backup password',
+                    fr: 'Mot de passe de sauvegarde',
+                    es: 'Contraseña de la copia',
+                  ),
+                  errorText: validationError,
+                ),
+              ),
+              if (confirm) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: confirmation,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: _studentCopy(
+                      de: 'Passwort wiederholen',
+                      en: 'Repeat password',
+                      fr: 'Répéter le mot de passe',
+                      es: 'Repetir contraseña',
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                AppL10n.of(appLocaleNotifier.value).settingsApiKeyCancel,
+              ),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = password.text;
+                final invalid =
+                    value.length < 8 || (confirm && value != confirmation.text);
+                if (invalid) {
+                  setDialogState(() {
+                    validationError = value.length < 8
+                        ? _studentCopy(
+                            de: 'Mindestens 8 Zeichen erforderlich',
+                            en: 'At least 8 characters required',
+                            fr: 'Au moins 8 caractères requis',
+                            es: 'Se requieren al menos 8 caracteres',
+                          )
+                        : _studentCopy(
+                            de: 'Die Passwörter stimmen nicht überein',
+                            en: 'The passwords do not match',
+                            fr: 'Les mots de passe ne correspondent pas',
+                            es: 'Las contraseñas no coinciden',
+                          );
+                  });
+                  return;
+                }
+                Navigator.pop(dialogContext, value);
+              },
+              child: Text(
+                confirm
+                    ? _studentCopy(
+                        de: 'Verschlüsseln',
+                        en: 'Encrypt',
+                        fr: 'Chiffrer',
+                        es: 'Cifrar',
+                      )
+                    : _studentCopy(
+                        de: 'Entschlüsseln',
+                        en: 'Decrypt',
+                        fr: 'Déchiffrer',
+                        es: 'Descifrar',
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    password.dispose();
+    confirmation.dispose();
+    return result;
   }
 
   @override

@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:otp_auth/otp_auth.dart';
 import 'package:workmanager/workmanager.dart';
 import '../core/time_utils.dart';
+import '../data/security/credential_vault.dart';
 
 import 'demo_mode_service.dart';
 import 'notification_service.dart';
@@ -636,11 +637,24 @@ Future<void> checkGithubUpdateAndNotify() async {
 Future<void> updateUntisData() async {
   final prefs = await SharedPreferences.getInstance();
   final isDemoMode = prefs.getBool('demoMode') ?? false;
+  final activeAccountId = prefs.getString('activeUntisAccountId') ?? '';
+  final credentials = isDemoMode || activeAccountId.isEmpty
+      ? const AccountCredentials(
+          password: '',
+          credentialMode: 'password',
+          sessionId: '',
+        )
+      : await CredentialVault.instance.readAccount(activeAccountId);
   final schoolUrl = prefs.getString('schoolUrl') ?? '';
   final schoolName = prefs.getString('schoolName') ?? '';
   final user = prefs.getString('username') ?? '';
-  final pass = prefs.getString('password') ?? '';
-  final useLoginKey = prefs.getString('loginCredentialMode') == 'loginKey';
+  // Legacy fallback remains read-only until foreground migration succeeds.
+  final pass = credentials.password.isNotEmpty
+      ? credentials.password
+      : prefs.getString('password') ?? '';
+  final useLoginKey = credentials.password.isNotEmpty
+      ? credentials.credentialMode == 'loginKey'
+      : prefs.getString('loginCredentialMode') == 'loginKey';
   final locale = prefs.getString('appLocale') ?? 'de';
 
   if (!isDemoMode &&
@@ -1002,14 +1016,14 @@ Future<void> updateUntisData() async {
   // Widgets intentionally update independently of notification permissions.
   // Keep the payload compact: the native expressive layouts enforce the same
   // short hierarchy when the device is offline or the widget is very small.
-  final activeAccountId = prefs.getString('activeUntisAccountId') ?? 'active';
+  final widgetAccountId = activeAccountId.isEmpty ? 'active' : activeAccountId;
   final rawAccounts = prefs.getString('untisAccountsV1') ?? '[]';
   var accountLabel = schoolName;
   try {
     final accounts = jsonDecode(rawAccounts);
     if (accounts is List) {
       for (final raw in accounts) {
-        if (raw is Map && raw['id']?.toString() == activeAccountId) {
+        if (raw is Map && raw['id']?.toString() == widgetAccountId) {
           accountLabel = raw['username']?.toString().trim().isNotEmpty == true
               ? raw['username'].toString()
               : raw['schoolName']?.toString() ?? schoolName;
@@ -1031,7 +1045,7 @@ Future<void> updateUntisData() async {
         .join('\n'),
     homeworkSummary: 'Öffne Untis+ für Aufgaben',
     notificationSummary: 'Öffne Untis+ für Mitteilungen',
-    accountId: activeAccountId,
+    accountId: widgetAccountId,
     accountLabel: accountLabel,
     status: DateFormat('HH:mm').format(now),
   );
@@ -1064,7 +1078,16 @@ Future<void> _refreshInactiveWidgetAccounts(
     final url = entry['schoolUrl']?.toString() ?? '';
     final school = entry['schoolName']?.toString() ?? '';
     final user = entry['username']?.toString() ?? '';
-    final password = entry['password']?.toString() ?? '';
+    final credentials = id.isEmpty
+        ? const AccountCredentials(
+            password: '',
+            credentialMode: 'password',
+            sessionId: '',
+          )
+        : await CredentialVault.instance.readAccount(id);
+    final password = credentials.password.isNotEmpty
+        ? credentials.password
+        : entry['password']?.toString() ?? '';
     final personId = (entry['personId'] as num?)?.toInt() ?? 0;
     final personType = (entry['personType'] as num?)?.toInt() ?? 5;
     if (id.isEmpty ||
@@ -1081,7 +1104,10 @@ Future<void> _refreshInactiveWidgetAccounts(
         'https://$url/WebUntis/jsonrpc.do?school=$school',
       );
       String session = '';
-      if (entry['credentialMode']?.toString() == 'loginKey') {
+      if ((credentials.password.isNotEmpty
+              ? credentials.credentialMode
+              : entry['credentialMode']?.toString()) ==
+          'loginKey') {
         session =
             await _loginWithWebUntisSecret(
               schoolUrl: url,
