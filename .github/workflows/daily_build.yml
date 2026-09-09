@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      use_fllama_cache:
+        description: 'fllama-Native-Build-Cache verwenden (bei false wird frisch kompiliert)'
+        required: true
+        default: true
+        type: boolean
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -59,6 +65,13 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - name: Cache fllama native builds
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.use_fllama_cache == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-android-${{ hashFiles('pubspec.lock') }}
 
       - name: Configure Android signing
         env:
@@ -143,6 +156,13 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - name: Cache fllama native builds
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.use_fllama_cache == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-ios-${{ hashFiles('pubspec.lock') }}
 
       - name: Build unsigned IPA
         env:

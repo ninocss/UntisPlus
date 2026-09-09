@@ -11,6 +11,11 @@ on:
         description: 'Name of the uploaded artifact'
         required: true
         default: 'unsigned-ipa'
+      use_fllama_cache:
+        description: 'Use the fllama native-build cache (false forces a fresh build)'
+        required: true
+        default: true
+        type: boolean
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -31,6 +36,13 @@ jobs:
         with:
           channel: 'stable'
           cache: true
+
+      - name: Cache fllama native builds
+        if: ${{ github.event.inputs.use_fllama_cache == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-ios-${{ hashFiles('pubspec.lock') }}
 
       - name: Install Dependencies
         run: flutter pub get

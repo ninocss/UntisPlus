@@ -30,6 +30,11 @@ on:
         required: true
         default: true
         type: boolean
+      use_fllama_cache:
+        description: 'fllama-Native-Build-Cache verwenden (bei false wird frisch kompiliert)'
+        required: true
+        default: true
+        type: boolean
       build_artifacts:
         description: 'Welche Artefakte bauen?'
         required: true
@@ -68,6 +73,7 @@ jobs:
       prerelease: ${{ steps.meta.outputs.prerelease }}
       draft: ${{ steps.meta.outputs.draft }}
       run_tests: ${{ steps.meta.outputs.run_tests }}
+      use_fllama_cache: ${{ steps.meta.outputs.use_fllama_cache }}
       build_apk: ${{ steps.meta.outputs.build_apk }}
       build_aab: ${{ steps.meta.outputs.build_aab }}
       build_ipa: ${{ steps.meta.outputs.build_ipa }}
@@ -88,6 +94,7 @@ jobs:
           INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
           INPUT_DRAFT: ${{ github.event.inputs.draft }}
           INPUT_RUN_TESTS: ${{ github.event.inputs.run_tests }}
+          INPUT_USE_FLLAMA_CACHE: ${{ github.event.inputs.use_fllama_cache }}
           INPUT_BUILD_ARTIFACTS: ${{ github.event.inputs.build_artifacts }}
           INPUT_SPLIT_PER_ABI: ${{ github.event.inputs.split_per_abi }}
         run: |
@@ -150,6 +157,7 @@ jobs:
             run_tests="true"
           fi
           split_per_abi="$(normalize_bool "${INPUT_SPLIT_PER_ABI:-}" "true")"
+          use_fllama_cache="$(normalize_bool "${INPUT_USE_FLLAMA_CACHE:-}" "true")"
 
           build_artifacts="$(echo "${INPUT_BUILD_ARTIFACTS:-apk}" | tr -d '[:space:]')"
           build_apk="false"
@@ -188,6 +196,7 @@ jobs:
             echo "prerelease=$prerelease"
             echo "draft=$draft"
             echo "run_tests=$run_tests"
+            echo "use_fllama_cache=$use_fllama_cache"
             echo "build_apk=$build_apk"
             echo "build_aab=$build_aab"
             echo "build_ipa=$build_ipa"
@@ -204,6 +213,7 @@ jobs:
           echo "- prerelease: ${{ steps.meta.outputs.prerelease }}" >> $GITHUB_STEP_SUMMARY
           echo "- draft: ${{ steps.meta.outputs.draft }}" >> $GITHUB_STEP_SUMMARY
           echo "- run_tests: ${{ steps.meta.outputs.run_tests }}" >> $GITHUB_STEP_SUMMARY
+          echo "- use_fllama_cache: ${{ steps.meta.outputs.use_fllama_cache }}" >> $GITHUB_STEP_SUMMARY
           echo "- build_apk: ${{ steps.meta.outputs.build_apk }}" >> $GITHUB_STEP_SUMMARY
           echo "- build_aab: ${{ steps.meta.outputs.build_aab }}" >> $GITHUB_STEP_SUMMARY
           echo "- build_ipa: ${{ steps.meta.outputs.build_ipa }}" >> $GITHUB_STEP_SUMMARY
@@ -224,6 +234,13 @@ jobs:
         with:
           channel: 'stable'
           cache: true
+
+      - name: Cache fllama native builds
+        if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-linux-${{ hashFiles('pubspec.lock') }}
 
       - name: Install Dependencies
         run: flutter pub get
@@ -295,6 +312,13 @@ jobs:
         with:
           channel: 'stable'
           cache: true
+
+      - name: Cache fllama native builds
+        if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-android-${{ hashFiles('pubspec.lock') }}
 
       - name: Install Dependencies
         run: flutter pub get
@@ -397,6 +421,13 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Cache fllama native builds
+        if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-android-${{ hashFiles('pubspec.lock') }}
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -456,6 +487,13 @@ jobs:
         with:
           channel: 'stable'
           cache: true
+
+      - name: Cache fllama native builds
+        if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-ios-${{ hashFiles('pubspec.lock') }}
 
       - name: Install Dependencies
         run: flutter pub get
