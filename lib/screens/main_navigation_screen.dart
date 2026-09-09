@@ -3320,7 +3320,6 @@ class _NavItem {
   final String label;
   final int pageIndex;
   final bool tutorialHighlight;
-  final int badgeCount;
 
   const _NavItem({
     required this.icon,
@@ -3328,7 +3327,6 @@ class _NavItem {
     required this.label,
     required this.pageIndex,
     this.tutorialHighlight = false,
-    this.badgeCount = 0,
   });
 }
 
