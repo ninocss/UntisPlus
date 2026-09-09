@@ -3,7 +3,7 @@ description: "A Flutter application for managing and viewing school schedules, h
 
 publish_to: 'none'
 
-version: 5.2.2
+version: 5.2.3
 
 environment:
   sdk: ^3.11.0
@@ -37,6 +37,7 @@ dependencies:
   custom_refresh_indicator: ^4.0.2
   package_info_plus: ^10.2.1
   flutter_markdown_plus: ^1.0.7
+  html: ^0.15.7
   sensors_plus: ^7.0.0
   otp_auth: ^1.0.1
   web: ^1.1.1

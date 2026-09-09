@@ -1,0 +1,12 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_custom_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/widget_expressive_surface">
+    <TextView android:id="@+id/widget_custom_one" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="3" android:ellipsize="end" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/widget_on_surface" />
+    <TextView android:id="@+id/widget_custom_two" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="3" android:ellipsize="end" android:textSize="14sp" android:textColor="@color/widget_on_surface" />
+    <TextView android:id="@+id/widget_custom_three" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="3" android:ellipsize="end" android:textSize="14sp" android:textColor="@color/widget_on_surface" />
+    <TextView android:id="@+id/widget_custom_four" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="3" android:ellipsize="end" android:textSize="12sp" android:textColor="@color/widget_on_surface_variant" />
+</LinearLayout>

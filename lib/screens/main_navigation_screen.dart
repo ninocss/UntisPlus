@@ -103,6 +103,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   final FocusNode _promptFocusNode = FocusNode();
   late TabController _tabController;
   Timer? _typingHintTimer;
+  Timer? _streamRenderTimer;
+  final StringBuffer _pendingStreamText = StringBuffer();
+  DateTime? _lastStreamingHapticAt;
   int _typingHintIndex = 0;
   int _searchGeneration = 0;
   String _latestQuery = '';
@@ -126,12 +129,17 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      animationDuration: Duration.zero,
+    );
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        setState(() {
-          _chatMode = _tabController.index == 1;
-        });
+        final chatMode = _tabController.index == 1;
+        if (_chatMode != chatMode && mounted) {
+          setState(() => _chatMode = chatMode);
+        }
         if (_chatMode) {
           _scrollToBottom();
         }
@@ -204,8 +212,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _latestResult = null;
       _latestQuery = '';
       _chatMode = true;
-      _tabController.animateTo(1);
     });
+    _selectAiTab(1, haptic: false);
+    _hapticAction();
     // Check if we are inside a drawer (Navigator.canPop is true in drawers)
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
@@ -219,8 +228,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _chatMessages.addAll(session.messages);
       _chatMode = true;
       _latestResult = null;
-      _tabController.animateTo(1);
     });
+    _selectAiTab(1, haptic: false);
+    _hapticSelection();
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
@@ -234,6 +244,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     _tabController.dispose();
     _promptFocusNode.dispose();
     _typingHintTimer?.cancel();
+    _streamRenderTimer?.cancel();
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -245,6 +256,27 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     _thinking = false;
     _latestQuery = '';
     _latestResult = null;
+  }
+
+  void _hapticSelection() {
+    unawaited(HapticFeedback.selectionClick());
+  }
+
+  void _hapticAction() {
+    unawaited(HapticFeedback.mediumImpact());
+  }
+
+  void _selectAiTab(int index, {bool haptic = true}) {
+    final chatMode = index == 1;
+    final changed = _chatMode != chatMode;
+    if (changed && mounted) {
+      setState(() => _chatMode = chatMode);
+      if (haptic) _hapticSelection();
+    }
+    if (_tabController.index != index) {
+      _tabController.animateTo(index, duration: Duration.zero);
+    }
+    if (chatMode) _scrollToBottom();
   }
 
   String _extractJsonCandidate(String reply) {
@@ -1158,6 +1190,43 @@ Halte deine Antworten eher kurz, aber präzise.''';
     });
   }
 
+  void _queueStreamingText(String chunk) {
+    _pendingStreamText.write(chunk);
+    _streamRenderTimer ??= Timer(
+      const Duration(milliseconds: 48),
+      _flushStreamingText,
+    );
+  }
+
+  void _flushStreamingText() {
+    _streamRenderTimer?.cancel();
+    _streamRenderTimer = null;
+    if (!mounted || _pendingStreamText.isEmpty) return;
+
+    final text = _pendingStreamText.toString();
+    _pendingStreamText.clear();
+    setState(() {
+      final lastIndex = _chatMessages.length - 1;
+      if (lastIndex >= 0 && _chatMessages[lastIndex]['role'] == 'assistant') {
+        final current = _chatMessages[lastIndex]['content'] ?? '';
+        _chatMessages[lastIndex]['content'] = current + text;
+      }
+    });
+    _streamingProgressHaptic();
+    _scrollToBottom();
+  }
+
+  void _streamingProgressHaptic() {
+    final now = DateTime.now();
+    if (_lastStreamingHapticAt != null &&
+        now.difference(_lastStreamingHapticAt!) <
+            const Duration(milliseconds: 500)) {
+      return;
+    }
+    _lastStreamingHapticAt = now;
+    unawaited(HapticFeedback.lightImpact());
+  }
+
   Future<void> _sendChat(String text) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final provider = _normalizeAiProvider(aiProvider);
@@ -1189,6 +1258,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
       _chatMessages.add({'role': 'user', 'content': text});
       _thinking = true;
     });
+    _hapticAction();
 
     if (_currentChatId == null) {
       _currentChatId = DateTime.now().millisecondsSinceEpoch.toString();
@@ -1239,35 +1309,36 @@ Halte deine Antworten eher kurz, aber präzise.''';
 
       await for (final chunk in stream) {
         if (!mounted) break;
-        setState(() {
-          final lastIndex = _chatMessages.length - 1;
-          if (lastIndex >= 0 &&
-              _chatMessages[lastIndex]['role'] == 'assistant') {
-            final String currentContent =
-                _chatMessages[lastIndex]['content'] ?? '';
-            _chatMessages[lastIndex]['content'] = currentContent + chunk;
-          }
-        });
-        _scrollToBottom();
+        _queueStreamingText(chunk);
       }
+      _flushStreamingText();
       _saveChatHistory();
     } catch (e) {
+      _flushStreamingText();
       final message = e.toString();
       final isApiError = message.contains('API:');
       final isConfigError = message.contains('CONFIG:');
       setState(() {
         if (_chatMessages.isNotEmpty &&
             _chatMessages.last['role'] == 'assistant') {
-          _chatMessages.last['content'] = isConfigError
+          final errorText = isConfigError
               ? message.replaceFirst('Exception: CONFIG: ', '')
               : isApiError
               ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
               : '${l.aiConnectionError} $e';
+          final current = _chatMessages.last['content'] ?? '';
+          _chatMessages.last['content'] = current.isEmpty
+              ? errorText
+              : '$current\n\n$errorText';
         }
       });
     } finally {
+      _flushStreamingText();
       await aiProviderInstance?.dispose();
-      if (mounted) setState(() => _thinking = false);
+      if (mounted) {
+        setState(() => _thinking = false);
+        _hapticSelection();
+      }
       _scrollToBottom();
     }
   }
@@ -1281,148 +1352,298 @@ Halte deine Antworten eher kurz, aber präzise.''';
     return l.aiTitle;
   }
 
+  void _removeChatSession(_ChatSession session) {
+    _hapticAction();
+    setState(() {
+      _chatHistory.removeWhere((entry) => entry.id == session.id);
+      if (_currentChatId == session.id) {
+        _currentChatId = null;
+        _chatMessages.clear();
+      }
+    });
+    unawaited(_saveChatHistory());
+  }
+
   Widget _buildSidebar(ColorScheme cs) {
     final l = AppL10n.of(appLocaleNotifier.value);
     return Drawer(
-      backgroundColor: cs.surface,
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: _BouncyButton(
-                onTap: _startNewChat,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: ThemedSurface(
+        blur: true,
+        borderRadius: BorderRadius.zero,
+        color: cs.surface.withValues(alpha: 0.88),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: cs.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l.aiTitle,
+                            style: GoogleFonts.outfit(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            l.aiAskAnything,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).closeButtonTooltip,
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _BouncyButton(
+                  onTap: _startNewChat,
+                  child: ThemedSurface(
+                    blur: false,
+                    borderRadius: BorderRadius.circular(18),
                     color: cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: cs.primary.withValues(alpha: 0.22),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_comment_rounded,
+                            color: cs.onPrimaryContainer,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            l.bgEditorNew,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w800,
+                              color: cs.onPrimaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_rounded, color: cs.onPrimaryContainer),
-                      const SizedBox(width: 12),
-                      Text(
-                        l.bgEditorNew,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      child: Text(
+                        l.aiTabChat,
                         style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          color: cs.onPrimaryContainer,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: cs.onSurfaceVariant,
+                          letterSpacing: 0.7,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const Divider(indent: 16, endIndent: 16),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: _chatHistory.length,
-                itemBuilder: (context, index) {
-                  final session = _chatHistory[index];
-                  final isSelected = session.id == _currentChatId;
-                  return ListTile(
-                    leading: Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      size: 20,
-                      color: isSelected ? cs.primary : cs.onSurfaceVariant,
                     ),
-                    title: Text(
-                      session.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isSelected ? cs.primary : cs.onSurface,
-                      ),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    selected: isSelected,
-                    selectedTileColor: cs.primary.withValues(alpha: 0.1),
-                    onTap: () => _loadSession(session),
-                    trailing: isSelected
-                        ? null
-                        : IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _chatHistory.removeAt(index);
-                                if (_currentChatId == session.id) {
-                                  _currentChatId = null;
-                                  _chatMessages.clear();
-                                }
-                              });
-                              _saveChatHistory();
-                            },
+                    if (_chatHistory.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          l.aiAskAnything,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            height: 1.35,
+                            color: cs.onSurfaceVariant,
                           ),
-                  );
-                },
+                        ),
+                      )
+                    else
+                      ..._chatHistory.map((session) {
+                        final isSelected = session.id == _currentChatId;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => _loadSession(session),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 160),
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  10,
+                                  6,
+                                  10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? cs.primaryContainer.withValues(
+                                          alpha: 0.72,
+                                        )
+                                      : cs.surfaceContainerHigh.withValues(
+                                          alpha: 0.32,
+                                        ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? cs.primary.withValues(alpha: 0.28)
+                                        : cs.outlineVariant.withValues(
+                                            alpha: 0.16,
+                                          ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      isSelected
+                                          ? Icons.chat_bubble_rounded
+                                          : Icons.chat_bubble_outline_rounded,
+                                      size: 18,
+                                      color: isSelected
+                                          ? cs.primary
+                                          : cs.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        session.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 14,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w800
+                                              : FontWeight.w600,
+                                          color: isSelected
+                                              ? cs.onPrimaryContainer
+                                              : cs.onSurface,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: l.aiClearResult,
+                                      visualDensity: VisualDensity.compact,
+                                      icon: Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 18,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                      onPressed: () =>
+                                          _removeChatSession(session),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                  ],
+                ),
               ),
-            ),
-            const Divider(),
-            if (!_chatMode ||
-                _latestQuery.isNotEmpty ||
-                _latestResult != null) ...[
+              Divider(
+                height: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
+              if (!_chatMode ||
+                  _latestQuery.isNotEmpty ||
+                  _latestResult != null) ...[
+                ListTile(
+                  leading: const Icon(Icons.refresh_rounded),
+                  title: Text(
+                    l.aiSearchAgain,
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    _hapticSelection();
+                    Navigator.pop(context);
+                    _handleMenuAction('refresh');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_sweep_outlined),
+                  title: Text(
+                    l.aiClearResult,
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    _hapticAction();
+                    Navigator.pop(context);
+                    _handleMenuAction('clear');
+                  },
+                ),
+              ],
               ListTile(
-                leading: const Icon(Icons.refresh_rounded),
+                leading: const Icon(Icons.edit_note_rounded),
                 title: Text(
-                  l.aiSearchAgain,
+                  l.settingsAiPrompt,
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
                 onTap: () {
+                  _hapticSelection();
                   Navigator.pop(context);
-                  _handleMenuAction('refresh');
+                  _openPromptEditor();
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.delete_sweep_outlined),
+                leading: const Icon(Icons.settings_outlined),
                 title: Text(
-                  l.aiClearResult,
+                  l.aiSettingsMenu,
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
                 onTap: () {
+                  _hapticSelection();
                   Navigator.pop(context);
-                  _handleMenuAction('clear');
+                  _openSettings();
                 },
               ),
+              const SizedBox(height: 8),
             ],
-            ListTile(
-              leading: const Icon(Icons.edit_note_rounded),
-              title: Text(
-                l.settingsAiPrompt,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _openPromptEditor();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: Text(
-                l.aiSettingsMenu,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _openSettings();
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+          ),
         ),
       ),
     );
@@ -2052,7 +2273,12 @@ Halte deine Antworten eher kurz, aber präzise.''';
       ),
       backgroundColor: cs.primaryContainer.withValues(alpha: 0.72),
       side: BorderSide.none,
-      onPressed: _thinking ? null : () => _sendQuickPrompt(text),
+      onPressed: _thinking
+          ? null
+          : () {
+              _hapticSelection();
+              _sendQuickPrompt(text);
+            },
     );
     return first ? chip : chip;
   }
@@ -2274,7 +2500,10 @@ Halte deine Antworten eher kurz, aber präzise.''';
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: () => _sendQuickPrompt(text),
+        onTap: () {
+          _hapticSelection();
+          _sendQuickPrompt(text);
+        },
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -2316,6 +2545,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
 
     if (_loading) {
       return Scaffold(
+        backgroundColor: Colors.transparent,
         appBar: RoundedBlurAppBar(
           title: Text(
             l.aiTitle,
@@ -2327,11 +2557,15 @@ Halte deine Antworten eher kurz, aber präzise.''';
     }
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
       appBar: RoundedBlurAppBar(
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded),
-          onPressed: () => widget.onOpenDrawer?.call(_buildSidebar(cs)),
+          onPressed: () {
+            _hapticSelection();
+            widget.onOpenDrawer?.call(_buildSidebar(cs));
+          },
         ),
         title: Text(
           _currentChatTitle,
@@ -2339,6 +2573,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
         ),
         bottom: TabBar(
           controller: _tabController,
+          onTap: _selectAiTab,
           indicatorColor: cs.primary,
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
@@ -2374,7 +2609,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
           ],
         ),
       ),
-      body: _AnimatedBackground(child: _buildBody(cs)),
+      // MainNavigationScreen already provides the shared themed backdrop.
+      // Adding a second animated scene here doubled paint work for this tab.
+      body: _buildBody(cs),
     );
   }
 }
@@ -2609,7 +2846,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       onBackToTimetable: () => _onNavTap(0),
       onOpenDrawer: (drawer) {
         setState(() => _currentDrawer = drawer);
-        _scaffoldKey.currentState?.openDrawer();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scaffoldKey.currentState?.openDrawer();
+        });
       },
     ),
   ];

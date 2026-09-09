@@ -55,6 +55,39 @@ class WidgetConfigActivity : Activity() {
         })
 
         val prefs = HomeWidgetPlugin.getData(this)
+        val isCustomWidget = AppWidgetManager.getInstance(this)
+            .getAppWidgetInfo(widgetId)?.provider?.className?.endsWith("UntisWidgetCustom") == true
+        if (isCustomWidget) {
+            val rawProfiles = prefs.getString("widget_configurations_v1", "[]") ?: "[]"
+            val profiles = try { JSONArray(rawProfiles) } catch (_: Exception) { JSONArray() }
+            root.addView(text("Widget-Profil", 14f, Color.rgb(100, 78, 62)).apply {
+                setPadding(0, dp(6), 0, dp(18))
+            })
+            if (profiles.length() == 0) {
+                root.addView(text("Erstelle zuerst ein Profil im Untis+-Widget-Editor.", 15f, Color.rgb(100, 78, 62)))
+            } else {
+                for (index in 0 until profiles.length()) {
+                    val item = profiles.optJSONObject(index) ?: continue
+                    val profileId = item.optString("id")
+                    if (profileId.isEmpty()) continue
+                    val accountId = item.optString("accountId")
+                    val row = LinearLayout(this).apply {
+                        orientation = LinearLayout.VERTICAL
+                        setPadding(dp(18), dp(14), dp(18), dp(14))
+                        background = rounded(Color.WHITE, 28)
+                        isClickable = true
+                        isFocusable = true
+                        setOnClickListener { saveBinding(accountId, profileId) }
+                    }
+                    row.addView(text(item.optString("name", "Widget"), 17f, Color.rgb(65, 45, 32), true))
+                    row.addView(text("Profil aus dem Widget-Editor", 13f, Color.rgb(100, 78, 62)))
+                    root.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) })
+                }
+            }
+            root.gravity = Gravity.TOP
+            setContentView(ScrollView(this).apply { addView(root) })
+            return
+        }
         val raw = prefs.getString("widget_accounts", "[]") ?: "[]"
         val accounts = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
         val preferredAccount = prefs.getString("widget_preferred_account", null)
@@ -99,11 +132,16 @@ class WidgetConfigActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
-    private fun saveBinding(accountId: String) {
-        HomeWidgetPlugin.getData(this).edit()
+    private fun saveBinding(accountId: String, configurationId: String? = null) {
+        val prefs = HomeWidgetPlugin.getData(this)
+        val editor = prefs.edit()
             .putString("widget_account_$widgetId", accountId)
             .remove("widget_preferred_account")
-            .apply()
+        (configurationId ?: prefs.getString("widget_preferred_configuration", null))?.let { selectedConfigurationId ->
+            editor.putString("widget_configuration_$widgetId", selectedConfigurationId)
+                .remove("widget_preferred_configuration")
+        }
+        editor.apply()
         val manager = AppWidgetManager.getInstance(this)
         manager.getAppWidgetInfo(widgetId)?.provider?.let { provider ->
             sendBroadcast(Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).apply {

@@ -13,6 +13,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:html/dom.dart' as html_dom;
+import 'package:html/parser.dart' as html_parser;
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,6 +57,7 @@ part 'screens/settings/settings_subjects_page.dart';
 part 'screens/settings/settings_ai_page.dart';
 part 'screens/settings/settings_backup_page.dart';
 part 'screens/settings/settings_widgets_page.dart';
+part 'screens/settings/custom_widget_editor_page.dart';
 part 'screens/settings/settings_account_page.dart';
 part 'screens/settings/settings_about_updates_page.dart';
 part 'widgets/animated_background.dart';
@@ -1824,6 +1827,32 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           return '${subject.toString().isEmpty ? '' : '$subject · '}${text.toString()}';
         })
         .join('\n');
+    var examSummary = 'Keine anstehenden Prüfungen';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final exams = (prefs.getStringList(_accountDataKey('customExams')) ?? [])
+          .map((raw) {
+            try {
+              return jsonDecode(raw) as Map<String, dynamic>;
+            } catch (_) {
+              return <String, dynamic>{};
+            }
+          })
+          .where((exam) => exam.isNotEmpty)
+          .take(2)
+          .map((exam) {
+            final subject = exam['subject'] ?? exam['subjectName'] ?? 'Prüfung';
+            final date = (exam['date'] ?? exam['examDate'] ?? '').toString();
+            final formatted = date.length == 8
+                ? '${date.substring(6, 8)}.${date.substring(4, 6)}.'
+                : '';
+            return formatted.isEmpty
+                ? subject.toString()
+                : '$formatted $subject';
+          })
+          .toList(growable: false);
+      if (exams.isNotEmpty) examSummary = exams.join('\n');
+    } catch (_) {}
     try {
       UntisAccount? activeAccount;
       for (final account in untisAccountsNotifier.value) {
@@ -1843,6 +1872,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             ? 'Keine offenen Hausaufgaben'
             : homework,
         notificationSummary: 'Neue Mitteilungen in Untis+ öffnen',
+        examSummary: examSummary,
         accountId: activeUntisAccountId ?? 'active',
         accountLabel: activeAccount?.label ?? schoolName,
         status: DateFormat('HH:mm').format(now),
@@ -11090,6 +11120,66 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     ).format(date);
   }
 
+  bool _isSafeExternalUrl(String? value) {
+    final uri = Uri.tryParse(value?.trim() ?? '');
+    return uri != null &&
+        uri.hasScheme &&
+        (uri.scheme == 'https' || uri.scheme == 'http');
+  }
+
+  html_dom.Document _safeInfoDocument(String source) {
+    final document = html_parser.parse(source);
+
+    // School notices are remote content. Keep their visual structure but never
+    // render executable or embedded browser content inside the app.
+    for (final element in document.querySelectorAll(
+      'script, style, iframe, object, embed, form, input, button, video, audio, source',
+    )) {
+      element.remove();
+    }
+
+    for (final element in document.querySelectorAll('*')) {
+      final attributes = element.attributes.keys.toList(growable: false);
+      for (final rawAttribute in attributes) {
+        final attribute = rawAttribute.toString();
+        if (attribute.toLowerCase().startsWith('on')) {
+          element.attributes.remove(attribute);
+        }
+      }
+      for (final attribute in const ['href', 'src']) {
+        final value = element.attributes[attribute];
+        if (value != null && !_isSafeExternalUrl(value)) {
+          element.attributes.remove(attribute);
+        }
+      }
+    }
+    return document;
+  }
+
+  Future<void> _openInfoUrl(BuildContext context, String? value) async {
+    if (!_isSafeExternalUrl(value)) return;
+    final ok = await url_launcher.launchUrlString(
+      value!,
+      mode: url_launcher.LaunchMode.externalApplication,
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppL10n.of(appLocaleNotifier.value).settingsGithubOpenFailed,
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildFormattedInfoBody(BuildContext context, String body) {
+    return _InfoHtmlBody(
+      document: _safeInfoDocument(body),
+      onOpenUrl: (url) => _openInfoUrl(context, url),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -11235,14 +11325,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             ),
                             if (item.body.isNotEmpty) ...[
                               const SizedBox(height: 8),
-                              Text(
-                                item.body,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  color: cs.onSurfaceVariant,
-                                  height: 1.35,
-                                ),
-                              ),
+                              _buildFormattedInfoBody(context, item.body),
                             ],
                             const SizedBox(height: 10),
                             Wrap(
@@ -11266,26 +11349,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             if (item.url != null) ...[
                               const SizedBox(height: 8),
                               TextButton.icon(
-                                onPressed: () async {
-                                  final messenger = ScaffoldMessenger.of(
-                                    context,
-                                  );
-                                  final ok = await url_launcher.launchUrlString(
-                                    item.url!,
-                                    mode: url_launcher
-                                        .LaunchMode
-                                        .externalApplication,
-                                  );
-                                  if (!ok) {
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          l.settingsGithubOpenFailed,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
+                                onPressed: () =>
+                                    _openInfoUrl(context, item.url),
                                 icon: const Icon(Icons.open_in_new_rounded),
                                 label: Text(l.infoOpenLink),
                               ),
@@ -11324,6 +11389,240 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       ),
     );
   }
+}
+
+/// Lightweight renderer for the safe subset of HTML returned by Untis.
+/// It deliberately keeps layout elements such as headings, lists and tables
+/// while avoiding a WebView or an HTML rendering package in the app bundle.
+class _InfoHtmlBody extends StatelessWidget {
+  const _InfoHtmlBody({required this.document, required this.onOpenUrl});
+
+  final html_dom.Document document;
+  final ValueChanged<String> onOpenUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final nodes = document.body?.nodes ?? const <html_dom.Node>[];
+    final blocks = nodes
+        .map((node) => _block(context, node))
+        .whereType<Widget>()
+        .toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: blocks,
+    );
+  }
+
+  Widget? _block(BuildContext context, html_dom.Node node) {
+    if (node is html_dom.Text) {
+      final value = _normalizedText(node.data);
+      if (value.isEmpty) return null;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: _richText(context, [node]),
+      );
+    }
+    if (node is! html_dom.Element) return null;
+
+    switch (node.localName) {
+      case 'h1':
+      case 'h2':
+      case 'h3':
+      case 'h4':
+        final size = switch (node.localName) {
+          'h1' => 22.0,
+          'h2' => 19.0,
+          'h3' => 17.0,
+          _ => 15.0,
+        };
+        return Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: _richText(
+            context,
+            node.nodes,
+            style: TextStyle(fontSize: size, fontWeight: FontWeight.w900),
+          ),
+        );
+      case 'ul':
+      case 'ol':
+        final items = node.children.where((item) => item.localName == 'li');
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final entry in items.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        child: Text(
+                          node.localName == 'ol' ? '${entry.$1 + 1}.' : '•',
+                          style: _baseStyle(context),
+                        ),
+                      ),
+                      Expanded(child: _richText(context, entry.$2.nodes)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      case 'table':
+        return _table(context, node);
+      case 'img':
+        final source = node.attributes['src'];
+        if (source == null || source.isEmpty) return null;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              source,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            ),
+          ),
+        );
+      default:
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _richText(context, node.nodes),
+        );
+    }
+  }
+
+  Widget _table(BuildContext context, html_dom.Element table) {
+    final cs = Theme.of(context).colorScheme;
+    final rows = table.querySelectorAll('tr');
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Table(
+          defaultColumnWidth: const IntrinsicColumnWidth(),
+          border: TableBorder.all(
+            color: cs.outlineVariant.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          children: [
+            for (final row in rows)
+              TableRow(
+                children: [
+                  for (final cell in row.children.where(
+                    (item) => item.localName == 'th' || item.localName == 'td',
+                  ))
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 96),
+                      color: cell.localName == 'th'
+                          ? cs.primaryContainer
+                          : cs.surfaceContainerHigh,
+                      padding: const EdgeInsets.all(8),
+                      child: _richText(
+                        context,
+                        cell.nodes,
+                        style: cell.localName == 'th'
+                            ? TextStyle(
+                                color: cs.onPrimaryContainer,
+                                fontWeight: FontWeight.w800,
+                              )
+                            : null,
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _richText(
+    BuildContext context,
+    List<html_dom.Node> nodes, {
+    TextStyle? style,
+  }) {
+    return Text.rich(
+      TextSpan(
+        style: _baseStyle(context).merge(style),
+        children: _spans(context, nodes, style),
+      ),
+    );
+  }
+
+  List<InlineSpan> _spans(
+    BuildContext context,
+    List<html_dom.Node> nodes,
+    TextStyle? inherited,
+  ) {
+    final spans = <InlineSpan>[];
+    for (final node in nodes) {
+      if (node is html_dom.Text) {
+        final value = _normalizedText(node.data);
+        if (value.isNotEmpty) spans.add(TextSpan(text: value));
+        continue;
+      }
+      if (node is! html_dom.Element) continue;
+      if (node.localName == 'br') {
+        spans.add(const TextSpan(text: '\n'));
+        continue;
+      }
+
+      final style = switch (node.localName) {
+        'strong' || 'b' => const TextStyle(fontWeight: FontWeight.w800),
+        'em' || 'i' => const TextStyle(fontStyle: FontStyle.italic),
+        'code' => TextStyle(
+          fontFamily: 'monospace',
+          backgroundColor: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest,
+        ),
+        _ => null,
+      };
+      if (node.localName == 'a') {
+        final href = node.attributes['href'];
+        final label = _normalizedText(node.text);
+        if (href != null && href.isNotEmpty && label.isNotEmpty) {
+          spans.add(
+            WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: InkWell(
+                onTap: () => onOpenUrl(href),
+                child: Text(
+                  label,
+                  style: _baseStyle(context).copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+        continue;
+      }
+      spans.add(
+        TextSpan(
+          style: inherited?.merge(style) ?? style,
+          children: _spans(context, node.nodes, style),
+        ),
+      );
+    }
+    return spans;
+  }
+
+  TextStyle _baseStyle(BuildContext context) => GoogleFonts.outfit(
+    color: Theme.of(context).colorScheme.onSurfaceVariant,
+    fontSize: 14,
+    height: 1.4,
+  );
+
+  String _normalizedText(String value) => value.replaceAll(RegExp(r'\s+'), ' ');
 }
 
 // --- EINSTELLUNGEN ---

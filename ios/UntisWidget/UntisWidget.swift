@@ -234,3 +234,105 @@ struct UntisNotificationsWidget: Widget {
         }
     }
 }
+
+@available(iOSApplicationExtension 17.0, *)
+struct UntisWidgetProfileOptions: DynamicOptionsProvider {
+    func results() async throws -> [String] {
+        let defaults = UserDefaults(suiteName: "group.com.ninocss.untisplus") ?? UserDefaults.standard
+        guard let raw = defaults.string(forKey: "widget_configurations_v1"),
+              let data = raw.data(using: .utf8),
+              let profiles = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [] }
+        return profiles.compactMap { profile in
+            guard let id = profile["id"] as? String, !id.isEmpty else { return nil }
+            return "\(id)|\((profile["name"] as? String) ?? "Widget")"
+        }
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct UntisWidgetProfileIntent: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource = "Widget-Profil"
+    @Parameter(title: "Profil", optionsProvider: UntisWidgetProfileOptions()) var profile: String?
+    init() {}
+}
+
+struct UntisCustomEntry: TimelineEntry {
+    let date: Date
+    let blocks: [String]
+    let values: [String: String]
+    let background: Int
+    let accent: Int
+    let text: Int
+    let opacity, radius, scale: Double
+    let icons: Bool
+}
+
+func untisCustomColor(_ raw: Int, opacity: Double = 1) -> Color {
+    let value = UInt32(truncatingIfNeeded: raw)
+    return Color(red: Double((value >> 16) & 0xff) / 255, green: Double((value >> 8) & 0xff) / 255, blue: Double(value & 0xff) / 255, opacity: opacity)
+}
+
+func untisCustomEntry(profile: String?) -> UntisCustomEntry {
+    let defaults = UserDefaults(suiteName: "group.com.ninocss.untisplus") ?? UserDefaults.standard
+    let selected = profile?.split(separator: "|", maxSplits: 1).first.map(String.init)
+    let profiles: [[String: Any]] = {
+        guard let raw = defaults.string(forKey: "widget_configurations_v1"), let data = raw.data(using: .utf8) else { return [] }
+        return (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) ?? []
+    }()
+    let item = profiles.first { ($0["id"] as? String) == selected } ?? [:]
+    let account = item["accountId"] as? String
+    let fields = ["current_lesson", "next_lesson", "daily_schedule", "homework_summary", "exam_summary", "notification_summary", "account_label", "status"]
+    var values: [String: String] = [:]
+    for field in fields { values[field] = untisWidgetValue(field, accountId: account) ?? "" }
+    return UntisCustomEntry(
+        date: Date(), blocks: (item["blocks"] as? [String]) ?? ["current", "next", "status"], values: values,
+        background: item["backgroundColor"] as? Int ?? Int(0xFF171C25), accent: item["accentColor"] as? Int ?? Int(0xFF8AB4F8), text: item["textColor"] as? Int ?? Int(0xFFF7F9FF),
+        opacity: item["opacity"] as? Double ?? 0.94, radius: item["cornerRadius"] as? Double ?? 24, scale: item["textScale"] as? Double ?? 1, icons: item["showIcons"] as? Bool ?? true)
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct UntisCustomProvider: AppIntentTimelineProvider {
+    func placeholder(in context: Context) -> UntisCustomEntry { untisCustomEntry(profile: nil) }
+    func snapshot(for configuration: UntisWidgetProfileIntent, in context: Context) async -> UntisCustomEntry { untisCustomEntry(profile: configuration.profile) }
+    func timeline(for configuration: UntisWidgetProfileIntent, in context: Context) async -> Timeline<UntisCustomEntry> {
+        Timeline(entries: [untisCustomEntry(profile: configuration.profile)], policy: .after(Calendar.current.date(byAdding: .minute, value: 15, to: Date())!))
+    }
+}
+
+struct UntisCustomWidget: Widget {
+    let kind = "UntisWidgetCustom"
+    var body: some WidgetConfiguration {
+        if #available(iOSApplicationExtension 17.0, *) {
+            AppIntentConfiguration(kind: kind, intent: UntisWidgetProfileIntent.self, provider: UntisCustomProvider()) { UntisCustomView(entry: $0) }
+                .configurationDisplayName("Untis+ Custom")
+                .description("Dein eigenes Untis+-Widget.")
+                .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        } else {
+            StaticConfiguration(kind: kind, provider: UntisLessonProvider()) { entry in Text(entry.currentLesson).padding() }
+        }
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct UntisCustomView: View {
+    let entry: UntisCustomEntry
+    func value(_ block: String) -> String {
+        let keys = ["current": "current_lesson", "next": "next_lesson", "schedule": "daily_schedule", "homework": "homework_summary", "exams": "exam_summary", "notices": "notification_summary", "account": "account_label", "status": "status"]
+        return entry.values[keys[block] ?? "status"] ?? ""
+    }
+    func icon(_ block: String) -> String { ["current": "play.circle.fill", "next": "forward.fill", "schedule": "list.bullet", "homework": "checklist", "exams": "calendar", "notices": "bell", "account": "person.circle", "status": "clock"][block] ?? "square.grid.2x2" }
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: entry.radius).fill(untisCustomColor(entry.background, opacity: entry.opacity))
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(Array(entry.blocks.prefix(4).enumerated()), id: \.offset) { index, block in
+                    HStack(alignment: .top, spacing: 6) {
+                        if entry.icons { Image(systemName: icon(block)).foregroundStyle(untisCustomColor(entry.accent)).font(.system(size: 13 * entry.scale)) }
+                        Text(value(block)).font(.system(size: (index == 0 ? 17 : 13) * entry.scale, weight: index == 0 ? .bold : .medium)).foregroundStyle(index == 0 ? untisCustomColor(entry.accent) : untisCustomColor(entry.text)).lineLimit(block == "schedule" ? 3 : 2)
+                    }
+                }
+                Spacer(minLength: 0)
+            }.padding()
+        }.containerBackground(for: .widget) { Color.clear }
+    }
+}

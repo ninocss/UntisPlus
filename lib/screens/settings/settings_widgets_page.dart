@@ -503,6 +503,26 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
               ),
             ),
             SettingsGroup(
+              title: 'Eigene Widgets',
+              children: [
+                SettingsTile(
+                  icon: Icons.dashboard_customize_rounded,
+                  title: 'Widget-Editor öffnen',
+                  subtitle:
+                      'Stelle Inhalte, Reihenfolge, Farben, Transparenz und Layout frei zusammen.',
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CustomWidgetEditorPage(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SettingsGroup(
               title: 'Widget auswählen',
               children: [
                 Padding(

@@ -7,5 +7,6 @@ struct UntisWidgetBundle: WidgetBundle {
         UntisDailyScheduleWidget()
         UntisHomeworkWidget()
         UntisNotificationsWidget()
+        UntisCustomWidget()
     }
 }

@@ -5,8 +5,12 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Color
+import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
+import org.json.JSONArray
+import org.json.JSONObject
 
 private fun widgetAccount(data: SharedPreferences, widgetId: Int): String =
     data.getString("widget_account_$widgetId", null)
@@ -46,6 +50,29 @@ private fun configureIntent(context: Context, widgetId: Int): PendingIntent =
         },
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+
+private fun customConfiguration(data: SharedPreferences, widgetId: Int): JSONObject? {
+    val id = data.getString("widget_configuration_$widgetId", null) ?: return null
+    val raw = data.getString("widget_configurations_v1", "[]") ?: "[]"
+    val values = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+    for (index in 0 until values.length()) {
+        val item = values.optJSONObject(index) ?: continue
+        if (item.optString("id") == id) return item
+    }
+    return null
+}
+
+private fun customContent(data: SharedPreferences, widgetId: Int, account: String, block: String): String = when (block) {
+    "current" -> widgetValue(data, widgetId, "current_lesson", "Keine aktuelle Stunde")
+    "next" -> widgetValue(data, widgetId, "next_lesson", "Heute keine weitere Stunde")
+    "schedule" -> widgetValue(data, widgetId, "daily_schedule", "Heute keine Stunden")
+    "homework" -> widgetValue(data, widgetId, "homework_summary", "Keine offenen Aufgaben")
+    "exams" -> widgetValue(data, widgetId, "exam_summary", "Keine Prüfungen synchronisiert")
+    "notices" -> widgetValue(data, widgetId, "notification_summary", "Keine Mitteilungen")
+    "account" -> widgetValue(data, widgetId, "account_label", "Untis+")
+    "status" -> widgetValue(data, widgetId, "status", "")
+    else -> ""
+}
 
 class UntisWidgetCurrentLesson : HomeWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray, data: SharedPreferences) {
@@ -109,4 +136,31 @@ class UntisWidgetHomework : HomeWidgetProvider() {
 class UntisWidgetNotifications : HomeWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray, data: SharedPreferences) =
         updateSummaryWidget(context, manager, ids, data, "MITTEILUNGEN", "notification_summary")
+}
+
+class UntisWidgetCustom : HomeWidgetProvider() {
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray, data: SharedPreferences) {
+        ids.forEach { id ->
+            val config = customConfiguration(data, id)
+            val account = config?.optString("accountId")?.takeIf { it.isNotEmpty() } ?: widgetAccount(data, id)
+            val blocks = config?.optJSONArray("blocks") ?: JSONArray().put("current").put("next").put("status")
+            val textColor = config?.optInt("textColor", Color.WHITE) ?: Color.WHITE
+            val accent = config?.optInt("accentColor", textColor) ?: textColor
+            val background = config?.optInt("backgroundColor", Color.rgb(23, 28, 37)) ?: Color.rgb(23, 28, 37)
+            val scale = (config?.optDouble("textScale", 1.0) ?: 1.0).toFloat()
+            val idsForText = intArrayOf(R.id.widget_custom_one, R.id.widget_custom_two, R.id.widget_custom_three, R.id.widget_custom_four)
+            val views = RemoteViews(context.packageName, R.layout.widget_custom).apply {
+                setInt(R.id.widget_custom_root, "setBackgroundColor", background)
+                idsForText.forEachIndexed { index, viewId ->
+                    val text = if (index < blocks.length()) customContent(data, id, account, blocks.optString(index)) else ""
+                    setViewVisibility(viewId, if (text.isEmpty()) View.GONE else View.VISIBLE)
+                    setTextViewText(viewId, compact(text, if (index == 0) 56 else 96))
+                    setTextColor(viewId, if (index == 0) accent else textColor)
+                    setFloat(viewId, "setTextSize", if (index == 0) 18f * scale else 14f * scale)
+                }
+                setOnClickPendingIntent(R.id.widget_custom_root, openAppIntent(context, id, account))
+            }
+            manager.updateAppWidget(id, views)
+        }
+    }
 }
