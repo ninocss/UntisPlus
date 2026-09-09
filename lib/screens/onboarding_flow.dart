@@ -639,15 +639,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         }
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('sessionId', sessionID);
         await prefs.setString('schoolUrl', schoolUrl);
         await prefs.setString('schoolName', schoolName);
         await prefs.setString('username', _userController.text);
-        await prefs.setString('password', _passwordController.text);
-        await prefs.setString(
-          'loginCredentialMode',
-          _useLoginKey ? _credentialModeLoginKey : _credentialModePassword,
-        );
         await prefs.setInt('personType', personType);
         await prefs.setInt('personId', personId);
         await prefs.setBool('demoMode', false);
@@ -737,10 +731,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     await prefs.setString('aiCustomCompatibility', aiCustomCompatibility);
     await prefs.setString('aiCustomBaseUrl', aiCustomBaseUrl);
     await prefs.setString('aiSystemPromptTemplate', aiSystemPromptTemplate);
-    await prefs.setString('geminiApiKey', geminiApiKey);
-    await prefs.setString('openAiApiKey', openAiApiKey);
-    await prefs.setString('mistralApiKey', mistralApiKey);
-    await prefs.setString('customAiApiKey', customAiApiKey);
+    await Future.wait([
+      CredentialVault.instance.writeAiApiKey('gemini', geminiApiKey),
+      CredentialVault.instance.writeAiApiKey('openai', openAiApiKey),
+      CredentialVault.instance.writeAiApiKey('mistral', mistralApiKey),
+      CredentialVault.instance.writeAiApiKey('custom', customAiApiKey),
+    ]);
 
     await prefs.setBool('onboardingCompleted', true);
     await prefs.setBool('tutorialCompleted', false);
@@ -1159,6 +1155,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       child: InkWell(
         onTap: () async {
           HapticFeedback.selectionClick();
+          await ensureDateFormattingForLocale(code);
+          if (!mounted) return;
           appLocaleNotifier.value = code;
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('appLocale', code);

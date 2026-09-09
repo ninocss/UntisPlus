@@ -2622,7 +2622,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Widget? _currentDrawer;
 
-  List<int> get _tutorialTargets => [0, 1, 2, 3];
+  List<int> get _tutorialTargets => [0, 2, 3, 4];
 
   @override
   void initState() {
@@ -2679,7 +2679,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     // where the download action is available.
     if (event.payload?['type']?.toString() == 'update' ||
         actionId == 'open_updates') {
-      _onNavTap(3);
+      _onNavTap(4);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Navigator.of(
@@ -2702,7 +2702,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _openAssistantFromNative() {
     if (!mounted || !pendingAssistantOpenNotifier.value) return;
     pendingAssistantOpenNotifier.value = false;
-    _onNavTap(4);
+    _openAssistant();
+  }
+
+  void _openAssistant() {
+    Navigator.of(context).push(
+      _buildBouncyRoute(
+        AiAssistantPage(
+          key: ValueKey(sessionID),
+          onBackToTimetable: () => Navigator.of(context).maybePop(),
+          onOpenDrawer: (drawer) {
+            setState(() => _currentDrawer = drawer);
+            _scaffoldKey.currentState?.openDrawer();
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _finishTutorial() async {
@@ -2778,7 +2793,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       schoolUrl = prefs.getString('schoolUrl') ?? "";
       schoolName = prefs.getString('schoolName') ?? "";
-      sessionID = prefs.getString('sessionId') ?? "";
       personType = prefs.getInt('personType') ?? 0;
       personId = prefs.getInt('personId') ?? 0;
     });
@@ -2836,19 +2850,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   List<Widget> get _pages => <Widget>[
     WeeklyTimetablePage(key: ValueKey(sessionID)),
+    const HomeworkPage(),
     const ExamsPage(),
     const SchoolNotificationsPage(),
-    const SettingsHubPage(),
-    AiAssistantPage(
-      key: ValueKey(sessionID),
-      onBackToTimetable: () => _onNavTap(0),
-      onOpenDrawer: (drawer) {
-        setState(() => _currentDrawer = drawer);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _scaffoldKey.currentState?.openDrawer();
-        });
-      },
-    ),
+    StudentMorePage(openAssistant: _openAssistant),
   ];
 
   @override
@@ -2863,6 +2868,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final mq = MediaQuery.of(context);
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
+    final isTablet = mq.size.width >= 720;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -2871,29 +2877,101 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          MediaQuery(
-            data: mq.copyWith(
-              padding: mq.padding.copyWith(bottom: mq.padding.bottom + 104),
-            ),
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: _pages
-                  .map((page) => _buildPageWithBackground(context, page))
-                  .toList(),
-            ),
+          Row(
+            children: [
+              if (isTablet)
+                SafeArea(
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: unreadTimetableChangesNotifier,
+                    builder: (context, unreadChanges, _) => NavigationRail(
+                      selectedIndex: _selectedIndex,
+                      onDestinationSelected: _onNavTap,
+                      labelType: NavigationRailLabelType.selected,
+                      groupAlignment: 0,
+                      destinations: [
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.watch_later_outlined),
+                          selectedIcon: const Icon(Icons.watch_later_rounded),
+                          label: Text(l.timetableTitle),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.assignment_outlined),
+                          selectedIcon: const Icon(Icons.assignment_rounded),
+                          label: Text(l.homeworkTitle),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.event_note_outlined),
+                          selectedIcon: const Icon(Icons.event_note_rounded),
+                          label: Text(l.examsTitle),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.campaign_outlined),
+                          selectedIcon: const Icon(Icons.campaign_rounded),
+                          label: Text(l.navInfo),
+                        ),
+                        NavigationRailDestination(
+                          icon: Badge.count(
+                            count: unreadChanges,
+                            isLabelVisible: unreadChanges > 0,
+                            child: const Icon(Icons.grid_view_outlined),
+                          ),
+                          selectedIcon: Badge.count(
+                            count: unreadChanges,
+                            isLabelVisible: unreadChanges > 0,
+                            child: const Icon(Icons.grid_view_rounded),
+                          ),
+                          label: Text(l.aiMore),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: MediaQuery(
+                  data: mq.copyWith(
+                    padding: mq.padding.copyWith(
+                      bottom: isTablet
+                          ? mq.padding.bottom
+                          : mq.padding.bottom + 104,
+                    ),
+                  ),
+                  child: IndexedStack(
+                    index: _selectedIndex,
+                    children: _pages
+                        .asMap()
+                        .entries
+                        .map(
+                          (entry) => TickerMode(
+                            enabled: entry.key == _selectedIndex,
+                            child: _buildPageWithBackground(
+                              context,
+                              entry.value,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
           // Floating nav bar
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: mq.padding.bottom + 16,
-            child: ValueListenableBuilder<String>(
-              valueListenable: appLocaleNotifier,
-              builder: (context, locale, _) {
-                return _buildFloatingNavBar(context, cs);
-              },
+          if (!isTablet)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: mq.padding.bottom + 16,
+              child: ValueListenableBuilder<String>(
+                valueListenable: appLocaleNotifier,
+                builder: (context, locale, _) {
+                  return ValueListenableBuilder<int>(
+                    valueListenable: unreadTimetableChangesNotifier,
+                    builder: (context, unreadChanges, _) =>
+                        _buildFloatingNavBar(context, cs),
+                  );
+                },
+              ),
             ),
-          ),
           if (_showTutorial)
             Positioned(
               left: 16,
@@ -3087,34 +3165,36 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final timetableSelected = _selectedIndex == 0;
     final l = AppL10n.of(appLocaleNotifier.value);
 
-    // ---- Secondary items (indices 1-4) shown in the pill bar ----
+    // ---- Student-first destinations shown in the pill bar ----
     final items = [
       _NavItem(
-        icon: Icons.settings_outlined,
-        selectedIcon: Icons.settings_rounded,
-        label: l.navMenu,
-        pageIndex: 3,
-        tutorialHighlight: _isTutorialTarget(3),
+        icon: Icons.assignment_outlined,
+        selectedIcon: Icons.assignment_rounded,
+        label: l.homeworkTitle,
+        pageIndex: 1,
+        tutorialHighlight: _isTutorialTarget(1),
+      ),
+      _NavItem(
+        icon: Icons.event_note_outlined,
+        selectedIcon: Icons.event_note_rounded,
+        label: l.examsTitle,
+        pageIndex: 2,
+        tutorialHighlight: _isTutorialTarget(2),
       ),
       _NavItem(
         icon: Icons.campaign_outlined,
         selectedIcon: Icons.campaign_rounded,
         label: l.navInfo,
-        pageIndex: 2,
-        tutorialHighlight: _isTutorialTarget(2),
+        pageIndex: 3,
+        tutorialHighlight: _isTutorialTarget(3),
       ),
       _NavItem(
-        icon: Icons.assignment_outlined,
-        selectedIcon: Icons.assignment_rounded,
-        label: l.navExams,
-        pageIndex: 1,
-        tutorialHighlight: _isTutorialTarget(1),
-      ),
-      _NavItem(
-        icon: Icons.auto_awesome_outlined,
-        selectedIcon: Icons.auto_awesome_rounded,
-        label: l.navAi,
+        icon: Icons.grid_view_outlined,
+        selectedIcon: Icons.grid_view_rounded,
+        label: 'Mehr',
         pageIndex: 4,
+        tutorialHighlight: _isTutorialTarget(4),
+        badgeCount: unreadTimetableChangesNotifier.value,
       ),
     ];
 
@@ -3258,6 +3338,7 @@ class _NavItem {
   final String label;
   final int pageIndex;
   final bool tutorialHighlight;
+  final int badgeCount;
 
   const _NavItem({
     required this.icon,
@@ -3265,6 +3346,7 @@ class _NavItem {
     required this.label,
     required this.pageIndex,
     this.tutorialHighlight = false,
+    this.badgeCount = 0,
   });
 }
 
@@ -3578,15 +3660,19 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                     scale: Tween(begin: 0.7, end: 1.0).animate(anim),
                     child: FadeTransition(opacity: anim, child: child),
                   ),
-                  child: Icon(
-                    selected ? item.selectedIcon : item.icon,
-                    key: ValueKey('${item.pageIndex}_$selected'),
-                    size: selected ? 22 : 24,
-                    color: selected
-                        ? cs.onPrimary
-                        : item.tutorialHighlight
-                        ? cs.tertiary
-                        : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                  child: Badge.count(
+                    count: item.badgeCount,
+                    isLabelVisible: item.badgeCount > 0,
+                    child: Icon(
+                      selected ? item.selectedIcon : item.icon,
+                      key: ValueKey('${item.pageIndex}_$selected'),
+                      size: selected ? 22 : 24,
+                      color: selected
+                          ? cs.onPrimary
+                          : item.tutorialHighlight
+                          ? cs.tertiary
+                          : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                    ),
                   ),
                 ),
               ),

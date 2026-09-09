@@ -41,10 +41,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     aiSystemPromptTemplate =
         prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
     aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
-    geminiApiKey = prefs.getString('geminiApiKey') ?? geminiApiKey;
-    openAiApiKey = prefs.getString('openAiApiKey') ?? openAiApiKey;
-    mistralApiKey = prefs.getString('mistralApiKey') ?? mistralApiKey;
-    customAiApiKey = prefs.getString('customAiApiKey') ?? customAiApiKey;
+    await loadSecureAiApiKeys(prefs);
     aiTemperature = prefs.getDouble('aiTemperature') ?? aiTemperature;
     aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
     aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
@@ -1575,6 +1572,9 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                         _reloadFromPrefs();
                       },
                       style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 12,
