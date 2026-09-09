@@ -217,3 +217,22 @@ class HomeworkBundle {
     'lessonNotes': lessonNotes.map((entry) => entry.toLegacyJson()).toList(),
   };
 }
+
+bool isHomeworkDueSoon(int dueDate, {DateTime? now, int daysAhead = 7}) {
+  final raw = dueDate.toString().padLeft(8, '0');
+  if (raw.length != 8 || dueDate <= 0 || daysAhead < 0) return false;
+  final year = int.tryParse(raw.substring(0, 4));
+  final month = int.tryParse(raw.substring(4, 6));
+  final day = int.tryParse(raw.substring(6, 8));
+  if (year == null || month == null || day == null) return false;
+  final due = DateTime(year, month, day);
+  if (due.year != year || due.month != month || due.day != day) return false;
+  final referenceValue = now ?? DateTime.now();
+  final reference = DateTime(
+    referenceValue.year,
+    referenceValue.month,
+    referenceValue.day,
+  );
+  return !due.isBefore(reference) &&
+      !due.isAfter(reference.add(Duration(days: daysAhead)));
+}

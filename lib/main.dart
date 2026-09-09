@@ -44,6 +44,7 @@ import 'features/changes/data/change_repository.dart';
 import 'features/changes/domain/timetable_change.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
+import 'features/homework/domain/homework.dart';
 import 'core/sync_state.dart';
 
 part 'core/school_models.dart';
@@ -6589,7 +6590,7 @@ class _HomeworkView extends StatefulWidget {
 }
 
 class _HomeworkViewState extends State<_HomeworkView> {
-  int _filterIndex = 0; // 0 = Alle, 1 = Offen, 2 = Erledigt
+  int _filterIndex = 0; // 0 = Alle, 1 = Offen, 2 = Bald, 3 = Erledigt
 
   @override
   Widget build(BuildContext context) {
@@ -6645,10 +6646,16 @@ class _HomeworkViewState extends State<_HomeworkView> {
             final doneItems = allItems
                 .where((e) => e['isDone'] == true)
                 .toList();
+            final dueSoonItems = openItems.where((entry) {
+              final dueDate = int.tryParse(entry['dueDate'].toString()) ?? 0;
+              return isHomeworkDueSoon(dueDate);
+            }).toList();
 
             final filtered = _filterIndex == 1
                 ? openItems
-                : (_filterIndex == 2 ? doneItems : allItems);
+                : _filterIndex == 2
+                ? dueSoonItems
+                : (_filterIndex == 3 ? doneItems : allItems);
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -6711,9 +6718,17 @@ class _HomeworkViewState extends State<_HomeworkView> {
                         _filterChip(
                           context,
                           cs,
+                          '${_studentCopy(de: 'Bald fällig', en: 'Due soon', fr: 'Bientôt dues', es: 'Próximas')} (${dueSoonItems.length})',
+                          Icons.upcoming_rounded,
+                          2,
+                        ),
+                        const SizedBox(width: 8),
+                        _filterChip(
+                          context,
+                          cs,
                           '${l.homeworkFilterDone} (${doneItems.length})',
                           Icons.check_circle_rounded,
-                          2,
+                          3,
                         ),
                       ],
                     ),

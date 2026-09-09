@@ -74,4 +74,15 @@ void main() {
     expect(done.homeworks.single.isDone, isTrue);
     expect(reopened.homeworks.single.isDone, isFalse);
   });
+
+  test('due-soon filter includes today and the next seven days only', () {
+    final now = DateTime(2026, 9, 9, 22, 30);
+
+    expect(isHomeworkDueSoon(20260909, now: now), isTrue);
+    expect(isHomeworkDueSoon(20260916, now: now), isTrue);
+    expect(isHomeworkDueSoon(20260917, now: now), isFalse);
+    expect(isHomeworkDueSoon(20260908, now: now), isFalse);
+    expect(isHomeworkDueSoon(20260230, now: now), isFalse);
+    expect(isHomeworkDueSoon(0, now: now), isFalse);
+  });
 }
