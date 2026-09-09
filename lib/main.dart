@@ -10624,9 +10624,14 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         _error = null;
         _lastUpdated = DateTime.now();
       });
-      if (!kIsWeb && Platform.isAndroid) {
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
         final summary = fetched.take(3).map((item) => item.title).join('\n');
-        unawaited(WidgetService.updateNotificationWidget(summary));
+        unawaited(
+          WidgetService.updateNotificationWidget(
+            summary,
+            accountId: activeUntisAccountId ?? 'active',
+          ),
+        );
       }
       return;
     }
@@ -10666,7 +10671,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         _error = null;
         _lastUpdated = DateTime.now();
       });
-      if (!kIsWeb && Platform.isAndroid) {
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
         final summary = fetched.news
             .take(3)
             .map((item) => item.title)
@@ -10674,6 +10679,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         unawaited(
           WidgetService.updateNotificationWidget(
             summary.isEmpty ? 'Keine neuen Mitteilungen' : summary,
+            accountId: activeUntisAccountId ?? 'active',
           ),
         );
       }

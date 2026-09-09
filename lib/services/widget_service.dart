@@ -3,13 +3,56 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 
+class WidgetPreviewData {
+  final String currentLesson;
+  final String nextLesson;
+  final String timeRemaining;
+  final String dailySchedule;
+  final String homeworkSummary;
+  final String notificationSummary;
+  final String accountLabel;
+  final String status;
+
+  const WidgetPreviewData({
+    this.currentLesson = '',
+    this.nextLesson = '',
+    this.timeRemaining = '',
+    this.dailySchedule = '',
+    this.homeworkSummary = '',
+    this.notificationSummary = '',
+    this.accountLabel = '',
+    this.status = '',
+  });
+
+  bool get hasPublishedData =>
+      currentLesson.isNotEmpty ||
+      dailySchedule.isNotEmpty ||
+      homeworkSummary.isNotEmpty ||
+      notificationSummary.isNotEmpty;
+}
+
 class WidgetService {
   static const String appGroupId = 'group.com.ninocss.untisplus';
   static const String androidWidgetName = 'UntisWidgetProvider';
   static const String iOSWidgetName = 'UntisWidget';
+  static const String iOSScheduleWidgetName = 'UntisWidgetDailySchedule';
+  static const String iOSHomeworkWidgetName = 'UntisWidgetHomework';
+  static const String iOSNotificationsWidgetName = 'UntisWidgetNotifications';
+  static Future<void>? _configuration;
 
   static String _key(String accountId, String field) =>
       'widget.$accountId.$field';
+
+  static Future<void> _ensureConfigured() {
+    if (kIsWeb) return Future.value();
+    return _configuration ??= _configure();
+  }
+
+  static Future<void> _configure() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await HomeWidget.setAppGroupId(appGroupId);
+    }
+  }
 
   /// Makes the saved account names available to the native Android
   /// configuration activity and to WidgetKit's account picker. Credentials
@@ -18,6 +61,7 @@ class WidgetService {
     Iterable<Map<String, String>> accounts,
   ) async {
     if (kIsWeb) return;
+    await _ensureConfigured();
     final catalog = accounts
         .where((account) => (account['id'] ?? '').isNotEmpty)
         .map(
@@ -46,6 +90,7 @@ class WidgetService {
     String status = '',
   }) async {
     if (kIsWeb) return;
+    await _ensureConfigured();
     final values = <String, String>{
       'current_lesson': currentLesson,
       'next_lesson': nextLesson,
@@ -77,17 +122,17 @@ class WidgetService {
     );
     await HomeWidget.updateWidget(
       name: 'UntisWidgetHomework',
-      iOSName: iOSWidgetName,
+      iOSName: iOSHomeworkWidgetName,
       qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetHomework',
     );
     await HomeWidget.updateWidget(
       name: 'UntisWidgetNotifications',
-      iOSName: iOSWidgetName,
+      iOSName: iOSNotificationsWidgetName,
       qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetNotifications',
     );
     await HomeWidget.updateWidget(
       name: 'UntisWidgetDailySchedule',
-      iOSName: iOSWidgetName,
+      iOSName: iOSScheduleWidgetName,
       qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetDailySchedule',
     );
   }
@@ -95,10 +140,18 @@ class WidgetService {
   static Future<bool> requestPinWidget({
     required String name,
     required String qualifiedAndroidName,
+    String? preferredAccountId,
   }) async {
     if (kIsWeb) return false;
+    await _ensureConfigured();
     final supported = await HomeWidget.isRequestPinWidgetSupported() ?? false;
     if (!supported) return false;
+    if (preferredAccountId != null && preferredAccountId.isNotEmpty) {
+      await HomeWidget.saveWidgetData<String>(
+        'widget_preferred_account',
+        preferredAccountId,
+      );
+    }
     await HomeWidget.requestPinWidget(
       name: name,
       qualifiedAndroidName: qualifiedAndroidName,
@@ -106,12 +159,57 @@ class WidgetService {
     return true;
   }
 
-  static Future<void> updateNotificationWidget(String summary) async {
+  static Future<WidgetPreviewData> readPreviewData(String accountId) async {
+    if (kIsWeb || accountId.isEmpty) return const WidgetPreviewData();
+    try {
+      await _ensureConfigured();
+      Future<String> read(String field) async =>
+          await HomeWidget.getWidgetData<String>(
+            _key(accountId, field),
+            defaultValue: '',
+          ) ??
+          '';
+      final values = await Future.wait([
+        read('current_lesson'),
+        read('next_lesson'),
+        read('time_remaining'),
+        read('daily_schedule'),
+        read('homework_summary'),
+        read('notification_summary'),
+        read('account_label'),
+        read('status'),
+      ]);
+      return WidgetPreviewData(
+        currentLesson: values[0],
+        nextLesson: values[1],
+        timeRemaining: values[2],
+        dailySchedule: values[3],
+        homeworkSummary: values[4],
+        notificationSummary: values[5],
+        accountLabel: values[6],
+        status: values[7],
+      );
+    } catch (_) {
+      // The preview is also rendered on desktop builds where home_widget has
+      // no platform implementation. An empty result keeps that screen useful.
+      return const WidgetPreviewData();
+    }
+  }
+
+  static Future<void> updateNotificationWidget(
+    String summary, {
+    String accountId = 'active',
+  }) async {
     if (kIsWeb) return;
+    await _ensureConfigured();
+    await HomeWidget.saveWidgetData<String>(
+      _key(accountId, 'notification_summary'),
+      summary,
+    );
     await HomeWidget.saveWidgetData<String>('notification_summary', summary);
     await HomeWidget.updateWidget(
       name: 'UntisWidgetNotifications',
-      iOSName: iOSWidgetName,
+      iOSName: iOSNotificationsWidgetName,
       qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetNotifications',
     );
   }

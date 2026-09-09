@@ -2,14 +2,13 @@ package com.ninocss.untisplus
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
-import android.view.View
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONArray
@@ -58,24 +57,37 @@ class WidgetConfigActivity : Activity() {
         val prefs = HomeWidgetPlugin.getData(this)
         val raw = prefs.getString("widget_accounts", "[]") ?: "[]"
         val accounts = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
+        val preferredAccount = prefs.getString("widget_preferred_account", null)
         if (accounts.length() == 0) {
             root.addView(text("Öffne Untis+ und füge zuerst ein Konto hinzu.", 15f, Color.rgb(100, 78, 62)))
         } else {
-            for (index in 0 until accounts.length()) {
+            val indices = (0 until accounts.length()).sortedBy { index ->
+                if (accounts.optJSONObject(index)?.optString("id") == preferredAccount) 0 else 1
+            }
+            for (index in indices) {
                 val item = accounts.optJSONObject(index) ?: continue
                 val id = item.optString("id")
                 if (id.isEmpty()) continue
+                val isPreferred = id == preferredAccount
                 val label = item.optString("label", "Untis+")
                 val school = item.optString("school")
                 val row = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(18), dp(14), dp(18), dp(14))
-                    background = rounded(Color.WHITE, 28)
+                    background = rounded(
+                        if (isPreferred) Color.rgb(235, 239, 255) else Color.WHITE,
+                        28,
+                    )
                     isClickable = true
                     isFocusable = true
                     setOnClickListener { saveBinding(id) }
                 }
-                row.addView(text(label, 17f, Color.rgb(65, 45, 32), true))
+                row.addView(text(
+                    if (isPreferred) "$label  ✓" else label,
+                    17f,
+                    Color.rgb(65, 45, 32),
+                    true,
+                ))
                 if (school.isNotEmpty()) row.addView(text(school, 13f, Color.rgb(100, 78, 62)))
                 root.addView(row, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
@@ -84,12 +96,13 @@ class WidgetConfigActivity : Activity() {
             }
         }
         root.gravity = Gravity.TOP
-        setContentView(root)
+        setContentView(ScrollView(this).apply { addView(root) })
     }
 
     private fun saveBinding(accountId: String) {
         HomeWidgetPlugin.getData(this).edit()
             .putString("widget_account_$widgetId", accountId)
+            .remove("widget_preferred_account")
             .apply()
         val manager = AppWidgetManager.getInstance(this)
         manager.getAppWidgetInfo(widgetId)?.provider?.let { provider ->

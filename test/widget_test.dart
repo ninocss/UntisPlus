@@ -8,6 +8,8 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     appLocaleNotifier.value = 'de';
+    activeUntisAccountId = null;
+    untisAccountsNotifier.value = const [];
     themeModeNotifier.value = ThemeMode.light;
     visualThemeNotifier.value = AppThemeId.defaultTheme;
     blurEnabledNotifier.value = true;
@@ -62,5 +64,44 @@ void main() {
       expect(Theme.of(context).brightness, Brightness.dark);
       expect(Theme.of(context).extension<UntisThemeTokens>()?.id, theme);
     }
+  });
+
+  testWidgets('widget settings switches complete previews', (tester) async {
+    final account = UntisAccount(
+      id: 'account-test',
+      username: 'Testkonto',
+      schoolUrl: 'example.webuntis.com',
+      schoolName: 'Testschule',
+      password: '',
+      credentialMode: 'password',
+      sessionId: '',
+      personId: 1,
+      personType: 5,
+      lastUsedAt: DateTime(2026),
+    );
+    activeUntisAccountId = account.id;
+    untisAccountsNotifier.value = [account];
+
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SettingsWidgetsPage()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('widget-preview-current')),
+      findsOneWidget,
+    );
+    expect(find.text('Testkonto'), findsWidgets);
+    expect(find.text('Keine aktuelle Stunde'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Tagesplan'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('widget-preview-schedule')),
+      findsOneWidget,
+    );
+    expect(find.text('Noch keine Tagesdaten'), findsOneWidget);
+    expect(find.text('Mittel oder groß'), findsOneWidget);
   });
 }

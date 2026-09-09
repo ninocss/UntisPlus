@@ -5,7 +5,15 @@ import AppIntents
 func untisWidgetValue(_ key: String, accountId: String? = nil) -> String? {
     let defaults = UserDefaults(suiteName: "group.com.ninocss.untisplus") ?? UserDefaults.standard
     let active = accountId ?? defaults.string(forKey: "widget_active_account") ?? "active"
-    return defaults.string(forKey: "widget.\(active).\(key)") ?? defaults.string(forKey: key)
+    if let scoped = defaults.string(forKey: "widget.\(active).\(key)") {
+        return scoped
+    }
+    // A widget explicitly bound to another account must not fall back to the
+    // active account's legacy payload while its first refresh is pending.
+    if accountId != nil {
+        return nil
+    }
+    return defaults.string(forKey: key)
 }
 
 @available(iOSApplicationExtension 17.0, *)
