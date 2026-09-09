@@ -263,41 +263,15 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     ),
                     const SizedBox(height: 12),
                     if (subjects.isNotEmpty)
-                      DropdownButtonFormField<String>(
-                        initialValue: subjects.contains(selectedSubject)
-                            ? selectedSubject
-                            : null,
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                          fontSize: 16,
-                        ),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.book_rounded),
-                          filled: true,
-                          fillColor: cs.surfaceContainerHighest.withValues(
-                            alpha: 0.4,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                        ),
-                        items: subjects
-                            .map(
-                              (s) => DropdownMenuItem(value: s, child: Text(s)),
-                            )
-                            .toList(),
-                        onChanged: (v) {
-                          setDlg(() {
-                            selectedSubject = v ?? '';
-                            subjectController.text = selectedSubject;
-                          });
-                        },
+                      _m3SelectionMenu(
+                        context: ctx,
+                        value: selectedSubject,
+                        entries: subjects,
+                        icon: Icons.book_rounded,
+                        onSelected: (value) => setDlg(() {
+                          selectedSubject = value;
+                          subjectController.text = selectedSubject;
+                        }),
                       )
                     else
                       TextField(

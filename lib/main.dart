@@ -5653,49 +5653,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: RoundedBlurAppBar(
-        leading: PopupMenuButton<String>(
-          tooltip: l.timetableMoreActions,
-          icon: const Icon(Icons.more_vert_rounded),
-          onSelected: (action) {
-            switch (action) {
-              case 'classes':
-                _openClassSearch();
-                break;
-              case 'rooms':
-                _showFreeRoomsDialog();
-                break;
-              case 'export':
-                _exportTimetableImage();
-                break;
-            }
-          },
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'classes',
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.groups_rounded),
-                title: Text(l.timetableSelectAnother),
-              ),
+        leading: MenuAnchor(
+          menuChildren: [
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.groups_rounded),
+              onPressed: _openClassSearch,
+              child: Text(l.timetableSelectAnother),
             ),
-            PopupMenuItem(
-              value: 'rooms',
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.meeting_room_outlined),
-                title: Text(l.freeRoomsTitle),
-              ),
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.meeting_room_outlined),
+              onPressed: _showFreeRoomsDialog,
+              child: Text(l.freeRoomsTitle),
             ),
-            const PopupMenuDivider(),
-            PopupMenuItem(
-              value: 'export',
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.ios_share_rounded),
-                title: Text(l.timetableExportImage),
-              ),
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.ios_share_rounded),
+              onPressed: _exportTimetableImage,
+              child: Text(l.timetableExportImage),
             ),
           ],
+          builder: (context, controller, child) => IconButton(
+            tooltip: l.timetableMoreActions,
+            icon: const Icon(Icons.more_vert_rounded),
+            onPressed: () => controller.isOpen
+                ? controller.close()
+                : controller.open(),
+          ),
         ),
         title: GestureDetector(
           onTap: () {
@@ -6041,41 +6023,15 @@ Future<void> _showAddHomeworkDialog(
                   ),
                   const SizedBox(height: 12),
                   if (subjects.isNotEmpty)
-                    DropdownButtonFormField<String>(
-                      initialValue: subjects.contains(selectedSubject)
-                          ? selectedSubject
-                          : null,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                        fontSize: 16,
-                      ),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.book_rounded),
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.4,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                      ),
-                      items: subjects
-                          .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
-                          )
-                          .toList(),
-                      onChanged: (v) {
-                        setDlg(() {
-                          selectedSubject = v ?? '';
-                          subjectCtrl.text = selectedSubject;
-                        });
-                      },
+                    _m3SelectionMenu(
+                      context: ctx,
+                      value: selectedSubject,
+                      entries: subjects,
+                      icon: Icons.book_rounded,
+                      onSelected: (value) => setDlg(() {
+                        selectedSubject = value;
+                        subjectCtrl.text = selectedSubject;
+                      }),
                     )
                   else
                     TextField(
@@ -6650,7 +6606,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
                 ? dueSoonItems
                 : (_filterIndex == 3 ? doneItems : allItems);
 
-            return RefreshIndicator(
+            return ExpressiveRefreshIndicator(
               onRefresh: () async {
                 final requestAccountId = activeUntisAccountId;
                 final account = activeUntisAccount;
@@ -7361,41 +7317,15 @@ Future<void> _showAddExamDialog(
                   ),
                   const SizedBox(height: 12),
                   if (subjects.isNotEmpty)
-                    DropdownButtonFormField<String>(
-                      initialValue: subjects.contains(selectedSubject)
-                          ? selectedSubject
-                          : null,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                        fontSize: 16,
-                      ),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.book_rounded),
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.4,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                      ),
-                      items: subjects
-                          .map(
-                            (s) => DropdownMenuItem(value: s, child: Text(s)),
-                          )
-                          .toList(),
-                      onChanged: (v) {
-                        setDlg(() {
-                          selectedSubject = v ?? '';
-                          subjectCtrl.text = selectedSubject;
-                        });
-                      },
+                    _m3SelectionMenu(
+                      context: ctx,
+                      value: selectedSubject,
+                      entries: subjects,
+                      icon: Icons.book_rounded,
+                      onSelected: (value) => setDlg(() {
+                        selectedSubject = value;
+                        subjectCtrl.text = selectedSubject;
+                      }),
                     )
                   else
                     TextField(
@@ -7679,69 +7609,6 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     }
     await _fetchApiExams();
     if (mounted) setState(() => _loading = false);
-  }
-
-  Future<void> _openExamActionsDropdown() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final selected = await _showUnifiedOptionSheet<String>(
-      context: context,
-      title: l.examsAddTitle,
-      fitContentHeight: true,
-      bottomMargin: 0,
-      options: [
-        _SheetOption(
-          value: 'custom',
-          title: l.examsActionCustom,
-          icon: Icons.edit_note_rounded,
-        ),
-        _SheetOption(
-          value: 'import',
-          title: l.examsActionImport,
-          icon: Icons.upload_file_rounded,
-        ),
-        _SheetOption(
-          value: 'export',
-          title: l.examsActionExport,
-          icon: Icons.ios_share_rounded,
-        ),
-      ],
-    );
-
-    if (selected == 'custom') {
-      _showAddExamDialog(context);
-    } else if (selected == 'import') {
-      _importExamsWithAI();
-    } else if (selected == 'export') {
-      _exportCustomExams();
-    }
-  }
-
-  Future<void> _openHomeworkActionsDropdown() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final selected = await _showUnifiedOptionSheet<String>(
-      context: context,
-      title: l.homeworkAddTitle,
-      fitContentHeight: true,
-      bottomMargin: 0,
-      options: [
-        _SheetOption(
-          value: 'custom',
-          title: l.homeworkActionCustom,
-          icon: Icons.edit_note_rounded,
-        ),
-        _SheetOption(
-          value: 'import',
-          title: l.homeworkActionImport,
-          icon: Icons.upload_file_rounded,
-        ),
-      ],
-    );
-
-    if (selected == 'custom') {
-      _showAddHomeworkDialog(context);
-    } else if (selected == 'import') {
-      _importHomeworkWithAI(context);
-    }
   }
 
   @override
@@ -8384,23 +8251,54 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: IconButton(
-              tooltip: _tabController.index == 0
-                  ? l.examsAddTitle
-                  : (_tabController.index == 1
-                        ? l.homeworkAddTitle
-                        : l.gradesAddTitle),
-              icon: const Icon(Icons.add_rounded),
-              onPressed: () {
-                if (_tabController.index == 0) {
-                  _openExamActionsDropdown();
-                } else if (_tabController.index == 1) {
-                  _openHomeworkActionsDropdown();
-                } else {
-                  _gradesTrackerKey.currentState?.showAddGradeDialog();
-                }
-              },
-            ),
+            child: _tabController.index == 2
+                ? IconButton(
+                    tooltip: l.gradesAddTitle,
+                    icon: const Icon(Icons.add_rounded),
+                    onPressed: () =>
+                        _gradesTrackerKey.currentState?.showAddGradeDialog(),
+                  )
+                : MenuAnchor(
+                    menuChildren: _tabController.index == 0
+                        ? [
+                            MenuItemButton(
+                              leadingIcon: const Icon(Icons.edit_note_rounded),
+                              onPressed: () => _showAddExamDialog(context),
+                              child: Text(l.examsActionCustom),
+                            ),
+                            MenuItemButton(
+                              leadingIcon: const Icon(Icons.upload_file_rounded),
+                              onPressed: _importExamsWithAI,
+                              child: Text(l.examsActionImport),
+                            ),
+                            MenuItemButton(
+                              leadingIcon: const Icon(Icons.ios_share_rounded),
+                              onPressed: _exportCustomExams,
+                              child: Text(l.examsActionExport),
+                            ),
+                          ]
+                        : [
+                            MenuItemButton(
+                              leadingIcon: const Icon(Icons.edit_note_rounded),
+                              onPressed: () => _showAddHomeworkDialog(context),
+                              child: Text(l.homeworkActionCustom),
+                            ),
+                            MenuItemButton(
+                              leadingIcon: const Icon(Icons.upload_file_rounded),
+                              onPressed: () => _importHomeworkWithAI(context),
+                              child: Text(l.homeworkActionImport),
+                            ),
+                          ],
+                    builder: (context, controller, child) => IconButton(
+                      tooltip: _tabController.index == 0
+                          ? l.examsAddTitle
+                          : l.homeworkAddTitle,
+                      icon: const Icon(Icons.add_rounded),
+                      onPressed: () => controller.isOpen
+                          ? controller.close()
+                          : controller.open(),
+                    ),
+                  ),
           ),
         ],
         bottom: TabBar(
@@ -8454,7 +8352,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
       body: TabBarView(
         controller: _tabController,
         children: [
-          RefreshIndicator(
+          ExpressiveRefreshIndicator(
             onRefresh: _refreshExams,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
@@ -11454,7 +11352,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         fit: StackFit.expand,
         children: [
           Positioned.fill(child: _AnimatedBackground(child: SizedBox.expand())),
-          RefreshIndicator(
+          ExpressiveRefreshIndicator(
             onRefresh: _reload,
             child: _loading
                 ? ListView(

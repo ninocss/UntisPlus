@@ -330,7 +330,7 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
         ),
       ),
       body: _AnimatedBackground(
-        child: RefreshIndicator(
+        child: ExpressiveRefreshIndicator(
           onRefresh: _load,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),

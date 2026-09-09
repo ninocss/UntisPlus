@@ -313,6 +313,65 @@ class _SheetOption<T> {
   });
 }
 
+/// A Material 3 anchored menu styled like the app's filled form controls.
+///
+/// Keeping the trigger in the sheet lets the menu open next to the field rather
+/// than presenting another bottom sheet on top of the current one.
+Widget _m3SelectionMenu({
+  required BuildContext context,
+  required String value,
+  required List<String> entries,
+  required ValueChanged<String> onSelected,
+  required IconData icon,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return MenuAnchor(
+    menuChildren: [
+      for (final entry in entries)
+        MenuItemButton(
+          onPressed: () => onSelected(entry),
+          leadingIcon: Icon(icon),
+          trailingIcon: entry == value
+              ? Icon(Icons.check_rounded, color: cs.primary)
+              : null,
+          child: Text(entry),
+        ),
+    ],
+    builder: (context, controller, child) => Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: controller.open,
+        borderRadius: BorderRadius.circular(20),
+        child: InputDecorator(
+          isEmpty: value.isEmpty,
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon),
+            suffixIcon: const Icon(Icons.arrow_drop_down_rounded),
+            filled: true,
+            fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+          child: Text(
+            value,
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 Future<T?> _showUnifiedSheet<T>({
   required BuildContext context,
   required Widget child,

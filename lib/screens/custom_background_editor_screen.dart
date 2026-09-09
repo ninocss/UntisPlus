@@ -1396,31 +1396,36 @@ class _CustomBackgroundEditorScreenState
               icon: const Icon(Icons.upload_file_rounded),
               onPressed: _showImportSheet,
             ),
-            PopupMenuButton<String>(
-              tooltip: l.bgEditorExportTitle,
-              onSelected: (value) async {
-                if (value == 'export') {
-                  await _showExportSheet();
-                } else if (value == 'new') {
-                  await _newBackground();
-                } else if (value == 'duplicate') {
-                  await _duplicateBackground();
-                } else if (value == 'delete') {
-                  await _deleteBackground();
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'export',
+            MenuAnchor(
+              menuChildren: [
+                MenuItemButton(
+                  leadingIcon: const Icon(Icons.ios_share_rounded),
+                  onPressed: _showExportSheet,
                   child: Text(l.bgEditorExportTitle),
                 ),
-                PopupMenuItem(value: 'new', child: Text(l.bgEditorNew)),
-                PopupMenuItem(
-                  value: 'duplicate',
+                MenuItemButton(
+                  leadingIcon: const Icon(Icons.add_rounded),
+                  onPressed: _newBackground,
+                  child: Text(l.bgEditorNew),
+                ),
+                MenuItemButton(
+                  leadingIcon: const Icon(Icons.content_copy_rounded),
+                  onPressed: _duplicateBackground,
                   child: Text(l.bgEditorDuplicate),
                 ),
-                PopupMenuItem(value: 'delete', child: Text(l.bgEditorDelete)),
+                MenuItemButton(
+                  leadingIcon: const Icon(Icons.delete_outline_rounded),
+                  onPressed: _deleteBackground,
+                  child: Text(l.bgEditorDelete),
+                ),
               ],
+              builder: (context, controller, child) => IconButton(
+                tooltip: l.bgEditorExportTitle,
+                icon: const Icon(Icons.more_vert_rounded),
+                onPressed: () => controller.isOpen
+                    ? controller.close()
+                    : controller.open(),
+              ),
             ),
           ],
           bottom: TabBar(
