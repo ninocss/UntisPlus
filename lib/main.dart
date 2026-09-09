@@ -647,6 +647,7 @@ Future<void> _initializeDeferredAccountData() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(OfflineCacheStore.instance.preWarm());
   _registerNativeUiActions();
 
   final prefs = await SharedPreferences.getInstance();
@@ -901,23 +902,25 @@ Future<Map<String, dynamic>?> _authenticateUntisWithSecret({
   String? school,
 }) async {
   final otp = _generateWebUntisOtp(secret);
-  final response = await http.post(
-    _webUntisInternRpcUri(serverUrl: serverUrl, school: school),
-    body: jsonEncode({
-      'id': requestId,
-      'method': 'getUserData2017',
-      'params': [
-        {
-          'auth': {
-            'clientTime': DateTime.now().millisecondsSinceEpoch,
-            'user': user,
-            'otp': otp,
-          },
-        },
-      ],
-      'jsonrpc': '2.0',
-    }),
-  );
+  final response = await http
+      .post(
+        _webUntisInternRpcUri(serverUrl: serverUrl, school: school),
+        body: jsonEncode({
+          'id': requestId,
+          'method': 'getUserData2017',
+          'params': [
+            {
+              'auth': {
+                'clientTime': DateTime.now().millisecondsSinceEpoch,
+                'user': user,
+                'otp': otp,
+              },
+            },
+          ],
+          'jsonrpc': '2.0',
+        }),
+      )
+      .timeout(const Duration(seconds: 8));
 
   if (response.statusCode != 200 || response.body.trim().isEmpty) {
     return null;
@@ -960,12 +963,14 @@ Future<Map<String, dynamic>?> _authenticateUntisWithSecret({
     return null;
   }
 
-  final appConfigResponse = await http.get(
-    Uri.parse('https://${serverUrl ?? schoolUrl}/WebUntis/api/app/config'),
-    headers: {
-      'Cookie': 'JSESSIONID=$sessionId; schoolname=${school ?? schoolName}',
-    },
-  );
+  final appConfigResponse = await http
+      .get(
+        Uri.parse('https://${serverUrl ?? schoolUrl}/WebUntis/api/app/config'),
+        headers: {
+          'Cookie': 'JSESSIONID=$sessionId; schoolname=${school ?? schoolName}',
+        },
+      )
+      .timeout(const Duration(seconds: 6));
 
   if (appConfigResponse.statusCode != 200 ||
       appConfigResponse.body.trim().isEmpty) {
@@ -1037,15 +1042,17 @@ Future<Map<String, dynamic>?> _authenticateUntis({
     params['otp'] = otpCode;
   }
 
-  final response = await http.post(
-    _webUntisRpcUri(serverUrl: serverUrl, school: school),
-    body: jsonEncode({
-      'id': requestId,
-      'method': 'authenticate',
-      'params': params,
-      'jsonrpc': '2.0',
-    }),
-  );
+  final response = await http
+      .post(
+        _webUntisRpcUri(serverUrl: serverUrl, school: school),
+        body: jsonEncode({
+          'id': requestId,
+          'method': 'authenticate',
+          'params': params,
+          'jsonrpc': '2.0',
+        }),
+      )
+      .timeout(const Duration(seconds: 8));
 
   if (response.statusCode != 200 || response.body.trim().isEmpty) {
     return null;
@@ -1293,8 +1300,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
       tempWeek.forEach((_, list) {
         list.sort((a, b) {
-          final aStart = (a['startTime'] as int?) ?? 0;
-          final bStart = (b['startTime'] as int?) ?? 0;
+          final aStart = (a['startTime'] as num?)?.toInt() ?? 0;
+          final bStart = (b['startTime'] as num?)?.toInt() ?? 0;
           return aStart.compareTo(bStart);
         });
       });
@@ -1439,7 +1446,88 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return '$d|$s|$e|$sub|$room';
   }
 
-  Future<void> _fetchMasterData() async {
+  Future<void> _loadMasterDataFromCache() async {
+    if (_subjectShortMap.isNotEmpty &&
+        _teacherMap.isNotEmpty &&
+        _roomMap.isNotEmpty) {
+      return;
+    }
+    try {
+      final storeKey = OfflineCacheStore.instance.scopedKey(
+        accountId: activeUntisAccountId ?? 'legacy',
+        dataset: 'masterData',
+        entityKey: '$schoolUrl|$schoolName',
+      );
+      final stored = await OfflineCacheStore.instance.read(storeKey);
+      if (stored == null) return;
+      final val = stored.value;
+      if (val['subjectsLong'] is Map) {
+        (val['subjectsLong'] as Map).forEach((k, v) {
+          final id = int.tryParse(k.toString());
+          if (id != null) _subjectLong[id] = v.toString();
+        });
+      }
+      if (val['subjectsShort'] is Map) {
+        (val['subjectsShort'] as Map).forEach((k, v) {
+          final id = int.tryParse(k.toString());
+          if (id != null) _subjectShortMap[id] = v.toString();
+        });
+      }
+      if (val['teachers'] is Map) {
+        (val['teachers'] as Map).forEach((k, v) {
+          final id = int.tryParse(k.toString());
+          if (id != null) _teacherMap[id] = v.toString();
+        });
+      }
+      if (val['rooms'] is Map) {
+        (val['rooms'] as Map).forEach((k, v) {
+          final id = int.tryParse(k.toString());
+          if (id != null) _roomMap[id] = v.toString();
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveMasterDataToCache() async {
+    try {
+      final storeKey = OfflineCacheStore.instance.scopedKey(
+        accountId: activeUntisAccountId ?? 'legacy',
+        dataset: 'masterData',
+        entityKey: '$schoolUrl|$schoolName',
+      );
+      final payload = {
+        'subjectsLong': {
+          for (final e in _subjectLong.entries) e.key.toString(): e.value,
+        },
+        'subjectsShort': {
+          for (final e in _subjectShortMap.entries) e.key.toString(): e.value,
+        },
+        'teachers': {
+          for (final e in _teacherMap.entries) e.key.toString(): e.value,
+        },
+        'rooms': {
+          for (final e in _roomMap.entries) e.key.toString(): e.value,
+        },
+      };
+      await OfflineCacheStore.instance.write(storeKey, payload);
+    } catch (_) {}
+  }
+
+  Future<void> _fetchMasterData({bool force = false}) async {
+    if (!force &&
+        _subjectShortMap.isNotEmpty &&
+        _teacherMap.isNotEmpty &&
+        _roomMap.isNotEmpty) {
+      return;
+    }
+    await _loadMasterDataFromCache();
+    if (!force &&
+        _subjectShortMap.isNotEmpty &&
+        _teacherMap.isNotEmpty &&
+        _roomMap.isNotEmpty) {
+      return;
+    }
+    if (_currentSessionId.isEmpty || schoolUrl.isEmpty) return;
     final url = Uri.parse(
       'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
     );
@@ -1449,17 +1537,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     };
 
     Future<Map<String, dynamic>> rpc(String id, String method) async {
-      final r = await http.post(
-        url,
-        headers: headers,
-        body: jsonEncode({
-          "id": id,
-          "method": method,
-          "params": {},
-          "jsonrpc": "2.0",
-        }),
-      );
-      return jsonDecode(r.body) as Map<String, dynamic>;
+      try {
+        final r = await http.post(
+          url,
+          headers: headers,
+          body: jsonEncode({
+            "id": id,
+            "method": method,
+            "params": {},
+            "jsonrpc": "2.0",
+          }),
+        ).timeout(const Duration(seconds: 6));
+        final decoded = jsonDecode(r.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+      return <String, dynamic>{};
     }
 
     final results = await Future.wait([
@@ -1490,6 +1583,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _roomMap[id] = (r['name'] ?? '').toString();
       }
     }
+    unawaited(_saveMasterDataToCache());
   }
 
   DateTime _currentMonday = resolveDefaultTimetableMonday(DateTime.now());
@@ -1522,10 +1616,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonShowRoomNotifier.addListener(_onHiddenSubjectsChanged);
     lessonCompactModeNotifier.addListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.addListener(_onHiddenSubjectsChanged);
-    lessonCancelledPatternNotifier.addListener(_onHiddenSubjectsChanged);
-    if (sessionID.isNotEmpty || demoModeNotifier.value) {
+    final hasActiveAccount =
+        (activeUntisAccountId != null &&
+            untisAccountsNotifier.value.any(
+              (account) =>
+                  account.id == activeUntisAccountId &&
+                  (account.sessionId.isNotEmpty ||
+                      account.password.isNotEmpty),
+            )) ||
+        sessionID.isNotEmpty;
+    if (hasActiveAccount || demoModeNotifier.value) {
       _fetchFullWeek();
-      _prefetchAdjacentWeeks();
     }
     _loadViewPref();
   }
@@ -2005,6 +2106,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final adjMonday = _weekMondayFromDelta(delta);
       final key = _mondayKey(adjMonday);
       if (_adjacentWeekCache.containsKey(key)) continue;
+      final cached = await _loadWeekFromCache(
+        requestPersonId: pid,
+        requestPersonType: pType,
+        monday: adjMonday,
+      );
+      if (cached != null && cached.values.any((l) => l.isNotEmpty)) {
+        _adjacentWeekCache[key] = cached;
+        continue;
+      }
       try {
         DateTime friday = adjMonday.add(const Duration(days: 4));
         int startDate = int.parse(DateFormat('yyyyMMdd').format(adjMonday));
@@ -2012,30 +2122,33 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final url = Uri.parse(
           'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
         );
-        final response = await http.post(
-          url,
-          headers: {
-            "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: jsonEncode({
-            "id": "week_prefetch",
-            "method": "getTimetable",
-            "params": {
-              "options": {
-                "element": {"id": pid, "type": pType},
-                "startDate": startDate,
-                "endDate": endDate,
-                "showLsText": true,
-                "showSubstText": true,
-                "showInfo": true,
-                "showBooking": true,
+        final response = await http
+            .post(
+              url,
+              headers: {
+                "Cookie":
+                    "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
               },
-            },
-            "jsonrpc": "2.0",
-          }),
-        );
+              body: jsonEncode({
+                "id": "week_prefetch",
+                "method": "getTimetable",
+                "params": {
+                  "options": {
+                    "element": {"id": pid, "type": pType},
+                    "startDate": startDate,
+                    "endDate": endDate,
+                    "showLsText": true,
+                    "showSubstText": true,
+                    "showInfo": true,
+                    "showBooking": true,
+                  },
+                },
+                "jsonrpc": "2.0",
+              }),
+            )
+            .timeout(const Duration(seconds: 6));
         if (response.statusCode == 200) {
           final decoded = jsonDecode(response.body);
           if (decoded['error'] == null && decoded['result'] != null) {
@@ -3937,7 +4050,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       onRefresh: _onRefresh,
       // Keep the indicator directly under the transparent app bar.
       edgeOffset: topContentPadding,
-      triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      triggerMode: RefreshIndicatorTriggerMode.onEdge,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(
@@ -4521,6 +4634,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     } catch (_) {}
   }
 
+  bool _isSessionExpired() {
+    if (_currentSessionId.isEmpty) return true;
+    final account = activeUntisAccount;
+    if (account == null) return false;
+    final age = DateTime.now().difference(account.lastUsedAt);
+    return age.inMinutes >= 8;
+  }
+
   Future<void> _fetchFullWeek({bool silent = false}) async {
     final requestGeneration = ++_weekFetchGeneration;
     final requestedMonday = _currentMonday;
@@ -4549,11 +4670,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (requestPersonType == 0) requestPersonType = 5;
     }
 
-    setState(() {
-      if (!silent) _loading = true;
-      _loadError = null;
-    });
-
     if (isDemoMode) {
       final tempWeek = DemoModeService.buildWeek(
         requestedMonday,
@@ -4579,48 +4695,50 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
-    final cachedWeek = await _loadWeekFromCache(
-      requestPersonId: requestPersonId,
-      requestPersonType: requestPersonType,
-    );
+    final hasExistingWeek = _weekData.values.any((l) => l.isNotEmpty);
+    final cachedWeek = (!silent || !hasExistingWeek)
+        ? await _loadWeekFromCache(
+            requestPersonId: requestPersonId,
+            requestPersonType: requestPersonType,
+          )
+        : null;
     if (!isCurrentRequest()) return;
-    final hasCachedWeek = cachedWeek != null;
-    if (hasCachedWeek && mounted) {
+    final hasCachedWeek = hasExistingWeek ||
+        (cachedWeek != null && cachedWeek.values.any((l) => l.isNotEmpty));
+    if (cachedWeek != null && cachedWeek.values.any((l) => l.isNotEmpty) && mounted) {
       _applyKnownSubjectsFromWeek(cachedWeek);
       setState(() {
         _weekData = cachedWeek;
         _showingCachedWeek = true;
         _loading = false;
+        _loadError = null;
       });
       currentWeekDataNotifier.value = cachedWeek;
       unawaited(_updateHomeWidgets(cachedWeek));
+    } else if (!silent && mounted && !hasCachedWeek) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
     }
 
-    try {
-      await _fetchMasterData();
-      await _fetchHomeworkAndNotes();
-    } catch (e) {
-      if (!isCurrentRequest()) return;
-      if (hasCachedWeek) {
+    if (_subjectShortMap.isEmpty || _teacherMap.isEmpty || _roomMap.isEmpty) {
+      await _loadMasterDataFromCache();
+    }
+
+    if ((_currentSessionId.isEmpty || _isSessionExpired()) && !isDemoMode) {
+      final ok = await _reAuthenticate();
+      if (!ok && !hasCachedWeek) {
         if (!mounted) return;
         setState(() {
-          _loadError = null;
-          _showingCachedWeek = true;
+          _loadError = "Nicht angemeldet";
+          _weekData = _emptyWeekData();
+          _showingCachedWeek = false;
           _loading = false;
         });
         return;
       }
-      if (!mounted) return;
-      setState(() {
-        _loadError = e.toString();
-        _weekData = _emptyWeekData();
-        _showingCachedWeek = false;
-        _loading = false;
-      });
-      return;
     }
-
-    if (!isCurrentRequest()) return;
 
     DateTime friday = requestedMonday.add(const Duration(days: 4));
     int startDate = int.parse(DateFormat('yyyyMMdd').format(requestedMonday));
@@ -4631,7 +4749,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
 
     try {
-      final response = await http.post(
+      final timetableFuture = http.post(
         url,
         headers: {
           "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
@@ -4654,7 +4772,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           },
           "jsonrpc": "2.0",
         }),
-      );
+      ).timeout(const Duration(seconds: 8));
+
+      unawaited(_fetchMasterData());
+      unawaited(_fetchHomeworkAndNotes());
+
+      final response = await timetableFuture;
 
       if (!isCurrentRequest()) return;
 
@@ -4703,7 +4826,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 "params": {},
                 "jsonrpc": "2.0",
               }),
-            );
+            ).timeout(const Duration(seconds: 6));
             if (syRes.statusCode == 200) {
               final syDecoded = jsonDecode(syRes.body);
               if (syDecoded['result'] != null) {
@@ -4719,7 +4842,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     _currentMonday = syStartDate.subtract(
                       Duration(days: syStartDate.weekday - 1),
                     );
-                    await _fetchFullWeek();
+                    await _fetchFullWeek(silent: silent);
                     return;
                   }
                 }
@@ -4732,50 +4855,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             apiMsg.toLowerCase().contains('not authenticated')) {
           final ok = await _reAuthenticate();
           if (ok) {
-            await _fetchFullWeek();
+            await _fetchFullWeek(silent: silent);
             return;
           }
-        }
-
-        if (apiMsg.toLowerCase().contains('not within a school year') ||
-            apiMsg.toLowerCase().contains('nicht in einem schuljahr')) {
-          try {
-            final syRes = await http.post(
-              url,
-              headers: {
-                "Cookie":
-                    "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-                "Content-Type": "application/json",
-              },
-              body: jsonEncode({
-                "id": "sy_req",
-                "method": "getCurrentSchoolyear",
-                "params": {},
-                "jsonrpc": "2.0",
-              }),
-            );
-            if (syRes.statusCode == 200) {
-              final syDecoded = jsonDecode(syRes.body);
-              if (syDecoded['result'] != null) {
-                final sy = syDecoded['result'];
-                final syStart = sy['startDate'].toString();
-                if (syStart.length == 8) {
-                  final syStartDate = DateTime.parse(
-                    "${syStart.substring(0, 4)}-${syStart.substring(4, 6)}-${syStart.substring(6, 8)}",
-                  );
-                  // Adjust current monday to start of school year if we are far away
-                  if (!isCurrentRequest()) return;
-                  if (_currentMonday.isBefore(syStartDate)) {
-                    _currentMonday = syStartDate.subtract(
-                      Duration(days: syStartDate.weekday - 1),
-                    );
-                    await _fetchFullWeek();
-                    return;
-                  }
-                }
-              }
-            }
-          } catch (_) {}
         }
 
         if (!isCurrentRequest()) return;
@@ -4909,222 +4991,79 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         }
       }
 
+      tempWeek.forEach((key, list) {
+        list.sort((a, b) {
+          final aStart = (a['startTime'] as num?)?.toInt() ?? 0;
+          final bStart = (b['startTime'] as num?)?.toInt() ?? 0;
+          return aStart.compareTo(bStart);
+        });
+      });
+
+      _applyKnownSubjectsFromWeek(tempWeek);
+      if (!isCurrentRequest()) return;
+
+      // Update UI immediately so timetable is visible without waiting for secondary calls
+      setState(() {
+        _weekData = tempWeek;
+        _showingCachedWeek = false;
+        _loading = false;
+        _loadError = null;
+      });
+      currentWeekDataNotifier.value = tempWeek;
+      unawaited(_updateHomeWidgets(tempWeek));
+      unawaited(_fetchHolidays());
+
+      final flattenedLessons = tempWeek.values
+          .expand((day) => day)
+          .whereType<Map>();
+      if (!isDemoMode && flattenedLessons.isNotEmpty) {
+        ChangeRepository().recordSnapshot(
+          accountId: requestAccountId,
+          rangeKey: DateFormat('yyyyMMdd').format(requestedMonday),
+          lessons: flattenedLessons,
+        ).then((changes) {
+          if (isCurrentRequest()) {
+            unreadTimetableChangesNotifier.value = changes
+                .where((change) => !change.isRead)
+                .length;
+          }
+        }).catchError((_) {});
+      }
+
+      unawaited(
+        _saveWeekToCache(
+          requestPersonId: requestPersonId,
+          requestPersonType: requestPersonType,
+          weekData: tempWeek,
+          monday: requestedMonday,
+        ),
+      );
+
       final missingTeacherLessons = tempWeek.values
           .expand((day) => day)
           .where((l) => ((l['_teacher'] ?? '').toString().trim().isEmpty))
           .toList();
 
       if (missingTeacherLessons.isNotEmpty) {
-        final exactKeyToTeacher = <String, String>{};
-        final looseKeyToTeacher = <String, String>{};
-
-        // Fallback 1: Public weekly endpoint often contains teacher IDs in
-        // period elements (type=2) even when JSON-RPC omits `te`.
-        try {
-          final weeklyDate = DateFormat('yyyy-MM-dd').format(requestedMonday);
-          final publicUri = Uri.https(
-            schoolUrl,
-            '/WebUntis/api/public/timetable/weekly/data',
-            {
-              'elementType': requestPersonType.toString(),
-              'elementId': requestPersonId.toString(),
-              'date': weeklyDate,
-              'formatId': '2',
-            },
-          );
-          final publicResp = await http.get(
-            publicUri,
-            headers: {
-              "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-              "Accept": "application/json",
-            },
-          );
-          if (publicResp.statusCode == 200) {
-            final decoded = jsonDecode(publicResp.body);
-            final data = decoded is Map
-                ? (((decoded['data'] as Map?)?['result'] as Map?)?['data']
-                      as Map?)
-                : null;
-            final elements = (data?['elements'] as List?) ?? const <dynamic>[];
-            final teacherNameById = <int, String>{};
-            for (final e in elements) {
-              if (e is! Map) continue;
-              if ((e['type'] as int?) != 2) continue;
-              final id = e['id'] as int?;
-              if (id == null) continue;
-              final n =
-                  (e['longName'] ??
-                          e['longname'] ??
-                          e['displayname'] ??
-                          e['name'] ??
-                          '')
-                      .toString()
-                      .trim();
-              if (n.isNotEmpty) teacherNameById[id] = n;
-            }
-
-            final elementPeriods =
-                (data?['elementPeriods'] as Map?) ?? const {};
-            final periodsForElement =
-                elementPeriods[requestPersonId.toString()];
-            final periods = periodsForElement is List
-                ? periodsForElement
-                : const <dynamic>[];
-            for (final p in periods) {
-              if (p is! Map) continue;
-              final pElements = (p['elements'] as List?) ?? const <dynamic>[];
-              int? subjectId;
-              int? roomId;
-              final teacherNames = <String>[];
-              for (final pe in pElements) {
-                if (pe is! Map) continue;
-                final t = pe['type'] as int?;
-                final id = pe['id'] as int?;
-                if (t == 3 && id != null) subjectId ??= id;
-                if (t == 4 && id != null) roomId ??= id;
-                if (t == 2 && id != null) {
-                  final tn = teacherNameById[id];
-                  if (tn != null &&
-                      tn.isNotEmpty &&
-                      !teacherNames.contains(tn)) {
-                    teacherNames.add(tn);
-                  }
-                }
-              }
-              final teacherJoined = teacherNames.join(', ');
-              if (teacherJoined.isEmpty || subjectId == null) continue;
-
-              final exactKey = _lessonTeacherKeyFromParts(
-                date: p['date'],
-                startTime: p['startTime'],
-                endTime: p['endTime'],
-                subjectId: subjectId,
-                roomId: roomId,
-                withRoom: true,
-              );
-              final looseKey = _lessonTeacherKeyFromParts(
-                date: p['date'],
-                startTime: p['startTime'],
-                endTime: p['endTime'],
-                subjectId: subjectId,
-                withRoom: false,
-              );
-              exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
-              looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
-            }
-          }
-        } catch (_) {}
-
-        // Fallback 2: Query related class timetables and try key matching.
-        if (classIdsInWeek.isNotEmpty) {
-          for (final classId in classIdsInWeek) {
-            try {
-              final classResp = await http.post(
-                url,
-                headers: {
-                  "Cookie":
-                      "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-                  "Content-Type": "application/json",
-                  "Accept": "application/json",
-                },
-                body: jsonEncode({
-                  "id": "week_class_$classId",
-                  "method": "getTimetable",
-                  "params": {
-                    "options": {
-                      "element": {"id": classId, "type": 1},
-                      "startDate": startDate,
-                      "endDate": endDate,
-                      "showLsText": true,
-                      "showSubstText": true,
-                      "showInfo": true,
-                      "showBooking": true,
-                    },
-                  },
-                  "jsonrpc": "2.0",
-                }),
-              );
-              if (classResp.statusCode != 200) continue;
-              final classJson = jsonDecode(classResp.body);
-              if (classJson is! Map || classJson['error'] != null) continue;
-              final classResult = classJson['result'];
-              final List<dynamic> classLessons = switch (classResult) {
-                List<dynamic> r => r,
-                Map r when r['timetable'] is List<dynamic> =>
-                  (r['timetable'] as List<dynamic>),
-                _ => <dynamic>[],
-              };
-              for (final lRaw in classLessons) {
-                if (lRaw is! Map) continue;
-                final lMap = Map<dynamic, dynamic>.from(lRaw);
-                final t = _extractTeacherNamesFromLesson(lMap);
-                if (t.isEmpty) continue;
-                exactKeyToTeacher.putIfAbsent(
-                  _lessonTeacherKey(lMap, withRoom: true),
-                  () => t,
-                );
-                looseKeyToTeacher.putIfAbsent(
-                  _lessonTeacherKey(lMap, withRoom: false),
-                  () => t,
-                );
-              }
-            } catch (_) {}
-          }
-        }
-
-        for (final l in missingTeacherLessons) {
-          if (l is! Map) continue;
-          final lMap = Map<dynamic, dynamic>.from(l);
-          final exact =
-              exactKeyToTeacher[_lessonTeacherKey(lMap, withRoom: true)];
-          final loose =
-              looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
-          final fallbackTeacher = exact ?? loose ?? '';
-          if (fallbackTeacher.isNotEmpty) {
-            l['_teacher'] = fallbackTeacher;
-          }
-        }
+        unawaited(_resolveMissingTeachers(
+          tempWeek: tempWeek,
+          missingTeacherLessons: missingTeacherLessons,
+          requestGeneration: requestGeneration,
+          requestedMonday: requestedMonday,
+          requestAccountId: requestAccountId,
+          requestPersonId: requestPersonId,
+          requestPersonType: requestPersonType,
+          startDate: startDate,
+          endDate: endDate,
+          classIdsInWeek: classIdsInWeek,
+        ));
       }
 
-      tempWeek.forEach((key, list) {
-        list.sort(
-          (a, b) => (a['startTime'] as int).compareTo(b['startTime'] as int),
-        );
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (isCurrentRequest()) {
+          _prefetchAdjacentWeeks();
+        }
       });
-
-      _applyKnownSubjectsFromWeek(tempWeek);
-      final flattenedLessons = tempWeek.values
-          .expand((day) => day)
-          .whereType<Map>();
-      if (!isCurrentRequest()) return;
-      if (!isDemoMode && flattenedLessons.isNotEmpty) {
-        final changes = await ChangeRepository().recordSnapshot(
-          accountId: requestAccountId,
-          rangeKey: DateFormat('yyyyMMdd').format(requestedMonday),
-          lessons: flattenedLessons,
-        );
-        if (!isCurrentRequest()) return;
-        unreadTimetableChangesNotifier.value = changes
-            .where((change) => !change.isRead)
-            .length;
-      }
-      await _saveWeekToCache(
-        requestPersonId: requestPersonId,
-        requestPersonType: requestPersonType,
-        weekData: tempWeek,
-        monday: requestedMonday,
-      );
-
-      await _fetchHolidays();
-
-      if (!isCurrentRequest()) return;
-      setState(() {
-        _weekData = tempWeek;
-        _showingCachedWeek = false;
-        _loading = false;
-      });
-      currentWeekDataNotifier.value = tempWeek;
-      unawaited(_updateHomeWidgets(tempWeek));
     } catch (e) {
       debugPrint("Fehler beim Laden: $e");
       if (!isCurrentRequest()) return;
@@ -5157,6 +5096,223 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _showingCachedWeek = false;
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _resolveMissingTeachers({
+    required Map<int, List<dynamic>> tempWeek,
+    required List<dynamic> missingTeacherLessons,
+    required int requestGeneration,
+    required DateTime requestedMonday,
+    required String requestAccountId,
+    required int requestPersonId,
+    required int requestPersonType,
+    required int startDate,
+    required int endDate,
+    required Set<int> classIdsInWeek,
+  }) async {
+    bool isCurrent() =>
+        mounted &&
+        requestGeneration == _weekFetchGeneration &&
+        (activeUntisAccountId ?? 'legacy') == requestAccountId &&
+        _currentMonday == requestedMonday;
+
+    if (!isCurrent()) return;
+
+    final exactKeyToTeacher = <String, String>{};
+    final looseKeyToTeacher = <String, String>{};
+
+    // Fallback 1: Public weekly endpoint often contains teacher IDs in
+    // period elements (type=2) even when JSON-RPC omits `te`.
+    try {
+      final weeklyDate = DateFormat('yyyy-MM-dd').format(requestedMonday);
+      final publicUri = Uri.https(
+        schoolUrl,
+        '/WebUntis/api/public/timetable/weekly/data',
+        {
+          'elementType': requestPersonType.toString(),
+          'elementId': requestPersonId.toString(),
+          'date': weeklyDate,
+          'formatId': '2',
+        },
+      );
+      final publicResp = await http.get(
+        publicUri,
+        headers: {
+          "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+          "Accept": "application/json",
+        },
+      ).timeout(const Duration(seconds: 5));
+      if (publicResp.statusCode == 200) {
+        final decoded = jsonDecode(publicResp.body);
+        final data = decoded is Map
+            ? (((decoded['data'] as Map?)?['result'] as Map?)?['data'] as Map?)
+            : null;
+        final elements = (data?['elements'] as List?) ?? const <dynamic>[];
+        final teacherNameById = <int, String>{};
+        for (final e in elements) {
+          if (e is! Map) continue;
+          if ((e['type'] as int?) != 2) continue;
+          final id = e['id'] as int?;
+          if (id == null) continue;
+          final n = (e['longName'] ??
+                  e['longname'] ??
+                  e['displayname'] ??
+                  e['name'] ??
+                  '')
+              .toString()
+              .trim();
+          if (n.isNotEmpty) teacherNameById[id] = n;
+        }
+
+        final elementPeriods = (data?['elementPeriods'] as Map?) ?? const {};
+        final periodsForElement = elementPeriods[requestPersonId.toString()];
+        final periods = periodsForElement is List
+            ? periodsForElement
+            : const <dynamic>[];
+        for (final p in periods) {
+          if (p is! Map) continue;
+          final pElements = (p['elements'] as List?) ?? const <dynamic>[];
+          int? subjectId;
+          int? roomId;
+          final teacherNames = <String>[];
+          for (final pe in pElements) {
+            if (pe is! Map) continue;
+            final t = pe['type'] as int?;
+            final id = pe['id'] as int?;
+            if (t == 3 && id != null) subjectId ??= id;
+            if (t == 4 && id != null) roomId ??= id;
+            if (t == 2 && id != null) {
+              final tn = teacherNameById[id];
+              if (tn != null && tn.isNotEmpty && !teacherNames.contains(tn)) {
+                teacherNames.add(tn);
+              }
+            }
+          }
+          final teacherJoined = teacherNames.join(', ');
+          if (teacherJoined.isEmpty || subjectId == null) continue;
+
+          final exactKey = _lessonTeacherKeyFromParts(
+            date: p['date'],
+            startTime: p['startTime'],
+            endTime: p['endTime'],
+            subjectId: subjectId,
+            roomId: roomId,
+            withRoom: true,
+          );
+          final looseKey = _lessonTeacherKeyFromParts(
+            date: p['date'],
+            startTime: p['startTime'],
+            endTime: p['endTime'],
+            subjectId: subjectId,
+            withRoom: false,
+          );
+          exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
+          looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
+        }
+      }
+    } catch (_) {}
+
+    if (!isCurrent()) return;
+
+    // Fallback 2: Query related class timetables and try key matching.
+    final stillMissing = missingTeacherLessons.any((l) {
+      if (l is! Map) return false;
+      final lMap = Map<dynamic, dynamic>.from(l);
+      final exact = exactKeyToTeacher[_lessonTeacherKey(lMap, withRoom: true)];
+      final loose = looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
+      return (exact ?? loose ?? '').isEmpty;
+    });
+
+    if (stillMissing && classIdsInWeek.isNotEmpty) {
+      final url = Uri.parse(
+        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+      );
+      final classesToQuery = classIdsInWeek.take(6);
+      await Future.wait(
+        classesToQuery.map((classId) async {
+          try {
+            final classResp = await http.post(
+              url,
+              headers: {
+                "Cookie":
+                    "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+              },
+              body: jsonEncode({
+                "id": "week_class_$classId",
+                "method": "getTimetable",
+                "params": {
+                  "options": {
+                    "element": {"id": classId, "type": 1},
+                    "startDate": startDate,
+                    "endDate": endDate,
+                    "showLsText": true,
+                    "showSubstText": true,
+                    "showInfo": true,
+                    "showBooking": true,
+                  },
+                },
+                "jsonrpc": "2.0",
+              }),
+            ).timeout(const Duration(seconds: 4));
+            if (classResp.statusCode != 200) return;
+            final classJson = jsonDecode(classResp.body);
+            if (classJson is! Map || classJson['error'] != null) return;
+            final classResult = classJson['result'];
+            final List<dynamic> classLessons = switch (classResult) {
+              List<dynamic> r => r,
+              Map r when r['timetable'] is List<dynamic> =>
+                (r['timetable'] as List<dynamic>),
+              _ => <dynamic>[],
+            };
+            for (final lRaw in classLessons) {
+              if (lRaw is! Map) continue;
+              final lMap = Map<dynamic, dynamic>.from(lRaw);
+              final t = _extractTeacherNamesFromLesson(lMap);
+              if (t.isEmpty) continue;
+              exactKeyToTeacher.putIfAbsent(
+                _lessonTeacherKey(lMap, withRoom: true),
+                () => t,
+              );
+              looseKeyToTeacher.putIfAbsent(
+                _lessonTeacherKey(lMap, withRoom: false),
+                () => t,
+              );
+            }
+          } catch (_) {}
+        }),
+      );
+    }
+
+    if (!isCurrent()) return;
+
+    var updatedAny = false;
+    for (final l in missingTeacherLessons) {
+      if (l is! Map) continue;
+      final lMap = Map<dynamic, dynamic>.from(l);
+      final exact = exactKeyToTeacher[_lessonTeacherKey(lMap, withRoom: true)];
+      final loose = looseKeyToTeacher[_lessonTeacherKey(lMap, withRoom: false)];
+      final fallbackTeacher = exact ?? loose ?? '';
+      if (fallbackTeacher.isNotEmpty && l['_teacher'] != fallbackTeacher) {
+        l['_teacher'] = fallbackTeacher;
+        updatedAny = true;
+      }
+    }
+
+    if (updatedAny && isCurrent()) {
+      setState(() {});
+      currentWeekDataNotifier.value = Map<int, List<dynamic>>.from(_weekData);
+      unawaited(
+        _saveWeekToCache(
+          requestPersonId: requestPersonId,
+          requestPersonType: requestPersonType,
+          weekData: _weekData,
+          monday: requestedMonday,
+        ),
+      );
+      unawaited(_updateHomeWidgets(_weekData));
     }
   }
 
@@ -5792,9 +5948,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               ),
       ),
       body: _AnimatedBackground(
-        child: _loading
+        child: (_loading &&
+                _weekData.values.every((list) => list.isEmpty) &&
+                !_showingCachedWeek)
             ? const Center(child: CircularProgressIndicator())
-            : (_loadError != null)
+            : (_loadError != null &&
+                    _weekData.values.every((list) => list.isEmpty) &&
+                    !_showingCachedWeek)
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -7600,11 +7760,10 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _customExams = [];
   bool _loading = true;
 
-  Future<void> _refreshExams() async {
-    if (mounted) {
+  Future<void> _refreshExams({bool showSpinner = false}) async {
+    if (showSpinner && mounted) {
       setState(() {
         _loading = true;
-        _apiExams = [];
       });
     }
     await _fetchApiExams();
@@ -10770,10 +10929,10 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   @override
   void initState() {
     super.initState();
-    _reload();
+    _reload(showSpinner: true);
   }
 
-  Future<void> _reload() async {
+  Future<void> _reload({bool showSpinner = false}) async {
     if (demoModeNotifier.value) {
       final fetched =
           DemoModeService.demoNotifications(
@@ -10825,7 +10984,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       }
     }
 
-    if (mounted) {
+    if ((showSpinner || (_newsItems.isEmpty && _inboxItems.isEmpty)) && mounted) {
       setState(() {
         _loading = true;
         _error = null;
@@ -11354,18 +11513,14 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           Positioned.fill(child: _AnimatedBackground(child: SizedBox.expand())),
           ExpressiveRefreshIndicator(
             onRefresh: _reload,
-            child: _loading
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 140),
-                      Center(child: CircularProgressIndicator()),
-                    ],
-                  )
-                : ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
-                children: [
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
+              children: [
+                if (_loading && activeItems.isEmpty) ...[
+                  const SizedBox(height: 140),
+                  const Center(child: CircularProgressIndicator()),
+                ] else ...[
                   _buildInfoSummaryCard(cs, l, activeItems.length),
                   Row(
                     children: [
@@ -11516,7 +11671,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                       );
                     }),
                 ],
-              ),
+              ],
+            ),
           ),
         ],
       ),

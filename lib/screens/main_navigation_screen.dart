@@ -2627,7 +2627,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPrefs();
     _notificationActionSub = NotificationService().actionEvents.listen(
       _handleNotificationAction,
     );
@@ -2773,17 +2772,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
   }
 
-  Future<void> _loadPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      schoolUrl = prefs.getString('schoolUrl') ?? "";
-      schoolName = prefs.getString('schoolName') ?? "";
-      sessionID = prefs.getString('sessionId') ?? "";
-      personType = prefs.getInt('personType') ?? 0;
-      personId = prefs.getInt('personId') ?? 0;
-    });
-  }
-
   Widget _buildPageWithBackground(BuildContext context, Widget page) {
     final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
@@ -2835,12 +2823,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   List<Widget> get _pages => <Widget>[
-    WeeklyTimetablePage(key: ValueKey(sessionID)),
+    WeeklyTimetablePage(key: ValueKey(activeUntisAccountId ?? 'active')),
     const ExamsPage(),
     const SchoolNotificationsPage(),
     const SettingsHubPage(),
     AiAssistantPage(
-      key: ValueKey(sessionID),
+      key: ValueKey(activeUntisAccountId ?? 'active'),
       onBackToTimetable: () => _onNavTap(0),
       onOpenDrawer: (drawer) {
         setState(() => _currentDrawer = drawer);
@@ -3320,7 +3308,7 @@ class _NavItem {
   final String label;
   final int pageIndex;
   final bool tutorialHighlight;
-  final int badgeCount;
+  int get badgeCount => 0;
 
   const _NavItem({
     required this.icon,
@@ -3328,7 +3316,6 @@ class _NavItem {
     required this.label,
     required this.pageIndex,
     this.tutorialHighlight = false,
-    this.badgeCount = 0,
   });
 }
 

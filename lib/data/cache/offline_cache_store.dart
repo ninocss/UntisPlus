@@ -25,6 +25,10 @@ class OfflineCacheStore {
     return Hive.openBox<String>(_boxName);
   }
 
+  Future<void> preWarm() async {
+    await _box();
+  }
+
   String scopedKey({
     required String accountId,
     required String dataset,
