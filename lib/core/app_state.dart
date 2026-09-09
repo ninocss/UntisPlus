@@ -98,6 +98,15 @@ final ValueNotifier<List<UntisAccount>> untisAccountsNotifier = ValueNotifier(
   const [],
 );
 
+UntisAccount? get activeUntisAccount {
+  final activeId = activeUntisAccountId;
+  if (activeId == null) return null;
+  for (final account in untisAccountsNotifier.value) {
+    if (account.id == activeId) return account;
+  }
+  return null;
+}
+
 /// Personal planning data follows the selected account. App appearance and
 /// language deliberately remain shared device preferences.
 String _accountDataKey(String key) {

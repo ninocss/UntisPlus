@@ -34,18 +34,25 @@ class OfflineCacheStore {
   Future<CachedDocument?> read(String key) async {
     try {
       final raw = (await _box()).get(key);
-      if (raw == null || raw.isEmpty) return null;
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return null;
-      final map = Map<String, dynamic>.from(decoded);
-      final value = map['value'];
-      if (value is! Map) return null;
-      return CachedDocument(
-        savedAt:
-            DateTime.tryParse(map['savedAt']?.toString() ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0),
-        value: Map<String, dynamic>.from(value),
-      );
+      return _decode(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<CachedDocument?> readLatestPrefix(String prefix) async {
+    try {
+      final box = await _box();
+      CachedDocument? latest;
+      for (final key in box.keys.whereType<String>()) {
+        if (!key.startsWith(prefix)) continue;
+        final candidate = _decode(box.get(key));
+        if (candidate != null &&
+            (latest == null || candidate.savedAt.isAfter(latest.savedAt))) {
+          latest = candidate;
+        }
+      }
+      return latest;
     } catch (_) {
       return null;
     }
@@ -66,5 +73,20 @@ class OfflineCacheStore {
       (key) => key.startsWith(prefix),
     );
     await box.deleteAll(keys);
+  }
+
+  CachedDocument? _decode(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return null;
+    final map = Map<String, dynamic>.from(decoded);
+    final value = map['value'];
+    if (value is! Map) return null;
+    return CachedDocument(
+      savedAt:
+          DateTime.tryParse(map['savedAt']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      value: Map<String, dynamic>.from(value),
+    );
   }
 }

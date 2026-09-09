@@ -1634,20 +1634,59 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
     try {
+      final requestAccountId = activeUntisAccountId;
+      final account = activeUntisAccount;
+      final requestStart = _currentMonday;
+      final requestEnd = _currentMonday.add(const Duration(days: 6));
+      final requestSchoolUrl = account?.schoolUrl ?? schoolUrl;
+      final requestSchoolName = account?.schoolName ?? schoolName;
+      final requestSessionId = _currentSessionId;
+      final requestPersonId = account?.personId ?? personId;
+      final requestPersonType = account?.personType ?? personType;
+      if (!demoModeNotifier.value && requestAccountId != null) {
+        final cached = await HomeworkService.loadCachedHomeworkAndNotes(
+          accountId: requestAccountId,
+          startDate: requestStart,
+          endDate: requestEnd,
+        );
+        if (requestAccountId != activeUntisAccountId ||
+            _currentMonday != requestStart) {
+          return;
+        }
+        if (cached != null) {
+          homeworksNotifier.value = cached['homeworks']!;
+          lessonNotesNotifier.value = cached['lessonNotes']!;
+        }
+      }
       final res = demoModeNotifier.value
           ? DemoModeService.buildHomeworkAndNotes(
-              _currentMonday,
+              requestStart,
               locale: appLocaleNotifier.value,
             )
           : await HomeworkService.fetchHomeworkAndNotes(
-              schoolUrl: schoolUrl,
-              schoolName: schoolName,
-              sessionId: _currentSessionId,
-              personId: personId,
-              personType: personType,
-              startDate: _currentMonday,
-              endDate: _currentMonday.add(const Duration(days: 6)),
+              schoolUrl: requestSchoolUrl,
+              schoolName: requestSchoolName,
+              sessionId: requestSessionId,
+              personId: requestPersonId,
+              personType: requestPersonType,
+              accountId: requestAccountId,
+              account: account == null
+                  ? null
+                  : WebUntisAccountLogin(
+                      accountId: account.id,
+                      username: account.username,
+                      schoolUrl: account.schoolUrl,
+                      schoolName: account.schoolName,
+                      personId: account.personId,
+                      personType: account.personType,
+                    ),
+              startDate: requestStart,
+              endDate: requestEnd,
             );
+      if (requestAccountId != activeUntisAccountId ||
+          _currentMonday != requestStart) {
+        return;
+      }
       homeworksNotifier.value = res['homeworks']!;
       lessonNotesNotifier.value = res['lessonNotes']!;
     } catch (e) {
@@ -6613,6 +6652,8 @@ class _HomeworkViewState extends State<_HomeworkView> {
 
             return RefreshIndicator(
               onRefresh: () async {
+                final requestAccountId = activeUntisAccountId;
+                final account = activeUntisAccount;
                 final res = demoModeNotifier.value
                     ? DemoModeService.buildHomeworkAndNotes(
                         resolveDefaultTimetableMonday(DateTime.now()),
@@ -6624,7 +6665,19 @@ class _HomeworkViewState extends State<_HomeworkView> {
                         sessionId: sessionID,
                         personId: personId,
                         personType: personType,
+                        accountId: activeUntisAccountId,
+                        account: account == null
+                            ? null
+                            : WebUntisAccountLogin(
+                                accountId: account.id,
+                                username: account.username,
+                                schoolUrl: account.schoolUrl,
+                                schoolName: account.schoolName,
+                                personId: account.personId,
+                                personType: account.personType,
+                              ),
                       );
+                if (requestAccountId != activeUntisAccountId) return;
                 homeworksNotifier.value = res['homeworks']!;
                 lessonNotesNotifier.value = res['lessonNotes']!;
               },
@@ -6798,16 +6851,17 @@ class _HomeworkViewState extends State<_HomeworkView> {
       return '${d.substring(6, 8)}.${d.substring(4, 6)}.${d.substring(0, 4)}';
     }
 
-    Future<void> toggleDone() async {
-      HapticFeedback.selectionClick();
+    Future<void> setDone(bool value) async {
       final hwId = hw['id'];
       if (isCustom) {
-        final list = List<Map<String, dynamic>>.from(
-          customHomeworkNotifier.value,
+        final list = customHomeworkNotifier.value
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList();
+        final idx = list.indexWhere(
+          (entry) => entry['id']?.toString() == hwId?.toString(),
         );
-        final idx = list.indexWhere((e) => e['id'] == hwId);
         if (idx != -1) {
-          list[idx]['isDone'] = !isDone;
+          list[idx]['isDone'] = value;
           await saveCustomHomework(list);
         }
         return;
@@ -6815,14 +6869,56 @@ class _HomeworkViewState extends State<_HomeworkView> {
 
       final numericId = int.tryParse(hwId.toString());
       if (numericId == null) return;
-      await HomeworkService.toggleDone(numericId, !isDone);
-      final currentApi = List<Map<String, dynamic>>.from(
-        homeworksNotifier.value,
+      await HomeworkService.toggleDone(
+        numericId,
+        value,
+        accountId: activeUntisAccountId,
       );
-      for (var item in currentApi) {
-        if (item['id'] == numericId) item['_done'] = !isDone;
+      final currentApi = homeworksNotifier.value
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList();
+      for (final item in currentApi) {
+        if (item['id']?.toString() == numericId.toString()) {
+          item['_done'] = value;
+        }
       }
       homeworksNotifier.value = currentApi;
+    }
+
+    Future<void> toggleDone() async {
+      HapticFeedback.selectionClick();
+      await setDone(!isDone);
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            !isDone
+                ? _studentCopy(
+                    de: 'Aufgabe als erledigt markiert.',
+                    en: 'Task marked as done.',
+                    fr: 'Tâche marquée comme terminée.',
+                    es: 'Tarea marcada como completada.',
+                  )
+                : _studentCopy(
+                    de: 'Aufgabe wieder geöffnet.',
+                    en: 'Task reopened.',
+                    fr: 'Tâche rouverte.',
+                    es: 'Tarea reabierta.',
+                  ),
+          ),
+          action: SnackBarAction(
+            label: _studentCopy(
+              de: 'Rückgängig',
+              en: 'Undo',
+              fr: 'Annuler',
+              es: 'Deshacer',
+            ),
+            onPressed: () => unawaited(setDone(isDone)),
+          ),
+        ),
+      );
     }
 
     Future<void> openHomework() async {
