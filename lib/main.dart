@@ -74,6 +74,7 @@ part 'screens/settings/custom_widget_editor_page.dart';
 part 'screens/settings/settings_account_page.dart';
 part 'screens/settings/settings_about_updates_page.dart';
 part 'widgets/animated_background.dart';
+part 'widgets/expressive_refresh_indicator.dart';
 part 'widgets/custom_background_view.dart';
 part 'widgets/changelog_bottom_sheet.dart';
 part 'widgets/rounded_blur_app_bar.dart';
@@ -3520,11 +3521,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final lessonSlots = _computeLessonSlots(mergedLessons);
 
     final csG = Theme.of(context).colorScheme;
-    return RefreshIndicator(
+    return ExpressiveRefreshIndicator(
       onRefresh: _onRefresh,
-      // `displacement` is relative to the viewport, not `edgeOffset`.
-      // It must stay below the transparent app bar or the spinner is clipped.
-      displacement: topContentPadding + 40,
+      // The expressive indicator starts immediately under the app bar rather
+      // than in the middle of the timetable content.
       edgeOffset: topContentPadding,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -3933,10 +3933,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
 
-    return RefreshIndicator(
+    return ExpressiveRefreshIndicator(
       onRefresh: _onRefresh,
-      // Keep the resting indicator below the transparent app bar.
-      displacement: topContentPadding + 40,
+      // Keep the indicator directly under the transparent app bar.
       edgeOffset: topContentPadding,
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       child: SingleChildScrollView(

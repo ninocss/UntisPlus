@@ -414,10 +414,10 @@ class ThemedBackdrop extends StatelessWidget {
       AppThemeId.cyber => 8,
       _ => -1,
     };
-    // Vivid and Cyber own their visual scene; letting the global background
-    // style override it made both themes collapse into the same backdrop.
-    // Default/Glass may still honor a user-selected scene.
-    final sceneStyle = appThemeCapabilities(tokens.id).supportsCustomBackgrounds
+    // Keep each art style's colors, but let every animated style use the
+    // selected motion scene. This makes the appearance setting persistent
+    // instead of silently disappearing after a theme switch.
+    final sceneStyle = appThemeCapabilities(tokens.id).supportsBackgroundMotion
         ? (backgroundStyle ?? themeSceneStyle)
         : themeSceneStyle;
     return Stack(

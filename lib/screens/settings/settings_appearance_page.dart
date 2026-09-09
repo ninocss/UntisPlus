@@ -708,7 +708,7 @@ class SettingsAppearancePage extends StatelessWidget {
                         );
                       },
                     ),
-                  if (selectedTheme == AppThemeId.defaultTheme)
+                  if (capabilities.supportsBackgroundMotion)
                     ValueListenableBuilder<bool>(
                       valueListenable: backgroundAnimationsNotifier,
                       builder: (context, animationsEnabled, _) {
