@@ -32,7 +32,7 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
   );
 
   bool get _isVisible =>
-      _status != null && _status != RefreshIndicatorStatus.inactive;
+      _status != null && _status != RefreshIndicatorStatus.canceled;
 
   @override
   void dispose() {
@@ -43,11 +43,20 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
   void _onStatusChange(RefreshIndicatorStatus? status) {
     if (status == _status) return;
     setState(() => _status = status);
-    if (status == RefreshIndicatorStatus.refresh) {
+    if (status == RefreshIndicatorStatus.snap ||
+        status == RefreshIndicatorStatus.refresh) {
       _motion.repeat();
-    } else if (status == RefreshIndicatorStatus.inactive) {
+    } else if (status == RefreshIndicatorStatus.done ||
+        status == RefreshIndicatorStatus.canceled) {
       _motion.stop();
-      _motion.value = 0;
+      Future<void>.delayed(const Duration(milliseconds: 220), () {
+        if (mounted && _status == status) {
+          setState(() {
+            _status = null;
+            _motion.value = 0;
+          });
+        }
+      });
     }
   }
 
@@ -59,7 +68,6 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
 
     return RefreshIndicator.noSpinner(
       onRefresh: widget.onRefresh,
-      edgeOffset: widget.edgeOffset,
       triggerMode: widget.triggerMode,
       onStatusChange: _onStatusChange,
       child: Stack(
