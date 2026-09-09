@@ -15,9 +15,9 @@ class SettingsNotificationsPage extends StatelessWidget {
       if (!granted) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Benachrichtigungen sind in den Systemeinstellungen nicht erlaubt.',
+              AppL10n.of(appLocaleNotifier.value).ui('notificationsDenied'),
             ),
           ),
         );
@@ -54,8 +54,8 @@ class SettingsNotificationsPage extends StatelessWidget {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onTertiaryContainer,
-                  title: 'Widgets & Vorschau',
-                  subtitle: 'Varianten, Vorschau und Kontozuordnung.',
+                  title: l.ui('notificationsWidgets'),
+                  subtitle: l.ui('notificationsWidgetsDesc'),
                   onTap: () => Navigator.push(
                     context,
                     _buildBouncyRoute(const SettingsWidgetsPage()),
@@ -68,9 +68,8 @@ class SettingsNotificationsPage extends StatelessWidget {
                       alpha: 0.7,
                     ),
                     iconColor: cs.onPrimaryContainer,
-                    title: 'Wecker & Smart-Wecker',
-                    subtitle:
-                        'Exakte Android-Wecker, die sich an Ausfälle anpassen.',
+                    title: l.ui('notificationsAlarms'),
+                    subtitle: l.ui('notificationsAlarmsDesc'),
                     onTap: () => Navigator.push(
                       context,
                       _buildBouncyRoute(const SettingsAlarmPage()),

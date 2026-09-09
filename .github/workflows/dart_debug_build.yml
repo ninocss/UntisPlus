@@ -10,7 +10,7 @@ on:
       flutter_version:
         description: 'Flutter-Version'
         required: true
-        default: '3.41.9'
+        default: '3.47.0'
       artifact_name:
         description: 'Name des Artefakts'
         required: true

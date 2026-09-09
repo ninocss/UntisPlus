@@ -89,38 +89,6 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
     });
   }
 
-  String _glowModeLabel(AppL10n l, int mode) {
-    return mode == 1
-        ? l.settingsLessonGlowModeAll
-        : l.settingsLessonGlowModeActive;
-  }
-
-  void _showGlowModeDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    _showUnifiedOptionSheet<int>(
-      context: context,
-      title: l.settingsLessonGlowMode,
-      options: [
-        _SheetOption(
-          value: 0,
-          title: l.settingsLessonGlowModeActive,
-          icon: Icons.flash_on_rounded,
-          selected: lessonGlowModeNotifier.value == 0,
-        ),
-        _SheetOption(
-          value: 1,
-          title: l.settingsLessonGlowModeAll,
-          icon: Icons.auto_awesome_rounded,
-          selected: lessonGlowModeNotifier.value == 1,
-        ),
-      ],
-    ).then((value) {
-      if (value != null) {
-        _settingsSetLessonGlowMode(value);
-      }
-    });
-  }
-
   String _accentStyleLabel(AppL10n l, int style) {
     switch (style) {
       case 1:
@@ -416,9 +384,7 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                   child: AnimatedBuilder(
                     animation: Listenable.merge([
                       lessonCardStyleNotifier,
-                      lessonGlowEnabledNotifier,
-                      lessonGlowModeNotifier,
-                      lessonGlowIntensityNotifier,
+                      glowEffectsEnabledNotifier,
                       lessonBlurEnabledNotifier,
                       lessonBlurAmountNotifier,
                       lessonCardOpacityNotifier,
@@ -469,9 +435,7 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
     final effectiveRadius = lessonBorderRadiusNotifier.value;
     final cardRadius = BorderRadius.circular(effectiveRadius);
 
-    final glowEnabled = lessonGlowEnabledNotifier.value;
-    final glowMode = lessonGlowModeNotifier.value;
-    final glowIntensity = lessonGlowIntensityNotifier.value;
+    final glowEnabled = glowEffectsEnabledNotifier.value;
     final cardStyle = lessonCardStyleNotifier.value;
     final blurEnabled =
         (lessonBlurEnabledNotifier.value || cardStyle == 1) &&
@@ -497,23 +461,10 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
       if (isNow) {
         shadows = [
           BoxShadow(
-            color: fgColor.withValues(
-              alpha: (0.38 * glowIntensity).clamp(0.0, 1.0),
-            ),
-            blurRadius: (14 * glowIntensity).clamp(2.0, 30.0),
-            spreadRadius: (1.5 * glowIntensity).clamp(0.0, 6.0),
+            color: fgColor.withValues(alpha: 0.38),
+            blurRadius: 14,
+            spreadRadius: 1.5,
             offset: const Offset(0, 3),
-          ),
-        ];
-      } else if (glowMode == 1) {
-        shadows = [
-          BoxShadow(
-            color: fgColor.withValues(
-              alpha: (0.16 * glowIntensity).clamp(0.0, 1.0),
-            ),
-            blurRadius: (8 * glowIntensity).clamp(2.0, 20.0),
-            spreadRadius: (0.5 * glowIntensity).clamp(0.0, 4.0),
-            offset: const Offset(0, 2),
           ),
         ];
       }
@@ -670,12 +621,12 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: fgColor,
-                        boxShadow: [
+                        boxShadow: _glowShadows(context, [
                           BoxShadow(
                             color: fgColor.withValues(alpha: 0.6),
                             blurRadius: 5,
                           ),
-                        ],
+                        ]),
                       ),
                     ),
                   ],
@@ -880,178 +831,6 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                       subtitle: l.settingsLessonCompactModeDesc,
                       value: compact,
                       onChanged: _settingsSetLessonCompactMode,
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            // ── GROUP 2: GLOW & LIGHTING ──
-            SettingsGroup(
-              title: l.settingsLessonGlow,
-              children: [
-                ValueListenableBuilder<bool>(
-                  valueListenable: lessonGlowEnabledNotifier,
-                  builder: (context, glowEnabled, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.auto_awesome_rounded,
-                      iconBackgroundColor: cs.tertiaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onTertiaryContainer,
-                      title: l.settingsLessonGlow,
-                      subtitle: l.settingsLessonGlowDesc,
-                      value: glowEnabled,
-                      onChanged: _settingsSetLessonGlowEnabled,
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: lessonGlowEnabledNotifier,
-                  builder: (context, glowEnabled, _) {
-                    if (!glowEnabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<int>(
-                      valueListenable: lessonGlowModeNotifier,
-                      builder: (context, mode, _) {
-                        return SettingsTile(
-                          icon: Icons.tune_rounded,
-                          iconBackgroundColor: cs.tertiaryContainer.withValues(
-                            alpha: 0.7,
-                          ),
-                          iconColor: cs.onTertiaryContainer,
-                          title: l.settingsLessonGlowMode,
-                          subtitle: _glowModeLabel(l, mode),
-                          onTap: () => _showGlowModeDialog(context),
-                        );
-                      },
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: lessonGlowEnabledNotifier,
-                  builder: (context, glowEnabled, _) {
-                    if (!glowEnabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<bool>(
-                      valueListenable: lessonGlowNextEnabledNotifier,
-                      builder: (context, glowNext, _) {
-                        return SettingsSwitchTile(
-                          icon: Icons.schedule_rounded,
-                          iconBackgroundColor: cs.tertiaryContainer.withValues(
-                            alpha: 0.7,
-                          ),
-                          iconColor: cs.onTertiaryContainer,
-                          title: l.settingsLessonGlowNext,
-                          subtitle: l.settingsLessonGlowNextDesc,
-                          value: glowNext,
-                          onChanged: _settingsSetLessonGlowNextEnabled,
-                        );
-                      },
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: lessonGlowEnabledNotifier,
-                  builder: (context, glowEnabled, _) {
-                    if (!glowEnabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<bool>(
-                      valueListenable: lessonGlowNextEnabledNotifier,
-                      builder: (context, glowNext, _) {
-                        if (!glowNext) return const SizedBox.shrink();
-                        return ValueListenableBuilder<int>(
-                          valueListenable: lessonGlowNextMinutesNotifier,
-                          builder: (context, minutes, _) {
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        l.settingsLessonGlowNextLeadTime,
-                                        style: GoogleFonts.outfit(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                          color: cs.onSurface,
-                                        ),
-                                      ),
-                                      Text(
-                                        '$minutes min',
-                                        style: GoogleFonts.outfit(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
-                                          color: cs.primary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Slider(
-                                    value: minutes.toDouble().clamp(5.0, 60.0),
-                                    min: 5.0,
-                                    max: 60.0,
-                                    divisions: 11,
-                                    label:
-                                        '${minutes} ${l.settingsLessonGlowNextLeadTime.toLowerCase()}',
-                                    onChanged: (val) =>
-                                        _settingsSetLessonGlowNextMinutes(
-                                          val.round(),
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: lessonGlowEnabledNotifier,
-                  builder: (context, glowEnabled, _) {
-                    if (!glowEnabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<double>(
-                      valueListenable: lessonGlowIntensityNotifier,
-                      builder: (context, intensity, _) {
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    l.settingsLessonGlowIntensity,
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                      color: cs.onSurface,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${(intensity * 100).round()}%',
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                      color: cs.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Slider(
-                                value: intensity,
-                                min: 0.4,
-                                max: 2.0,
-                                onChanged: _settingsSetLessonGlowIntensity,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
                     );
                   },
                 ),

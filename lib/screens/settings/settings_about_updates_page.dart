@@ -318,9 +318,6 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
           title: Text(
             l.settingsGithubUpdateFound(latestVersion),
             style: GoogleFonts.outfit(fontWeight: FontWeight.w800),

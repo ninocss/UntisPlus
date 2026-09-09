@@ -24,7 +24,7 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 | Aspect | Specification |
 | :--- | :--- |
 | **Data Policy** | Private by default. Credentials and schedule data never leave your device. |
-| **Current Version** | `5.2.0` |
+| **Current Version** | `5.2.1` |
 | **Target Platforms** | Android, iOS |
 
 ---
@@ -34,6 +34,8 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 * **Advanced Timetable** — Fast, fluid, and optimized navigation for daily and weekly class schedules.
 * **Exam & Info Tracker** — Consolidated overview of upcoming exams and direct broadcast announcements from your school.
 * **Homework & Lesson Notes** — Seamless integration of homework and notes straight from WebUntis.
+* **Absences & Change Center** — Offline-first absence history and a deduplicated timeline of cancellations, room, teacher, subject, and time changes.
+* **Multi-Account by Design** — Account-scoped schedules, personal data, widgets, alarms, credentials, and caches.
 * **Smart Utilities** — Built-in free room finder and home screen widgets for immediate status checks.
 * **Local Intelligence** — On-device assistive AI features that manage workflows privately, without sending data to the cloud.
 
@@ -62,6 +64,10 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 | Dynamic Lockscreen & Next-Lesson Widgets | Done |
 | Native Offline/Local AI Model Integration | Done |
 | Dynamic Smart Alarm Sync (Wake up based on timetable changes) | Done |
+| Native secure credential migration | Done |
+| Offline-first structured cache foundation | In progress |
+| Absence overview and timetable change center | In progress |
+| Feature-by-feature Riverpod migration | In progress |
 
 ---
 
@@ -70,7 +76,10 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 | Dependency | Purpose |
 | :--- | :--- |
 | **`http`** | WebUntis API communication |
-| **`shared_preferences`** | Encrypted local token and setting persistence |
+| **`flutter_secure_storage`** | Native encrypted storage for credentials and API keys |
+| **`shared_preferences`** | Non-sensitive preferences such as theme, language, and layout |
+| **`hive_ce_flutter`** | Versioned, account-scoped offline data cache |
+| **`flutter_riverpod`** | Testable dependency injection and feature state migration |
 | **`dynamic_color`** | Material You dynamic theme integration |
 | **`home_widget`** | Native Android and iOS widget connectivity |
 | **`flutter_local_notifications`** | Time-critical lesson alerts and schedule update tracking |
@@ -85,6 +94,8 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 ├── lib/
 │   ├── app/                   # Central application routing configuration
 │   ├── core/                  # State engines, themes, and time utilities
+│   ├── data/                  # Secure storage, cache, and WebUntis transport
+│   ├── features/              # Typed feature data/domain modules
 │   ├── screens/               # System views, settings hub, and setup guides
 │   ├── services/              # Notification, background sync, and backup engines
 │   ├── web/                   # Web-specific platform adaptions
@@ -114,6 +125,14 @@ flutter pub get
 
 # Launch the application in debug mode
 flutter run
+```
+
+Pure Dart and widget tests can be run without compiling the optional local-AI
+runtime. The wrapper temporarily substitutes a test-only fllama stub and always
+restores the production dependency afterwards:
+
+```powershell
+pwsh -File tool/test_without_local_ai.ps1
 ```
 
 ---

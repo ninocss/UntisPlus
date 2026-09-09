@@ -8,15 +8,53 @@ class UntisPlusApp extends StatelessWidget {
     ColorScheme scheme,
     bool isAmoled,
     bool blurEnabled,
+    bool glowEffectsEnabled,
     AppThemeId visualTheme,
   ) {
     final tokens = UntisThemeTokens.forTheme(
       visualTheme,
       scheme.brightness,
       scheme,
-    );
+    ).copyWith(glowEffectsEnabled: glowEffectsEnabled);
+    final expressive = appThemeCapabilities(
+      visualTheme,
+    ).supportsExpressiveComponents;
     final useBlur = blurEnabled && tokens.supportsBlur;
     final baseText = untisThemeTextTheme(visualTheme, scheme.brightness);
+    final controlShape = expressive
+        ? WidgetStateProperty.resolveWith<OutlinedBorder>((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              );
+            }
+            return const StadiumBorder();
+          })
+        : WidgetStatePropertyAll<OutlinedBorder>(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(tokens.controlRadius),
+            ),
+          );
+    final iconControlShape = expressive
+        ? WidgetStateProperty.resolveWith<OutlinedBorder>((states) {
+            if (states.contains(WidgetState.pressed)) {
+              return RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              );
+            }
+            return const CircleBorder();
+          })
+        : controlShape;
+    final commonButtonStyle = ButtonStyle(
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      ),
+      minimumSize: expressive
+          ? const WidgetStatePropertyAll(Size(48, 48))
+          : null,
+      shape: controlShape,
+      animationDuration: expressive ? const Duration(milliseconds: 200) : null,
+    );
     TextStyle displayFont({
       Color? color,
       double? fontSize,
@@ -63,6 +101,8 @@ class UntisPlusApp extends StatelessWidget {
         backgroundColor: useBlur
             ? scheme.surfaceContainer.withValues(alpha: 0.68)
             : scheme.surfaceContainer,
+        height: expressive ? 76 : null,
+        indicatorShape: expressive ? const StadiumBorder() : null,
         indicatorColor: scheme.secondaryContainer,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
@@ -87,7 +127,9 @@ class UntisPlusApp extends StatelessWidget {
       ),
       cardTheme: CardThemeData(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(tokens.surfaceRadius),
+          borderRadius: BorderRadius.circular(
+            expressive ? 28 : tokens.surfaceRadius,
+          ),
         ),
         clipBehavior: Clip.antiAlias,
         elevation: 0,
@@ -101,7 +143,9 @@ class UntisPlusApp extends StatelessWidget {
             : scheme.surfaceContainerHigh,
         surfaceTintColor: scheme.primary,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(tokens.surfaceRadius + 6),
+          borderRadius: BorderRadius.circular(
+            expressive ? 32 : tokens.surfaceRadius + 6,
+          ),
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
@@ -111,52 +155,59 @@ class UntisPlusApp extends StatelessWidget {
         surfaceTintColor: scheme.primary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
-            top: Radius.circular(tokens.surfaceRadius + 6),
+            top: Radius.circular(expressive ? 32 : tokens.surfaceRadius + 6),
           ),
         ),
       ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(tokens.controlRadius),
-          ),
-        ),
-      ),
+      filledButtonTheme: FilledButtonThemeData(style: commonButtonStyle),
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(tokens.controlRadius),
-          ),
-          elevation: 0,
-          backgroundColor: scheme.surfaceContainerHigh,
-          foregroundColor: scheme.onSurface,
+        style: commonButtonStyle.copyWith(
+          elevation: const WidgetStatePropertyAll(0),
+          backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerHigh),
+          foregroundColor: WidgetStatePropertyAll(scheme.onSurface),
         ),
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(tokens.controlRadius),
-          ),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: commonButtonStyle),
+      textButtonTheme: TextButtonThemeData(style: commonButtonStyle),
+      iconButtonTheme: IconButtonThemeData(
+        style: ButtonStyle(
+          minimumSize: expressive
+              ? const WidgetStatePropertyAll(Size(48, 48))
+              : null,
+          shape: iconControlShape,
+          animationDuration: expressive
+              ? const Duration(milliseconds: 200)
+              : null,
         ),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(tokens.controlRadius),
-          ),
-        ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        elevation: expressive ? 0 : null,
+        focusElevation: expressive ? 0 : null,
+        hoverElevation: expressive ? 1 : null,
+        highlightElevation: expressive ? 0 : null,
+        shape: expressive ? const CircleBorder() : null,
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
           selectedBackgroundColor: scheme.secondaryContainer,
           selectedForegroundColor: scheme.onSecondaryContainer,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(tokens.controlRadius),
-          ),
+          shape: expressive
+              ? const StadiumBorder()
+              : RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(tokens.controlRadius),
+                ),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        shape: expressive
+            ? const StadiumBorder()
+            : RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(tokens.controlRadius),
+              ),
+        side: BorderSide(color: scheme.outlineVariant),
+        padding: EdgeInsets.symmetric(
+          horizontal: expressive ? 12 : 8,
+          vertical: expressive ? 8 : 4,
         ),
       ),
       switchTheme: SwitchThemeData(
@@ -180,10 +231,33 @@ class UntisPlusApp extends StatelessWidget {
         }),
       ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: scheme.primary,
-        inactiveTrackColor: scheme.surfaceContainerHighest,
-        thumbColor: scheme.primary,
-        overlayColor: scheme.primary.withValues(alpha: 0.12),
+        activeTrackColor: expressive ? null : scheme.primary,
+        inactiveTrackColor: expressive ? null : scheme.surfaceContainerHighest,
+        thumbColor: expressive ? null : scheme.primary,
+        overlayColor: expressive
+            ? null
+            : scheme.primary.withValues(alpha: 0.12),
+        // ignore: deprecated_member_use
+        year2023: expressive ? false : true,
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        linearTrackColor: scheme.secondaryContainer,
+        refreshBackgroundColor: scheme.surfaceContainerHigh,
+        // Flutter 3.47 still requires this transitional flag for the latest
+        // native Material progress indicator geometry.
+        // ignore: deprecated_member_use
+        year2023: expressive ? false : true,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: expressive,
+        fillColor: expressive ? scheme.surfaceContainerHighest : null,
+        border: expressive
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide.none,
+              )
+            : null,
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant.withValues(alpha: 0.35),
@@ -199,7 +273,9 @@ class UntisPlusApp extends StatelessWidget {
       ),
       snackBarTheme: SnackBarThemeData(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(tokens.controlRadius),
+          borderRadius: BorderRadius.circular(
+            expressive ? 24 : tokens.controlRadius,
+          ),
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -309,55 +385,65 @@ class UntisPlusApp extends StatelessWidget {
 
                                     final l = AppL10n.of(locale);
 
-                                    return MaterialApp(
-                                      debugShowCheckedModeBanner: false,
-                                      title: l.appName,
-                                      scrollBehavior:
-                                          const _UntisScrollBehavior(),
-                                      theme: _themeFrom(
-                                        lightScheme,
-                                        isAmoled,
-                                        blurEnabled,
-                                        visualTheme,
-                                      ),
-                                      darkTheme: _themeFrom(
-                                        darkScheme,
-                                        isAmoled,
-                                        blurEnabled,
-                                        visualTheme,
-                                      ),
-                                      themeMode: themeMode,
-                                      themeAnimationDuration: Duration.zero,
-                                      builder: (context, child) {
-                                        final isDark =
-                                            Theme.of(context).brightness ==
-                                            Brightness.dark;
-                                        final overlayStyle =
-                                            SystemUiOverlayStyle(
-                                              statusBarColor:
-                                                  Colors.transparent,
-                                              statusBarIconBrightness: isDark
-                                                  ? Brightness.light
-                                                  : Brightness.dark,
-                                              statusBarBrightness: isDark
-                                                  ? Brightness.dark
-                                                  : Brightness.light,
-                                              systemNavigationBarColor:
-                                                  Colors.transparent,
-                                              systemNavigationBarIconBrightness:
-                                                  isDark
-                                                  ? Brightness.light
-                                                  : Brightness.dark,
+                                    return ValueListenableBuilder<bool>(
+                                      valueListenable:
+                                          glowEffectsEnabledNotifier,
+                                      builder: (context, glowEnabled, _) {
+                                        return MaterialApp(
+                                          debugShowCheckedModeBanner: false,
+                                          title: l.appName,
+                                          scrollBehavior:
+                                              const _UntisScrollBehavior(),
+                                          theme: _themeFrom(
+                                            lightScheme,
+                                            isAmoled,
+                                            blurEnabled,
+                                            glowEnabled,
+                                            visualTheme,
+                                          ),
+                                          darkTheme: _themeFrom(
+                                            darkScheme,
+                                            isAmoled,
+                                            blurEnabled,
+                                            glowEnabled,
+                                            visualTheme,
+                                          ),
+                                          themeMode: themeMode,
+                                          themeAnimationDuration: Duration.zero,
+                                          builder: (context, child) {
+                                            final isDark =
+                                                Theme.of(context).brightness ==
+                                                Brightness.dark;
+                                            final overlayStyle =
+                                                SystemUiOverlayStyle(
+                                                  statusBarColor:
+                                                      Colors.transparent,
+                                                  statusBarIconBrightness:
+                                                      isDark
+                                                      ? Brightness.light
+                                                      : Brightness.dark,
+                                                  statusBarBrightness: isDark
+                                                      ? Brightness.dark
+                                                      : Brightness.light,
+                                                  systemNavigationBarColor:
+                                                      Colors.transparent,
+                                                  systemNavigationBarIconBrightness:
+                                                      isDark
+                                                      ? Brightness.light
+                                                      : Brightness.dark,
+                                                );
+                                            return AnnotatedRegion<
+                                              SystemUiOverlayStyle
+                                            >(
+                                              value: overlayStyle,
+                                              child:
+                                                  child ??
+                                                  const SizedBox.shrink(),
                                             );
-                                        return AnnotatedRegion<
-                                          SystemUiOverlayStyle
-                                        >(
-                                          value: overlayStyle,
-                                          child:
-                                              child ?? const SizedBox.shrink(),
+                                          },
+                                          home: startScreen,
                                         );
                                       },
-                                      home: startScreen,
                                     );
                                   },
                                 );

@@ -41,14 +41,15 @@ class UntisAccount {
 
   String get label => username.isEmpty ? schoolName : username;
 
-  Map<String, dynamic> toJson() => {
+  /// Public profile metadata only. Secrets are stored by [CredentialVault].
+  Map<String, dynamic> toJson({bool includeSecrets = false}) => {
     'id': id,
     'username': username,
     'schoolUrl': schoolUrl,
     'schoolName': schoolName,
-    'password': password,
-    'credentialMode': credentialMode,
-    'sessionId': sessionId,
+    if (includeSecrets) 'password': password,
+    if (includeSecrets) 'credentialMode': credentialMode,
+    if (includeSecrets) 'sessionId': sessionId,
     'personId': personId,
     'personType': personType,
     'lastUsedAt': lastUsedAt.toIso8601String(),
@@ -71,19 +72,23 @@ class UntisAccount {
     );
   }
 
-  UntisAccount copyWith({String? sessionId, DateTime? lastUsedAt}) =>
-      UntisAccount(
-        id: id,
-        username: username,
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
-        password: password,
-        credentialMode: credentialMode,
-        sessionId: sessionId ?? this.sessionId,
-        personId: personId,
-        personType: personType,
-        lastUsedAt: lastUsedAt ?? this.lastUsedAt,
-      );
+  UntisAccount copyWith({
+    String? password,
+    String? credentialMode,
+    String? sessionId,
+    DateTime? lastUsedAt,
+  }) => UntisAccount(
+    id: id,
+    username: username,
+    schoolUrl: schoolUrl,
+    schoolName: schoolName,
+    password: password ?? this.password,
+    credentialMode: credentialMode ?? this.credentialMode,
+    sessionId: sessionId ?? this.sessionId,
+    personId: personId,
+    personType: personType,
+    lastUsedAt: lastUsedAt ?? this.lastUsedAt,
+  );
 }
 
 const String _accountsStorageKey = 'untisAccountsV1';
@@ -92,6 +97,15 @@ String? activeUntisAccountId;
 final ValueNotifier<List<UntisAccount>> untisAccountsNotifier = ValueNotifier(
   const [],
 );
+
+UntisAccount? get activeUntisAccount {
+  final activeId = activeUntisAccountId;
+  if (activeId == null) return null;
+  for (final account in untisAccountsNotifier.value) {
+    if (account.id == activeId) return account;
+  }
+  return null;
+}
 
 /// Personal planning data follows the selected account. App appearance and
 /// language deliberately remain shared device preferences.
@@ -155,16 +169,72 @@ List<UntisAccount> _readUntisAccounts(SharedPreferences prefs) {
   }
 }
 
+Future<List<UntisAccount>> _readHydratedUntisAccounts(
+  SharedPreferences prefs,
+) async {
+  final publicAccounts = _readUntisAccounts(prefs);
+  final requestedActiveId = prefs.getString(_activeAccountStorageKey);
+  final hydrated = <UntisAccount>[];
+  for (final account in publicAccounts) {
+    var credentials = await CredentialVault.instance.readAccount(account.id);
+    final isRequestedActive = account.id == requestedActiveId;
+    final legacyPassword = account.password.isNotEmpty
+        ? account.password
+        : isRequestedActive
+        ? prefs.getString('password') ?? ''
+        : '';
+    final legacyMode = account.credentialMode.isNotEmpty
+        ? account.credentialMode
+        : isRequestedActive
+        ? prefs.getString('loginCredentialMode') ?? 'password'
+        : 'password';
+    final legacySession = account.sessionId.isNotEmpty
+        ? account.sessionId
+        : isRequestedActive
+        ? prefs.getString('sessionId') ?? ''
+        : '';
+    if (credentials.isEmpty &&
+        (legacyPassword.isNotEmpty || legacySession.isNotEmpty)) {
+      final legacy = AccountCredentials(
+        password: legacyPassword,
+        credentialMode: legacyMode,
+        sessionId: legacySession,
+      );
+      await CredentialVault.instance.writeAndVerifyAccount(
+        accountId: account.id,
+        credentials: legacy,
+      );
+      // Keep the legacy values in memory even if the native store is
+      // temporarily unavailable. The caller then preserves them in the
+      // legacy JSON instead of destructively stripping them.
+      credentials = legacy;
+    }
+    hydrated.add(
+      account.copyWith(
+        password: credentials.password,
+        credentialMode: credentials.credentialMode,
+        sessionId: credentials.sessionId,
+      ),
+    );
+  }
+  return hydrated;
+}
+
 Future<void> _writeUntisAccounts(
   SharedPreferences prefs,
-  List<UntisAccount> accounts,
-) async {
+  List<UntisAccount> accounts, {
+  bool includeSecrets = false,
+}) async {
   final ordered = List<UntisAccount>.from(accounts)
     ..sort((a, b) => b.lastUsedAt.compareTo(a.lastUsedAt));
   untisAccountsNotifier.value = List.unmodifiable(ordered);
   await prefs.setString(
     _accountsStorageKey,
-    jsonEncode(ordered.map((account) => account.toJson()).toList()),
+    jsonEncode(
+      ordered
+          .map((account) => account.toJson(includeSecrets: includeSecrets))
+          .toList(),
+    ),
   );
   unawaited(
     WidgetService.publishAccountCatalog(
@@ -179,7 +249,7 @@ Future<void> _writeUntisAccounts(
   );
 }
 
-Future<void> _writeActiveAccountFields(
+Future<bool> _writeActiveAccountFields(
   SharedPreferences prefs,
   UntisAccount account,
 ) async {
@@ -190,23 +260,36 @@ Future<void> _writeActiveAccountFields(
   personType = account.personType;
   activeUntisAccountId = account.id;
   demoModeNotifier.value = false;
+  final storedSecurely = await CredentialVault.instance.writeAndVerifyAccount(
+    accountId: account.id,
+    credentials: AccountCredentials(
+      password: account.password,
+      credentialMode: account.credentialMode,
+      sessionId: account.sessionId,
+    ),
+  );
   await Future.wait([
     prefs.setString(_activeAccountStorageKey, account.id),
-    prefs.setString('sessionId', account.sessionId),
     prefs.setString('schoolUrl', account.schoolUrl),
     prefs.setString('schoolName', account.schoolName),
     prefs.setString('username', account.username),
-    prefs.setString('password', account.password),
-    prefs.setString('loginCredentialMode', account.credentialMode),
     prefs.setInt('personId', account.personId),
     prefs.setInt('personType', account.personType),
     prefs.setBool('demoMode', false),
   ]);
+  if (storedSecurely) {
+    await Future.wait([
+      prefs.remove('sessionId'),
+      prefs.remove('password'),
+      prefs.remove('loginCredentialMode'),
+    ]);
+  }
+  return storedSecurely;
 }
 
 /// Migrates the former one-account preference layout on first launch.
 Future<void> initializeUntisAccounts(SharedPreferences prefs) async {
-  var accounts = _readUntisAccounts(prefs);
+  var accounts = await _readHydratedUntisAccounts(prefs);
   if (accounts.isEmpty) {
     final username = prefs.getString('username') ?? '';
     final url = prefs.getString('schoolUrl') ?? '';
@@ -225,13 +308,30 @@ Future<void> initializeUntisAccounts(SharedPreferences prefs) async {
         lastUsedAt: DateTime.now(),
       );
       accounts = [migrated];
-      await _writeUntisAccounts(prefs, accounts);
-      await _writeActiveAccountFields(prefs, migrated);
+      final storedSecurely = await _writeActiveAccountFields(prefs, migrated);
+      await _writeUntisAccounts(
+        prefs,
+        accounts,
+        includeSecrets: !storedSecurely,
+      );
       await _copyLegacyAccountData(prefs, migrated.id);
       return;
     }
   }
 
+  // Rewriting strips secrets from legacy account JSON after they have been
+  // verified in the native secure store.
+  var canStripSecrets = true;
+  for (final account in accounts) {
+    if (account.password.isEmpty && account.sessionId.isEmpty) continue;
+    final stored = await CredentialVault.instance.readAccount(account.id);
+    if (stored.password != account.password ||
+        stored.sessionId != account.sessionId) {
+      canStripSecrets = false;
+      break;
+    }
+  }
+  await _writeUntisAccounts(prefs, accounts, includeSecrets: !canStripSecrets);
   untisAccountsNotifier.value = List.unmodifiable(accounts);
   unawaited(
     WidgetService.publishAccountCatalog(
@@ -262,7 +362,7 @@ Future<void> saveOrUpdateUntisAccount({
   required String credentialMode,
 }) async {
   final prefs = await SharedPreferences.getInstance();
-  final accounts = _readUntisAccounts(prefs).toList();
+  final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
   final matchingIndex = accounts.indexWhere(
     (account) =>
         account.username.toLowerCase() == username.trim().toLowerCase() &&
@@ -288,27 +388,31 @@ Future<void> saveOrUpdateUntisAccount({
   } else {
     accounts.add(account);
   }
-  await _writeUntisAccounts(prefs, accounts);
-  await _writeActiveAccountFields(prefs, account);
+  final storedSecurely = await _writeActiveAccountFields(prefs, account);
+  await _writeUntisAccounts(prefs, accounts, includeSecrets: !storedSecurely);
   await loadAccountPersonalData();
   await _syncActiveAccountDataForBackground(prefs);
 }
 
 Future<void> switchUntisAccount(String accountId) async {
   final prefs = await SharedPreferences.getInstance();
-  final accounts = _readUntisAccounts(prefs).toList();
+  final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
   final index = accounts.indexWhere((account) => account.id == accountId);
   if (index < 0) return;
   final account = accounts[index].copyWith(lastUsedAt: DateTime.now());
   accounts[index] = account;
-  await _writeUntisAccounts(prefs, accounts);
-  await _writeActiveAccountFields(prefs, account);
+  final storedSecurely = await _writeActiveAccountFields(prefs, account);
+  await _writeUntisAccounts(prefs, accounts, includeSecrets: !storedSecurely);
   await _syncActiveAccountDataForBackground(prefs);
   await loadAccountPersonalData();
   currentWeekDataNotifier.value = const {};
   homeworksNotifier.value = const [];
   lessonNotesNotifier.value = const [];
   apiExamsNotifier.value = const [];
+  final changes = await ChangeRepository().loadChanges(accountId);
+  unreadTimetableChangesNotifier.value = changes
+      .where((change) => !change.isRead)
+      .length;
 }
 
 Future<bool> removeUntisAccount(String accountId) async {
@@ -316,6 +420,8 @@ Future<bool> removeUntisAccount(String accountId) async {
   final accounts = _readUntisAccounts(
     prefs,
   ).where((account) => account.id != accountId).toList();
+  await CredentialVault.instance.deleteAccount(accountId);
+  await OfflineCacheStore.instance.deletePrefix('$accountId|');
   await _writeUntisAccounts(prefs, accounts);
   if (activeUntisAccountId != accountId) return accounts.isNotEmpty;
   if (accounts.isNotEmpty) {
@@ -328,6 +434,7 @@ Future<bool> removeUntisAccount(String accountId) async {
   schoolName = '';
   personId = 0;
   personType = 0;
+  unreadTimetableChangesNotifier.value = 0;
   demoModeNotifier.value = false;
   await Future.wait([
     prefs.remove(_activeAccountStorageKey),
@@ -348,6 +455,34 @@ String geminiApiKey = "";
 String openAiApiKey = "";
 String mistralApiKey = "";
 String customAiApiKey = "";
+
+Future<void> loadSecureAiApiKeys(SharedPreferences prefs) async {
+  final keys = await CredentialVault.instance.loadAndMigrateAiKeys(prefs);
+  geminiApiKey = keys['gemini'] ?? geminiApiKey;
+  openAiApiKey = keys['openai'] ?? openAiApiKey;
+  mistralApiKey = keys['mistral'] ?? mistralApiKey;
+  customAiApiKey = keys['custom'] ?? customAiApiKey;
+}
+
+Future<void> setSecureAiApiKey(String provider, String key) async {
+  final normalized = _normalizeAiProvider(provider);
+  switch (normalized) {
+    case 'openai':
+      openAiApiKey = key;
+      break;
+    case 'mistral':
+      mistralApiKey = key;
+      break;
+    case 'custom':
+      customAiApiKey = key;
+      break;
+    case 'gemini':
+    default:
+      geminiApiKey = key;
+      break;
+  }
+  await CredentialVault.instance.writeAiApiKey(normalized, key);
+}
 
 String aiProvider = 'gemini';
 String aiModel = 'gemini-3.6-flash';
@@ -560,11 +695,7 @@ final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
 
 // ── LESSON DESIGN & STYLING NOTIFIERS ───────────────────────────────────────
 final ValueNotifier<int> lessonCardStyleNotifier = ValueNotifier(0);
-final ValueNotifier<bool> lessonGlowEnabledNotifier = ValueNotifier(true);
-final ValueNotifier<int> lessonGlowModeNotifier = ValueNotifier(0);
-final ValueNotifier<double> lessonGlowIntensityNotifier = ValueNotifier(1.0);
-final ValueNotifier<bool> lessonGlowNextEnabledNotifier = ValueNotifier(false);
-final ValueNotifier<int> lessonGlowNextMinutesNotifier = ValueNotifier(20);
+final ValueNotifier<bool> glowEffectsEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> lessonBlurAmountNotifier = ValueNotifier(12.0);
 final ValueNotifier<double> lessonCardOpacityNotifier = ValueNotifier(0.9);
@@ -586,6 +717,19 @@ String _icuLocale(String locale) {
       return 'es_ES';
     default:
       return 'de_DE';
+  }
+}
+
+final Set<String> _loadedDateFormattingLocales = <String>{};
+
+Future<void> ensureDateFormattingForLocale(String locale) async {
+  final icuLocale = _icuLocale(locale);
+  if (!_loadedDateFormattingLocales.add(icuLocale)) return;
+  try {
+    await initializeDateFormatting(icuLocale, null);
+  } catch (_) {
+    _loadedDateFormattingLocales.remove(icuLocale);
+    rethrow;
   }
 }
 
@@ -737,6 +881,10 @@ final ValueNotifier<String> appIconNotifier = ValueNotifier('default');
 final ValueNotifier<Map<int, List<dynamic>>> currentWeekDataNotifier =
     ValueNotifier({});
 
+/// Transitional bridge for the expressive navigation badge. The persisted
+/// source of truth lives in ChangeRepository and remains account-scoped.
+final ValueNotifier<int> unreadTimetableChangesNotifier = ValueNotifier(0);
+
 Future<void> _setSubjectColor(String key, int colorValue) async {
   if (key.isEmpty) return;
   final updated = Map<String, int>.from(subjectColorsNotifier.value)
@@ -766,9 +914,15 @@ String _formatUntisTime(String time) {
 
 Future<bool> _reAuthenticate() async {
   final prefs = await SharedPreferences.getInstance();
-  final user = prefs.getString('username') ?? '';
-  final pass = prefs.getString('password') ?? '';
-  final useLoginKey = prefs.getString('loginCredentialMode') == 'loginKey';
+  final activeId = activeUntisAccountId;
+  final account = activeId == null
+      ? null
+      : (await _readHydratedUntisAccounts(
+          prefs,
+        )).where((entry) => entry.id == activeId).firstOrNull;
+  final user = account?.username ?? prefs.getString('username') ?? '';
+  final pass = account?.password ?? '';
+  final useLoginKey = account?.credentialMode == 'loginKey';
   if (user.isEmpty || pass.isEmpty) return false;
 
   try {
@@ -782,8 +936,7 @@ Future<bool> _reAuthenticate() async {
     final newSession = authResult?['sessionId']?.toString();
     if (newSession != null && newSession.isNotEmpty) {
       sessionID = newSession;
-      await prefs.setString('sessionId', sessionID);
-      final accounts = _readUntisAccounts(prefs).toList();
+      final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
       final index = accounts.indexWhere(
         (account) => account.id == activeUntisAccountId,
       );
@@ -792,7 +945,15 @@ Future<bool> _reAuthenticate() async {
           sessionId: sessionID,
           lastUsedAt: DateTime.now(),
         );
-        await _writeUntisAccounts(prefs, accounts);
+        final storedSecurely = await _writeActiveAccountFields(
+          prefs,
+          accounts[index],
+        );
+        await _writeUntisAccounts(
+          prefs,
+          accounts,
+          includeSecrets: !storedSecurely,
+        );
       }
       return true;
     }

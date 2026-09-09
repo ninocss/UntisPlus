@@ -47,8 +47,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     required int min,
     required int max,
     required ValueChanged<int> onChanged,
-    String suffix = ' Min.',
+    String? suffix,
   }) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final effectiveSuffix = suffix ?? l.ui('alarmMinutesSuffix');
     var value = current;
     await showModalBottomSheet<void>(
       context: context,
@@ -69,7 +71,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  '$value$suffix',
+                  '$value$effectiveSuffix',
                   style: GoogleFonts.outfit(
                     fontSize: 36,
                     fontWeight: FontWeight.w900,
@@ -80,7 +82,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   min: min.toDouble(),
                   max: max.toDouble(),
                   divisions: max - min,
-                  label: '$value$suffix',
+                  label: '$value$effectiveSuffix',
                   onChanged: (next) =>
                       setSheetState(() => value = next.round()),
                 ),
@@ -89,7 +91,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     onChanged(value);
                     Navigator.pop(context);
                   },
-                  child: const Text('Übernehmen'),
+                  child: Text(l.ui('alarmApply')),
                 ),
               ],
             ),
@@ -100,11 +102,12 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   }
 
   Future<void> _addManualAlarm() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final alarm = ManualAlarmConfig(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       timeOfDayMinutes: 7 * 60,
       weekdays: const [1, 2, 3, 4, 5],
-      label: 'Eigener Wecker',
+      label: l.ui('alarmOwn'),
     );
     await _save(
       _config.copyWith(manualAlarms: [..._config.manualAlarms, alarm]),
@@ -112,6 +115,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   }
 
   Future<void> _editManualAlarm(ManualAlarmConfig alarm) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     var edited = alarm;
     await showModalBottomSheet<void>(
       context: context,
@@ -135,7 +139,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Eigener Wecker',
+                    l.ui('alarmOwn'),
                     style: GoogleFonts.outfit(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
@@ -144,7 +148,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   ListTile(
                     leading: const Icon(Icons.schedule_rounded),
                     title: Text(time.format(context)),
-                    subtitle: const Text('Weckzeit'),
+                    subtitle: Text(l.ui('alarmTime')),
                     onTap: () async {
                       final picked = await showTimePicker(
                         context: context,
@@ -161,31 +165,25 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   ),
                   Wrap(
                     spacing: 6,
-                    children: const ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-                        .asMap()
-                        .entries
-                        .map((entry) {
-                          final weekday = entry.key + 1;
-                          return FilterChip(
-                            label: Text(entry.value),
-                            selected: edited.weekdays.contains(weekday),
-                            onSelected: (selected) {
-                              final days = edited.weekdays.toSet();
-                              selected
-                                  ? days.add(weekday)
-                                  : days.remove(weekday);
-                              setSheetState(
-                                () => edited = edited.copyWith(
-                                  weekdays: days.toList()..sort(),
-                                ),
-                              );
-                            },
+                    children: l.weekDayShort.asMap().entries.map((entry) {
+                      final weekday = entry.key + 1;
+                      return FilterChip(
+                        label: Text(entry.value),
+                        selected: edited.weekdays.contains(weekday),
+                        onSelected: (selected) {
+                          final days = edited.weekdays.toSet();
+                          selected ? days.add(weekday) : days.remove(weekday);
+                          setSheetState(
+                            () => edited = edited.copyWith(
+                              weekdays: days.toList()..sort(),
+                            ),
                           );
-                        })
-                        .toList(),
+                        },
+                      );
+                    }).toList(),
                   ),
                   SwitchListTile(
-                    title: const Text('Aktiv'),
+                    title: Text(l.ui('alarmActive')),
                     value: edited.enabled,
                     onChanged: (value) => setSheetState(
                       () => edited = edited.copyWith(enabled: value),
@@ -196,7 +194,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     children: [
                       TextButton.icon(
                         icon: const Icon(Icons.delete_outline_rounded),
-                        label: const Text('Löschen'),
+                        label: Text(l.ui('alarmDelete')),
                         onPressed: () async {
                           Navigator.pop(sheetContext);
                           await _save(
@@ -224,7 +222,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                                   _config.copyWith(manualAlarms: alarms),
                                 );
                               },
-                        child: const Text('Speichern'),
+                        child: Text(l.ui('alarmSave')),
                       ),
                     ],
                   ),
@@ -239,6 +237,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     if (_loading) {
@@ -248,7 +247,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     return Scaffold(
       appBar: RoundedBlurAppBar(
         title: Text(
-          'Wecker',
+          l.ui('alarmTitle'),
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
@@ -258,7 +257,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
             SettingsGroup(
-              title: 'Weckerbereit',
+              title: l.ui('alarmReady'),
               children: [
                 SettingsTile(
                   icon: readiness.isReady
@@ -266,28 +265,26 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                       : Icons.warning_amber_rounded,
                   iconColor: readiness.isReady ? cs.primary : cs.error,
                   title: readiness.isReady
-                      ? 'Für zuverlässige Wecker bereit'
-                      : 'Android-Freigaben fehlen',
+                      ? l.ui('alarmReadyYes')
+                      : l.ui('alarmReadyNo'),
                   subtitle: readiness.isReady
-                      ? 'Exakte Alarme, Vollbild und Nicht stören sind aktiv.'
-                      : 'Öffne die fehlenden Android-Systemeinstellungen.',
+                      ? l.ui('alarmReadyDescYes')
+                      : l.ui('alarmReadyDescNo'),
                   trailing: const SizedBox.shrink(),
                 ),
                 if (!readiness.exactAlarms)
                   SettingsTile(
                     icon: Icons.alarm_rounded,
-                    title: 'Exakte Alarme erlauben',
-                    subtitle:
-                        'Erforderlich, damit Android den Weckzeitpunkt nicht verschiebt.',
+                    title: l.ui('alarmExact'),
+                    subtitle: l.ui('alarmExactDesc'),
                     onTap: () =>
                         AlarmService.instance.openPermissionSettings('exact'),
                   ),
                 if (!readiness.notifications)
                   SettingsTile(
                     icon: Icons.notifications_off_rounded,
-                    title: 'Benachrichtigungen erlauben',
-                    subtitle:
-                        'Erforderlich für den sichtbaren Vollbild-Wecker.',
+                    title: l.ui('alarmNotifications'),
+                    subtitle: l.ui('alarmNotificationsDesc'),
                     onTap: () async {
                       await NotificationService().requestPermissions();
                       await _load();
@@ -296,8 +293,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 if (!readiness.fullScreenIntent)
                   SettingsTile(
                     icon: Icons.fullscreen_rounded,
-                    title: 'Vollbild-Wecker erlauben',
-                    subtitle: 'Zeigt den Wecker auf dem Sperrbildschirm.',
+                    title: l.ui('alarmFullscreen'),
+                    subtitle: l.ui('alarmFullscreenDesc'),
                     onTap: () => AlarmService.instance.openPermissionSettings(
                       'fullscreen',
                     ),
@@ -305,21 +302,20 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 if (!readiness.dndAccess)
                   SettingsTile(
                     icon: Icons.do_not_disturb_on_rounded,
-                    title: 'Nicht stören umgehen',
-                    subtitle:
-                        'Erlaubt aktivierten Weckern, trotz „Nicht stören“ zu klingeln.',
+                    title: l.ui('alarmDnd'),
+                    subtitle: l.ui('alarmDndDesc'),
                     onTap: () =>
                         AlarmService.instance.openPermissionSettings('dnd'),
                   ),
               ],
             ),
             SettingsGroup(
-              title: 'Smart-Wecker',
+              title: l.ui('alarmSmart'),
               children: [
                 SettingsSwitchTile(
                   icon: Icons.auto_awesome_rounded,
-                  title: 'Stundenplan-Wecker',
-                  subtitle: 'Weckt vor der ersten nicht ausgefallenen Stunde.',
+                  title: l.ui('alarmSchedule'),
+                  subtitle: l.ui('alarmScheduleDesc'),
                   value: _config.smartEnabled,
                   onChanged: (value) => _save(
                     _config.copyWith(smartEnabled: value),
@@ -328,10 +324,12 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 ),
                 SettingsTile(
                   icon: Icons.directions_walk_rounded,
-                  title: 'Vorlauf',
-                  subtitle: '${_config.leadMinutes} Min. vor der ersten Stunde',
+                  title: l.ui('alarmLead'),
+                  subtitle: l
+                      .ui('alarmLeadValue')
+                      .replaceAll('{n}', '${_config.leadMinutes}'),
                   onTap: () => _chooseMinutes(
-                    title: 'Vorlauf',
+                    title: l.ui('alarmLead'),
                     current: _config.leadMinutes,
                     min: 0,
                     max: 180,
@@ -341,25 +339,25 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     ),
                   ),
                 ),
-                const SettingsTile(
+                SettingsTile(
                   icon: Icons.sync_rounded,
-                  title: 'Kurz vor dem Wecker aktualisieren',
-                  subtitle:
-                      'WebUntis wird 15 Minuten vorher noch einmal geprüft.',
-                  trailing: SizedBox.shrink(),
+                  title: l.ui('alarmUpdate'),
+                  subtitle: l.ui('alarmUpdateDesc'),
+                  trailing: const SizedBox.shrink(),
                 ),
               ],
             ),
             SettingsGroup(
-              title: 'Klingeln',
+              title: l.ui('alarmRing'),
               children: [
                 SettingsTile(
                   icon: Icons.snooze_rounded,
-                  title: 'Schlummern',
-                  subtitle:
-                      '${_config.snoozeMinutes} Min. · nach links wischen',
+                  title: l.ui('alarmSnooze'),
+                  subtitle: l
+                      .ui('alarmSnoozeValue')
+                      .replaceAll('{n}', '${_config.snoozeMinutes}'),
                   onTap: () => _chooseMinutes(
-                    title: 'Schlummerdauer',
+                    title: l.ui('alarmSnoozeDuration'),
                     current: _config.snoozeMinutes,
                     min: 1,
                     max: 30,
@@ -369,10 +367,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 ),
                 SettingsTile(
                   icon: Icons.music_note_rounded,
-                  title: 'Klingelton',
+                  title: l.ui('alarmRingtone'),
                   subtitle: _config.ringtoneUri == null
-                      ? 'Android-Systemweckton'
-                      : 'Ausgewählter Android-Weckton',
+                      ? l.ui('alarmSystemTone')
+                      : l.ui('alarmSelectedTone'),
                   onTap: () async {
                     final uri = await AlarmService.instance.pickRingtone(
                       _config.ringtoneUri,
@@ -384,7 +382,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ],
             ),
             SettingsGroup(
-              title: 'Eigene Wecker',
+              title: l.ui('alarmOwnAlarms'),
               children: [
                 for (final alarm in _config.manualAlarms)
                   SettingsTile(
@@ -408,8 +406,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   ),
                 SettingsTile(
                   icon: Icons.add_alarm_rounded,
-                  title: 'Wecker hinzufügen',
-                  subtitle: 'Wiederholt sich an ausgewählten Wochentagen.',
+                  title: l.ui('alarmAdd'),
+                  subtitle: l.ui('alarmAddDesc'),
                   onTap: _addManualAlarm,
                 ),
               ],

@@ -11,31 +11,31 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   static const _types = [
     (
       id: 'current',
-      label: 'Jetzt',
+      label: 'widgetCurrent',
       icon: Icons.bolt_rounded,
-      description: 'Aktuelle Stunde, nächste Stunde und verbleibende Zeit',
-      size: 'Klein oder mittel',
+      description: 'widgetCurrentDesc',
+      size: 'widgetSmallMedium',
     ),
     (
       id: 'schedule',
-      label: 'Tagesplan',
+      label: 'widgetSchedule',
       icon: Icons.view_agenda_rounded,
-      description: 'Die nächsten Einträge deines heutigen Stundenplans',
-      size: 'Mittel oder groß',
+      description: 'widgetScheduleDesc',
+      size: 'widgetMediumLarge',
     ),
     (
       id: 'homework',
-      label: 'Aufgaben',
+      label: 'widgetHomework',
       icon: Icons.assignment_rounded,
-      description: 'Eine kompakte Übersicht deiner offenen Aufgaben',
-      size: 'Klein oder mittel',
+      description: 'widgetHomeworkDesc',
+      size: 'widgetSmallMedium',
     ),
     (
       id: 'notices',
-      label: 'Mitteilungen',
+      label: 'widgetNotices',
       icon: Icons.markunread_rounded,
-      description: 'Die neuesten Mitteilungen auf deinem Homescreen',
-      size: 'Klein oder mittel',
+      description: 'widgetNoticesDesc',
+      size: 'widgetSmallMedium',
     ),
   ];
 
@@ -44,6 +44,8 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   WidgetPreviewData _previewData = const WidgetPreviewData();
   bool _loadingPreview = true;
   bool _pinning = false;
+
+  String _typeText(AppL10n l, String key) => l.ui(key);
 
   @override
   void initState() {
@@ -118,12 +120,13 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   }
 
   Future<void> _pinSelectedWidget() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     if (kIsWeb || !Platform.isAndroid || _pinning) return;
     final accountId = _accountId;
     if (accountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wähle zuerst ein Konto aus.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.ui('widgetAddAccountFirst'))));
       return;
     }
     final name = switch (_selectedType) {
@@ -143,21 +146,15 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            supported
-                ? 'Widget-Anfrage wurde an den Homescreen gesendet.'
-                : 'Öffne den Widget-Picker über deinen Homescreen.',
+            supported ? l.ui('widgetPickerSent') : l.ui('widgetPickerHint'),
           ),
         ),
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Das Widget konnte nicht hinzugefügt werden. Öffne den Widget-Picker über den Homescreen.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.ui('widgetPickerFailed'))));
     } finally {
       if (mounted) setState(() => _pinning = false);
     }
@@ -183,6 +180,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   }
 
   Widget _preview(BuildContext context, ColorScheme cs) {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final account = _account;
     final data = _previewData;
     final hasData = data.hasPublishedData;
@@ -190,49 +188,49 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
         ? data.accountLabel.trim()
         : account?.label ?? 'Untis+';
     final status = _loadingPreview
-        ? 'LÄDT'
+        ? l.ui('widgetLoading')
         : data.status.trim().isNotEmpty
         ? data.status.trim()
         : hasData
-        ? 'AKTUELL'
-        : 'VORSCHAU';
+        ? l.ui('widgetCurrentStatus')
+        : l.ui('widgetPreviewStatus');
     final isSchedule = _selectedType == 'schedule';
     final title = switch (_selectedType) {
-      'schedule' => 'HEUTE',
-      'homework' => 'AUFGABEN',
-      'notices' => 'MITTEILUNGEN',
+      'schedule' => l.ui('widgetToday'),
+      'homework' => l.ui('widgetHomework'),
+      'notices' => l.ui('widgetNotices'),
       _ => accountLabel,
     };
     final headline = switch (_selectedType) {
       'schedule' =>
         data.dailySchedule.trim().isNotEmpty
             ? data.dailySchedule.trim()
-            : 'Noch keine Tagesdaten',
+            : l.ui('widgetNoScheduleData'),
       'homework' =>
         data.homeworkSummary.trim().isNotEmpty
             ? data.homeworkSummary.trim()
-            : 'Keine offenen Aufgaben synchronisiert',
+            : l.ui('widgetNoOpenHomework'),
       'notices' =>
         data.notificationSummary.trim().isNotEmpty
             ? data.notificationSummary.trim()
-            : 'Keine Mitteilungen synchronisiert',
+            : l.ui('widgetNoNotices'),
       _ =>
         data.currentLesson.trim().isNotEmpty
             ? data.currentLesson.trim()
-            : 'Keine aktuelle Stunde',
+            : l.ui('widgetNoCurrentLesson'),
     };
     final detail = data.nextLesson.trim().isNotEmpty
         ? data.nextLesson.trim()
-        : 'Stundenplan öffnen, um Daten zu laden';
+        : l.ui('widgetTimetableDetail');
     final footer = data.timeRemaining.trim().isNotEmpty
         ? data.timeRemaining.trim()
         : hasData
         ? 'Untis+'
-        : 'Noch nicht synchronisiert';
+        : l.ui('widgetNotSynced');
 
     return Semantics(
       label:
-          'Vorschau für ${_types.firstWhere((type) => type.id == _selectedType).label}',
+          '${l.ui('widgetPreview')}: ${_typeText(l, _types.firstWhere((type) => type.id == _selectedType).label)}',
       child: AnimatedContainer(
         key: ValueKey('widget-preview-$_selectedType'),
         duration: const Duration(milliseconds: 280),
@@ -253,13 +251,13 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
             bottomRight: Radius.circular(40),
           ),
           border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.72)),
-          boxShadow: [
+          boxShadow: _glowShadows(context, [
             BoxShadow(
               color: cs.primary.withValues(alpha: 0.14),
               blurRadius: 28,
               offset: const Offset(0, 12),
             ),
-          ],
+          ]),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,9 +368,10 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   }
 
   Widget _platformInstructions(bool isAndroid, bool isIOS) {
+    final l = AppL10n.of(appLocaleNotifier.value);
     if (isAndroid) {
       return SettingsGroup(
-        title: 'Zum Homescreen',
+        title: l.ui('widgetHome'),
         children: [
           Padding(
             padding: const EdgeInsets.all(14),
@@ -389,57 +388,50 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                       )
                     : const Icon(Icons.add_to_home_screen_rounded),
                 label: Text(
-                  _pinning
-                      ? 'Widget-Picker wird geöffnet …'
-                      : 'Widget hinzufügen',
+                  _pinning ? l.ui('widgetPickerOpening') : l.ui('widgetAdd'),
                 ),
               ),
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Text(
-              'Das ausgewählte Konto wird im Android-Dialog vorausgewählt. Dort kannst du es vor dem Hinzufügen noch ändern.',
-            ),
+            child: Text(l.ui('widgetAndroidDialogDesc')),
           ),
         ],
       );
     }
     if (isIOS) {
-      return const SettingsGroup(
-        title: 'Zum Homescreen',
+      return SettingsGroup(
+        title: l.ui('widgetHome'),
         children: [
           SettingsTile(
             icon: Icons.looks_one_rounded,
-            title: 'Homescreen gedrückt halten',
-            subtitle:
-                'Tippe danach oben auf „Bearbeiten“ und auf „Widget hinzufügen“.',
+            title: l.ui('widgetHoldHome'),
+            subtitle: l.ui('widgetHoldHomeDesc'),
             trailing: null,
           ),
           SettingsTile(
             icon: Icons.looks_two_rounded,
-            title: 'Untis+ auswählen',
-            subtitle: 'Wähle die gewünschte Variante und Größe aus.',
+            title: l.ui('widgetSelectUntis'),
+            subtitle: l.ui('widgetSelectUntisDesc'),
             trailing: null,
           ),
           SettingsTile(
             icon: Icons.looks_3_rounded,
-            title: 'Konto festlegen',
-            subtitle:
-                'Halte das Widget gedrückt und wähle „Widget bearbeiten“.',
+            title: l.ui('widgetSetAccount'),
+            subtitle: l.ui('widgetSetAccountDesc'),
             trailing: null,
           ),
         ],
       );
     }
-    return const SettingsGroup(
-      title: 'Zum Homescreen',
+    return SettingsGroup(
+      title: l.ui('widgetHome'),
       children: [
         SettingsTile(
           icon: Icons.devices_other_rounded,
-          title: 'Auf diesem Gerät nicht verfügbar',
-          subtitle:
-              'Homescreen-Widgets werden auf Android und iOS unterstützt.',
+          title: l.ui('widgetHomeUnavailable'),
+          subtitle: l.ui('widgetHomeSupported'),
           trailing: null,
         ),
       ],
@@ -448,6 +440,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     final isAndroid = !kIsWeb && Platform.isAndroid;
@@ -455,10 +448,10 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
     final selected = _types.firstWhere((type) => type.id == _selectedType);
     return Scaffold(
       appBar: RoundedBlurAppBar(
-        title: const Text('Widgets & Vorschau'),
+        title: Text(l.ui('widgetPreviewTitle')),
         actions: [
           IconButton(
-            tooltip: 'Vorschau aktualisieren',
+            tooltip: l.ui('widgetRefresh'),
             onPressed: _loadingPreview ? null : _reloadPreview,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -474,7 +467,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Vorschau',
+                      l.ui('widgetPreview'),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: cs.primary,
                         fontWeight: FontWeight.w800,
@@ -494,8 +487,8 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
               child: Text(
                 _previewData.hasPublishedData
-                    ? 'Die Vorschau verwendet die zuletzt für dieses Konto synchronisierten Widget-Daten.'
-                    : 'Öffne einmal den Stundenplan, damit echte Widget-Daten synchronisiert werden.',
+                    ? l.ui('widgetSyncedPreview')
+                    : l.ui('widgetOpenTimetable'),
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
@@ -503,13 +496,12 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
               ),
             ),
             SettingsGroup(
-              title: 'Eigene Widgets',
+              title: l.ui('widgetOwn'),
               children: [
                 SettingsTile(
                   icon: Icons.dashboard_customize_rounded,
-                  title: 'Widget-Editor öffnen',
-                  subtitle:
-                      'Stelle Inhalte, Reihenfolge, Farben, Transparenz und Layout frei zusammen.',
+                  title: l.ui('widgetEditorOpen'),
+                  subtitle: l.ui('widgetEditorDesc'),
                   trailing: const Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
@@ -523,7 +515,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
               ],
             ),
             SettingsGroup(
-              title: 'Widget auswählen',
+              title: l.ui('widgetChoose'),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(12),
@@ -534,7 +526,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                       for (final type in _types)
                         ChoiceChip(
                           avatar: Icon(type.icon, size: 18),
-                          label: Text(type.label),
+                          label: Text(_typeText(l, type.label)),
                           selected: _selectedType == type.id,
                           onSelected: (_) {
                             HapticFeedback.selectionClick();
@@ -556,13 +548,13 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              selected.description,
+                              _typeText(l, selected.description),
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              selected.size,
+                              _typeText(l, selected.size),
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: cs.onSurfaceVariant),
                             ),
@@ -577,13 +569,13 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
             ValueListenableBuilder<List<UntisAccount>>(
               valueListenable: untisAccountsNotifier,
               builder: (context, accounts, _) => SettingsGroup(
-                title: 'Konto für die Vorschau',
+                title: l.ui('widgetAccount'),
                 children: accounts.isEmpty
-                    ? const [
+                    ? [
                         SettingsTile(
                           icon: Icons.person_off_outlined,
-                          title: 'Kein Konto verfügbar',
-                          subtitle: 'Füge zuerst ein WebUntis-Konto hinzu.',
+                          title: l.ui('widgetNoAccount'),
+                          subtitle: l.ui('widgetAddAccountFirst'),
                           trailing: null,
                         ),
                       ]

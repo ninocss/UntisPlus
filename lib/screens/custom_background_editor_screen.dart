@@ -1606,7 +1606,9 @@ class _CustomBackgroundEditorScreenState
                           ),
                           const SizedBox(width: 8),
                           _quickStatChip(
-                            label: l.aiNoiseLevel((_draft.noise * 100).round().toDouble()),
+                            label: l.aiNoiseLevel(
+                              (_draft.noise * 100).round().toDouble(),
+                            ),
                             icon: Icons.grain_rounded,
                             onTap: () => _scrollToSection(_editSectionKey),
                           ),
@@ -1669,9 +1671,7 @@ class _CustomBackgroundEditorScreenState
                             ),
                             style: FilledButton.styleFrom(
                               minimumSize: const Size(0, 52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
+                              shape: _legacyButtonShape(context, 16),
                             ),
                           ),
                         ),
@@ -1688,9 +1688,7 @@ class _CustomBackgroundEditorScreenState
                             ),
                             style: FilledButton.styleFrom(
                               minimumSize: const Size(0, 52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
+                              shape: _legacyButtonShape(context, 16),
                             ),
                           ),
                         ),
@@ -1961,9 +1959,7 @@ class _CustomBackgroundEditorScreenState
                                 ),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size(0, 48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
+                                  shape: _legacyButtonShape(context, 14),
                                 ),
                               ),
                             ),
@@ -1985,9 +1981,7 @@ class _CustomBackgroundEditorScreenState
                                 ),
                                 style: OutlinedButton.styleFrom(
                                   minimumSize: const Size(0, 48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
+                                  shape: _legacyButtonShape(context, 14),
                                 ),
                               ),
                             ),
@@ -2289,9 +2283,7 @@ class _CustomBackgroundEditorScreenState
                             ),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(0, 46),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                              shape: _legacyButtonShape(context, 14),
                             ),
                           ),
                         ),
@@ -2625,9 +2617,7 @@ class _CustomBackgroundEditorScreenState
                         ),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size(0, 54),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                          shape: _legacyButtonShape(context, 16),
                         ),
                       ),
                     ),

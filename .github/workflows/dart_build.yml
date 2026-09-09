@@ -232,6 +232,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.47.0'
           channel: 'stable'
           cache: true
 
@@ -248,7 +249,7 @@ jobs:
       - name: Analyze & Test
         run: |
           flutter analyze --no-fatal-infos
-          flutter test
+          pwsh -NoProfile -File tool/test_without_local_ai.ps1
 
   setup_signing:
     name: Setup Signing
@@ -310,6 +311,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.47.0'
           channel: 'stable'
           cache: true
 
@@ -418,6 +420,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.47.0'
           channel: 'stable'
           cache: true
 
@@ -485,6 +488,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.47.0'
           channel: 'stable'
           cache: true
 

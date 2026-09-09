@@ -501,9 +501,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                   width: 1.5,
                                 ),
                                 minimumSize: const Size(0, 60),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                                shape: _legacyButtonShape(context, 20),
                               ),
                               child: const Icon(Icons.delete_outline_rounded),
                             ),
@@ -562,11 +560,15 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             },
                             style: FilledButton.styleFrom(
                               minimumSize: const Size(0, 60),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              elevation: 8,
-                              shadowColor: cs.primary.withValues(alpha: 0.4),
+                              shape: _legacyButtonShape(context, 20),
+                              elevation:
+                                  untisThemeTokensOf(context).glowEffectsEnabled
+                                  ? 8
+                                  : 0,
+                              shadowColor:
+                                  untisThemeTokensOf(context).glowEffectsEnabled
+                                  ? cs.primary.withValues(alpha: 0.4)
+                                  : Colors.transparent,
                             ),
                             child: Text(
                               existing == null
@@ -876,9 +878,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
             ),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
+              shape: _legacyButtonShape(context, 20),
             ),
           ),
         ],
@@ -931,13 +931,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                       decoration: BoxDecoration(
                         color: color,
                         borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
+                        boxShadow: _glowShadows(context, [
                           BoxShadow(
                             color: color.withValues(alpha: 0.35),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
-                        ],
+                        ]),
                       ),
                       child: Center(
                         child: Text(

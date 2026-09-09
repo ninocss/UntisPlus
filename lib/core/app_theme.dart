@@ -24,6 +24,7 @@ class AppThemeCapabilities {
   final bool supportsCustomBackgrounds;
   final bool supportsBackgroundMotion;
   final bool supportsMaterialYou;
+  final bool supportsExpressiveComponents;
   final bool supportsAdvancedLessonStyle;
 
   const AppThemeCapabilities({
@@ -31,6 +32,7 @@ class AppThemeCapabilities {
     required this.supportsCustomBackgrounds,
     required this.supportsBackgroundMotion,
     required this.supportsMaterialYou,
+    required this.supportsExpressiveComponents,
     required this.supportsAdvancedLessonStyle,
   });
 }
@@ -41,6 +43,7 @@ AppThemeCapabilities appThemeCapabilities(AppThemeId theme) => switch (theme) {
     supportsCustomBackgrounds: true,
     supportsBackgroundMotion: true,
     supportsMaterialYou: true,
+    supportsExpressiveComponents: true,
     supportsAdvancedLessonStyle: true,
   ),
   AppThemeId.glass => const AppThemeCapabilities(
@@ -48,13 +51,23 @@ AppThemeCapabilities appThemeCapabilities(AppThemeId theme) => switch (theme) {
     supportsCustomBackgrounds: true,
     supportsBackgroundMotion: true,
     supportsMaterialYou: false,
+    supportsExpressiveComponents: false,
     supportsAdvancedLessonStyle: false,
   ),
-  AppThemeId.vivid || AppThemeId.cyber => const AppThemeCapabilities(
+  AppThemeId.vivid => const AppThemeCapabilities(
     supportsBlur: true,
     supportsCustomBackgrounds: false,
     supportsBackgroundMotion: true,
     supportsMaterialYou: false,
+    supportsExpressiveComponents: true,
+    supportsAdvancedLessonStyle: false,
+  ),
+  AppThemeId.cyber => const AppThemeCapabilities(
+    supportsBlur: true,
+    supportsCustomBackgrounds: false,
+    supportsBackgroundMotion: true,
+    supportsMaterialYou: false,
+    supportsExpressiveComponents: false,
     supportsAdvancedLessonStyle: false,
   ),
   AppThemeId.manga || AppThemeId.paper => const AppThemeCapabilities(
@@ -62,6 +75,7 @@ AppThemeCapabilities appThemeCapabilities(AppThemeId theme) => switch (theme) {
     supportsCustomBackgrounds: false,
     supportsBackgroundMotion: false,
     supportsMaterialYou: false,
+    supportsExpressiveComponents: false,
     supportsAdvancedLessonStyle: false,
   ),
 };
@@ -79,6 +93,7 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
   final List<Color> backdropColors;
   final bool hardShadow;
   final bool glassHighlights;
+  final bool glowEffectsEnabled;
   final int motionStyle;
 
   const UntisThemeTokens({
@@ -93,6 +108,7 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
     required this.backdropColors,
     required this.hardShadow,
     required this.glassHighlights,
+    this.glowEffectsEnabled = false,
     required this.motionStyle,
   });
 
@@ -125,7 +141,7 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
       AppThemeId.vivid => UntisThemeTokens(
         id: id,
         surfaceRadius: 28,
-        controlRadius: 22,
+        controlRadius: 24,
         borderWidth: 1.5,
         blurSigma: 24,
         shadowOffset: const Offset(0, 10),
@@ -192,8 +208,8 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
       ),
       AppThemeId.defaultTheme => UntisThemeTokens(
         id: id,
-        surfaceRadius: 22,
-        controlRadius: 18,
+        surfaceRadius: 28,
+        controlRadius: 24,
         borderWidth: 1,
         blurSigma: 30,
         shadowOffset: const Offset(0, 8),
@@ -220,6 +236,7 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
     List<Color>? backdropColors,
     bool? hardShadow,
     bool? glassHighlights,
+    bool? glowEffectsEnabled,
     int? motionStyle,
   }) => UntisThemeTokens(
     id: id ?? this.id,
@@ -233,6 +250,7 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
     backdropColors: backdropColors ?? this.backdropColors,
     hardShadow: hardShadow ?? this.hardShadow,
     glassHighlights: glassHighlights ?? this.glassHighlights,
+    glowEffectsEnabled: glowEffectsEnabled ?? this.glowEffectsEnabled,
     motionStyle: motionStyle ?? this.motionStyle,
   );
 
@@ -251,6 +269,9 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
       backdropColors: backdropColors,
       hardShadow: hardShadow,
       glassHighlights: glassHighlights,
+      glowEffectsEnabled: t < 0.5
+          ? glowEffectsEnabled
+          : other.glowEffectsEnabled,
       motionStyle: motionStyle,
     );
   }

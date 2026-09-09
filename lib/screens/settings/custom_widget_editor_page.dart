@@ -9,14 +9,14 @@ class CustomWidgetEditorPage extends StatefulWidget {
 
 class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   static const _blocks = <String, (String, IconData)>{
-    'current': ('Aktuelle Stunde', Icons.play_circle_fill_rounded),
-    'next': ('Nächste Stunde', Icons.skip_next_rounded),
-    'schedule': ('Tagesplan', Icons.view_agenda_rounded),
-    'homework': ('Aufgaben', Icons.assignment_rounded),
-    'exams': ('Prüfungen', Icons.event_note_rounded),
-    'notices': ('Mitteilungen', Icons.markunread_rounded),
-    'account': ('Konto', Icons.account_circle_rounded),
-    'status': ('Status', Icons.schedule_rounded),
+    'current': ('blockCurrent', Icons.play_circle_fill_rounded),
+    'next': ('blockNext', Icons.skip_next_rounded),
+    'schedule': ('blockSchedule', Icons.view_agenda_rounded),
+    'homework': ('blockHomework', Icons.assignment_rounded),
+    'exams': ('blockExams', Icons.event_note_rounded),
+    'notices': ('blockNotices', Icons.markunread_rounded),
+    'account': ('blockAccount', Icons.account_circle_rounded),
+    'status': ('blockStatus', Icons.schedule_rounded),
   };
 
   List<WidgetConfiguration> _configurations = const [];
@@ -58,7 +58,11 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       }
     } catch (_) {}
     if (loaded.isEmpty) {
-      loaded.add(_newConfiguration(name: 'Mein Widget'));
+      loaded.add(
+        _newConfiguration(
+          name: AppL10n.of(appLocaleNotifier.value).ui('editorDefaultName'),
+        ),
+      );
     }
     if (!mounted) return;
     setState(() {
@@ -71,7 +75,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
 
   WidgetConfiguration _newConfiguration({String? name}) => WidgetConfiguration(
     id: DateTime.now().microsecondsSinceEpoch.toString(),
-    name: name ?? 'Neues Widget',
+    name: name ?? AppL10n.of(appLocaleNotifier.value).ui('editorNewWidget'),
     accountId: activeUntisAccountId ?? '',
   );
 
@@ -113,6 +117,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     required int current,
     required ValueChanged<int> onChanged,
   }) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     var color = Color(current);
     await showModalBottomSheet<void>(
       context: context,
@@ -130,15 +135,19 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              for (final channel in <String>['Rot', 'Grün', 'Blau'])
+              for (final channel in <String>[
+                'colorRed',
+                'colorGreen',
+                'colorBlue',
+              ])
                 Row(
                   children: [
-                    SizedBox(width: 42, child: Text(channel)),
+                    SizedBox(width: 42, child: Text(l.ui(channel))),
                     Expanded(
                       child: Slider(
-                        value: channel == 'Rot'
+                        value: channel == 'colorRed'
                             ? color.r * 255
-                            : channel == 'Grün'
+                            : channel == 'colorGreen'
                             ? color.g * 255
                             : color.b * 255,
                         min: 0,
@@ -146,13 +155,13 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                         onChanged: (value) => setSheetState(() {
                           color = Color.fromARGB(
                             255,
-                            channel == 'Rot'
+                            channel == 'colorRed'
                                 ? value.round()
                                 : (color.r * 255).round(),
-                            channel == 'Grün'
+                            channel == 'colorGreen'
                                 ? value.round()
                                 : (color.g * 255).round(),
-                            channel == 'Blau'
+                            channel == 'colorBlue'
                                 ? value.round()
                                 : (color.b * 255).round(),
                           );
@@ -166,7 +175,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   onChanged(color.toARGB32());
                   Navigator.pop(context);
                 },
-                child: const Text('Farbe übernehmen'),
+                child: Text(l.ui('editorApplyColor')),
               ),
             ],
           ),
@@ -176,19 +185,20 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   }
 
   String _content(WidgetConfiguration config, String block) {
+    final l = AppL10n.of(appLocaleNotifier.value);
     switch (block) {
       case 'current':
-        return 'Jetzt: Mathematik';
+        return l.ui('previewCurrent');
       case 'next':
-        return 'Danach: Englisch · Raum 204';
+        return l.ui('previewNext');
       case 'schedule':
-        return '08:00 Mathe\n09:45 Englisch\n11:30 Biologie';
+        return l.ui('previewSchedule');
       case 'homework':
-        return '2 offene Aufgaben';
+        return l.ui('previewHomework');
       case 'exams':
-        return 'Nächste Prüfung: Freitag';
+        return l.ui('previewExams');
       case 'notices':
-        return 'Neue Mitteilungen';
+        return l.ui('previewNotices');
       case 'account':
         return untisAccountsNotifier.value
                 .where((item) => item.id == config.accountId)
@@ -196,7 +206,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 ?.label ??
             'Untis+';
       case 'status':
-        return 'Aktualisiert um 12:30';
+        return l.ui('previewStatus');
       default:
         return '';
     }
@@ -266,6 +276,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   }
 
   Future<void> _pin() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     if (kIsWeb || !Platform.isAndroid || _pinning) return;
     setState(() => _pinning = true);
     final ok = await WidgetService.requestPinCustomWidget(
@@ -276,9 +287,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            ok
-                ? 'Widget-Picker geöffnet.'
-                : 'Öffne den Widget-Picker über den Homescreen.',
+            ok ? l.ui('widgetPickerSent') : l.ui('widgetPickerHint'),
           ),
         ),
       );
@@ -287,11 +296,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppL10n.of(appLocaleNotifier.value);
     if (_loading)
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final config = _selected;
     return Scaffold(
-      appBar: RoundedBlurAppBar(title: const Text('Widget-Editor')),
+      appBar: RoundedBlurAppBar(title: Text(l.ui('editor'))),
       body: _AnimatedBackground(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 48),
@@ -299,7 +309,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             Center(child: _preview(config)),
             const SizedBox(height: 16),
             SettingsGroup(
-              title: 'Deine Widgets',
+              title: l.ui('editorYourWidgets'),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(12),
@@ -317,7 +327,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.add_rounded),
-                        label: const Text('Neu'),
+                        label: Text(l.ui('editorNew')),
                         onPressed: () {
                           final value = _newConfiguration();
                           setState(() {
@@ -329,11 +339,15 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.copy_rounded),
-                        label: const Text('Duplizieren'),
+                        label: Text(l.ui('editorDuplicate')),
                         onPressed: () {
-                          final value = WidgetConfiguration.fromJson(
-                            config.toJson(),
-                          ).copyWith(name: '${config.name} Kopie');
+                          final value =
+                              WidgetConfiguration.fromJson(
+                                config.toJson(),
+                              ).copyWith(
+                                name:
+                                    '${config.name} ${l.ui('editorCopySuffix')}',
+                              );
                           final copy = WidgetConfiguration(
                             id: DateTime.now().microsecondsSinceEpoch
                                 .toString(),
@@ -362,13 +376,13 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               ],
             ),
             SettingsGroup(
-              title: 'Inhalt und Layout',
+              title: l.ui('editorContentLayout'),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: TextFormField(
                     initialValue: config.name,
-                    decoration: const InputDecoration(labelText: 'Name'),
+                    decoration: InputDecoration(labelText: l.ui('editorName')),
                     onFieldSubmitted: (value) => _replace(
                       config.copyWith(
                         name: value.trim().isEmpty ? config.name : value.trim(),
@@ -385,10 +399,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                           (layout) => ChoiceChip(
                             label: Text(
                               layout == 'compact'
-                                  ? 'Kompakt'
+                                  ? l.ui('editorCompact')
                                   : layout == 'stacked'
-                                  ? 'Gestapelt'
-                                  : 'Zeitachse',
+                                  ? l.ui('editorStacked')
+                                  : l.ui('editorTimeline'),
                             ),
                             selected: config.layout == layout,
                             onSelected: (_) =>
@@ -407,7 +421,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       final active = config.blocks.contains(entry.key);
                       return FilterChip(
                         avatar: Icon(entry.value.$2, size: 17),
-                        label: Text(entry.value.$1),
+                        label: Text(l.ui(entry.value.$1)),
                         selected: active,
                         onSelected: (selected) {
                           final blocks = [...config.blocks];
@@ -425,7 +439,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 ...config.blocks.asMap().entries.map(
                   (entry) => ListTile(
                     leading: Icon(_blocks[entry.value]?.$2),
-                    title: Text(_blocks[entry.value]?.$1 ?? entry.value),
+                    title: Text(l.ui(_blocks[entry.value]?.$1 ?? entry.value)),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -458,28 +472,28 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               ],
             ),
             SettingsGroup(
-              title: 'Design',
+              title: l.ui('editorDesign'),
               children: [
                 for (final item in <(String, int, ValueChanged<int>)>[
                   (
-                    'Hintergrund',
+                    'editorBackground',
                     config.backgroundColor,
                     (value) =>
                         _replace(config.copyWith(backgroundColor: value)),
                   ),
                   (
-                    'Akzent',
+                    'editorAccent',
                     config.accentColor,
                     (value) => _replace(config.copyWith(accentColor: value)),
                   ),
                   (
-                    'Text',
+                    'editorText',
                     config.textColor,
                     (value) => _replace(config.copyWith(textColor: value)),
                   ),
                 ])
                   ListTile(
-                    title: Text(item.$1),
+                    title: Text(l.ui(item.$1)),
                     leading: Container(
                       width: 28,
                       height: 28,
@@ -494,13 +508,13 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   ),
                 SwitchListTile(
                   value: config.showIcons,
-                  title: const Text('Icons anzeigen'),
+                  title: Text(l.ui('editorShowIcons')),
                   onChanged: (value) =>
                       _replace(config.copyWith(showIcons: value)),
                 ),
                 ListTile(
                   title: Text(
-                    'Transparenz ${(config.opacity * 100).round()} %',
+                    '${l.ui('editorTransparency')} ${(config.opacity * 100).round()} %',
                   ),
                   subtitle: Slider(
                     value: config.opacity,
@@ -511,7 +525,9 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   ),
                 ),
                 ListTile(
-                  title: Text('Rundung ${config.cornerRadius.round()}'),
+                  title: Text(
+                    '${l.ui('editorRounding')} ${config.cornerRadius.round()}',
+                  ),
                   subtitle: Slider(
                     value: config.cornerRadius,
                     min: 0,
@@ -522,7 +538,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 ),
                 ListTile(
                   title: Text(
-                    'Schriftgröße ${(config.textScale * 100).round()} %',
+                    '${l.ui('editorFontSize')} ${(config.textScale * 100).round()} %',
                   ),
                   subtitle: Slider(
                     value: config.textScale,
@@ -543,14 +559,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.add_to_home_screen_rounded),
-                label: const Text('Dieses Widget hinzufügen'),
+                label: Text(l.ui('editorAddWidget')),
               ),
             if (!kIsWeb && Platform.isIOS)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(12),
-                child: Text(
-                  'Füge Untis+ über den iOS-Widget-Picker hinzu und wähle anschließend dieses Profil in „Widget bearbeiten“.',
-                ),
+                child: Text(l.ui('editorIosHint')),
               ),
           ],
         ),

@@ -1,0 +1,7 @@
+name: fllama
+description: Test-only API stub for Untis+ core and widget tests.
+version: 0.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
