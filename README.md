@@ -24,7 +24,7 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 | Aspect | Specification |
 | :--- | :--- |
 | **Data Policy** | Private by default. Credentials and schedule data never leave your device. |
-| **Current Version** | `5.2.1` |
+| **Current Version** | `5.2.2` |
 | **Target Platforms** | Android, iOS |
 
 ---
@@ -57,14 +57,6 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 
 | Feature / Goal | Status |
 | :--- | :---: |
-| UI Refactor (Modernized aesthetics and enhanced user experience) | Done |
-| Streamlined Onboarding Flow | Done |
-| Homework & Lesson Notes Integration | Done |
-| Multi-Account / Multi-School Support | Done |
-| Dynamic Lockscreen & Next-Lesson Widgets | Done |
-| Native Offline/Local AI Model Integration | Done |
-| Dynamic Smart Alarm Sync (Wake up based on timetable changes) | Done |
-| Native secure credential migration | Done |
 | Offline-first structured cache foundation | In progress |
 | Absence overview and timetable change center | In progress |
 | Feature-by-feature Riverpod migration | In progress |
