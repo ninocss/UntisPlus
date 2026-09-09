@@ -3320,7 +3320,7 @@ class _NavItem {
   final String label;
   final int pageIndex;
   final bool tutorialHighlight;
-  final int badgeCount;
+
 
   const _NavItem({
     required this.icon,
@@ -3328,7 +3328,6 @@ class _NavItem {
     required this.label,
     required this.pageIndex,
     this.tutorialHighlight = false,
-    this.badgeCount = 0,
   });
 }
 
@@ -3642,19 +3641,15 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                     scale: Tween(begin: 0.7, end: 1.0).animate(anim),
                     child: FadeTransition(opacity: anim, child: child),
                   ),
-                  child: Badge.count(
-                    count: item.badgeCount,
-                    isLabelVisible: item.badgeCount > 0,
-                    child: Icon(
-                      selected ? item.selectedIcon : item.icon,
-                      key: ValueKey('${item.pageIndex}_$selected'),
-                      size: selected ? 22 : 24,
-                      color: selected
-                          ? cs.onPrimary
-                          : item.tutorialHighlight
-                          ? cs.tertiary
-                          : cs.onSurfaceVariant.withValues(alpha: 0.8),
-                    ),
+                  child: Icon(
+                    selected ? item.selectedIcon : item.icon,
+                    key: ValueKey('${item.pageIndex}_$selected'),
+                    size: selected ? 22 : 24,
+                    color: selected
+                        ? cs.onPrimary
+                        : item.tutorialHighlight
+                        ? cs.tertiary
+                        : cs.onSurfaceVariant.withValues(alpha: 0.8),
                   ),
                 ),
               ),
