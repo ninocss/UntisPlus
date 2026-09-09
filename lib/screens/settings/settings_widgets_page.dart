@@ -237,7 +237,11 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
         key: ValueKey('widget-preview-$_selectedType'),
         duration: const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
-        height: isSchedule ? 220 : 190,
+        // All preview variants share the taller canvas.  Switching from a
+        // compact preview to the four-line schedule used to animate from 190
+        // to 220 px while the schedule copy appeared immediately, briefly
+        // leaving the text column too short.
+        height: 220,
         constraints: BoxConstraints(maxWidth: 360),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
