@@ -57,3 +57,7 @@ android/app/*.keystore
 CHANGELOG.md
 devtools_options.yaml
 analysis_options.yaml
+.codex-remote-attachments/
+codex/
+test/
+.artifacts/
