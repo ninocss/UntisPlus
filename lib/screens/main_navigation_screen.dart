@@ -2622,7 +2622,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Widget? _currentDrawer;
 
-  List<int> get _tutorialTargets => [0, 2, 3, 4];
+  List<int> get _tutorialTargets => [0, 1, 2, 3];
 
   @override
   void initState() {
@@ -2679,7 +2679,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     // where the download action is available.
     if (event.payload?['type']?.toString() == 'update' ||
         actionId == 'open_updates') {
-      _onNavTap(4);
+      _onNavTap(3);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Navigator.of(
@@ -2702,22 +2702,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _openAssistantFromNative() {
     if (!mounted || !pendingAssistantOpenNotifier.value) return;
     pendingAssistantOpenNotifier.value = false;
-    _openAssistant();
-  }
-
-  void _openAssistant() {
-    Navigator.of(context).push(
-      _buildBouncyRoute(
-        AiAssistantPage(
-          key: ValueKey(sessionID),
-          onBackToTimetable: () => Navigator.of(context).maybePop(),
-          onOpenDrawer: (drawer) {
-            setState(() => _currentDrawer = drawer);
-            _scaffoldKey.currentState?.openDrawer();
-          },
-        ),
-      ),
-    );
+    _onNavTap(4);
   }
 
   Future<void> _finishTutorial() async {
@@ -2793,6 +2778,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       schoolUrl = prefs.getString('schoolUrl') ?? "";
       schoolName = prefs.getString('schoolName') ?? "";
+      sessionID = prefs.getString('sessionId') ?? "";
       personType = prefs.getInt('personType') ?? 0;
       personId = prefs.getInt('personId') ?? 0;
     });
@@ -2850,10 +2836,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   List<Widget> get _pages => <Widget>[
     WeeklyTimetablePage(key: ValueKey(sessionID)),
-    const HomeworkPage(),
     const ExamsPage(),
     const SchoolNotificationsPage(),
-    StudentMorePage(openAssistant: _openAssistant),
+    const SettingsHubPage(),
+    AiAssistantPage(
+      key: ValueKey(sessionID),
+      onBackToTimetable: () => _onNavTap(0),
+      onOpenDrawer: (drawer) {
+        setState(() => _currentDrawer = drawer);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scaffoldKey.currentState?.openDrawer();
+        });
+      },
+    ),
   ];
 
   @override
@@ -2881,9 +2876,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             children: [
               if (isTablet)
                 SafeArea(
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: unreadTimetableChangesNotifier,
-                    builder: (context, unreadChanges, _) => NavigationRail(
+                  child: NavigationRail(
                       selectedIndex: _selectedIndex,
                       onDestinationSelected: _onNavTap,
                       labelType: NavigationRailLabelType.selected,
@@ -2893,11 +2886,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           icon: const Icon(Icons.watch_later_outlined),
                           selectedIcon: const Icon(Icons.watch_later_rounded),
                           label: Text(l.timetableTitle),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.assignment_outlined),
-                          selectedIcon: const Icon(Icons.assignment_rounded),
-                          label: Text(l.homeworkTitle),
                         ),
                         NavigationRailDestination(
                           icon: const Icon(Icons.event_note_outlined),
@@ -2910,20 +2898,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           label: Text(l.navInfo),
                         ),
                         NavigationRailDestination(
-                          icon: Badge.count(
-                            count: unreadChanges,
-                            isLabelVisible: unreadChanges > 0,
-                            child: const Icon(Icons.grid_view_outlined),
-                          ),
-                          selectedIcon: Badge.count(
-                            count: unreadChanges,
-                            isLabelVisible: unreadChanges > 0,
-                            child: const Icon(Icons.grid_view_rounded),
-                          ),
-                          label: Text(l.aiMore),
+                          icon: const Icon(Icons.settings_outlined),
+                          selectedIcon: const Icon(Icons.settings_rounded),
+                          label: Text(l.navMenu),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.auto_awesome_outlined),
+                          selectedIcon: const Icon(Icons.auto_awesome_rounded),
+                          label: Text(l.navAi),
                         ),
                       ],
-                    ),
                   ),
                 ),
               Expanded(
@@ -3165,36 +3149,34 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final timetableSelected = _selectedIndex == 0;
     final l = AppL10n.of(appLocaleNotifier.value);
 
-    // ---- Student-first destinations shown in the pill bar ----
+    // ---- Secondary items (indices 1-4) shown in the pill bar ----
     final items = [
       _NavItem(
-        icon: Icons.assignment_outlined,
-        selectedIcon: Icons.assignment_rounded,
-        label: l.homeworkTitle,
-        pageIndex: 1,
-        tutorialHighlight: _isTutorialTarget(1),
-      ),
-      _NavItem(
-        icon: Icons.event_note_outlined,
-        selectedIcon: Icons.event_note_rounded,
-        label: l.examsTitle,
-        pageIndex: 2,
-        tutorialHighlight: _isTutorialTarget(2),
+        icon: Icons.settings_outlined,
+        selectedIcon: Icons.settings_rounded,
+        label: l.navMenu,
+        pageIndex: 3,
+        tutorialHighlight: _isTutorialTarget(3),
       ),
       _NavItem(
         icon: Icons.campaign_outlined,
         selectedIcon: Icons.campaign_rounded,
         label: l.navInfo,
-        pageIndex: 3,
-        tutorialHighlight: _isTutorialTarget(3),
+        pageIndex: 2,
+        tutorialHighlight: _isTutorialTarget(2),
       ),
       _NavItem(
-        icon: Icons.grid_view_outlined,
-        selectedIcon: Icons.grid_view_rounded,
-        label: 'Mehr',
+        icon: Icons.assignment_outlined,
+        selectedIcon: Icons.assignment_rounded,
+        label: l.navExams,
+        pageIndex: 1,
+        tutorialHighlight: _isTutorialTarget(1),
+      ),
+      _NavItem(
+        icon: Icons.auto_awesome_outlined,
+        selectedIcon: Icons.auto_awesome_rounded,
+        label: l.navAi,
         pageIndex: 4,
-        tutorialHighlight: _isTutorialTarget(4),
-        badgeCount: unreadTimetableChangesNotifier.value,
       ),
     ];
 
