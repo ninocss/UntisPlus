@@ -30,6 +30,68 @@ void main() {
       appThemeCapabilities(AppThemeId.glass).supportsAdvancedLessonStyle,
       isFalse,
     );
+    expect(
+      appThemeCapabilities(
+        AppThemeId.defaultTheme,
+      ).supportsExpressiveComponents,
+      isTrue,
+    );
+    expect(
+      appThemeCapabilities(AppThemeId.vivid).supportsExpressiveComponents,
+      isTrue,
+    );
+    for (final theme in [
+      AppThemeId.manga,
+      AppThemeId.glass,
+      AppThemeId.cyber,
+      AppThemeId.paper,
+    ]) {
+      expect(appThemeCapabilities(theme).supportsExpressiveComponents, isFalse);
+    }
+  });
+
+  test('glow effects default to disabled', () {
+    expect(glowEffectsEnabledNotifier.value, isFalse);
+  });
+
+  testWidgets('Default and Vivid opt into native expressive controls', (
+    tester,
+  ) async {
+    Future<ThemeData> pumpTheme(AppThemeId theme) async {
+      visualThemeNotifier.value = theme;
+      themeModeNotifier.value = ThemeMode.light;
+      useMaterialYouNotifier.value = false;
+      isAmoledNotifier.value = false;
+      blurEnabledNotifier.value = false;
+      glowEffectsEnabledNotifier.value = false;
+      await tester.pumpWidget(
+        const UntisPlusApp(startScreen: SizedBox.shrink()),
+      );
+      await tester.pump();
+      return tester.widget<MaterialApp>(find.byType(MaterialApp)).theme!;
+    }
+
+    for (final themeId in [AppThemeId.defaultTheme, AppThemeId.vivid]) {
+      final theme = await pumpTheme(themeId);
+      // ignore: deprecated_member_use
+      expect(theme.sliderTheme.year2023, isFalse);
+      // ignore: deprecated_member_use
+      expect(theme.progressIndicatorTheme.year2023, isFalse);
+      expect(
+        theme.filledButtonTheme.style!.shape!.resolve({}),
+        isA<StadiumBorder>(),
+      );
+      expect(
+        theme.filledButtonTheme.style!.shape!.resolve({WidgetState.pressed}),
+        isA<RoundedRectangleBorder>(),
+      );
+    }
+
+    final manga = await pumpTheme(AppThemeId.manga);
+    // ignore: deprecated_member_use
+    expect(manga.sliderTheme.year2023, isTrue);
+    // ignore: deprecated_member_use
+    expect(manga.progressIndicatorTheme.year2023, isTrue);
   });
 
   test('every theme builds distinct light and dark schemes and tokens', () {
@@ -57,6 +119,7 @@ void main() {
           'glass': true,
           'cyber': false,
         }),
+        'glowEffectsEnabled': true,
       });
       final service = BackupService();
       final exported = await service.exportAllToJsonText();
@@ -69,6 +132,7 @@ void main() {
         jsonDecode(prefs.getString('themeBlurPreferences')!)['cyber'],
         isFalse,
       );
+      expect(prefs.getBool('glowEffectsEnabled'), isTrue);
     },
   );
 }

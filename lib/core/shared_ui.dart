@@ -5,6 +5,24 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
+List<BoxShadow>? _glowShadows(BuildContext context, List<BoxShadow> shadows) =>
+    untisThemeTokensOf(context).glowEffectsEnabled ? shadows : null;
+
+bool _usesExpressiveComponents(BuildContext context) => appThemeCapabilities(
+  untisThemeTokensOf(context).id,
+).supportsExpressiveComponents;
+
+OutlinedBorder? _legacyButtonShape(BuildContext context, double radius) =>
+    _usesExpressiveComponents(context)
+    ? null
+    : RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));
+
+double _expressiveRadius(
+  BuildContext context,
+  double legacyRadius, {
+  required double expressiveRadius,
+}) => _usesExpressiveComponents(context) ? expressiveRadius : legacyRadius;
+
 class _StripedHatchPainter extends CustomPainter {
   final Color color;
   final double stripeWidth;
@@ -173,7 +191,12 @@ class ThemedSurface extends StatelessWidget {
               borderRadius: radius,
               boxShadow: [
                 BoxShadow(
-                  color: tokens.shadowColor,
+                  color:
+                      !tokens.glowEffectsEnabled &&
+                          (tokens.id == AppThemeId.vivid ||
+                              tokens.id == AppThemeId.cyber)
+                      ? cs.shadow.withValues(alpha: 0.12)
+                      : tokens.shadowColor,
                   offset: tokens.shadowOffset,
                   blurRadius: tokens.hardShadow ? 0 : 20,
                 ),
@@ -676,7 +699,7 @@ class SettingsSwitchTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Switch.adaptive(
+            Switch(
               value: value,
               onChanged: (val) {
                 HapticFeedback.selectionClick();

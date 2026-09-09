@@ -2039,9 +2039,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
             onPressed: _thinking ? null : _send,
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
+              shape: _legacyButtonShape(context, 18),
             ),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
@@ -2361,7 +2359,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
           border: isUser
               ? null
               : Border.all(color: cs.outlineVariant.withValues(alpha: 0.1)),
-          boxShadow: isUser
+          boxShadow: isUser && untisThemeTokensOf(context).glowEffectsEnabled
               ? [
                   BoxShadow(
                     color: cs.primary.withValues(alpha: 0.2),
@@ -2427,13 +2425,13 @@ Halte deine Antworten eher kurz, aber präzise.''';
             decoration: BoxDecoration(
               color: cs.primaryContainer,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [
+              boxShadow: _glowShadows(context, [
                 BoxShadow(
                   color: cs.primary.withValues(alpha: 0.3),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 ),
-              ],
+              ]),
             ),
             child: Icon(
               Icons.auto_awesome_rounded,
@@ -3067,9 +3065,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                   ),
                                   style: FilledButton.styleFrom(
                                     minimumSize: const Size(0, 44),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
+                                    shape: _legacyButtonShape(context, 14),
                                   ),
                                 ),
                               ),

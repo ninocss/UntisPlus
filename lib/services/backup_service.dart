@@ -11,6 +11,7 @@ class BackupService {
   static const Set<String> _boolKeys = {
     'showCancelled',
     'blurEnabled',
+    'glowEffectsEnabled',
     'backgroundAnimations',
     'backgroundGyroscope',
     'progressivePush',

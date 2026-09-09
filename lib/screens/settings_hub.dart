@@ -127,36 +127,10 @@ Future<void> _settingsSetLessonCardStyle(int style) async {
   await prefs.setInt('lessonCardStyle', normalized);
 }
 
-Future<void> _settingsSetLessonGlowEnabled(bool value) async {
-  lessonGlowEnabledNotifier.value = value;
+Future<void> _settingsSetGlowEffectsEnabled(bool value) async {
+  glowEffectsEnabledNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonGlowEnabled', value);
-}
-
-Future<void> _settingsSetLessonGlowMode(int mode) async {
-  final normalized = mode.clamp(0, 1);
-  lessonGlowModeNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('lessonGlowMode', normalized);
-}
-
-Future<void> _settingsSetLessonGlowIntensity(double value) async {
-  lessonGlowIntensityNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setDouble('lessonGlowIntensity', value);
-}
-
-Future<void> _settingsSetLessonGlowNextEnabled(bool value) async {
-  lessonGlowNextEnabledNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonGlowNextEnabled', value);
-}
-
-Future<void> _settingsSetLessonGlowNextMinutes(int minutes) async {
-  final normalized = minutes.clamp(5, 120);
-  lessonGlowNextMinutesNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('lessonGlowNextMinutes', normalized);
+  await prefs.setBool('glowEffectsEnabled', value);
 }
 
 Future<void> _settingsSetLessonBlurEnabled(bool value) async {
@@ -460,17 +434,8 @@ Future<void> _settingsSyncFromPrefs() async {
     0,
     4,
   );
-  lessonGlowEnabledNotifier.value = prefs.getBool('lessonGlowEnabled') ?? true;
-  lessonGlowModeNotifier.value = (prefs.getInt('lessonGlowMode') ?? 0).clamp(
-    0,
-    1,
-  );
-  lessonGlowIntensityNotifier.value =
-      prefs.getDouble('lessonGlowIntensity') ?? 1.0;
-  lessonGlowNextEnabledNotifier.value =
-      prefs.getBool('lessonGlowNextEnabled') ?? false;
-  lessonGlowNextMinutesNotifier.value =
-      (prefs.getInt('lessonGlowNextMinutes') ?? 20).clamp(5, 120);
+  glowEffectsEnabledNotifier.value =
+      prefs.getBool('glowEffectsEnabled') ?? false;
   lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;
   lessonBlurAmountNotifier.value = prefs.getDouble('lessonBlurAmount') ?? 12.0;
   lessonCardOpacityNotifier.value = prefs.getDouble('lessonCardOpacity') ?? 0.9;
@@ -531,7 +496,11 @@ class SettingsHubPage extends StatelessWidget {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 22, expressiveRadius: 28),
+        ),
+      ),
       color: cs.surfaceContainerLow,
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -727,8 +696,8 @@ class SettingsHubPage extends StatelessWidget {
       makeItem(
         index: 7,
         icon: Icons.widgets_rounded,
-        title: 'Widgets',
-        subtitle: 'Vorschau und Kontozuordnung',
+        title: AppL10n.of(appLocaleNotifier.value).ui('widgets'),
+        subtitle: AppL10n.of(appLocaleNotifier.value).ui('widgetAccount'),
         pageBuilder: () => const SettingsWidgetsPage(),
       ),
       if (!Platform.isIOS)

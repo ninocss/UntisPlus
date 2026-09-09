@@ -81,7 +81,10 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         _showSnack(l.settingsBackupExportSuccess);
       });
     } catch (e) {
-      _showSnack('${l.settingsBackupImportFailed} (${e.toString()})', isError: true);
+      _showSnack(
+        '${l.settingsBackupImportFailed} (${e.toString()})',
+        isError: true,
+      );
     }
   }
 
@@ -158,30 +161,23 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final result = await showDialog<bool>(
       context: context,
-      builder:
-          (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            title: Text(
-              l.settingsBackupConfirmTitle,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-            ),
-            content: Text(
-              l.settingsBackupConfirmDesc,
-              style: GoogleFonts.outfit(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(l.settingsApiKeyCancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(l.settingsBackupConfirmAction),
-              ),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          l.settingsBackupConfirmTitle,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+        ),
+        content: Text(l.settingsBackupConfirmDesc, style: GoogleFonts.outfit()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.settingsApiKeyCancel),
           ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.settingsBackupConfirmAction),
+          ),
+        ],
+      ),
     );
     return result ?? false;
   }
@@ -239,9 +235,6 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                               vertical: 12,
                               horizontal: 12,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
                           ),
                         ),
                       ),
@@ -264,9 +257,6 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                             padding: const EdgeInsets.symmetric(
                               vertical: 12,
                               horizontal: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                         ),
@@ -303,9 +293,6 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                             ),
                             backgroundColor: cs.secondaryContainer,
                             foregroundColor: cs.onSecondaryContainer,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
                           ),
                         ),
                       ),
@@ -328,9 +315,6 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                             padding: const EdgeInsets.symmetric(
                               vertical: 12,
                               horizontal: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
                             ),
                           ),
                         ),

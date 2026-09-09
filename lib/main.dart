@@ -736,17 +736,8 @@ void main() async {
     0,
     4,
   );
-  lessonGlowEnabledNotifier.value = prefs.getBool('lessonGlowEnabled') ?? true;
-  lessonGlowModeNotifier.value = (prefs.getInt('lessonGlowMode') ?? 0).clamp(
-    0,
-    1,
-  );
-  lessonGlowIntensityNotifier.value =
-      prefs.getDouble('lessonGlowIntensity') ?? 1.0;
-  lessonGlowNextEnabledNotifier.value =
-      prefs.getBool('lessonGlowNextEnabled') ?? false;
-  lessonGlowNextMinutesNotifier.value =
-      (prefs.getInt('lessonGlowNextMinutes') ?? 20).clamp(5, 120);
+  glowEffectsEnabledNotifier.value =
+      prefs.getBool('glowEffectsEnabled') ?? false;
   lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;
   lessonBlurAmountNotifier.value = prefs.getDouble('lessonBlurAmount') ?? 12.0;
   lessonCardOpacityNotifier.value = prefs.getDouble('lessonCardOpacity') ?? 0.9;
@@ -1475,11 +1466,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     demoModeNotifier.addListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.addListener(_onHiddenSubjectsChanged);
-    lessonGlowEnabledNotifier.addListener(_onHiddenSubjectsChanged);
-    lessonGlowModeNotifier.addListener(_onHiddenSubjectsChanged);
-    lessonGlowIntensityNotifier.addListener(_onHiddenSubjectsChanged);
-    lessonGlowNextEnabledNotifier.addListener(_onHiddenSubjectsChanged);
-    lessonGlowNextMinutesNotifier.addListener(_onHiddenSubjectsChanged);
+    glowEffectsEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.addListener(_onHiddenSubjectsChanged);
     lessonCardOpacityNotifier.addListener(_onHiddenSubjectsChanged);
@@ -1640,6 +1627,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _editLessonTemporarily(Map<dynamic, dynamic> lesson) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final lessonKey = _temporaryLessonKey(lesson);
     _temporaryLessonOriginals.putIfAbsent(
       lessonKey,
@@ -1657,30 +1645,28 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Stunde temporär bearbeiten'),
+          title: Text(l.ui('tempEditTitle')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Diese Änderung wird nicht an Untis übertragen und beim nächsten Laden verworfen.',
-                ),
+                Text(l.ui('tempEditDesc')),
                 const SizedBox(height: 12),
                 TextField(
                   controller: subject,
-                  decoration: const InputDecoration(labelText: 'Fach'),
+                  decoration: InputDecoration(labelText: l.ui('subject')),
                 ),
                 TextField(
                   controller: teacher,
-                  decoration: const InputDecoration(labelText: 'Lehrkraft'),
+                  decoration: InputDecoration(labelText: l.ui('teacher')),
                 ),
                 TextField(
                   controller: room,
-                  decoration: const InputDecoration(labelText: 'Raum'),
+                  decoration: InputDecoration(labelText: l.ui('room')),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Ausfall'),
+                  title: Text(l.ui('absence')),
                   value: cancelled,
                   onChanged: (value) => setDialogState(() => cancelled = value),
                 ),
@@ -1701,11 +1687,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 }
                 Navigator.pop(dialogContext);
               },
-              child: const Text('Zurücksetzen'),
+              child: Text(l.ui('reset')),
             ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Abbrechen'),
+              child: Text(l.ui('cancel')),
             ),
             FilledButton(
               onPressed: () {
@@ -1725,7 +1711,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 });
                 Navigator.pop(dialogContext);
               },
-              child: const Text('Nur lokal speichern'),
+              child: Text(l.ui('localSave')),
             ),
           ],
         ),
@@ -1737,6 +1723,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _exportTimetableImage() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     try {
       // The on-screen timetable reserves space for the transparent app bar.
       // Temporarily remove that viewport-only padding from the repaint boundary
@@ -1754,21 +1741,21 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final data = await image.toByteData(format: ImageByteFormat.png);
       if (data == null) return;
       final result = await FilePicker.saveFile(
-        dialogTitle: 'Stundenplan-Bild speichern',
+        dialogTitle: l.ui('saveTimetableImage'),
         fileName:
             'untisplus-${DateFormat('yyyy-MM-dd').format(_currentMonday)}.png',
         bytes: data.buffer.asUint8List(),
       );
       if (result != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stundenplan-Bild gespeichert')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.ui('timetableImageSaved'))));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bild konnte nicht exportiert werden')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.ui('imageExportFailed'))));
       }
     } finally {
       if (mounted && _isExportingTimetable) {
@@ -1779,6 +1766,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   Future<void> _updateHomeWidgets(Map<int, List<dynamic>> week) async {
     if (kIsWeb) return;
+    final l = AppL10n.of(appLocaleNotifier.value);
     final now = DateTime.now();
     final todayLessons = List<dynamic>.from(week[now.weekday - 1] ?? [])
       ..sort(
@@ -1788,7 +1776,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       );
     String label(dynamic lesson) {
       final subject = lesson['_subjectShort']?.toString();
-      return subject?.isNotEmpty == true ? subject! : 'Unterricht';
+      return subject?.isNotEmpty == true ? subject! : l.ui('widgetLesson');
     }
 
     final nowMinutes = now.hour * 60 + now.minute;
@@ -1812,7 +1800,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         .join('\n');
     final remaining = current == null
         ? ''
-        : '${(_toMinutes((current['endTime'] as int?) ?? 0) - nowMinutes).clamp(0, 999)} Min. verbleibend';
+        : l
+              .ui('widgetMinutesRemaining')
+              .replaceAll(
+                '{n}',
+                '${(_toMinutes((current['endTime'] as int?) ?? 0) - nowMinutes).clamp(0, 999)}',
+              );
     final homework = homeworksNotifier.value
         .where((item) => item['isDone'] != true)
         .take(3)
@@ -1823,11 +1816,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               item['text'] ??
               item['homework'] ??
               item['description'] ??
-              'Aufgabe';
+              l.ui('widgetHomeworkItem');
           return '${subject.toString().isEmpty ? '' : '$subject · '}${text.toString()}';
         })
         .join('\n');
-    var examSummary = 'Keine anstehenden Prüfungen';
+    var examSummary = l.ui('widgetNoUpcomingExams');
     try {
       final prefs = await SharedPreferences.getInstance();
       final exams = (prefs.getStringList(_accountDataKey('customExams')) ?? [])
@@ -1841,7 +1834,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           .where((exam) => exam.isNotEmpty)
           .take(2)
           .map((exam) {
-            final subject = exam['subject'] ?? exam['subjectName'] ?? 'Prüfung';
+            final subject =
+                exam['subject'] ?? exam['subjectName'] ?? l.ui('widgetExam');
             final date = (exam['date'] ?? exam['examDate'] ?? '').toString();
             final formatted = date.length == 8
                 ? '${date.substring(6, 8)}.${date.substring(4, 6)}.'
@@ -1863,15 +1857,19 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
       await WidgetService.updateWidgets(
         currentLesson: current == null
-            ? 'Keine aktuelle Stunde'
+            ? l.ui('widgetNoCurrentLesson')
             : label(current),
-        nextLesson: next == null ? '' : 'Als Nächstes: ${label(next)}',
+        nextLesson: next == null
+            ? ''
+            : l.ui('widgetNext').replaceAll('{title}', label(next)),
         timeRemaining: remaining,
-        dailySchedule: schedule.isEmpty ? 'Heute keine Stunden' : schedule,
+        dailySchedule: schedule.isEmpty
+            ? l.ui('widgetNoLessonsToday')
+            : schedule,
         homeworkSummary: homework.isEmpty
-            ? 'Keine offenen Hausaufgaben'
+            ? l.ui('widgetNoOpenHomework')
             : homework,
-        notificationSummary: 'Neue Mitteilungen in Untis+ öffnen',
+        notificationSummary: l.ui('widgetOpenNotifications'),
         examSummary: examSummary,
         accountId: activeUntisAccountId ?? 'active',
         accountLabel: activeAccount?.label ?? schoolName,
@@ -2298,11 +2296,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     demoModeNotifier.removeListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.removeListener(_onHiddenSubjectsChanged);
-    lessonGlowEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
-    lessonGlowModeNotifier.removeListener(_onHiddenSubjectsChanged);
-    lessonGlowIntensityNotifier.removeListener(_onHiddenSubjectsChanged);
-    lessonGlowNextEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
-    lessonGlowNextMinutesNotifier.removeListener(_onHiddenSubjectsChanged);
+    glowEffectsEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonCardOpacityNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -2951,11 +2945,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         : (borderRadius ?? lessonBorderRadiusNotifier.value);
     final cardRadius = BorderRadius.circular(effectiveRadius);
 
-    final glowEnabled = themeOwnsStyle
-        ? (tokens.id == AppThemeId.vivid || tokens.id == AppThemeId.cyber)
-        : lessonGlowEnabledNotifier.value;
-    final glowMode = lessonGlowModeNotifier.value;
-    final glowIntensity = lessonGlowIntensityNotifier.value;
+    final glowEnabled = tokens.glowEffectsEnabled;
     final cardStyle = themeOwnsStyle
         ? (tokens.id == AppThemeId.vivid ? 2 : 3)
         : lessonCardStyleNotifier.value;
@@ -3004,23 +2994,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (isNow) {
         shadows = [
           BoxShadow(
-            color: fgColor.withValues(
-              alpha: (0.38 * glowIntensity).clamp(0.0, 1.0),
-            ),
-            blurRadius: (14 * glowIntensity).clamp(2.0, 30.0),
-            spreadRadius: (1.5 * glowIntensity).clamp(0.0, 6.0),
+            color: fgColor.withValues(alpha: 0.38),
+            blurRadius: 14,
+            spreadRadius: 1.5,
             offset: const Offset(0, 3),
-          ),
-        ];
-      } else if (glowMode == 1) {
-        shadows = [
-          BoxShadow(
-            color: fgColor.withValues(
-              alpha: (0.16 * glowIntensity).clamp(0.0, 1.0),
-            ),
-            blurRadius: (8 * glowIntensity).clamp(2.0, 20.0),
-            spreadRadius: (0.5 * glowIntensity).clamp(0.0, 4.0),
-            offset: const Offset(0, 2),
           ),
         ];
       }
@@ -3214,12 +3191,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: fgColor,
-                        boxShadow: [
+                        boxShadow: _glowShadows(context, [
                           BoxShadow(
                             color: fgColor.withValues(alpha: 0.6),
                             blurRadius: 4,
                           ),
-                        ],
+                        ]),
                       ),
                     ),
                   ],
@@ -3465,8 +3442,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       // It must stay below the transparent app bar or the spinner is clipped.
       displacement: topContentPadding + 40,
       edgeOffset: topContentPadding,
-      color: csG.onPrimaryContainer,
-      backgroundColor: csG.primaryContainer,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(bottom: 32, top: topContentPadding),
@@ -3708,15 +3683,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       l['_teacher']?.toString() ?? '';
                                   final isCurrent =
                                       (startMin <= nowMin && nowMin < endMin);
-                                  final isNextGlowing =
-                                      isToday &&
-                                      lessonGlowNextEnabledNotifier.value &&
-                                      (startMin -
-                                                  lessonGlowNextMinutesNotifier
-                                                      .value <=
-                                              nowMin &&
-                                          nowMin < startMin);
-                                  final isNow = isCurrent || isNextGlowing;
+                                  final isNow = isCurrent;
 
                                   final lDateInt =
                                       int.tryParse(
@@ -3882,14 +3849,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
 
-    final csW = Theme.of(context).colorScheme;
     return RefreshIndicator(
       onRefresh: _onRefresh,
       // Keep the resting indicator below the transparent app bar.
       displacement: topContentPadding + 40,
       edgeOffset: topContentPadding,
-      color: csW.onPrimaryContainer,
-      backgroundColor: csW.primaryContainer,
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -4277,17 +4241,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   (dayIndex == todayIndex) &&
                                                   (slot.startMin <= nowMin &&
                                                       nowMin < slot.endMin);
-                                              final isNextGlowing =
-                                                  (dayIndex == todayIndex) &&
-                                                  lessonGlowNextEnabledNotifier
-                                                      .value &&
-                                                  (slot.startMin -
-                                                              lessonGlowNextMinutesNotifier
-                                                                  .value <=
-                                                          nowMin &&
-                                                      nowMin < slot.startMin);
-                                              final isNow =
-                                                  isCurrent || isNextGlowing;
+                                              final isNow = isCurrent;
 
                                               final lDateInt =
                                                   int.tryParse(
@@ -4389,16 +4343,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   decoration: BoxDecoration(
                                                     color: cs.error,
                                                     shape: BoxShape.circle,
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: cs.error
-                                                            .withValues(
-                                                              alpha: 0.35,
-                                                            ),
-                                                        blurRadius: 3,
-                                                        spreadRadius: 0.5,
-                                                      ),
-                                                    ],
+                                                    boxShadow:
+                                                        _glowShadows(context, [
+                                                          BoxShadow(
+                                                            color: cs.error
+                                                                .withValues(
+                                                                  alpha: 0.35,
+                                                                ),
+                                                            blurRadius: 3,
+                                                            spreadRadius: 0.5,
+                                                          ),
+                                                        ]),
                                                   ),
                                                 ),
                                                 const SizedBox(width: 6),
@@ -4411,15 +4366,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                           BorderRadius.circular(
                                                             2,
                                                           ),
-                                                      boxShadow: [
-                                                        BoxShadow(
-                                                          color: cs.error
-                                                              .withValues(
-                                                                alpha: 0.25,
-                                                              ),
-                                                          blurRadius: 3,
-                                                        ),
-                                                      ],
+                                                      boxShadow: _glowShadows(
+                                                        context,
+                                                        [
+                                                          BoxShadow(
+                                                            color: cs.error
+                                                                .withValues(
+                                                                  alpha: 0.25,
+                                                                ),
+                                                            blurRadius: 3,
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
@@ -5272,7 +5230,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           alpha: blurEnabledNotifier.value ? 0.88 : 0.94,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(
+                            _expressiveRadius(
+                              context,
+                              16,
+                              expressiveRadius: 28,
+                            ),
+                          ),
                           side: BorderSide(
                             color: cs.outlineVariant.withValues(alpha: 0.58),
                           ),
@@ -5392,7 +5356,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                           : 0.92,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(
+                                        _expressiveRadius(
+                                          context,
+                                          16,
+                                          expressiveRadius: 28,
+                                        ),
+                                      ),
                                       side: BorderSide(
                                         color: cs.outlineVariant.withValues(
                                           alpha: 0.54,
@@ -6176,9 +6146,6 @@ Future<void> _showAddHomeworkDialog(
                                 width: 1.5,
                               ),
                               minimumSize: const Size(0, 60),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
                             ),
                             child: const Icon(Icons.delete_outline_rounded),
                           ),
@@ -6220,9 +6187,6 @@ Future<void> _showAddHomeworkDialog(
                           },
                           style: FilledButton.styleFrom(
                             minimumSize: const Size(0, 60),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
                           ),
                           child: Text(
                             l.homeworkSave,
@@ -6797,11 +6761,9 @@ class _HomeworkViewState extends State<_HomeworkView> {
     Future<void> openHomework() async {
       HapticFeedback.selectionClick();
       if (!isCustom) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Diese Hausaufgabe wird von Untis verwaltet.'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l.ui('homeworkManaged'))));
         return;
       }
       final list = List<Map<String, dynamic>>.from(
@@ -6863,7 +6825,9 @@ class _HomeworkViewState extends State<_HomeworkView> {
                               : accent.withValues(alpha: 0.6),
                           width: 2,
                         ),
-                        boxShadow: isDone
+                        boxShadow:
+                            isDone &&
+                                untisThemeTokensOf(context).glowEffectsEnabled
                             ? [
                                 BoxShadow(
                                   color: cs.primary.withValues(alpha: 0.3),
@@ -7337,9 +7301,6 @@ Future<void> _showAddExamDialog(
                                 width: 1.5,
                               ),
                               minimumSize: const Size(0, 60),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
                             ),
                             child: const Icon(Icons.delete_outline_rounded),
                           ),
@@ -7380,9 +7341,6 @@ Future<void> _showAddExamDialog(
                           },
                           style: FilledButton.styleFrom(
                             minimumSize: const Size(0, 60),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
                           ),
                           child: Text(
                             l.examsSave,
@@ -8311,9 +8269,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
         ? _formatExamDate(next['date'] ?? next['examDate'] ?? '')
         : null;
 
-    final upcomingTitle = l.examsUpcomingCount.contains('{count}')
-        ? l.examsUpcomingCount.replaceAll('{count}', '$count')
-        : (count == 1 ? '1 anstehende Prüfung' : '$count anstehende Prüfungen');
+    final upcomingTitle = l.examsUpcomingCount.replaceAll('{count}', '$count');
 
     final nextSubText = nextSubject != null && nextDateStr != null
         ? l.examsUpcomingNext
@@ -8347,13 +8303,13 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
+                  boxShadow: _glowShadows(context, [
                     BoxShadow(
                       color: cs.primary.withValues(alpha: 0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
-                  ],
+                  ]),
                 ),
                 child: const Center(
                   child: Icon(
@@ -10338,10 +10294,7 @@ class LessonCard extends StatelessWidget {
         ? tokens.blurSigma
         : lessonBlurAmountNotifier.value;
     final cardOpacity = themeOwnsStyle ? 0.84 : lessonCardOpacityNotifier.value;
-    final glowEnabled = themeOwnsStyle
-        ? (tokens.id == AppThemeId.vivid || tokens.id == AppThemeId.cyber)
-        : lessonGlowEnabledNotifier.value && lessonGlowModeNotifier.value == 1;
-    final glowIntensity = lessonGlowIntensityNotifier.value;
+    final glowEnabled = tokens.glowEffectsEnabled;
     final accentStyle = themeOwnsStyle ? 0 : lessonAccentStyleNotifier.value;
 
     final primaryColor = isCancelled ? cancelledColor : cs.primary;
@@ -10350,11 +10303,9 @@ class LessonCard extends StatelessWidget {
     if (glowEnabled) {
       shadows = [
         BoxShadow(
-          color: primaryColor.withValues(
-            alpha: (0.18 * glowIntensity).clamp(0.0, 1.0),
-          ),
-          blurRadius: (12 * glowIntensity).clamp(2.0, 24.0),
-          spreadRadius: (0.8 * glowIntensity).clamp(0.0, 4.0),
+          color: primaryColor.withValues(alpha: 0.18),
+          blurRadius: 12,
+          spreadRadius: 0.8,
           offset: const Offset(0, 3),
         ),
       ];
@@ -10459,12 +10410,12 @@ class LessonCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: primaryColor,
-                      boxShadow: [
+                      boxShadow: _glowShadows(context, [
                         BoxShadow(
                           color: primaryColor.withValues(alpha: 0.6),
                           blurRadius: 6,
                         ),
-                      ],
+                      ]),
                     ),
                   ),
                 ],
@@ -10708,7 +10659,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
             .join('\n');
         unawaited(
           WidgetService.updateNotificationWidget(
-            summary.isEmpty ? 'Keine neuen Mitteilungen' : summary,
+            summary.isEmpty
+                ? AppL10n.of(appLocaleNotifier.value).ui('notificationsNone')
+                : summary,
             accountId: activeUntisAccountId ?? 'active',
           ),
         );
@@ -11241,16 +11194,16 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                     ),
                   const SizedBox(height: 6),
                   SegmentedButton<bool>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: false,
                         icon: Icon(Icons.campaign_rounded),
-                        label: Text('Start'),
+                        label: Text(l.ui('start')),
                       ),
                       ButtonSegment(
                         value: true,
                         icon: Icon(Icons.mail_outline_rounded),
-                        label: Text('Mitteilungen'),
+                        label: Text(l.ui('notifications')),
                       ),
                     ],
                     selected: {_showInbox},
@@ -12718,9 +12671,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size(0, 54),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(17),
-                        ),
                       ),
                     ),
                   ),
@@ -12748,9 +12698,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         onPressed: () => Navigator.pop(ctx),
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size(0, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
                         ),
                         child: Text(
                           l.settingsApiKeyCancel,
@@ -12774,9 +12721,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(0, 50),
                             side: BorderSide(color: cs.error),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
                           ),
                           child: Text(
                             l.settingsApiKeyRemove,
@@ -12802,9 +12746,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         icon: const Icon(Icons.check_rounded, size: 18),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size(0, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
                         ),
                         label: Text(
                           l.settingsApiKeySave,
@@ -13036,13 +12977,13 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-      boxShadow: [
+      boxShadow: _glowShadows(context, [
         BoxShadow(
           color: color.withValues(alpha: 0.16),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
-      ],
+      ]),
     ),
     child: Icon(icon, color: color, size: 22),
   );
@@ -13155,7 +13096,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           title: l.settingsShowCancelled,
                           subtitle: l.settingsShowCancelledDesc,
-                          trailing: Switch.adaptive(
+                          trailing: Switch(
                             value: showCancelledNotifier.value,
                             onChanged: (v) {
                               HapticFeedback.selectionClick();
@@ -13174,7 +13115,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           title: l.settingsDemoMode,
                           subtitle: l.settingsDemoModeDesc,
-                          trailing: Switch.adaptive(
+                          trailing: Switch(
                             value: demoModeNotifier.value,
                             onChanged: (v) {
                               HapticFeedback.selectionClick();
@@ -13195,7 +13136,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           title: l.settingsProgressivePush,
                           subtitle: l.settingsProgressivePushDesc,
-                          trailing: Switch.adaptive(
+                          trailing: Switch(
                             value: progressivePushNotifier.value,
                             onChanged: (v) {
                               HapticFeedback.selectionClick();
@@ -13216,7 +13157,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           title: l.settingsDailyBriefingPush,
                           subtitle: l.settingsDailyBriefingPushDesc,
-                          trailing: Switch.adaptive(
+                          trailing: Switch(
                             value: dailyBriefingPushNotifier.value,
                             onChanged: (v) {
                               HapticFeedback.selectionClick();
@@ -13239,7 +13180,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           title: l.settingsImportantChangesPush,
                           subtitle: l.settingsImportantChangesPushDesc,
-                          trailing: Switch.adaptive(
+                          trailing: Switch(
                             value: importantChangesPushNotifier.value,
                             onChanged: (v) {
                               HapticFeedback.selectionClick();
@@ -13323,9 +13264,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
                                   minimumSize: const Size(0, 40),
                                 ),
                                 segments: [
@@ -13372,7 +13310,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           title: l.settingsBackgroundAnimations,
                           subtitle: l.settingsBackgroundAnimationsDesc,
-                          trailing: Switch.adaptive(
+                          trailing: Switch(
                             value: backgroundAnimationsNotifier.value,
                             onChanged: (v) {
                               HapticFeedback.selectionClick();
@@ -13395,7 +13333,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           title: l.settingsBackgroundGyroscope,
                           subtitle: l.settingsBackgroundGyroscopeDesc,
-                          trailing: Switch.adaptive(
+                          trailing: Switch(
                             value: backgroundGyroscopeNotifier.value,
                             onChanged: backgroundAnimationsNotifier.value
                                 ? (v) {
@@ -13464,7 +13402,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           title: l.settingsGlassEffect,
                           subtitle: l.settingsGlassEffectDesc,
-                          trailing: Switch.adaptive(
+                          trailing: Switch(
                             value: blurEnabledNotifier.value,
                             onChanged: (v) {
                               HapticFeedback.selectionClick();
@@ -13524,7 +13462,13 @@ class _SettingsPageState extends State<SettingsPage> {
                                 content: Text(l.settingsBackgroundLoading),
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(
+                                    _expressiveRadius(
+                                      context,
+                                      10,
+                                      expressiveRadius: 24,
+                                    ),
+                                  ),
                                 ),
                                 duration: const Duration(seconds: 2),
                               ),
@@ -13858,13 +13802,13 @@ class _SettingsAccountCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: cs.primary,
                   shape: BoxShape.circle,
-                  boxShadow: [
+                  boxShadow: _glowShadows(context, [
                     BoxShadow(
                       color: cs.primary.withValues(alpha: 0.30),
                       blurRadius: 14,
                       offset: const Offset(0, 5),
                     ),
-                  ],
+                  ]),
                 ),
                 child: Center(
                   child: Text(
@@ -13926,9 +13870,7 @@ class _SettingsAccountCard extends StatelessWidget {
               foregroundColor: cs.error,
               minimumSize: const Size(double.infinity, 46),
               elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+              shape: _legacyButtonShape(context, 14),
             ),
           ),
         ],
@@ -14120,7 +14062,9 @@ class SubjectColorsPage extends StatelessWidget {
                                 width: 3,
                               )
                             : Border.all(color: Colors.transparent),
-                        boxShadow: isSelected
+                        boxShadow:
+                            isSelected &&
+                                untisThemeTokensOf(context).glowEffectsEnabled
                             ? [
                                 BoxShadow(
                                   color: c.withValues(alpha: 0.45),
@@ -14158,9 +14102,7 @@ class SubjectColorsPage extends StatelessWidget {
                 ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+                  shape: _legacyButtonShape(context, 14),
                 ),
               ),
               if (current != null) ...[
@@ -14177,9 +14119,7 @@ class SubjectColorsPage extends StatelessWidget {
                   ),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    shape: _legacyButtonShape(context, 14),
                   ),
                 ),
               ],
@@ -14403,9 +14343,7 @@ class HiddenSubjectsPage extends StatelessWidget {
                                 horizontal: 14,
                                 vertical: 8,
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                              shape: _legacyButtonShape(context, 10),
                             ),
                             child: Text(
                               l.settingsUnhide,

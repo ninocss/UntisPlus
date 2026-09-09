@@ -560,11 +560,7 @@ final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
 
 // ── LESSON DESIGN & STYLING NOTIFIERS ───────────────────────────────────────
 final ValueNotifier<int> lessonCardStyleNotifier = ValueNotifier(0);
-final ValueNotifier<bool> lessonGlowEnabledNotifier = ValueNotifier(true);
-final ValueNotifier<int> lessonGlowModeNotifier = ValueNotifier(0);
-final ValueNotifier<double> lessonGlowIntensityNotifier = ValueNotifier(1.0);
-final ValueNotifier<bool> lessonGlowNextEnabledNotifier = ValueNotifier(false);
-final ValueNotifier<int> lessonGlowNextMinutesNotifier = ValueNotifier(20);
+final ValueNotifier<bool> glowEffectsEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> lessonBlurAmountNotifier = ValueNotifier(12.0);
 final ValueNotifier<double> lessonCardOpacityNotifier = ValueNotifier(0.9);

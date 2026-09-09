@@ -109,7 +109,7 @@ class SettingsAppearancePage extends StatelessWidget {
     };
     _showUnifiedOptionSheet<String>(
       context: context,
-      title: 'App-Symbol',
+      title: AppL10n.of(appLocaleNotifier.value).ui('appearanceAppIcon'),
       options: labels.entries
           .map(
             (entry) => _SheetOption(
@@ -641,6 +641,28 @@ class SettingsAppearancePage extends StatelessWidget {
               ],
             ),
 
+            SettingsGroup(
+              title: l.settingsGlowEffects,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: glowEffectsEnabledNotifier,
+                  builder: (context, glowEnabled, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.flare_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsGlowEffects,
+                      subtitle: l.settingsGlowEffectsDesc,
+                      value: glowEnabled,
+                      onChanged: _settingsSetGlowEffectsEnabled,
+                    );
+                  },
+                ),
+              ],
+            ),
+
             // ── GROUP 2: BACKGROUND & MOTION ──
             if (capabilities.supportsBackgroundMotion ||
                 capabilities.supportsCustomBackgrounds)
@@ -854,10 +876,10 @@ class SettingsAppearancePage extends StatelessWidget {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onSecondaryContainer,
-                  title: 'App-Symbol',
+                  title: l.ui('appearanceAppIcon'),
                   subtitle: Platform.isAndroid
-                      ? 'Symbol für den Startbildschirm auswählen'
-                      : 'Derzeit auf Android verfügbar',
+                      ? l.ui('appearanceIconChoose')
+                      : l.ui('appearanceIconAndroidOnly'),
                   onTap: Platform.isAndroid
                       ? () => _showAppIconDialog(context)
                       : null,

@@ -707,7 +707,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         content: Text(msg),
         backgroundColor: Theme.of(context).colorScheme.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            _expressiveRadius(context, 16, expressiveRadius: 24),
+          ),
+        ),
       ),
     );
   }
@@ -1893,9 +1897,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   label: Text(l.loginManualEntry),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(0, 46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    shape: _legacyButtonShape(context, 14),
                   ),
                 ),
               ),
@@ -1908,9 +1910,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     label: Text(l.onboardingUseDemoMode),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 46),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                      shape: _legacyButtonShape(context, 14),
                     ),
                   ),
                 ),
@@ -2072,9 +2072,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onPressed: _handleLogin,
               style: FilledButton.styleFrom(
                 minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
+                shape: _legacyButtonShape(context, 18),
               ),
               child: Text(
                 _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
@@ -2316,9 +2314,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onPressed: _nextPage,
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: _legacyButtonShape(context, 16),
               ),
               child: Text(
                 l.onboardingSkip,
@@ -2342,9 +2338,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               },
               style: FilledButton.styleFrom(
                 minimumSize: const Size(double.infinity, 54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: _legacyButtonShape(context, 16),
               ),
               child: Text(
                 l.onboardingNext,
@@ -2432,9 +2426,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         ),
         style: FilledButton.styleFrom(
           minimumSize: const Size(double.infinity, 58),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
+          shape: _legacyButtonShape(context, 18),
         ),
       ),
     );
@@ -2562,7 +2554,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       onPressed: onTap ?? _nextPage,
       style: FilledButton.styleFrom(
         minimumSize: const Size(double.infinity, 58),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: _legacyButtonShape(context, 18),
         elevation: 0,
       ),
       child: Text(
