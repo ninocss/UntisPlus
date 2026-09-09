@@ -61,3 +61,11 @@ analysis_options.yaml
 codex/
 test/
 .artifacts/
+# Step 1 font assets, licenses and focused regression coverage.
+!/assets/fonts/**/OFL.txt
+!/assets/fonts/legacy/*-OFL.txt
+!/assets/fonts/README.md
+!/test/
+/test/*
+!/test/app_font_test.dart
+!/docs/m3-expressive-step-1.md

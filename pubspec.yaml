@@ -53,7 +53,21 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: Google Sans Flex
+      fonts:
+        - asset: "assets/fonts/googlesansflex/GoogleSansFlex-VariableFont_GRAD,ROND,opsz,slnt,wdth,wght.ttf"
+    - family: Outfit
+      fonts:
+        - asset: "assets/fonts/outfit/Outfit[wght].ttf"
+    - family: Roboto Flex
+      fonts:
+        - asset: "assets/fonts/robotoflex/RobotoFlex[GRAD,XOPQ,XTRA,YOPQ,YTAS,YTDE,YTFI,YTLC,YTUC,opsz,slnt,wdth,wght].ttf"
   assets:
+    - assets/fonts/legacy/
+    - assets/fonts/googlesansflex/
+    - assets/fonts/outfit/
+    - assets/fonts/robotoflex/
     - assets/icons/
     - changelog.json
 

@@ -1745,6 +1745,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_previewExams': 'Nächste Prüfung: Freitag',
       'ui_previewNotices': 'Neue Mitteilungen',
       'ui_previewStatus': 'Aktualisiert um 12:30',
+      'ui_appearanceFont': 'Schriftart',
+      'ui_appearanceFontPreview':
+          'Dein Schultag auf einen Blick. ÄÖÜ äöü ß · 0123456789',
       'ui_appearanceAppIcon': 'App-Symbol',
       'ui_notificationsWidgets': 'Widgets & Vorschau',
       'ui_notificationsWidgetsDesc': 'Varianten, Vorschau und Kontozuordnung.',
@@ -2726,6 +2729,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_previewExams': 'Next exam: Friday',
       'ui_previewNotices': 'New notifications',
       'ui_previewStatus': 'Updated at 12:30',
+      'ui_appearanceFont': 'Font family',
+      'ui_appearanceFontPreview': 'Your school day at a glance. · 0123456789',
       'ui_appearanceAppIcon': 'App icon',
       'ui_notificationsWidgets': 'Widgets & preview',
       'ui_notificationsWidgetsDesc':
@@ -3721,6 +3726,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_previewExams': 'Prochain examen : vendredi',
       'ui_previewNotices': 'Nouvelles notifications',
       'ui_previewStatus': 'Mis à jour à 12:30',
+      'ui_appearanceFont': 'Police de caractères',
+      'ui_appearanceFontPreview':
+          'Votre journée scolaire en un coup d’œil. Éèàç · 0123456789',
       'ui_appearanceAppIcon': 'Icône de l’application',
       'ui_notificationsWidgets': 'Widgets et aperçu',
       'ui_notificationsWidgetsDesc':
@@ -4732,6 +4740,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_previewExams': 'Próximo examen: viernes',
       'ui_previewNotices': 'Nuevas notificaciones',
       'ui_previewStatus': 'Actualizado a las 12:30',
+      'ui_appearanceFont': 'Tipo de letra',
+      'ui_appearanceFontPreview':
+          'Tu jornada escolar de un vistazo. Áéíóú ñ ¿Qué? · 0123456789',
       'ui_appearanceAppIcon': 'Icono de la aplicación',
       'ui_notificationsWidgets': 'Widgets y vista previa',
       'ui_notificationsWidgetsDesc':

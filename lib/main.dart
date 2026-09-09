@@ -52,6 +52,7 @@ import 'core/sync_state.dart';
 part 'core/school_models.dart';
 part 'core/design_tokens.dart';
 part 'core/app_theme.dart';
+part 'core/app_typography.dart';
 part 'app/untis_plus_app.dart';
 part 'core/shared_ui.dart';
 part 'core/app_state.dart';
@@ -647,6 +648,7 @@ Future<void> _initializeDeferredAccountData() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  configureBundledFonts();
   _registerNativeUiActions();
 
   final prefs = await SharedPreferences.getInstance();
@@ -703,6 +705,7 @@ void main() async {
       ? savedAppIcon
       : 'default';
   themeModeNotifier.value = ThemeMode.values[prefs.getInt('themeMode') ?? 0];
+  loadAppFont(prefs);
   visualThemeNotifier.value = AppThemeIdX.fromStorage(
     prefs.getString('visualTheme'),
   );

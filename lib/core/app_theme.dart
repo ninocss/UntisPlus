@@ -112,6 +112,11 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
     required this.motionStyle,
   });
 
+  /// The new full migration is deliberately separate from Vivid's existing controls.
+  bool get usesFullMaterialExpressive => id == AppThemeId.defaultTheme;
+  ExpressiveThemeTokens? get expressive =>
+      usesFullMaterialExpressive ? const ExpressiveThemeTokens() : null;
+
   bool get supportsBlur => appThemeCapabilities(id).supportsBlur;
   bool get blurActive => supportsBlur && blurEnabledNotifier.value;
 
@@ -295,7 +300,8 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
   var scheme = ColorScheme.fromSeed(
     seedColor: seedColor,
     brightness: brightness,
-    dynamicSchemeVariant: id == AppThemeId.vivid
+    dynamicSchemeVariant:
+        id == AppThemeId.vivid || id == AppThemeId.defaultTheme
         ? DynamicSchemeVariant.expressive
         : DynamicSchemeVariant.vibrant,
   );
@@ -317,24 +323,24 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
   return scheme;
 }
 
-TextTheme untisThemeTextTheme(AppThemeId id, Brightness brightness) {
-  final base = ThemeData(brightness: brightness, useMaterial3: true).textTheme;
-  final body = switch (id) {
-    AppThemeId.cyber => GoogleFonts.ibmPlexMonoTextTheme(base),
-    AppThemeId.paper => GoogleFonts.notoSansTextTheme(base),
-    _ => GoogleFonts.outfitTextTheme(base),
-  };
-  if (id != AppThemeId.manga) return body;
-  final display = GoogleFonts.bebasNeueTextTheme(base);
-  return body.copyWith(
-    displayLarge: display.displayLarge,
-    displayMedium: display.displayMedium,
-    displaySmall: display.displaySmall,
-    headlineLarge: display.headlineLarge,
-    headlineMedium: display.headlineMedium,
-    headlineSmall: display.headlineSmall,
-    titleLarge: display.titleLarge?.copyWith(letterSpacing: 0.4),
-  );
+TextTheme untisThemeTextTheme(
+  AppThemeId id,
+  Brightness brightness, {
+  AppFontId? font,
+}) {
+  final selected = font ?? appFontFamilyNotifier.value;
+  final base = ThemeData(
+    brightness: brightness,
+    useMaterial3: true,
+  ).textTheme.apply(fontFamily: selected.family);
+  if (id != AppThemeId.defaultTheme) {
+    return id == AppThemeId.manga
+        ? base.copyWith(
+            titleLarge: base.titleLarge?.copyWith(letterSpacing: 0.4),
+          )
+        : base;
+  }
+  return AppTypography.expressive(base, selected);
 }
 
 UntisThemeTokens untisThemeTokensOf(BuildContext context) =>

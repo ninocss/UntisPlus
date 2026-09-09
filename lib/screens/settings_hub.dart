@@ -377,6 +377,7 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getString('appLocale') ?? appLocaleNotifier.value;
   themeModeNotifier.value =
       ThemeMode.values[(prefs.getInt('themeMode') ?? 0).clamp(0, 2)];
+  loadAppFont(prefs);
   visualThemeNotifier.value = AppThemeIdX.fromStorage(
     prefs.getString('visualTheme'),
   );
@@ -525,20 +526,22 @@ class SettingsHubPage extends StatelessWidget {
                               item.title,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15.5,
-                              ),
+                              style: Theme.of(context).textTheme.bodyMedium!
+                                  .copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15.5,
+                                  ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               item.subtitle,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.outfit(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 12.5,
-                              ),
+                              style: Theme.of(context).textTheme.bodyMedium!
+                                  .copyWith(
+                                    color: cs.onSurfaceVariant,
+                                    fontSize: 12.5,
+                                  ),
                             ),
                           ],
                         ),
@@ -705,7 +708,9 @@ class SettingsHubPage extends StatelessWidget {
       appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
       ),

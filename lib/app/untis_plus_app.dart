@@ -61,11 +61,9 @@ class UntisPlusApp extends StatelessWidget {
       FontWeight? fontWeight,
       double? letterSpacing,
     }) {
-      final base = visualTheme == AppThemeId.manga
-          ? GoogleFonts.bebasNeue()
-          : visualTheme == AppThemeId.cyber
-          ? GoogleFonts.ibmPlexMono()
-          : GoogleFonts.outfit();
+      final base = tokens.usesFullMaterialExpressive
+          ? baseText.titleLarge!
+          : TextStyle(fontFamily: appFontFamilyNotifier.value.family);
       return base.copyWith(
         color: color,
         fontSize: fontSize,
@@ -76,6 +74,7 @@ class UntisPlusApp extends StatelessWidget {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: appFontFamilyNotifier.value.family,
       colorScheme: scheme,
       extensions: [tokens],
       scaffoldBackgroundColor:
@@ -284,6 +283,13 @@ class UntisPlusApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: appFontFamilyNotifier,
+      builder: (context, _) => _buildWithFont(context),
+    );
+  }
+
+  Widget _buildWithFont(BuildContext context) {
     return ValueListenableBuilder<AppThemeId>(
       valueListenable: visualThemeNotifier,
       builder: (context, visualTheme, _) {

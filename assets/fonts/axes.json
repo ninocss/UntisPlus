@@ -1,0 +1,120 @@
+[
+  {
+    "file": "googlesansflex/GoogleSansFlex-VariableFont_GRAD,ROND,opsz,slnt,wdth,wght.ttf",
+    "sha256": "c6d53424121196b81de816b8daccf200e285dd506df43766db3d7e8cdf06ee30",
+    "axes": {
+      "opsz": {
+        "min": 6.0,
+        "default": 18.0,
+        "max": 144.0
+      },
+      "wdth": {
+        "min": 25.0,
+        "default": 100.0,
+        "max": 151.0
+      },
+      "wght": {
+        "min": 1.0,
+        "default": 400.0,
+        "max": 1000.0
+      },
+      "GRAD": {
+        "min": 0.0,
+        "default": 0.0,
+        "max": 100.0
+      },
+      "ROND": {
+        "min": 0.0,
+        "default": 0.0,
+        "max": 100.0
+      },
+      "slnt": {
+        "min": -10.0,
+        "default": 0.0,
+        "max": 0.0
+      }
+    }
+  },
+  {
+    "file": "outfit/Outfit[wght].ttf",
+    "sha256": "fc7287273e66929776e2ba54f144fe699080bec29f61bf649d70d871468aeade",
+    "axes": {
+      "wght": {
+        "min": 100.0,
+        "default": 100.0,
+        "max": 900.0
+      }
+    }
+  },
+  {
+    "file": "robotoflex/RobotoFlex[GRAD,XOPQ,XTRA,YOPQ,YTAS,YTDE,YTFI,YTLC,YTUC,opsz,slnt,wdth,wght].ttf",
+    "sha256": "9b523f7d82593df0107173849ebb8c817471a1df4b4fb2c3cbf40cfd810c8281",
+    "axes": {
+      "opsz": {
+        "min": 8.0,
+        "default": 14.0,
+        "max": 144.0
+      },
+      "wght": {
+        "min": 100.0,
+        "default": 400.0,
+        "max": 1000.0
+      },
+      "GRAD": {
+        "min": -200.0,
+        "default": 0.0,
+        "max": 150.0
+      },
+      "wdth": {
+        "min": 25.0,
+        "default": 100.0,
+        "max": 151.0
+      },
+      "slnt": {
+        "min": -10.0,
+        "default": 0.0,
+        "max": 0.0
+      },
+      "XOPQ": {
+        "min": 27.0,
+        "default": 96.0,
+        "max": 175.0
+      },
+      "YOPQ": {
+        "min": 25.0,
+        "default": 79.0,
+        "max": 135.0
+      },
+      "XTRA": {
+        "min": 323.0,
+        "default": 468.0,
+        "max": 603.0
+      },
+      "YTUC": {
+        "min": 528.0,
+        "default": 712.0,
+        "max": 760.0
+      },
+      "YTLC": {
+        "min": 416.0,
+        "default": 514.0,
+        "max": 570.0
+      },
+      "YTAS": {
+        "min": 649.0,
+        "default": 750.0,
+        "max": 854.0
+      },
+      "YTDE": {
+        "min": -305.0,
+        "default": -203.0,
+        "max": -98.0
+      },
+      "YTFI": {
+        "min": 560.0,
+        "default": 738.0,
+        "max": 788.0
+      }
+    }
+  }
+]

@@ -1,0 +1,242 @@
+[
+  {
+    "file": "Outfit-Thin.ttf",
+    "url": "https://fonts.gstatic.com/s/a/f7968975ae24bca86d0ebba03d80d1ef478aec26faf682675c5f45670683df82.ttf",
+    "sha256": "f7968975ae24bca86d0ebba03d80d1ef478aec26faf682675c5f45670683df82"
+  },
+  {
+    "file": "Outfit-ExtraLight.ttf",
+    "url": "https://fonts.gstatic.com/s/a/9e637bedb79866638f15630672ee888906e37fe739039f063946a0849031abf2.ttf",
+    "sha256": "9e637bedb79866638f15630672ee888906e37fe739039f063946a0849031abf2"
+  },
+  {
+    "file": "Outfit-Light.ttf",
+    "url": "https://fonts.gstatic.com/s/a/998bf6ee552524ec5e863bb9784219426dbb463a960944735050e0ed6cf974ce.ttf",
+    "sha256": "998bf6ee552524ec5e863bb9784219426dbb463a960944735050e0ed6cf974ce"
+  },
+  {
+    "file": "Outfit-Regular.ttf",
+    "url": "https://fonts.gstatic.com/s/a/28fe0a241b5270b9a576ef60c21bec15aefd15ac11df0537e954ef6bd4aece9c.ttf",
+    "sha256": "28fe0a241b5270b9a576ef60c21bec15aefd15ac11df0537e954ef6bd4aece9c"
+  },
+  {
+    "file": "Outfit-Medium.ttf",
+    "url": "https://fonts.gstatic.com/s/a/020dd19794fbcb05ec8e4ea2d2a35dd46e8073a1fbf7ed674aa8d32f3b063cf2.ttf",
+    "sha256": "020dd19794fbcb05ec8e4ea2d2a35dd46e8073a1fbf7ed674aa8d32f3b063cf2"
+  },
+  {
+    "file": "Outfit-SemiBold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/9f897e407e3027fe1022db28d78d19851195331567fb477801cf3d12edc3e3af.ttf",
+    "sha256": "9f897e407e3027fe1022db28d78d19851195331567fb477801cf3d12edc3e3af"
+  },
+  {
+    "file": "Outfit-Bold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/20bb459e188481fbcfa23f518d92efd946077016c47d8546e6fb6558ad6c2036.ttf",
+    "sha256": "20bb459e188481fbcfa23f518d92efd946077016c47d8546e6fb6558ad6c2036"
+  },
+  {
+    "file": "Outfit-ExtraBold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/d6bea2566ee900861e80f59f8ec10e26344bd7ce4e5d77f9afe27691550100e6.ttf",
+    "sha256": "d6bea2566ee900861e80f59f8ec10e26344bd7ce4e5d77f9afe27691550100e6"
+  },
+  {
+    "file": "Outfit-Black.ttf",
+    "url": "https://fonts.gstatic.com/s/a/65d21eaffe8b1b9eaf0f6ef9ea7182c75d482d71976779bb13ce94d4d054040a.ttf",
+    "sha256": "65d21eaffe8b1b9eaf0f6ef9ea7182c75d482d71976779bb13ce94d4d054040a"
+  },
+  {
+    "file": "Inter-Thin.ttf",
+    "url": "https://fonts.gstatic.com/s/a/36201b34de0f9164edaadfa3854a84e0e4e6184588a03e775ef0ac0a24783139.ttf",
+    "sha256": "36201b34de0f9164edaadfa3854a84e0e4e6184588a03e775ef0ac0a24783139"
+  },
+  {
+    "file": "Inter-ExtraLight.ttf",
+    "url": "https://fonts.gstatic.com/s/a/4fbc12952c229be983a58502c92fc6bcde626d86d490cc71d980de52e5e975b1.ttf",
+    "sha256": "4fbc12952c229be983a58502c92fc6bcde626d86d490cc71d980de52e5e975b1"
+  },
+  {
+    "file": "Inter-Light.ttf",
+    "url": "https://fonts.gstatic.com/s/a/8641cf8fd5e04d0f94062395a2d1ab1ba5467831af690069e8f3ea0efe640d70.ttf",
+    "sha256": "8641cf8fd5e04d0f94062395a2d1ab1ba5467831af690069e8f3ea0efe640d70"
+  },
+  {
+    "file": "Inter-Regular.ttf",
+    "url": "https://fonts.gstatic.com/s/a/15b294b67f2f8bbc04d990023ef4aec66502b87dc9040d84abe5f896ccb693de.ttf",
+    "sha256": "15b294b67f2f8bbc04d990023ef4aec66502b87dc9040d84abe5f896ccb693de"
+  },
+  {
+    "file": "Inter-Medium.ttf",
+    "url": "https://fonts.gstatic.com/s/a/36a36ff7ac46dc2aeceac3a80a87a67e7b844b8fc936699259aac8fba9bcf734.ttf",
+    "sha256": "36a36ff7ac46dc2aeceac3a80a87a67e7b844b8fc936699259aac8fba9bcf734"
+  },
+  {
+    "file": "Inter-SemiBold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/334bb2c51aeba5f566abac8d03a7e75ab3234d6926b52e92a85dc704129258b5.ttf",
+    "sha256": "334bb2c51aeba5f566abac8d03a7e75ab3234d6926b52e92a85dc704129258b5"
+  },
+  {
+    "file": "Inter-Bold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/76121a34a606cc8a0e1ef5a47d2b9ba9678c41f5c852d63eb28f62069373bfad.ttf",
+    "sha256": "76121a34a606cc8a0e1ef5a47d2b9ba9678c41f5c852d63eb28f62069373bfad"
+  },
+  {
+    "file": "Inter-ExtraBold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/6af943899936fd3fd15a5889db4a384cec311c9bfe33d74bcfd3e0ae56f1b1d1.ttf",
+    "sha256": "6af943899936fd3fd15a5889db4a384cec311c9bfe33d74bcfd3e0ae56f1b1d1"
+  },
+  {
+    "file": "Inter-Black.ttf",
+    "url": "https://fonts.gstatic.com/s/a/d892b18d080d1200aa41ea8851da84dd8c24c33843d491fa034ac57b16f22973.ttf",
+    "sha256": "d892b18d080d1200aa41ea8851da84dd8c24c33843d491fa034ac57b16f22973"
+  },
+  {
+    "file": "Inter-ThinItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/2337920eef2532d7ee1b86c084df8282c26c5d02be5f2ab0d019eb4b32aacdc8.ttf",
+    "sha256": "2337920eef2532d7ee1b86c084df8282c26c5d02be5f2ab0d019eb4b32aacdc8"
+  },
+  {
+    "file": "Inter-ExtraLightItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/a87b13dcc6b25a8b0aae8f6bafa9937b25a7f8cf964234077d09c71e4d9324c2.ttf",
+    "sha256": "a87b13dcc6b25a8b0aae8f6bafa9937b25a7f8cf964234077d09c71e4d9324c2"
+  },
+  {
+    "file": "Inter-LightItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/c5261dd4a04dd4db44151b40873e9c3e4b430e8c24fe1c644096299eaa02a055.ttf",
+    "sha256": "c5261dd4a04dd4db44151b40873e9c3e4b430e8c24fe1c644096299eaa02a055"
+  },
+  {
+    "file": "Inter-Italic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/0e6e7a16caca2f42fb4966bf550abe48a84dc8de32d326797c8c03e6357c0133.ttf",
+    "sha256": "0e6e7a16caca2f42fb4966bf550abe48a84dc8de32d326797c8c03e6357c0133"
+  },
+  {
+    "file": "Inter-MediumItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/9f84b48a486d84347767cb5ece2e783df7ebe8125afad8766bbf2e37a1d6f229.ttf",
+    "sha256": "9f84b48a486d84347767cb5ece2e783df7ebe8125afad8766bbf2e37a1d6f229"
+  },
+  {
+    "file": "Inter-SemiBoldItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/177d819b8ba335a1bf59f59e34a53d679c0f755166f8afd396ade32048b36bbf.ttf",
+    "sha256": "177d819b8ba335a1bf59f59e34a53d679c0f755166f8afd396ade32048b36bbf"
+  },
+  {
+    "file": "Inter-BoldItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/cf34025c1822d7ccfe8836913810b34a92a3c41417a24c9aa5bac8dd717e08ea.ttf",
+    "sha256": "cf34025c1822d7ccfe8836913810b34a92a3c41417a24c9aa5bac8dd717e08ea"
+  },
+  {
+    "file": "Inter-ExtraBoldItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/e5337853143e2863cc03cc02bcb8f9ae538ffcfb7b839e54825631133b5e66b1.ttf",
+    "sha256": "e5337853143e2863cc03cc02bcb8f9ae538ffcfb7b839e54825631133b5e66b1"
+  },
+  {
+    "file": "Inter-BlackItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/ebf63e7eba6963dbe2020d1eb047760d6af1388cfda2bb14a3f2f8cc72427478.ttf",
+    "sha256": "ebf63e7eba6963dbe2020d1eb047760d6af1388cfda2bb14a3f2f8cc72427478"
+  },
+  {
+    "file": "JetBrainsMono-Thin.ttf",
+    "url": "https://fonts.gstatic.com/s/a/9a44b1b4adc03c445877e325d57d0879cb22840ff640a40e6515be59c845b015.ttf",
+    "sha256": "9a44b1b4adc03c445877e325d57d0879cb22840ff640a40e6515be59c845b015"
+  },
+  {
+    "file": "JetBrainsMono-ExtraLight.ttf",
+    "url": "https://fonts.gstatic.com/s/a/9133ef0d504f0d80e5478902ee49e8f815ade6f5621fc89c5d6b9263549325d7.ttf",
+    "sha256": "9133ef0d504f0d80e5478902ee49e8f815ade6f5621fc89c5d6b9263549325d7"
+  },
+  {
+    "file": "JetBrainsMono-Light.ttf",
+    "url": "https://fonts.gstatic.com/s/a/0623d0562debca9e5d97996af1de5e98f672a20f2ee6085cec86cd6a77ec3595.ttf",
+    "sha256": "0623d0562debca9e5d97996af1de5e98f672a20f2ee6085cec86cd6a77ec3595"
+  },
+  {
+    "file": "JetBrainsMono-Regular.ttf",
+    "url": "https://fonts.gstatic.com/s/a/fc34426314d00825ccc768a0c4b1178fe704f04bd947882ef10c2b71b7e355e7.ttf",
+    "sha256": "fc34426314d00825ccc768a0c4b1178fe704f04bd947882ef10c2b71b7e355e7"
+  },
+  {
+    "file": "JetBrainsMono-Medium.ttf",
+    "url": "https://fonts.gstatic.com/s/a/ba10286722bd7dc2274b817575046e39ee816d6ba1e2ace48e22bcd068576941.ttf",
+    "sha256": "ba10286722bd7dc2274b817575046e39ee816d6ba1e2ace48e22bcd068576941"
+  },
+  {
+    "file": "JetBrainsMono-SemiBold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/f833596d98e0e021dd43d993254658d0f32318f82f08afee0fc2e41c16ce9571.ttf",
+    "sha256": "f833596d98e0e021dd43d993254658d0f32318f82f08afee0fc2e41c16ce9571"
+  },
+  {
+    "file": "JetBrainsMono-Bold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/b43a7dfebfb8816fb3859f6a7932824f594e115538ccd3f1ebc0ffc231b0acab.ttf",
+    "sha256": "b43a7dfebfb8816fb3859f6a7932824f594e115538ccd3f1ebc0ffc231b0acab"
+  },
+  {
+    "file": "JetBrainsMono-ExtraBold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/98ea78a2337e1ef2274f247c857a63e40e975c6907a7baff9209033fa42142ac.ttf",
+    "sha256": "98ea78a2337e1ef2274f247c857a63e40e975c6907a7baff9209033fa42142ac"
+  },
+  {
+    "file": "JetBrainsMono-ThinItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/0ad56d15852c41931b3640756ff18d55178c649d5fb55daf346a6831918c2c49.ttf",
+    "sha256": "0ad56d15852c41931b3640756ff18d55178c649d5fb55daf346a6831918c2c49"
+  },
+  {
+    "file": "JetBrainsMono-ExtraLightItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/446787ed370004cd92c5043b5710c0fe7222eea7b1cce8d6a0d48008e8d4fa9b.ttf",
+    "sha256": "446787ed370004cd92c5043b5710c0fe7222eea7b1cce8d6a0d48008e8d4fa9b"
+  },
+  {
+    "file": "JetBrainsMono-LightItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/9002d02f91013aaf6ee54f0d03bde3e7d114597f49401b022c948ed5c4229702.ttf",
+    "sha256": "9002d02f91013aaf6ee54f0d03bde3e7d114597f49401b022c948ed5c4229702"
+  },
+  {
+    "file": "JetBrainsMono-Italic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/93f2f2d90bcd64e35bf1b7bd90149b168df727499667b5d2fde1758ed0297da5.ttf",
+    "sha256": "93f2f2d90bcd64e35bf1b7bd90149b168df727499667b5d2fde1758ed0297da5"
+  },
+  {
+    "file": "JetBrainsMono-MediumItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/d33f9b81805d2984778b134e68b0a7f242a2d10a81fa5299b8c5081f3f7f0e83.ttf",
+    "sha256": "d33f9b81805d2984778b134e68b0a7f242a2d10a81fa5299b8c5081f3f7f0e83"
+  },
+  {
+    "file": "JetBrainsMono-SemiBoldItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/93aae81b1f8697f683ae32b65bacb4d74679d7a6a69357fbe45858aaa05db9b4.ttf",
+    "sha256": "93aae81b1f8697f683ae32b65bacb4d74679d7a6a69357fbe45858aaa05db9b4"
+  },
+  {
+    "file": "JetBrainsMono-BoldItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/a89a53b6ccccdfd6431441572e542901c7620e55d91f10d0eaa3fd39adaa3b83.ttf",
+    "sha256": "a89a53b6ccccdfd6431441572e542901c7620e55d91f10d0eaa3fd39adaa3b83"
+  },
+  {
+    "file": "JetBrainsMono-ExtraBoldItalic.ttf",
+    "url": "https://fonts.gstatic.com/s/a/013382b52ceb65565ac0ecf7dbaaf9369d29f4d4d3a8763439e3eb77c2b1009b.ttf",
+    "sha256": "013382b52ceb65565ac0ecf7dbaaf9369d29f4d4d3a8763439e3eb77c2b1009b"
+  },
+  {
+    "file": "FiraCode-Light.ttf",
+    "url": "https://fonts.gstatic.com/s/a/08848a192a46c8b6dc4212244525d495731d061a903c81094a7a8dd8243ab6e7.ttf",
+    "sha256": "08848a192a46c8b6dc4212244525d495731d061a903c81094a7a8dd8243ab6e7"
+  },
+  {
+    "file": "FiraCode-Regular.ttf",
+    "url": "https://fonts.gstatic.com/s/a/84942fb6a90299c35212733db8e759512fede8b1f4adbcdbb69914f550994fbb.ttf",
+    "sha256": "84942fb6a90299c35212733db8e759512fede8b1f4adbcdbb69914f550994fbb"
+  },
+  {
+    "file": "FiraCode-Medium.ttf",
+    "url": "https://fonts.gstatic.com/s/a/998579a8a6a100553a70a3be651c06dba414c486ea0e09e20ec9cd6310dbc9ed.ttf",
+    "sha256": "998579a8a6a100553a70a3be651c06dba414c486ea0e09e20ec9cd6310dbc9ed"
+  },
+  {
+    "file": "FiraCode-SemiBold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/fe1a45e527831e5e1efee81eeecc615e06bcb29b410174cb6121db4621ef78ff.ttf",
+    "sha256": "fe1a45e527831e5e1efee81eeecc615e06bcb29b410174cb6121db4621ef78ff"
+  },
+  {
+    "file": "FiraCode-Bold.ttf",
+    "url": "https://fonts.gstatic.com/s/a/0b7baec2e68e2aaaa6470af9abb4ec839f0578469088e03a9eff94628e9810bc.ttf",
+    "sha256": "0b7baec2e68e2aaaa6470af9abb4ec839f0578469088e03a9eff94628e9810bc"
+  }
+]

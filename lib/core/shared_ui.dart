@@ -360,7 +360,7 @@ Widget _m3SelectionMenu({
           ),
           child: Text(
             value,
-            style: GoogleFonts.outfit(
+            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
               fontWeight: FontWeight.w700,
               color: cs.onSurface,
               fontSize: 16,

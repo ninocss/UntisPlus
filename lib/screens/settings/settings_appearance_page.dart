@@ -409,6 +409,43 @@ class SettingsAppearancePage extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
             _buildThemePicker(context, l, selectedTheme),
+            SettingsGroup(
+              title: l.ui('appearanceFont'),
+              children: [
+                RadioGroup<AppFontId>(
+                  groupValue: appFontFamilyNotifier.value,
+                  onChanged: (font) {
+                    if (font != null) unawaited(setAppFontFamily(font));
+                  },
+                  child: Column(
+                    children: [
+                      for (final font in AppFontId.values)
+                        RadioListTile<AppFontId>(
+                          key: ValueKey('font-${font.storageKey}'),
+                          value: font,
+                          isThreeLine: true,
+                          title: Text(
+                            font.family,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontFamily: font.family),
+                          ),
+                          subtitle: Text(
+                            l.ui('appearanceFontPreview'),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontFamily: font.family,
+                                  fontVariations: AppTypography.variations(
+                                    font,
+                                    14,
+                                  ),
+                                ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             // ── GROUP 1: THEME & COLOR SCHEME ──
             SettingsGroup(
               title: l.settingsThemeMode,
