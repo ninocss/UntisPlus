@@ -3,8 +3,6 @@ part of '../main.dart';
 const Curve _kSmoothBounce = Curves.easeOutCubic;
 const Curve _kSoftBounce = Curves.easeOutQuad;
 
-const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
-
 List<BoxShadow>? _glowShadows(BuildContext context, List<BoxShadow> shadows) =>
     untisThemeTokensOf(context).glowEffectsEnabled ? shadows : null;
 
@@ -100,6 +98,7 @@ class ThemedSurface extends StatelessWidget {
   final Gradient? gradient;
   final Border? border;
   final bool blur;
+  final bool allowDefaultBlur;
 
   const ThemedSurface({
     super.key,
@@ -110,6 +109,7 @@ class ThemedSurface extends StatelessWidget {
     this.gradient,
     this.border,
     this.blur = true,
+    this.allowDefaultBlur = false,
   });
 
   @override
@@ -120,7 +120,11 @@ class ThemedSurface extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: blurEnabledNotifier,
       builder: (context, blurEnabled, _) {
-        final blurActive = blur && tokens.supportsBlur && blurEnabled;
+        final blurActive =
+            blur &&
+            tokens.supportsBlur &&
+            blurEnabled &&
+            (!tokens.usesFullMaterialExpressive || allowDefaultBlur);
         final translucent =
             color ??
             cs.surfaceContainerLow.withValues(
@@ -220,6 +224,7 @@ Widget _glassContainer({
   Color? color,
   Gradient? gradient,
   Border? border,
+  bool allowDefaultBlur = false,
 }) {
   return ThemedSurface(
     borderRadius: borderRadius,
@@ -227,6 +232,7 @@ Widget _glassContainer({
     color: color,
     gradient: gradient,
     border: border,
+    allowDefaultBlur: allowDefaultBlur,
     child: child,
   );
 }
@@ -260,6 +266,7 @@ Widget _sheetSurface({
     borderRadius: borderRadius,
     sigma: 45,
     blur: blur,
+    allowDefaultBlur: true,
     child: child,
   );
 }
@@ -374,11 +381,17 @@ Widget _m3SelectionMenu({
 
 Future<T?> _showUnifiedSheet<T>({
   required BuildContext context,
-  required Widget child,
+  Widget? child,
+  WidgetBuilder? builder,
   bool isScrollControlled = false,
   bool useSafeArea = true,
   EdgeInsetsGeometry? outerPadding,
+  bool wrapSurface = true,
 }) {
+  assert(
+    (child == null) != (builder == null),
+    'Provide exactly one of child or builder.',
+  );
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,
@@ -386,11 +399,13 @@ Future<T?> _showUnifiedSheet<T>({
     backgroundColor: Colors.transparent,
     elevation: 0,
     builder: (ctx) {
-      Widget content = child;
+      Widget content = builder?.call(ctx) ?? child!;
       if (outerPadding != null) {
         content = Padding(padding: outerPadding, child: content);
       }
-      return _sheetSurface(context: ctx, child: content);
+      return wrapSurface
+          ? _sheetSurface(context: ctx, child: content)
+          : content;
     },
   );
 }
@@ -531,42 +546,48 @@ class SettingsGroup extends StatelessWidget {
               ),
             ),
           ],
-          _glassContainer(
-            context: context,
-            borderRadius: BorderRadius.circular(tokens.surfaceRadius),
-            color: cs.surfaceContainerLow.withValues(alpha: 0.5),
-            border: Border.all(
-              color: tokens.id == AppThemeId.manga
-                  ? cs.outline
-                  : cs.primary.withValues(alpha: 0.20),
-              width: tokens.borderWidth,
-            ),
-            child: Padding(
+          if (tokens.usesFullMaterialExpressive)
+            ExpressiveCardGroup(
               padding: padding ?? EdgeInsets.zero,
-              child: Material(
-                type: MaterialType.transparency,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(tokens.surfaceRadius),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (int i = 0; i < validChildren.length; i++) ...[
-                      validChildren[i],
-                      if (i < validChildren.length - 1)
-                        Divider(
-                          height: 1,
-                          indent: 58,
-                          endIndent: 16,
-                          color: cs.outlineVariant.withValues(alpha: 0.35),
-                        ),
+              children: validChildren,
+            )
+          else
+            _glassContainer(
+              context: context,
+              borderRadius: BorderRadius.circular(tokens.surfaceRadius),
+              color: cs.surfaceContainerLow.withValues(alpha: 0.5),
+              border: Border.all(
+                color: tokens.id == AppThemeId.manga
+                    ? cs.outline
+                    : cs.primary.withValues(alpha: 0.20),
+                width: tokens.borderWidth,
+              ),
+              child: Padding(
+                padding: padding ?? EdgeInsets.zero,
+                child: Material(
+                  type: MaterialType.transparency,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(tokens.surfaceRadius),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < validChildren.length; i++) ...[
+                        validChildren[i],
+                        if (i < validChildren.length - 1)
+                          Divider(
+                            height: 1,
+                            indent: 58,
+                            endIndent: 16,
+                            color: cs.outlineVariant.withValues(alpha: 0.35),
+                          ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

@@ -112,6 +112,38 @@ void main() {
     expect(AppTypography.variations(AppFontId.outfit, 14), isEmpty);
   });
 
+  test('legacy presentation styles follow the global font selection', () {
+    for (final font in AppFontId.values) {
+      appFontFamilyNotifier.value = font;
+      final style = GoogleFonts.outfit(
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+      );
+      expect(style.fontFamily, font.family);
+      expect(style.fontSize, 17);
+      expect(style.fontWeight, FontWeight.w700);
+      expect(style.fontVariations, AppTypography.variations(font, 17));
+    }
+  });
+
+  test(
+    'general blur wording names only shared UI surfaces in every locale',
+    () {
+      final expectedTerms = {
+        'de': ['Bottom Sheets', 'Menüs', 'Navigation'],
+        'en': ['bottom sheets', 'menus', 'navigation'],
+        'fr': ['feuilles', 'menus', 'navigation'],
+        'es': ['hojas', 'menús', 'navegación'],
+      };
+      for (final entry in expectedTerms.entries) {
+        final description = AppL10n.of(entry.key).settingsGlassEffectDesc;
+        for (final term in entry.value) {
+          expect(description, contains(term));
+        }
+      }
+    },
+  );
+
   testWidgets('font changes rebuild light and dark app themes immediately', (
     tester,
   ) async {

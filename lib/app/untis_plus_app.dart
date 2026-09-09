@@ -19,14 +19,21 @@ class UntisPlusApp extends StatelessWidget {
     final expressive = appThemeCapabilities(
       visualTheme,
     ).supportsExpressiveComponents;
+    final fullExpressive = tokens.usesFullMaterialExpressive;
     final useBlur = blurEnabled && tokens.supportsBlur;
     final baseText = untisThemeTextTheme(visualTheme, scheme.brightness);
     final controlShape = expressive
         ? WidgetStateProperty.resolveWith<OutlinedBorder>((states) {
             if (states.contains(WidgetState.pressed)) {
-              return RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              );
+              return fullExpressive
+                  ? RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(
+                        tokens.expressive!.pressedControlRadius,
+                      ),
+                    )
+                  : RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    );
             }
             return const StadiumBorder();
           })
@@ -38,9 +45,15 @@ class UntisPlusApp extends StatelessWidget {
     final iconControlShape = expressive
         ? WidgetStateProperty.resolveWith<OutlinedBorder>((states) {
             if (states.contains(WidgetState.pressed)) {
-              return RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              );
+              return fullExpressive
+                  ? RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(
+                        tokens.expressive!.pressedControlRadius,
+                      ),
+                    )
+                  : RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    );
             }
             return const CircleBorder();
           })
@@ -53,7 +66,31 @@ class UntisPlusApp extends StatelessWidget {
           ? const WidgetStatePropertyAll(Size(48, 48))
           : null,
       shape: controlShape,
-      animationDuration: expressive ? const Duration(milliseconds: 200) : null,
+      overlayColor: fullExpressive
+          ? WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.pressed)) {
+                return scheme.onSurface.withValues(
+                  alpha: tokens.expressive!.pressedStateLayerOpacity,
+                );
+              }
+              if (states.contains(WidgetState.focused)) {
+                return scheme.onSurface.withValues(
+                  alpha: tokens.expressive!.focusedStateLayerOpacity,
+                );
+              }
+              if (states.contains(WidgetState.hovered)) {
+                return scheme.onSurface.withValues(
+                  alpha: tokens.expressive!.hoveredStateLayerOpacity,
+                );
+              }
+              return null;
+            })
+          : null,
+      animationDuration: fullExpressive
+          ? null
+          : expressive
+          ? const Duration(milliseconds: 200)
+          : null,
     );
     TextStyle displayFont({
       Color? color,
@@ -83,18 +120,22 @@ class UntisPlusApp extends StatelessWidget {
           : scheme.surfaceContainerLowest,
       textTheme: baseText,
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: fullExpressive ? scheme.surface : Colors.transparent,
         elevation: 0,
-        scrolledUnderElevation: 4,
-        surfaceTintColor: scheme.primary,
+        scrolledUnderElevation: fullExpressive ? 3 : 4,
+        surfaceTintColor: fullExpressive
+            ? scheme.surfaceTint.withValues(alpha: 0.10)
+            : scheme.primary,
         centerTitle: true,
         titleTextStyle: displayFont(
-          color: scheme.primary,
+          color: fullExpressive ? scheme.onSurface : scheme.primary,
           fontSize: 22,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -0.5,
+          fontWeight: fullExpressive ? FontWeight.w600 : FontWeight.w900,
+          letterSpacing: fullExpressive ? 0 : -0.5,
         ),
-        iconTheme: IconThemeData(color: scheme.primary),
+        iconTheme: IconThemeData(
+          color: fullExpressive ? scheme.onSurface : scheme.primary,
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: useBlur
@@ -124,28 +165,63 @@ class UntisPlusApp extends StatelessWidget {
           );
         }),
       ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: fullExpressive ? scheme.surfaceContainerLow : null,
+        elevation: fullExpressive ? 0 : null,
+        useIndicator: fullExpressive ? true : null,
+        indicatorColor: fullExpressive ? scheme.secondaryContainer : null,
+        indicatorShape: fullExpressive ? const StadiumBorder() : null,
+        selectedIconTheme: fullExpressive
+            ? IconThemeData(color: scheme.onSecondaryContainer)
+            : null,
+        unselectedIconTheme: fullExpressive
+            ? IconThemeData(color: scheme.onSurfaceVariant)
+            : null,
+        selectedLabelTextStyle: fullExpressive
+            ? displayFont(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: scheme.onSecondaryContainer,
+              )
+            : null,
+        unselectedLabelTextStyle: fullExpressive
+            ? displayFont(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: scheme.onSurfaceVariant,
+              )
+            : null,
+      ),
       cardTheme: CardThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-            expressive ? 28 : tokens.surfaceRadius,
-          ),
-        ),
+        shape: fullExpressive
+            ? tokens.expressive!.largeSurfaceShape
+            : RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  expressive ? 28 : tokens.surfaceRadius,
+                ),
+              ),
         clipBehavior: Clip.antiAlias,
         elevation: 0,
-        color: useBlur
+        color: fullExpressive
+            ? scheme.surfaceContainerLow
+            : useBlur
             ? scheme.surfaceContainerLow.withValues(alpha: 0.8)
             : scheme.surfaceContainerLow,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: useBlur
+        backgroundColor: fullExpressive
+            ? scheme.surfaceContainerHigh
+            : useBlur
             ? scheme.surfaceContainerHigh.withValues(alpha: 0.85)
             : scheme.surfaceContainerHigh,
         surfaceTintColor: scheme.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-            expressive ? 32 : tokens.surfaceRadius + 6,
-          ),
-        ),
+        shape: fullExpressive
+            ? tokens.expressive!.largeSurfaceShape
+            : RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  expressive ? 32 : tokens.surfaceRadius + 6,
+                ),
+              ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: useBlur
@@ -174,7 +250,60 @@ class UntisPlusApp extends StatelessWidget {
               ? const WidgetStatePropertyAll(Size(48, 48))
               : null,
           shape: iconControlShape,
-          animationDuration: expressive
+          foregroundColor: fullExpressive
+              ? WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.disabled)) {
+                    return scheme.onSurface.withValues(alpha: 0.38);
+                  }
+                  if (states.contains(WidgetState.selected)) {
+                    return scheme.onPrimary;
+                  }
+                  return scheme.onSurfaceVariant;
+                })
+              : null,
+          backgroundColor: fullExpressive
+              ? WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.disabled)) {
+                    return scheme.onSurface.withValues(alpha: 0.10);
+                  }
+                  if (states.contains(WidgetState.selected)) {
+                    return scheme.primary;
+                  }
+                  if (states.contains(WidgetState.pressed)) {
+                    return scheme.primaryContainer;
+                  }
+                  if (states.contains(WidgetState.focused)) {
+                    return scheme.secondaryContainer.withValues(alpha: 0.88);
+                  }
+                  if (states.contains(WidgetState.hovered)) {
+                    return scheme.surfaceContainerHighest;
+                  }
+                  return scheme.surfaceContainerHigh;
+                })
+              : null,
+          overlayColor: fullExpressive
+              ? WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.pressed)) {
+                    return scheme.onSurface.withValues(
+                      alpha: tokens.expressive!.pressedStateLayerOpacity,
+                    );
+                  }
+                  if (states.contains(WidgetState.focused)) {
+                    return scheme.onSurface.withValues(
+                      alpha: tokens.expressive!.focusedStateLayerOpacity,
+                    );
+                  }
+                  if (states.contains(WidgetState.hovered)) {
+                    return scheme.onSurface.withValues(
+                      alpha: tokens.expressive!.hoveredStateLayerOpacity,
+                    );
+                  }
+                  return null;
+                })
+              : null,
+          animationDuration: fullExpressive
+              ? null
+              : expressive
               ? const Duration(milliseconds: 200)
               : null,
         ),
@@ -187,15 +316,46 @@ class UntisPlusApp extends StatelessWidget {
         shape: expressive ? const CircleBorder() : null,
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
-        style: SegmentedButton.styleFrom(
-          selectedBackgroundColor: scheme.secondaryContainer,
-          selectedForegroundColor: scheme.onSecondaryContainer,
-          shape: expressive
-              ? const StadiumBorder()
-              : RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(tokens.controlRadius),
+        style: fullExpressive
+            ? ButtonStyle(
+                minimumSize: WidgetStatePropertyAll(
+                  Size.square(tokens.expressive!.minimumTouchTarget),
                 ),
-        ),
+                backgroundColor: WidgetStateProperty.resolveWith((states) {
+                  return states.contains(WidgetState.selected)
+                      ? scheme.secondaryContainer
+                      : scheme.surfaceContainerLow;
+                }),
+                foregroundColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.disabled)) {
+                    return scheme.onSurface.withValues(alpha: 0.38);
+                  }
+                  return states.contains(WidgetState.selected)
+                      ? scheme.onSecondaryContainer
+                      : scheme.onSurfaceVariant;
+                }),
+                shape: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.pressed)) {
+                    return RoundedSuperellipseBorder(
+                      borderRadius: BorderRadius.circular(
+                        tokens.expressive!.pressedControlRadius,
+                      ),
+                    );
+                  }
+                  return const StadiumBorder();
+                }),
+              )
+            : SegmentedButton.styleFrom(
+                selectedBackgroundColor: scheme.secondaryContainer,
+                selectedForegroundColor: scheme.onSecondaryContainer,
+                shape: expressive
+                    ? const StadiumBorder()
+                    : RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          tokens.controlRadius,
+                        ),
+                      ),
+              ),
       ),
       chipTheme: ChipThemeData(
         shape: expressive
@@ -204,6 +364,12 @@ class UntisPlusApp extends StatelessWidget {
                 borderRadius: BorderRadius.circular(tokens.controlRadius),
               ),
         side: BorderSide(color: scheme.outlineVariant),
+        selectedColor: fullExpressive ? scheme.secondaryContainer : null,
+        disabledColor: fullExpressive
+            ? scheme.onSurface.withValues(alpha: 0.10)
+            : null,
+        checkmarkColor: fullExpressive ? scheme.onSecondaryContainer : null,
+        labelStyle: fullExpressive ? baseText.labelLarge : null,
         padding: EdgeInsets.symmetric(
           horizontal: expressive ? 12 : 8,
           vertical: expressive ? 8 : 4,
@@ -211,12 +377,18 @@ class UntisPlusApp extends StatelessWidget {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (fullExpressive && states.contains(WidgetState.disabled)) {
+            return scheme.onSurface.withValues(alpha: 0.38);
+          }
           if (states.contains(WidgetState.selected)) {
             return scheme.onPrimary;
           }
           return scheme.outline;
         }),
         trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (fullExpressive && states.contains(WidgetState.disabled)) {
+            return scheme.onSurface.withValues(alpha: 0.12);
+          }
           if (states.contains(WidgetState.selected)) {
             return scheme.primary;
           }
@@ -228,12 +400,74 @@ class UntisPlusApp extends StatelessWidget {
           }
           return scheme.outline.withValues(alpha: 0.5);
         }),
+        overlayColor: fullExpressive
+            ? WidgetStatePropertyAll(
+                scheme.primary.withValues(
+                  alpha: tokens.expressive!.pressedStateLayerOpacity,
+                ),
+              )
+            : null,
       ),
+      checkboxTheme: fullExpressive
+          ? CheckboxThemeData(
+              shape: RoundedSuperellipseBorder(
+                borderRadius: BorderRadius.circular(5),
+              ),
+              fillColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return scheme.onSurface.withValues(alpha: 0.12);
+                }
+                return states.contains(WidgetState.selected)
+                    ? scheme.primary
+                    : Colors.transparent;
+              }),
+              checkColor: WidgetStatePropertyAll(scheme.onPrimary),
+              overlayColor: WidgetStatePropertyAll(
+                scheme.primary.withValues(
+                  alpha: tokens.expressive!.pressedStateLayerOpacity,
+                ),
+              ),
+            )
+          : null,
+      radioTheme: fullExpressive
+          ? RadioThemeData(
+              fillColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return scheme.onSurface.withValues(alpha: 0.38);
+                }
+                return states.contains(WidgetState.selected)
+                    ? scheme.primary
+                    : scheme.onSurfaceVariant;
+              }),
+              overlayColor: WidgetStatePropertyAll(
+                scheme.primary.withValues(
+                  alpha: tokens.expressive!.pressedStateLayerOpacity,
+                ),
+              ),
+            )
+          : null,
       sliderTheme: SliderThemeData(
-        activeTrackColor: expressive ? null : scheme.primary,
-        inactiveTrackColor: expressive ? null : scheme.surfaceContainerHighest,
-        thumbColor: expressive ? null : scheme.primary,
-        overlayColor: expressive
+        trackHeight: fullExpressive ? 6 : null,
+        activeTrackColor: fullExpressive
+            ? scheme.primary
+            : expressive
+            ? null
+            : scheme.primary,
+        inactiveTrackColor: fullExpressive
+            ? scheme.secondaryContainer
+            : expressive
+            ? null
+            : scheme.surfaceContainerHighest,
+        thumbColor: fullExpressive
+            ? scheme.primary
+            : expressive
+            ? null
+            : scheme.primary,
+        overlayColor: fullExpressive
+            ? scheme.primary.withValues(
+                alpha: tokens.expressive!.pressedStateLayerOpacity,
+              )
+            : expressive
             ? null
             : scheme.primary.withValues(alpha: 0.12),
         // ignore: deprecated_member_use
@@ -251,13 +485,68 @@ class UntisPlusApp extends StatelessWidget {
       inputDecorationTheme: InputDecorationTheme(
         filled: expressive,
         fillColor: expressive ? scheme.surfaceContainerHighest : null,
-        border: expressive
+        border: fullExpressive
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  tokens.expressive!.smallContainerRadius,
+                ),
+                borderSide: BorderSide.none,
+              )
+            : expressive
             ? OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
                 borderSide: BorderSide.none,
               )
             : null,
+        focusedBorder: fullExpressive
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(
+                  tokens.expressive!.smallContainerRadius,
+                ),
+                borderSide: BorderSide(color: scheme.primary, width: 2),
+              )
+            : null,
       ),
+      searchBarTheme: fullExpressive
+          ? SearchBarThemeData(
+              elevation: const WidgetStatePropertyAll(0),
+              backgroundColor: WidgetStatePropertyAll(
+                scheme.surfaceContainerHigh,
+              ),
+              shape: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) {
+                  return RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.circular(
+                      tokens.expressive!.pressedControlRadius,
+                    ),
+                  );
+                }
+                return const StadiumBorder();
+              }),
+              constraints: const BoxConstraints(minHeight: 56),
+            )
+          : null,
+      tabBarTheme: fullExpressive
+          ? TabBarThemeData(
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: ShapeDecoration(
+                color: scheme.secondaryContainer,
+                shape: const StadiumBorder(),
+              ),
+              labelColor: scheme.onSecondaryContainer,
+              unselectedLabelColor: scheme.onSurfaceVariant,
+              labelStyle: baseText.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              overlayColor: WidgetStatePropertyAll(
+                scheme.onSurface.withValues(
+                  alpha: tokens.expressive!.hoveredStateLayerOpacity,
+                ),
+              ),
+              splashBorderRadius: BorderRadius.circular(999),
+            )
+          : null,
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant.withValues(alpha: 0.35),
         space: 1,
@@ -271,13 +560,36 @@ class UntisPlusApp extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       ),
       snackBarTheme: SnackBarThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(
-            expressive ? 24 : tokens.controlRadius,
-          ),
-        ),
+        backgroundColor: fullExpressive ? scheme.inverseSurface : null,
+        contentTextStyle: fullExpressive
+            ? baseText.bodyMedium?.copyWith(color: scheme.onInverseSurface)
+            : null,
+        actionTextColor: fullExpressive ? scheme.inversePrimary : null,
+        shape: fullExpressive
+            ? RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(24))
+            : RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(
+                  expressive ? 24 : tokens.controlRadius,
+                ),
+              ),
         behavior: SnackBarBehavior.floating,
       ),
+      tooltipTheme: fullExpressive
+          ? TooltipThemeData(
+              constraints: const BoxConstraints(minHeight: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: ShapeDecoration(
+                color: scheme.inverseSurface,
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              textStyle: baseText.bodySmall?.copyWith(
+                color: scheme.onInverseSurface,
+              ),
+              waitDuration: const Duration(milliseconds: 500),
+            )
+          : null,
     );
   }
 

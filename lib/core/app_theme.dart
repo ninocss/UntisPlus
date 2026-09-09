@@ -300,8 +300,7 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
   var scheme = ColorScheme.fromSeed(
     seedColor: seedColor,
     brightness: brightness,
-    dynamicSchemeVariant:
-        id == AppThemeId.vivid || id == AppThemeId.defaultTheme
+    dynamicSchemeVariant: id == AppThemeId.defaultTheme
         ? DynamicSchemeVariant.expressive
         : DynamicSchemeVariant.vibrant,
   );

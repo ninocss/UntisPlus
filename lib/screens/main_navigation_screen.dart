@@ -1371,6 +1371,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
       backgroundColor: Colors.transparent,
       child: ThemedSurface(
         blur: true,
+        allowDefaultBlur: false,
         borderRadius: BorderRadius.zero,
         color: cs.surface.withValues(alpha: 0.88),
         child: SafeArea(
@@ -2877,37 +2878,37 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               if (isTablet)
                 SafeArea(
                   child: NavigationRail(
-                      selectedIndex: _selectedIndex,
-                      onDestinationSelected: _onNavTap,
-                      labelType: NavigationRailLabelType.selected,
-                      groupAlignment: 0,
-                      destinations: [
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.watch_later_outlined),
-                          selectedIcon: const Icon(Icons.watch_later_rounded),
-                          label: Text(l.timetableTitle),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.event_note_outlined),
-                          selectedIcon: const Icon(Icons.event_note_rounded),
-                          label: Text(l.examsTitle),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.campaign_outlined),
-                          selectedIcon: const Icon(Icons.campaign_rounded),
-                          label: Text(l.navInfo),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.settings_outlined),
-                          selectedIcon: const Icon(Icons.settings_rounded),
-                          label: Text(l.navMenu),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.auto_awesome_outlined),
-                          selectedIcon: const Icon(Icons.auto_awesome_rounded),
-                          label: Text(l.navAi),
-                        ),
-                      ],
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: _onNavTap,
+                    labelType: NavigationRailLabelType.selected,
+                    groupAlignment: 0,
+                    destinations: [
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.watch_later_outlined),
+                        selectedIcon: const Icon(Icons.watch_later_rounded),
+                        label: Text(l.timetableTitle),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.event_note_outlined),
+                        selectedIcon: const Icon(Icons.event_note_rounded),
+                        label: Text(l.examsTitle),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.campaign_outlined),
+                        selectedIcon: const Icon(Icons.campaign_rounded),
+                        label: Text(l.navInfo),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.settings_outlined),
+                        selectedIcon: const Icon(Icons.settings_rounded),
+                        label: Text(l.navMenu),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        selectedIcon: const Icon(Icons.auto_awesome_rounded),
+                        label: Text(l.navAi),
+                      ),
+                    ],
                   ),
                 ),
               Expanded(
@@ -3240,6 +3241,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       width: _ExpressiveNavBarState._barHeight,
                       child: ThemedSurface(
                         blur: !timetableSelected,
+                        allowDefaultBlur: true,
                         color: timetableSelected
                             ? cs.primary
                             : cs.surfaceContainerHigh.withValues(
@@ -3464,8 +3466,30 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     _animateMorph();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    _visibilityController.duration = reducedMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 320);
+    for (final controller in _iconWiggle) {
+      controller.duration = reducedMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 380);
+    }
+    if (reducedMotion && _morphController.isAnimating) {
+      _morphController.stop();
+      _morphController.value = 1;
+    }
+  }
+
   void _animateMorph() {
     _morphController.value = 0;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _morphController.value = 1;
+      return;
+    }
     final spring = SpringDescription.withDampingRatio(
       mass: 1,
       stiffness: 460,
@@ -3522,6 +3546,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       // caused a one-frame alpha jump while the entrance animation was still
       // running, and is costly on weaker devices.
       blur: tokens.id != AppThemeId.vivid,
+      allowDefaultBlur: true,
       borderRadius: navRadius,
       color: cs.surfaceContainerHigh.withValues(alpha: 0.66),
       border: Border.all(
@@ -3633,7 +3658,9 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                   return Transform.rotate(angle: angle, child: child);
                 },
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 280),
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 280),
                   switchInCurve: _kSmoothBounce,
                   switchOutCurve: Curves.easeOut,
                   transitionBuilder: (child, anim) => ScaleTransition(
@@ -3734,11 +3761,23 @@ class _BouncyButtonState extends State<_BouncyButton>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    _controller.duration = reducedMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 120);
+    _controller.reverseDuration = reducedMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 320);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) {
         if (_tapLocked) return;
-        _controller.forward();
+        if (!MediaQuery.disableAnimationsOf(context)) _controller.forward();
         HapticFeedback.lightImpact();
       },
       onTap: () {

@@ -50,7 +50,7 @@ class _CustomBackgroundEditorScreenState
     _previewCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 14),
-    )..repeat();
+    );
 
     customBackgroundsNotifier.addListener(_syncFromActive);
     selectedCustomBackgroundIdNotifier.addListener(_syncFromActive);
@@ -81,11 +81,30 @@ class _CustomBackgroundEditorScreenState
     } else if (state == AppLifecycleState.resumed) {
       if (_isPreviewPaused) {
         _isPreviewPaused = false;
-        if (mounted) {
-          _previewCtrl.repeat();
-        }
+        if (mounted) _syncPreviewAnimation();
       }
     }
+  }
+
+  bool get _canAnimatePreview =>
+      _draft.animate &&
+      !_isPreviewPaused &&
+      TickerMode.valuesOf(context).enabled &&
+      !MediaQuery.disableAnimationsOf(context);
+
+  void _syncPreviewAnimation() {
+    if (_canAnimatePreview && !_previewCtrl.isAnimating) {
+      _previewCtrl.repeat();
+    } else if (!_canAnimatePreview && _previewCtrl.isAnimating) {
+      _previewCtrl.stop();
+      _previewCtrl.value = 0;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncPreviewAnimation();
   }
 
   void _syncFromActive() {
@@ -103,6 +122,7 @@ class _CustomBackgroundEditorScreenState
         ..add(active);
       _historyIndex = 0;
     });
+    _syncPreviewAnimation();
   }
 
   void _markDirty() {
@@ -138,6 +158,7 @@ class _CustomBackgroundEditorScreenState
         _nameCtrl.text = next.name;
       }
     });
+    _syncPreviewAnimation();
     _markDirty();
   }
 
@@ -157,6 +178,7 @@ class _CustomBackgroundEditorScreenState
         ..add(next);
       _historyIndex = 0;
     });
+    _syncPreviewAnimation();
   }
 
   Future<void> _applyPreset(CustomBackgroundPreset preset) async {
@@ -1254,23 +1276,28 @@ class _CustomBackgroundEditorScreenState
     double radius = 22,
   }) {
     final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
     final effectiveAccent = accent ?? cs.surfaceContainerHighest;
     return Padding(
       key: key,
       padding: const EdgeInsets.only(bottom: 12),
-      child: _glassContainer(
-        context: context,
+      child: ThemedSurface(
+        blur: !tokens.usesFullMaterialExpressive,
         borderRadius: BorderRadius.circular(radius),
         sigma: 20,
-        color: cs.surface.withValues(alpha: 0.46),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            effectiveAccent.withValues(alpha: 0.10),
-            cs.surfaceContainerHighest.withValues(alpha: 0.70),
-          ],
-        ),
+        color: tokens.usesFullMaterialExpressive
+            ? cs.surfaceContainerLow
+            : cs.surface.withValues(alpha: 0.46),
+        gradient: tokens.usesFullMaterialExpressive
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  effectiveAccent.withValues(alpha: 0.10),
+                  cs.surfaceContainerHighest.withValues(alpha: 0.70),
+                ],
+              ),
         border: Border.all(
           color: effectiveAccent.withValues(alpha: 0.18),
           width: 1,
@@ -1369,63 +1396,63 @@ class _CustomBackgroundEditorScreenState
           ),
           centerTitle: true,
           actions: [
-            IconButton(
-              tooltip: l.bgEditorUndo,
-              icon: const Icon(Icons.undo_rounded),
-              onPressed: _historyIndex > 0 ? _undoDraft : null,
-            ),
-            IconButton(
-              tooltip: l.bgEditorRedo,
-              icon: const Icon(Icons.redo_rounded),
-              onPressed: _historyIndex < _history.length - 1
-                  ? _redoDraft
-                  : null,
-            ),
-            IconButton(
-              tooltip: l.bgEditorRandomize,
-              icon: const Icon(Icons.casino_rounded),
-              onPressed: () async {
-                final spec = _randomSpec();
-                await upsertCustomBackground(spec);
-                if (!mounted) return;
-                _commitDraft(spec);
-              },
-            ),
-            IconButton(
-              tooltip: l.bgEditorImportTitle,
-              icon: const Icon(Icons.upload_file_rounded),
-              onPressed: _showImportSheet,
-            ),
-            MenuAnchor(
-              menuChildren: [
-                MenuItemButton(
-                  leadingIcon: const Icon(Icons.ios_share_rounded),
-                  onPressed: _showExportSheet,
-                  child: Text(l.bgEditorExportTitle),
+            ExpressiveToolbar(
+              semanticLabel: l.bgEditorTitle,
+              children: [
+                IconButton(
+                  tooltip: l.bgEditorUndo,
+                  icon: const Icon(Icons.undo_rounded),
+                  onPressed: _historyIndex > 0 ? _undoDraft : null,
                 ),
-                MenuItemButton(
-                  leadingIcon: const Icon(Icons.add_rounded),
-                  onPressed: _newBackground,
-                  child: Text(l.bgEditorNew),
+                IconButton(
+                  tooltip: l.bgEditorRedo,
+                  icon: const Icon(Icons.redo_rounded),
+                  onPressed: _historyIndex < _history.length - 1
+                      ? _redoDraft
+                      : null,
                 ),
-                MenuItemButton(
-                  leadingIcon: const Icon(Icons.content_copy_rounded),
-                  onPressed: _duplicateBackground,
-                  child: Text(l.bgEditorDuplicate),
+                IconButton(
+                  tooltip: l.bgEditorRandomize,
+                  icon: const Icon(Icons.casino_rounded),
+                  onPressed: () async {
+                    final spec = _randomSpec();
+                    await upsertCustomBackground(spec);
+                    if (!mounted) return;
+                    _commitDraft(spec);
+                  },
                 ),
-                MenuItemButton(
-                  leadingIcon: const Icon(Icons.delete_outline_rounded),
-                  onPressed: _deleteBackground,
-                  child: Text(l.bgEditorDelete),
+                IconButton(
+                  tooltip: l.bgEditorImportTitle,
+                  icon: const Icon(Icons.upload_file_rounded),
+                  onPressed: _showImportSheet,
+                ),
+                ExpressiveOverflowMenu(
+                  tooltip: l.bgEditorExportTitle,
+                  actions: [
+                    ExpressiveMenuAction(
+                      label: l.bgEditorExportTitle,
+                      icon: Icons.ios_share_rounded,
+                      onSelected: _showExportSheet,
+                    ),
+                    ExpressiveMenuAction(
+                      label: l.bgEditorNew,
+                      icon: Icons.add_rounded,
+                      onSelected: _newBackground,
+                    ),
+                    ExpressiveMenuAction(
+                      label: l.bgEditorDuplicate,
+                      icon: Icons.content_copy_rounded,
+                      onSelected: _duplicateBackground,
+                    ),
+                    ExpressiveMenuAction(
+                      label: l.bgEditorDelete,
+                      icon: Icons.delete_outline_rounded,
+                      onSelected: _deleteBackground,
+                      destructive: true,
+                    ),
+                  ],
                 ),
               ],
-              builder: (context, controller, child) => IconButton(
-                tooltip: l.bgEditorExportTitle,
-                icon: const Icon(Icons.more_vert_rounded),
-                onPressed: () => controller.isOpen
-                    ? controller.close()
-                    : controller.open(),
-              ),
             ),
           ],
           bottom: TabBar(

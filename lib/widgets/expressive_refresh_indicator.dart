@@ -27,8 +27,9 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
     with TickerProviderStateMixin {
   RefreshIndicatorStatus? _status;
   double _pullProgress = 0;
-  late final AnimationController _contentOffset =
-      AnimationController.unbounded(vsync: this);
+  late final AnimationController _contentOffset = AnimationController.unbounded(
+    vsync: this,
+  );
   late final AnimationController _motion = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1600),
@@ -36,6 +37,32 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
 
   bool get _isVisible =>
       _status != null && _status != RefreshIndicatorStatus.canceled;
+
+  bool get _canAnimate =>
+      TickerMode.valuesOf(context).enabled &&
+      !MediaQuery.disableAnimationsOf(context);
+
+  void _syncMotion() {
+    _motion.duration =
+        untisThemeTokensOf(context).expressive?.loadingCycle ??
+        const Duration(milliseconds: 1600);
+    final shouldRun =
+        _canAnimate &&
+        (_status == RefreshIndicatorStatus.snap ||
+            _status == RefreshIndicatorStatus.refresh);
+    if (shouldRun && !_motion.isAnimating) {
+      _motion.repeat();
+    } else if (!shouldRun && _motion.isAnimating) {
+      _motion.stop();
+      _motion.value = 0;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMotion();
+  }
 
   @override
   void dispose() {
@@ -45,9 +72,14 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
   }
 
   void _settleContent() {
+    if (!_canAnimate) {
+      _contentOffset.value = 0;
+      return;
+    }
     _contentOffset.animateWith(
       SpringSimulation(
-        const SpringDescription(mass: 1, stiffness: 520, damping: 28),
+        untisThemeTokensOf(context).expressive?.spatialSpring ??
+            const SpringDescription(mass: 1, stiffness: 520, damping: 28),
         _contentOffset.value,
         0,
         0,
@@ -60,15 +92,16 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
     setState(() => _status = status);
     if (status == RefreshIndicatorStatus.snap ||
         status == RefreshIndicatorStatus.refresh) {
-      if (!MediaQuery.of(context).disableAnimations) {
-        _motion.repeat();
-      }
+      _syncMotion();
       _settleContent();
     } else if (status == RefreshIndicatorStatus.done ||
         status == RefreshIndicatorStatus.canceled) {
       _motion.stop();
       _settleContent();
-      Future<void>.delayed(const Duration(milliseconds: 220), () {
+      final delay =
+          untisThemeTokensOf(context).expressive?.motionDuration(context) ??
+          const Duration(milliseconds: 220);
+      Future<void>.delayed(delay, () {
         if (mounted && _status == status) {
           setState(() {
             _status = null;
@@ -88,8 +121,10 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
         (_status == RefreshIndicatorStatus.drag ||
             _status == RefreshIndicatorStatus.armed)) {
       setState(() {
-        _pullProgress = (_pullProgress + (-notification.overscroll / 96))
-            .clamp(0.0, 1.0);
+        _pullProgress = (_pullProgress + (-notification.overscroll / 96)).clamp(
+          0.0,
+          1.0,
+        );
         _contentOffset.value = _pullProgress * 12;
       });
     }
@@ -99,10 +134,15 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final motion = untisThemeTokensOf(context).expressive;
+    final quickDuration =
+        motion?.motionDuration(context) ?? const Duration(milliseconds: 180);
+    final fadeDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 140);
     final isRefreshing = _status == RefreshIndicatorStatus.refresh;
     final isArmed = _status == RefreshIndicatorStatus.armed;
-    final isPulling =
-        _status == RefreshIndicatorStatus.drag || isArmed;
+    final isPulling = _status == RefreshIndicatorStatus.drag || isArmed;
 
     return RefreshIndicator.noSpinner(
       onRefresh: widget.onRefresh,
@@ -121,35 +161,36 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
                 child: child,
               ),
             ),
-          Positioned(
-            top: widget.edgeOffset,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              child: Semantics(
-                liveRegion: true,
-                label: 'Refreshing',
-                child: AnimatedSlide(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  offset: _isVisible ? Offset.zero : const Offset(0, -0.45),
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 140),
-                    opacity: _isVisible ? 1 : 0,
-                    child: Center(
-                      child: AnimatedScale(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOutBack,
-                        scale: isRefreshing || isArmed ? 1 : 0.76,
-                        child: AnimatedBuilder(
-                          animation: _motion,
-                          builder: (context, _) => CustomPaint(
-                            size: const Size.square(56),
-                            painter: _ExpressiveLoaderPainter(
-                              containerColor: cs.primaryContainer,
-                              blobColor: cs.onPrimaryContainer,
-                              turns: _motion.value,
-                              pullProgress: isPulling ? _pullProgress : null,
+            Positioned(
+              top: widget.edgeOffset,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: Semantics(
+                  liveRegion: true,
+                  label: 'Refreshing',
+                  child: AnimatedSlide(
+                    duration: quickDuration,
+                    curve: Curves.easeOutCubic,
+                    offset: _isVisible ? Offset.zero : const Offset(0, -0.45),
+                    child: AnimatedOpacity(
+                      duration: fadeDuration,
+                      opacity: _isVisible ? 1 : 0,
+                      child: Center(
+                        child: AnimatedScale(
+                          duration: quickDuration,
+                          curve: Curves.easeOutBack,
+                          scale: isRefreshing || isArmed ? 1 : 0.76,
+                          child: AnimatedBuilder(
+                            animation: _motion,
+                            builder: (context, _) => CustomPaint(
+                              size: const Size.square(56),
+                              painter: _ExpressiveLoaderPainter(
+                                containerColor: cs.primaryContainer,
+                                blobColor: cs.onPrimaryContainer,
+                                turns: _motion.value,
+                                pullProgress: isPulling ? _pullProgress : null,
+                              ),
                             ),
                           ),
                         ),
@@ -159,7 +200,6 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
                 ),
               ),
             ),
-          ),
           ],
         ),
       ),
@@ -173,12 +213,14 @@ class _ExpressiveLoaderPainter extends CustomPainter {
     required this.blobColor,
     required this.turns,
     this.pullProgress,
+    this.contained = true,
   });
 
   final Color containerColor;
   final Color blobColor;
   final double turns;
   final double? pullProgress;
+  final bool contained;
 
   static const _vertexCount = 12;
 
@@ -198,33 +240,28 @@ class _ExpressiveLoaderPainter extends CustomPainter {
     return settled.clamp(0.0, 1.0);
   }
 
-  static List<Offset> _circle() => List<Offset>.generate(
-    _vertexCount,
-    (index) => _polar(index, 1, 1),
-  );
+  static List<Offset> _circle() =>
+      List<Offset>.generate(_vertexCount, (index) => _polar(index, 1, 1));
 
-  static List<Offset> _oval() => List<Offset>.generate(
-    _vertexCount,
-    (index) => _polar(index, 1.18, .78),
-  );
+  static List<Offset> _oval() =>
+      List<Offset>.generate(_vertexCount, (index) => _polar(index, 1.18, .78));
 
   static List<Offset> _cookie() => List<Offset>.generate(
     _vertexCount,
-    (index) => _polar(index, index.isEven ? 1.16 : .69, index.isEven ? 1.16 : .69),
+    (index) =>
+        _polar(index, index.isEven ? 1.16 : .69, index.isEven ? 1.16 : .69),
   );
 
-  static List<Offset> _roundedPentagon() => List<Offset>.generate(
-    _vertexCount,
-    (index) {
-      final angle = -math.pi / 2 + math.pi * 2 * index / _vertexCount;
-      // Radial sampling of a regular pentagon keeps exactly 12 matching
-      // vertices while the quadratic path below provides the corner rounding.
-      final sector = (angle + math.pi / 5).remainder(math.pi * 2 / 5) -
-          math.pi / 5;
-      final radius = math.cos(math.pi / 5) / math.cos(sector);
-      return Offset(math.cos(angle) * radius, math.sin(angle) * radius);
-    },
-  );
+  static List<Offset> _roundedPentagon() =>
+      List<Offset>.generate(_vertexCount, (index) {
+        final angle = -math.pi / 2 + math.pi * 2 * index / _vertexCount;
+        // Radial sampling of a regular pentagon keeps exactly 12 matching
+        // vertices while the quadratic path below provides the corner rounding.
+        final sector =
+            (angle + math.pi / 5).remainder(math.pi * 2 / 5) - math.pi / 5;
+        final radius = math.cos(math.pi / 5) / math.cos(sector);
+        return Offset(math.cos(angle) * radius, math.sin(angle) * radius);
+      });
 
   static Offset _polar(int index, double xRadius, double yRadius) {
     final angle = -math.pi / 2 + math.pi * 2 * index / _vertexCount;
@@ -234,10 +271,16 @@ class _ExpressiveLoaderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
-    final containerPath = Path()
-      ..addOval(Rect.fromCircle(center: center, radius: size.width / 2));
-    canvas.drawShadow(containerPath, Colors.black, 1, false);
-    canvas.drawCircle(center, size.width / 2, Paint()..color = containerColor);
+    if (contained) {
+      final containerPath = Path()
+        ..addOval(Rect.fromCircle(center: center, radius: size.width / 2));
+      canvas.drawShadow(containerPath, Colors.black, 1, false);
+      canvas.drawCircle(
+        center,
+        size.width / 2,
+        Paint()..color = containerColor,
+      );
+    }
 
     final shapes = [_circle(), _oval(), _cookie(), _roundedPentagon()];
     late final int fromIndex;
@@ -254,11 +297,10 @@ class _ExpressiveLoaderPainter extends CustomPainter {
     } else {
       // Explicit timeline: circle -> pill -> cookie -> pentagon -> circle.
       const boundaries = [0.0, .27, .57, .82, 1.0];
-      final phase = List.generate(boundaries.length - 1, (index) => index)
-          .lastWhere(
-            (index) => turns >= boundaries[index],
-            orElse: () => 0,
-          );
+      final phase = List.generate(
+        boundaries.length - 1,
+        (index) => index,
+      ).lastWhere((index) => turns >= boundaries[index], orElse: () => 0);
       fromIndex = phase;
       toIndex = (phase + 1) % shapes.length;
       final local =
@@ -269,8 +311,16 @@ class _ExpressiveLoaderPainter extends CustomPainter {
     }
 
     final points = List<Offset>.generate(_vertexCount, (index) {
-      final x = lerpDouble(shapes[fromIndex][index].dx, shapes[toIndex][index].dx, t)!;
-      final y = lerpDouble(shapes[fromIndex][index].dy, shapes[toIndex][index].dy, t)!;
+      final x = lerpDouble(
+        shapes[fromIndex][index].dx,
+        shapes[toIndex][index].dx,
+        t,
+      )!;
+      final y = lerpDouble(
+        shapes[fromIndex][index].dy,
+        shapes[toIndex][index].dy,
+        t,
+      )!;
       final radius = size.width * .323;
       return Offset(x * radius, y * radius);
     });
@@ -300,5 +350,6 @@ class _ExpressiveLoaderPainter extends CustomPainter {
       oldDelegate.containerColor != containerColor ||
       oldDelegate.blobColor != blobColor ||
       oldDelegate.turns != turns ||
-      oldDelegate.pullProgress != pullProgress;
+      oldDelegate.pullProgress != pullProgress ||
+      oldDelegate.contained != contained;
 }

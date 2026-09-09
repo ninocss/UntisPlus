@@ -539,7 +539,13 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                           ],
                         ),
                         const SizedBox(height: 6),
-                        LinearProgressIndicator(value: _downloadProgress),
+                        ExpressiveProgressIndicator(
+                          value: _downloadProgress,
+                          semanticsLabel: l.settingsGithubDownloading,
+                          semanticsValue: _downloadProgress == null
+                              ? null
+                              : '${(_downloadProgress! * 100).round()} %',
+                        ),
                         const SizedBox(height: 5),
                         Text(
                           _downloadTotal > 0

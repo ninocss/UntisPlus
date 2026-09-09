@@ -12,7 +12,7 @@ import 'package:flutter/physics.dart';
 import 'package:url_launcher/url_launcher_string.dart' as url_launcher;
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:google_fonts/google_fonts.dart' as google_fonts;
 import 'package:http/http.dart' as http;
 import 'package:html/dom.dart' as html_dom;
 import 'package:html/parser.dart' as html_parser;
@@ -75,6 +75,7 @@ part 'screens/settings/custom_widget_editor_page.dart';
 part 'screens/settings/settings_account_page.dart';
 part 'screens/settings/settings_about_updates_page.dart';
 part 'widgets/animated_background.dart';
+part 'widgets/expressive_components.dart';
 part 'widgets/expressive_refresh_indicator.dart';
 part 'widgets/custom_background_view.dart';
 part 'widgets/changelog_bottom_sheet.dart';
@@ -2302,7 +2303,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (direction == 0) {
       _carouselAnimController?.dispose();
       _carouselAnimController = AnimationController(
-        duration: const Duration(milliseconds: 250),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 250),
         vsync: this,
       );
       final anim = Tween<double>(begin: _carouselOffset, end: 0).animate(
@@ -2332,7 +2335,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final target = direction * width;
     _carouselAnimController?.dispose();
     _carouselAnimController = AnimationController(
-      duration: const Duration(milliseconds: 340),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 340),
       vsync: this,
     );
     final anim = Tween<double>(begin: _carouselOffset, end: target).animate(
@@ -2704,11 +2709,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (!mounted) return;
     if (context.mounted) Navigator.of(context).pop();
 
-    await showModalBottomSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
       useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      sheetAnimationStyle: _kBottomSheetAnimationStyle,
+      wrapSurface: false,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         return StatefulBuilder(
@@ -2718,6 +2722,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
             return _glassContainer(
               context: ctx,
+              allowDefaultBlur: true,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(32),
               ),
@@ -5261,11 +5266,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     final l = AppL10n.of(appLocaleNotifier.value);
 
-    showModalBottomSheet(
+    _showUnifiedSheet<void>(
       context: context,
       useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      sheetAnimationStyle: _kBottomSheetAnimationStyle,
+      wrapSurface: false,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
         return StatefulBuilder(
@@ -5291,6 +5295,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               builder: (_, scrollController) {
                 return _glassContainer(
                   context: ctx,
+                  allowDefaultBlur: true,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(32),
                   ),
@@ -5656,31 +5661,25 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: RoundedBlurAppBar(
-        leading: MenuAnchor(
-          menuChildren: [
-            MenuItemButton(
-              leadingIcon: const Icon(Icons.groups_rounded),
-              onPressed: _openClassSearch,
-              child: Text(l.timetableSelectAnother),
+        leading: ExpressiveOverflowMenu(
+          tooltip: l.timetableMoreActions,
+          actions: [
+            ExpressiveMenuAction(
+              label: l.timetableSelectAnother,
+              icon: Icons.groups_rounded,
+              onSelected: _openClassSearch,
             ),
-            MenuItemButton(
-              leadingIcon: const Icon(Icons.meeting_room_outlined),
-              onPressed: _showFreeRoomsDialog,
-              child: Text(l.freeRoomsTitle),
+            ExpressiveMenuAction(
+              label: l.freeRoomsTitle,
+              icon: Icons.meeting_room_outlined,
+              onSelected: _showFreeRoomsDialog,
             ),
-            MenuItemButton(
-              leadingIcon: const Icon(Icons.ios_share_rounded),
-              onPressed: _exportTimetableImage,
-              child: Text(l.timetableExportImage),
+            ExpressiveMenuAction(
+              label: l.timetableExportImage,
+              icon: Icons.ios_share_rounded,
+              onSelected: _exportTimetableImage,
             ),
           ],
-          builder: (context, controller, child) => IconButton(
-            tooltip: l.timetableMoreActions,
-            icon: const Icon(Icons.more_vert_rounded),
-            onPressed: () => controller.isOpen
-                ? controller.close()
-                : controller.open(),
-          ),
         ),
         title: GestureDetector(
           onTap: () {
@@ -5926,11 +5925,10 @@ Future<void> _showAddHomeworkDialog(
     return DateTime.now().add(const Duration(days: 1));
   }();
 
-  await showModalBottomSheet<void>(
+  await _showUnifiedSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    sheetAnimationStyle: _kBottomSheetAnimationStyle,
+    wrapSurface: false,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDlg) {
         final cs = Theme.of(ctx).colorScheme;
@@ -5946,6 +5944,7 @@ Future<void> _showAddHomeworkDialog(
           ),
           child: _glassContainer(
             context: ctx,
+            allowDefaultBlur: true,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(28),
@@ -6894,7 +6893,11 @@ class _HomeworkViewState extends State<_HomeworkView> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.upcoming_rounded, size: 13, color: cs.primary),
+                        Icon(
+                          Icons.upcoming_rounded,
+                          size: 13,
+                          color: cs.primary,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -7219,12 +7222,11 @@ Future<void> _showAddExamDialog(
     return DateTime.now();
   }();
 
-  await showModalBottomSheet<void>(
+  await _showUnifiedSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    sheetAnimationStyle: _kBottomSheetAnimationStyle,
+    wrapSurface: false,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDlg) {
         final cs = Theme.of(ctx).colorScheme;
@@ -7240,6 +7242,7 @@ Future<void> _showAddExamDialog(
           ),
           child: _glassContainer(
             context: ctx,
+            allowDefaultBlur: true,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(28),
@@ -8261,16 +8264,24 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                     onPressed: () =>
                         _gradesTrackerKey.currentState?.showAddGradeDialog(),
                   )
-                : MenuAnchor(
+                : untisThemeTokensOf(context).usesFullMaterialExpressive
+                ? ExpressiveSplitButton(
+                    label: const Icon(Icons.add_rounded),
+                    mainTooltip: _tabController.index == 0
+                        ? l.examsActionCustom
+                        : l.homeworkActionCustom,
+                    menuTooltip: _tabController.index == 0
+                        ? l.examsAddTitle
+                        : l.homeworkAddTitle,
+                    onPressed: _tabController.index == 0
+                        ? () => _showAddExamDialog(context)
+                        : () => _showAddHomeworkDialog(context),
                     menuChildren: _tabController.index == 0
                         ? [
                             MenuItemButton(
-                              leadingIcon: const Icon(Icons.edit_note_rounded),
-                              onPressed: () => _showAddExamDialog(context),
-                              child: Text(l.examsActionCustom),
-                            ),
-                            MenuItemButton(
-                              leadingIcon: const Icon(Icons.upload_file_rounded),
+                              leadingIcon: const Icon(
+                                Icons.upload_file_rounded,
+                              ),
                               onPressed: _importExamsWithAI,
                               child: Text(l.examsActionImport),
                             ),
@@ -8282,25 +8293,49 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                           ]
                         : [
                             MenuItemButton(
-                              leadingIcon: const Icon(Icons.edit_note_rounded),
-                              onPressed: () => _showAddHomeworkDialog(context),
-                              child: Text(l.homeworkActionCustom),
-                            ),
-                            MenuItemButton(
-                              leadingIcon: const Icon(Icons.upload_file_rounded),
+                              leadingIcon: const Icon(
+                                Icons.upload_file_rounded,
+                              ),
                               onPressed: () => _importHomeworkWithAI(context),
                               child: Text(l.homeworkActionImport),
                             ),
                           ],
-                    builder: (context, controller, child) => IconButton(
-                      tooltip: _tabController.index == 0
-                          ? l.examsAddTitle
-                          : l.homeworkAddTitle,
-                      icon: const Icon(Icons.add_rounded),
-                      onPressed: () => controller.isOpen
-                          ? controller.close()
-                          : controller.open(),
-                    ),
+                  )
+                : ExpressiveOverflowMenu(
+                    tooltip: _tabController.index == 0
+                        ? l.examsAddTitle
+                        : l.homeworkAddTitle,
+                    icon: Icons.add_rounded,
+                    actions: _tabController.index == 0
+                        ? [
+                            ExpressiveMenuAction(
+                              label: l.examsActionCustom,
+                              icon: Icons.edit_note_rounded,
+                              onSelected: () => _showAddExamDialog(context),
+                            ),
+                            ExpressiveMenuAction(
+                              label: l.examsActionImport,
+                              icon: Icons.upload_file_rounded,
+                              onSelected: _importExamsWithAI,
+                            ),
+                            ExpressiveMenuAction(
+                              label: l.examsActionExport,
+                              icon: Icons.ios_share_rounded,
+                              onSelected: _exportCustomExams,
+                            ),
+                          ]
+                        : [
+                            ExpressiveMenuAction(
+                              label: l.homeworkActionCustom,
+                              icon: Icons.edit_note_rounded,
+                              onSelected: () => _showAddHomeworkDialog(context),
+                            ),
+                            ExpressiveMenuAction(
+                              label: l.homeworkActionImport,
+                              icon: Icons.upload_file_rounded,
+                              onSelected: () => _importHomeworkWithAI(context),
+                            ),
+                          ],
                   ),
           ),
         ],
@@ -9846,14 +9881,33 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    Future.delayed(
-      Duration(milliseconds: widget.delay),
-      () => mounted ? _ctrl.repeat(reverse: true) : null,
-    );
     _anim = Tween(
       begin: 0.3,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _ctrl, curve: _kSmoothBounce));
+  }
+
+  bool get _canAnimate =>
+      TickerMode.valuesOf(context).enabled &&
+      !MediaQuery.disableAnimationsOf(context);
+
+  void _syncAnimation() {
+    if (_canAnimate) {
+      Future<void>.delayed(Duration(milliseconds: widget.delay), () {
+        if (mounted && _canAnimate && !_ctrl.isAnimating) {
+          _ctrl.repeat(reverse: true);
+        }
+      });
+    } else if (_ctrl.isAnimating) {
+      _ctrl.stop();
+      _ctrl.value = 0;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimation();
   }
 
   @override
@@ -9926,11 +9980,9 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
       .where((t) => t.isNotEmpty)
       .join('\n');
 
-  showModalBottomSheet(
+  _showUnifiedSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    sheetAnimationStyle: _kBottomSheetAnimationStyle,
     builder: (_) => _LessonDetailSheet(
       subject: subject,
       subjectShort: subjectShort,
@@ -11366,160 +11418,171 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                     ],
                   )
                 : ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
-                children: [
-                  _buildInfoSummaryCard(cs, l, activeItems.length),
-                  Row(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
                     children: [
-                      Expanded(
-                        child: _infoModeButton(
-                          label: l.ui('start'),
-                          icon: Icons.campaign_rounded,
-                          selected: !_showInbox,
-                          onTap: () => setState(() => _showInbox = false),
-                        ),
+                      _buildInfoSummaryCard(cs, l, activeItems.length),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _infoModeButton(
+                              label: l.ui('start'),
+                              icon: Icons.campaign_rounded,
+                              selected: !_showInbox,
+                              onTap: () => setState(() => _showInbox = false),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _infoModeButton(
+                              label: l.ui('notifications'),
+                              icon: Icons.mail_outline_rounded,
+                              selected: _showInbox,
+                              onTap: () => setState(() => _showInbox = true),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _infoModeButton(
-                          label: l.ui('notifications'),
-                          icon: Icons.mail_outline_rounded,
-                          selected: _showInbox,
-                          onTap: () => setState(() => _showInbox = true),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: _glassContainer(
-                        context: context,
-                        borderRadius: BorderRadius.circular(18),
-                        color: cs.errorContainer.withValues(alpha: 0.55),
-                        border: Border.all(color: cs.error.withValues(alpha: 0.3)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Text(
-                            _error!,
-                            style: GoogleFonts.outfit(
-                              color: cs.onErrorContainer,
-                              fontWeight: FontWeight.w700,
+                      if (_error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: _glassContainer(
+                            context: context,
+                            borderRadius: BorderRadius.circular(18),
+                            color: cs.errorContainer.withValues(alpha: 0.55),
+                            border: Border.all(
+                              color: cs.error.withValues(alpha: 0.3),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Text(
+                                _error!,
+                                style: GoogleFonts.outfit(
+                                  color: cs.onErrorContainer,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  if (activeItems.isEmpty)
-                    _glassContainer(
-                      context: context,
-                      borderRadius: BorderRadius.circular(24),
-                      color: cs.primaryContainer.withValues(alpha: 0.2),
-                      border: Border.all(color: cs.primary.withValues(alpha: 0.24)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l.infoEmpty,
-                              style: GoogleFonts.outfit(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              l.infoEmptyHint,
-                              style: GoogleFonts.outfit(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    ...activeItems.map((item) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _glassContainer(
+                      const SizedBox(height: 16),
+                      if (activeItems.isEmpty)
+                        _glassContainer(
                           context: context,
                           borderRadius: BorderRadius.circular(24),
-                          color: cs.surfaceContainerLow.withValues(alpha: 0.62),
+                          color: cs.primaryContainer.withValues(alpha: 0.2),
                           border: Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.3),
+                            color: cs.primary.withValues(alpha: 0.24),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(20),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  _showInbox
-                                      ? Icons.mail_outline_rounded
-                                      : Icons.campaign_rounded,
-                                  size: 18,
-                                  color: cs.primary,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    item.title,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.15,
-                                    ),
+                                Text(
+                                  l.infoEmpty,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
-                              ],
-                            ),
-                            if (item.body.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              _buildFormattedInfoBody(context, item.body),
-                            ],
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              children: [
-                                if (item.date != null)
-                                  _infoChip(
-                                    context,
-                                    _formatDate(item.date),
-                                    Icons.schedule_rounded,
+                                const SizedBox(height: 6),
+                                Text(
+                                  l.infoEmptyHint,
+                                  style: GoogleFonts.outfit(
+                                    color: cs.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                if ((item.author ?? '').isNotEmpty)
-                                  _infoChip(
-                                    context,
-                                    item.author!,
-                                    Icons.person_outline_rounded,
-                                  ),
-                              ],
-                            ),
-                            if (item.url != null) ...[
-                              const SizedBox(height: 8),
-                              TextButton.icon(
-                                onPressed: () =>
-                                    _openInfoUrl(context, item.url),
-                                icon: const Icon(Icons.open_in_new_rounded),
-                                label: Text(l.infoOpenLink),
-                              ),
-                            ],
+                                ),
                               ],
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                ],
-              ),
+                        )
+                      else
+                        ...activeItems.map((item) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _glassContainer(
+                              context: context,
+                              borderRadius: BorderRadius.circular(24),
+                              color: cs.surfaceContainerLow.withValues(
+                                alpha: 0.62,
+                              ),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(alpha: 0.3),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          _showInbox
+                                              ? Icons.mail_outline_rounded
+                                              : Icons.campaign_rounded,
+                                          size: 18,
+                                          color: cs.primary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            item.title,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.15,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (item.body.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      _buildFormattedInfoBody(
+                                        context,
+                                        item.body,
+                                      ),
+                                    ],
+                                    const SizedBox(height: 10),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      children: [
+                                        if (item.date != null)
+                                          _infoChip(
+                                            context,
+                                            _formatDate(item.date),
+                                            Icons.schedule_rounded,
+                                          ),
+                                        if ((item.author ?? '').isNotEmpty)
+                                          _infoChip(
+                                            context,
+                                            item.author!,
+                                            Icons.person_outline_rounded,
+                                          ),
+                                      ],
+                                    ),
+                                    if (item.url != null) ...[
+                                      const SizedBox(height: 8),
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _openInfoUrl(context, item.url),
+                                        icon: const Icon(
+                                          Icons.open_in_new_rounded,
+                                        ),
+                                        label: Text(l.infoOpenLink),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
           ),
         ],
       ),
@@ -11536,7 +11599,10 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         context: context,
         borderRadius: BorderRadius.circular(24),
         color: cs.primaryContainer.withValues(alpha: 0.25),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.25), width: 1.2),
+        border: Border.all(
+          color: cs.primary.withValues(alpha: 0.25),
+          width: 1.2,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Row(
@@ -11553,7 +11619,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
-                  _showInbox ? Icons.mail_outline_rounded : Icons.campaign_rounded,
+                  _showInbox
+                      ? Icons.mail_outline_rounded
+                      : Icons.campaign_rounded,
                   color: Colors.white,
                   size: 26,
                 ),
@@ -11602,7 +11670,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     return _glassContainer(
       context: context,
       borderRadius: BorderRadius.circular(14),
-      color: selected ? cs.primary : cs.surfaceContainerHighest.withValues(alpha: 0.4),
+      color: selected
+          ? cs.primary
+          : cs.surfaceContainerHighest.withValues(alpha: 0.4),
       border: Border.all(
         color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.3),
       ),
@@ -11617,7 +11687,11 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: selected ? cs.onPrimary : cs.onSurfaceVariant),
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+              ),
               const SizedBox(width: 7),
               Flexible(
                 child: Text(
@@ -11643,9 +11717,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       context: context,
       borderRadius: BorderRadius.circular(999),
       color: cs.surfaceContainerHigh.withValues(alpha: 0.55),
-      border: Border.all(
-        color: cs.outlineVariant.withValues(alpha: 0.25),
-      ),
+      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Row(

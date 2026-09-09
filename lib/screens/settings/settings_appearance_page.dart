@@ -278,9 +278,13 @@ class SettingsAppearancePage extends StatelessWidget {
                       _settingsSetVisualTheme(theme);
                     },
                     child: AnimatedContainer(
-                      duration: MediaQuery.of(context).disableAnimations
-                          ? Duration.zero
-                          : const Duration(milliseconds: 260),
+                      duration:
+                          untisThemeTokensOf(
+                            context,
+                          ).expressive?.motionDuration(context) ??
+                          (MediaQuery.of(context).disableAnimations
+                              ? Duration.zero
+                              : const Duration(milliseconds: 260)),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: cs.surfaceContainer,

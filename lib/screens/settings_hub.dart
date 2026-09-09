@@ -473,18 +473,10 @@ class SettingsHubPage extends StatelessWidget {
     BuildContext context,
     List<_SettingsHubItem> groupItems,
   ) {
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-          _expressiveRadius(context, 22, expressiveRadius: 28),
-        ),
-      ),
-      color: cs.surfaceContainerLow,
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: groupItems.asMap().entries.map((entry) {
+    final rows = groupItems
+        .asMap()
+        .entries
+        .map((entry) {
           final index = entry.key;
           final item = entry.value;
           final isLast = index == groupItems.length - 1;
@@ -563,8 +555,24 @@ class SettingsHubPage extends StatelessWidget {
                 ),
             ],
           );
-        }).toList(),
+        })
+        .toList(growable: false);
+
+    if (untisThemeTokensOf(context).usesFullMaterialExpressive) {
+      return ExpressiveCardGroup(children: rows, addDividers: false);
+    }
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 22, expressiveRadius: 28),
+        ),
       ),
+      color: cs.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: rows),
     );
   }
 
@@ -573,6 +581,9 @@ class SettingsHubPage extends StatelessWidget {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
+    final expressiveDuration = untisThemeTokensOf(
+      context,
+    ).expressive?.motionDuration(context, container: true);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -719,7 +730,7 @@ class SettingsHubPage extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(16, 16, 16, mq.padding.bottom + 132),
           children: [
             TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 300),
+              duration: expressiveDuration ?? const Duration(milliseconds: 300),
               tween: Tween(begin: 0, end: 1),
               curve: Curves.easeOutCubic,
               builder: (context, value, child) {
@@ -739,7 +750,7 @@ class SettingsHubPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 400),
+              duration: expressiveDuration ?? const Duration(milliseconds: 400),
               tween: Tween(begin: 0, end: 1),
               curve: Curves.easeOutCubic,
               builder: (context, value, child) {
@@ -760,7 +771,7 @@ class SettingsHubPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 500),
+              duration: expressiveDuration ?? const Duration(milliseconds: 500),
               tween: Tween(begin: 0, end: 1),
               curve: Curves.easeOutCubic,
               builder: (context, value, child) {

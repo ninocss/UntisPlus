@@ -1423,7 +1423,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiSuccess': 'KI-Hintergrund erstellt.',
       'bgEditorAiError': 'KI: ',
       'settingsGlassEffect': 'Blur-Effekt',
-      'settingsGlassEffectDesc': 'Aktiviert Blur in der Oberfläche',
+      'settingsGlassEffectDesc':
+          'Aktiviert Blur für Bottom Sheets, Menüs und die Navigation.',
       'settingsGlowEffects': 'Glow-Effekte',
       'settingsGlowEffectsDesc':
           'Farbige Leuchthöfe bei Stunden, Aufgaben, Noten und Symbolen',
@@ -2415,7 +2416,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiSuccess': 'AI background created.',
       'bgEditorAiError': 'AI: ',
       'settingsGlassEffect': 'Blur Effect',
-      'settingsGlassEffectDesc': 'Enables blur effects across the interface',
+      'settingsGlassEffectDesc':
+          'Enables blur for bottom sheets, menus, and navigation.',
       'settingsGlowEffects': 'Glow effects',
       'settingsGlowEffectsDesc':
           'Colored halos around lessons, tasks, grades, and icons',
@@ -3422,7 +3424,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiSuccess': 'Fond IA créé.',
       'bgEditorAiError': 'IA: ',
       'settingsGlassEffect': 'Effet de flou',
-      'settingsGlassEffectDesc': 'Active le flou dans l\'interface',
+      'settingsGlassEffectDesc':
+          'Active le flou pour les feuilles, les menus et la navigation.',
       'settingsGlowEffects': 'Effets lumineux',
       'settingsGlowEffectsDesc':
           'Halos colorés autour des cours, tâches, notes et icônes',
@@ -4439,7 +4442,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiSuccess': 'Fondo IA creado.',
       'bgEditorAiError': 'IA: ',
       'settingsGlassEffect': 'Efecto de desenfoque',
-      'settingsGlassEffectDesc': 'Activa el desenfoque en la interfaz',
+      'settingsGlassEffectDesc':
+          'Activa el desenfoque para las hojas inferiores, los menús y la navegación.',
       'settingsGlowEffects': 'Efectos de brillo',
       'settingsGlowEffectsDesc':
           'Halos de color alrededor de clases, tareas, notas e iconos',

@@ -108,6 +108,28 @@ void main() {
     }
   });
 
+  test('only Default uses the expressive fallback color variant', () {
+    const seed = 0xFF0F766E;
+    for (final brightness in Brightness.values) {
+      expect(
+        untisThemeScheme(AppThemeId.defaultTheme, brightness, seed),
+        ColorScheme.fromSeed(
+          seedColor: const Color(seed),
+          brightness: brightness,
+          dynamicSchemeVariant: DynamicSchemeVariant.expressive,
+        ),
+      );
+      expect(
+        untisThemeScheme(AppThemeId.vivid, brightness, seed),
+        ColorScheme.fromSeed(
+          seedColor: const Color(0xFF6C20FF),
+          brightness: brightness,
+          dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
+        ),
+      );
+    }
+  });
+
   test(
     'backup round-trips visual theme and per-theme blur preferences',
     () async {

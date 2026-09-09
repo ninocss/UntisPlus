@@ -92,6 +92,103 @@ abstract final class AppTypography {
     labelMedium: role(base.labelMedium!, font, 12, 16, FontWeight.w500, 0.5),
     labelSmall: role(base.labelSmall!, font, 11, 16, FontWeight.w500, 0.5),
   );
+
+  /// Compatibility styles for older presentation code.
+  ///
+  /// They deliberately read the selected app font instead of pinning Outfit so
+  /// screens that have not yet been assigned a more specific text role still
+  /// follow the global preference immediately.
+  static TextStyle legacyText({
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    double? height,
+    double? letterSpacing,
+    FontStyle? fontStyle,
+    TextDecoration? decoration,
+    Color? decorationColor,
+    double? decorationThickness,
+  }) {
+    final font = appFontFamilyNotifier.value;
+    final size = fontSize ?? 14;
+    return TextStyle(
+      color: color,
+      fontFamily: font.family,
+      fontSize: size,
+      fontWeight: fontWeight,
+      height: height,
+      letterSpacing: letterSpacing,
+      fontStyle: fontStyle,
+      decoration: decoration,
+      decorationColor: decorationColor,
+      decorationThickness: decorationThickness,
+      fontVariations: variations(font, size),
+    );
+  }
+}
+
+/// Compatibility adapter for legacy text call sites.
+///
+/// All legacy Outfit calls now resolve through [AppTypography.legacyText], so
+/// the persisted app-wide font selection is respected while each screen is
+/// migrated to semantic [TextTheme] roles. Monospace and markdown code retain
+/// their explicitly chosen code faces.
+abstract final class GoogleFonts {
+  static TextStyle outfit({
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    double? height,
+    double? letterSpacing,
+    FontStyle? fontStyle,
+    TextDecoration? decoration,
+    Color? decorationColor,
+    double? decorationThickness,
+  }) => AppTypography.legacyText(
+    color: color,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    height: height,
+    letterSpacing: letterSpacing,
+    fontStyle: fontStyle,
+    decoration: decoration,
+    decorationColor: decorationColor,
+    decorationThickness: decorationThickness,
+  );
+
+  static TextStyle jetBrainsMono({
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+  }) => google_fonts.GoogleFonts.jetBrainsMono(
+    color: color,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+  );
+
+  static TextStyle inter({
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    double? height,
+  }) => google_fonts.GoogleFonts.inter(
+    color: color,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    height: height,
+  );
+
+  static TextStyle firaCode({
+    Color? color,
+    double? fontSize,
+    FontWeight? fontWeight,
+    Color? backgroundColor,
+  }) => google_fonts.GoogleFonts.firaCode(
+    color: color,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    backgroundColor: backgroundColor,
+  );
 }
 
 @immutable
@@ -111,7 +208,14 @@ class ExpressiveThemeTokens {
   double get heroActionSize => 64;
   Duration get quickMotion => const Duration(milliseconds: 200);
   Duration get containerMotion => const Duration(milliseconds: 400);
+  Duration get loadingCycle => const Duration(milliseconds: 1600);
+  Duration get progressCycle => const Duration(milliseconds: 1400);
   Curve get motionCurve => Curves.easeInOutCubicEmphasized;
+  SpringDescription get spatialSpring =>
+      const SpringDescription(mass: 1, stiffness: 520, damping: 28);
+  double get hoveredStateLayerOpacity => 0.08;
+  double get focusedStateLayerOpacity => 0.12;
+  double get pressedStateLayerOpacity => 0.12;
   Duration motionDuration(BuildContext context, {bool container = false}) =>
       MediaQuery.disableAnimationsOf(context)
       ? Duration.zero
@@ -122,7 +226,7 @@ class ExpressiveThemeTokens {
 
 /// Called once at startup. Legacy call sites also use bundled assets only.
 void configureBundledFonts() {
-  GoogleFonts.config.allowRuntimeFetching = false;
+  google_fonts.GoogleFonts.config.allowRuntimeFetching = false;
   LicenseRegistry.addLicense(() async* {
     for (final entry in const {
       'Google Sans Flex': 'googlesansflex/OFL.txt',

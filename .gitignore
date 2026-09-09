@@ -68,4 +68,5 @@ test/
 !/test/
 /test/*
 !/test/app_font_test.dart
+!/test/expressive_components_test.dart
 !/docs/m3-expressive-step-1.md

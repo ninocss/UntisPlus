@@ -153,11 +153,10 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     final subjectController = TextEditingController(text: selectedSubject);
     DateTime selectedDate = grade?.date ?? DateTime.now();
 
-    showModalBottomSheet(
+    _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      sheetAnimationStyle: _kBottomSheetAnimationStyle,
+      wrapSurface: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) {
           final double? previewValue = double.tryParse(
@@ -174,6 +173,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
             ),
             child: _glassContainer(
               context: ctx,
+              allowDefaultBlur: true,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(32),
               ),

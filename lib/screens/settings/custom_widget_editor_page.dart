@@ -119,12 +119,17 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   }) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     var color = Color(current);
-    await showModalBottomSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+      isScrollControlled: true,
+      child: StatefulBuilder(
+        builder: (context, setSheetState) => SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            16,
+            24,
+            MediaQuery.viewInsetsOf(context).bottom + 28,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -297,8 +302,9 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    if (_loading)
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) {
+      return const Scaffold(body: Center(child: ExpressiveLoadingIndicator()));
+    }
     final config = _selected;
     return Scaffold(
       appBar: RoundedBlurAppBar(title: Text(l.ui('editor'))),

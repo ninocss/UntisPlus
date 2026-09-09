@@ -357,7 +357,7 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
+                    child: ExpressiveLoadingIndicator(),
                   ),
                 )
               else if (values.isEmpty)

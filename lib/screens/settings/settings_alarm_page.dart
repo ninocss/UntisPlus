@@ -52,13 +52,18 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final effectiveSuffix = suffix ?? l.ui('alarmMinutesSuffix');
     var value = current;
-    await showModalBottomSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
-      builder: (context) => StatefulBuilder(
+      isScrollControlled: true,
+      child: StatefulBuilder(
         builder: (context, setSheetState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              16,
+              24,
+              MediaQuery.viewInsetsOf(context).bottom + 28,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -117,23 +122,22 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   Future<void> _editManualAlarm(ManualAlarmConfig alarm) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     var edited = alarm;
-    await showModalBottomSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
-      builder: (sheetContext) => StatefulBuilder(
+      child: StatefulBuilder(
         builder: (context, setSheetState) {
           final time = TimeOfDay(
             hour: edited.timeOfDayMinutes ~/ 60,
             minute: edited.timeOfDayMinutes % 60,
           );
           return SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
                 20,
-                4,
+                16,
                 20,
-                MediaQuery.of(context).viewPadding.bottom + 24,
+                MediaQuery.viewInsetsOf(context).bottom + 24,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -196,7 +200,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                         icon: const Icon(Icons.delete_outline_rounded),
                         label: Text(l.ui('alarmDelete')),
                         onPressed: () async {
-                          Navigator.pop(sheetContext);
+                          Navigator.pop(context);
                           await _save(
                             _config.copyWith(
                               manualAlarms: _config.manualAlarms
@@ -211,7 +215,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                         onPressed: edited.weekdays.isEmpty
                             ? null
                             : () async {
-                                Navigator.pop(sheetContext);
+                                Navigator.pop(context);
                                 final alarms = _config.manualAlarms
                                     .map(
                                       (item) =>
