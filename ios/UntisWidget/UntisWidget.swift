@@ -102,18 +102,13 @@ struct UntisAccountLessonProvider: AppIntentTimelineProvider {
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 struct UntisCurrentLessonWidget: Widget {
     let kind: String = "UntisWidget"
 
     var body: some WidgetConfiguration {
-        if #available(iOSApplicationExtension 17.0, *) {
-            AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountLessonProvider()) { entry in
-                UntisCurrentLessonView(entry: entry)
-            }
-        } else {
-            StaticConfiguration(kind: kind, provider: UntisLessonProvider()) { entry in
-                UntisCurrentLessonView(entry: entry)
-            }
+        AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountLessonProvider()) { entry in
+            UntisCurrentLessonView(entry: entry)
         }
         .configurationDisplayName("Current Lesson")
         .description("Shows your current and next lesson.")
@@ -213,25 +208,25 @@ struct UntisSummaryView: View {
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 struct UntisHomeworkWidget: Widget {
     let kind = "UntisWidgetHomework"
     var body: some WidgetConfiguration {
-        if #available(iOSApplicationExtension 17.0, *) {
-            AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: "AUFGABEN", field: "homework_summary")) { UntisSummaryView(entry: $0) }
-        } else {
-            StaticConfiguration(kind: kind, provider: UntisStaticSummaryProvider(title: "AUFGABEN", field: "homework_summary")) { UntisSummaryView(entry: $0) }
-        }
+        AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: "AUFGABEN", field: "homework_summary")) { UntisSummaryView(entry: $0) }
+            .configurationDisplayName("Aufgaben")
+            .description("Zeigt deine aktuellen Aufgaben.")
+            .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 struct UntisNotificationsWidget: Widget {
     let kind = "UntisWidgetNotifications"
     var body: some WidgetConfiguration {
-        if #available(iOSApplicationExtension 17.0, *) {
-            AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: "MITTEILUNGEN", field: "notification_summary")) { UntisSummaryView(entry: $0) }
-        } else {
-            StaticConfiguration(kind: kind, provider: UntisStaticSummaryProvider(title: "MITTEILUNGEN", field: "notification_summary")) { UntisSummaryView(entry: $0) }
-        }
+        AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: "MITTEILUNGEN", field: "notification_summary")) { UntisSummaryView(entry: $0) }
+            .configurationDisplayName("Mitteilungen")
+            .description("Zeigt deine aktuellen Mitteilungen.")
+            .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
@@ -299,17 +294,14 @@ struct UntisCustomProvider: AppIntentTimelineProvider {
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 struct UntisCustomWidget: Widget {
     let kind = "UntisWidgetCustom"
     var body: some WidgetConfiguration {
-        if #available(iOSApplicationExtension 17.0, *) {
-            AppIntentConfiguration(kind: kind, intent: UntisWidgetProfileIntent.self, provider: UntisCustomProvider()) { UntisCustomView(entry: $0) }
-                .configurationDisplayName("Untis+ Custom")
-                .description("Dein eigenes Untis+-Widget.")
-                .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
-        } else {
-            StaticConfiguration(kind: kind, provider: UntisLessonProvider()) { entry in Text(entry.currentLesson).padding() }
-        }
+        AppIntentConfiguration(kind: kind, intent: UntisWidgetProfileIntent.self, provider: UntisCustomProvider()) { UntisCustomView(entry: $0) }
+            .configurationDisplayName("Untis+ Custom")
+            .description("Dein eigenes Untis+-Widget.")
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 

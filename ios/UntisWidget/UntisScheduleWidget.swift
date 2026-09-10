@@ -44,18 +44,13 @@ struct UntisAccountScheduleProvider: AppIntentTimelineProvider {
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 struct UntisDailyScheduleWidget: Widget {
     let kind: String = "UntisWidgetDailySchedule"
 
     var body: some WidgetConfiguration {
-        if #available(iOSApplicationExtension 17.0, *) {
-            AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountScheduleProvider()) { entry in
-                UntisDailyScheduleView(entry: entry)
-            }
-        } else {
-            StaticConfiguration(kind: kind, provider: UntisScheduleProvider()) { entry in
-                UntisDailyScheduleView(entry: entry)
-            }
+        AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountScheduleProvider()) { entry in
+            UntisDailyScheduleView(entry: entry)
         }
         .configurationDisplayName("Daily Schedule")
         .description("Shows your full day schedule.")
