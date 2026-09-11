@@ -592,6 +592,16 @@ List<String> _modelsForProvider(
       ];
     case 'local':
       return _localModelIds();
+    case 'custom':
+      if (_normalizeAiCustomCompatibility(customCompatibility ?? 'openai') ==
+          'gemini') {
+        return const [
+          'gemini-3.6-flash',
+          'gemini-3.6-pro',
+          'gemini-3.6-flash-lite',
+        ];
+      }
+      return const ['gpt-4o-mini', 'gpt-4o', 'o4-mini', 'o3-mini'];
     case 'gemini':
     default:
       return const [
@@ -621,6 +631,8 @@ String _activeAiApiKey() {
       return openAiApiKey;
     case 'mistral':
       return mistralApiKey;
+    case 'custom':
+      return customAiApiKey;
     case 'gemini':
     default:
       return geminiApiKey;
