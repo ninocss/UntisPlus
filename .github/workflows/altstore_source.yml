@@ -112,14 +112,16 @@ jobs:
           fi
 
           PROMPT=$(cat <<'PROMPT_EOF'
-          You write a one-sentence app store description for an iOS update of a Flutter app called "Untis+".
-          The app is a privacy-first companion for WebUntis (school timetable, homework, notifications).
+          You are writing the "What's New" section for an iOS app update on AltStore.
+          The app is "Untis+", a privacy-first companion for WebUntis (school timetable, homework, notifications).
+
+          Write a short "What's New" message for this release.
 
           Rules:
-          - Output ONLY the description string, nothing else.
-          - Max 30 words.
-          - Mention the most important user-facing change from the release notes.
-          - If the release notes are empty or vague, write a generic update sentence.
+          - Output ONLY the description text, nothing else.
+          - 1–3 short sentences.
+          - Focus on the most important user-facing changes from the release notes.
+          - If the release notes are empty or vague, write a generic "Bug fixes and improvements." style message.
           - Tone: friendly and practical. No emojis.
           PROMPT_EOF
           )
