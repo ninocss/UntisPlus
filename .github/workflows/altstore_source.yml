@@ -14,7 +14,6 @@ concurrency:
 jobs:
   update_source:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.release.prerelease }}
     steps:
       - uses: actions/checkout@v5
 
@@ -25,6 +24,7 @@ jobs:
           RELEASE_NAME: ${{ github.event.release.name }}
           RELEASE_BODY: ${{ github.event.release.body }}
           RELEASE_DATE: ${{ github.event.release.published_at }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           set -euo pipefail
 
@@ -78,6 +78,7 @@ jobs:
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
           echo "ipa_size=$IPA_SIZE" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
           echo "news_id=untisplus-release-$(echo "$CFB_VERSION" | tr '.' '-')" >> "$GITHUB_OUTPUT"
 
           {
@@ -201,8 +202,21 @@ jobs:
           NEWS_ID: ${{ steps.meta.outputs.news_id }}
           DESCRIPTION: ${{ steps.ai.outputs.description }}
           REPO: ${{ github.repository }}
+          IS_PRERELEASE: ${{ steps.meta.outputs.is_prerelease }}
         run: |
           set -euo pipefail
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            APP_INDEX=1
+            APP_NAME="Untis+ Nightly"
+            NEWS_TINT="1E4670"
+            NEWS_APPID="com.ninocss.untisplus.Nightly"
+          else
+            APP_INDEX=0
+            APP_NAME="Untis+"
+            NEWS_TINT="4A90D9"
+            NEWS_APPID="com.ninocss.untisplus"
+          fi
 
           jq \
             --arg version "$VERSION" \
@@ -213,8 +227,12 @@ jobs:
             --arg desc "$DESCRIPTION" \
             --arg news_id "$NEWS_ID" \
             --arg repo "$REPO" \
+            --arg app_name "$APP_NAME" \
+            --arg news_tint "$NEWS_TINT" \
+            --arg news_appid "$NEWS_APPID" \
+            --argjson app_index "$APP_INDEX" \
             '
-            .apps[0].versions = ([
+            .apps[$app_index].versions = ([
               {
                 "version": $version,
                 "buildVersion": $build_version,
@@ -224,17 +242,17 @@ jobs:
                 "size": $size,
                 "minOSVersion": "15.0"
               }
-            ] + (.apps[0].versions | map(select(.version != $version))))
+            ] + (.apps[$app_index].versions | map(select(.version != $version))))
             |
             .news = ([
               {
-                "title": "Untis+ " + $version + " is here",
+                "title": $app_name + " " + $version + " is here",
                 "identifier": $news_id,
                 "caption": $desc,
                 "date": $date,
-                "tintColor": "4A90D9",
+                "tintColor": $news_tint,
                 "imageURL": "https://raw.githubusercontent.com/" + $repo + "/main/assets/icon.png",
-                "appID": "com.ninocss.untisplus",
+                "appID": $news_appid,
                 "notify": true
               }
             ] + (.news | map(select(.identifier != $news_id))))

@@ -171,6 +171,7 @@ jobs:
           TAG: ${{ needs.check_changes.outputs.nightly_tag }}
         run: |
           set -euo pipefail
+          sed -i 's/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus;/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.Nightly;/g' ios/Runner.xcodeproj/project.pbxproj
           flutter pub get
           flutter build ios --release --no-codesign
           mkdir -p release_assets/Payload
