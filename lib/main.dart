@@ -1425,7 +1425,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final end = lesson['endTime']?.toString() ?? '';
     final subId = (lesson['su'] as List?)?.firstOrNull?['id']?.toString() ?? '';
     final roomId = withRoom
-        ? ((lesson['ro'] as List?)?.firstOrNull?['id']?.toString() ?? '')
+        ? ((() {
+            final r = lesson['ro'];
+            final list = r is List ? r : r is Map ? [r] : <dynamic>[];
+            return list.firstOrNull?['id']?.toString() ?? '';
+          })())
         : '';
     return '$date|$start|$end|$subId|$roomId';
   }
@@ -2176,6 +2180,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final day = entry['date'];
       if (day is! int) continue;
       final dayStr = day.toString();
+      if (dayStr.length != 8) continue;
       final date = DateTime.tryParse(
         '${dayStr.substring(0, 4)}-${dayStr.substring(4, 6)}-${dayStr.substring(6, 8)}',
       );
@@ -2226,7 +2231,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             : '?';
       }
     }
-    final roList = (lesson['ro'] as List?) ?? [];
+    final rawRo = lesson['ro'];
+    final roList = rawRo is List
+        ? rawRo
+        : rawRo is Map
+        ? [rawRo]
+        : <dynamic>[];
     if (roList.isNotEmpty) {
       final names = roList
           .map((ro) {
