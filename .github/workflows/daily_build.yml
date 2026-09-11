@@ -174,8 +174,8 @@ jobs:
           flutter pub get
           flutter build ios --release --no-codesign
           mkdir -p release_assets/Payload
-          cp -R build/ios/iphoneos/Runner.app release_assets/Payload/
-          (cd release_assets && zip -r -y "UntisPlus-${TAG}.ipa" Payload && rm -rf Payload)
+          ditto --norsrc build/ios/iphoneos/Runner.app release_assets/Payload/Runner.app
+          (cd release_assets && zip -r "UntisPlus-${TAG}.ipa" Payload && rm -rf Payload)
 
       - uses: actions/upload-artifact@v6
         with:

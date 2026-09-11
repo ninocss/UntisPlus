@@ -510,8 +510,8 @@ jobs:
           TAG="${{ needs.meta.outputs.release_tag }}"
           mkdir -p ipa_artifacts
           mkdir -p Payload
-          cp -R build/ios/iphoneos/Runner.app Payload/
-          zip -r -y "ipa_artifacts/UntisPlus-${TAG}.ipa" Payload
+          ditto --norsrc build/ios/iphoneos/Runner.app Payload/Runner.app
+          zip -r "ipa_artifacts/UntisPlus-${TAG}.ipa" Payload
           rm -rf Payload
 
       - name: Upload IPA Artifact

@@ -55,8 +55,8 @@ jobs:
         run: |
           VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)"
           mkdir -p Payload
-          cp -R build/ios/iphoneos/Runner.app Payload/
-          zip -r -y "UntisPlus-${VERSION}.ipa" Payload
+          ditto --norsrc build/ios/iphoneos/Runner.app Payload/Runner.app
+          zip -r "UntisPlus-${VERSION}.ipa" Payload
           rm -rf Payload
 
       - name: Upload Unsigned IPA
