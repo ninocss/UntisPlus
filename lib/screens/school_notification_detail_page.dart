@@ -65,9 +65,8 @@ IconData _attachmentIcon(String ext) {
   }
 }
 
-class SchoolNotificationDetailPage extends StatelessWidget {
-  const SchoolNotificationDetailPage({
-    super.key,
+class _SchoolNotificationDetailPage extends StatelessWidget {
+  const _SchoolNotificationDetailPage({
     required this.item,
     required this.isInbox,
   });

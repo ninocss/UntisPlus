@@ -2,6 +2,10 @@
   "name": "Untis+",
   "identifier": "com.ninocss.untisplus.source",
   "sourceURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/altstore/source.json",
+  "subtitle": "A privacy-first companion app for WebUntis",
+  "description": "A privacy-first companion app for WebUntis",
+  "website": "https://nino161er.tech/",
+  "patreonURL": "https://ko-fi.com/nino161er",
   "apps": [
     {
       "name": "Untis+",
@@ -76,7 +80,30 @@
       ]
     }
   ],
+  "featuredApps": [
+    "com.ninocss.untisplus"
+  ],
   "news": [
+    {
+      "title": "Stand with Palastine",
+      "identifier": "palastine-support",
+      "caption": "Untis+ developers stand with Palastine and supports the people of Palastine in their fight for freedom and justice. We condemn the ongoing violence and oppression faced by the people of Palastine and call for an end to the occupation and the recognition of Palastine as a sovereign state.",
+      "date": "2026-10-07",
+      "tintColor": "#4A90D9",
+      "imageURL": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Flag_of_Palestine_%281948%E2%80%931964%29.svg?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original",
+      "notify": true
+
+    },
+    {
+      "title": "Untis+ Nightly is here",
+      "identifier": "untisplus-nightly-release",
+      "caption": "Get the latest features and improvements before anyone else with Untis+ Nightly.",
+      "date": "2026-09-09",
+      "tintColor": "1E4670",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus.Nightly",
+      "notify": true
+    },
     {
       "title": "Untis+ 5.3.0 is here",
       "identifier": "untisplus-release-5-3-0",

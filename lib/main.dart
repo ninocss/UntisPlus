@@ -11188,55 +11188,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       return null;
     }
 
-    Future<List<Map<String, dynamic>>> fetchInboxMessages() async {
-      final token = await fetchJwtToken();
-      if (token == null || token.isEmpty) return const [];
-      final uri = Uri.parse(
-        'https://$schoolUrl/WebUntis/api/rest/view/v1/messages',
-      );
-      final response = await requestWithCookieFallback(
-        (headers) => http.get(
-          uri,
-          headers: {...headers, 'Authorization': 'Bearer $token'},
-        ),
-      );
-      if (response == null || response.body.trim().isEmpty) return const [];
-      try {
-        final decoded = jsonDecode(response.body);
-        final incoming = decoded is Map ? decoded['incomingMessages'] : null;
-        if (incoming is! List) return const [];
-        return incoming
-            .whereType<Map>()
-            .map((raw) {
-              final rawMap = Map<String, dynamic>.from(raw);
-              // Some WebUntis deployments wrap the fields in a "message"
-              // object, others expose them directly on the entry.
-              final map =
-                  rawMap['message'] is Map
-                      ? Map<String, dynamic>.from(rawMap['message'])
-                      : rawMap;
-              final sender = map['sender'];
-              final preview =
-                  map['contentPreview'] ?? map['message'] ?? map['text'] ?? '';
-              final content = map['content'] ?? preview;
-              return {
-                ...map,
-                'message': preview,
-                'fullBody': content,
-                'author': sender is Map
-                    ? sender['displayName'] ?? sender['name']
-                    : null,
-                'date': map['sentDateTime'] ?? map['date'] ?? map['sendTime'],
-                'attachments': _parseMessageAttachments(map),
-              };
-            })
-            .toList(growable: false);
-      } catch (_) {
-        return const [];
-      }
-    }
-
-    List<_MessageAttachment> _parseMessageAttachments(
+    List<_MessageAttachment> parseMessageAttachments(
       Map<String, dynamic> map,
     ) {
       final out = <_MessageAttachment>[];
@@ -11276,6 +11228,54 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         out.add(_MessageAttachment(id: id, name: name));
       }
       return out;
+    }
+
+    Future<List<Map<String, dynamic>>> fetchInboxMessages() async {
+      final token = await fetchJwtToken();
+      if (token == null || token.isEmpty) return const [];
+      final uri = Uri.parse(
+        'https://$schoolUrl/WebUntis/api/rest/view/v1/messages',
+      );
+      final response = await requestWithCookieFallback(
+        (headers) => http.get(
+          uri,
+          headers: {...headers, 'Authorization': 'Bearer $token'},
+        ),
+      );
+      if (response == null || response.body.trim().isEmpty) return const [];
+      try {
+        final decoded = jsonDecode(response.body);
+        final incoming = decoded is Map ? decoded['incomingMessages'] : null;
+        if (incoming is! List) return const [];
+        return incoming
+            .whereType<Map>()
+            .map((raw) {
+              final rawMap = Map<String, dynamic>.from(raw);
+              // Some WebUntis deployments wrap the fields in a "message"
+              // object, others expose them directly on the entry.
+              final map =
+                  rawMap['message'] is Map
+                      ? Map<String, dynamic>.from(rawMap['message'])
+                      : rawMap;
+              final sender = map['sender'];
+              final preview =
+                  map['contentPreview'] ?? map['message'] ?? map['text'] ?? '';
+              final content = map['content'] ?? preview;
+              return {
+                ...map,
+                'message': preview,
+                'fullBody': content,
+                'author': sender is Map
+                    ? sender['displayName'] ?? sender['name']
+                    : null,
+                'date': map['sentDateTime'] ?? map['date'] ?? map['sendTime'],
+                'attachments': parseMessageAttachments(map),
+              };
+            })
+            .toList(growable: false);
+      } catch (_) {
+        return const [];
+      }
     }
 
     Future<List<Map<String, dynamic>>> fetchNewsWidgetMessages() async {
@@ -11476,7 +11476,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                       .toString()
                       .trim(),
             url: _pickNotificationUrl(map),
-            attachments: _parseMessageAttachments(map),
+            attachments: parseMessageAttachments(map),
           ),
         );
       }
@@ -11741,7 +11741,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => SchoolNotificationDetailPage(
+                                  builder: (_) => _SchoolNotificationDetailPage(
                                     item: item,
                                     isInbox: _showInbox,
                                   ),
