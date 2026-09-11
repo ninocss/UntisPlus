@@ -33,11 +33,11 @@
       ],
       "versions": [
         {
-          "version": "5.3.0",
-          "buildVersion": "5.3.0",
+          "version": "5.3.1",
+          "buildVersion": "5.3.1",
           "date": "2026-09-09",
           "localizedDescription": "Reverts the navigation bar to its classic design, refreshes the reload indicator across pages, updates iOS home screen widgets and fixes offline cache bugs for a smoother experience.",
-          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.3.0/UntisPlus-v5.3.0.ipa",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.3.1/UntisPlus-v5.3.1.ipa",
           "size": 41935858,
           "minOSVersion": "15.0"
         }
@@ -105,8 +105,8 @@
       "notify": true
     },
     {
-      "title": "Untis+ 5.3.0 is here",
-      "identifier": "untisplus-release-5-3-0",
+      "title": "Untis+ 5.3.1 is here",
+      "identifier": "untisplus-release-5-3-1",
       "caption": "A polished UI, refreshed reload indicators, updated home screen widgets and more reliable offline caching.",
       "date": "2026-09-09",
       "tintColor": "4A90D9",
