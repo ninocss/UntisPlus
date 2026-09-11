@@ -47,7 +47,7 @@ class AbsenceRepository {
       source: SyncSource.cache,
       lastSuccessfulSync: cached.savedAt,
       isStale:
-          DateTime.now().difference(cached.savedAt) > const Duration(hours: 6),
+            DateTime.now().difference(cached.savedAt) > const Duration(hours: 6),
     );
   }
 
