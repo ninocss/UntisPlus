@@ -1,0 +1,187 @@
+name: Update AltStore Source
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: altstore-source
+  cancel-in-progress: false
+
+jobs:
+  update_source:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.release.prerelease }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve release metadata
+        id: meta
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_DATE: ${{ github.event.release.published_at }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${RELEASE_TAG#v}"
+          DATE="$(date -d "$RELEASE_DATE" -u +%Y-%m-%d)"
+          IPA_NAME="UntisPlus-${RELEASE_TAG}.ipa"
+          IPA_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${IPA_NAME}"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "body<<RELEASE_BODY_EOF"
+            echo "$RELEASE_BODY"
+            echo "RELEASE_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "name<<RELEASE_NAME_EOF"
+            echo "$RELEASE_NAME"
+            echo "RELEASE_NAME_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate localizedDescription via Gemini
+        id: ai
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.5-flash
+          GEMINI_FALLBACK_MODEL: gemini-3.5-flash-lite
+          RELEASE_NAME: ${{ steps.meta.outputs.name }}
+          RELEASE_BODY: ${{ steps.meta.outputs.body }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "description=A new update with improvements and fixes." >> "$GITHUB_OUTPUT"
+            echo "No GEMINI_API_KEY set – using default description."
+            exit 0
+          fi
+
+          PROMPT=$(cat <<'PROMPT_EOF'
+          You write a one-sentence app store description for an iOS update of a Flutter app called "Untis+".
+          The app is a privacy-first companion for WebUntis (school timetable, homework, notifications).
+
+          Rules:
+          - Output ONLY the description string, nothing else.
+          - Max 30 words.
+          - Mention the most important user-facing change from the release notes.
+          - If the release notes are empty or vague, write a generic update sentence.
+          - Tone: friendly and practical. No emojis.
+          PROMPT_EOF
+          )
+
+          PAYLOAD=$(jq -n \
+            --arg prompt "$PROMPT" \
+            --arg name "$RELEASE_NAME" \
+            --arg version "$RELEASE_VERSION" \
+            --arg body "$RELEASE_BODY" \
+            '{
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      text: (
+                        $prompt +
+                        "\n\nRelease name: " + $name +
+                        "\nVersion: " + $version +
+                        "\nRelease notes:\n" + $body
+                      )
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                temperature: 0.3,
+                responseMimeType: "text/plain"
+              }
+            }')
+
+          request_model() {
+            local model="$1"
+            curl -sS "https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "$PAYLOAD"
+          }
+
+          extract_body() {
+            jq -r '[
+              (.candidates[0].content.parts // [] | map(.text // empty) | join("\n")),
+              (.candidates // [] | map(.output_text // empty) | join("\n")),
+              (.text // empty)
+            ] | map(select(length > 0)) | .[0] // empty'
+          }
+
+          RESPONSE=$(request_model "$GEMINI_MODEL")
+          API_ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+          DESCRIPTION=$(echo "$RESPONSE" | extract_body)
+
+          USED_MODEL="$GEMINI_MODEL"
+          if [ -n "$API_ERROR" ] || [ -z "$DESCRIPTION" ]; then
+            echo "Primary model failed. Trying fallback..."
+            RESPONSE=$(request_model "$GEMINI_FALLBACK_MODEL")
+            API_ERROR=$(echo "$RESPONSE" | jq -r '.error.message // empty')
+            DESCRIPTION=$(echo "$RESPONSE" | extract_body)
+            USED_MODEL="$GEMINI_FALLBACK_MODEL"
+          fi
+
+          if [ -n "$API_ERROR" ] || [ -z "$DESCRIPTION" ]; then
+            echo "Gemini API error or empty response, using default."
+            DESCRIPTION="A new update with improvements and bug fixes."
+          fi
+
+          DESCRIPTION=$(echo "$DESCRIPTION" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          echo "Generated description with $USED_MODEL: $DESCRIPTION"
+          echo "description=$DESCRIPTION" >> "$GITHUB_OUTPUT"
+
+      - name: Update source.json
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          DATE: ${{ steps.meta.outputs.date }}
+          IPA_URL: ${{ steps.meta.outputs.ipa_url }}
+          DESCRIPTION: ${{ steps.ai.outputs.description }}
+        run: |
+          set -euo pipefail
+
+          jq \
+            --arg version "$VERSION" \
+            --arg date "$DATE" \
+            --arg url "$IPA_URL" \
+            --arg desc "$DESCRIPTION" \
+            '
+            .apps[0].versions = [
+              {
+                "version": $version,
+                "buildVersion": "1",
+                "date": $date,
+                "localizedDescription": $desc,
+                "downloadURL": $url,
+                "size": 0,
+                "minOSVersion": "15.0"
+              }
+            ] + .apps[0].versions
+            ' altstore/source.json > altstore/source.json.tmp
+          mv altstore/source.json.tmp altstore/source.json
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add altstore/source.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: update AltStore source for ${{ steps.meta.outputs.tag }} [skip ci]"
+          git push
