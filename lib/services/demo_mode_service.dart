@@ -467,6 +467,52 @@ class DemoModeService {
     ];
   }
 
+  /// Demo inbox messages shaped like the WebUntis messages REST endpoint so
+  /// the full-message detail view and attachment list are explorable without
+  /// a school login. Attachments are metadata only (`isDemo`).
+  static List<Map<String, dynamic>> demoInboxNotifications({
+    String locale = 'de',
+  }) {
+    final today = DateTime.now();
+    final sender = {
+      'displayName': 'Schulverwaltung',
+      'name': 'Schulverwaltung',
+    };
+    return [
+      {
+        'id': 'demo-inbox-1',
+        'title': 'Exkursion ins Technikmuseum',
+        'contentPreview': 'Vom 20. bis 22. Oktober fahren die Jahrgangsstufen ...',
+        'content':
+            '<p>Vom <strong>20. bis 22. Oktober</strong> fahren die Jahrgänge 9 und 10 auf die '
+            'große Exkursion ins Technikmuseum.</p><p>Treffpunkt ist um 07:30 Uhr am Haupteingang. '
+            'Bitte bringt euer unterschriebenes Formular sowie ausreichend Verpflegung mit.</p>',
+        'sender': sender,
+        'sentDateTime': today.subtract(const Duration(days: 2)).toIso8601String(),
+        'attachments': [
+          {'fileId': 91001, 'name': 'Einverstaendnisbogen.pdf', 'size': 128000},
+          {'fileId': 91002, 'name': 'Programmplan.png', 'size': 890000},
+        ],
+      },
+      {
+        'id': 'demo-inbox-2',
+        'title': 'Neue Öffnungszeiten der Bibliothek',
+        'contentPreview': 'Ab nächster Woche gelten neue Öffnungszeiten ...',
+        'content':
+            '<p>Ab nächster Woche gelten neue Öffnungszeiten für die Schulbibliothek:</p>'
+            '<ul><li>Montag – Donnerstag: 08:00 – 16:00 Uhr</li>'
+            '<li>Freitag: 08:00 – 13:00 Uhr</li></ul>',
+        'sender': {'displayName': 'Bibliothek', 'name': 'Bibliothek'},
+        'sentDateTime': today.subtract(const Duration(days: 5)).toIso8601String(),
+        'attachments': [
+          {'fileId': 92001, 'name': 'Oeffnungszeiten.pdf', 'size': 24000},
+          {'fileId': 92002, 'name': 'Ausleihordnung.pdf', 'size': 43000},
+          {'fileId': 92003, 'name': 'Neue-Medien.pdf', 'size': 51000},
+        ],
+      },
+    ];
+  }
+
   static List<Map<String, dynamic>> demoClasses() => const [
         {'id': 999001, 'name': 'Demo 10A', 'longName': 'Demo-Klasse 10A'},
         {'id': 999002, 'name': 'Demo 10B', 'longName': 'Demo-Klasse 10B'},

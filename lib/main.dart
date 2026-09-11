@@ -73,6 +73,7 @@ part 'screens/settings/settings_widgets_page.dart';
 part 'screens/settings/custom_widget_editor_page.dart';
 part 'screens/settings/settings_account_page.dart';
 part 'screens/settings/settings_about_updates_page.dart';
+part 'screens/school_notification_detail_page.dart';
 part 'widgets/animated_background.dart';
 part 'widgets/expressive_refresh_indicator.dart';
 part 'widgets/custom_background_view.dart';
@@ -10899,24 +10900,58 @@ class LessonCard extends StatelessWidget {
   }
 }
 
+class _MessageAttachment {
+  final String id;
+  final String name;
+  final bool isDemo;
+
+  const _MessageAttachment({
+    required this.id,
+    required this.name,
+    this.isDemo = false,
+  });
+
+  String get fileExtension {
+    final dot = name.lastIndexOf('.');
+    if (dot <= 0 || dot == name.length - 1) return '';
+    return name.substring(dot + 1).toUpperCase();
+  }
+}
+
 class _SchoolNotificationItem {
   final String id;
   final String title;
   final String body;
+  final String fullBody;
   final DateTime? date;
   final String? author;
   final String? url;
+  final List<_MessageAttachment> attachments;
 
   const _SchoolNotificationItem({
     required this.id,
     required this.title,
     required this.body,
     required this.date,
+    this.fullBody = '',
     this.author,
     this.url,
+    this.attachments = const [],
   });
 
   int get sortValue => date?.millisecondsSinceEpoch ?? 0;
+
+  String get displayBody => fullBody.isEmpty ? body : fullBody;
+
+  String? get uniformAttachmentExtension {
+    if (attachments.isEmpty) return null;
+    final first = attachments.first.fileExtension;
+    if (first.isEmpty) return null;
+    for (final attachment in attachments) {
+      if (attachment.fileExtension != first) return null;
+    }
+    return first;
+  }
 }
 
 // --- INFO / SCHUL-BENACHRICHTIGUNGEN ---
@@ -10944,28 +10979,57 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
 
   Future<void> _reload({bool showSpinner = false}) async {
     if (demoModeNotifier.value) {
-      final fetched =
-          DemoModeService.demoNotifications(
-            locale: appLocaleNotifier.value,
-          ).map((raw) {
-            return _SchoolNotificationItem(
-              id: raw['id'].toString(),
-              title: raw['title']?.toString() ?? '',
-              body: raw['message']?.toString() ?? '',
-              date: _parseNotificationDate(raw['date']),
-              author: raw['author']?.toString(),
-            );
-          }).toList();
+      final locale = appLocaleNotifier.value;
+      final fetchedNews = DemoModeService.demoNotifications(
+        locale: locale,
+      ).map((raw) {
+        return _SchoolNotificationItem(
+          id: raw['id'].toString(),
+          title: raw['title']?.toString() ?? '',
+          body: raw['message']?.toString() ?? '',
+          date: _parseNotificationDate(raw['date']),
+          author: raw['author']?.toString(),
+        );
+      }).toList();
+      final fetchedInbox = DemoModeService.demoInboxNotifications(
+        locale: locale,
+      ).map((raw) {
+        return _SchoolNotificationItem(
+          id: raw['id'].toString(),
+          title: raw['title']?.toString() ?? '',
+          body: raw['contentPreview']?.toString() ?? raw['message']?.toString() ?? '',
+          fullBody: raw['content']?.toString() ?? '',
+          date: _parseNotificationDate(
+            raw['sentDateTime'] ?? raw['date'],
+          ),
+          author: raw['sender'] is Map
+              ? (raw['sender'] as Map)['displayName']?.toString()
+              : raw['author']?.toString(),
+          attachments: (raw['attachments'] as List? ?? const [])
+              .whereType<Map>()
+              .map(
+                (m) => _MessageAttachment(
+                  id: m['id'].toString(),
+                  name: m['name'].toString(),
+                  isDemo: true,
+                ),
+              )
+              .toList(),
+        );
+      }).toList();
       if (!mounted) return;
       setState(() {
-        _newsItems = fetched;
-        _inboxItems = const [];
+        _newsItems = fetchedNews;
+        _inboxItems = fetchedInbox;
         _loading = false;
         _error = null;
         _lastUpdated = DateTime.now();
       });
       if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-        final summary = fetched.take(3).map((item) => item.title).join('\n');
+        final summary = fetchedNews
+            .take(3)
+            .map((item) => item.title)
+            .join('\n');
         unawaited(
           WidgetService.updateNotificationWidget(
             summary,
@@ -11144,21 +11208,74 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         return incoming
             .whereType<Map>()
             .map((raw) {
-              final map = Map<String, dynamic>.from(raw);
+              final rawMap = Map<String, dynamic>.from(raw);
+              // Some WebUntis deployments wrap the fields in a "message"
+              // object, others expose them directly on the entry.
+              final map =
+                  rawMap['message'] is Map
+                      ? Map<String, dynamic>.from(rawMap['message'])
+                      : rawMap;
               final sender = map['sender'];
+              final preview =
+                  map['contentPreview'] ?? map['message'] ?? map['text'] ?? '';
+              final content = map['content'] ?? preview;
               return {
                 ...map,
-                'message': map['contentPreview'] ?? map['message'] ?? '',
+                'message': preview,
+                'fullBody': content,
                 'author': sender is Map
                     ? sender['displayName'] ?? sender['name']
                     : null,
-                'date': map['sentDateTime'] ?? map['date'],
+                'date': map['sentDateTime'] ?? map['date'] ?? map['sendTime'],
+                'attachments': _parseMessageAttachments(map),
               };
             })
             .toList(growable: false);
       } catch (_) {
         return const [];
       }
+    }
+
+    List<_MessageAttachment> _parseMessageAttachments(
+      Map<String, dynamic> map,
+    ) {
+      final out = <_MessageAttachment>[];
+      dynamic rawAttachments;
+      for (final key in const [
+        'attachments',
+        'fileAttachments',
+        'attachmentList',
+        'files',
+      ]) {
+        final value = map[key];
+        if (value is List) {
+          rawAttachments = value;
+          break;
+        }
+      }
+      if (rawAttachments is! List) return out;
+      for (final entry in rawAttachments) {
+        if (entry is! Map) continue;
+        final attachment = Map<String, dynamic>.from(entry);
+        final id =
+            (attachment['fileId'] ??
+                    attachment['attachmentId'] ??
+                    attachment['fileAttachmentId'] ??
+                    attachment['id'] ??
+                    '')
+                .toString();
+        final name =
+            (attachment['fileRegularName'] ??
+                    attachment['fileName'] ??
+                    attachment['regularName'] ??
+                    attachment['name'] ??
+                    '')
+                .toString()
+                .trim();
+        if (id.isEmpty && name.isEmpty) continue;
+        out.add(_MessageAttachment(id: id, name: name));
+      }
+      return out;
     }
 
     Future<List<Map<String, dynamic>>> fetchNewsWidgetMessages() async {
@@ -11346,6 +11463,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                 ? AppL10n.of(appLocaleNotifier.value).infoTitle
                 : title,
             body: body,
+            fullBody:
+                (map['fullBody'] ?? map['content'] ?? '').toString().trim(),
             date: dt,
             author:
                 (map['author'] ?? map['createdBy'] ?? map['publisher'] ?? '')
@@ -11357,6 +11476,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                       .toString()
                       .trim(),
             url: _pickNotificationUrl(map),
+            attachments: _parseMessageAttachments(map),
           ),
         );
       }
@@ -11615,66 +11735,84 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                           border: Border.all(
                             color: cs.outlineVariant.withValues(alpha: 0.3),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  _showInbox
-                                      ? Icons.mail_outline_rounded
-                                      : Icons.campaign_rounded,
-                                  size: 18,
-                                  color: cs.primary,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(24),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SchoolNotificationDetailPage(
+                                    item: item,
+                                    isInbox: _showInbox,
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    item.title,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w800,
-                                      height: 1.15,
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    _showInbox
+                                        ? Icons.mail_outline_rounded
+                                        : Icons.campaign_rounded,
+                                    size: 18,
+                                    color: cs.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      item.title,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.15,
+                                      ),
                                     ),
                                   ),
+                                ],
+                              ),
+                              if (item.body.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                _buildFormattedInfoBody(context, item.body),
+                              ],
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  if (item.date != null)
+                                    _infoChip(
+                                      context,
+                                      _formatDate(item.date),
+                                      Icons.schedule_rounded,
+                                    ),
+                                  if ((item.author ?? '').isNotEmpty)
+                                    _infoChip(
+                                      context,
+                                      item.author!,
+                                      Icons.person_outline_rounded,
+                                    ),
+                                ],
+                              ),
+                              if (item.attachments.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                _infoAttachmentSummary(context, item),
+                              ],
+                              if (item.url != null) ...[
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  onPressed: () =>
+                                      _openInfoUrl(context, item.url),
+                                  icon: const Icon(Icons.open_in_new_rounded),
+                                  label: Text(l.infoOpenLink),
                                 ),
                               ],
-                            ),
-                            if (item.body.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              _buildFormattedInfoBody(context, item.body),
-                            ],
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              children: [
-                                if (item.date != null)
-                                  _infoChip(
-                                    context,
-                                    _formatDate(item.date),
-                                    Icons.schedule_rounded,
-                                  ),
-                                if ((item.author ?? '').isNotEmpty)
-                                  _infoChip(
-                                    context,
-                                    item.author!,
-                                    Icons.person_outline_rounded,
-                                  ),
-                              ],
-                            ),
-                            if (item.url != null) ...[
-                              const SizedBox(height: 8),
-                              TextButton.icon(
-                                onPressed: () =>
-                                    _openInfoUrl(context, item.url),
-                                icon: const Icon(Icons.open_in_new_rounded),
-                                label: Text(l.infoOpenLink),
+                                ],
                               ),
-                            ],
-                              ],
                             ),
                           ),
                         ),
@@ -11826,6 +11964,32 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _infoAttachmentSummary(
+    BuildContext context,
+    _SchoolNotificationItem item,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final ext = item.uniformAttachmentExtension;
+    final label = l.infoAttachmentLabel(item.attachments.length, ext);
+    return Row(
+      children: [
+        Icon(Icons.attach_file_rounded, size: 16, color: cs.primary),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            style: GoogleFonts.outfit(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

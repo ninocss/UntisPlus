@@ -256,6 +256,26 @@ class AppL10n {
   String get infoEmptyHint => _t('infoEmptyHint');
   String get infoFetchError => _t('infoFetchError');
   String get infoOpenLink => _t('infoOpenLink');
+  String get infoAttachments => _t('infoAttachments');
+  String get attachmentSave => _t('attachmentSave');
+  String get attachmentSaved => _t('attachmentSaved');
+  String get attachmentDownloadFailed => _t('attachmentDownloadFailed');
+  String get attachmentDemoUnavailable => _t('attachmentDemoUnavailable');
+
+  /// Label for an attachment counter, e.g. "2 Attached PDFs" or
+  /// "1 Attached File". Pass an [extension] (upper case, e.g. "PDF") when all
+  /// attachments share the same file type, otherwise pass null for the
+  /// generic file wording.
+  String infoAttachmentLabel(int count, String? extension) {
+    final ext = (extension ?? '').trim().toUpperCase();
+    if (ext.isNotEmpty) {
+      final template =
+          count == 1 ? _t('infoAttachedExtOne') : _t('infoAttachedExtMany');
+      return template.replaceAll('{ext}', ext);
+    }
+    return count == 1 ? _t('infoAttachedFile') : _t('infoAttachedFiles');
+  }
+
   String get notificationActionNextLessonLabel =>
       _t('notificationActionNextLesson');
   String get notificationActionFreeRooms => _t('notificationActionFreeRooms');
@@ -1051,6 +1071,17 @@ class AppL10n {
       'infoFetchError':
           'Benachrichtigungen konnten nicht geladen werden. Bitte später erneut versuchen.',
       'infoOpenLink': 'Link öffnen',
+      'infoAttachments': 'Anhänge',
+      'infoAttachedExtOne': 'Angehängte {ext}',
+      'infoAttachedExtMany': 'Angehängte {ext}s',
+      'infoAttachedFile': 'Angehängte Datei',
+      'infoAttachedFiles': 'Angehängte Dateien',
+      'attachmentSave': 'Anhang speichern',
+      'attachmentSaved': 'Anhang gespeichert.',
+      'attachmentDownloadFailed':
+          'Der Anhang konnte nicht heruntergeladen werden.',
+      'attachmentDemoUnavailable':
+          'Im Demo-Modus sind keine echten Dateien verfügbar.',
       'notificationActionCurrentLesson': 'Aktuelle Stunde: {lesson}',
       'notificationActionNextLessonLabel': 'Nächste Stunde',
       'notificationActionNoNextLesson':
@@ -2052,6 +2083,15 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'If your school has not published anything at the moment, nothing is shown here.',
       'infoFetchError': 'Could not load notifications. Please try again later.',
       'infoOpenLink': 'Open link',
+      'infoAttachments': 'Attachments',
+      'infoAttachedExtOne': 'Attached {ext}',
+      'infoAttachedExtMany': 'Attached {ext}s',
+      'infoAttachedFile': 'Attached File',
+      'infoAttachedFiles': 'Attached Files',
+      'attachmentSave': 'Save attachment',
+      'attachmentSaved': 'Attachment saved.',
+      'attachmentDownloadFailed': 'The attachment could not be downloaded.',
+      'attachmentDemoUnavailable': 'Real files are not available in demo mode.',
       'notificationActionCurrentLesson': 'Current lesson: {lesson}',
       'notificationActionNextLessonLabel': 'Next lesson',
       'notificationActionNoNextLesson': 'No next lesson found for today',
@@ -3031,6 +3071,17 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'infoFetchError':
           'Impossible de charger les notifications. Réessaie plus tard.',
       'infoOpenLink': 'Ouvrir le lien',
+      'infoAttachments': 'Pièces jointes',
+      'infoAttachedExtOne': '{ext} joint',
+      'infoAttachedExtMany': '{ext}s joints',
+      'infoAttachedFile': 'Pièce jointe',
+      'infoAttachedFiles': 'Pièces jointes',
+      'attachmentSave': 'Enregistrer la pièce jointe',
+      'attachmentSaved': 'Pièce jointe enregistrée.',
+      'attachmentDownloadFailed':
+          'Impossible de télécharger la pièce jointe.',
+      'attachmentDemoUnavailable':
+          'Les fichiers réels ne sont pas disponibles en mode démo.',
       'notificationActionCurrentLesson': 'Cours actuel : {lesson}',
       'notificationActionNextLessonLabel': 'Cours suivant',
       'notificationActionNoNextLesson':
@@ -4045,6 +4096,16 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'infoFetchError':
           'No se pudieron cargar las notificaciones. Inténtalo más tarde.',
       'infoOpenLink': 'Abrir enlace',
+      'infoAttachments': 'Adjuntos',
+      'infoAttachedExtOne': '{ext} adjunto',
+      'infoAttachedExtMany': '{ext}s adjuntos',
+      'infoAttachedFile': 'Archivo adjunto',
+      'infoAttachedFiles': 'Archivos adjuntos',
+      'attachmentSave': 'Guardar adjunto',
+      'attachmentSaved': 'Adjunto guardado.',
+      'attachmentDownloadFailed': 'No se pudo descargar el adjunto.',
+      'attachmentDemoUnavailable':
+          'Los archivos reales no están disponibles en el modo de demostración.',
       'notificationActionCurrentLesson': 'Clase actual: {lesson}',
       'notificationActionNextLessonLabel': 'Siguiente clase',
       'notificationActionNoNextLesson':
