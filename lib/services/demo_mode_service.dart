@@ -453,7 +453,8 @@ class DemoModeService {
       {
         'id': 'demo-notice-1',
         'title': 'Willkommen bei Untis+',
-        'message': 'Im Demo-Modus werden alle Funktionen mit lokalen Beispieldaten gezeigt.',
+        'message':
+            'Im Demo-Modus werden alle Funktionen mit lokalen Beispieldaten gezeigt.',
         'date': _dateInt(today),
         'author': 'Untis+',
       },
@@ -482,13 +483,16 @@ class DemoModeService {
       {
         'id': 'demo-inbox-1',
         'title': 'Exkursion ins Technikmuseum',
-        'contentPreview': 'Vom 20. bis 22. Oktober fahren die Jahrgangsstufen ...',
+        'contentPreview':
+            'Vom 20. bis 22. Oktober fahren die Jahrgangsstufen ...',
         'content':
             '<p>Vom <strong>20. bis 22. Oktober</strong> fahren die Jahrgänge 9 und 10 auf die '
             'große Exkursion ins Technikmuseum.</p><p>Treffpunkt ist um 07:30 Uhr am Haupteingang. '
             'Bitte bringt euer unterschriebenes Formular sowie ausreichend Verpflegung mit.</p>',
         'sender': sender,
-        'sentDateTime': today.subtract(const Duration(days: 2)).toIso8601String(),
+        'sentDateTime': today
+            .subtract(const Duration(days: 2))
+            .toIso8601String(),
         'attachments': [
           {'fileId': 91001, 'name': 'Einverstaendnisbogen.pdf', 'size': 128000},
           {'fileId': 91002, 'name': 'Programmplan.png', 'size': 890000},
@@ -503,7 +507,9 @@ class DemoModeService {
             '<ul><li>Montag – Donnerstag: 08:00 – 16:00 Uhr</li>'
             '<li>Freitag: 08:00 – 13:00 Uhr</li></ul>',
         'sender': {'displayName': 'Bibliothek', 'name': 'Bibliothek'},
-        'sentDateTime': today.subtract(const Duration(days: 5)).toIso8601String(),
+        'sentDateTime': today
+            .subtract(const Duration(days: 5))
+            .toIso8601String(),
         'attachments': [
           {'fileId': 92001, 'name': 'Oeffnungszeiten.pdf', 'size': 24000},
           {'fileId': 92002, 'name': 'Ausleihordnung.pdf', 'size': 43000},
@@ -514,10 +520,10 @@ class DemoModeService {
   }
 
   static List<Map<String, dynamic>> demoClasses() => const [
-        {'id': 999001, 'name': 'Demo 10A', 'longName': 'Demo-Klasse 10A'},
-        {'id': 999002, 'name': 'Demo 10B', 'longName': 'Demo-Klasse 10B'},
-        {'id': 999003, 'name': 'Demo Q1', 'longName': 'Demo-Jahrgang Q1'},
-      ];
+    {'id': 999001, 'name': 'Demo 10A', 'longName': 'Demo-Klasse 10A'},
+    {'id': 999002, 'name': 'Demo 10B', 'longName': 'Demo-Klasse 10B'},
+    {'id': 999003, 'name': 'Demo Q1', 'longName': 'Demo-Jahrgang Q1'},
+  ];
 
   static List<String> demoFreeRooms(int rangeIndex) {
     const rooms = [

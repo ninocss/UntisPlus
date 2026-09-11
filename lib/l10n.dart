@@ -269,8 +269,9 @@ class AppL10n {
   String infoAttachmentLabel(int count, String? extension) {
     final ext = (extension ?? '').trim().toUpperCase();
     if (ext.isNotEmpty) {
-      final template =
-          count == 1 ? _t('infoAttachedExtOne') : _t('infoAttachedExtMany');
+      final template = count == 1
+          ? _t('infoAttachedExtOne')
+          : _t('infoAttachedExtMany');
       return template.replaceAll('{ext}', ext);
     }
     return count == 1 ? _t('infoAttachedFile') : _t('infoAttachedFiles');
@@ -3078,8 +3079,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'infoAttachedFiles': 'Pièces jointes',
       'attachmentSave': 'Enregistrer la pièce jointe',
       'attachmentSaved': 'Pièce jointe enregistrée.',
-      'attachmentDownloadFailed':
-          'Impossible de télécharger la pièce jointe.',
+      'attachmentDownloadFailed': 'Impossible de télécharger la pièce jointe.',
       'attachmentDemoUnavailable':
           'Les fichiers réels ne sont pas disponibles en mode démo.',
       'notificationActionCurrentLesson': 'Cours actuel : {lesson}',

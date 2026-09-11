@@ -103,23 +103,32 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
       );
       return;
     }
-    final name = attachment.name.isEmpty ? 'untisplus-attachment' : attachment.name;
+    final name = attachment.name.isEmpty
+        ? 'untisplus-attachment'
+        : attachment.name;
     try {
       final uri = Uri.parse(
         'https://$schoolUrl/WebUntis/messageFileRequest.do?file=${attachment.id}',
       );
-      final response = await http.get(uri, headers: {
-        'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
-        'Accept': 'application/octet-stream',
-      });
+      final response = await http.get(
+        uri,
+        headers: {
+          'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
+          'Accept': 'application/octet-stream',
+        },
+      );
       if (response.statusCode == 401 || response.statusCode == 403) {
         final reAuth = await _reAuthenticate();
         if (reAuth) {
-          final retry = await http.get(uri, headers: {
-            'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
-            'Accept': 'application/octet-stream',
-          });
-          if (retry.statusCode != 200) throw Exception('HTTP ${retry.statusCode}');
+          final retry = await http.get(
+            uri,
+            headers: {
+              'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
+              'Accept': 'application/octet-stream',
+            },
+          );
+          if (retry.statusCode != 200)
+            throw Exception('HTTP ${retry.statusCode}');
           final result = await FilePicker.saveFile(
             dialogTitle: l.attachmentSave,
             fileName: name,
@@ -131,7 +140,8 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
           return;
         }
       }
-      if (response.statusCode != 200) throw Exception('HTTP ${response.statusCode}');
+      if (response.statusCode != 200)
+        throw Exception('HTTP ${response.statusCode}');
       final result = await FilePicker.saveFile(
         dialogTitle: l.attachmentSave,
         fileName: name,
@@ -159,10 +169,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
       appBar: RoundedBlurAppBar(
         title: Text(
           item.title,
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w900,
-            fontSize: 22,
-          ),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 22),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -330,9 +337,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
       context: context,
       borderRadius: BorderRadius.circular(999),
       color: cs.surfaceContainerHigh.withValues(alpha: 0.55),
-      border: Border.all(
-        color: cs.outlineVariant.withValues(alpha: 0.25),
-      ),
+      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Row(

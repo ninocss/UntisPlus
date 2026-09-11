@@ -1428,7 +1428,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final roomId = withRoom
         ? ((() {
             final r = lesson['ro'];
-            final list = r is List ? r : r is Map ? [r] : <dynamic>[];
+            final list = r is List
+                ? r
+                : r is Map
+                ? [r]
+                : <dynamic>[];
             return list.firstOrNull?['id']?.toString() ?? '';
           })())
         : '';
@@ -1510,9 +1514,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         'teachers': {
           for (final e in _teacherMap.entries) e.key.toString(): e.value,
         },
-        'rooms': {
-          for (final e in _roomMap.entries) e.key.toString(): e.value,
-        },
+        'rooms': {for (final e in _roomMap.entries) e.key.toString(): e.value},
       };
       await OfflineCacheStore.instance.write(storeKey, payload);
     } catch (_) {}
@@ -1543,16 +1545,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     Future<Map<String, dynamic>> rpc(String id, String method) async {
       try {
-        final r = await http.post(
-          url,
-          headers: headers,
-          body: jsonEncode({
-            "id": id,
-            "method": method,
-            "params": {},
-            "jsonrpc": "2.0",
-          }),
-        ).timeout(const Duration(seconds: 6));
+        final r = await http
+            .post(
+              url,
+              headers: headers,
+              body: jsonEncode({
+                "id": id,
+                "method": method,
+                "params": {},
+                "jsonrpc": "2.0",
+              }),
+            )
+            .timeout(const Duration(seconds: 6));
         final decoded = jsonDecode(r.body);
         if (decoded is Map<String, dynamic>) return decoded;
         if (decoded is Map) return Map<String, dynamic>.from(decoded);
@@ -1626,8 +1630,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             untisAccountsNotifier.value.any(
               (account) =>
                   account.id == activeUntisAccountId &&
-                  (account.sessionId.isNotEmpty ||
-                      account.password.isNotEmpty),
+                  (account.sessionId.isNotEmpty || account.password.isNotEmpty),
             )) ||
         sessionID.isNotEmpty;
     if (hasActiveAccount || demoModeNotifier.value) {
@@ -4714,9 +4717,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           )
         : null;
     if (!isCurrentRequest()) return;
-    final hasCachedWeek = hasExistingWeek ||
+    final hasCachedWeek =
+        hasExistingWeek ||
         (cachedWeek != null && cachedWeek.values.any((l) => l.isNotEmpty));
-    if (cachedWeek != null && cachedWeek.values.any((l) => l.isNotEmpty) && mounted) {
+    if (cachedWeek != null &&
+        cachedWeek.values.any((l) => l.isNotEmpty) &&
+        mounted) {
       _applyKnownSubjectsFromWeek(cachedWeek);
       setState(() {
         _weekData = cachedWeek;
@@ -4760,30 +4766,32 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
 
     try {
-      final timetableFuture = http.post(
-        url,
-        headers: {
-          "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: jsonEncode({
-          "id": "week_req",
-          "method": "getTimetable",
-          "params": {
-            "options": {
-              "element": {"id": requestPersonId, "type": requestPersonType},
-              "startDate": startDate,
-              "endDate": endDate,
-              "showLsText": true,
-              "showSubstText": true,
-              "showInfo": true,
-              "showBooking": true,
+      final timetableFuture = http
+          .post(
+            url,
+            headers: {
+              "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+              "Content-Type": "application/json",
+              "Accept": "application/json",
             },
-          },
-          "jsonrpc": "2.0",
-        }),
-      ).timeout(const Duration(seconds: 8));
+            body: jsonEncode({
+              "id": "week_req",
+              "method": "getTimetable",
+              "params": {
+                "options": {
+                  "element": {"id": requestPersonId, "type": requestPersonType},
+                  "startDate": startDate,
+                  "endDate": endDate,
+                  "showLsText": true,
+                  "showSubstText": true,
+                  "showInfo": true,
+                  "showBooking": true,
+                },
+              },
+              "jsonrpc": "2.0",
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
 
       unawaited(_fetchMasterData());
       unawaited(_fetchHomeworkAndNotes());
@@ -4824,20 +4832,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         if (apiMsg.toLowerCase().contains('not within a school year') ||
             apiMsg.toLowerCase().contains('nicht in einem schuljahr')) {
           try {
-            final syRes = await http.post(
-              url,
-              headers: {
-                "Cookie":
-                    "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-                "Content-Type": "application/json",
-              },
-              body: jsonEncode({
-                "id": "sy_req",
-                "method": "getCurrentSchoolyear",
-                "params": {},
-                "jsonrpc": "2.0",
-              }),
-            ).timeout(const Duration(seconds: 6));
+            final syRes = await http
+                .post(
+                  url,
+                  headers: {
+                    "Cookie":
+                        "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+                    "Content-Type": "application/json",
+                  },
+                  body: jsonEncode({
+                    "id": "sy_req",
+                    "method": "getCurrentSchoolyear",
+                    "params": {},
+                    "jsonrpc": "2.0",
+                  }),
+                )
+                .timeout(const Duration(seconds: 6));
             if (syRes.statusCode == 200) {
               final syDecoded = jsonDecode(syRes.body);
               if (syDecoded['result'] != null) {
@@ -5028,17 +5038,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           .expand((day) => day)
           .whereType<Map>();
       if (!isDemoMode && flattenedLessons.isNotEmpty) {
-        ChangeRepository().recordSnapshot(
-          accountId: requestAccountId,
-          rangeKey: DateFormat('yyyyMMdd').format(requestedMonday),
-          lessons: flattenedLessons,
-        ).then((changes) {
-          if (isCurrentRequest()) {
-            unreadTimetableChangesNotifier.value = changes
-                .where((change) => !change.isRead)
-                .length;
-          }
-        }).catchError((_) {});
+        ChangeRepository()
+            .recordSnapshot(
+              accountId: requestAccountId,
+              rangeKey: DateFormat('yyyyMMdd').format(requestedMonday),
+              lessons: flattenedLessons,
+            )
+            .then((changes) {
+              if (isCurrentRequest()) {
+                unreadTimetableChangesNotifier.value = changes
+                    .where((change) => !change.isRead)
+                    .length;
+              }
+            })
+            .catchError((_) {});
       }
 
       unawaited(
@@ -5056,18 +5069,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           .toList();
 
       if (missingTeacherLessons.isNotEmpty) {
-        unawaited(_resolveMissingTeachers(
-          tempWeek: tempWeek,
-          missingTeacherLessons: missingTeacherLessons,
-          requestGeneration: requestGeneration,
-          requestedMonday: requestedMonday,
-          requestAccountId: requestAccountId,
-          requestPersonId: requestPersonId,
-          requestPersonType: requestPersonType,
-          startDate: startDate,
-          endDate: endDate,
-          classIdsInWeek: classIdsInWeek,
-        ));
+        unawaited(
+          _resolveMissingTeachers(
+            tempWeek: tempWeek,
+            missingTeacherLessons: missingTeacherLessons,
+            requestGeneration: requestGeneration,
+            requestedMonday: requestedMonday,
+            requestAccountId: requestAccountId,
+            requestPersonId: requestPersonId,
+            requestPersonType: requestPersonType,
+            startDate: startDate,
+            endDate: endDate,
+            classIdsInWeek: classIdsInWeek,
+          ),
+        );
       }
 
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -5137,23 +5152,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     // period elements (type=2) even when JSON-RPC omits `te`.
     try {
       final weeklyDate = DateFormat('yyyy-MM-dd').format(requestedMonday);
-      final publicUri = Uri.https(
-        schoolUrl,
-        '/WebUntis/api/public/timetable/weekly/data',
-        {
-          'elementType': requestPersonType.toString(),
-          'elementId': requestPersonId.toString(),
-          'date': weeklyDate,
-          'formatId': '2',
-        },
-      );
-      final publicResp = await http.get(
-        publicUri,
-        headers: {
-          "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-          "Accept": "application/json",
-        },
-      ).timeout(const Duration(seconds: 5));
+      final publicUri =
+          Uri.https(schoolUrl, '/WebUntis/api/public/timetable/weekly/data', {
+            'elementType': requestPersonType.toString(),
+            'elementId': requestPersonId.toString(),
+            'date': weeklyDate,
+            'formatId': '2',
+          });
+      final publicResp = await http
+          .get(
+            publicUri,
+            headers: {
+              "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+              "Accept": "application/json",
+            },
+          )
+          .timeout(const Duration(seconds: 5));
       if (publicResp.statusCode == 200) {
         final decoded = jsonDecode(publicResp.body);
         final data = decoded is Map
@@ -5166,13 +5180,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           if ((e['type'] as int?) != 2) continue;
           final id = e['id'] as int?;
           if (id == null) continue;
-          final n = (e['longName'] ??
-                  e['longname'] ??
-                  e['displayname'] ??
-                  e['name'] ??
-                  '')
-              .toString()
-              .trim();
+          final n =
+              (e['longName'] ??
+                      e['longname'] ??
+                      e['displayname'] ??
+                      e['name'] ??
+                      '')
+                  .toString()
+                  .trim();
           if (n.isNotEmpty) teacherNameById[id] = n;
         }
 
@@ -5243,31 +5258,33 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       await Future.wait(
         classesToQuery.map((classId) async {
           try {
-            final classResp = await http.post(
-              url,
-              headers: {
-                "Cookie":
-                    "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-              },
-              body: jsonEncode({
-                "id": "week_class_$classId",
-                "method": "getTimetable",
-                "params": {
-                  "options": {
-                    "element": {"id": classId, "type": 1},
-                    "startDate": startDate,
-                    "endDate": endDate,
-                    "showLsText": true,
-                    "showSubstText": true,
-                    "showInfo": true,
-                    "showBooking": true,
+            final classResp = await http
+                .post(
+                  url,
+                  headers: {
+                    "Cookie":
+                        "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
                   },
-                },
-                "jsonrpc": "2.0",
-              }),
-            ).timeout(const Duration(seconds: 4));
+                  body: jsonEncode({
+                    "id": "week_class_$classId",
+                    "method": "getTimetable",
+                    "params": {
+                      "options": {
+                        "element": {"id": classId, "type": 1},
+                        "startDate": startDate,
+                        "endDate": endDate,
+                        "showLsText": true,
+                        "showSubstText": true,
+                        "showInfo": true,
+                        "showBooking": true,
+                      },
+                    },
+                    "jsonrpc": "2.0",
+                  }),
+                )
+                .timeout(const Duration(seconds: 4));
             if (classResp.statusCode != 200) return;
             final classJson = jsonDecode(classResp.body);
             if (classJson is! Map || classJson['error'] != null) return;
@@ -5841,9 +5858,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           builder: (context, controller, child) => IconButton(
             tooltip: l.timetableMoreActions,
             icon: const Icon(Icons.more_vert_rounded),
-            onPressed: () => controller.isOpen
-                ? controller.close()
-                : controller.open(),
+            onPressed: () =>
+                controller.isOpen ? controller.close() : controller.open(),
           ),
         ),
         title: GestureDetector(
@@ -5959,13 +5975,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               ),
       ),
       body: _AnimatedBackground(
-        child: (_loading &&
+        child:
+            (_loading &&
                 _weekData.values.every((list) => list.isEmpty) &&
                 !_showingCachedWeek)
             ? const Center(child: CircularProgressIndicator())
             : (_loadError != null &&
-                    _weekData.values.every((list) => list.isEmpty) &&
-                    !_showingCachedWeek)
+                  _weekData.values.every((list) => list.isEmpty) &&
+                  !_showingCachedWeek)
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -7062,7 +7079,11 @@ class _HomeworkViewState extends State<_HomeworkView> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.upcoming_rounded, size: 13, color: cs.primary),
+                        Icon(
+                          Icons.upcoming_rounded,
+                          size: 13,
+                          color: cs.primary,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -8437,7 +8458,9 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                               child: Text(l.examsActionCustom),
                             ),
                             MenuItemButton(
-                              leadingIcon: const Icon(Icons.upload_file_rounded),
+                              leadingIcon: const Icon(
+                                Icons.upload_file_rounded,
+                              ),
                               onPressed: _importExamsWithAI,
                               child: Text(l.examsActionImport),
                             ),
@@ -8454,7 +8477,9 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
                               child: Text(l.homeworkActionCustom),
                             ),
                             MenuItemButton(
-                              leadingIcon: const Icon(Icons.upload_file_rounded),
+                              leadingIcon: const Icon(
+                                Icons.upload_file_rounded,
+                              ),
                               onPressed: () => _importHomeworkWithAI(context),
                               child: Text(l.homeworkActionImport),
                             ),
@@ -10980,43 +11005,43 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   Future<void> _reload({bool showSpinner = false}) async {
     if (demoModeNotifier.value) {
       final locale = appLocaleNotifier.value;
-      final fetchedNews = DemoModeService.demoNotifications(
-        locale: locale,
-      ).map((raw) {
-        return _SchoolNotificationItem(
-          id: raw['id'].toString(),
-          title: raw['title']?.toString() ?? '',
-          body: raw['message']?.toString() ?? '',
-          date: _parseNotificationDate(raw['date']),
-          author: raw['author']?.toString(),
-        );
-      }).toList();
-      final fetchedInbox = DemoModeService.demoInboxNotifications(
-        locale: locale,
-      ).map((raw) {
-        return _SchoolNotificationItem(
-          id: raw['id'].toString(),
-          title: raw['title']?.toString() ?? '',
-          body: raw['contentPreview']?.toString() ?? raw['message']?.toString() ?? '',
-          fullBody: raw['content']?.toString() ?? '',
-          date: _parseNotificationDate(
-            raw['sentDateTime'] ?? raw['date'],
-          ),
-          author: raw['sender'] is Map
-              ? (raw['sender'] as Map)['displayName']?.toString()
-              : raw['author']?.toString(),
-          attachments: (raw['attachments'] as List? ?? const [])
-              .whereType<Map>()
-              .map(
-                (m) => _MessageAttachment(
-                  id: m['id'].toString(),
-                  name: m['name'].toString(),
-                  isDemo: true,
-                ),
-              )
-              .toList(),
-        );
-      }).toList();
+      final fetchedNews = DemoModeService.demoNotifications(locale: locale).map(
+        (raw) {
+          return _SchoolNotificationItem(
+            id: raw['id'].toString(),
+            title: raw['title']?.toString() ?? '',
+            body: raw['message']?.toString() ?? '',
+            date: _parseNotificationDate(raw['date']),
+            author: raw['author']?.toString(),
+          );
+        },
+      ).toList();
+      final fetchedInbox =
+          DemoModeService.demoInboxNotifications(locale: locale).map((raw) {
+            return _SchoolNotificationItem(
+              id: raw['id'].toString(),
+              title: raw['title']?.toString() ?? '',
+              body:
+                  raw['contentPreview']?.toString() ??
+                  raw['message']?.toString() ??
+                  '',
+              fullBody: raw['content']?.toString() ?? '',
+              date: _parseNotificationDate(raw['sentDateTime'] ?? raw['date']),
+              author: raw['sender'] is Map
+                  ? (raw['sender'] as Map)['displayName']?.toString()
+                  : raw['author']?.toString(),
+              attachments: (raw['attachments'] as List? ?? const [])
+                  .whereType<Map>()
+                  .map(
+                    (m) => _MessageAttachment(
+                      id: m['id'].toString(),
+                      name: m['name'].toString(),
+                      isDemo: true,
+                    ),
+                  )
+                  .toList(),
+            );
+          }).toList();
       if (!mounted) return;
       setState(() {
         _newsItems = fetchedNews;
@@ -11058,7 +11083,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       }
     }
 
-    if ((showSpinner || (_newsItems.isEmpty && _inboxItems.isEmpty)) && mounted) {
+    if ((showSpinner || (_newsItems.isEmpty && _inboxItems.isEmpty)) &&
+        mounted) {
       setState(() {
         _loading = true;
         _error = null;
@@ -11188,9 +11214,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       return null;
     }
 
-    List<_MessageAttachment> parseMessageAttachments(
-      Map<String, dynamic> map,
-    ) {
+    List<_MessageAttachment> parseMessageAttachments(Map<String, dynamic> map) {
       final out = <_MessageAttachment>[];
       dynamic rawAttachments;
       for (final key in const [
@@ -11253,10 +11277,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
               final rawMap = Map<String, dynamic>.from(raw);
               // Some WebUntis deployments wrap the fields in a "message"
               // object, others expose them directly on the entry.
-              final map =
-                  rawMap['message'] is Map
-                      ? Map<String, dynamic>.from(rawMap['message'])
-                      : rawMap;
+              final map = rawMap['message'] is Map
+                  ? Map<String, dynamic>.from(rawMap['message'])
+                  : rawMap;
               final sender = map['sender'];
               final preview =
                   map['contentPreview'] ?? map['message'] ?? map['text'] ?? '';
@@ -11463,8 +11486,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                 ? AppL10n.of(appLocaleNotifier.value).infoTitle
                 : title,
             body: body,
-            fullBody:
-                (map['fullBody'] ?? map['content'] ?? '').toString().trim(),
+            fullBody: (map['fullBody'] ?? map['content'] ?? '')
+                .toString()
+                .trim(),
             date: dt,
             author:
                 (map['author'] ?? map['createdBy'] ?? map['publisher'] ?? '')
@@ -11680,7 +11704,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                         context: context,
                         borderRadius: BorderRadius.circular(18),
                         color: cs.errorContainer.withValues(alpha: 0.55),
-                        border: Border.all(color: cs.error.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: cs.error.withValues(alpha: 0.3),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(14),
                           child: Text(
@@ -11699,7 +11725,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                       context: context,
                       borderRadius: BorderRadius.circular(24),
                       color: cs.primaryContainer.withValues(alpha: 0.2),
-                      border: Border.all(color: cs.primary.withValues(alpha: 0.24)),
+                      border: Border.all(
+                        color: cs.primary.withValues(alpha: 0.24),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
@@ -11753,64 +11781,66 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    _showInbox
-                                        ? Icons.mail_outline_rounded
-                                        : Icons.campaign_rounded,
-                                    size: 18,
-                                    color: cs.primary,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      item.title,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        height: 1.15,
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _showInbox
+                                            ? Icons.mail_outline_rounded
+                                            : Icons.campaign_rounded,
+                                        size: 18,
+                                        color: cs.primary,
                                       ),
-                                    ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          item.title,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w800,
+                                            height: 1.15,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              if (item.body.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                _buildFormattedInfoBody(context, item.body),
-                              ],
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 6,
-                                children: [
-                                  if (item.date != null)
-                                    _infoChip(
-                                      context,
-                                      _formatDate(item.date),
-                                      Icons.schedule_rounded,
+                                  if (item.body.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    _buildFormattedInfoBody(context, item.body),
+                                  ],
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 6,
+                                    children: [
+                                      if (item.date != null)
+                                        _infoChip(
+                                          context,
+                                          _formatDate(item.date),
+                                          Icons.schedule_rounded,
+                                        ),
+                                      if ((item.author ?? '').isNotEmpty)
+                                        _infoChip(
+                                          context,
+                                          item.author!,
+                                          Icons.person_outline_rounded,
+                                        ),
+                                    ],
+                                  ),
+                                  if (item.attachments.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    _infoAttachmentSummary(context, item),
+                                  ],
+                                  if (item.url != null) ...[
+                                    const SizedBox(height: 8),
+                                    TextButton.icon(
+                                      onPressed: () =>
+                                          _openInfoUrl(context, item.url),
+                                      icon: const Icon(
+                                        Icons.open_in_new_rounded,
+                                      ),
+                                      label: Text(l.infoOpenLink),
                                     ),
-                                  if ((item.author ?? '').isNotEmpty)
-                                    _infoChip(
-                                      context,
-                                      item.author!,
-                                      Icons.person_outline_rounded,
-                                    ),
-                                ],
-                              ),
-                              if (item.attachments.isNotEmpty) ...[
-                                const SizedBox(height: 10),
-                                _infoAttachmentSummary(context, item),
-                              ],
-                              if (item.url != null) ...[
-                                const SizedBox(height: 8),
-                                TextButton.icon(
-                                  onPressed: () =>
-                                      _openInfoUrl(context, item.url),
-                                  icon: const Icon(Icons.open_in_new_rounded),
-                                  label: Text(l.infoOpenLink),
-                                ),
-                              ],
+                                  ],
                                 ],
                               ),
                             ),
@@ -11837,7 +11867,10 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         context: context,
         borderRadius: BorderRadius.circular(24),
         color: cs.primaryContainer.withValues(alpha: 0.25),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.25), width: 1.2),
+        border: Border.all(
+          color: cs.primary.withValues(alpha: 0.25),
+          width: 1.2,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Row(
@@ -11854,7 +11887,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
-                  _showInbox ? Icons.mail_outline_rounded : Icons.campaign_rounded,
+                  _showInbox
+                      ? Icons.mail_outline_rounded
+                      : Icons.campaign_rounded,
                   color: Colors.white,
                   size: 26,
                 ),
@@ -11903,7 +11938,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     return _glassContainer(
       context: context,
       borderRadius: BorderRadius.circular(14),
-      color: selected ? cs.primary : cs.surfaceContainerHighest.withValues(alpha: 0.4),
+      color: selected
+          ? cs.primary
+          : cs.surfaceContainerHighest.withValues(alpha: 0.4),
       border: Border.all(
         color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.3),
       ),
@@ -11918,7 +11955,11 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 16, color: selected ? cs.onPrimary : cs.onSurfaceVariant),
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+              ),
               const SizedBox(width: 7),
               Flexible(
                 child: Text(
@@ -11944,9 +11985,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       context: context,
       borderRadius: BorderRadius.circular(999),
       color: cs.surfaceContainerHigh.withValues(alpha: 0.55),
-      border: Border.all(
-        color: cs.outlineVariant.withValues(alpha: 0.25),
-      ),
+      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Row(
