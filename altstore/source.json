@@ -6,7 +6,7 @@
 
     {
       "name": "Untis+ Nightly",
-      "bundleIdentifier": "com.ninocss.untisplus",
+      "bundleIdentifier": "com.ninocss.untisplus.nightly",
       "developerName": "ninocss",
       "subtitle": "A privacy-first companion app for WebUntis",
       "localizedDescription": "Untis+ is a privacy-first companion app for WebUntis. It provides features such as timetable management, homework tracking, and notifications to help students stay organized.",
