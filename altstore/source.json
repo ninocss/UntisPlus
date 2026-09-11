@@ -14,6 +14,15 @@
       "category": "education",
       "versions": [
         {
+          "version": "5.3.0",
+          "buildVersion": "1",
+          "date": "2026-09-09",
+          "localizedDescription": "iOS update with timetable improvements and bug fixes.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.3.0/UntisPlus-v5.3.0.ipa",
+          "size": 41935858,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "5.0.1",
           "buildVersion": "1",
           "date": "2026-08-27",
