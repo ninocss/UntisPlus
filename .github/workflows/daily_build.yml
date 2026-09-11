@@ -223,3 +223,104 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update_altstore_source:
+    needs: [check_changes, build_android, build_ipa, release]
+    if: >-
+      needs.check_changes.outputs.has_changes == 'true' &&
+      needs.build_android.result == 'success' &&
+      needs.build_ipa.result == 'success' &&
+      needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve nightly release metadata
+        id: meta
+        env:
+          TAG: ${{ needs.check_changes.outputs.nightly_tag }}
+          DATE: ${{ needs.check_changes.outputs.nightly_date }}
+        run: |
+          set -euo pipefail
+
+          IPA_NAME="UntisPlus-${TAG}.ipa"
+          IPA_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${IPA_NAME}"
+          curl -sS -o "/tmp/${IPA_NAME}" -L "${IPA_URL}"
+
+          IPA_SIZE=$(stat -c%s "/tmp/${IPA_NAME}")
+
+          mkdir -p /tmp/ipa_unpack
+          unzip -q "/tmp/${IPA_NAME}" -d /tmp/ipa_unpack
+          APP_PATH=$(find /tmp/ipa_unpack -maxdepth 2 -name "*.app" | head -n1)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: No .app bundle found in IPA."
+            exit 1
+          fi
+
+          CFB_VERSION=$(python3 -c "
+          import plistlib
+          p = plistlib.load(open('$APP_PATH/Info.plist', 'rb'))
+          print(p.get('CFBundleShortVersionString', '').strip())
+          ")
+
+          if [ -z "$CFB_VERSION" ]; then
+            echo "ERROR: Could not read version from IPA Info.plist."
+            exit 1
+          fi
+
+          echo "Nightly IPA CFBundleShortVersionString=$CFB_VERSION size=$IPA_SIZE"
+          echo "version=${CFB_VERSION}-nightly.${DATE}" >> "$GITHUB_OUTPUT"
+          echo "build_version=${CFB_VERSION}-nightly.${DATE}" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
+          echo "ipa_size=$IPA_SIZE" >> "$GITHUB_OUTPUT"
+
+      - name: Update altstore/source.json with nightly build
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD_VERSION: ${{ steps.meta.outputs.build_version }}
+          DATE: ${{ steps.meta.outputs.date }}
+          IPA_URL: ${{ steps.meta.outputs.ipa_url }}
+          IPA_SIZE: ${{ steps.meta.outputs.ipa_size }}
+        run: |
+          set -euo pipefail
+
+          DESCRIPTION="Today's Nightly build of Untis+ with the latest changes and improvements. Please note that nightly builds may be less stable than official releases."
+
+          jq \
+            --arg version "$VERSION" \
+            --arg build_version "$BUILD_VERSION" \
+            --arg date "$DATE" \
+            --arg url "$IPA_URL" \
+            --argjson size "${IPA_SIZE:-0}" \
+            --arg desc "$DESCRIPTION" \
+            '
+            .apps[1].versions = ([
+              {
+                "version": $version,
+                "buildVersion": $build_version,
+                "date": $date,
+                "localizedDescription": $desc,
+                "downloadURL": $url,
+                "size": $size,
+                "minOSVersion": "15.0"
+              }
+            ] + (.apps[1].versions | map(select(.version != $version))))
+            ' altstore/source.json > altstore/source.json.tmp
+          mv altstore/source.json.tmp altstore/source.json
+
+          jq empty altstore/source.json
+          echo "Validated JSON and updated altstore/source.json"
+
+      - name: Commit and Push AltStore source update
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add altstore/source.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: publish ${{ steps.meta.outputs.tag }} nightly to AltStore source [skip ci]"
+          git push
