@@ -33,10 +33,18 @@ jobs:
           IPA_NAME="UntisPlus-${RELEASE_TAG}.ipa"
           IPA_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/${IPA_NAME}"
 
+          IPA_SIZE=$(curl -sS \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+            | jq -r --arg name "$IPA_NAME" '.assets[] | select(.name == $name) | .size // 0' | head -n1)
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
+          echo "ipa_size=${IPA_SIZE:-0}" >> "$GITHUB_OUTPUT"
+          echo "news_id=untisplus-release-$(echo "$VERSION" | tr '.' '-')" >> "$GITHUB_OUTPUT"
 
           {
             echo "body<<RELEASE_BODY_EOF"
@@ -150,7 +158,10 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
           DATE: ${{ steps.meta.outputs.date }}
           IPA_URL: ${{ steps.meta.outputs.ipa_url }}
+          IPA_SIZE: ${{ steps.meta.outputs.ipa_size }}
+          NEWS_ID: ${{ steps.meta.outputs.news_id }}
           DESCRIPTION: ${{ steps.ai.outputs.description }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
@@ -158,21 +169,40 @@ jobs:
             --arg version "$VERSION" \
             --arg date "$DATE" \
             --arg url "$IPA_URL" \
+            --argjson size "${IPA_SIZE:-0}" \
             --arg desc "$DESCRIPTION" \
+            --arg news_id "$NEWS_ID" \
+            --arg repo "$REPO" \
             '
-            .apps[0].versions = [
+            .apps[0].versions = ([
               {
                 "version": $version,
                 "buildVersion": "1",
                 "date": $date,
                 "localizedDescription": $desc,
                 "downloadURL": $url,
-                "size": 0,
+                "size": $size,
                 "minOSVersion": "15.0"
               }
-            ] + .apps[0].versions
+            ] + (.apps[0].versions | map(select(.version != $version))))
+            |
+            .news = ([
+              {
+                "title": "Untis+ " + $version + " is here",
+                "identifier": $news_id,
+                "caption": $desc,
+                "date": $date,
+                "tintColor": "4A90D9",
+                "imageURL": "https://raw.githubusercontent.com/" + $repo + "/main/assets/icon.png",
+                "appID": "com.ninocss.untisplus",
+                "notify": true
+              }
+            ] + (.news | map(select(.identifier != $news_id))))
             ' altstore/source.json > altstore/source.json.tmp
           mv altstore/source.json.tmp altstore/source.json
+
+          jq empty altstore/source.json
+          echo "Validated JSON and updated source.json"
 
       - name: Commit and Push
         run: |

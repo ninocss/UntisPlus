@@ -12,12 +12,31 @@
       "iconURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
       "tintColor": "4A90D9",
       "category": "education",
+      "beta": false,
+      "permissions": [
+        {
+          "type": "network",
+          "usageDescription": "Connects to WebUntis to sync your timetable, homework, exams and notifications."
+        },
+        {
+          "type": "notifications",
+          "usageDescription": "Sends notifications for upcoming lessons, homework, exams and other important events."
+        }
+      ],
+      "screenshotURLs": [
+        "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/github/welcome.png",
+        "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/github/timetable.png",
+        "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/github/lesson_inspect.png",
+        "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/github/Ready_to_go.png",
+        "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/github/Appearance.png",
+        "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/github/AI_assistant.png"
+      ],
       "versions": [
         {
           "version": "5.3.0",
           "buildVersion": "1",
           "date": "2026-09-09",
-          "localizedDescription": "iOS update with timetable improvements and bug fixes.",
+          "localizedDescription": "Reverts the navigation bar to its classic design, refreshes the reload indicator across pages, updates iOS home screen widgets and fixes offline cache bugs for a smoother experience.",
           "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.3.0/UntisPlus-v5.3.0.ipa",
           "size": 41935858,
           "minOSVersion": "15.0"
@@ -34,5 +53,26 @@
       ]
     }
   ],
-  "news": []
+  "news": [
+    {
+      "title": "Untis+ 5.3.0 is here",
+      "identifier": "untisplus-release-5-3-0",
+      "caption": "A polished UI, refreshed reload indicators, updated home screen widgets and more reliable offline caching.",
+      "date": "2026-09-09",
+      "tintColor": "4A90D9",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus",
+      "notify": true
+    },
+    {
+      "title": "Untis+ is now on AltStore",
+      "identifier": "untisplus-first-release",
+      "caption": "The privacy-first companion app for WebUntis is now available for iPhone.",
+      "date": "2026-08-27",
+      "tintColor": "4A90D9",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus",
+      "notify": true
+    }
+  ]
 }
