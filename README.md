@@ -139,7 +139,14 @@ pwsh -File tool/test_without_local_ai.ps1
 ```bash
 https://raw.githubusercontent.com/ninocss/untisplus/refs/heads/main/altstore/source.json
 ```
-3. Install and Sign using Apple ID(Signing has to be renewt every 7 days when using a non Developer AppleID) 
+3. Install and Sign using Apple ID(Signing has to be renewt every 7 days when using a non Developer AppleID)
+
+<p align="center">
+  <a href="https://altstore.io/source/raw.githubusercontent.com/ninocss/untisplus/refs/heads/main/altstore/source.json?app=com.ninocss.untisplus">
+    <img src="assets/altstore-download-light.png" alt="Download on AltStore" width="245"/>
+  </a>
+</p>
+
 ---
 
 ## Contributing

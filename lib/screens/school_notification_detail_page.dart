@@ -127,8 +127,9 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
               'Accept': 'application/octet-stream',
             },
           );
-          if (retry.statusCode != 200)
+          if (retry.statusCode != 200) {
             throw Exception('HTTP ${retry.statusCode}');
+          }
           final result = await FilePicker.saveFile(
             dialogTitle: l.attachmentSave,
             fileName: name,
@@ -140,8 +141,9 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
           return;
         }
       }
-      if (response.statusCode != 200)
+      if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}');
+      }
       final result = await FilePicker.saveFile(
         dialogTitle: l.attachmentSave,
         fileName: name,
