@@ -37,12 +37,10 @@ class ChangeRepository {
     await _store.write(snapshotKey, {
       'lessons': current.map((entry) => entry.toJson()).toList(),
     });
-    if (detected.isEmpty) return loadChanges(accountId);
-
     final existing = await loadChanges(accountId);
     final byId = {for (final change in existing) change.id: change};
     for (final change in detected) {
-      byId.putIfAbsent(change.id, () => change);
+      byId.update(change.id, (_) => change, ifAbsent: () => change);
     }
     final cutoff = DateTime.now().subtract(const Duration(days: 30));
     final retained =
