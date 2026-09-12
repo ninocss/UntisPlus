@@ -286,7 +286,7 @@ jobs:
 
       - name: Upload Signing Config
         if: ${{ steps.signing.outputs.keystore_configured == 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: android-signing
           path: ${{ runner.temp }}/android-signing/
@@ -395,7 +395,7 @@ jobs:
           )
 
       - name: Upload APK Artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-apk
           path: apk_artifacts/
@@ -469,7 +469,7 @@ jobs:
           fi
 
       - name: Upload AAB Artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-aab
           path: aab_artifacts/
@@ -515,7 +515,7 @@ jobs:
           rm -rf Payload
 
       - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-ipa
           path: ipa_artifacts/
@@ -765,7 +765,7 @@ jobs:
           fi
 
       - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-notes
           path: release_notes.md
