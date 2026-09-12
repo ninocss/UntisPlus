@@ -17,7 +17,7 @@ plugins {
 
 android {
     namespace = "com.ninocss.untisplus"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
