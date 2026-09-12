@@ -309,45 +309,59 @@ class UntisPlusApp extends StatelessWidget {
                                   builder: (lightDynamic, darkDynamic) {
                                     final canUseDynamic =
                                         visualTheme == AppThemeId.defaultTheme;
-                                    final lightScheme =
-                                        (canUseDynamic &&
-                                            useMaterialYou &&
-                                            lightDynamic != null)
-                                        ? lightDynamic.harmonized()
-                                        : (canUseDynamic &&
-                                              useMaterialYou &&
-                                              darkDynamic != null)
-                                        ? ColorScheme.fromSeed(
-                                            seedColor: darkDynamic.primary,
-                                            brightness: Brightness.light,
-                                            dynamicSchemeVariant:
-                                                DynamicSchemeVariant.vibrant,
-                                          )
-                                        : untisThemeScheme(
-                                            visualTheme,
-                                            Brightness.light,
-                                            seed,
-                                          );
+                                    final ColorScheme lightScheme;
+                                    if (canUseDynamic &&
+                                        useMaterialYou &&
+                                        lightDynamic != null) {
+                                      lightScheme = ColorScheme.fromSeed(
+                                        seedColor: lightDynamic.primary,
+                                        brightness: Brightness.light,
+                                        dynamicSchemeVariant:
+                                            DynamicSchemeVariant.vibrant,
+                                      );
+                                    } else if (canUseDynamic &&
+                                        useMaterialYou &&
+                                        darkDynamic != null) {
+                                      lightScheme = ColorScheme.fromSeed(
+                                        seedColor: darkDynamic.primary,
+                                        brightness: Brightness.light,
+                                        dynamicSchemeVariant:
+                                            DynamicSchemeVariant.vibrant,
+                                      );
+                                    } else {
+                                      lightScheme = untisThemeScheme(
+                                        visualTheme,
+                                        Brightness.light,
+                                        seed,
+                                      );
+                                    }
 
-                                    var darkScheme =
-                                        (canUseDynamic &&
-                                            useMaterialYou &&
-                                            darkDynamic != null)
-                                        ? darkDynamic.harmonized()
-                                        : (canUseDynamic &&
-                                              useMaterialYou &&
-                                              lightDynamic != null)
-                                        ? ColorScheme.fromSeed(
-                                            seedColor: lightDynamic.primary,
-                                            brightness: Brightness.dark,
-                                            dynamicSchemeVariant:
-                                                DynamicSchemeVariant.vibrant,
-                                          )
-                                        : untisThemeScheme(
-                                            visualTheme,
-                                            Brightness.dark,
-                                            seed,
-                                          );
+                                    ColorScheme darkScheme;
+                                    if (canUseDynamic &&
+                                        useMaterialYou &&
+                                        darkDynamic != null) {
+                                      darkScheme = ColorScheme.fromSeed(
+                                        seedColor: darkDynamic.primary,
+                                        brightness: Brightness.dark,
+                                        dynamicSchemeVariant:
+                                            DynamicSchemeVariant.vibrant,
+                                      );
+                                    } else if (canUseDynamic &&
+                                        useMaterialYou &&
+                                        lightDynamic != null) {
+                                      darkScheme = ColorScheme.fromSeed(
+                                        seedColor: lightDynamic.primary,
+                                        brightness: Brightness.dark,
+                                        dynamicSchemeVariant:
+                                            DynamicSchemeVariant.vibrant,
+                                      );
+                                    } else {
+                                      darkScheme = untisThemeScheme(
+                                        visualTheme,
+                                        Brightness.dark,
+                                        seed,
+                                      );
+                                    }
 
                                     if (isAmoled &&
                                         visualTheme ==
