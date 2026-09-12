@@ -1069,6 +1069,22 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     });
   }
 
+  /// Keeps every action reachable on narrow phones without adding a horizontal
+  /// scrollbar to an AI-settings sheet.  A [Wrap] moves a whole button to the
+  /// next line instead of clipping it behind the sheet edge.
+  Widget _buildAiSheetActions(List<Widget> children) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
+        children: children,
+      ),
+    );
+  }
+
   void _showBaseUrlDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
     final ctrl = TextEditingController(text: aiCustomBaseUrl);
@@ -1109,25 +1125,21 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(l.settingsApiKeyCancel),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () async {
-                        await _settingsSetAiCustomBaseUrl(ctrl.text.trim());
-                        if (!ctx.mounted) return;
-                        Navigator.pop(ctx);
-                        _reloadFromPrefs();
-                      },
-                      child: Text(l.settingsApiKeySave),
-                    ),
-                  ],
-                ),
+                _buildAiSheetActions([
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(l.settingsApiKeyCancel),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      await _settingsSetAiCustomBaseUrl(ctrl.text.trim());
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
+                      _reloadFromPrefs();
+                    },
+                    child: Text(l.settingsApiKeySave),
+                  ),
+                ]),
               ],
             ),
           );
@@ -1186,32 +1198,27 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(l.settingsApiKeyCancel),
-                    ),
-                    const SizedBox(width: 6),
-                    TextButton(
-                      onPressed: () => ctrl.text = defaultTemplate,
-                      child: Text(l.settingsAiPromptReset),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () async {
-                        await _settingsSetAiSystemPromptTemplate(
-                          ctrl.text.trim(),
-                        );
-                        if (!ctx.mounted) return;
-                        Navigator.pop(ctx);
-                        _reloadFromPrefs();
-                      },
-                      child: Text(l.settingsApiKeySave),
-                    ),
-                  ],
-                ),
+                _buildAiSheetActions([
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(l.settingsApiKeyCancel),
+                  ),
+                  TextButton(
+                    onPressed: () => ctrl.text = defaultTemplate,
+                    child: Text(l.settingsAiPromptReset),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      await _settingsSetAiSystemPromptTemplate(
+                        ctrl.text.trim(),
+                      );
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
+                      _reloadFromPrefs();
+                    },
+                    child: Text(l.settingsApiKeySave),
+                  ),
+                ]),
               ],
             ),
           );
@@ -1374,33 +1381,29 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _settingsOpenApiKeyPortal(context),
-                      icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                      label: Text(
-                        l.settingsAiApiKeyGet,
-                        style: GoogleFonts.outfit(fontSize: 13),
-                      ),
+                _buildAiSheetActions([
+                  TextButton.icon(
+                    onPressed: () => _settingsOpenApiKeyPortal(context),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: Text(
+                      l.settingsAiApiKeyGet,
+                      style: GoogleFonts.outfit(fontSize: 13),
                     ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(l.settingsApiKeyCancel),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () async {
-                        await _settingsSetProviderApiKey(ctrl.text.trim());
-                        if (!ctx.mounted) return;
-                        Navigator.pop(ctx);
-                        _reloadFromPrefs();
-                      },
-                      child: Text(l.settingsApiKeySave),
-                    ),
-                  ],
-                ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(l.settingsApiKeyCancel),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      await _settingsSetProviderApiKey(ctrl.text.trim());
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
+                      _reloadFromPrefs();
+                    },
+                    child: Text(l.settingsApiKeySave),
+                  ),
+                ]),
               ],
             ),
           );
