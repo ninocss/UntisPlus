@@ -139,7 +139,7 @@ jobs:
               > release-manifest.json
           )
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: nightly-android
           path: release_assets/
@@ -178,7 +178,7 @@ jobs:
           ditto --norsrc build/ios/iphoneos/Runner.app release_assets/Payload/Runner.app
           (cd release_assets && zip -r "UntisPlus-${TAG}.ipa" Payload && rm -rf Payload)
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: nightly-ios
           path: release_assets/*.ipa
