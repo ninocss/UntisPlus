@@ -40,7 +40,7 @@ jobs:
 
       - name: Cache fllama native builds
         if: ${{ github.event.inputs.use_fllama_cache == 'true' }}
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/fllama
           key: ${{ runner.os }}-fllama-ios-${{ hashFiles('pubspec.lock') }}
