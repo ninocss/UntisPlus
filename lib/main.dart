@@ -12264,7 +12264,13 @@ class _InfoHtmlBody extends StatelessWidget {
     height: 1.4,
   );
 
-  String _normalizedText(String value) => value.replaceAll(RegExp(r'\s+'), ' ');
+  String _normalizedText(String value) {
+    var result = value.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    result = result.replaceAll(RegExp(r'[ \t]+'), ' ');
+    result = result.replaceAll(RegExp(r' *\n *'), '\n');
+    result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    return result;
+  }
 }
 
 // --- EINSTELLUNGEN ---
