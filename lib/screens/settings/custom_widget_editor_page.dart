@@ -297,8 +297,9 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    if (_loading)
+    if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final config = _selected;
     return Scaffold(
       appBar: RoundedBlurAppBar(title: Text(l.ui('editor'))),
@@ -425,12 +426,13 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                         selected: active,
                         onSelected: (selected) {
                           final blocks = [...config.blocks];
-                          if (selected &&
-                              blocks.length < WidgetConfiguration.maxBlocks)
+                          if (selected && blocks.length < WidgetConfiguration.maxBlocks) {
                             blocks.add(entry.key);
+                          }
                           if (!selected) blocks.remove(entry.key);
-                          if (blocks.isNotEmpty)
+                          if (blocks.isNotEmpty) {
                             _replace(config.copyWith(blocks: blocks));
+                          }
                         },
                       );
                     }).toList(),

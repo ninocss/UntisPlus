@@ -867,9 +867,12 @@ Halte deine Antworten eher kurz, aber präzise.''';
       final base = normalizedBaseUrl(rawBaseUrl);
       if (base.isEmpty) return '';
       if (base.contains('/models/')) return base;
-      if (base.contains('/v1beta'))
+      if (base.contains('/v1beta')) {
         return '$base/models/$model:generateContent';
-      if (base.contains('/v1')) return '$base/models/$model:generateContent';
+      }
+      if (base.contains('/v1')) {
+        return '$base/models/$model:generateContent';
+      }
       return '$base/v1beta/models/$model:generateContent';
     }
 
@@ -1105,8 +1108,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
   }
 
   Object? _jsonSafeValue(Object? value) {
-    if (value == null || value is String || value is num || value is bool)
+    if (value == null || value is String || value is num || value is bool) {
       return value;
+    }
     if (value is DateTime) return value.toIso8601String();
     if (value is List) return value.map(_jsonSafeValue).toList();
     if (value is Map) {
@@ -1140,8 +1144,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
   String _nextLessonSummary() {
     final now = DateTime.now();
     final todayIdx = now.weekday - 1;
-    if (todayIdx < 0 || todayIdx > 4)
+    if (todayIdx < 0 || todayIdx > 4) {
       return 'Nächste Stunde: Keine (heute ist keine Schule).';
+    }
     final lessons = _weekData[todayIdx] ?? [];
     final nowMin = now.hour * 100 + now.minute;
     for (final lsn in lessons.whereType<Map>()) {
@@ -1763,28 +1768,35 @@ Halte deine Antworten eher kurz, aber präzise.''';
     final lower = label.toLowerCase();
     if (lower.contains('stunde') ||
         lower.contains('lesson') ||
-        lower.contains('kurs'))
+        lower.contains('kurs')) {
       return Icons.school_rounded;
+    }
     if (lower.contains('prüf') ||
         lower.contains('exam') ||
         lower.contains('test') ||
-        lower.contains('klausur'))
+        lower.contains('klausur')) {
       return Icons.assignment_rounded;
-    if (lower.contains('raum') || lower.contains('room'))
+    }
+    if (lower.contains('raum') || lower.contains('room')) {
       return Icons.meeting_room_rounded;
-    if (lower.contains('lehrer') || lower.contains('teacher'))
+    }
+    if (lower.contains('lehrer') || lower.contains('teacher')) {
       return Icons.person_rounded;
+    }
     if (lower.contains('frei') ||
         lower.contains('free') ||
         lower.contains('pause') ||
-        lower.contains('break'))
+        lower.contains('break')) {
       return Icons.free_breakfast_rounded;
+    }
     if (lower.contains('tag') ||
         lower.contains('day') ||
-        lower.contains('heute'))
+        lower.contains('heute')) {
       return Icons.today_rounded;
-    if (lower.contains('zeit') || lower.contains('time'))
+    }
+    if (lower.contains('zeit') || lower.contains('time')) {
       return Icons.schedule_rounded;
+    }
     return Icons.auto_awesome_rounded;
   }
 
@@ -2781,9 +2793,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         builder: (context, style, _) => ValueListenableBuilder<bool>(
           valueListenable: backgroundAnimationsNotifier,
           builder: (context, enabled, _) => ThemedBackdrop(
-            child: page,
             animate: enabled,
             backgroundStyle: style,
+            child: page,
           ),
         ),
       );

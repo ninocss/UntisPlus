@@ -1185,8 +1185,9 @@ Future<void> _refreshInactiveWidgetAccounts(
           final subject =
               (subjects.first as Map)['longName'] ??
               (subjects.first as Map)['name'];
-          if (subject?.toString().trim().isNotEmpty == true)
+          if (subject?.toString().trim().isNotEmpty == true) {
             return subject.toString().trim();
+          }
         }
         return lesson['_subjectShort']?.toString() ?? 'Unterricht';
       }

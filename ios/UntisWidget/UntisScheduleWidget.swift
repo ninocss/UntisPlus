@@ -58,6 +58,7 @@ struct UntisDailyScheduleWidget: Widget {
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 struct UntisDailyScheduleView: View {
     var entry: UntisScheduleEntry
 
@@ -91,5 +92,6 @@ struct UntisDailyScheduleView: View {
             }
             .padding()
         }
+        .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
     }
 }

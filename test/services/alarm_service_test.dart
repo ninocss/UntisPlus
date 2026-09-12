@@ -12,7 +12,7 @@ void main() {
   }) => {
     'date': date,
     'startTime': start,
-    if (code != null) 'code': code,
+    'code': ?code,
     'su': [
       {'longName': subject},
     ],

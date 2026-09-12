@@ -1791,7 +1791,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       homeworksNotifier.value = res['homeworks']!;
       lessonNotesNotifier.value = res['lessonNotes']!;
     } catch (e) {
-      print('Error fetching homework and notes: $e');
+      debugPrint('Error fetching homework and notes: $e');
     }
   }
 
@@ -1922,15 +1922,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       // The on-screen timetable reserves space for the transparent app bar.
       // Temporarily remove that viewport-only padding from the repaint boundary
       // so the saved image starts with the actual timetable content.
+      final pixelRatio = MediaQuery.of(
+        context,
+      ).devicePixelRatio.clamp(1.0, 3.0).toDouble();
       setState(() => _isExportingTimetable = true);
       await WidgetsBinding.instance.endOfFrame;
       final boundary = _timetableExportKey.currentContext?.findRenderObject();
       if (boundary is! RenderRepaintBoundary) return;
-      final image = await boundary.toImage(
-        pixelRatio: MediaQuery.of(
-          context,
-        ).devicePixelRatio.clamp(1.0, 3.0).toDouble(),
-      );
+      final image = await boundary.toImage(pixelRatio: pixelRatio);
       if (mounted) setState(() => _isExportingTimetable = false);
       final data = await image.toByteData(format: ImageByteFormat.png);
       if (data == null) return;
@@ -6427,7 +6426,7 @@ Future<void> _showAddHomeworkDialog(
                               list.add(item);
                             }
                             await saveCustomHomework(list);
-                            Navigator.pop(ctx);
+                            if (ctx.mounted) Navigator.pop(ctx);
                           },
                           style: FilledButton.styleFrom(
                             minimumSize: const Size(0, 60),
@@ -6578,6 +6577,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
         });
       }
       await saveCustomHomework(current);
+      if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l.homeworkImportSuccess)));
@@ -7165,7 +7165,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
     Future<void> toggleDone() async {
       HapticFeedback.selectionClick();
       await setDone(!isDone);
-      if (!mounted) return;
+      if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
@@ -7751,7 +7751,7 @@ Future<void> _showAddExamDialog(
                               list.add(newExam);
                             }
                             await saveCustomExams(list);
-                            Navigator.pop(ctx);
+                            if (ctx.mounted) Navigator.pop(ctx);
                           },
                           style: FilledButton.styleFrom(
                             minimumSize: const Size(0, 60),
@@ -8356,6 +8356,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           });
         }
         await saveCustomExams(current);
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l.examsImportSuccess)));
@@ -11198,8 +11199,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       if (!raw.startsWith('{')) return raw.replaceAll('"', '').trim();
       try {
         final decoded = jsonDecode(raw);
-        if (decoded is String && decoded.trim().isNotEmpty)
+        if (decoded is String && decoded.trim().isNotEmpty) {
           return decoded.trim();
+        }
         if (decoded is Map) {
           final token =
               decoded['token'] ??
@@ -12125,7 +12127,7 @@ class _InfoHtmlBody extends StatelessWidget {
             child: Image.network(
               source,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
           ),
         );

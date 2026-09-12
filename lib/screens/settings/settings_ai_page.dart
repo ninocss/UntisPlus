@@ -281,6 +281,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   Future<void> _deleteLocalModel(LocalModelInfo model) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final path = await _getLocalModelPath(model.id);
+    if (!mounted) return;
 
     final confirmed = await showDialog<bool>(
       context: context,

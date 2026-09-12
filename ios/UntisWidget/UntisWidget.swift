@@ -116,6 +116,7 @@ struct UntisCurrentLessonWidget: Widget {
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 struct UntisCurrentLessonView: View {
     var entry: UntisLessonEntry
     @Environment(\.widgetFamily) var family
@@ -161,6 +162,7 @@ struct UntisCurrentLessonView: View {
             }
             .padding()
         }
+        .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
     }
 }
 
@@ -197,6 +199,7 @@ struct UntisAccountSummaryProvider: AppIntentTimelineProvider {
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 struct UntisSummaryView: View {
     let entry: UntisSummaryEntry
     var body: some View {
@@ -205,6 +208,7 @@ struct UntisSummaryView: View {
             Text(entry.body).font(.headline).lineLimit(2)
             Spacer()
         }.padding()
+        .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
     }
 }
 

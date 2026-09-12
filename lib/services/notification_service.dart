@@ -254,7 +254,12 @@ class NotificationService {
       id: id,
       title: title,
       body: body,
-      notificationDetails: NotificationDetails(android: androidDetails),
+      notificationDetails: NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: NotificationChannels.currentLesson,
+        ),
+      ),
       payload: jsonEncode(payloadMap),
     );
   }
@@ -285,7 +290,12 @@ class NotificationService {
       id: NotificationIds.dailyBriefing,
       title: title,
       body: body,
-      notificationDetails: NotificationDetails(android: androidDetails),
+      notificationDetails: NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: NotificationChannels.dailyBriefing,
+        ),
+      ),
       payload: jsonEncode({
         'type': 'briefing',
         'currentLesson': currentLesson ?? '',
@@ -319,7 +329,13 @@ class NotificationService {
       id: NotificationIds.importantChanges,
       title: title,
       body: body,
-      notificationDetails: NotificationDetails(android: androidDetails),
+      notificationDetails: NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: 'com.ninocss.untisplus.CHANGES',
+          interruptionLevel: InterruptionLevel.timeSensitive,
+        ),
+      ),
       payload: jsonEncode({
         'type': 'change',
         'currentLesson': currentLesson ?? '',
@@ -348,7 +364,12 @@ class NotificationService {
       id: id,
       title: title,
       body: body,
-      notificationDetails: NotificationDetails(android: androidDetails),
+      notificationDetails: NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: NotificationChannels.updates,
+        ),
+      ),
       payload: jsonEncode({'type': 'update'}),
     );
   }
@@ -360,10 +381,15 @@ class NotificationService {
 
   String _getActionLabel(String locale, String actionId) {
     final l = AppL10n.of(locale);
-    if (actionId == 'open_next_lesson')
+    if (actionId == 'open_next_lesson') {
       return l.notificationActionNextLessonLabel;
-    if (actionId == 'open_free_rooms') return l.notificationActionFreeRooms;
-    if (actionId == 'open_day') return l.notificationActionOpenDay;
+    }
+    if (actionId == 'open_free_rooms') {
+      return l.notificationActionFreeRooms;
+    }
+    if (actionId == 'open_day') {
+      return l.notificationActionOpenDay;
+    }
     return l.timetableTitle;
   }
 

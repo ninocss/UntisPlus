@@ -15,9 +15,9 @@ class _AnimatedBackground extends StatelessWidget {
           return ValueListenableBuilder<int>(
             valueListenable: backgroundAnimationStyleNotifier,
             builder: (context, style, _) => ThemedBackdrop(
-              child: child,
               animate: enabled,
               backgroundStyle: style,
+              child: child,
             ),
           );
         }

@@ -242,8 +242,9 @@ class AlarmService {
     if (raw == null) return const AlarmConfig();
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is Map)
+      if (decoded is Map) {
         return AlarmConfig.fromJson(Map<String, dynamic>.from(decoded));
+      }
     } catch (_) {}
     return const AlarmConfig();
   }

@@ -375,8 +375,9 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     final uri = await AlarmService.instance.pickRingtone(
                       _config.ringtoneUri,
                     );
-                    if (uri != null)
+                    if (uri != null) {
                       await _save(_config.copyWith(ringtoneUri: uri));
+                    }
                   },
                 ),
               ],

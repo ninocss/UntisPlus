@@ -500,8 +500,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                   val <= 0 ||
                                   !weight.isFinite ||
                                   weight <= 0 ||
-                                  subj.isEmpty)
+                                  subj.isEmpty) {
                                 return;
+                              }
 
                               final newGrade = _Grade(
                                 id:
