@@ -294,6 +294,7 @@ class NotificationService {
         android: androidDetails,
         iOS: DarwinNotificationDetails(
           threadIdentifier: NotificationChannels.dailyBriefing,
+          badgeNumber: 1,
         ),
       ),
       payload: jsonEncode({
@@ -334,6 +335,7 @@ class NotificationService {
         iOS: DarwinNotificationDetails(
           threadIdentifier: 'com.ninocss.untisplus.CHANGES',
           interruptionLevel: InterruptionLevel.timeSensitive,
+          badgeNumber: 1,
         ),
       ),
       payload: jsonEncode({
@@ -368,6 +370,7 @@ class NotificationService {
         android: androidDetails,
         iOS: DarwinNotificationDetails(
           threadIdentifier: NotificationChannels.updates,
+          badgeNumber: 1,
         ),
       ),
       payload: jsonEncode({'type': 'update'}),

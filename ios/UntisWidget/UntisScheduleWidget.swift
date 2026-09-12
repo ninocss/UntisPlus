@@ -8,7 +8,7 @@ struct UntisScheduleEntry: TimelineEntry {
 
 struct UntisScheduleProvider: TimelineProvider {
     func placeholder(in context: Context) -> UntisScheduleEntry {
-        UntisScheduleEntry(date: Date(), dailySchedule: "No schedule data")
+        UntisScheduleEntry(date: Date(), dailySchedule: "Keine Pläne verfügbar")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (UntisScheduleEntry) -> Void) {
@@ -26,7 +26,7 @@ struct UntisScheduleProvider: TimelineProvider {
     func loadEntry(accountId: String? = nil) -> UntisScheduleEntry {
         return UntisScheduleEntry(
             date: Date(),
-            dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? "No schedule data"
+            dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? "Keine Pläne verfügbar"
         )
     }
 }
@@ -52,8 +52,8 @@ struct UntisDailyScheduleWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountScheduleProvider()) { entry in
             UntisDailyScheduleView(entry: entry)
         }
-        .configurationDisplayName("Daily Schedule")
-        .description("Shows your full day schedule.")
+        .configurationDisplayName("Tagesplan")
+        .description("Zeigt deinen gesamten Tagesplan.")
         .supportedFamilies([.systemLarge])
     }
 }
@@ -79,7 +79,7 @@ struct UntisDailyScheduleView: View {
                 }
 
                 if entry.dailySchedule.isEmpty {
-                    Text("No schedule data")
+                    Text("Keine Pläne verfügbar")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {

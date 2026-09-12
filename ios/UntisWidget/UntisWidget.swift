@@ -59,7 +59,7 @@ struct UntisLessonProvider: TimelineProvider {
     func placeholder(in context: Context) -> UntisLessonEntry {
         UntisLessonEntry(
             date: Date(),
-            currentLesson: "No Lesson",
+            currentLesson: "Keine Stunde",
             nextLesson: "-",
             timeRemaining: "-",
             dailySchedule: ""
@@ -81,7 +81,7 @@ struct UntisLessonProvider: TimelineProvider {
     func loadEntry(accountId: String? = nil) -> UntisLessonEntry {
         return UntisLessonEntry(
             date: Date(),
-            currentLesson: untisWidgetValue("current_lesson", accountId: accountId) ?? "No lesson",
+            currentLesson: untisWidgetValue("current_lesson", accountId: accountId) ?? "Keine Stunde",
             nextLesson: untisWidgetValue("next_lesson", accountId: accountId) ?? "-",
             timeRemaining: untisWidgetValue("time_remaining", accountId: accountId) ?? "-",
             dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? ""
@@ -110,8 +110,8 @@ struct UntisCurrentLessonWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountLessonProvider()) { entry in
             UntisCurrentLessonView(entry: entry)
         }
-        .configurationDisplayName("Current Lesson")
-        .description("Shows your current and next lesson.")
+        .configurationDisplayName("Aktuelle Stunde")
+        .description("Zeigt deine aktuelle und nächste Stunde.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
@@ -138,7 +138,7 @@ struct UntisCurrentLessonView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Now")
+                    Text("Jetzt")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text(entry.currentLesson)
@@ -149,7 +149,7 @@ struct UntisCurrentLessonView: View {
                 if family == .systemMedium {
                     Divider()
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Next")
+                        Text("Danach")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Text(entry.nextLesson)
