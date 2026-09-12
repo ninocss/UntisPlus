@@ -66,5 +66,5 @@ kotlin {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
