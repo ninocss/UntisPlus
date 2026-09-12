@@ -192,12 +192,12 @@ jobs:
       needs.build_ipa.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: nightly-android
           path: release_assets
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: nightly-ios
           path: release_assets

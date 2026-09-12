@@ -335,7 +335,7 @@ jobs:
 
       - name: Download Signing Config
         if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: android-signing
           path: ${{ runner.temp }}/android-signing
@@ -443,7 +443,7 @@ jobs:
 
       - name: Download Signing Config
         if: ${{ needs.setup_signing.outputs.keystore_configured == 'true' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: android-signing
           path: ${{ runner.temp }}/android-signing
@@ -791,27 +791,27 @@ jobs:
     steps:
       - name: Download APK Artifacts
         if: ${{ needs.meta.outputs.build_apk == 'true' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: release-apk
           path: release_assets
 
       - name: Download AAB Artifact
         if: ${{ needs.meta.outputs.build_aab == 'true' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: release-aab
           path: release_assets
 
       - name: Download IPA Artifact
         if: ${{ needs.meta.outputs.build_ipa == 'true' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: release-ipa
           path: release_assets
 
       - name: Download Release Notes Artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: release-notes
           path: release_assets
