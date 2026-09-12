@@ -15,7 +15,7 @@ dependencies:
   google_fonts: ^8.1.0
   intl: ^0.20.2
   shared_preferences: ^2.5.5
-  dynamic_color: ^1.7.0
+  dynamic_color: ^2.1.0
   flutter_launcher_icons: ^0.14.4
   dio: ^5.7.0
   fllama:
