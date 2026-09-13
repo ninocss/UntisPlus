@@ -270,12 +270,12 @@ jobs:
             |
             .news = ([
               {
-                "title": $app_name + " " + $version + " is here",
+                "title": ($app_name + " " + $version + " is here"),
                 "identifier": $news_id,
                 "caption": $desc,
                 "date": $date,
                 "tintColor": $news_tint,
-                "imageURL": "https://raw.githubusercontent.com/" + $repo + "/main/assets/icon.png",
+                "imageURL": ("https://raw.githubusercontent.com/" + $repo + "/main/assets/icon.png"),
                 "appID": $news_appid,
                 "notify": true
               }
