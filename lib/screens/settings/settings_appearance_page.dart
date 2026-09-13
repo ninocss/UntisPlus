@@ -877,12 +877,8 @@ class SettingsAppearancePage extends StatelessWidget {
                   ),
                   iconColor: cs.onSecondaryContainer,
                   title: l.ui('appearanceAppIcon'),
-                  subtitle: Platform.isAndroid
-                      ? l.ui('appearanceIconChoose')
-                      : l.ui('appearanceIconAndroidOnly'),
-                  onTap: Platform.isAndroid
-                      ? () => _showAppIconDialog(context)
-                      : null,
+                  subtitle: l.ui('appearanceIconChoose'),
+                  onTap: () => _showAppIconDialog(context),
                 ),
                 SettingsTile(
                   icon: Icons.translate_rounded,

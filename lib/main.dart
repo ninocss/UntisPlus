@@ -157,7 +157,7 @@ Future<void> _applyAndroidWindowBlur(bool enabled) async {
 }
 
 Future<bool> _applyLauncherIcon(String icon) async {
-  if (kIsWeb || !Platform.isAndroid) return false;
+  if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return false;
   try {
     return await _uiChannel.invokeMethod<bool>('setLauncherIcon', icon) ??
         false;
