@@ -3,6 +3,12 @@ name: Update AltStore Source
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish to AltStore, e.g. v5.3.3'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -20,6 +26,9 @@ jobs:
       - name: Resolve release metadata
         id: meta
         env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_NAME: ${{ github.event.release.name }}
           RELEASE_BODY: ${{ github.event.release.body }}
@@ -27,6 +36,15 @@ jobs:
           IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            RELEASE_JSON="$(gh release view "$DISPATCH_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,name,body,publishedAt,isPrerelease)"
+            RELEASE_TAG="$(echo "$RELEASE_JSON" | jq -r '.tagName')"
+            RELEASE_NAME="$(echo "$RELEASE_JSON" | jq -r '.name')"
+            RELEASE_BODY="$(echo "$RELEASE_JSON" | jq -r '.body')"
+            RELEASE_DATE="$(echo "$RELEASE_JSON" | jq -r '.publishedAt')"
+            IS_PRERELEASE="$(echo "$RELEASE_JSON" | jq -r '.isPrerelease')"
+          fi
 
           VERSION="${RELEASE_TAG#v}"
           DATE="$(date -d "$RELEASE_DATE" -u +%Y-%m-%d)"

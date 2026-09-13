@@ -544,7 +544,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash
-          GEMINI_FALLBACK_MODEL: 	gemini-3.5-flash-lite
+          GEMINI_FALLBACK_MODEL: gemini-3.5-flash-lite
           RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
         run: |
           set -euo pipefail
@@ -786,6 +786,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     needs: [meta, quality_checks, build_apk, build_aab, build_ipa, release_notes]
     if: ${{ always() && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.build_apk.result == 'success' || needs.build_apk.result == 'skipped') && (needs.build_aab.result == 'success' || needs.build_aab.result == 'skipped') && (needs.build_ipa.result == 'success' || needs.build_ipa.result == 'skipped') && (needs.release_notes.result == 'success' || needs.release_notes.result == 'skipped') }}
     steps:
@@ -831,3 +832,12 @@ jobs:
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dispatch AltStore source update
+        if: ${{ needs.meta.outputs.build_ipa == 'true' && needs.meta.outputs.draft == 'false' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run altstore_source.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            -f tag="${{ needs.meta.outputs.release_tag }}"
