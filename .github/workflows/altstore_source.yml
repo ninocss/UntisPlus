@@ -18,6 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  
   update_source:
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +28,7 @@ jobs:
         id: meta
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           DISPATCH_TAG: ${{ github.event.inputs.tag }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
