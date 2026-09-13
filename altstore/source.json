@@ -33,6 +33,15 @@
       ],
       "versions": [
         {
+          "version": "5.3.3",
+          "buildVersion": "5.3.3",
+          "date": "2026-09-13",
+          "localizedDescription": "This update includes behind-the-scenes maintenance to keep Untis+ running smoothly. There are no new user-facing features in this version as we prepare for future updates.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.3.3/UntisPlus-v5.3.3.ipa",
+          "size": 41956305,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "5.3.2",
           "buildVersion": "5.3.2",
           "date": "2026-09-09",
@@ -93,6 +102,16 @@
     "com.ninocss.untisplus"
   ],
   "news": [
+    {
+      "title": "Untis+ 5.3.3 is here",
+      "identifier": "untisplus-release-5-3-3",
+      "caption": "This update includes behind-the-scenes maintenance to keep Untis+ running smoothly. There are no new user-facing features in this version as we prepare for future updates.",
+      "date": "2026-09-13",
+      "tintColor": "4A90D9",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus",
+      "notify": true
+    },
     {
       "title": "Stand with Palastine",
       "identifier": "palastine-support",
