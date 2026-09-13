@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to publish to AltStore, e.g. v5.3.3'
-        required: true
+        description: 'Release tag (leer = neustes GitHub-Release, z.B. v5.2.0)'
+        required: false
         type: string
 
 permissions:
@@ -38,7 +38,11 @@ jobs:
           set -euo pipefail
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            RELEASE_JSON="$(gh release view "$DISPATCH_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,name,body,publishedAt,isPrerelease)"
+            if [ -z "${DISPATCH_TAG:-}" ]; then
+              RELEASE_JSON="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName,name,body,publishedAt,isPrerelease)"
+            else
+              RELEASE_JSON="$(gh release view "$DISPATCH_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,name,body,publishedAt,isPrerelease)"
+            fi
             RELEASE_TAG="$(echo "$RELEASE_JSON" | jq -r '.tagName')"
             RELEASE_NAME="$(echo "$RELEASE_JSON" | jq -r '.name')"
             RELEASE_BODY="$(echo "$RELEASE_JSON" | jq -r '.body')"
