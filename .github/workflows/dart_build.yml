@@ -38,7 +38,7 @@ on:
       build_artifacts:
         description: 'Welche Artefakte bauen?'
         required: true
-        default: 'apk'
+        default: 'apk+ipa'
         type: choice
         options:
           - apk
