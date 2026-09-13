@@ -261,6 +261,8 @@ class AppL10n {
   String get attachmentSaved => _t('attachmentSaved');
   String get attachmentDownloadFailed => _t('attachmentDownloadFailed');
   String get attachmentDemoUnavailable => _t('attachmentDemoUnavailable');
+  String get infoCopyMessage => _t('infoCopyMessage');
+  String get infoMessageCopied => _t('infoMessageCopied');
 
   /// Label for an attachment counter, e.g. "2 Attached PDFs" or
   /// "1 Attached File". Pass an [extension] (upper case, e.g. "PDF") when all
@@ -1083,6 +1085,8 @@ class AppL10n {
           'Der Anhang konnte nicht heruntergeladen werden.',
       'attachmentDemoUnavailable':
           'Im Demo-Modus sind keine echten Dateien verfügbar.',
+      'infoCopyMessage': 'Nachricht kopieren',
+      'infoMessageCopied': 'Nachricht in Zwischenablage kopiert.',
       'notificationActionCurrentLesson': 'Aktuelle Stunde: {lesson}',
       'notificationActionNextLessonLabel': 'Nächste Stunde',
       'notificationActionNoNextLesson':
@@ -2093,6 +2097,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'attachmentSaved': 'Attachment saved.',
       'attachmentDownloadFailed': 'The attachment could not be downloaded.',
       'attachmentDemoUnavailable': 'Real files are not available in demo mode.',
+      'infoCopyMessage': 'Copy message',
+      'infoMessageCopied': 'Message copied to clipboard.',
       'notificationActionCurrentLesson': 'Current lesson: {lesson}',
       'notificationActionNextLessonLabel': 'Next lesson',
       'notificationActionNoNextLesson': 'No next lesson found for today',
@@ -3082,6 +3088,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'attachmentDownloadFailed': 'Impossible de télécharger la pièce jointe.',
       'attachmentDemoUnavailable':
           'Les fichiers réels ne sont pas disponibles en mode démo.',
+      'infoCopyMessage': 'Copier le message',
+      'infoMessageCopied': 'Message copié dans le presse-papiers.',
       'notificationActionCurrentLesson': 'Cours actuel : {lesson}',
       'notificationActionNextLessonLabel': 'Cours suivant',
       'notificationActionNoNextLesson':
@@ -4106,6 +4114,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'attachmentDownloadFailed': 'No se pudo descargar el adjunto.',
       'attachmentDemoUnavailable':
           'Los archivos reales no están disponibles en el modo de demostración.',
+      'infoCopyMessage': 'Copiar mensaje',
+      'infoMessageCopied': 'Mensaje copiado al portapapeles.',
       'notificationActionCurrentLesson': 'Clase actual: {lesson}',
       'notificationActionNextLessonLabel': 'Siguiente clase',
       'notificationActionNoNextLesson':

@@ -42,6 +42,43 @@ bool _detailIsSafeExternalUrl(String? value) {
       (uri.scheme == 'https' || uri.scheme == 'http');
 }
 
+String _detailToPlainText(html_dom.Document document) {
+  final buffer = StringBuffer();
+  void walk(Iterable<html_dom.Node> nodes) {
+    for (final node in nodes) {
+      if (node is html_dom.Text) {
+        final value = node.data.trim();
+        if (value.isNotEmpty) buffer.write(value);
+        continue;
+      }
+      if (node is! html_dom.Element) continue;
+      final tag = node.localName;
+      if (tag == 'br') {
+        buffer.write('\n');
+        continue;
+      }
+      const blocks = {
+        'p', 'div', 'h1', 'h2', 'h3', 'h4', 'blockquote', 'pre',
+        'section', 'article', 'ul', 'ol', 'table',
+      };
+      if (tag == 'li') buffer.write('\n• ');
+      if (blocks.contains(tag) && tag != 'li') buffer.write('\n');
+      if (tag == 'td' || tag == 'th') buffer.write(' – ');
+      walk(node.nodes);
+      if (blocks.contains(tag) && tag != 'li') buffer.write('\n');
+    }
+  }
+  walk(document.body?.nodes ?? const []);
+  return _normalizedDetailText(buffer.toString());
+}
+
+String _normalizedDetailText(String value) {
+  var result = value.replaceAll(RegExp(r'[ \t]+'), ' ');
+  result = result.replaceAll(RegExp(r' *\n *'), '\n');
+  result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  return result.trim();
+}
+
 IconData _attachmentIcon(String ext) {
   switch (ext) {
     case 'PDF':
@@ -161,6 +198,26 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
     }
   }
 
+  Future<void> _copyMessage(BuildContext context) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final plainBody = _detailToPlainText(
+      _detailSafeInfoDocument(item.displayBody),
+    );
+    final dateLabel = _notificationDateLabel(item.date);
+    final buffer = StringBuffer(item.title.trim());
+    if ((item.author ?? '').trim().isNotEmpty) {
+      buffer.writeln(item.author!.trim());
+    }
+    if (dateLabel.isNotEmpty) buffer.writeln(dateLabel);
+    if (plainBody.isNotEmpty) buffer.write('\n\n$plainBody');
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.infoMessageCopied)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -175,6 +232,16 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              tooltip: l.infoCopyMessage,
+              onPressed: () => _copyMessage(context),
+              icon: const Icon(Icons.content_copy_rounded),
+            ),
+          ),
+        ],
       ),
       body: Stack(
         fit: StackFit.expand,
@@ -241,9 +308,11 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                       ),
                       if (item.displayBody.isNotEmpty) ...[
                         const SizedBox(height: 18),
-                        _InfoHtmlBody(
-                          document: _detailSafeInfoDocument(item.displayBody),
-                          onOpenUrl: (url) => _openDetailUrl(context, url),
+                        SelectionArea(
+                          child: _InfoHtmlBody(
+                            document: _detailSafeInfoDocument(item.displayBody),
+                            onOpenUrl: (url) => _openDetailUrl(context, url),
+                          ),
                         ),
                       ],
                       if (item.attachments.isNotEmpty) ...[

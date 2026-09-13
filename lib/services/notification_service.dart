@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../l10n.dart';
+import 'widget_service.dart';
 
 /// Identifiers for different notification types.
 abstract class NotificationIds {
@@ -108,6 +109,19 @@ class NotificationService {
       }
     }
 
+    // On iOS the native alarm scheduler needs to be the notification-center
+    // delegate so snooze/dismiss actions on alarm banners are handled, while
+    // every other notification keeps flowing through the plugin. Must run
+    // after the launch-details read above so the plugin stays authoritative
+    // during cold start.
+    if (Platform.isIOS) {
+      try {
+        await _nativeChannel.invokeMethod<void>('activateNotificationDelegation');
+      } catch (_) {
+        // Older native builds simply skip the handover.
+      }
+    }
+
     _initialized = true;
   }
 
@@ -124,6 +138,7 @@ class NotificationService {
         );
         _pendingEvent = event;
         _actionController.add(event);
+        WidgetService.reloadAllTimelines();
       }
     }
   }

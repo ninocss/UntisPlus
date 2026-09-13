@@ -132,7 +132,7 @@ class WidgetService {
   static const configurationsKey = 'widget_configurations_v1';
   static const String appGroupId = 'group.com.ninocss.untisplus';
   static const String androidWidgetName = 'UntisWidgetProvider';
-  static const String iOSWidgetName = 'UntisWidget';
+  static const String iOSWidgetName = 'UntisWidgetExtension';
   static const String iOSScheduleWidgetName = 'UntisWidgetDailySchedule';
   static const String iOSHomeworkWidgetName = 'UntisWidgetHomework';
   static const String iOSNotificationsWidgetName = 'UntisWidgetNotifications';
@@ -335,6 +335,38 @@ class WidgetService {
       // no platform implementation. An empty result keeps that screen useful.
       return const WidgetPreviewData();
     }
+  }
+
+  /// Requests a refresh of every homescreen widget timeline without republishing
+  /// data. Mirrors the native iOS `WidgetCenter.shared.reloadAllTimelines()`.
+  static Future<void> reloadAllTimelines() async {
+    if (kIsWeb) return;
+    await _ensureConfigured();
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetCurrentLesson',
+      iOSName: iOSWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetCurrentLesson',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetHomework',
+      iOSName: iOSHomeworkWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetHomework',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetNotifications',
+      iOSName: iOSNotificationsWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetNotifications',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetDailySchedule',
+      iOSName: iOSScheduleWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetDailySchedule',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetCustom',
+      iOSName: 'UntisWidgetCustom',
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetCustom',
+    );
   }
 
   static Future<void> updateNotificationWidget(

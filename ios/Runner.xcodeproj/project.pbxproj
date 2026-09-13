@@ -20,7 +20,12 @@
 		AABB000009 /* UntisWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB000002 /* UntisWidget.swift */; };
 		AABB00000A /* UntisScheduleWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB000003 /* UntisScheduleWidget.swift */; };
 		AABB000017 /* Runner.entitlements in Resources */ = {isa = PBXBuildFile; fileRef = AABB000006 /* Runner.entitlements */; };
-		AABB000018 /* UntisWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AABB000007 /* UntisWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AABB000018 /* UntisWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = AABB000007 /* UntisWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BAAA00001A /* UntisAlarmActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA000019 /* UntisAlarmActivityAttributes.swift */; };
+		BAAA00001C /* UntisAlarmLiveActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA00001B /* UntisAlarmLiveActivityView.swift */; };
+		BAAA00001E /* UntisAlarmActivityConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA00001D /* UntisAlarmActivityConfiguration.swift */; };
+BAAA000020 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA00001F /* LiveActivityManager.swift */; };
+		BAAA000021 /* UntisAlarmScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA000022 /* UntisAlarmScheduler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,7 +41,7 @@
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = AABB00000E;
-			remoteInfo = UntisWidget;
+			remoteInfo = UntisWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -57,7 +62,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				AABB000018 /* UntisWidget.appex in Embed App Extensions */,
+				AABB000018 /* UntisWidgetExtension.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -86,9 +91,14 @@
 		AABB000002 /* UntisWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntisWidget.swift; sourceTree = "<group>"; };
 		AABB000003 /* UntisScheduleWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntisScheduleWidget.swift; sourceTree = "<group>"; };
 		AABB000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AABB000005 /* UntisWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = UntisWidget.entitlements; sourceTree = "<group>"; };
+		AABB000005 /* UntisWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = UntisWidgetExtension.entitlements; sourceTree = "<group>"; };
 		AABB000006 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
-		AABB000007 /* UntisWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = UntisWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AABB000007 /* UntisWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = UntisWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BAAA000019 /* UntisAlarmActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntisAlarmActivityAttributes.swift; sourceTree = "<group>"; };
+		BAAA00001B /* UntisAlarmLiveActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntisAlarmLiveActivityView.swift; sourceTree = "<group>"; };
+		BAAA00001D /* UntisAlarmActivityConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntisAlarmActivityConfiguration.swift; sourceTree = "<group>"; };
+BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		BAAA000022 /* UntisAlarmScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntisAlarmScheduler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,7 +145,7 @@
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
-				AABB000016 /* UntisWidget */,
+				AABB000016 /* UntisWidgetExtension */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 			);
@@ -145,7 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
-				AABB000007 /* UntisWidget.appex */,
+				AABB000007 /* UntisWidgetExtension.appex */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
 			);
 			name = Products;
@@ -161,23 +171,28 @@
 				AABB000006 /* Runner.entitlements */,
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
-				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
+74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
+				BAAA00001F /* LiveActivityManager.swift */,
+				BAAA000022 /* UntisAlarmScheduler.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
 		};
-		AABB000016 /* UntisWidget */ = {
+		AABB000016 /* UntisWidgetExtension */ = {
 			isa = PBXGroup;
 			children = (
 				AABB000001 /* UntisWidgetBundle.swift */,
 				AABB000002 /* UntisWidget.swift */,
 				AABB000003 /* UntisScheduleWidget.swift */,
 				AABB000004 /* Info.plist */,
-				AABB000005 /* UntisWidget.entitlements */,
+				AABB000005 /* UntisWidgetExtension.entitlements */,
+				BAAA000019 /* UntisAlarmActivityAttributes.swift */,
+				BAAA00001B /* UntisAlarmLiveActivityView.swift */,
+				BAAA00001D /* UntisAlarmActivityConfiguration.swift */,
 			);
-			path = UntisWidget;
+			path = UntisWidgetExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -225,9 +240,9 @@
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
 		};
-		AABB00000E /* UntisWidget */ = {
+		AABB00000E /* UntisWidgetExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AABB000012 /* Build configuration list for PBXNativeTarget "UntisWidget" */;
+			buildConfigurationList = AABB000012 /* Build configuration list for PBXNativeTarget "UntisWidgetExtension" */;
 			buildPhases = (
 				AABB00000B /* Sources */,
 				AABB00000C /* Resources */,
@@ -237,9 +252,9 @@
 			);
 			dependencies = (
 			);
-			name = UntisWidget;
-			productName = UntisWidget;
-			productReference = AABB000007 /* UntisWidget.appex */;
+			name = UntisWidgetExtension;
+			productName = UntisWidgetExtension;
+			productReference = AABB000007 /* UntisWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -282,7 +297,7 @@
 			projectRoot = "";
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
-				AABB00000E /* UntisWidget */,
+				AABB00000E /* UntisWidgetExtension */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
 			);
 		};
@@ -364,7 +379,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
+74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
+				BAAA000020 /* LiveActivityManager.swift in Sources */,
+				BAAA000021 /* UntisAlarmScheduler.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 			);
@@ -376,6 +393,9 @@
 			files = (
 				AABB000008 /* UntisWidgetBundle.swift in Sources */,
 				AABB000009 /* UntisWidget.swift in Sources */,
+				BAAA00001A /* UntisAlarmActivityAttributes.swift in Sources */,
+				BAAA00001C /* UntisAlarmLiveActivityView.swift in Sources */,
+				BAAA00001E /* UntisAlarmActivityConfiguration.swift in Sources */,
 				AABB00000A /* UntisScheduleWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -390,7 +410,7 @@
 		};
 		AABB000014 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = AABB00000E /* UntisWidget */;
+			target = AABB00000E /* UntisWidgetExtension */;
 			targetProxy = AABB000015 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -698,12 +718,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = UntisWidget/UntisWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = UntisWidgetExtension/UntisWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = UntisWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = UntisWidget;
+				INFOPLIST_FILE = UntisWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = UntisWidgetExtension;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSExtension_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -713,7 +733,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.UntisWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.UntisWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -729,12 +749,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = UntisWidget/UntisWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = UntisWidgetExtension/UntisWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = UntisWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = UntisWidget;
+				INFOPLIST_FILE = UntisWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = UntisWidgetExtension;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSExtension_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -744,7 +764,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.UntisWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.UntisWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -758,12 +778,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = UntisWidget/UntisWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = UntisWidgetExtension/UntisWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = UntisWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = UntisWidget;
+				INFOPLIST_FILE = UntisWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = UntisWidgetExtension;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSExtension_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -773,7 +793,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.UntisWidget;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.UntisWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -814,7 +834,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AABB000012 /* Build configuration list for PBXNativeTarget "UntisWidget" */ = {
+		AABB000012 /* Build configuration list for PBXNativeTarget "UntisWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AABB00000F /* Debug */,
@@ -842,3 +862,6 @@
 	};
 	rootObject = 97C146E61CF9000F007C117D /* Project object */;
 }
+
+
+

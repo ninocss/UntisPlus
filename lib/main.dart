@@ -632,7 +632,7 @@ Future<void> _initializeDeferredNativeServices() async {
   if (kIsWeb) return;
   await NotificationService().init();
   BackgroundService.initialize();
-  if (Platform.isAndroid) {
+  if (Platform.isAndroid || Platform.isIOS) {
     await AlarmService.instance.restore();
   }
 }
