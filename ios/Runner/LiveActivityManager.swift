@@ -1,5 +1,19 @@
 import ActivityKit
 
+// Must stay structurally identical to `UntisAlarmActivityAttributes` in the
+// UntisWidgetExtension extension so ActivityKit matches both ends.
+@available(iOS 16.2, *)
+struct UntisAlarmActivityAttributes: ActivityAttributes {
+    struct ContentState: Codable, Hashable {
+        let alarmId: String
+        let label: String
+        let time: String
+        let status: String
+        let countdown: String?
+    }
+    init() {}
+}
+
 @available(iOS 16.2, *)
 enum UntisAlarmActivityManager {
     /// Start or update the alarm Live Activity for `plan`.

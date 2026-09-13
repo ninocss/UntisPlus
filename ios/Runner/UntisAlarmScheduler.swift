@@ -147,6 +147,7 @@ enum UntisAlarmScheduler {
     // MARK: - Alarm Live Activity
 
     static func presentRinging(_ plan: [AnyHashable: Any], snoozing: Bool = false) async {
+        guard #available(iOS 16.2, *) else { return }
         let label = (plan["label"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let snapshot: [String: Any] = [
             "id": plan["id"] as? String ?? "",
@@ -158,6 +159,7 @@ enum UntisAlarmScheduler {
     }
 
     static func endLiveActivity() async {
+        guard #available(iOS 16.2, *) else { return }
         await UntisAlarmActivityManager.end()
     }
 

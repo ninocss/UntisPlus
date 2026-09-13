@@ -376,11 +376,11 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
 
   static func registerNativePlugins(with registry: FlutterPluginRegistry) {
     GeneratedPluginRegistrant.register(with: registry)
-    UntisLiveActivityPlugin.register(with: registry)
-    UntisAlarmLiveActivityPlugin.register(with: registry)
-    UntisAlarmPlugin.register(with: registry)
-    UntisNotificationsPlugin.register(with: registry)
-    UntisUIPlugin.register(with: registry)
+    UntisLiveActivityPlugin.register(with: registry.registrar(forPlugin: "UntisLiveActivityPlugin")!)
+    UntisAlarmLiveActivityPlugin.register(with: registry.registrar(forPlugin: "UntisAlarmLiveActivityPlugin")!)
+    UntisAlarmPlugin.register(with: registry.registrar(forPlugin: "UntisAlarmPlugin")!)
+    UntisNotificationsPlugin.register(with: registry.registrar(forPlugin: "UntisNotificationsPlugin")!)
+    UntisUIPlugin.register(with: registry.registrar(forPlugin: "UntisUIPlugin")!)
   }
 
   private func registerBackgroundRefresh() {
@@ -404,6 +404,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
         UNNotificationAction(identifier: UntisAlarmScheduler.dismissActionID, title: "Dismiss", options: [.destructive]),
       ],
       intentIdentifiers: [],
+      hiddenPreviewsBodyPlaceholder: nil,
       categorySummaryFormat: nil
     )
     let legacyCategory = UNNotificationCategory(
@@ -413,6 +414,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
         UNNotificationAction(identifier: "dismiss", title: "Dismiss", options: [])
       ],
       intentIdentifiers: [],
+      hiddenPreviewsBodyPlaceholder: nil,
       categorySummaryFormat: nil
     )
     UNUserNotificationCenter.current().setNotificationCategories([alarmCategory, legacyCategory])
