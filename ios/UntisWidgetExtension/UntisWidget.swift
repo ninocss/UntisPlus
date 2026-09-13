@@ -478,9 +478,8 @@ struct UntisLessonActivityConfiguration: Widget {
                     .fontWeight(.semibold)
                     .foregroundStyle(.blue)
                     .lineLimit(1)
-            } keylineTint: {
-                Color.blue
             }
+            .keylineTint(.blue)
         }
     }
 }

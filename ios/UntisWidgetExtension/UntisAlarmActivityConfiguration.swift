@@ -1,5 +1,6 @@
 import ActivityKit
 import SwiftUI
+import WidgetKit
 
 /// Dynamic Island representation of the alarm Live Activity.
 ///
@@ -54,9 +55,8 @@ struct UntisAlarmActivityConfiguration: Widget {
                     .font(.headline)
                     .foregroundStyle(.red)
                     .lineLimit(1)
-            } keylineTint: {
-                Color.red
             }
+            .keylineTint(.red)
         }
     }
 }

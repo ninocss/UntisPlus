@@ -1,5 +1,6 @@
 import ActivityKit
 import SwiftUI
+import WidgetKit
 
 @available(iOS 16.2, *)
 struct UntisAlarmLiveActivityView: View {
