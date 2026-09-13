@@ -3,12 +3,15 @@ import SwiftUI
 
 struct UntisScheduleEntry: TimelineEntry {
     let date: Date
+    let accountId: String
+    let accountLabel: String
+    let status: String
     let dailySchedule: String
 }
 
 struct UntisScheduleProvider: TimelineProvider {
     func placeholder(in context: Context) -> UntisScheduleEntry {
-        UntisScheduleEntry(date: Date(), dailySchedule: "Keine Pläne verfügbar")
+        UntisScheduleEntry(date: Date(), accountId: "", accountLabel: "Untis+", status: "", dailySchedule: "Stundenplan wird geladen …")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (UntisScheduleEntry) -> Void) {
@@ -26,7 +29,10 @@ struct UntisScheduleProvider: TimelineProvider {
     func loadEntry(accountId: String? = nil) -> UntisScheduleEntry {
         return UntisScheduleEntry(
             date: Date(),
-            dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? "Keine Pläne verfügbar"
+            accountId: accountId ?? "",
+            accountLabel: untisWidgetValue("account_label", accountId: accountId) ?? "Untis+",
+            status: untisWidgetValue("status", accountId: accountId) ?? "",
+            dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? "Stundenplan wird geladen …"
         )
     }
 }
@@ -54,7 +60,7 @@ struct UntisDailyScheduleWidget: Widget {
         }
         .configurationDisplayName("Tagesplan")
         .description("Zeigt deinen gesamten Tagesplan.")
-        .supportedFamilies([.systemLarge])
+        .supportedFamilies([.systemMedium, .systemLarge, .systemExtraLarge])
     }
 }
 
@@ -63,35 +69,41 @@ struct UntisDailyScheduleView: View {
     var entry: UntisScheduleEntry
 
     var body: some View {
-        ZStack {
-            Color(UIColor.systemBackground)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                Text("HEUTE")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.blue)
+                Spacer(minLength: 8)
+                Text(entry.accountLabel)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Untis+")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.blue)
-                    Spacer()
-                    Text(entry.date, style: .date)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+            if entry.dailySchedule.isEmpty {
+                Text("Stundenplan wird geladen …")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(entry.dailySchedule)
+                    .font(.caption)
+                    .lineLimit(nil)
+            }
+
+            Spacer(minLength: 0)
+
+            HStack {
+                if !entry.status.isEmpty {
+                    UntisStatusPill(text: entry.status)
                 }
-
-                if entry.dailySchedule.isEmpty {
-                    Text("Keine Pläne verfügbar")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text(entry.dailySchedule)
-                        .font(.caption)
-                        .lineLimit(nil)
-                }
-
                 Spacer()
             }
-            .padding()
         }
+        .padding()
         .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
+        .widgetURL(untisWidgetURL(accountId: entry.accountId))
     }
 }

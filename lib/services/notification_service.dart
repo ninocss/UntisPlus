@@ -84,8 +84,10 @@ class NotificationService {
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
-    const iosSettings = DarwinInitializationSettings();
-    const settings = InitializationSettings(
+    final iosSettings = DarwinInitializationSettings(
+      notificationCategories: _iosNotificationCategories(),
+    );
+    final settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
@@ -258,6 +260,7 @@ class NotificationService {
         android: androidDetails,
         iOS: DarwinNotificationDetails(
           threadIdentifier: NotificationChannels.currentLesson,
+          categoryIdentifier: NotificationChannels.currentLesson,
         ),
       ),
       payload: jsonEncode(payloadMap),
@@ -380,6 +383,36 @@ class NotificationService {
   /// Cancels a specific notification by ID.
   Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id: id);
+  }
+
+  String get _deviceLocale {
+    final code = PlatformDispatcher.instance.locale.languageCode;
+    return AppL10n.supportedLocales.contains(code) ? code : 'de';
+  }
+
+  /// Registers the notification categories (and their action buttons) used on
+  /// iOS. Mirrors the Android action buttons of the progressive notification:
+  /// open the timetable or jump to the next lesson.
+  List<DarwinNotificationCategory> _iosNotificationCategories() {
+    final locale = _deviceLocale;
+    return [
+      DarwinNotificationCategory(
+        NotificationChannels.currentLesson,
+        actions: [
+          DarwinNotificationAction.plain(
+            'open_timetable',
+            _getActionLabel(locale, 'open_timetable'),
+            options: {DarwinNotificationActionOption.foreground},
+          ),
+          DarwinNotificationAction.plain(
+            'open_next_lesson',
+            _getActionLabel(locale, 'open_next_lesson'),
+            options: {DarwinNotificationActionOption.foreground},
+          ),
+        ],
+        options: const <DarwinNotificationCategoryOption>{},
+      ),
+    ];
   }
 
   String _getActionLabel(String locale, String actionId) {

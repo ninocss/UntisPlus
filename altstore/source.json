@@ -18,10 +18,13 @@
       "category": "education",
       "beta": false,
       "appPermissions": {
+        "privacy": {
+          "com.apple.developer.networking.wifi-info": true
+        },
         "entitlements": [
-          "com.apple.security.application-groups"
-        ],
-        "privacy": {}
+          "com.apple.security.application-groups",
+          "aps-environment"
+        ]
       },
       "screenshotURLs": [
         "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/assets/github/welcome.png",
@@ -63,10 +66,13 @@
       "category": "education",
       "beta": true,
       "appPermissions": {
+        "privacy": {
+          "com.apple.developer.networking.wifi-info": true
+        },
         "entitlements": [
-          "com.apple.security.application-groups"
-        ],
-        "privacy": {}
+          "com.apple.security.application-groups",
+          "aps-environment"
+        ]
       },
       "screenshotURLs": [
         "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/assets/github/welcome.png",

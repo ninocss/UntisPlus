@@ -1,6 +1,7 @@
 import WidgetKit
 import SwiftUI
 import AppIntents
+import ActivityKit
 
 func untisWidgetValue(_ key: String, accountId: String? = nil) -> String? {
     let defaults = UserDefaults(suiteName: "group.com.ninocss.untisplus") ?? UserDefaults.standard
@@ -14,6 +15,29 @@ func untisWidgetValue(_ key: String, accountId: String? = nil) -> String? {
         return nil
     }
     return defaults.string(forKey: key)
+}
+
+func untisWidgetURL(accountId: String) -> URL {
+    var components = URLComponents()
+    components.scheme = "untisplus"
+    components.host = "widget"
+    if !accountId.isEmpty {
+        components.queryItems = [URLQueryItem(name: "account", value: accountId)]
+    }
+    return components.url ?? URL(string: "untisplus://widget")!
+}
+
+struct UntisStatusPill: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .foregroundStyle(.blue)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(Color.blue.opacity(0.15)))
+    }
 }
 
 @available(iOSApplicationExtension 17.0, *)
@@ -49,9 +73,12 @@ func untisAccountId(_ selection: String?) -> String? {
 
 struct UntisLessonEntry: TimelineEntry {
     let date: Date
+    let accountId: String
+    let accountLabel: String
     let currentLesson: String
     let nextLesson: String
     let timeRemaining: String
+    let status: String
     let dailySchedule: String
 }
 
@@ -59,9 +86,12 @@ struct UntisLessonProvider: TimelineProvider {
     func placeholder(in context: Context) -> UntisLessonEntry {
         UntisLessonEntry(
             date: Date(),
-            currentLesson: "Keine Stunde",
-            nextLesson: "-",
-            timeRemaining: "-",
+            accountId: "",
+            accountLabel: "Untis+",
+            currentLesson: "Freistunde",
+            nextLesson: "Heute keine weitere Stunde",
+            timeRemaining: "",
+            status: "",
             dailySchedule: ""
         )
     }
@@ -81,9 +111,12 @@ struct UntisLessonProvider: TimelineProvider {
     func loadEntry(accountId: String? = nil) -> UntisLessonEntry {
         return UntisLessonEntry(
             date: Date(),
-            currentLesson: untisWidgetValue("current_lesson", accountId: accountId) ?? "Keine Stunde",
-            nextLesson: untisWidgetValue("next_lesson", accountId: accountId) ?? "-",
-            timeRemaining: untisWidgetValue("time_remaining", accountId: accountId) ?? "-",
+            accountId: accountId ?? "",
+            accountLabel: untisWidgetValue("account_label", accountId: accountId) ?? "Untis+",
+            currentLesson: untisWidgetValue("current_lesson", accountId: accountId) ?? "Freistunde",
+            nextLesson: untisWidgetValue("next_lesson", accountId: accountId) ?? "Heute keine weitere Stunde",
+            timeRemaining: untisWidgetValue("time_remaining", accountId: accountId) ?? "",
+            status: untisWidgetValue("status", accountId: accountId) ?? "",
             dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? ""
         )
     }
@@ -112,64 +145,59 @@ struct UntisCurrentLessonWidget: Widget {
         }
         .configurationDisplayName("Aktuelle Stunde")
         .description("Zeigt deine aktuelle und nächste Stunde.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
 @available(iOSApplicationExtension 17.0, *)
 struct UntisCurrentLessonView: View {
     var entry: UntisLessonEntry
-    @Environment(\.widgetFamily) var family
 
     var body: some View {
-        ZStack {
-            Color(UIColor.systemBackground)
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Untis+")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.blue)
-                    Spacer()
-                    Text(entry.timeRemaining)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                Text(entry.accountLabel)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                if !entry.status.isEmpty {
+                    UntisStatusPill(text: entry.status)
                 }
+            }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Jetzt")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(entry.currentLesson)
-                        .font(.headline)
-                        .lineLimit(2)
+            Text(entry.currentLesson)
+                .font(.headline)
+                .lineLimit(2)
+
+            Text(entry.nextLesson)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+
+            Spacer(minLength: 0)
+
+            HStack {
+                if !entry.timeRemaining.isEmpty {
+                    UntisStatusPill(text: entry.timeRemaining)
                 }
-
-                if family == .systemMedium {
-                    Divider()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Danach")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Text(entry.nextLesson)
-                            .font(.subheadline)
-                            .lineLimit(2)
-                    }
-                }
-
                 Spacer()
             }
-            .padding()
         }
+        .padding()
         .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
+        .widgetURL(untisWidgetURL(accountId: entry.accountId))
     }
 }
 
 struct UntisSummaryEntry: TimelineEntry {
     let date: Date
+    let accountId: String
     let title: String
     let body: String
+    let accountLabel: String
+    let status: String
 }
 
 struct UntisStaticSummaryProvider: TimelineProvider {
@@ -181,7 +209,14 @@ struct UntisStaticSummaryProvider: TimelineProvider {
         completion(Timeline(entries: [load()], policy: .after(Calendar.current.date(byAdding: .minute, value: 30, to: Date())!)))
     }
     func load(accountId: String? = nil) -> UntisSummaryEntry {
-        UntisSummaryEntry(date: Date(), title: title, body: untisWidgetValue(field, accountId: accountId) ?? "Wird aktualisiert …")
+        UntisSummaryEntry(
+            date: Date(),
+            accountId: accountId ?? "",
+            title: title,
+            body: untisWidgetValue(field, accountId: accountId) ?? "Wird aktualisiert …",
+            accountLabel: untisWidgetValue("account_label", accountId: accountId) ?? "Untis+",
+            status: untisWidgetValue("status", accountId: accountId) ?? ""
+        )
     }
 }
 
@@ -203,12 +238,27 @@ struct UntisAccountSummaryProvider: AppIntentTimelineProvider {
 struct UntisSummaryView: View {
     let entry: UntisSummaryEntry
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(entry.title).font(.caption).fontWeight(.bold).foregroundStyle(.tint)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top) {
+                Text(entry.title).font(.caption).fontWeight(.bold).foregroundStyle(.blue)
+                Spacer(minLength: 8)
+                Text(entry.accountLabel)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
             Text(entry.body).font(.headline).lineLimit(2)
-            Spacer()
+            Spacer(minLength: 0)
+            HStack {
+                if !entry.status.isEmpty {
+                    UntisStatusPill(text: entry.status)
+                }
+                Spacer()
+            }
         }.padding()
         .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
+        .widgetURL(untisWidgetURL(accountId: entry.accountId))
     }
 }
 
@@ -219,7 +269,7 @@ struct UntisHomeworkWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: "AUFGABEN", field: "homework_summary")) { UntisSummaryView(entry: $0) }
             .configurationDisplayName("Aufgaben")
             .description("Zeigt deine aktuellen Aufgaben.")
-            .supportedFamilies([.systemSmall, .systemMedium])
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
@@ -230,7 +280,7 @@ struct UntisNotificationsWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: "MITTEILUNGEN", field: "notification_summary")) { UntisSummaryView(entry: $0) }
             .configurationDisplayName("Mitteilungen")
             .description("Zeigt deine aktuellen Mitteilungen.")
-            .supportedFamilies([.systemSmall, .systemMedium])
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
@@ -257,6 +307,7 @@ struct UntisWidgetProfileIntent: WidgetConfigurationIntent {
 
 struct UntisCustomEntry: TimelineEntry {
     let date: Date
+    let accountId: String
     let blocks: [String]
     let values: [String: String]
     let background: Int
@@ -284,7 +335,7 @@ func untisCustomEntry(profile: String?) -> UntisCustomEntry {
     var values: [String: String] = [:]
     for field in fields { values[field] = untisWidgetValue(field, accountId: account) ?? "" }
     return UntisCustomEntry(
-        date: Date(), blocks: (item["blocks"] as? [String]) ?? ["current", "next", "status"], values: values,
+        date: Date(), accountId: account ?? "", blocks: (item["blocks"] as? [String]) ?? ["current", "next", "status"], values: values,
         background: item["backgroundColor"] as? Int ?? Int(0xFF171C25), accent: item["accentColor"] as? Int ?? Int(0xFF8AB4F8), text: item["textColor"] as? Int ?? Int(0xFFF7F9FF),
         opacity: item["opacity"] as? Double ?? 0.94, radius: item["cornerRadius"] as? Double ?? 24, scale: item["textScale"] as? Double ?? 1, icons: item["showIcons"] as? Bool ?? true)
 }
@@ -305,7 +356,7 @@ struct UntisCustomWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: UntisWidgetProfileIntent.self, provider: UntisCustomProvider()) { UntisCustomView(entry: $0) }
             .configurationDisplayName("Untis+ Custom")
             .description("Dein eigenes Untis+-Widget.")
-            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
     }
 }
 
@@ -330,5 +381,106 @@ struct UntisCustomView: View {
                 Spacer(minLength: 0)
             }.padding()
         }.containerBackground(for: .widget) { Color.clear }
+        .widgetURL(untisWidgetURL(accountId: entry.accountId))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Live Activity (iOS 16.1+)
+//
+// Mirrors Android's ongoing "current lesson" notification: a lock-screen /
+// Dynamic Island presentation fed from the app through ActivityKit.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@available(iOSApplicationExtension 16.1, *)
+struct UntisLessonActivityAttributes: ActivityAttributes {
+    struct ContentState: Codable, Hashable {
+        let lessonName: String
+        let nextLesson: String
+        let timeRemaining: String
+    }
+    init() {}
+}
+
+@available(iOSApplicationExtension 16.1, *)
+struct UntisLessonLiveActivityView: View {
+    let context: ActivityViewContext<UntisLessonActivityAttributes>
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(context.state.lessonName)
+                    .font(.headline)
+                    .lineLimit(1)
+                Text(context.state.nextLesson)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Text(context.state.timeRemaining)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.blue)
+                .lineLimit(1)
+        }
+        .padding()
+        .activityBackgroundTint(Color(UIColor.systemBackground))
+    }
+}
+
+@available(iOSApplicationExtension 16.1, *)
+func untisLiveActivityCompactLabel(_ value: String) -> String {
+    let compact = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !compact.isEmpty else { return "" }
+    let prefix = String(compact.prefix(3)).uppercased()
+    return prefix
+}
+
+@available(iOSApplicationExtension 16.1, *)
+struct UntisLessonActivityConfiguration: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: UntisLessonActivityAttributes.self) { context in
+            UntisLessonLiveActivityView(context: context)
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    Text(context.state.lessonName)
+                        .font(.headline)
+                        .lineLimit(1)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text(context.state.timeRemaining)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.blue)
+                        .lineLimit(1)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    Text(context.state.nextLesson)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            } compactLeading: {
+                Text(untisLiveActivityCompactLabel(context.state.lessonName))
+                    .font(.headline)
+                    .lineLimit(1)
+            } compactTrailing: {
+                Text(context.state.timeRemaining)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.blue)
+                    .lineLimit(1)
+            } minimal: {
+                Text(context.state.timeRemaining)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.blue)
+                    .lineLimit(1)
+            } keylineTint: {
+                Color.blue
+            }
+        }
     }
 }

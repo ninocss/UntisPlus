@@ -10,5 +10,6 @@ struct UntisWidgetBundle: WidgetBundle {
         UntisHomeworkWidget()
         UntisNotificationsWidget()
         UntisCustomWidget()
+        UntisLessonActivityConfiguration()
     }
 }
