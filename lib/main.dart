@@ -148,7 +148,10 @@ void alarmRefreshDispatcher() async {
 }
 
 Future<void> _applyAndroidWindowBlur(bool enabled) async {
-  if (kIsWeb) return;
+  // Android only: blurs the launcher backdrop behind the transparent window.
+  // iOS overlays a full-screen UIVisualEffectView that covers the Flutter UI,
+  // so the whole app would render as a single frosted colour.
+  if (kIsWeb || !Platform.isAndroid) return;
   try {
     await _uiChannel.invokeMethod<void>('setWindowBlur', enabled ? 80 : 0);
   } catch (_) {

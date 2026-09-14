@@ -173,7 +173,7 @@ jobs:
           set -euo pipefail
           sed -i '' \
             -e 's/PRODUCT_BUNDLE_IDENTIFIER = com\.ninocss\.untisplus;/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.Nightly;/g' \
-            -e 's/PRODUCT_BUNDLE_IDENTIFIER = com\.ninocss\.untisplus\.UntisWidget;/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.Nightly.UntisWidget;/g' \
+            -e 's/PRODUCT_BUNDLE_IDENTIFIER = com\.ninocss\.untisplus\.UntisWidgetExtension;/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.Nightly.UntisWidgetExtension;/g' \
             ios/Runner.xcodeproj/project.pbxproj
           flutter pub get
           flutter build ios --release --no-codesign
