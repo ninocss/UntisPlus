@@ -5210,13 +5210,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         locale: appLocaleNotifier.value,
       );
       _applyKnownSubjectsFromWeek(tempWeek);
-      await _fetchHomeworkAndNotes();
-      await _saveWeekToCache(
-        requestPersonId: requestPersonId,
-        requestPersonType: requestPersonType,
-        weekData: tempWeek,
-        monday: requestedMonday,
-      );
       if (!isCurrentRequest()) return;
       setState(() {
         _weekData = tempWeek;
@@ -5225,6 +5218,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _loadError = null;
       });
       currentWeekDataNotifier.value = tempWeek;
+      // Demo data is already complete. Persistence, homework and home-widget
+      // refreshes must not keep the timetable behind a loading indicator.
+      unawaited(_fetchHomeworkAndNotes());
+      unawaited(
+        _saveWeekToCache(
+          requestPersonId: requestPersonId,
+          requestPersonType: requestPersonType,
+          weekData: tempWeek,
+          monday: requestedMonday,
+        ),
+      );
       unawaited(_updateHomeWidgets(tempWeek));
       return;
     }
