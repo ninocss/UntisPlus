@@ -19,7 +19,6 @@
       "beta": false,
       "appPermissions": {
         "privacy": {
-          "com.apple.developer.networking.wifi-info": true
         },
         "entitlements": [
           "com.apple.security.application-groups",
@@ -67,7 +66,6 @@
       "beta": true,
       "appPermissions": {
         "privacy": {
-          "com.apple.developer.networking.wifi-info": true
         },
         "entitlements": [
           "com.apple.security.application-groups",
