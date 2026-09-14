@@ -6,8 +6,30 @@ import 'package:untisplus/l10n.dart';
 import 'package:untisplus/main.dart';
 
 void main() {
+  Future<void> pumpUntilFound(
+    WidgetTester tester,
+    Finder finder, {
+    int maxPumps = 80,
+    Duration step = const Duration(milliseconds: 50),
+  }) async {
+    for (var i = 0; i < maxPumps; i++) {
+      if (finder.evaluate().isNotEmpty) return;
+      await tester.pump(step);
+    }
+    expect(finder, findsWidgets);
+  }
+
+  Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+    await tester.ensureVisible(finder);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(finder);
+  }
+
   setUp(() {
-    SharedPreferences.setMockInitialValues({'viewMode': 0});
+    SharedPreferences.setMockInitialValues({
+      'viewMode': 0,
+      'onboardingCheckpoint': 0,
+    });
     demoModeNotifier.value = false;
     appLocaleNotifier.value = 'de';
     activeUntisAccountId = null;
@@ -156,14 +178,18 @@ void main() {
     expect(find.byKey(const ValueKey('theme-paper')), findsNothing);
     expect(tester.takeException(), isNull);
 
-    await tester.pumpWidget(const UntisPlusApp(startScreen: OnboardingFlow()));
+    final onboardingPrefs = await SharedPreferences.getInstance();
+    await onboardingPrefs.setInt('onboardingCheckpoint', 0);
+    await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
-    await tester.tap(find.text('Weiter'));
-    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pumpWidget(const UntisPlusApp(startScreen: OnboardingFlow()));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tapVisible(tester, find.text('Weiter'));
 
     final onboardingCard = find.byKey(
       const ValueKey('onboarding-theme-default'),
     );
+    await pumpUntilFound(tester, onboardingCard);
     expect(onboardingCard, findsOneWidget);
     expect(tester.getSize(onboardingCard).height, 64);
     expect(
@@ -186,21 +212,26 @@ void main() {
       const Size(768, 1024),
       const Size(1024, 768),
     ]) {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({
+        'viewMode': 0,
+        'onboardingCheckpoint': 0,
+      });
       tester.view.physicalSize = size;
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
       await tester.pumpWidget(
         UntisPlusApp(startScreen: OnboardingFlow(key: ValueKey(size))),
       );
-      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull, reason: 'welcome viewport: $size');
 
-      await tester.tap(find.text('Weiter'));
-      await tester.pump(const Duration(milliseconds: 650));
-      expect(
-        find.byKey(const ValueKey('onboarding-theme-preview')),
-        findsOneWidget,
-      );
+      await tapVisible(tester, find.text('Weiter'));
+      final preview = find.byKey(const ValueKey('onboarding-theme-preview'));
+      await pumpUntilFound(tester, preview);
+      expect(preview, findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'theme viewport: $size');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('onboardingCheckpoint', 0);
     }
   });
 
@@ -251,22 +282,27 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(() => demoModeNotifier.value = false);
 
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('onboardingCheckpoint', 0);
     await tester.pumpWidget(const UntisPlusApp(startScreen: OnboardingFlow()));
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('Weiter'));
-    await tester.pump(const Duration(milliseconds: 650));
-    await tester.tap(find.text('Weiter'));
-    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tapVisible(tester, find.text('Weiter'));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('onboarding-theme-default')),
+    );
+    await tapVisible(tester, find.text('Weiter'));
 
     final demoButton = find.text('Demo-Modus starten');
-    await tester.ensureVisible(demoButton);
-    await tester.tap(demoButton);
-    await tester.pump(const Duration(milliseconds: 650));
+    await pumpUntilFound(tester, demoButton);
+    await tapVisible(tester, demoButton);
+    await pumpUntilFound(tester, find.text('Google Gemini'));
 
     await tester.tap(find.text('Google Gemini'));
-    await tester.pump(const Duration(milliseconds: 400));
+    await pumpUntilFound(tester, find.text('Lokal (On-Device)'));
     await tester.tap(find.text('Lokal (On-Device)'));
-    await tester.pump(const Duration(milliseconds: 450));
+    await pumpUntilFound(tester, find.text('Lokales Modell'));
 
     expect(find.text('Lokales Modell'), findsWidgets);
     expect(find.text('Herunterladen'), findsOneWidget);
@@ -295,19 +331,13 @@ void main() {
       await tester.pumpWidget(
         UntisPlusApp(startScreen: WeeklyTimetablePage(key: ValueKey(size))),
       );
-      await tester.pump(const Duration(milliseconds: 600));
-      expect(
-        find.byKey(const ValueKey('day-timetable-carousel')),
-        findsOneWidget,
-        reason: 'day viewport: $size',
-      );
+      final dayCarousel = find.byKey(const ValueKey('day-timetable-carousel'));
+      await pumpUntilFound(tester, dayCarousel);
+      expect(dayCarousel, findsOneWidget, reason: 'day viewport: $size');
       await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(
-        find.byKey(const ValueKey('week-grid-horizontal-scroll')),
-        findsOneWidget,
-        reason: 'week viewport: $size',
-      );
+      final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
+      await pumpUntilFound(tester, weekGrid);
+      expect(weekGrid, findsOneWidget, reason: 'week viewport: $size');
       expect(tester.takeException(), isNull, reason: 'viewport: $size');
       await prefs.setInt('viewMode', 0);
     }
@@ -347,20 +377,19 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
     await tester.pumpWidget(const UntisPlusApp(startScreen: WeeklyTimetablePage()));
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byKey(const ValueKey('day-timetable-carousel')), findsOneWidget);
+    final dayCarousel = find.byKey(const ValueKey('day-timetable-carousel'));
+    await pumpUntilFound(tester, dayCarousel);
+    expect(dayCarousel, findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('timetable-day-tab-1')));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('day-timetable-carousel')), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(
-      find.byKey(const ValueKey('week-grid-horizontal-scroll')),
-      findsOneWidget,
-    );
+    final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
+    await pumpUntilFound(tester, weekGrid);
+    expect(weekGrid, findsOneWidget);
     await tester.drag(
-      find.byKey(const ValueKey('week-grid-horizontal-scroll')),
+      weekGrid,
       const Offset(-260, 0),
     );
     await tester.pump(const Duration(milliseconds: 400));
@@ -381,7 +410,7 @@ void main() {
     await tester.ensureVisible(designEntry);
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(designEntry);
-    await tester.pump(const Duration(milliseconds: 400));
+    await pumpUntilFound(tester, find.byType(SettingsLessonDesignPage));
     expect(find.byType(SettingsLessonDesignPage), findsOneWidget);
 
     await tester.pumpWidget(
@@ -431,6 +460,8 @@ void main() {
     expect(find.byKey(const ValueKey('settings-detail-2')), findsOneWidget);
 
     tester.view.physicalSize = const Size(768, 1024);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
     await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('settings-master-detail')), findsNothing);
@@ -438,7 +469,7 @@ void main() {
     await tester.ensureVisible(appearanceEntry);
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(appearanceEntry);
-    await tester.pump(const Duration(milliseconds: 400));
+    await pumpUntilFound(tester, find.byType(SettingsAppearancePage));
     expect(find.byType(SettingsAppearancePage), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
