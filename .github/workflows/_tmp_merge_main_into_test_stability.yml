@@ -1,0 +1,74 @@
+name: Temporary resolve PR 102 conflicts
+
+on:
+  push:
+    branches:
+      - fix/flutter-test-stability
+    paths:
+      - .github/workflows/_tmp_merge_main_into_test_stability.yml
+
+permissions:
+  contents: write
+
+jobs:
+  merge-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: fix/flutter-test-stability
+          fetch-depth: 0
+
+      - name: Merge main and resolve expected test conflicts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+
+          set +e
+          git merge --no-ff --no-commit origin/main
+          merge_rc=$?
+          set -e
+
+          if [ "$merge_rc" -ne 0 ]; then
+            mapfile -t conflicted < <(git diff --name-only --diff-filter=U)
+            printf 'Conflicted files:\n%s\n' "${conflicted[*]}"
+
+            for file in "${conflicted[@]}"; do
+              case "$file" in
+                test/app_theme_test.dart|test/widget_test.dart)
+                  git checkout --ours -- "$file"
+                  git add "$file"
+                  ;;
+                *)
+                  echo "Unexpected merge conflict: $file"
+                  exit 1
+                  ;;
+              esac
+            done
+          fi
+
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo "Unresolved merge conflicts remain"
+            git diff --name-only --diff-filter=U
+            exit 1
+          fi
+
+          git rm .github/workflows/_tmp_merge_main_into_test_stability.yml
+          git add -A
+          git commit -m "Merge main into flutter test stability"
+          git push origin HEAD:fix/flutter-test-stability
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: stable
+          cache: true
+
+      - name: Run full test suite with local AI stub
+        shell: pwsh
+        run: ./tool/test_without_local_ai.ps1
