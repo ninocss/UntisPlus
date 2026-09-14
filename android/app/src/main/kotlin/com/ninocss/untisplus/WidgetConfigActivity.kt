@@ -12,6 +12,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONArray
+import org.json.JSONObject
 
 /** Native companion for Android's widget picker. Flutter publishes only an
  * id/label catalog; no WebUntis credentials are read in this Activity. */
@@ -43,28 +44,30 @@ class WidgetConfigActivity : Activity() {
                 setTextColor(color)
                 if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
             }
+        val prefs = HomeWidgetPlugin.getData(this)
+        val nativeCopy = try { JSONObject(prefs.getString("widget_native_copy", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
+        fun copy(key: String, fallback: String) = nativeCopy.optString(key, fallback)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(28), dp(24), dp(24))
             setBackgroundColor(Color.rgb(255, 248, 242))
         }
-        root.addView(text("Widget einrichten", 24f, Color.rgb(65, 45, 32), true))
-        root.addView(text("Konto für dieses Widget", 14f, Color.rgb(100, 78, 62)).apply {
+        root.addView(text(copy("setupTitle", "Widget einrichten"), 24f, Color.rgb(65, 45, 32), true))
+        root.addView(text(copy("setupAccount", "Konto für dieses Widget"), 14f, Color.rgb(100, 78, 62)).apply {
             setPadding(0, dp(6), 0, dp(18))
         })
 
-        val prefs = HomeWidgetPlugin.getData(this)
         val isCustomWidget = AppWidgetManager.getInstance(this)
             .getAppWidgetInfo(widgetId)?.provider?.className?.endsWith("UntisWidgetCustom") == true
         if (isCustomWidget) {
             val rawProfiles = prefs.getString("widget_configurations_v1", "[]") ?: "[]"
             val profiles = try { JSONArray(rawProfiles) } catch (_: Exception) { JSONArray() }
-            root.addView(text("Widget-Profil", 14f, Color.rgb(100, 78, 62)).apply {
+            root.addView(text(copy("setupProfile", "Widget-Profil"), 14f, Color.rgb(100, 78, 62)).apply {
                 setPadding(0, dp(6), 0, dp(18))
             })
             if (profiles.length() == 0) {
-                root.addView(text("Erstelle zuerst ein Profil im Untis+-Widget-Editor.", 15f, Color.rgb(100, 78, 62)))
+                root.addView(text(copy("setupNoProfile", "Erstelle zuerst ein Profil im Untis+-Widget-Editor."), 15f, Color.rgb(100, 78, 62)))
             } else {
                 for (index in 0 until profiles.length()) {
                     val item = profiles.optJSONObject(index) ?: continue
@@ -80,7 +83,7 @@ class WidgetConfigActivity : Activity() {
                         setOnClickListener { saveBinding(accountId, profileId) }
                     }
                     row.addView(text(item.optString("name", "Widget"), 17f, Color.rgb(65, 45, 32), true))
-                    row.addView(text("Profil aus dem Widget-Editor", 13f, Color.rgb(100, 78, 62)))
+                    row.addView(text(copy("setupProfileHint", "Profil aus dem Widget-Editor"), 13f, Color.rgb(100, 78, 62)))
                     root.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) })
                 }
             }
@@ -92,7 +95,7 @@ class WidgetConfigActivity : Activity() {
         val accounts = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
         val preferredAccount = prefs.getString("widget_preferred_account", null)
         if (accounts.length() == 0) {
-            root.addView(text("Öffne Untis+ und füge zuerst ein Konto hinzu.", 15f, Color.rgb(100, 78, 62)))
+            root.addView(text(copy("setupNoAccount", "Öffne Untis+ und füge zuerst ein Konto hinzu."), 15f, Color.rgb(100, 78, 62)))
         } else {
             val indices = (0 until accounts.length()).sortedBy { index ->
                 if (accounts.optJSONObject(index)?.optString("id") == preferredAccount) 0 else 1

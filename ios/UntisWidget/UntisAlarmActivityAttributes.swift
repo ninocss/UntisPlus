@@ -13,6 +13,8 @@ struct UntisAlarmActivityAttributes: ActivityAttributes {
         let label: String
         let time: String
         let status: String
+        let statusLabel: String
+        let timeAccessibilityLabel: String
         let countdown: String?
     }
 

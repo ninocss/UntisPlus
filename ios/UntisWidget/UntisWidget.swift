@@ -17,6 +17,19 @@ func untisWidgetValue(_ key: String, accountId: String? = nil) -> String? {
     return defaults.string(forKey: key)
 }
 
+/// Flutter publishes this catalog through HomeWidget whenever the in-app
+/// language changes. WidgetKit can therefore render app-language fallbacks
+/// even while the Flutter engine is not running.
+func untisWidgetCopy(_ key: String, fallback: String) -> String {
+    let defaults = UserDefaults(suiteName: "group.com.ninocss.untisplus") ?? UserDefaults.standard
+    guard let raw = defaults.string(forKey: "widget_native_copy"),
+          let data = raw.data(using: .utf8),
+          let values = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+          let value = values[key], !value.isEmpty
+    else { return fallback }
+    return value
+}
+
 func untisWidgetURL(accountId: String) -> URL {
     var components = URLComponents()
     components.scheme = "untisplus"
@@ -59,9 +72,9 @@ struct UntisAccountOptions: DynamicOptionsProvider {
 
 @available(iOSApplicationExtension 17.0, *)
 struct UntisAccountIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Konto"
+    static var title: LocalizedStringResource = "widget.account.title"
     static var description = IntentDescription("Wähle das Untis+-Konto für dieses Widget.")
-    @Parameter(title: "Konto", optionsProvider: UntisAccountOptions()) var account: String?
+    @Parameter(title: "widget.account.parameter", optionsProvider: UntisAccountOptions()) var account: String?
 
     init() {}
 }
@@ -88,8 +101,8 @@ struct UntisLessonProvider: TimelineProvider {
             date: Date(),
             accountId: "",
             accountLabel: "Untis+",
-            currentLesson: "Freistunde",
-            nextLesson: "Heute keine weitere Stunde",
+            currentLesson: untisWidgetCopy("fallbackCurrent", fallback: "Freistunde"),
+            nextLesson: untisWidgetCopy("fallbackNext", fallback: "Heute keine weitere Stunde"),
             timeRemaining: "",
             status: "",
             dailySchedule: ""
@@ -113,8 +126,8 @@ struct UntisLessonProvider: TimelineProvider {
             date: Date(),
             accountId: accountId ?? "",
             accountLabel: untisWidgetValue("account_label", accountId: accountId) ?? "Untis+",
-            currentLesson: untisWidgetValue("current_lesson", accountId: accountId) ?? "Freistunde",
-            nextLesson: untisWidgetValue("next_lesson", accountId: accountId) ?? "Heute keine weitere Stunde",
+            currentLesson: untisWidgetValue("current_lesson", accountId: accountId) ?? untisWidgetCopy("fallbackCurrent", fallback: "Freistunde"),
+            nextLesson: untisWidgetValue("next_lesson", accountId: accountId) ?? untisWidgetCopy("fallbackNext", fallback: "Heute keine weitere Stunde"),
             timeRemaining: untisWidgetValue("time_remaining", accountId: accountId) ?? "",
             status: untisWidgetValue("status", accountId: accountId) ?? "",
             dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? ""
@@ -143,8 +156,8 @@ struct UntisCurrentLessonWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountLessonProvider()) { entry in
             UntisCurrentLessonView(entry: entry)
         }
-        .configurationDisplayName("Aktuelle Stunde")
-        .description("Zeigt deine aktuelle und nächste Stunde.")
+        .configurationDisplayName(LocalizedStringKey("widget.current.name"))
+        .description(LocalizedStringKey("widget.current.description"))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
@@ -213,7 +226,7 @@ struct UntisStaticSummaryProvider: TimelineProvider {
             date: Date(),
             accountId: accountId ?? "",
             title: title,
-            body: untisWidgetValue(field, accountId: accountId) ?? "Wird aktualisiert …",
+            body: untisWidgetValue(field, accountId: accountId) ?? untisWidgetCopy("fallbackRefreshing", fallback: "Wird aktualisiert …"),
             accountLabel: untisWidgetValue("account_label", accountId: accountId) ?? "Untis+",
             status: untisWidgetValue("status", accountId: accountId) ?? ""
         )
@@ -266,9 +279,9 @@ struct UntisSummaryView: View {
 struct UntisHomeworkWidget: Widget {
     let kind = "UntisWidgetHomework"
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: "AUFGABEN", field: "homework_summary")) { UntisSummaryView(entry: $0) }
-            .configurationDisplayName("Aufgaben")
-            .description("Zeigt deine aktuellen Aufgaben.")
+        AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: untisWidgetCopy("titleHomework", fallback: "AUFGABEN"), field: "homework_summary")) { UntisSummaryView(entry: $0) }
+            .configurationDisplayName(LocalizedStringKey("widget.homework.name"))
+            .description(LocalizedStringKey("widget.homework.description"))
             .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
@@ -277,9 +290,9 @@ struct UntisHomeworkWidget: Widget {
 struct UntisNotificationsWidget: Widget {
     let kind = "UntisWidgetNotifications"
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: "MITTEILUNGEN", field: "notification_summary")) { UntisSummaryView(entry: $0) }
-            .configurationDisplayName("Mitteilungen")
-            .description("Zeigt deine aktuellen Mitteilungen.")
+        AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountSummaryProvider(title: untisWidgetCopy("titleNotices", fallback: "MITTEILUNGEN"), field: "notification_summary")) { UntisSummaryView(entry: $0) }
+            .configurationDisplayName(LocalizedStringKey("widget.notices.name"))
+            .description(LocalizedStringKey("widget.notices.description"))
             .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
@@ -300,8 +313,8 @@ struct UntisWidgetProfileOptions: DynamicOptionsProvider {
 
 @available(iOSApplicationExtension 17.0, *)
 struct UntisWidgetProfileIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "Widget-Profil"
-    @Parameter(title: "Profil", optionsProvider: UntisWidgetProfileOptions()) var profile: String?
+    static var title: LocalizedStringResource = "widget.profile.title"
+    @Parameter(title: "widget.profile.parameter", optionsProvider: UntisWidgetProfileOptions()) var profile: String?
     init() {}
 }
 
@@ -354,8 +367,8 @@ struct UntisCustomWidget: Widget {
     let kind = "UntisWidgetCustom"
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: kind, intent: UntisWidgetProfileIntent.self, provider: UntisCustomProvider()) { UntisCustomView(entry: $0) }
-            .configurationDisplayName("Untis+ Custom")
-            .description("Dein eigenes Untis+-Widget.")
+            .configurationDisplayName(LocalizedStringKey("widget.custom.name"))
+            .description(LocalizedStringKey("widget.custom.description"))
             .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
     }
 }

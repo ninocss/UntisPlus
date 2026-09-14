@@ -84,31 +84,11 @@ int _compareVersionStrings(String current, String latest) {
 }
 
 String _localizedUpdateTitle(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'Untis+ Update available';
-    case 'fr':
-      return 'Mise a jour Untis+ disponible';
-    case 'es':
-      return 'Actualizacion de Untis+ disponible';
-    case 'de':
-    default:
-      return 'Untis+ Update verfugbar';
-  }
+  return AppL10n.of(locale).ui('bgUpdateTitle');
 }
 
 String _localizedDailyBriefingTitle(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'Your school day at a glance';
-    case 'fr':
-      return 'Ton aperçu de la journée';
-    case 'es':
-      return 'Resumen de tu día escolar';
-    case 'de':
-    default:
-      return 'Dein Schultag auf einen Blick';
-  }
+  return AppL10n.of(locale).ui('bgDailyBriefingTitle');
 }
 
 String _localizedDailyBriefingBody(
@@ -118,19 +98,12 @@ String _localizedDailyBriefingBody(
   required int lessonCount,
   required int breakCount,
 }) {
-  switch (locale) {
-    case 'en':
-      return '$firstStart-$lastEnd, $lessonCount lessons, $breakCount breaks';
-    case 'fr':
-      return '$firstStart-$lastEnd, $lessonCount cours, $breakCount pauses';
-    case 'es':
-      return '$firstStart-$lastEnd, $lessonCount clases, $breakCount descansos';
-    case 'el':
-      return '$firstStart-$lastEnd, $lessonCount μαθηματα, $breakCount διαλειμματα';
-    case 'de':
-    default:
-      return '$firstStart-$lastEnd, $lessonCount Stunden, $breakCount Pausen';
-  }
+  return AppL10n.of(locale).uiFormat('bgDailyBriefingBody', {
+    'start': firstStart,
+    'end': lastEnd,
+    'lessons': lessonCount,
+    'breaks': breakCount,
+  });
 }
 
 String _localizedDailyBriefingExpanded(
@@ -141,19 +114,13 @@ String _localizedDailyBriefingExpanded(
   required int breakCount,
   required String nextLesson,
 }) {
-  switch (locale) {
-    case 'en':
-      return 'Start: $firstStart\nEnd: $lastEnd\nLessons: $lessonCount\nBreaks: $breakCount\nNext: $nextLesson';
-    case 'fr':
-      return 'Debut: $firstStart\nFin: $lastEnd\nCours: $lessonCount\nPauses: $breakCount\nSuivant: $nextLesson';
-    case 'es':
-      return 'Inicio: $firstStart\nFin: $lastEnd\nClases: $lessonCount\nDescansos: $breakCount\nSiguiente: $nextLesson';
-    case 'el':
-      return 'Εναρξη: $firstStart\nΛηξη: $lastEnd\nΜαθηματα: $lessonCount\nΔιαλειμματα: $breakCount\nΕπομενο: $nextLesson';
-    case 'de':
-    default:
-      return 'Start: $firstStart\nEnde: $lastEnd\nStunden: $lessonCount\nPausen: $breakCount\nNächste Stunde: $nextLesson';
-  }
+  return AppL10n.of(locale).uiFormat('bgDailyBriefingExpanded', {
+    'start': firstStart,
+    'end': lastEnd,
+    'lessons': lessonCount,
+    'breaks': breakCount,
+    'next': nextLesson,
+  });
 }
 
 String _normalizeWebUntisSecret(String value) {
@@ -234,182 +201,53 @@ Future<String?> _loginWithWebUntisSecret({
 }
 
 String _localizedImportantChangesTitle(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'Timetable updated';
-    case 'fr':
-      return 'Emploi du temps mis a jour';
-    case 'es':
-      return 'Horario actualizado';
-    case 'el':
-      return 'Το προγραμμα ενημερωθηκε';
-    case 'de':
-    default:
-      return 'Stundenplan aktualisiert';
-  }
+  return AppL10n.of(locale).ui('bgChangesTitle');
 }
 
 String _localizedImportantChangesBody(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'There are new changes today. Tap to open your timetable.';
-    case 'fr':
-      return 'Il y a de nouveaux changements aujourd’hui. Ouvre ton emploi du temps.';
-    case 'es':
-      return 'Hay cambios nuevos hoy. Toca para abrir tu horario.';
-    case 'el':
-      return 'Υπαρχουν νεες αλλαγες σημερα. Πατησε για να ανοιξεις το προγραμμα.';
-    case 'de':
-    default:
-      return 'Es gibt neue Änderungen heute. Tippe, um den Stundenplan zu öffnen.';
-  }
+  return AppL10n.of(locale).ui('bgChangesBody');
 }
 
 String _localizedStatusCurrentLesson(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'Current lesson';
-    case 'fr':
-      return 'Cours actuel';
-    case 'es':
-      return 'Clase actual';
-    case 'el':
-      return 'Τρεχον μαθημα';
-    case 'de':
-    default:
-      return 'Aktuelle Stunde';
-  }
+  return AppL10n.of(locale).ui('bgCurrentLesson');
 }
 
 // ignore: unused_element
 String _localizedStatusNextLesson(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'Next lesson';
-    case 'fr':
-      return 'Cours suivant';
-    case 'es':
-      return 'Siguiente clase';
-    case 'el':
-      return 'Επομενο μαθημα';
-    case 'de':
-    default:
-      return 'Nächste Stunde';
-  }
+  return AppL10n.of(locale).ui('bgNextLesson');
 }
 
 // ignore: unused_element
 String _localizedStatusNoClasses(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'No more classes';
-    case 'fr':
-      return 'Plus de cours';
-    case 'es':
-      return 'No hay más clases';
-    case 'el':
-      return 'Δεν υπαρχουν αλλα μαθηματα';
-    case 'de':
-    default:
-      return 'Kein Unterricht mehr';
-  }
+  return AppL10n.of(locale).ui('bgNoClasses');
 }
 
 String _localizedLessonStartsAt(String locale, String start) {
-  switch (locale) {
-    case 'en':
-      return 'Starts at $start';
-    case 'fr':
-      return 'Debut a $start';
-    case 'es':
-      return 'Empieza a las $start';
-    case 'el':
-      return 'Ξεκινα στις $start';
-    case 'de':
-    default:
-      return 'Start um $start';
-  }
+  return AppL10n.of(locale).uiFormat('bgLessonStarts', {'time': start});
 }
 
 String _localizedUntilTime(String locale, String end) {
-  switch (locale) {
-    case 'en':
-      return 'Until $end';
-    case 'fr':
-      return 'Jusqu’a $end';
-    case 'es':
-      return 'Hasta las $end';
-    case 'el':
-      return 'Μεχρι τις $end';
-    case 'de':
-    default:
-      return 'Bis $end Uhr';
-  }
+  return AppL10n.of(locale).uiFormat('bgUntil', {'time': end});
 }
 
 // ignore: unused_element
 String _localizedThen(String locale, String nextLesson) {
-  switch (locale) {
-    case 'en':
-      return 'Then: $nextLesson';
-    case 'fr':
-      return 'Ensuite: $nextLesson';
-    case 'es':
-      return 'Luego: $nextLesson';
-    case 'el':
-      return 'Μετα: $nextLesson';
-    case 'de':
-    default:
-      return 'Danach: $nextLesson';
-  }
+  return AppL10n.of(locale).uiFormat('bgThen', {'lesson': nextLesson});
 }
 
 String _localizedClosedLabel(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'Finished';
-    case 'fr':
-      return 'Termine';
-    case 'es':
-      return 'Fin';
-    case 'el':
-      return 'Τελος';
-    case 'de':
-    default:
-      return 'Schluss';
-  }
+  return AppL10n.of(locale).ui('bgFinished');
 }
 
 String _localizedFreeLabel(String locale) {
-  switch (locale) {
-    case 'en':
-      return 'Free period';
-    case 'fr':
-      return 'Heure libre';
-    case 'es':
-      return 'Hora libre';
-    case 'el':
-      return 'Κενο';
-    case 'de':
-    default:
-      return 'Frei';
-  }
+  return AppL10n.of(locale).ui('bgFreePeriod');
 }
 
 String _localizedFallbackLessonName(String locale, String start, String end) {
-  switch (locale) {
-    case 'en':
-      return 'Lesson $start - $end';
-    case 'fr':
-      return 'Cours $start - $end';
-    case 'es':
-      return 'Clase $start - $end';
-    case 'el':
-      return 'Μαθημα $start - $end';
-    case 'de':
-    default:
-      return 'Stunde $start - $end';
-  }
+  return AppL10n.of(locale).uiFormat('bgFallbackLesson', {
+    'start': start,
+    'end': end,
+  });
 }
 
 Map<String, int> _detectChangeCounts({
@@ -489,101 +327,29 @@ Map<String, int> _detectChangeCounts({
 }
 
 String _localizedChangeSummary(String locale, Map<String, int> counts) {
+  final l = AppL10n.of(locale);
   final cancelled = counts['cancelled'] ?? 0;
   final room = counts['room'] ?? 0;
   final substitution = counts['substitution'] ?? 0;
   final other = counts['other'] ?? 0;
-
-  if (locale == 'de') {
-    final parts = <String>[];
-    if (cancelled > 0) {
-      parts.add('$cancelled Ausfälle');
-    }
-    if (room > 0) {
-      parts.add('$room Raumwechsel');
-    }
-    if (substitution > 0) {
-      parts.add('$substitution Vertretungen');
-    }
-    if (other > 0 || parts.isEmpty) {
-      parts.add('${other > 0 ? other : 1} Änderungen');
-    }
-    return parts.join(' · ');
-  }
-
-  if (locale == 'en') {
-    final parts = <String>[];
-    if (cancelled > 0) {
-      parts.add('$cancelled cancellations');
-    }
-    if (room > 0) {
-      parts.add('$room room changes');
-    }
-    if (substitution > 0) {
-      parts.add('$substitution substitutions');
-    }
-    if (other > 0 || parts.isEmpty) {
-      parts.add('${other > 0 ? other : 1} updates');
-    }
-    return parts.join(' · ');
-  }
-
-  if (locale == 'fr') {
-    final parts = <String>[];
-    if (cancelled > 0) {
-      parts.add('$cancelled annulations');
-    }
-    if (room > 0) {
-      parts.add('$room changements de salle');
-    }
-    if (substitution > 0) {
-      parts.add('$substitution remplacements');
-    }
-    if (other > 0 || parts.isEmpty) {
-      parts.add('${other > 0 ? other : 1} changements');
-    }
-    return parts.join(' · ');
-  }
-
-  if (locale == 'es') {
-    final parts = <String>[];
-    if (cancelled > 0) {
-      parts.add('$cancelled cancelaciones');
-    }
-    if (room > 0) {
-      parts.add('$room cambios de aula');
-    }
-    if (substitution > 0) {
-      parts.add('$substitution sustituciones');
-    }
-    if (other > 0 || parts.isEmpty) {
-      parts.add('${other > 0 ? other : 1} cambios');
-    }
-    return parts.join(' · ');
-  }
-
   final parts = <String>[];
-  if (cancelled > 0) parts.add('$cancelled ακυρωσεις');
-  if (room > 0) parts.add('$room αλλαγες αιθουσας');
-  if (substitution > 0) parts.add('$substitution αναπληρωσεις');
-  if (other > 0 || parts.isEmpty) parts.add('${other > 0 ? other : 1} αλλαγες');
+  if (cancelled > 0) {
+    parts.add(l.uiFormat('bgChangesCancelled', {'count': cancelled}));
+  }
+  if (room > 0) parts.add(l.uiFormat('bgChangesRoom', {'count': room}));
+  if (substitution > 0) {
+    parts.add(l.uiFormat('bgChangesSubstitution', {'count': substitution}));
+  }
+  if (other > 0 || parts.isEmpty) {
+    parts.add(l.uiFormat('bgChangesOther', {'count': other > 0 ? other : 1}));
+  }
   return parts.join(' · ');
 }
 
 String _localizedUpdateBody(String locale, String latestVersion) {
-  switch (locale) {
-    case 'en':
-      return 'Version $latestVersion is available on GitHub Releases.';
-    case 'fr':
-      return 'La version $latestVersion est disponible sur GitHub Releases.';
-    case 'es':
-      return 'La version $latestVersion esta disponible en GitHub Releases.';
-    case 'el':
-      return 'Η εκδοση $latestVersion ειναι διαθεσιμη στα GitHub Releases.';
-    case 'de':
-    default:
-      return 'Version $latestVersion ist in den GitHub Releases verfugbar.';
-  }
+  return AppL10n.of(locale).uiFormat('bgUpdateBody', {
+    'version': latestVersion,
+  });
 }
 
 Future<void> checkGithubUpdateAndNotify() async {
@@ -1060,6 +826,7 @@ Future<bool> updateUntisData() async {
     accountId: widgetAccountId,
     accountLabel: accountLabel,
     status: DateFormat('HH:mm').format(now),
+    locale: locale,
   );
   if (!isDemoMode) {
     await _refreshInactiveWidgetAccounts(prefs, now: now, locale: locale);
@@ -1222,6 +989,7 @@ Future<void> _refreshInactiveWidgetAccounts(
         accountId: id,
         accountLabel: user,
         status: DateFormat('HH:mm').format(now),
+        locale: locale,
       );
     } catch (_) {
       // Retain the last confirmed widget payload for an unavailable account.
@@ -1260,17 +1028,5 @@ List<Map<String, dynamic>> buildLegacyDemoLessons24x7(
 }
 
 String _demoSubjectName(String code, String locale) {
-  switch (locale) {
-    case 'en':
-      return 'Demo Lesson $code';
-    case 'fr':
-      return 'Cours demo $code';
-    case 'es':
-      return 'Clase demo $code';
-    case 'el':
-      return 'Μαθημα demo $code';
-    case 'de':
-    default:
-      return 'Demo-Stunde $code';
-  }
+  return AppL10n.of(locale).uiFormat('bgDemoLesson', {'code': code});
 }

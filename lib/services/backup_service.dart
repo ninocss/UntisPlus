@@ -170,6 +170,28 @@ class BackupService {
     final boolValues = _readTypedMap<bool>(prefsRoot['bool']);
     final intValues = _readTypedMap<num>(prefsRoot['int']);
     final stringValues = _readTypedMap<String>(prefsRoot['string']);
+    final normalizedStringValues = Map<String, String>.from(stringValues);
+    final importedTheme = normalizedStringValues['visualTheme'];
+    if (importedTheme != null) {
+      normalizedStringValues['visualTheme'] = _normalizeVisualTheme(
+        importedTheme,
+      );
+    }
+    final importedBlurPreferences = normalizedStringValues[
+      'themeBlurPreferences'
+    ];
+    if (importedBlurPreferences != null) {
+      Map? rawBlurPreferences;
+      try {
+        rawBlurPreferences = jsonDecode(importedBlurPreferences);
+      } catch (_) {}
+      normalizedStringValues['themeBlurPreferences'] = jsonEncode(
+        _normalizeThemeBlurPreferences(
+          rawBlurPreferences,
+          defaultThemeBlur: boolValues['blurEnabled'] ?? true,
+        ),
+      );
+    }
 
     final rawStringListValues = prefsRoot['stringList'];
     final stringListValues = <String, List<String>>{};
@@ -223,7 +245,7 @@ class BackupService {
     }
 
     for (final key in _stringKeys) {
-      final value = stringValues[key];
+      final value = normalizedStringValues[key];
       if (value != null) {
         await prefs.setString(key, value);
       }
@@ -273,6 +295,29 @@ class BackupService {
       }
     });
     return map;
+  }
+
+  static String _normalizeVisualTheme(String value) =>
+      const {'default', 'manga', 'glass', 'cyber'}.contains(value)
+      ? value
+      : 'default';
+
+  static Map<String, bool> _normalizeThemeBlurPreferences(
+    Map? values, {
+    required bool defaultThemeBlur,
+  }) {
+    const validKeys = {'default', 'glass', 'cyber'};
+    final normalized = <String, bool>{
+      'default': defaultThemeBlur,
+      'glass': true,
+      'cyber': true,
+    };
+    values?.forEach((key, value) {
+      if (key is String && value is bool && validKeys.contains(key)) {
+        normalized[key] = value;
+      }
+    });
+    return normalized;
   }
 
   Map<String, dynamic>? _asStringDynamicMap(dynamic value) {

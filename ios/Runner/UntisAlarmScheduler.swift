@@ -26,6 +26,7 @@ enum UntisAlarmScheduler {
     /// re-schedules the current set. Mirrors `AlarmScheduler.replacePlans`.
     static func replacePlans(_ plans: [[AnyHashable: Any]]) {
         store(plans)
+        configureCategories(for: plans.first)
         let center = UNUserNotificationCenter.current()
         center.getPendingNotificationRequests { requests in
             let stale = requests.map(\.identifier).filter { $0.hasPrefix(Self.prefix) }
@@ -102,6 +103,29 @@ enum UntisAlarmScheduler {
 
     // MARK: - Content
 
+    private static func copy(_ plan: [AnyHashable: Any], _ key: String, _ fallback: String) -> String {
+        let values = plan["nativeCopy"] as? [String: Any]
+        guard let value = values?[key] as? String,
+              !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return fallback }
+        return value
+    }
+
+    /// Notification action labels are owned by iOS, so refresh their category
+    /// whenever Dart publishes plans in a different app language.
+    static func configureCategories(for plan: [AnyHashable: Any]?) {
+        let plan = plan ?? [:]
+        let alarm = UNNotificationCategory(
+            identifier: alarmCategory,
+            actions: [
+                UNNotificationAction(identifier: snoozeActionID, title: copy(plan, "snooze", "Snooze"), options: []),
+                UNNotificationAction(identifier: dismissActionID, title: copy(plan, "dismiss", "Dismiss"), options: [.destructive]),
+            ],
+            intentIdentifiers: [], hiddenPreviewsBodyPlaceholder: nil, categorySummaryFormat: nil
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([alarm])
+    }
+
     private static func add(id: String, plan: [AnyHashable: Any], trigger: UNNotificationTrigger?) {
         let request = UNNotificationRequest(identifier: id, content: content(plan), trigger: trigger)
         UNUserNotificationCenter.current().add(request)
@@ -110,7 +134,7 @@ enum UntisAlarmScheduler {
     static func content(_ plan: [AnyHashable: Any]) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         let label = (plan["label"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        content.title = (label?.isEmpty ?? true) ? "Untis+ Wecker" : label!
+        content.title = (label?.isEmpty ?? true) ? copy(plan, "defaultLabel", "Untis+ Wecker") : label!
         content.body = alarmTimeString(plan)
         content.sound = .default
         content.categoryIdentifier = alarmCategory
@@ -151,9 +175,12 @@ enum UntisAlarmScheduler {
         let label = (plan["label"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let snapshot: [String: Any] = [
             "id": plan["id"] as? String ?? "",
-            "label": (label?.isEmpty ?? true) ? "Untis+ Wecker" : label!,
+            "label": (label?.isEmpty ?? true) ? copy(plan, "defaultLabel", "Untis+ Wecker") : label!,
             "time": alarmTimeString(plan),
             "status": snoozing ? "snoozing" : "active",
+            "statusLabel": copy(plan, snoozing ? "statusSnoozing" : "statusActive", snoozing ? "Snoozing" : "Alarm active"),
+            "timeAccessibilityLabel": copy(plan, "timeAccessibility", "Alarm time {time}")
+                .replacingOccurrences(of: "{time}", with: alarmTimeString(plan)),
         ]
         await UntisAlarmActivityManager.upsert(plan: snapshot)
     }

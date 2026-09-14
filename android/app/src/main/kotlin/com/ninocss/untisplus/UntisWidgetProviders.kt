@@ -27,6 +27,12 @@ private fun widgetValue(data: SharedPreferences, widgetId: Int, field: String, f
     return data.getString(field, fallback) ?: fallback
 }
 
+private fun widgetCopy(data: SharedPreferences, key: String, fallback: String): String = try {
+    JSONObject(data.getString("widget_native_copy", "{}") ?: "{}").optString(key, fallback)
+} catch (_: Exception) {
+    fallback
+}
+
 private fun compact(value: String, max: Int): String =
     value.replace('\n', ' ').trim().let { if (it.length > max) "${it.take(max - 1)}…" else it }
 
@@ -66,9 +72,9 @@ private fun customContent(data: SharedPreferences, widgetId: Int, account: Strin
     "current" -> widgetValue(data, widgetId, "current_lesson", "")
     "next" -> widgetValue(data, widgetId, "next_lesson", "")
     "schedule" -> widgetValue(data, widgetId, "daily_schedule", "")
-    "homework" -> widgetValue(data, widgetId, "homework_summary", "Keine offenen Aufgaben")
-    "exams" -> widgetValue(data, widgetId, "exam_summary", "Keine Prüfungen synchronisiert")
-    "notices" -> widgetValue(data, widgetId, "notification_summary", "Keine Mitteilungen")
+    "homework" -> widgetValue(data, widgetId, "homework_summary", widgetCopy(data, "fallbackHomework", "Keine offenen Aufgaben"))
+    "exams" -> widgetValue(data, widgetId, "exam_summary", widgetCopy(data, "fallbackExams", "Keine Prüfungen synchronisiert"))
+    "notices" -> widgetValue(data, widgetId, "notification_summary", widgetCopy(data, "fallbackNotices", "Keine Mitteilungen"))
     "account" -> widgetValue(data, widgetId, "account_label", "Untis+")
     "status" -> widgetValue(data, widgetId, "status", "")
     else -> ""
@@ -128,7 +134,7 @@ private fun updateSummaryWidget(
         val views = RemoteViews(context.packageName, R.layout.widget_summary).apply {
             setTextViewText(R.id.widget_summary_title, title)
             setTextViewText(R.id.widget_summary_account, compact(widgetValue(data, id, "account_label", "Untis+"), 22))
-            setTextViewText(R.id.widget_summary_body, compact(widgetValue(data, id, key, "Wird aktualisiert …"), 88))
+            setTextViewText(R.id.widget_summary_body, compact(widgetValue(data, id, key, widgetCopy(data, "fallbackRefreshing", "Wird aktualisiert …")), 88))
             setTextViewText(R.id.widget_summary_status, compact(widgetValue(data, id, "status", ""), 10))
             setOnClickPendingIntent(R.id.widget_summary_root, openAppIntent(context, id, account))
         }
@@ -138,12 +144,12 @@ private fun updateSummaryWidget(
 
 class UntisWidgetHomework : HomeWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray, data: SharedPreferences) =
-        updateSummaryWidget(context, manager, ids, data, "HAUSAUFGABEN", "homework_summary")
+        updateSummaryWidget(context, manager, ids, data, widgetCopy(data, "titleHomework", "HAUSAUFGABEN"), "homework_summary")
 }
 
 class UntisWidgetNotifications : HomeWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray, data: SharedPreferences) =
-        updateSummaryWidget(context, manager, ids, data, "MITTEILUNGEN", "notification_summary")
+        updateSummaryWidget(context, manager, ids, data, widgetCopy(data, "titleNotices", "MITTEILUNGEN"), "notification_summary")
 }
 
 class UntisWidgetCustom : HomeWidgetProvider() {

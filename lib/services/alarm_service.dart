@@ -77,6 +77,7 @@ class AlarmConfig {
     this.snoozeMinutes = 5,
     this.preAlarmNotificationMinutes = 30,
     this.nextAlarmEarlierMinutes = 15,
+    this.leadMinutesByFirstLessonStart = const {},
     this.ringtoneUri,
     this.manualAlarms = const [],
     this.dateOverrides = const {},
@@ -89,6 +90,9 @@ class AlarmConfig {
   final int preAlarmNotificationMinutes;
   /// The amount offered by the "earlier next time" control.
   final int nextAlarmEarlierMinutes;
+  /// Per-first-lesson lead-time overrides keyed by minutes after midnight.
+  /// A value of -1 explicitly disables the timetable alarm for that start time.
+  final Map<int, int> leadMinutesByFirstLessonStart;
   final String? ringtoneUri;
   final List<ManualAlarmConfig> manualAlarms;
   final Map<String, AlarmDateOverride> dateOverrides;
@@ -99,6 +103,7 @@ class AlarmConfig {
     int? snoozeMinutes,
     int? preAlarmNotificationMinutes,
     int? nextAlarmEarlierMinutes,
+    Map<int, int>? leadMinutesByFirstLessonStart,
     String? ringtoneUri,
     bool clearRingtone = false,
     List<ManualAlarmConfig>? manualAlarms,
@@ -112,18 +117,24 @@ class AlarmConfig {
             .clamp(0, 180),
     nextAlarmEarlierMinutes:
         (nextAlarmEarlierMinutes ?? this.nextAlarmEarlierMinutes).clamp(1, 120),
+    leadMinutesByFirstLessonStart:
+        leadMinutesByFirstLessonStart ?? this.leadMinutesByFirstLessonStart,
     ringtoneUri: clearRingtone ? null : ringtoneUri ?? this.ringtoneUri,
     manualAlarms: manualAlarms ?? this.manualAlarms,
     dateOverrides: dateOverrides ?? this.dateOverrides,
   );
 
   Map<String, dynamic> toJson() => {
-    'version': 2,
+    'version': 3,
     'smartEnabled': smartEnabled,
     'leadMinutes': leadMinutes,
     'snoozeMinutes': snoozeMinutes,
     'preAlarmNotificationMinutes': preAlarmNotificationMinutes,
     'nextAlarmEarlierMinutes': nextAlarmEarlierMinutes,
+    'leadMinutesByFirstLessonStart': {
+      for (final entry in leadMinutesByFirstLessonStart.entries)
+        entry.key.toString(): entry.value,
+    },
     'ringtoneUri': ringtoneUri,
     'manualAlarms': manualAlarms.map((alarm) => alarm.toJson()).toList(),
     'dateOverrides': {
@@ -142,6 +153,18 @@ class AlarmConfig {
         ),
     nextAlarmEarlierMinutes:
         ((json['nextAlarmEarlierMinutes'] as num?)?.toInt() ?? 15).clamp(1, 120),
+    leadMinutesByFirstLessonStart:
+        (json['leadMinutesByFirstLessonStart'] as Map? ?? const <dynamic, dynamic>{})
+            .map(
+              (key, value) => MapEntry(
+                int.tryParse(key.toString()) ?? -2,
+                (value as num?)?.toInt() ?? -2,
+              ),
+            )
+          ..removeWhere(
+            (start, minutes) =>
+                start < 0 || start >= 24 * 60 || (minutes < -1 || minutes > 300),
+          ),
     ringtoneUri: json['ringtoneUri']?.toString(),
     manualAlarms: (json['manualAlarms'] as List? ?? const <dynamic>[])
         .whereType<Map>()
@@ -243,11 +266,13 @@ class AlarmPlanCandidate {
   const AlarmPlanCandidate({
     required this.at,
     required this.baseAt,
+    required this.lessonStartsAt,
     required this.dateKey,
     required this.label,
   });
   final DateTime at;
   final DateTime baseAt;
+  final DateTime lessonStartsAt;
   final String dateKey;
   final String label;
 }
@@ -261,6 +286,7 @@ class AlarmPlanner {
     required DateTime now,
     String locale = 'de',
     Map<String, AlarmDateOverride> dateOverrides = const {},
+    Map<int, int> leadMinutesByFirstLessonStart = const {},
   }) {
     // A timetable alarm is a wake-up alarm, never a reminder for a later
     // period. Pick only the first real lesson of each school day. This also
@@ -307,8 +333,11 @@ class AlarmPlanner {
         time ~/ 100,
         time % 100,
       );
+      final startOfDayMinutes = start.hour * 60 + start.minute;
+      final matchedLeadMinutes = leadMinutesByFirstLessonStart[startOfDayMinutes];
+      if (matchedLeadMinutes == -1) continue;
       final baseWakeAt = start.subtract(
-        Duration(minutes: leadMinutes.clamp(0, 300)),
+        Duration(minutes: (matchedLeadMinutes ?? leadMinutes).clamp(0, 300)),
       );
       final override = dateOverrides[alarmDateKey(start)];
       if (override?.disabled == true) continue;
@@ -329,6 +358,7 @@ class AlarmPlanner {
       candidates.add(AlarmPlanCandidate(
         at: wakeAt,
         baseAt: baseWakeAt,
+        lessonStartsAt: start,
         dateKey: alarmDateKey(start),
         label: _lessonLabel(lesson, locale),
       ));
@@ -512,6 +542,7 @@ class AlarmService {
       now: now,
       locale: locale,
       dateOverrides: config.dateOverrides,
+      leadMinutesByFirstLessonStart: config.leadMinutesByFirstLessonStart,
     );
     if (candidate == null) return null;
     return _SmartAlarmPlan(
@@ -523,9 +554,7 @@ class AlarmService {
           .replaceAll('{label}', candidate.label)
           .replaceAll(
             '{time}',
-            _formatTime(
-              candidate.at.add(Duration(minutes: config.leadMinutes)),
-            ),
+            _formatTime(candidate.lessonStartsAt),
           ),
     );
   }
@@ -566,6 +595,9 @@ class AlarmService {
     AlarmConfig config,
     _SmartAlarmPlan? smartPlan,
   ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final locale = prefs.getString('appLocale') ?? 'de';
+    final nativeCopy = AppL10n.of(locale).nativeAlarmCopy();
     final plans = <Map<String, dynamic>>[
       for (final alarm in config.manualAlarms)
         if (alarm.enabled && alarm.weekdays.isNotEmpty)
@@ -578,6 +610,8 @@ class AlarmService {
             'snoozeMinutes': config.snoozeMinutes,
             'preAlarmNotificationMinutes': config.preAlarmNotificationMinutes,
             'ringtoneUri': config.ringtoneUri,
+            'locale': locale,
+            'nativeCopy': nativeCopy,
           },
       if (config.smartEnabled && smartPlan != null)
         {
@@ -598,6 +632,8 @@ class AlarmService {
               .millisecondsSinceEpoch,
           'snoozeMinutes': config.snoozeMinutes,
           'ringtoneUri': config.ringtoneUri,
+          'locale': locale,
+          'nativeCopy': nativeCopy,
         },
     ];
     try {
@@ -605,6 +641,14 @@ class AlarmService {
     } on PlatformException catch (error) {
       debugPrint('Alarm scheduling unavailable: ${error.code}');
     }
+  }
+
+  /// Re-publishes saved alarms after the app language changes. The schedules
+  /// themselves are untouched; only their native-process copy is refreshed.
+  Future<void> refreshNativeCopy() async {
+    if (!_supported) return;
+    final config = await loadConfig();
+    await _pushPlans(config, await _loadSmartPlan());
   }
 
   Future<AlarmReadiness> readiness() async {

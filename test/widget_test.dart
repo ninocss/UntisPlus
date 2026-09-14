@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:untisplus/l10n.dart';
 import 'package:untisplus/main.dart';
 
 void main() {
@@ -16,10 +17,8 @@ void main() {
     // An endless decorative animation is not relevant to theme selection and
     // would keep pumpAndSettle from completing in this widget test.
     backgroundAnimationsNotifier.value = false;
-    tutorialReplayRequestNotifier.value = 0;
     themeBlurPreferencesNotifier.value = {
       'default': true,
-      'vivid': true,
       'glass': true,
       'cyber': true,
     };
@@ -106,7 +105,7 @@ void main() {
     expect(find.text('Mittel oder groß'), findsOneWidget);
   });
 
-  testWidgets('Paper onboarding hides unsupported visual controls', (
+  testWidgets('onboarding only offers the four supported visual themes', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -119,12 +118,14 @@ void main() {
     await tester.tap(find.text('Weiter'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('onboarding-theme-paper')));
+    expect(find.byKey(const ValueKey('onboarding-theme-vivid')), findsNothing);
+    expect(find.byKey(const ValueKey('onboarding-theme-paper')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('onboarding-theme-cyber')));
     await tester.pumpAndSettle();
 
-    expect(visualThemeNotifier.value, AppThemeId.paper);
-    expect(find.text('Hintergrundanimationen'), findsNothing);
-    expect(find.text('Blur-Effekt'), findsNothing);
+    expect(visualThemeNotifier.value, AppThemeId.cyber);
+    expect(find.text('Hintergrundanimationen'), findsOneWidget);
+    expect(find.text('Blur-Effekt'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -143,13 +144,15 @@ void main() {
 
     final defaultCard = find.byKey(const ValueKey('theme-default'));
     final mangaCard = find.byKey(const ValueKey('theme-manga'));
-    final vividCard = find.byKey(const ValueKey('theme-vivid'));
     final glassCard = find.byKey(const ValueKey('theme-glass'));
+    final cyberCard = find.byKey(const ValueKey('theme-cyber'));
     expect(defaultCard, findsOneWidget);
     expect(tester.getSize(defaultCard).height, 148);
     expect(tester.getTopLeft(defaultCard).dy, tester.getTopLeft(mangaCard).dy);
-    expect(tester.getTopLeft(defaultCard).dy, tester.getTopLeft(vividCard).dy);
     expect(tester.getTopLeft(defaultCard).dy, tester.getTopLeft(glassCard).dy);
+    expect(tester.getTopLeft(defaultCard).dy, tester.getTopLeft(cyberCard).dy);
+    expect(find.byKey(const ValueKey('theme-vivid')), findsNothing);
+    expect(find.byKey(const ValueKey('theme-paper')), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const UntisPlusApp(startScreen: OnboardingFlow()));
@@ -200,7 +203,7 @@ void main() {
     }
   });
 
-  testWidgets('interactive tutorial supports next back skip and replay', (
+  testWidgets('interactive tutorial supports next, back, and skip', (
     tester,
   ) async {
     demoModeNotifier.value = true;
@@ -235,9 +238,6 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getInt('tutorialVersionCompleted'), kCurrentTutorialVersion);
 
-    tutorialReplayRequestNotifier.value++;
-    await tester.pump(const Duration(milliseconds: 450));
-    expect(find.byKey(const ValueKey('tutorial-callout')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -296,6 +296,145 @@ void main() {
       await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: 'viewport: $size');
+    }
+  });
+
+  testWidgets('timetable date tabs and weekly swipe stay interactive', (
+    tester,
+  ) async {
+    demoModeNotifier.value = true;
+    addTearDown(() => demoModeNotifier.value = false);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(430, 932);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const UntisPlusApp(startScreen: WeeklyTimetablePage()));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('timetable-day-tab-1')));
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byKey(const ValueKey('day-timetable-carousel')), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.drag(
+      find.byKey(const ValueKey('week-grid-horizontal-scroll')),
+      const Offset(-260, 0),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('timetable settings owns the lesson and card design entry', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SettingsTimetablePage()),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Stunden- & Kartendesign'), findsOneWidget);
+    await tester.tap(find.text('Stunden- & Kartendesign'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byType(SettingsLessonDesignPage), findsOneWidget);
+
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SettingsAppearancePage()),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('Stunden- & Kartendesign'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings no longer exposes tutorial replay', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(430, 932);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('App-Tutorial wiederholen'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tablet navigation and settings switch at shared breakpoints', (
+    tester,
+  ) async {
+    demoModeNotifier.value = true;
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1024, 768);
+    addTearDown(() => demoModeNotifier.value = false);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: MainNavigationScreen()),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(NavigationRail), findsOneWidget);
+
+    await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byKey(const ValueKey('settings-master-detail')), findsOneWidget);
+    expect(find.byKey(const ValueKey('settings-detail-0')), findsOneWidget);
+
+    await tester.tap(find.text('Erscheinungsbild').first);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const ValueKey('settings-detail-2')), findsOneWidget);
+
+    tester.view.physicalSize = const Size(768, 1024);
+    await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byKey(const ValueKey('settings-master-detail')), findsNothing);
+    await tester.tap(find.text('Erscheinungsbild').first);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byType(SettingsAppearancePage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('tablet notifications show a selectable detail pane', (tester) async {
+    demoModeNotifier.value = true;
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1366, 1024);
+    addTearDown(() => demoModeNotifier.value = false);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SchoolNotificationsPage()),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(
+      find.byKey(const ValueKey('notifications-master-detail')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  test('localization catalogs stay complete and format native copy', () {
+    final catalogs = AppL10n.catalogKeys;
+    final placeholders = AppL10n.catalogPlaceholders;
+    final german = catalogs['de'];
+
+    expect(german, isNotNull);
+    for (final locale in AppL10n.supportedLocales) {
+      expect(catalogs[locale], german, reason: 'keys differ for $locale');
+      expect(AppL10n.emptyCatalogValues[locale], isEmpty);
+      expect(
+        placeholders[locale],
+        placeholders['de'],
+        reason: 'placeholders differ for $locale',
+      );
+      expect(
+        AppL10n.of(locale).uiFormat(
+          'nativeAlarmReminderTitle',
+          const {'minutes': 15},
+        ),
+        isNot(contains('{minutes}')),
+      );
     }
   });
 }

@@ -487,13 +487,13 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                     spacing: 8,
                     children: [
                       ChoiceChip(
-                        label: const Text('Material You'),
+                        label: Text(l.ui('widgetSystemColors')),
                         selected: config.colorMode == 'system',
                         onSelected: (_) =>
                             _replace(config.copyWith(colorMode: 'system')),
                       ),
                       ChoiceChip(
-                        label: const Text('Eigene Farben'),
+                        label: Text(l.ui('widgetCustomColors')),
                         selected: config.colorMode == 'custom',
                         onSelected: (_) =>
                             _replace(config.copyWith(colorMode: 'custom')),

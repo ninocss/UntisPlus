@@ -111,53 +111,12 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
   final _SchoolNotificationItem item;
   final bool isInbox;
 
+  /// The full detail surface is intentionally reusable inside the tablet
+  /// master-detail pane. On phones the ordinary route still owns the Scaffold.
+  Widget buildEmbedded(BuildContext context) => build(context);
+
   String _copyLabel() {
-    return switch (appLocaleNotifier.value) {
-      'de' => 'Nachricht kopieren',
-      'fr' => 'Copier le message',
-      'es' => 'Copiar mensaje',
-      _ => 'Copy message',
-    };
-  }
-
-  String _copiedLabel() {
-    return switch (appLocaleNotifier.value) {
-      'de' => 'Nachricht in die Zwischenablage kopiert.',
-      'fr' => 'Message copie dans le presse-papiers.',
-      'es' => 'Mensaje copiado al portapapeles.',
-      _ => 'Message copied to clipboard.',
-    };
-  }
-
-  String _senderLabel() {
-    return switch (appLocaleNotifier.value) {
-      'de' => 'Absender',
-      'fr' => 'Expediteur',
-      'es' => 'Remitente',
-      _ => 'From',
-    };
-  }
-
-  String _formattedMessageForClipboard() {
-    final body = html_parser.parse(item.displayBody).body?.text.trim() ?? '';
-    final lines = <String>[item.title];
-    if ((item.author ?? '').isNotEmpty) {
-      lines.add('${_senderLabel()}: ${item.author}');
-    }
-    if (item.date != null) lines.add(_notificationDateLabel(item.date));
-    if (body.isNotEmpty) lines.add('\n$body');
-    return lines.join('\n');
-  }
-
-  Future<void> _copyMessage(BuildContext context) async {
-    await Clipboard.setData(
-      ClipboardData(text: _formattedMessageForClipboard()),
-    );
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_copiedLabel())));
-    }
+    return AppL10n.of(appLocaleNotifier.value).ui('copyMessage');
   }
 
   Future<void> _openDetailUrl(BuildContext context, String? url) async {

@@ -397,27 +397,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
   }
 
   private func requestNotificationPermission() {
-    let alarmCategory = UNNotificationCategory(
-      identifier: UntisAlarmScheduler.alarmCategory,
-      actions: [
-        UNNotificationAction(identifier: UntisAlarmScheduler.snoozeActionID, title: "Snooze", options: []),
-        UNNotificationAction(identifier: UntisAlarmScheduler.dismissActionID, title: "Dismiss", options: [.destructive]),
-      ],
-      intentIdentifiers: [],
-      hiddenPreviewsBodyPlaceholder: nil,
-      categorySummaryFormat: nil
-    )
-    let legacyCategory = UNNotificationCategory(
-      identifier: "untis_alarm_channel",
-      actions: [
-        UNNotificationAction(identifier: "snooze", title: "Snooze", options: []),
-        UNNotificationAction(identifier: "dismiss", title: "Dismiss", options: [])
-      ],
-      intentIdentifiers: [],
-      hiddenPreviewsBodyPlaceholder: nil,
-      categorySummaryFormat: nil
-    )
-    UNUserNotificationCenter.current().setNotificationCategories([alarmCategory, legacyCategory])
+    UntisAlarmScheduler.configureCategories(for: nil)
     UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
       if let error = error {
         print("Untis+: notification permission error: \(error)")

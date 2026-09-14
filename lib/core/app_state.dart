@@ -670,7 +670,6 @@ final ValueNotifier<AppThemeId> visualThemeNotifier = ValueNotifier(
 final ValueNotifier<Map<String, bool>> themeBlurPreferencesNotifier =
     ValueNotifier({
       AppThemeId.defaultTheme.storageKey: true,
-      AppThemeId.vivid.storageKey: true,
       AppThemeId.glass.storageKey: true,
       AppThemeId.cyber.storageKey: true,
     });
@@ -679,6 +678,9 @@ final ValueNotifier<int> cancelledLessonColorNotifier = ValueNotifier(
   0xFFFF1744,
 );
 final ValueNotifier<bool> monochromeLessonsNotifier = ValueNotifier(false);
+final ValueNotifier<int> monochromeLessonColorNotifier = ValueNotifier(
+  0xFF757575,
+);
 final ValueNotifier<bool> backgroundAnimationsNotifier = ValueNotifier(true);
 final ValueNotifier<int> backgroundAnimationStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> backgroundGyroscopeNotifier = ValueNotifier(false);
@@ -700,8 +702,6 @@ final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(
   null,
 );
 
-/// Incremented when the user explicitly starts the tutorial from settings.
-final ValueNotifier<int> tutorialReplayRequestNotifier = ValueNotifier(0);
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);

@@ -44,7 +44,9 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
           bottom: bottom,
           backgroundColor: isBlurActive
               ? cs.surface.withValues(
-                  alpha: tokens.id == AppThemeId.glass ? 0.42 : 0.62,
+                  alpha: tokens.id == AppThemeId.glass
+                      ? tokens.navigationOpacity
+                      : 0.62,
                 )
               : (blurEnabled ? Colors.transparent : cs.surface),
           elevation: 0,

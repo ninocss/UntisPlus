@@ -74,6 +74,118 @@ class SettingsAppearancePage extends StatelessWidget {
     });
   }
 
+  void _showMonochromeLessonColorDialog(BuildContext context) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final current = Color(monochromeLessonColorNotifier.value);
+    var red = current.r * 255.0;
+    var green = current.g * 255.0;
+    var blue = current.b * 255.0;
+    _showUnifiedSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      child: StatefulBuilder(
+        builder: (ctx, setPickerState) {
+          final preview = Color.fromARGB(
+            255,
+            red.round(),
+            green.round(),
+            blue.round(),
+          );
+          Widget slider(
+            String label,
+            double value,
+            Color color,
+            ValueChanged<double> onChanged,
+          ) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$label: ${value.round()}'),
+              Slider(
+                value: value,
+                min: 0,
+                max: 255,
+                activeColor: color,
+                onChanged: onChanged,
+              ),
+            ],
+          );
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              12,
+              20,
+              MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.settingsCustomColor,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: preview,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                slider(
+                  l.settingsColorRed,
+                  red,
+                  Colors.red,
+                  (value) => setPickerState(() => red = value),
+                ),
+                slider(
+                  l.settingsColorGreen,
+                  green,
+                  Colors.green,
+                  (value) => setPickerState(() => green = value),
+                ),
+                slider(
+                  l.settingsColorBlue,
+                  blue,
+                  Colors.blue,
+                  (value) => setPickerState(() => blue = value),
+                ),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(l.settingsApiKeyCancel),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _settingsSetMonochromeLessonColor(0xFF757575);
+                        Navigator.pop(ctx);
+                      },
+                      child: Text(l.settingsColorReset),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        _settingsSetMonochromeLessonColor(preview.toARGB32());
+                        Navigator.pop(ctx);
+                      },
+                      child: Text(l.settingsColorApply),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   String _transitionLabel(AppL10n l, int index) {
     switch (index) {
       case 0:
@@ -187,19 +299,15 @@ class SettingsAppearancePage extends StatelessWidget {
   String _themeLabel(AppL10n l, AppThemeId theme) => switch (theme) {
     AppThemeId.defaultTheme => l.themeDefault,
     AppThemeId.manga => l.themeManga,
-    AppThemeId.vivid => l.themeVivid,
     AppThemeId.glass => l.themeGlass,
     AppThemeId.cyber => l.themeCyber,
-    AppThemeId.paper => l.themePaper,
   };
 
   String _themeDescription(AppL10n l, AppThemeId theme) => switch (theme) {
     AppThemeId.defaultTheme => l.themeDefaultDesc,
     AppThemeId.manga => l.themeMangaDesc,
-    AppThemeId.vivid => l.themeVividDesc,
     AppThemeId.glass => l.themeGlassDesc,
     AppThemeId.cyber => l.themeCyberDesc,
-    AppThemeId.paper => l.themePaperDesc,
   };
 
   List<Color> _themePreviewColors(AppThemeId theme, bool dark) =>
@@ -209,22 +317,14 @@ class SettingsAppearancePage extends StatelessWidget {
           dark
               ? const [Color(0xFF171511), Color(0xFFF5EBD7)]
               : const [Color(0xFFF4ECDD), Color(0xFF17120C)],
-        AppThemeId.vivid =>
-          dark
-              ? const [Color(0xFF100C1D), Color(0xFFBFA8FF), Color(0xFFFF75BB)]
-              : const [Color(0xFFFFF7FD), Color(0xFF6E37FF), Color(0xFFD81B82)],
         AppThemeId.glass =>
           dark
-              ? const [Color(0xFF091722), Color(0xFF8BC7FF), Color(0xFFC9B5FF)]
-              : const [Color(0xFFF4FAFF), Color(0xFF195FC7), Color(0xFF7ADDC7)],
+              ? const [Color(0xFF0B1425), Color(0xFF9ACBFF), Color(0xFFD0BEFF)]
+              : const [Color(0xFFF5F8FF), Color(0xFF2A63D5), Color(0xFF1D7F6D)],
         AppThemeId.cyber =>
           dark
-              ? const [Color(0xFF02070B), Color(0xFF35F0FF), Color(0xFFFF59B6)]
-              : const [Color(0xFFF1FCFD), Color(0xFF006B75), Color(0xFFB00069)],
-        AppThemeId.paper =>
-          dark
-              ? const [Color(0xFF1C1A17), Color(0xFFF2A36F)]
-              : const [Color(0xFFFFFBF1), Color(0xFF9A4D24)],
+              ? const [Color(0xFF071015), Color(0xFF6EEAF2), Color(0xFFE285BF)]
+              : const [Color(0xFFF1FBFC), Color(0xFF006D75), Color(0xFF9B3E76)],
       };
 
   Widget _buildThemePicker(
@@ -815,21 +915,37 @@ class SettingsAppearancePage extends StatelessWidget {
                       );
                     },
                   ),
-                if (selectedTheme == AppThemeId.defaultTheme)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: monochromeLessonsNotifier,
-                    builder: (context, value, _) {
-                      return SettingsSwitchTile(
-                        icon: Icons.tonality_rounded,
-                        iconBackgroundColor: cs.surfaceContainerHighest,
-                        iconColor: cs.onSurfaceVariant,
-                        title: l.settingsMonochromeLessons,
-                        subtitle: l.settingsMonochromeLessonsDesc,
-                        value: value,
-                        onChanged: _settingsSetMonochromeLessons,
-                      );
-                    },
-                  ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: monochromeLessonsNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.tonality_rounded,
+                      iconBackgroundColor: cs.surfaceContainerHighest,
+                      iconColor: cs.onSurfaceVariant,
+                      title: l.settingsMonochromeLessons,
+                      subtitle: l.settingsMonochromeLessonsDesc,
+                      value: value,
+                      onChanged: _settingsSetMonochromeLessons,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: monochromeLessonsNotifier,
+                  builder: (context, enabled, _) {
+                    if (!enabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<int>(
+                      valueListenable: monochromeLessonColorNotifier,
+                      builder: (context, color, _) => SettingsTile(
+                        icon: Icons.palette_rounded,
+                        iconBackgroundColor: Color(color).withValues(alpha: 0.18),
+                        iconColor: Color(color),
+                        title: l.settingsCustomColor,
+                        subtitle: '#${color.toRadixString(16).substring(2).toUpperCase()}',
+                        onTap: () => _showMonochromeLessonColorDialog(context),
+                      ),
+                    );
+                  },
+                ),
                 if (selectedTheme == AppThemeId.defaultTheme)
                   ValueListenableBuilder<int>(
                     valueListenable: pageTransitionNotifier,
@@ -846,21 +962,6 @@ class SettingsAppearancePage extends StatelessWidget {
                       );
                     },
                   ),
-                SettingsTile(
-                  icon: Icons.dashboard_customize_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsLessonDesignTitle,
-                  subtitle: l.settingsLessonDesignDesc,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      _buildBouncyRoute(const SettingsTimetablePage()),
-                    );
-                  },
-                ),
                 SettingsTile(
                   icon: Icons.app_shortcut_rounded,
                   iconBackgroundColor: cs.secondaryContainer.withValues(

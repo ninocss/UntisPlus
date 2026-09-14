@@ -5,6 +5,83 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
+/// Shared width vocabulary for layouts that need to work from a phone to a
+/// desktop-sized tablet. Keep breakpoints here instead of letting individual
+/// pages make subtly different tablet decisions.
+abstract final class UntisLayout {
+  static const double tabletBreakpoint = 720;
+  static const double expandedBreakpoint = 1000;
+  static const double contentMaxWidth = 1180;
+
+  static bool isTablet(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= tabletBreakpoint;
+
+  static bool isExpanded(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= expandedBreakpoint;
+
+  static EdgeInsets pagePadding(
+    BuildContext context, {
+    double bottom = 32,
+    double compactHorizontal = 16,
+  }) {
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontal = width >= expandedBreakpoint
+        ? 28.0
+        : width >= tabletBreakpoint
+        ? 24.0
+        : compactHorizontal;
+    return EdgeInsets.fromLTRB(horizontal, 16, horizontal, bottom);
+  }
+
+  static BoxConstraints dialogConstraints(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    return BoxConstraints(
+      maxWidth: width >= expandedBreakpoint ? 640 : 560,
+      maxHeight: MediaQuery.sizeOf(context).height * 0.84,
+    );
+  }
+
+  static Widget constrainContent({
+    required Widget child,
+    double maxWidth = contentMaxWidth,
+  }) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: child,
+    ),
+  );
+}
+
+/// Presents short actions as a bottom sheet on a phone and as a focused,
+/// keyboard-safe dialog on a tablet. The content and actions are identical;
+/// only the surrounding surface adapts to the available space.
+Future<T?> showUntisAdaptiveSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool isScrollControlled = false,
+  bool showDragHandle = false,
+}) {
+  if (!UntisLayout.isTablet(context)) {
+    return showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: isScrollControlled,
+      showDragHandle: showDragHandle,
+      builder: builder,
+    );
+  }
+  return showDialog<T>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: UntisLayout.dialogConstraints(dialogContext),
+        child: SingleChildScrollView(child: builder(dialogContext)),
+      ),
+    ),
+  );
+}
+
 List<BoxShadow>? _glowShadows(BuildContext context, List<BoxShadow> shadows) =>
     untisThemeTokensOf(context).glowEffectsEnabled ? shadows : null;
 
@@ -132,7 +209,11 @@ class ThemedSurface extends StatelessWidget {
               color: tokens.id == AppThemeId.manga
                   ? cs.outline
                   : (tokens.glassHighlights
-                        ? Colors.white.withValues(alpha: 0.52)
+                        ? Colors.white.withValues(
+                            alpha: Theme.of(context).brightness == Brightness.dark
+                                ? 0.34
+                                : 0.56,
+                          )
                         : cs.outlineVariant.withValues(alpha: 0.46)),
               width: tokens.borderWidth,
             );
@@ -159,7 +240,7 @@ class ThemedSurface extends StatelessWidget {
                             gradient: LinearGradient(
                               colors: [
                                 Colors.transparent,
-                                Colors.white.withValues(alpha: 0.82),
+                                Colors.white.withValues(alpha: 0.60),
                                 Colors.transparent,
                               ],
                             ),
@@ -189,10 +270,8 @@ class ThemedSurface extends StatelessWidget {
               borderRadius: radius,
               boxShadow: [
                 BoxShadow(
-                  color:
-                      !tokens.glowEffectsEnabled &&
-                          (tokens.id == AppThemeId.vivid ||
-                              tokens.id == AppThemeId.cyber)
+                  color: !tokens.glowEffectsEnabled &&
+                          tokens.id == AppThemeId.cyber
                       ? cs.shadow.withValues(alpha: 0.12)
                       : tokens.shadowColor,
                   offset: tokens.shadowOffset,

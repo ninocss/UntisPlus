@@ -12,7 +12,7 @@ struct UntisAlarmLiveActivityView: View {
                 .font(.system(.largeTitle, design: .monospaced))
                 .fontWeight(.bold)
                 .foregroundStyle(.red)
-                .accessibilityLabel("Alarm time \(context.state.time)")
+                .accessibilityLabel(context.state.timeAccessibilityLabel)
             Text(context.state.label)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -22,7 +22,7 @@ struct UntisAlarmLiveActivityView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text(context.state.status == "snoozing" ? "Snoozing" : "Alarm active")
+            Text(context.state.statusLabel)
                 .font(.caption2)
                 .foregroundStyle(.red)
         }

@@ -9,6 +9,8 @@ struct UntisAlarmActivityAttributes: ActivityAttributes {
         let label: String
         let time: String
         let status: String
+        let statusLabel: String
+        let timeAccessibilityLabel: String
         let countdown: String?
     }
     init() {}
@@ -24,6 +26,8 @@ enum UntisAlarmActivityManager {
             label: plan["label"] as? String ?? "Untis+ Wecker",
             time: plan["time"] as? String ?? "",
             status: plan["status"] as? String ?? "active",
+            statusLabel: plan["statusLabel"] as? String ?? "Alarm active",
+            timeAccessibilityLabel: plan["timeAccessibilityLabel"] as? String ?? "Alarm time",
             countdown: plan["countdown"] as? String
         )
         do {

@@ -41,6 +41,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
 
+private fun planCopy(plan: JSONObject, key: String, fallback: String): String =
+    plan.optJSONObject("nativeCopy")?.optString(key)?.takeIf { it.isNotBlank() } ?: fallback
+
+private fun planCopyFormat(plan: JSONObject, key: String, fallback: String, name: String, value: Any): String =
+    planCopy(plan, key, fallback).replace("{$name}", value.toString())
+
 /** Native, durable scheduling layer. Dart supplies configuration; Android owns wake-up. */
 object AlarmScheduler {
     const val alarmAction = "com.ninocss.untisplus.ALARM_RING"
@@ -92,6 +98,15 @@ object AlarmScheduler {
             }
         }
         prefs(context).edit().putString(plansKey, remaining.toString()).apply()
+    }
+
+    fun planById(context: Context, id: String): JSONObject? {
+        val plans = storedPlans(context)
+        for (index in 0 until plans.length()) {
+            val plan = plans.optJSONObject(index) ?: continue
+            if (plan.optString("id") == id) return plan
+        }
+        return null
     }
 
     private fun storedPlans(context: Context): JSONArray = try {
@@ -284,14 +299,13 @@ class AlarmReminderReceiver : BroadcastReceiver() {
         showReminder(context, plan)
     }
 
-    companion object {
     fun showReminder(context: Context, plan: JSONObject) {
         val manager = context.getSystemService(NotificationManager::class.java)
         val channelId = "untis_alarm_upcoming"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel(channelId, "Untis+ Wecker-Erinnerungen", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Hinweise vor einem Untis+ Wecker"
+                NotificationChannel(channelId, planCopy(plan, "channelReminder", "Untis+ Wecker-Erinnerungen"), NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = planCopy(plan, "channelReminderDescription", "Hinweise vor einem Untis+ Wecker")
                     lockscreenVisibility = Notification.VISIBILITY_PRIVATE
                 },
             )
@@ -299,8 +313,8 @@ class AlarmReminderReceiver : BroadcastReceiver() {
         val minutes = plan.optInt("preAlarmNotificationMinutes", 30)
         val builder = Notification.Builder(context, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Wecker in $minutes Minuten")
-            .setContentText(plan.optString("label", "Untis+ Wecker"))
+            .setContentTitle(planCopyFormat(plan, "reminderTitle", "Wecker in {minutes} Minuten", "minutes", minutes))
+            .setContentText(plan.optString("label", planCopy(plan, "defaultLabel", "Untis+ Wecker")))
             .setCategory(Notification.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(PendingIntent.getActivity(
@@ -313,7 +327,7 @@ class AlarmReminderReceiver : BroadcastReceiver() {
             @Suppress("DEPRECATION")
             builder.addAction(
                 R.mipmap.ic_launcher,
-                "Für diesen Tag ausschalten",
+                planCopy(plan, "disableToday", "Für diesen Tag ausschalten"),
                 PendingIntent.getBroadcast(
                     context,
                     plan.optString("id").hashCode() xor 0x71,
@@ -325,7 +339,6 @@ class AlarmReminderReceiver : BroadcastReceiver() {
             )
         }
         manager.notify(42050 + (plan.optString("id").hashCode() and 0x3ff), builder.build())
-    }
     }
 }
 
@@ -348,9 +361,11 @@ class AlarmReceiver : BroadcastReceiver() {
 
 class AlarmPreWakeRefreshReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val plan = AlarmScheduler.planById(context, intent.getStringExtra(AlarmScheduler.extraAlarmId) ?: "")
         ContextCompat.startForegroundService(
             context,
-            Intent(context, AlarmRefreshService::class.java),
+            Intent(context, AlarmRefreshService::class.java)
+                .putExtra(AlarmScheduler.extraPlan, plan?.toString()),
         )
     }
 }
@@ -401,8 +416,8 @@ class AlarmAlertService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // This dedicated channel is only used by user-configured alarms.
             manager.deleteNotificationChannel(channelId)
-            val channel = NotificationChannel(channelId, "Untis+ Wecker", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Klingelnde Untis+ Wecker"
+            val channel = NotificationChannel(channelId, planCopy(plan, "channelAlarm", "Untis+ Wecker"), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = planCopy(plan, "channelAlarmDescription", "Klingelnde Untis+ Wecker")
                 setBypassDnd(dndGranted)
                 enableVibration(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
@@ -420,8 +435,8 @@ class AlarmAlertService : Service() {
         )
         return Notification.Builder(this, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Wecker")
-            .setContentText(plan.optString("label", "Untis+ Wecker"))
+            .setContentTitle(planCopy(plan, "alarmTitle", "Wecker"))
+            .setContentText(plan.optString("label", planCopy(plan, "defaultLabel", "Untis+ Wecker")))
             .setCategory(Notification.CATEGORY_ALARM)
             .setOngoing(true)
             .setAutoCancel(false)
@@ -583,11 +598,11 @@ class AlarmActivity : android.app.Activity() {
             Color.rgb(255, 237, 233),
             Typeface.BOLD,
         ).apply { setPadding(0, dp(18), 0, dp(14)) })
-        root.addView(text(plan.optString("label", "Untis+ Wecker"), 18f, Color.rgb(255, 222, 214), Typeface.BOLD).apply {
+        root.addView(text(plan.optString("label", planCopy(plan, "defaultLabel", "Untis+ Wecker")), 18f, Color.rgb(255, 222, 214), Typeface.BOLD).apply {
             background = rounded(Color.rgb(82, 38, 32), 28)
             setPadding(dp(22), dp(11), dp(22), dp(11))
         })
-        root.addView(text("Wische nach links für Schlummern · nach rechts zum Ausschalten", 13f, Color.rgb(225, 190, 182)).apply {
+        root.addView(text(planCopy(plan, "swipeHint", "Nach links schlummern, nach rechts ausschalten"), 13f, Color.rgb(225, 190, 182)).apply {
             setPadding(0, dp(24), 0, dp(20))
         })
         root.addView(Space(this), LinearLayout.LayoutParams(
@@ -615,14 +630,14 @@ class AlarmActivity : android.app.Activity() {
             }
         actions.addView(
             actionButton(
-                "Schlummern · ${plan.optInt("snoozeMinutes", 5)} Min.",
+                planCopyFormat(plan, "snooze", "Schlummern · {minutes} Min.", "minutes", plan.optInt("snoozeMinutes", 5)),
                 Color.rgb(120, 56, 45),
                 Color.rgb(255, 238, 233),
             ) { snooze() },
             LinearLayout.LayoutParams(0, dp(68), 1f).apply { marginEnd = dp(8) },
         )
         actions.addView(
-            actionButton("Ausschalten", Color.rgb(255, 118, 82), Color.rgb(61, 20, 12)) {
+            actionButton(planCopy(plan, "dismiss", "Ausschalten"), Color.rgb(255, 118, 82), Color.rgb(61, 20, 12)) {
                 dismiss()
             },
             LinearLayout.LayoutParams(0, dp(68), 0.88f),
@@ -656,7 +671,8 @@ class AlarmRefreshService : Service() {
     private val timeout = Runnable { complete(allowReminder = false) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(42003, refreshNotification())
+        val plan = try { JSONObject(intent?.getStringExtra(AlarmScheduler.extraPlan) ?: "{}") } catch (_: Exception) { JSONObject() }
+        startForeground(42003, refreshNotification(plan))
         if (engine != null) return START_NOT_STICKY
         handler.postDelayed(timeout, 120_000)
         try {
@@ -685,16 +701,16 @@ class AlarmRefreshService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun refreshNotification(): Notification {
+    private fun refreshNotification(plan: JSONObject): Notification {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
-                NotificationChannel("untis_alarm_refresh", "Untis+ Wecker-Aktualisierung", NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel("untis_alarm_refresh", planCopy(plan, "channelRefresh", "Untis+ Wecker-Aktualisierung"), NotificationManager.IMPORTANCE_LOW),
             )
         }
         return Notification.Builder(this, "untis_alarm_refresh")
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Wecker wird aktualisiert")
+            .setContentTitle(planCopy(plan, "refreshing", "Wecker wird aktualisiert"))
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()
     }

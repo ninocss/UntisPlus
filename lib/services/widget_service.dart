@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:home_widget/home_widget.dart';
 
+import '../l10n.dart';
+
 class WidgetPreviewData {
   final String currentLesson;
   final String nextLesson;
@@ -204,6 +206,18 @@ class WidgetService {
     );
   }
 
+  /// Native widget configuration screens are displayed without a Flutter
+  /// engine. Keep their copy alongside widget data so it follows the selected
+  /// in-app language instead of the device locale.
+  static Future<void> publishNativeCopy(String locale) async {
+    if (kIsWeb) return;
+    await _ensureConfigured();
+    await HomeWidget.saveWidgetData<String>(
+      'widget_native_copy',
+      jsonEncode(AppL10n.of(locale).nativeWidgetCopy()),
+    );
+  }
+
   static Future<void> updateWidgets({
     required String currentLesson,
     required String nextLesson,
@@ -215,9 +229,11 @@ class WidgetService {
     String accountId = 'active',
     String accountLabel = '',
     String status = '',
+    String locale = 'de',
   }) async {
     if (kIsWeb) return;
     await _ensureConfigured();
+    await publishNativeCopy(locale);
     final values = <String, String>{
       'current_lesson': currentLesson,
       'next_lesson': nextLesson,

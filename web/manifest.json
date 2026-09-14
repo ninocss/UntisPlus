@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#0F766E",
     "theme_color": "#0F766E",
-    "description": "A privacy-first, offline-capable WebUntis companion.",
+    "description": "Untis+",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

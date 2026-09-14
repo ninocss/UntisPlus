@@ -50,21 +50,24 @@ void main() {
     });
   });
 
-  test('theme ids are stable and unknown ids fall back to default', () {
+  test('theme ids are stable and removed ids fall back to default', () {
     for (final theme in AppThemeId.values) {
       expect(AppThemeIdX.fromStorage(theme.storageKey), theme);
     }
+    expect(AppThemeId.values, hasLength(4));
+    expect(AppThemeIdX.fromStorage('vivid'), AppThemeId.defaultTheme);
+    expect(AppThemeIdX.fromStorage('paper'), AppThemeId.defaultTheme);
+    expect(AppThemeIdX.isRemovedStorageKey('vivid'), isTrue);
+    expect(AppThemeIdX.isRemovedStorageKey('paper'), isTrue);
     expect(AppThemeIdX.fromStorage('future-theme'), AppThemeId.defaultTheme);
     expect(AppThemeIdX.fromStorage(null), AppThemeId.defaultTheme);
   });
 
   test('blur and customization capability matrix stays intentional', () {
     expect(appThemeCapabilities(AppThemeId.defaultTheme).supportsBlur, isTrue);
-    expect(appThemeCapabilities(AppThemeId.vivid).supportsBlur, isTrue);
     expect(appThemeCapabilities(AppThemeId.glass).supportsBlur, isTrue);
     expect(appThemeCapabilities(AppThemeId.cyber).supportsBlur, isTrue);
     expect(appThemeCapabilities(AppThemeId.manga).supportsBlur, isFalse);
-    expect(appThemeCapabilities(AppThemeId.paper).supportsBlur, isFalse);
     expect(
       appThemeCapabilities(AppThemeId.defaultTheme).supportsAdvancedLessonStyle,
       isTrue,
@@ -79,15 +82,10 @@ void main() {
       ).supportsExpressiveComponents,
       isTrue,
     );
-    expect(
-      appThemeCapabilities(AppThemeId.vivid).supportsExpressiveComponents,
-      isTrue,
-    );
     for (final theme in [
       AppThemeId.manga,
       AppThemeId.glass,
       AppThemeId.cyber,
-      AppThemeId.paper,
     ]) {
       expect(appThemeCapabilities(theme).supportsExpressiveComponents, isFalse);
     }
@@ -97,7 +95,7 @@ void main() {
     expect(glowEffectsEnabledNotifier.value, isFalse);
   });
 
-  testWidgets('Default and Vivid opt into native expressive controls', (
+  testWidgets('Default alone opts into native expressive controls', (
     tester,
   ) async {
     Future<ThemeData> pumpTheme(AppThemeId theme) async {
@@ -114,21 +112,16 @@ void main() {
       return tester.widget<MaterialApp>(find.byType(MaterialApp)).theme!;
     }
 
-    for (final themeId in [AppThemeId.defaultTheme, AppThemeId.vivid]) {
-      final theme = await pumpTheme(themeId);
-      // ignore: deprecated_member_use
-      expect(theme.sliderTheme.year2023, isFalse);
-      // ignore: deprecated_member_use
-      expect(theme.progressIndicatorTheme.year2023, isFalse);
-      expect(
-        theme.filledButtonTheme.style!.shape!.resolve({}),
-        isA<StadiumBorder>(),
-      );
-      expect(
-        theme.filledButtonTheme.style!.shape!.resolve({WidgetState.pressed}),
-        isA<RoundedRectangleBorder>(),
-      );
-    }
+    final theme = await pumpTheme(AppThemeId.defaultTheme);
+    // ignore: deprecated_member_use
+    expect(theme.sliderTheme.year2023, isFalse);
+    // ignore: deprecated_member_use
+    expect(theme.progressIndicatorTheme.year2023, isFalse);
+    expect(theme.filledButtonTheme.style!.shape!.resolve({}), isA<StadiumBorder>());
+    expect(
+      theme.filledButtonTheme.style!.shape!.resolve({WidgetState.pressed}),
+      isA<RoundedRectangleBorder>(),
+    );
 
     final manga = await pumpTheme(AppThemeId.manga);
     // ignore: deprecated_member_use
@@ -153,10 +146,8 @@ void main() {
 
   test('redesigned themes keep distinct surface and navigation semantics', () {
     for (final theme in [
-      AppThemeId.vivid,
       AppThemeId.glass,
       AppThemeId.cyber,
-      AppThemeId.paper,
     ]) {
       final scheme = untisThemeScheme(theme, Brightness.dark, 0xFF0F766E);
       final tokens = UntisThemeTokens.forTheme(theme, Brightness.dark, scheme);
@@ -164,13 +155,6 @@ void main() {
       expect(tokens.navigationOpacity, inInclusiveRange(0.45, 1.0));
       expect(tokens.lessonSurfaceOpacity, inInclusiveRange(0.55, 1.0));
     }
-
-    final vivid = untisThemeScheme(
-      AppThemeId.vivid,
-      Brightness.dark,
-      0xFF0F766E,
-    );
-    expect(vivid.surface, const Color(0xFF100C1D));
 
     final glassScheme = untisThemeScheme(
       AppThemeId.glass,
@@ -182,22 +166,25 @@ void main() {
       Brightness.light,
       glassScheme,
     );
-    expect(glass.surfaceOpacity, lessThan(0.6));
-    expect(glass.navigationOpacity, lessThan(0.6));
+    expect(glass.surfaceOpacity, greaterThanOrEqualTo(0.65));
+    expect(glass.navigationOpacity, greaterThanOrEqualTo(0.70));
+    expect(glassScheme.surface, const Color(0xFFF5F8FF));
 
-    final paper = appThemeCapabilities(AppThemeId.paper);
-    expect(paper.supportsBlur, isFalse);
-    expect(paper.supportsBackgroundMotion, isFalse);
+    final cyber = untisThemeScheme(
+      AppThemeId.cyber,
+      Brightness.dark,
+      0xFF0F766E,
+    );
+    expect(cyber.surface, const Color(0xFF071015));
+    expect(cyber.primary, const Color(0xFF6EEAF2));
+    expect(cyber.secondary, const Color(0xFFE285BF));
   });
 
-  test('Cyber and Paper use theme-specific display typography', () {
+  test('Cyber keeps monospace display typography with readable body text', () {
     final cyber = untisThemeTextTheme(AppThemeId.cyber, Brightness.dark);
-    final paper = untisThemeTextTheme(AppThemeId.paper, Brightness.light);
 
     expect(cyber.titleLarge?.fontFamily, contains('IBM Plex Mono'));
     expect(cyber.bodyMedium?.fontFamily, contains('Outfit'));
-    expect(paper.titleLarge?.fontFamily, contains('Noto Serif'));
-    expect(paper.bodyMedium?.fontFamily, contains('Noto Sans'));
   });
 
   test(
@@ -221,10 +208,27 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('visualTheme'), 'cyber');
       expect(
-        jsonDecode(prefs.getString('themeBlurPreferences')!)['cyber'],
-        isFalse,
+        jsonDecode(prefs.getString('themeBlurPreferences')!),
+        {'default': true, 'glass': true, 'cyber': false},
       );
       expect(prefs.getBool('glowEffectsEnabled'), isTrue);
     },
   );
+
+  test('backup maps removed visual themes to default', () async {
+    SharedPreferences.setMockInitialValues({
+      'visualTheme': 'paper',
+      'themeBlurPreferences': jsonEncode({'paper': false, 'glass': false}),
+    });
+    final exported = await BackupService().exportAllToJsonText();
+
+    SharedPreferences.setMockInitialValues({});
+    await BackupService().importAllFromJsonText(exported);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('visualTheme'), 'default');
+    expect(
+      jsonDecode(prefs.getString('themeBlurPreferences')!),
+      {'default': true, 'glass': false, 'cyber': true},
+    );
+  });
 }

@@ -1,14 +1,98 @@
 // settings_timetable_page.dart
 part of '../../main.dart';
 
-class SettingsTimetablePage extends StatefulWidget {
+class SettingsTimetablePage extends StatelessWidget {
   const SettingsTimetablePage({super.key});
 
   @override
-  State<SettingsTimetablePage> createState() => _SettingsTimetablePageState();
+  Widget build(BuildContext context) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final cs = Theme.of(context).colorScheme;
+    final mq = MediaQuery.of(context);
+    return Scaffold(
+      appBar: RoundedBlurAppBar(
+        title: Text(
+          l.settingsSectionTimetable,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+        ),
+        centerTitle: true,
+      ),
+      body: _AnimatedBackground(
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+          children: [
+            SettingsGroup(
+              title: l.settingsSectionTimetable,
+              children: [
+                SettingsTile(
+                  icon: Icons.dashboard_customize_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsLessonDesignTitle,
+                  subtitle: l.settingsLessonDesignDesc,
+                  onTap: () => Navigator.of(context).push(
+                    _buildBouncyRoute(const SettingsLessonDesignPage()),
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: showCancelledNotifier,
+                  builder: (context, value, _) => SettingsSwitchTile(
+                    icon: Icons.event_busy_rounded,
+                    iconBackgroundColor: cs.errorContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onErrorContainer,
+                    title: l.settingsShowCancelled,
+                    subtitle: l.settingsShowCancelledDesc,
+                    value: value,
+                    onChanged: _settingsSetShowCancelled,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SettingsGroup(
+              title: l.settingsRefreshPushWidgetNow,
+              children: [
+                SettingsTile(
+                  icon: Icons.sync_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsRefreshPushWidgetNow,
+                  subtitle: l.settingsRefreshPushWidgetNowDesc,
+                  onTap: () async {
+                    await updateUntisData();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(l.settingsBackgroundLoading),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
+class SettingsLessonDesignPage extends StatefulWidget {
+  const SettingsLessonDesignPage({super.key});
+
+  @override
+  State<SettingsLessonDesignPage> createState() =>
+      _SettingsLessonDesignPageState();
+}
+
+class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
   int _previewState =
       0; // 0 = Regular, 1 = Active (isNow with glow), 2 = Cancelled
 
@@ -301,7 +385,7 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
     final primaryFg = isCancelled
         ? Color(cancelledLessonColorNotifier.value)
         : (monochromeLessonsNotifier.value
-              ? cs.primary
+              ? Color(monochromeLessonColorNotifier.value)
               : const Color(0xFF00B8D4));
 
     final primaryBg = isCancelled
@@ -1089,22 +1173,6 @@ class _SettingsTimetablePageState extends State<SettingsTimetablePage> {
                       subtitle: l.settingsLessonDimPastDesc,
                       value: dimPast,
                       onChanged: _settingsSetLessonDimPast,
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: showCancelledNotifier,
-                  builder: (context, value, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.event_busy_rounded,
-                      iconBackgroundColor: cs.errorContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onErrorContainer,
-                      title: l.settingsShowCancelled,
-                      subtitle: l.settingsShowCancelledDesc,
-                      value: value,
-                      onChanged: _settingsSetShowCancelled,
                     );
                   },
                 ),

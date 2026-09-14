@@ -52,7 +52,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final effectiveSuffix = suffix ?? l.ui('alarmMinutesSuffix');
     var value = current;
-    await showModalBottomSheet<void>(
+    await showUntisAdaptiveSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (context) => StatefulBuilder(
@@ -99,6 +99,112 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
         ),
       ),
     );
+  }
+
+  String _formatTimeOfDay(BuildContext context, int minutes) => TimeOfDay(
+    hour: minutes ~/ 60,
+    minute: minutes % 60,
+  ).format(context);
+
+  Future<void> _chooseLeadOverride(int startOfDayMinutes) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final current = _config.leadMinutesByFirstLessonStart[startOfDayMinutes];
+    await showUntisAdaptiveSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _formatTimeOfDay(sheetContext, startOfDayMinutes),
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.timer_rounded),
+                title: Text(l.ui('alarmLead')),
+                subtitle: Text(
+                  current == null || current == -1
+                      ? l
+                          .ui('alarmLeadValue')
+                          .replaceAll('{n}', '${_config.leadMinutes}')
+                      : l.ui('alarmLeadValue').replaceAll('{n}', '$current'),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _chooseMinutes(
+                    title: l.ui('alarmLead'),
+                    current: current == null || current == -1
+                        ? _config.leadMinutes
+                        : current,
+                    min: 0,
+                    max: 300,
+                    onChanged: (value) {
+                      final overrides = Map<int, int>.from(
+                        _config.leadMinutesByFirstLessonStart,
+                      )..[startOfDayMinutes] = value;
+                      _save(
+                        _config.copyWith(
+                          leadMinutesByFirstLessonStart: overrides,
+                        ),
+                        refreshTimetable: _config.smartEnabled,
+                      );
+                    },
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.alarm_off_rounded),
+                title: Text(l.ui('alarmLeadByStartOff')),
+                onTap: () async {
+                  final overrides = Map<int, int>.from(
+                    _config.leadMinutesByFirstLessonStart,
+                  )..[startOfDayMinutes] = -1;
+                  await _save(
+                    _config.copyWith(leadMinutesByFirstLessonStart: overrides),
+                    refreshTimetable: _config.smartEnabled,
+                  );
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+              if (current != null)
+                ListTile(
+                  leading: const Icon(Icons.restart_alt_rounded),
+                  title: Text(l.ui('alarmLeadByStartDefault')),
+                  onTap: () async {
+                    final overrides = Map<int, int>.from(
+                      _config.leadMinutesByFirstLessonStart,
+                    )..remove(startOfDayMinutes);
+                    await _save(
+                      _config.copyWith(
+                        leadMinutesByFirstLessonStart: overrides,
+                      ),
+                      refreshTimetable: _config.smartEnabled,
+                    );
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addLeadOverride() async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 8, minute: 0),
+    );
+    if (selected == null || !mounted) return;
+    await _chooseLeadOverride(selected.hour * 60 + selected.minute);
   }
 
   Widget _buildExpressiveSmartCard(AppL10n l, ColorScheme cs) {
@@ -212,7 +318,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   Future<void> _editManualAlarm(ManualAlarmConfig alarm) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     var edited = alarm;
-    await showModalBottomSheet<void>(
+    await showUntisAdaptiveSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -285,7 +391,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       TextButton.icon(
                         icon: const Icon(Icons.delete_outline_rounded),
@@ -301,7 +410,6 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                           );
                         },
                       ),
-                      const Spacer(),
                       FilledButton(
                         onPressed: edited.weekdays.isEmpty
                             ? null
@@ -426,6 +534,37 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   ),
                 ),
                 SettingsTile(
+                  icon: Icons.tune_rounded,
+                  title: l.ui('alarmLeadByStart'),
+                  subtitle: _config.leadMinutesByFirstLessonStart.isEmpty
+                      ? l.ui('alarmLeadByStartDesc')
+                      : (_config.leadMinutesByFirstLessonStart.entries.toList()
+                            ..sort((a, b) => a.key.compareTo(b.key)))
+                          .map(
+                            (entry) =>
+                                '${_formatTimeOfDay(context, entry.key)}: ${entry.value == -1 ? l.ui('alarmLeadByStartOff') : l.ui('alarmLeadValue').replaceAll('{n}', '${entry.value}')}',
+                          )
+                          .join(' · '),
+                  onTap: _addLeadOverride,
+                ),
+                for (final entry in (_config
+                          .leadMinutesByFirstLessonStart
+                          .entries
+                          .toList()
+                        ..sort((a, b) => a.key.compareTo(b.key))))
+                  SettingsTile(
+                    icon: entry.value == -1
+                        ? Icons.alarm_off_rounded
+                        : Icons.timer_rounded,
+                    title: _formatTimeOfDay(context, entry.key),
+                    subtitle: entry.value == -1
+                        ? l.ui('alarmLeadByStartOff')
+                        : l
+                            .ui('alarmLeadValue')
+                            .replaceAll('{n}', '${entry.value}'),
+                    onTap: () => _chooseLeadOverride(entry.key),
+                  ),
+                SettingsTile(
                   icon: Icons.notifications_active_rounded,
                   title: l.ui('alarmHeadsUp'),
                   subtitle:
@@ -515,19 +654,17 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     icon: Icons.alarm_rounded,
                     title:
                         '${(alarm.timeOfDayMinutes ~/ 60).toString().padLeft(2, '0')}:${(alarm.timeOfDayMinutes % 60).toString().padLeft(2, '0')}',
-                    subtitle: alarm.weekdays
-                        .map(
-                          (day) => const [
-                            'Mo',
-                            'Di',
-                            'Mi',
-                            'Do',
-                            'Fr',
-                            'Sa',
-                            'So',
-                          ][day - 1],
-                        )
-                        .join(' · '),
+                    subtitle: [
+                      if (!alarm.enabled) l.ui('alarmInactive'),
+                      alarm.weekdays
+                          .where(
+                            (day) =>
+                                day >= DateTime.monday &&
+                                day <= DateTime.sunday,
+                          )
+                          .map((day) => l.weekDayShort[day - 1])
+                          .join(' · '),
+                    ].where((part) => part.isNotEmpty).join(' · '),
                     onTap: () => _editManualAlarm(alarm),
                   ),
                 SettingsTile(

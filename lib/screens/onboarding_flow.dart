@@ -1424,6 +1424,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           appLocaleNotifier.value = code;
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('appLocale', code);
+          unawaited(WidgetService.publishNativeCopy(code));
+          unawaited(AlarmService.instance.refreshNativeCopy());
         },
         borderRadius: BorderRadius.circular(16),
         child: AnimatedContainer(
@@ -1656,19 +1658,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   List<Color> _onboardingThemeColors(AppThemeId theme) => switch (theme) {
     AppThemeId.defaultTheme => const [Color(0xFF0F766E), Color(0xFFD5F5EF)],
     AppThemeId.manga => const [Color(0xFFF4ECDD), Color(0xFF17120C)],
-    AppThemeId.vivid => const [Color(0xFF6E37FF), Color(0xFFFF75BB)],
-    AppThemeId.glass => const [Color(0xFF195FC7), Color(0xFF7ADDC7)],
-    AppThemeId.cyber => const [Color(0xFF02070B), Color(0xFF35F0FF)],
-    AppThemeId.paper => const [Color(0xFFFFFBF1), Color(0xFF9A4D24)],
+    AppThemeId.glass => const [Color(0xFF2A63D5), Color(0xFF8DE2D0)],
+    AppThemeId.cyber => const [Color(0xFF071015), Color(0xFF6EEAF2)],
   };
 
   String _onboardingThemeName(AppL10n l, AppThemeId theme) => switch (theme) {
     AppThemeId.defaultTheme => l.themeDefault,
     AppThemeId.manga => l.themeManga,
-    AppThemeId.vivid => l.themeVivid,
     AppThemeId.glass => l.themeGlass,
     AppThemeId.cyber => l.themeCyber,
-    AppThemeId.paper => l.themePaper,
   };
 
   Widget _buildThemeLivePreview(
@@ -1815,8 +1813,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     child: Icon(
                       theme == AppThemeId.glass
                           ? Icons.water_drop_rounded
-                          : theme == AppThemeId.paper
-                          ? Icons.sticky_note_2_rounded
                           : Icons.palette_rounded,
                       color: preview.last.computeLuminance() > 0.55
                           ? Colors.black87

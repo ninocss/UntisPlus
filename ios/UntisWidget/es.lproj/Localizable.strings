@@ -1,0 +1,14 @@
+"widget.account.title" = "Cuenta";
+"widget.account.parameter" = "Cuenta";
+"widget.current.name" = "Clase actual";
+"widget.current.description" = "Muestra tu clase actual y la siguiente.";
+"widget.homework.name" = "Tareas";
+"widget.homework.description" = "Muestra tus tareas actuales.";
+"widget.notices.name" = "Notificaciones";
+"widget.notices.description" = "Muestra tus notificaciones actuales.";
+"widget.profile.title" = "Perfil del widget";
+"widget.profile.parameter" = "Perfil";
+"widget.custom.name" = "Untis+ personalizado";
+"widget.custom.description" = "Tu propio widget de Untis+.";
+"widget.schedule.name" = "Horario diario";
+"widget.schedule.description" = "Muestra todo tu horario diario.";

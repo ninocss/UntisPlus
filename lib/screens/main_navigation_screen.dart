@@ -111,17 +111,30 @@ class _AiProposedAction {
         .toString()
         .replaceAll('-', ''),
   );
+  double? get gradeValue => double.tryParse(
+    (data['value'] ?? data['grade'] ?? '').toString().replaceAll(',', '.'),
+  );
+  double get gradeWeight =>
+      double.tryParse((data['weight'] ?? '1').toString().replaceAll(',', '.')) ??
+      1;
+  String get gradeType => data['type']?.toString().trim() ?? '';
 
-  String get summary => switch (kind) {
-    'create_homework' => 'Hausaufgabe erstellen: $subject · $text',
-    'update_homework' => 'Hausaufgabe bearbeiten: $subject · $text',
-    'delete_homework' => 'Hausaufgabe löschen: $id',
-    'complete_homework' => 'Hausaufgabe erledigt markieren: $id',
-    'create_exam' => 'Prüfung erstellen: $subject · $text',
-    'update_exam' => 'Prüfung bearbeiten: $subject · $text',
-    'delete_exam' => 'Prüfung löschen: $id',
-    _ => 'Unbekannte Aktion',
-  };
+  String summary(AppL10n l) {
+    final values = {'subject': subject, 'text': text, 'id': id, 'value': gradeValue};
+    return switch (kind) {
+      'create_homework' => l.uiFormat('aiActionCreateHomework', values),
+      'update_homework' => l.uiFormat('aiActionUpdateHomework', values),
+      'delete_homework' => l.uiFormat('aiActionDeleteHomework', values),
+      'complete_homework' => l.uiFormat('aiActionCompleteHomework', values),
+      'create_exam' => l.uiFormat('aiActionCreateExam', values),
+      'update_exam' => l.uiFormat('aiActionUpdateExam', values),
+      'delete_exam' => l.uiFormat('aiActionDeleteExam', values),
+      'create_grade' => l.uiFormat('aiActionCreateGrade', values),
+      'update_grade' => l.uiFormat('aiActionUpdateGrade', values),
+      'delete_grade' => l.uiFormat('aiActionDeleteGrade', values),
+      _ => l.ui('aiActionUnknown'),
+    };
+  }
 
   bool get isSupported => const {
     'create_homework',
@@ -131,6 +144,9 @@ class _AiProposedAction {
     'create_exam',
     'update_exam',
     'delete_exam',
+    'create_grade',
+    'update_grade',
+    'delete_grade',
   }.contains(kind);
 }
 
@@ -795,13 +811,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     }
     return '''$resolved
 
-ANTWORTFORMAT:
-- Antworte möglichst kurz und visuell.
-- Liefere bevorzugt ein JSON-Objekt mit den Feldern: headline, summary, tags, metrics, lessons.
-- metrics ist eine Liste aus Objekten mit label und value.
-- lessons ist eine Liste aus Objekten mit subject, subjectShort, room, teacher, time und status.
-- Nutze wenig Fließtext und formuliere Ergebnisse so, dass sie direkt als Suchergebnis-Karten gerendert werden können.
-- WICHTIG: Gib NUR Felder an, die für die Frage relevant sind. Wenn die Frage nach keiner Metrik oder keinen Stunden verlangt, lasse metrics bzw. lessons im JSON einfach weg oder gib leere Arrays zurück.''';
+${l.ui('aiResponseFormat')}''';
   }
 
   String _resolvedChatSystemPrompt() {
@@ -846,29 +856,22 @@ ANTWORTFORMAT:
     String personaInstruction = '';
     switch (aiPersona) {
       case 'strict':
-        personaInstruction =
-            'Antworte wie ein strenger, aber gerechter Lehrer. Achte auf Disziplin und Ordnung.';
+        personaInstruction = l.ui('aiPersonaStrict');
         break;
       case 'buddy':
-        personaInstruction =
-            'Antworte wie ein cooler Schulkamerad. Nutze Jugendsprache und sei sehr locker.';
+        personaInstruction = l.ui('aiPersonaBuddy');
         break;
       case 'helpful':
       default:
-        personaInstruction =
-            'Antworte freundlich, professionell und hilfreich.';
+        personaInstruction = l.ui('aiPersonaHelpful');
         break;
     }
 
     return '''$resolved
 
-Du bist ein hilfreicher Assistent für die Stundenplan-App "Untis+".
+${l.ui('aiAssistantIntro')}
 $personaInstruction
-Antworte natürlich und freundlich im Chat. Du hast Zugriff auf den Stundenplan und die Prüfungen des Nutzers oben.
-Verwende Markdown für eine schöne Formatierung (Fettdruck, Listen, etc.).
-WICHTIG: Antworte in natürlicher Sprache, NIEMALS in JSON-Format, außer du wirst explizit darum gebeten.
-Halte deine Antworten eher kurz, aber präzise. Beginne nicht mit einer Selbstvorstellung.
-Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwort einen separaten Block im exakten Format ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam","id":"optional id","subject":"Fach","text":"Text","dueDate":"YYYYMMDD"} ```. Schlage nur sichere, konkrete Änderungen vor; sie werden erst nach ausdrücklicher Bestätigung ausgeführt.''';
+${l.ui('aiAssistantRules')}''';
   }
 
   Future<String> _requestProviderResponse(
@@ -1131,7 +1134,9 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
     final index = date.difference(_currentMonday).inDays;
     final dateLabel = DateFormat('dd.MM.yyyy').format(date);
     if (index < 0 || index > 4) {
-      return '$dateLabel: Stundenplandaten für diesen Tag sind noch nicht geladen.';
+      return l
+          .ui('aiDayDataUnavailable')
+          .replaceAll('{date}', dateLabel);
     }
 
     final lessons = _weekData[index] ?? const [];
@@ -1175,7 +1180,9 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
       _icuLocale(appLocaleNotifier.value),
     ).format(date);
     if (index < 0 || index > 4) {
-      return 'Für $label ist die passende Stundenplanwoche noch nicht geladen. Ich rate hier nicht.';
+      return AppL10n.of(appLocaleNotifier.value)
+          .ui('aiWeekDataUnavailable')
+          .replaceAll('{date}', label);
     }
     final lessons = (_weekData[index] ?? const <dynamic>[])
         .whereType<Map>()
@@ -1183,8 +1190,11 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
           (lesson) => lesson['code']?.toString().toLowerCase() != 'cancelled',
         )
         .toList(growable: false);
-    if (lessons.isEmpty)
-      return 'Für $label ist keine nicht abgesagte Stunde eingetragen.';
+    if (lessons.isEmpty) {
+      return AppL10n.of(appLocaleNotifier.value)
+          .ui('aiNoScheduledLessons')
+          .replaceAll('{date}', label);
+    }
     final formatted = lessons
         .map((lesson) {
           final subject =
@@ -1192,7 +1202,10 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
           return '${_formatUntisTime(lesson['startTime'].toString())} $subject';
         })
         .join(', ');
-    return 'Ja. Du hast am $label: $formatted.';
+    return AppL10n.of(appLocaleNotifier.value)
+        .ui('aiScheduleReply')
+        .replaceAll('{date}', label)
+        .replaceAll('{lessons}', formatted);
   }
 
   Object? _jsonSafeValue(Object? value) {
@@ -1370,8 +1383,8 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
     if (bytes.length > 8 * 1024 * 1024) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Anhänge dürfen höchstens 8 MB groß sein.'),
+          SnackBar(
+            content: Text(AppL10n.of(appLocaleNotifier.value).ui('aiAttachmentTooLarge')),
           ),
         );
       }
@@ -1429,8 +1442,9 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
       switch (action.kind) {
         case 'create_homework':
         case 'update_homework':
-          if (action.subject.isEmpty || action.text.isEmpty || date == null)
+          if (action.subject.isEmpty || action.text.isEmpty || date == null) {
             continue;
+          }
           final current = List<Map<String, dynamic>>.from(
             customHomeworkNotifier.value,
           );
@@ -1447,10 +1461,11 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
             'isDone': index >= 0 ? current[index]['isDone'] == true : false,
             '_custom': true,
           };
-          if (index >= 0)
+          if (index >= 0) {
             current[index] = item;
-          else
+          } else {
             current.add(item);
+          }
           await saveCustomHomework(current);
           break;
         case 'delete_homework':
@@ -1474,7 +1489,9 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
           break;
         case 'create_exam':
         case 'update_exam':
-          if (action.subject.isEmpty || date == null) continue;
+          if (action.subject.isEmpty || date == null) {
+            continue;
+          }
           final current = List<Map<String, dynamic>>.from(
             customExamsNotifier.value,
           );
@@ -1491,15 +1508,63 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
             'examType': action.data['examType']?.toString() ?? '',
             '_custom': true,
           };
-          if (index >= 0)
+          if (index >= 0) {
             current[index] = item;
-          else
+          } else {
             current.add(item);
+          }
           await saveCustomExams(current);
           break;
         case 'delete_exam':
           await saveCustomExams(
             customExamsNotifier.value
+                .where((item) => item['id']?.toString() != action.id)
+                .toList(growable: false),
+          );
+          break;
+        case 'create_grade':
+        case 'update_grade':
+          final value = action.gradeValue;
+          if (action.subject.isEmpty ||
+              date == null ||
+              value == null ||
+              !value.isFinite ||
+              !action.gradeWeight.isFinite ||
+              action.gradeWeight <= 0) {
+            continue;
+          }
+          final dateText = date.toString();
+          if (dateText.length != 8) continue;
+          final gradeDate = DateTime.tryParse(
+            '${dateText.substring(0, 4)}-${dateText.substring(4, 6)}-${dateText.substring(6, 8)}',
+          );
+          if (gradeDate == null) continue;
+          final current = List<Map<String, dynamic>>.from(
+            customGradesNotifier.value,
+          );
+          final index = current.indexWhere(
+            (item) => item['id']?.toString() == action.id,
+          );
+          final item = <String, dynamic>{
+            'id': action.id.isEmpty
+                ? 'grade_${DateTime.now().millisecondsSinceEpoch}'
+                : action.id,
+            'subject': action.subject,
+            'value': value,
+            'weight': action.gradeWeight,
+            'type': action.gradeType,
+            'date': gradeDate.toIso8601String(),
+          };
+          if (index >= 0) {
+            current[index] = item;
+          } else {
+            current.add(item);
+          }
+          await saveCustomGrades(current);
+          break;
+        case 'delete_grade':
+          await saveCustomGrades(
+            customGradesNotifier.value
                 .where((item) => item['id']?.toString() != action.id)
                 .toList(growable: false),
           );
@@ -1510,22 +1575,21 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
 
   Future<void> _confirmActions(List<_AiProposedAction> actions) async {
     if (!mounted || actions.isEmpty) return;
+    final l = AppL10n.of(appLocaleNotifier.value);
     final approved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Änderungen bestätigen'),
+        title: Text(l.ui('aiApplyChangesTitle')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Der Assistent hat folgende lokale Änderungen vorgeschlagen:',
-            ),
+            Text(l.ui('aiApplyChangesDesc')),
             const SizedBox(height: 12),
             ...actions.map(
               (action) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Text('• ${action.summary}'),
+                child: Text('• ${action.summary(l)}'),
               ),
             ),
           ],
@@ -1533,11 +1597,11 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Abbrechen'),
+            child: Text(l.ui('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Übernehmen'),
+            child: Text(l.ui('apply')),
           ),
         ],
       ),
@@ -1547,7 +1611,7 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
     if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Änderungen übernommen.')));
+      ).showSnackBar(SnackBar(content: Text(l.ui('aiChangesApplied'))));
     }
   }
 
@@ -2431,7 +2495,7 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
                 IconButton(
                   onPressed: _thinking ? null : _pickAssistantAttachment,
                   icon: const Icon(Icons.attach_file_rounded),
-                  tooltip: 'Datei anhängen',
+                  tooltip: AppL10n.of(appLocaleNotifier.value).ui('aiAttachFile'),
                 ),
               Expanded(
                 child: TextField(
@@ -3047,7 +3111,19 @@ Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwo
       ),
       // MainNavigationScreen already provides the shared themed backdrop.
       // Adding a second animated scene here doubled paint work for this tab.
-      body: _buildBody(cs),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final body = _buildBody(cs);
+          if (!UntisLayout.isTablet(context)) return body;
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 980),
+              child: SizedBox(height: constraints.maxHeight, child: body),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -3077,7 +3153,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _handleNotificationAction,
     );
     pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
-    tutorialReplayRequestNotifier.addListener(_startTutorial);
     if (pendingAssistantOpenNotifier.value) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _openAssistantFromNative(),
@@ -3305,7 +3380,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void dispose() {
     _notificationActionSub?.cancel();
     pendingAssistantOpenNotifier.removeListener(_openAssistantFromNative);
-    tutorialReplayRequestNotifier.removeListener(_startTutorial);
     super.dispose();
   }
 
@@ -3314,7 +3388,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final mq = MediaQuery.of(context);
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
-    final isTablet = mq.size.width >= 720;
+    final isTablet = UntisLayout.isTablet(context);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -4121,10 +4195,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     });
 
     return ThemedSurface(
-      // Vivid's backdrop is deliberately animated. Blurring the dock over it
-      // caused a one-frame alpha jump while the entrance animation was still
-      // running, and is costly on weaker devices.
-      blur: tokens.id != AppThemeId.vivid,
       borderRadius: navRadius,
       color: cs.surfaceContainerHigh.withValues(
         alpha:

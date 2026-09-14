@@ -11,7 +11,7 @@ struct UntisScheduleEntry: TimelineEntry {
 
 struct UntisScheduleProvider: TimelineProvider {
     func placeholder(in context: Context) -> UntisScheduleEntry {
-        UntisScheduleEntry(date: Date(), accountId: "", accountLabel: "Untis+", status: "", dailySchedule: "Stundenplan wird geladen …")
+        UntisScheduleEntry(date: Date(), accountId: "", accountLabel: "Untis+", status: "", dailySchedule: untisWidgetCopy("fallbackSchedule", fallback: "Stundenplan wird geladen …"))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (UntisScheduleEntry) -> Void) {
@@ -32,7 +32,7 @@ struct UntisScheduleProvider: TimelineProvider {
             accountId: accountId ?? "",
             accountLabel: untisWidgetValue("account_label", accountId: accountId) ?? "Untis+",
             status: untisWidgetValue("status", accountId: accountId) ?? "",
-            dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? "Stundenplan wird geladen …"
+            dailySchedule: untisWidgetValue("daily_schedule", accountId: accountId) ?? untisWidgetCopy("fallbackSchedule", fallback: "Stundenplan wird geladen …")
         )
     }
 }
@@ -58,8 +58,8 @@ struct UntisDailyScheduleWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: UntisAccountIntent.self, provider: UntisAccountScheduleProvider()) { entry in
             UntisDailyScheduleView(entry: entry)
         }
-        .configurationDisplayName("Tagesplan")
-        .description("Zeigt deinen gesamten Tagesplan.")
+        .configurationDisplayName(LocalizedStringKey("widget.schedule.name"))
+        .description(LocalizedStringKey("widget.schedule.description"))
         .supportedFamilies([.systemMedium, .systemLarge, .systemExtraLarge])
     }
 }
@@ -71,7 +71,7 @@ struct UntisDailyScheduleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
-                Text("HEUTE")
+                Text(untisWidgetCopy("today", fallback: "HEUTE"))
                     .font(.caption)
                     .fontWeight(.bold)
                     .foregroundStyle(.blue)
@@ -84,7 +84,7 @@ struct UntisDailyScheduleView: View {
             }
 
             if entry.dailySchedule.isEmpty {
-                Text("Stundenplan wird geladen …")
+                Text(untisWidgetCopy("fallbackSchedule", fallback: "Stundenplan wird geladen …"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {

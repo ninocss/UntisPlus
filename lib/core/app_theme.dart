@@ -1,21 +1,42 @@
 part of '../main.dart';
 
-enum AppThemeId { defaultTheme, manga, vivid, glass, cyber, paper }
+enum AppThemeId { defaultTheme, manga, glass, cyber }
 
 extension AppThemeIdX on AppThemeId {
   String get storageKey => switch (this) {
     AppThemeId.defaultTheme => 'default',
     AppThemeId.manga => 'manga',
-    AppThemeId.vivid => 'vivid',
     AppThemeId.glass => 'glass',
     AppThemeId.cyber => 'cyber',
-    AppThemeId.paper => 'paper',
   };
 
   static AppThemeId fromStorage(String? value) => AppThemeId.values.firstWhere(
     (theme) => theme.storageKey == value,
     orElse: () => AppThemeId.defaultTheme,
   );
+
+  static bool isSupportedStorageKey(String key) =>
+      AppThemeId.values.any((theme) => theme.storageKey == key);
+
+  static bool isRemovedStorageKey(String? value) =>
+      value == 'vivid' || value == 'paper';
+
+  static Map<String, bool> normalizeBlurPreferences(
+    Map? values, {
+    required bool defaultThemeBlur,
+  }) {
+    final normalized = <String, bool>{
+      AppThemeId.defaultTheme.storageKey: defaultThemeBlur,
+      AppThemeId.glass.storageKey: true,
+      AppThemeId.cyber.storageKey: true,
+    };
+    values?.forEach((key, value) {
+      if (key is String && value is bool && isSupportedStorageKey(key)) {
+        normalized[key] = value;
+      }
+    });
+    return normalized;
+  }
 }
 
 @immutable
@@ -54,14 +75,6 @@ AppThemeCapabilities appThemeCapabilities(AppThemeId theme) => switch (theme) {
     supportsExpressiveComponents: false,
     supportsAdvancedLessonStyle: false,
   ),
-  AppThemeId.vivid => const AppThemeCapabilities(
-    supportsBlur: true,
-    supportsCustomBackgrounds: false,
-    supportsBackgroundMotion: true,
-    supportsMaterialYou: false,
-    supportsExpressiveComponents: true,
-    supportsAdvancedLessonStyle: false,
-  ),
   AppThemeId.cyber => const AppThemeCapabilities(
     supportsBlur: true,
     supportsCustomBackgrounds: false,
@@ -70,7 +83,7 @@ AppThemeCapabilities appThemeCapabilities(AppThemeId theme) => switch (theme) {
     supportsExpressiveComponents: false,
     supportsAdvancedLessonStyle: false,
   ),
-  AppThemeId.manga || AppThemeId.paper => const AppThemeCapabilities(
+  AppThemeId.manga => const AppThemeCapabilities(
     supportsBlur: false,
     supportsCustomBackgrounds: false,
     supportsBackgroundMotion: false,
@@ -147,85 +160,44 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
         navigationOpacity: 0.66,
         lessonSurfaceOpacity: 1,
       ),
-      AppThemeId.vivid => UntisThemeTokens(
-        id: id,
-        surfaceRadius: 30,
-        controlRadius: 26,
-        borderWidth: 1.25,
-        blurSigma: 22,
-        shadowOffset: const Offset(0, 12),
-        shadowColor: scheme.secondary.withValues(alpha: dark ? 0.22 : 0.18),
-        patternColor: scheme.tertiary.withValues(alpha: dark ? 0.10 : 0.08),
-        backdropColors: dark
-            ? const [Color(0xFF100C1D), Color(0xFF211135), Color(0xFF082D38)]
-            : const [Color(0xFFFFF7FD), Color(0xFFF4E9FF), Color(0xFFE8FBFF)],
-        hardShadow: false,
-        glassHighlights: false,
-        motionStyle: 2,
-        surfaceOpacity: 0.82,
-        navigationOpacity: 0.78,
-        lessonSurfaceOpacity: 0.86,
-      ),
       AppThemeId.glass => UntisThemeTokens(
         id: id,
-        surfaceRadius: 32,
-        controlRadius: 26,
+        surfaceRadius: 34,
+        controlRadius: 25,
         borderWidth: 1,
-        blurSigma: 38,
-        shadowOffset: const Offset(0, 14),
-        shadowColor: scheme.shadow.withValues(alpha: dark ? 0.30 : 0.14),
-        patternColor: Colors.white.withValues(alpha: dark ? 0.12 : 0.42),
+        blurSigma: 32,
+        shadowOffset: const Offset(0, 12),
+        shadowColor: scheme.shadow.withValues(alpha: dark ? 0.26 : 0.12),
+        patternColor: Colors.white.withValues(alpha: dark ? 0.08 : 0.24),
         backdropColors: dark
-            ? const [Color(0xFF071421), Color(0xFF152642), Color(0xFF281C3D)]
-            : const [Color(0xFFD9F2FF), Color(0xFFE9E2FF), Color(0xFFE0FFF6)],
+            ? const [Color(0xFF0B1425), Color(0xFF1A2B50), Color(0xFF3A2850)]
+            : const [Color(0xFFE5F3FF), Color(0xFFF0EBFF), Color(0xFFE4FFF7)],
         hardShadow: false,
         glassHighlights: true,
         motionStyle: 3,
-        surfaceOpacity: 0.52,
-        navigationOpacity: 0.54,
-        lessonSurfaceOpacity: 0.62,
+        surfaceOpacity: 0.68,
+        navigationOpacity: 0.72,
+        lessonSurfaceOpacity: 0.74,
       ),
       AppThemeId.cyber => UntisThemeTokens(
         id: id,
-        surfaceRadius: 10,
-        controlRadius: 6,
-        borderWidth: 1.5,
-        blurSigma: 16,
-        shadowOffset: const Offset(4, 4),
-        shadowColor: const Color(0x6600E5FF),
-        patternColor: (dark ? const Color(0xFF00F5FF) : const Color(0xFF005B66))
-            .withValues(alpha: 0.18),
-        backdropColors: dark
-            ? const [Color(0xFF02050A), Color(0xFF061724)]
-            : const [Color(0xFFE9FEFF), Color(0xFFDCE8F0)],
-        hardShadow: true,
-        glassHighlights: false,
-        motionStyle: 4,
-        surfaceOpacity: 0.90,
-        navigationOpacity: 0.92,
-        lessonSurfaceOpacity: 0.90,
-      ),
-      AppThemeId.paper => UntisThemeTokens(
-        id: id,
         surfaceRadius: 12,
         controlRadius: 8,
-        borderWidth: 1.15,
-        blurSigma: 0,
-        shadowOffset: const Offset(2, 5),
-        shadowColor: (dark ? Colors.black : const Color(0xFF604D37)).withValues(
-          alpha: 0.28,
-        ),
-        patternColor: (dark ? const Color(0xFFC6B99F) : const Color(0xFF8F8068))
-            .withValues(alpha: dark ? 0.10 : 0.13),
+        borderWidth: 1.2,
+        blurSigma: 10,
+        shadowOffset: const Offset(0, 8),
+        shadowColor: const Color(0x3300DDEB),
+        patternColor: (dark ? const Color(0xFF6EEAF2) : const Color(0xFF006D75))
+            .withValues(alpha: 0.08),
         backdropColors: dark
-            ? const [Color(0xFF1C1A17), Color(0xFF29251F)]
-            : const [Color(0xFFFFFBF1), Color(0xFFF5EBD7)],
+            ? const [Color(0xFF071015), Color(0xFF0B2026)]
+            : const [Color(0xFFF1FBFC), Color(0xFFDCEDEF)],
         hardShadow: false,
         glassHighlights: false,
-        motionStyle: 5,
-        surfaceOpacity: 0.97,
-        navigationOpacity: 0.98,
-        lessonSurfaceOpacity: 0.97,
+        motionStyle: 4,
+        surfaceOpacity: 0.86,
+        navigationOpacity: 0.88,
+        lessonSurfaceOpacity: 0.88,
       ),
       AppThemeId.defaultTheme => UntisThemeTokens(
         id: id,
@@ -324,21 +296,15 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
     AppThemeId.defaultTheme => Color(seed),
     AppThemeId.manga =>
       dark ? const Color(0xFFE9D9B8) : const Color(0xFF17120C),
-    AppThemeId.vivid =>
-      dark ? const Color(0xFFFF4FC8) : const Color(0xFF6C20FF),
     AppThemeId.glass =>
-      dark ? const Color(0xFF76D6FF) : const Color(0xFF246BFE),
+      dark ? const Color(0xFF9ACBFF) : const Color(0xFF2A63D5),
     AppThemeId.cyber =>
-      dark ? const Color(0xFF00F5FF) : const Color(0xFF006B75),
-    AppThemeId.paper =>
-      dark ? const Color(0xFFFFC86B) : const Color(0xFF9A4D24),
+      dark ? const Color(0xFF6EEAF2) : const Color(0xFF006D75),
   };
   var scheme = ColorScheme.fromSeed(
     seedColor: seedColor,
     brightness: brightness,
-    dynamicSchemeVariant: id == AppThemeId.vivid
-        ? DynamicSchemeVariant.expressive
-        : DynamicSchemeVariant.vibrant,
+    dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
   );
   if (id == AppThemeId.manga) {
     scheme = scheme.copyWith(
@@ -348,158 +314,76 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
       onSurface: dark ? const Color(0xFFF5EBD7) : const Color(0xFF17120C),
       outline: dark ? const Color(0xFFF5EBD7) : const Color(0xFF17120C),
     );
-  } else if (id == AppThemeId.vivid) {
-    scheme = scheme.copyWith(
-      primary: dark ? const Color(0xFFBFA8FF) : const Color(0xFF6E37FF),
-      onPrimary: dark ? const Color(0xFF251052) : Colors.white,
-      primaryContainer: dark
-          ? const Color(0xFF4D2A98)
-          : const Color(0xFFE9DFFF),
-      onPrimaryContainer: dark
-          ? const Color(0xFFF0E9FF)
-          : const Color(0xFF28105D),
-      secondary: dark ? const Color(0xFFFF75BB) : const Color(0xFFD81B82),
-      secondaryContainer: dark
-          ? const Color(0xFF5D1439)
-          : const Color(0xFFFFD8EA),
-      tertiary: dark ? const Color(0xFF67DBE8) : const Color(0xFF007B8A),
-      tertiaryContainer: dark
-          ? const Color(0xFF064C54)
-          : const Color(0xFFB5F2F7),
-      surface: dark ? const Color(0xFF100C1D) : const Color(0xFFFFF7FD),
-      surfaceContainerLowest: dark
-          ? const Color(0xFF0B0815)
-          : const Color(0xFFFFFBFF),
-      surfaceContainerLow: dark
-          ? const Color(0xFF171124)
-          : const Color(0xFFFFF0FA),
-      surfaceContainer: dark
-          ? const Color(0xFF1E152D)
-          : const Color(0xFFF9EAFB),
-      surfaceContainerHigh: dark
-          ? const Color(0xFF251836)
-          : const Color(0xFFF3E2F7),
-      surfaceContainerHighest: dark
-          ? const Color(0xFF342047)
-          : const Color(0xFFE9D8F2),
-      onSurface: dark ? const Color(0xFFF8F1FF) : const Color(0xFF21182B),
-      onSurfaceVariant: dark
-          ? const Color(0xFFD6C7DE)
-          : const Color(0xFF5E5066),
-      outline: dark ? const Color(0xFF9B86A8) : const Color(0xFF78677F),
-      outlineVariant: dark ? const Color(0xFF4F4058) : const Color(0xFFD8C6DE),
-    );
   } else if (id == AppThemeId.glass) {
     scheme = scheme.copyWith(
-      primary: dark ? const Color(0xFF8BC7FF) : const Color(0xFF195FC7),
+      primary: dark ? const Color(0xFF9ACBFF) : const Color(0xFF2A63D5),
       primaryContainer: dark
-          ? const Color(0xFF173D69)
-          : const Color(0xFFD8E9FF),
-      secondary: dark ? const Color(0xFFC9B5FF) : const Color(0xFF7054B8),
+          ? const Color(0xFF1E4778)
+          : const Color(0xFFDCE8FF),
+      secondary: dark ? const Color(0xFFD0BEFF) : const Color(0xFF705AAE),
       secondaryContainer: dark
-          ? const Color(0xFF3E3261)
-          : const Color(0xFFE9E0FF),
-      tertiary: dark ? const Color(0xFF7ADDC7) : const Color(0xFF157866),
+          ? const Color(0xFF443764)
+          : const Color(0xFFEEE7FF),
+      tertiary: dark ? const Color(0xFF8DE2D0) : const Color(0xFF1D7F6D),
       tertiaryContainer: dark
-          ? const Color(0xFF174D45)
-          : const Color(0xFFC5F3E8),
-      surface: dark ? const Color(0xFF091722) : const Color(0xFFF4FAFF),
-      surfaceContainerLowest: dark ? const Color(0xFF061018) : Colors.white,
+          ? const Color(0xFF1B5149)
+          : const Color(0xFFCFF7ED),
+      surface: dark ? const Color(0xFF0B1425) : const Color(0xFFF5F8FF),
+      surfaceContainerLowest: dark ? const Color(0xFF07101E) : Colors.white,
       surfaceContainerLow: dark
-          ? const Color(0xFF10202E)
-          : const Color(0xFFEBF5FC),
+          ? const Color(0xFF12203A)
+          : const Color(0xFFEDF4FD),
       surfaceContainer: dark
-          ? const Color(0xFF172837)
-          : const Color(0xFFE4F0F8),
+          ? const Color(0xFF192945)
+          : const Color(0xFFE6EFFA),
       surfaceContainerHigh: dark
-          ? const Color(0xFF203242)
-          : const Color(0xFFDCEAF4),
+          ? const Color(0xFF233553)
+          : const Color(0xFFDFEAF6),
       surfaceContainerHighest: dark
-          ? const Color(0xFF2A3D4D)
-          : const Color(0xFFD2E2ED),
-      onSurface: dark ? const Color(0xFFF1F7FC) : const Color(0xFF17232C),
+          ? const Color(0xFF2E4264)
+          : const Color(0xFFD5E3F0),
+      onSurface: dark ? const Color(0xFFF2F6FF) : const Color(0xFF17233B),
       onSurfaceVariant: dark
-          ? const Color(0xFFC5D2DB)
-          : const Color(0xFF4E606D),
-      outline: dark ? const Color(0xFF8FA4B3) : const Color(0xFF718591),
-      outlineVariant: dark ? const Color(0xFF405362) : const Color(0xFFC2D2DD),
+          ? const Color(0xFFC6D2E6)
+          : const Color(0xFF52637D),
+      outline: dark ? const Color(0xFF9AACCA) : const Color(0xFF6E809C),
+      outlineVariant: dark ? const Color(0xFF435574) : const Color(0xFFC3D0E0),
     );
   } else if (id == AppThemeId.cyber) {
     scheme = scheme.copyWith(
-      primary: dark ? const Color(0xFF35F0FF) : const Color(0xFF006B75),
-      onPrimary: dark ? const Color(0xFF002023) : Colors.white,
+      primary: dark ? const Color(0xFF6EEAF2) : const Color(0xFF006D75),
+      onPrimary: dark ? const Color(0xFF002528) : Colors.white,
       primaryContainer: dark
-          ? const Color(0xFF003E45)
-          : const Color(0xFFB5F3F7),
-      secondary: dark ? const Color(0xFFFF59B6) : const Color(0xFFB00069),
+          ? const Color(0xFF06464C)
+          : const Color(0xFFBDEEF0),
+      secondary: dark ? const Color(0xFFE285BF) : const Color(0xFF9B3E76),
       secondaryContainer: dark
-          ? const Color(0xFF4D1234)
-          : const Color(0xFFFFD8E9),
-      tertiary: dark ? const Color(0xFFD0FF52) : const Color(0xFF527200),
+          ? const Color(0xFF552343)
+          : const Color(0xFFF8D8E8),
+      tertiary: dark ? const Color(0xFFA3D7D9) : const Color(0xFF3B7075),
       tertiaryContainer: dark
-          ? const Color(0xFF314500)
-          : const Color(0xFFDDF5A5),
-      surface: dark ? const Color(0xFF02070B) : const Color(0xFFF1FCFD),
-      surfaceContainerLowest: dark ? Colors.black : Colors.white,
+          ? const Color(0xFF214044)
+          : const Color(0xFFD8EFF0),
+      surface: dark ? const Color(0xFF071015) : const Color(0xFFF1FBFC),
+      surfaceContainerLowest: dark ? const Color(0xFF03090C) : Colors.white,
       surfaceContainerLow: dark
-          ? const Color(0xFF071016)
-          : const Color(0xFFE8F5F6),
+          ? const Color(0xFF0B1A20)
+          : const Color(0xFFE8F4F5),
       surfaceContainer: dark
-          ? const Color(0xFF0B171F)
-          : const Color(0xFFDFEEF0),
+          ? const Color(0xFF10242B)
+          : const Color(0xFFDFEFF0),
       surfaceContainerHigh: dark
-          ? const Color(0xFF10212B)
-          : const Color(0xFFD5E8EA),
+          ? const Color(0xFF173139)
+          : const Color(0xFFD6E8EA),
       surfaceContainerHighest: dark
-          ? const Color(0xFF17303B)
+          ? const Color(0xFF203E46)
           : const Color(0xFFC9DEE1),
-      onSurface: dark ? const Color(0xFFE8FAFC) : const Color(0xFF10272B),
+      onSurface: dark ? const Color(0xFFE9F7F8) : const Color(0xFF10272B),
       onSurfaceVariant: dark
-          ? const Color(0xFFB3C9CD)
-          : const Color(0xFF425F64),
-      outline: dark ? const Color(0xFF62AEB6) : const Color(0xFF557A80),
-      outlineVariant: dark ? const Color(0xFF244A51) : const Color(0xFFB5CED1),
-    );
-  } else if (id == AppThemeId.paper) {
-    scheme = scheme.copyWith(
-      primary: dark ? const Color(0xFFF2A36F) : const Color(0xFF9A4D24),
-      onPrimary: dark ? const Color(0xFF3B1807) : Colors.white,
-      primaryContainer: dark
-          ? const Color(0xFF55301D)
-          : const Color(0xFFFFDCC6),
-      onPrimaryContainer: dark
-          ? const Color(0xFFFFE7D8)
-          : const Color(0xFF3A1705),
-      secondary: dark ? const Color(0xFFB9CAA2) : const Color(0xFF536844),
-      secondaryContainer: dark
-          ? const Color(0xFF35432C)
-          : const Color(0xFFD8E8C5),
-      tertiary: dark ? const Color(0xFFD6B983) : const Color(0xFF745C2F),
-      tertiaryContainer: dark
-          ? const Color(0xFF48391F)
-          : const Color(0xFFF5DDAA),
-      surface: dark ? const Color(0xFF1C1A17) : const Color(0xFFFFFBF1),
-      surfaceContainerLowest: dark
-          ? const Color(0xFF151310)
-          : const Color(0xFFFFFEF8),
-      surfaceContainerLow: dark
-          ? const Color(0xFF24211C)
-          : const Color(0xFFF9F1E2),
-      surfaceContainer: dark
-          ? const Color(0xFF2B2721)
-          : const Color(0xFFF3E9D6),
-      surfaceContainerHigh: dark
-          ? const Color(0xFF332E27)
-          : const Color(0xFFEDE2CC),
-      surfaceContainerHighest: dark
-          ? const Color(0xFF3D372F)
-          : const Color(0xFFE5D8BF),
-      onSurface: dark ? const Color(0xFFF0E7D7) : const Color(0xFF29231C),
-      onSurfaceVariant: dark
-          ? const Color(0xFFCFC3B1)
-          : const Color(0xFF665C4F),
-      outline: dark ? const Color(0xFF9B8F7E) : const Color(0xFF867966),
-      outlineVariant: dark ? const Color(0xFF51493E) : const Color(0xFFD6C8B1),
+          ? const Color(0xFFB8CDD0)
+          : const Color(0xFF426166),
+      outline: dark ? const Color(0xFF78B6BB) : const Color(0xFF527D82),
+      outlineVariant: dark ? const Color(0xFF2E565B) : const Color(0xFFB9D1D3),
     );
   }
   return scheme;
@@ -507,20 +391,13 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
 
 TextTheme untisThemeTextTheme(AppThemeId id, Brightness brightness) {
   final base = ThemeData(brightness: brightness, useMaterial3: true).textTheme;
-  final body = switch (id) {
-    AppThemeId.cyber => GoogleFonts.outfitTextTheme(base),
-    AppThemeId.paper => GoogleFonts.notoSansTextTheme(base),
-    _ => GoogleFonts.outfitTextTheme(base),
-  };
-  if (id != AppThemeId.manga &&
-      id != AppThemeId.cyber &&
-      id != AppThemeId.paper) {
+  final body = GoogleFonts.outfitTextTheme(base);
+  if (id != AppThemeId.manga && id != AppThemeId.cyber) {
     return body;
   }
   final display = switch (id) {
     AppThemeId.manga => GoogleFonts.bebasNeueTextTheme(base),
     AppThemeId.cyber => GoogleFonts.ibmPlexMonoTextTheme(base),
-    AppThemeId.paper => GoogleFonts.notoSerifTextTheme(base),
     _ => body,
   };
   return body.copyWith(
@@ -592,21 +469,12 @@ class _ThemePatternPainter extends CustomPainter {
       }
     } else if (tokens.id == AppThemeId.cyber) {
       paint.strokeWidth = 0.8;
-      for (double x = 0; x < size.width; x += 28) {
+      for (double x = 0; x < size.width; x += 40) {
         canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
       }
-      for (double y = 0; y < size.height; y += 28) {
+      for (double y = 0; y < size.height; y += 40) {
         canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
       }
-    } else if (tokens.id == AppThemeId.paper) {
-      paint.strokeWidth = 1;
-      for (double y = 34; y < size.height; y += 30) {
-        canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-      }
-      final margin = Paint()
-        ..color = const Color(0x55D65A5A)
-        ..strokeWidth = 1.2;
-      canvas.drawLine(const Offset(32, 0), Offset(32, size.height), margin);
     }
   }
 
@@ -634,7 +502,6 @@ class ThemedBackdrop extends StatelessWidget {
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final themeSceneStyle = switch (tokens.id) {
-      AppThemeId.vivid => 6,
       AppThemeId.glass => 0,
       AppThemeId.cyber => 8,
       _ => -1,
@@ -661,13 +528,11 @@ class ThemedBackdrop extends StatelessWidget {
         if (sceneStyle >= 0 && animate && !reduceMotion)
           Positioned.fill(
             child: Opacity(
-              opacity: tokens.id == AppThemeId.cyber ? 0.36 : 0.56,
+              opacity: tokens.id == AppThemeId.cyber ? 0.22 : 0.46,
               child: _AnimatedBackgroundScene(style: sceneStyle),
             ),
           ),
-        if (tokens.id == AppThemeId.manga ||
-            tokens.id == AppThemeId.cyber ||
-            tokens.id == AppThemeId.paper)
+        if (tokens.id == AppThemeId.manga || tokens.id == AppThemeId.cyber)
           Positioned.fill(
             child: CustomPaint(painter: _ThemePatternPainter(tokens)),
           ),

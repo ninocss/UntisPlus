@@ -26,6 +26,7 @@
 		BAAA00001E /* UntisAlarmActivityConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA00001D /* UntisAlarmActivityConfiguration.swift */; };
 BAAA000020 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA00001F /* LiveActivityManager.swift */; };
 		BAAA000021 /* UntisAlarmScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA000022 /* UntisAlarmScheduler.swift */; };
+		AABB000035 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = AABB000034 /* Localizable.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,6 +100,10 @@ BAAA000020 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fil
 		BAAA00001D /* UntisAlarmActivityConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntisAlarmActivityConfiguration.swift; sourceTree = "<group>"; };
 BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		BAAA000022 /* UntisAlarmScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntisAlarmScheduler.swift; sourceTree = "<group>"; };
+		AABB000030 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		AABB000031 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		AABB000032 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		AABB000033 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -191,6 +196,7 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 				BAAA000019 /* UntisAlarmActivityAttributes.swift */,
 				BAAA00001B /* UntisAlarmLiveActivityView.swift */,
 				BAAA00001D /* UntisAlarmActivityConfiguration.swift */,
+				AABB000034 /* Localizable.strings */,
 			);
 			path = UntisWidget;
 			sourceTree = "<group>";
@@ -327,6 +333,7 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AABB000035 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -416,6 +423,17 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		AABB000034 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				AABB000030 /* de */,
+				AABB000031 /* en */,
+				AABB000032 /* fr */,
+				AABB000033 /* es */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
 		97C146FA1CF9000F007C117D /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (

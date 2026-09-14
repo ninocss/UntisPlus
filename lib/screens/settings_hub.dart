@@ -12,6 +12,8 @@ Future<void> _settingsSetLocale(String code) async {
   appLocaleNotifier.value = code;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('appLocale', code);
+  unawaited(WidgetService.publishNativeCopy(code));
+  unawaited(AlarmService.instance.refreshNativeCopy());
 }
 
 Future<void> _settingsSetThemeMode(ThemeMode mode) async {
@@ -119,6 +121,12 @@ Future<void> _settingsSetMonochromeLessons(bool value) async {
   monochromeLessonsNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool('monochromeLessons', value);
+}
+
+Future<void> _settingsSetMonochromeLessonColor(int colorValue) async {
+  monochromeLessonColorNotifier.value = colorValue;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('monochromeLessonColor', colorValue);
 }
 
 Future<void> _settingsSetLessonCardStyle(int style) async {
@@ -377,9 +385,11 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getString('appLocale') ?? appLocaleNotifier.value;
   themeModeNotifier.value =
       ThemeMode.values[(prefs.getInt('themeMode') ?? 0).clamp(0, 2)];
-  visualThemeNotifier.value = AppThemeIdX.fromStorage(
-    prefs.getString('visualTheme'),
-  );
+  final savedVisualTheme = prefs.getString('visualTheme');
+  visualThemeNotifier.value = AppThemeIdX.fromStorage(savedVisualTheme);
+  if (AppThemeIdX.isRemovedStorageKey(savedVisualTheme)) {
+    await prefs.setString('visualTheme', AppThemeId.defaultTheme.storageKey);
+  }
   showCancelledNotifier.value =
       prefs.getBool('showCancelled') ?? showCancelledNotifier.value;
   backgroundAnimationsNotifier.value =
@@ -389,17 +399,23 @@ Future<void> _settingsSyncFromPrefs() async {
       (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 10);
   backgroundGyroscopeNotifier.value =
       prefs.getBool('backgroundGyroscope') ?? backgroundGyroscopeNotifier.value;
-  final savedThemeBlurs = <String, bool>{};
+  Map? rawThemeBlurs;
   try {
-    final raw = jsonDecode(prefs.getString('themeBlurPreferences') ?? '{}');
-    if (raw is Map) {
-      raw.forEach((key, value) {
-        if (key is String && value is bool) savedThemeBlurs[key] = value;
-      });
-    }
+    rawThemeBlurs = jsonDecode(
+      prefs.getString('themeBlurPreferences') ?? '{}',
+    );
   } catch (_) {}
-  if (savedThemeBlurs.isNotEmpty) {
-    themeBlurPreferencesNotifier.value = savedThemeBlurs;
+  final savedThemeBlurs = AppThemeIdX.normalizeBlurPreferences(
+    rawThemeBlurs,
+    defaultThemeBlur: prefs.getBool('blurEnabled') ?? true,
+  );
+  themeBlurPreferencesNotifier.value = savedThemeBlurs;
+  final hadUnsupportedThemeBlur = rawThemeBlurs is Map &&
+      rawThemeBlurs.keys.any(
+        (key) => key is! String || !AppThemeIdX.isSupportedStorageKey(key),
+      );
+  if (hadUnsupportedThemeBlur) {
+    await prefs.setString('themeBlurPreferences', jsonEncode(savedThemeBlurs));
   }
   final activeTheme = visualThemeNotifier.value;
   blurEnabledNotifier.value =
@@ -464,13 +480,24 @@ Future<void> _settingsSyncFromPrefs() async {
   await loadCustomBackgroundsFromPrefs(prefs);
 }
 
-class SettingsHubPage extends StatelessWidget {
+class SettingsHubPage extends StatefulWidget {
   const SettingsHubPage({super.key});
+
+  @override
+  State<SettingsHubPage> createState() => _SettingsHubPageState();
+}
+
+class _SettingsHubPageState extends State<SettingsHubPage> {
+  int _selectedDetail = 0;
 
   Widget _buildGroupCard(
     ColorScheme cs,
     BuildContext context,
     List<_SettingsHubItem> groupItems,
+    {
+    required bool expanded,
+    required List<_SettingsHubItem> allItems,
+  }
   ) {
     return Card(
       elevation: 0,
@@ -494,10 +521,14 @@ class SettingsHubPage extends StatelessWidget {
                   if (item.onTap != null) {
                     item.onTap!();
                   } else if (item.pageBuilder != null) {
-                    Navigator.push(
-                      context,
-                      _buildBouncyRoute(item.pageBuilder!()),
-                    );
+                    if (expanded) {
+                      setState(() => _selectedDetail = allItems.indexOf(item));
+                    } else {
+                      Navigator.push(
+                        context,
+                        _buildBouncyRoute(item.pageBuilder!()),
+                      );
+                    }
                   }
                 },
                 child: Padding(
@@ -543,10 +574,15 @@ class SettingsHubPage extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: cs.onSurfaceVariant,
-                      ),
+                      if (item.pageBuilder != null)
+                        Icon(
+                          expanded && allItems.indexOf(item) == _selectedDetail
+                              ? Icons.check_circle_rounded
+                              : Icons.chevron_right_rounded,
+                          color: expanded && allItems.indexOf(item) == _selectedDetail
+                              ? cs.primary
+                              : cs.onSurfaceVariant,
+                        ),
                     ],
                   ),
                 ),
@@ -679,13 +715,6 @@ class SettingsHubPage extends StatelessWidget {
         subtitle: AppL10n.of(appLocaleNotifier.value).ui('widgetAccount'),
         pageBuilder: () => const SettingsWidgetsPage(),
       ),
-      makeItem(
-        index: 8,
-        icon: Icons.explore_rounded,
-        title: l.tutorialReplay,
-        subtitle: l.tutorialReplayDesc,
-        onTap: () => tutorialReplayRequestNotifier.value++,
-      ),
       if (kIsWeb || !Platform.isIOS)
         makeItem(
           index: 9,
@@ -706,7 +735,92 @@ class SettingsHubPage extends StatelessWidget {
           );
         },
       ),
+      makeItem(
+        index: 11,
+        icon: Icons.bug_report_rounded,
+        title: l.settingsReportIssue,
+        subtitle: l.settingsReportIssueDesc,
+        onTap: () {
+          url_launcher.launchUrlString(
+            'https://github.com/ninocss/UntisPlus/issues',
+            mode: url_launcher.LaunchMode.externalApplication,
+          );
+        },
+      ),
     ];
+
+    Widget settingsList({required bool expanded}) => ListView(
+      padding: UntisLayout.pagePadding(
+        context,
+        bottom: mq.padding.bottom + (expanded ? 28 : 132),
+      ),
+      children: [
+        TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 300),
+          tween: Tween(begin: 0, end: 1),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, (1 - value) * 16),
+              child: child,
+            ),
+          ),
+          child: _buildGroupCard(
+            cs,
+            context,
+            [items[0], items[3], items[2]],
+            expanded: expanded,
+            allItems: items,
+          ),
+        ),
+        const SizedBox(height: 16),
+        TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 400),
+          tween: Tween(begin: 0, end: 1),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, (1 - value) * 16),
+              child: child,
+            ),
+          ),
+          child: _buildGroupCard(
+            cs,
+            context,
+            [items[1], items[4], items[6], items[7]],
+            expanded: expanded,
+            allItems: items,
+          ),
+        ),
+        const SizedBox(height: 16),
+        TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 500),
+          tween: Tween(begin: 0, end: 1),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, (1 - value) * 16),
+              child: child,
+            ),
+          ),
+          child: _buildGroupCard(
+            cs,
+            context,
+            [
+              items[5],
+              items[8],
+              if (kIsWeb || !Platform.isIOS) items[9],
+              items.last,
+            ],
+            expanded: expanded,
+            allItems: items,
+          ),
+        ),
+      ],
+    );
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
@@ -717,71 +831,32 @@ class SettingsHubPage extends StatelessWidget {
         centerTitle: true,
       ),
       body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, mq.padding.bottom + 132),
-          children: [
-            TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 300),
-              tween: Tween(begin: 0, end: 1),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, (1 - value) * 16),
-                    child: child,
+        child: LayoutBuilder(
+          builder: (context, _) {
+            final expanded = UntisLayout.isExpanded(context);
+            if (!expanded) return settingsList(expanded: false);
+            final detailIndex = _selectedDetail
+                .clamp(0, items.length - 1)
+                .toInt();
+            final detail = items[detailIndex].pageBuilder?.call() ??
+                const SettingsTimetablePage();
+            return Row(
+              key: const ValueKey('settings-master-detail'),
+              children: [
+                SizedBox(width: 360, child: settingsList(expanded: true)),
+                VerticalDivider(
+                  width: 1,
+                  color: cs.outlineVariant.withValues(alpha: 0.45),
+                ),
+                Expanded(
+                  child: KeyedSubtree(
+                    key: ValueKey('settings-detail-$detailIndex'),
+                    child: detail,
                   ),
-                );
-              },
-              child: _buildGroupCard(cs, context, [
-                items[0],
-                items[3],
-                items[2],
-              ]),
-            ),
-            const SizedBox(height: 16),
-            TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 400),
-              tween: Tween(begin: 0, end: 1),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, (1 - value) * 16),
-                    child: child,
-                  ),
-                );
-              },
-              child: _buildGroupCard(cs, context, [
-                items[1],
-                items[4],
-                items[6],
-                items[7],
-              ]),
-            ),
-            const SizedBox(height: 16),
-            TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 500),
-              tween: Tween(begin: 0, end: 1),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, (1 - value) * 16),
-                    child: child,
-                  ),
-                );
-              },
-              child: _buildGroupCard(cs, context, [
-                items[5],
-                items[8],
-                if (kIsWeb || !Platform.isIOS) items[9],
-                items.last,
-              ]),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

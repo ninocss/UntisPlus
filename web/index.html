@@ -31,6 +31,22 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>Untis+</title>
+  <script>
+    // Flutter stores the selected locale under this key on web. Fall back to
+    // the browser only before the app has been opened once.
+    (() => {
+      const language = (localStorage.getItem('flutter.appLocale') || navigator.language || 'de').slice(0, 2);
+      const copy = {
+        de: 'Untis+ — dein datensparender, offlinefähiger WebUntis-Begleiter.',
+        en: 'Untis+ — your privacy-first, offline-capable WebUntis companion.',
+        fr: 'Untis+ — votre compagnon WebUntis privé et disponible hors ligne.',
+        es: 'Untis+ — tu acompañante de WebUntis privado y disponible sin conexión.'
+      };
+      const locale = Object.prototype.hasOwnProperty.call(copy, language) ? language : 'de';
+      document.documentElement.lang = locale;
+      document.querySelector('meta[name="description"]')?.setAttribute('content', copy[locale]);
+    })();
+  </script>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>

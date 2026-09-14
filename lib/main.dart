@@ -273,7 +273,10 @@ class GeminiProvider extends RemoteAIProvider {
           if (attachment.isText) {
             parts.add({
               'text':
-                  '\n\nDatei ${attachment.name}:\n${attachment.textExcerpt}',
+                  AppL10n.of(appLocaleNotifier.value).uiFormat(
+                    'aiAttachmentText',
+                    {'name': attachment.name, 'excerpt': attachment.textExcerpt},
+                  ),
             });
           }
         }
@@ -382,13 +385,25 @@ class OpenAICompatibleProvider extends RemoteAIProvider {
                   {
                     'type': 'text',
                     'text':
-                        'Datei ${attachment.name}:\n${attachment.textExcerpt}',
+                        AppL10n.of(appLocaleNotifier.value).uiFormat(
+                          'aiAttachmentText',
+                          {
+                            'name': attachment.name,
+                            'excerpt': attachment.textExcerpt,
+                          },
+                        ),
                   }
                 else
                   {
                     'type': 'text',
                     'text':
-                        'Anhang ${attachment.name} (${attachment.mimeType}) kann von diesem Anbieter nicht gelesen werden.',
+                        AppL10n.of(appLocaleNotifier.value).uiFormat(
+                          'aiAttachmentUnsupported',
+                          {
+                            'name': attachment.name,
+                            'mimeType': attachment.mimeType,
+                          },
+                        ),
                   },
             ],
           },
@@ -474,7 +489,10 @@ class LocalModelProvider implements AIProvider {
         .where((attachment) => attachment.isText)
         .map(
           (attachment) =>
-              '\n\nDatei ${attachment.name}:\n${attachment.textExcerpt}',
+              AppL10n.of(appLocaleNotifier.value).uiFormat(
+                'aiAttachmentText',
+                {'name': attachment.name, 'excerpt': attachment.textExcerpt},
+              ),
         )
         .join();
     final messages = <Message>[
@@ -767,6 +785,7 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
   await ensureDateFormattingForLocale(appLocaleNotifier.value);
+  unawaited(WidgetService.publishNativeCopy(appLocaleNotifier.value));
   final packageInfo = await PackageInfo.fromPlatform();
   appVersion = packageInfo.version;
   appBuildNumber = packageInfo.buildNumber;
@@ -841,35 +860,43 @@ void main() async {
       ? savedAppIcon
       : 'default';
   themeModeNotifier.value = ThemeMode.values[prefs.getInt('themeMode') ?? 0];
-  visualThemeNotifier.value = AppThemeIdX.fromStorage(
-    prefs.getString('visualTheme'),
-  );
+  final savedVisualTheme = prefs.getString('visualTheme');
+  visualThemeNotifier.value = AppThemeIdX.fromStorage(savedVisualTheme);
+  if (AppThemeIdX.isRemovedStorageKey(savedVisualTheme)) {
+    await prefs.setString(
+      'visualTheme',
+      AppThemeId.defaultTheme.storageKey,
+    );
+  }
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
   cancelledLessonColorNotifier.value =
       prefs.getInt('cancelledLessonColor') ?? 0xFFFF1744;
   monochromeLessonsNotifier.value = prefs.getBool('monochromeLessons') ?? false;
+  monochromeLessonColorNotifier.value =
+      prefs.getInt('monochromeLessonColor') ?? 0xFF757575;
   backgroundAnimationsNotifier.value =
       prefs.getBool('backgroundAnimations') ?? true;
   backgroundAnimationStyleNotifier.value =
       (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 10);
   backgroundGyroscopeNotifier.value =
       prefs.getBool('backgroundGyroscope') ?? false;
-  final themeBlurPreferences = <String, bool>{
-    AppThemeId.defaultTheme.storageKey: prefs.getBool('blurEnabled') ?? true,
-    AppThemeId.vivid.storageKey: true,
-    AppThemeId.glass.storageKey: true,
-    AppThemeId.cyber.storageKey: true,
-  };
+  Map? rawThemeBlurs;
   try {
-    final rawThemeBlurs = jsonDecode(
+    rawThemeBlurs = jsonDecode(
       prefs.getString('themeBlurPreferences') ?? '{}',
     );
-    if (rawThemeBlurs is Map) {
-      rawThemeBlurs.forEach((key, value) {
-        if (key is String && value is bool) themeBlurPreferences[key] = value;
-      });
-    }
   } catch (_) {}
+  final themeBlurPreferences = AppThemeIdX.normalizeBlurPreferences(
+    rawThemeBlurs,
+    defaultThemeBlur: prefs.getBool('blurEnabled') ?? true,
+  );
+  final hadUnsupportedThemeBlur = rawThemeBlurs is Map &&
+      rawThemeBlurs.keys.any(
+        (key) => key is! String || !AppThemeIdX.isSupportedStorageKey(key),
+      );
+  if (hadUnsupportedThemeBlur) {
+    await prefs.setString('themeBlurPreferences', jsonEncode(themeBlurPreferences));
+  }
   themeBlurPreferencesNotifier.value = themeBlurPreferences;
   final activeVisualTheme = visualThemeNotifier.value;
   blurEnabledNotifier.value =
@@ -1310,9 +1337,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   double _carouselOffset = 0.0;
   AnimationController? _carouselAnimController;
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
-  double _dayDragTotal = 0.0;
+  // The day view has its own carousel so its page follows the finger instead
+  // of only changing the selected tab after a drag has finished.
+  double _dayCarouselOffset = 0.0;
+  // When a date tab is tapped, the incoming page may be farther than the
+  // adjacent day. Keep it explicit until the carousel has completed.
+  int? _dayCarouselTargetDay;
+  AnimationController? _dayCarouselAnimController;
   bool _isWeekCarouselAnimating = false;
-  double _weekViewOverscroll = 0.0;
+  bool _isDayCarouselAnimating = false;
+  late final AnimationController _cacheRefreshController;
   int _weekFetchGeneration = 0;
   bool _isExportingTimetable = false;
   final GlobalKey _timetableExportKey = GlobalKey();
@@ -1743,13 +1777,19 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       length: 5,
       vsync: this,
       initialIndex: resolveInitialTimetableDayIndex(DateTime.now()),
-    );
+    )..addListener(_onSelectedDayChanged);
+    _cacheRefreshController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
     if (defaultClassId != null) {
       _viewingClassId = defaultClassId;
       _viewingClassName = defaultClassName;
     }
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.addListener(_onHiddenSubjectsChanged);
+    monochromeLessonsNotifier.addListener(_onHiddenSubjectsChanged);
+    monochromeLessonColorNotifier.addListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
     demoModeNotifier.addListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
@@ -1800,8 +1840,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Future<void> _showDateAlarmActions(DateTime date) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final key = alarmDateKey(date);
-    final current = _alarmConfig.dateOverrides[key] ??
-        const AlarmDateOverride();
+    final current =
+        _alarmConfig.dateOverrides[key] ?? const AlarmDateOverride();
     final dateLabel = DateFormat(
       'EEEE, d. MMMM',
       _icuLocale(appLocaleNotifier.value),
@@ -1889,7 +1929,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 subtitle: Text(
                   l
                       .ui('alarmEarlierValue')
-                      .replaceAll('{n}', '${_alarmConfig.nextAlarmEarlierMinutes}'),
+                      .replaceAll(
+                        '{n}',
+                        '${_alarmConfig.nextAlarmEarlierMinutes}',
+                      ),
                 ),
                 onTap: () async {
                   await _saveDateAlarmOverride(
@@ -1973,32 +2016,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         m.contains('nicht erlaubtes datum') ||
         m.contains('not within a school year') ||
         m.contains('nicht in einem schuljahr');
-  }
-
-  void _onSwipeLeft() {
-    if (_isWeekCarouselAnimating) return;
-    if (_tabController.index < 4) {
-      HapticFeedback.selectionClick();
-      _tabController.animateTo(_tabController.index + 1);
-    } else {
-      HapticFeedback.selectionClick();
-      final rb = context.findRenderObject() as RenderBox?;
-      final width = rb?.size.width ?? 400.0;
-      _animateCarouselTo(-1, width);
-    }
-  }
-
-  void _onSwipeRight() {
-    if (_isWeekCarouselAnimating) return;
-    if (_tabController.index > 0) {
-      HapticFeedback.selectionClick();
-      _tabController.animateTo(_tabController.index - 1);
-    } else {
-      HapticFeedback.selectionClick();
-      final rb = context.findRenderObject() as RenderBox?;
-      final width = rb?.size.width ?? 400.0;
-      _animateCarouselTo(1, width);
-    }
   }
 
   Future<void> _toggleView() async {
@@ -2351,6 +2368,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         accountId: activeUntisAccountId ?? 'active',
         accountLabel: activeAccount?.label ?? schoolName,
         status: DateFormat('HH:mm').format(now),
+        locale: appLocaleNotifier.value,
       );
     } catch (_) {
       // A widget update must never block timetable rendering.
@@ -2358,6 +2376,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _onHiddenSubjectsChanged() => setState(() {});
+
+  void _onSelectedDayChanged() {
+    // TabBarView used to repaint the selected day implicitly. The custom day
+    // carousel below renders only the active page, so tab taps need to request
+    // that repaint explicitly as well.
+    if (mounted && !_isDayCarouselAnimating) setState(() {});
+  }
 
   void _onDemoModeChanged() {
     if (!mounted) return;
@@ -2387,6 +2412,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           locale: appLocaleNotifier.value,
         );
       }
+      if (mounted) setState(() {});
       return;
     }
     final pid = _viewingClassId ?? personId;
@@ -2404,6 +2430,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       );
       if (cached != null && cached.values.any((l) => l.isNotEmpty)) {
         _adjacentWeekCache[key] = cached;
+        if (mounted) setState(() {});
         continue;
       }
       try {
@@ -2452,6 +2479,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 weekData: tempWeek,
                 monday: adjMonday,
               );
+              if (mounted) setState(() {});
             }
           }
         }
@@ -2573,134 +2601,286 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   // --- Week carousel ---
 
   Widget _buildWeekCarousel() {
-    return GestureDetector(
-      // The weekly grid owns horizontal gestures because it may need to scroll
-      // its five columns. Week changes there are handled from edge overscroll.
-      onHorizontalDragStart: _viewMode == 0 ? _onCarouselDragStart : null,
-      onHorizontalDragUpdate: _viewMode == 0 ? _onCarouselDragUpdate : null,
-      onHorizontalDragEnd: _viewMode == 0 ? _onCarouselDragEnd : null,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          final offset = _carouselOffset.clamp(-w, w);
+    final carousel = LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final offset = _carouselOffset.clamp(-w, w);
 
-          return ClipRect(
-            child: Stack(
-              children: [
-                if (offset > 0)
-                  Transform.translate(
-                    // Keep the adjacent week exactly one viewport away.  This
-                    // lets it meet the current week without a visible jump
-                    // when the animation hands over to the new data.
-                    offset: Offset(-w + offset, 0),
-                    child: SizedBox(
-                      width: w,
-                      child: _buildAdjacentWeekView(-1),
-                    ),
-                  ),
-                if (offset < 0)
-                  Transform.translate(
-                    offset: Offset(w + offset, 0),
-                    child: SizedBox(width: w, child: _buildAdjacentWeekView(1)),
-                  ),
+        return ClipRect(
+          child: Stack(
+            children: [
+              if (offset > 0)
                 Transform.translate(
-                  offset: Offset(offset, 0),
-                  child: SizedBox(
-                    width: w,
-                    child: KeyedSubtree(
-                      key: ValueKey(
-                        'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
-                      ),
-                      child: _viewMode == 1
-                          ? _buildWeekView()
-                          : TabBarView(
-                              controller: _tabController,
-                              physics: const NeverScrollableScrollPhysics(),
-                              children: List.generate(
-                                5,
-                                (dayIndex) => _buildGridView(dayIndex),
-                              ),
-                            ),
+                  // Keep the adjacent week exactly one viewport away.  This
+                  // lets it meet the current week without a visible jump
+                  // when the animation hands over to the new data.
+                  offset: Offset(-w + offset, 0),
+                  child: SizedBox(width: w, child: _buildAdjacentWeekView(-1)),
+                ),
+              if (offset < 0)
+                Transform.translate(
+                  offset: Offset(w + offset, 0),
+                  child: SizedBox(width: w, child: _buildAdjacentWeekView(1)),
+                ),
+              Transform.translate(
+                offset: Offset(offset, 0),
+                child: SizedBox(
+                  width: w,
+                  child: KeyedSubtree(
+                    key: ValueKey(
+                      'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
                     ),
+                    child: _viewMode == 1
+                        ? _buildWeekView()
+                        : _buildDayCarousel(w),
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // The weekly grid owns horizontal swipes again. The day carousel uses its
+    // own gesture handler, while a vertical drag continues to reach the
+    // scrollable timetable body.
+    if (_viewMode != 1) return carousel;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: _onWeekCarouselDragStart,
+      onHorizontalDragUpdate: _onWeekCarouselDragUpdate,
+      onHorizontalDragEnd: _onWeekCarouselDragEnd,
+      child: carousel,
+    );
+  }
+
+  Widget _buildDayCarousel(double width) {
+    final offset = _dayCarouselOffset.clamp(-width, width);
+    final dayIndex = _tabController.index.clamp(0, 4);
+
+    Widget dayAt(int index) {
+      if (index >= 0 && index < 5) return _buildGridView(index);
+      final direction = index < 0 ? -1 : 1;
+      final monday = _weekMondayFromDelta(direction);
+      final cached = _getAdjacentWeekData(monday);
+      if (cached != null) {
+        return _buildGridView(
+          index < 0 ? 4 : 0,
+          monday: monday,
+          weekData: cached,
+        );
+      }
+      return _buildAdjacentWeekView(direction);
+    }
+
+    return GestureDetector(
+      key: const ValueKey('day-timetable-carousel'),
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: _onDayCarouselDragStart,
+      onHorizontalDragUpdate: _onDayCarouselDragUpdate,
+      onHorizontalDragEnd: _onDayCarouselDragEnd,
+      child: ClipRect(
+        child: Stack(
+          children: [
+            if (offset > 0)
+              Transform.translate(
+                offset: Offset(-width + offset, 0),
+                child: SizedBox(
+                  width: width,
+                  child: dayAt(_dayCarouselTargetDay ?? dayIndex - 1),
+                ),
+              ),
+            if (offset < 0)
+              Transform.translate(
+                offset: Offset(width + offset, 0),
+                child: SizedBox(
+                  width: width,
+                  child: dayAt(_dayCarouselTargetDay ?? dayIndex + 1),
+                ),
+              ),
+            Transform.translate(
+              offset: Offset(offset, 0),
+              child: SizedBox(width: width, child: dayAt(dayIndex)),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
 
-  void _onCarouselDragStart(DragStartDetails details) {
-    if (_isWeekCarouselAnimating) return;
+  void _onDayCarouselDragStart(DragStartDetails details) {
+    if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
     setState(() {
-      _carouselOffset = 0;
-      _dayDragTotal = 0;
+      _dayCarouselOffset = 0;
+      _dayCarouselTargetDay = null;
     });
     _prefetchAdjacentWeeks();
   }
 
-  void _onCarouselDragUpdate(DragUpdateDetails details) {
-    if (_isWeekCarouselAnimating) return;
-    final dx = details.delta.dx;
+  void _onDayCarouselDragUpdate(DragUpdateDetails details) {
+    if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
     final maxOffset = MediaQuery.of(context).size.width * 0.92;
-    if (_viewMode == 0) {
-      // If we are at the boundaries of the week OR already moving the carousel,
-      // update the carousel offset for a fluid week-switch animation.
-      bool atEdge =
-          (_tabController.index == 4 && dx < 0) ||
-          (_tabController.index == 0 && dx > 0);
-
-      if (atEdge || _carouselOffset != 0) {
-        setState(() {
-          _carouselOffset = (_carouselOffset + dx)
-              .clamp(-maxOffset, maxOffset)
-              .toDouble();
-        });
-        return;
-      }
-
-      // Otherwise, accumulate the drag for a discrete day switch.
-      _dayDragTotal += dx;
-      return;
-    }
-
     setState(() {
-      _carouselOffset = (_carouselOffset + dx)
+      _dayCarouselOffset = (_dayCarouselOffset + details.delta.dx)
           .clamp(-maxOffset, maxOffset)
           .toDouble();
     });
   }
 
-  void _onCarouselDragEnd(DragEndDetails details) {
-    if (_isWeekCarouselAnimating) return;
+  void _onDayCarouselDragEnd(DragEndDetails details) {
+    if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
     final width = context.findRenderObject() != null
         ? (context.findRenderObject()! as RenderBox).size.width
         : 400.0;
     final threshold = width * 0.25;
     final velocity = details.primaryVelocity ?? 0;
 
-    // Handle carousel week switch
-    if (_carouselOffset != 0) {
-      if (_carouselOffset < -threshold || velocity < -400) {
-        _animateCarouselTo(-1, width);
-      } else if (_carouselOffset > threshold || velocity > 400) {
-        _animateCarouselTo(1, width);
-      } else {
-        _animateCarouselTo(0, width);
-      }
+    // A fast fling advances exactly one page in its drag direction. If the
+    // finger has been pulled back across the starting point, the sign check
+    // deliberately wins and the current day snaps back into place.
+    if (_dayCarouselOffset < -threshold ||
+        (_dayCarouselOffset < 0 && velocity < -400)) {
+      _animateDayCarouselTo(1, width);
+    } else if (_dayCarouselOffset > threshold ||
+        (_dayCarouselOffset > 0 && velocity > 400)) {
+      _animateDayCarouselTo(-1, width);
+    } else {
+      _animateDayCarouselTo(0, width);
+    }
+  }
+
+  void _animateDayTabTo(int targetDay) {
+    final currentDay = _tabController.index;
+    if (targetDay == currentDay ||
+        _isDayCarouselAnimating ||
+        _isWeekCarouselAnimating) {
       return;
     }
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final width = renderBox?.size.width ?? 400.0;
+    _animateDayCarouselTo(
+      targetDay > currentDay ? 1 : -1,
+      width,
+      targetDay: targetDay,
+    );
+  }
 
-    // Handle discrete day switch (when not moving the carousel)
-    if (_viewMode == 0 && _dayDragTotal != 0) {
-      if (_dayDragTotal < -50 || velocity < -400) {
-        _onSwipeLeft();
-      } else if (_dayDragTotal > 50 || velocity > 400) {
-        _onSwipeRight();
+  void _onDayTabBarTap(int targetDay) {
+    if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
+    // TabBar owns the controller and may update it either immediately before
+    // or immediately after its callback. Capture the old day, then restore it
+    // on the next frame before starting our controlled carousel transition.
+    final previousDay = _tabController.index == targetDay
+        ? _tabController.previousIndex
+        : _tabController.index;
+    if (previousDay == targetDay) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isDayCarouselAnimating || _isWeekCarouselAnimating) {
+        return;
       }
-      _dayDragTotal = 0;
+      _tabController.animateTo(previousDay, duration: Duration.zero);
+      _animateDayTabTo(targetDay);
+    });
+  }
+
+  void _animateDayCarouselTo(
+    int direction,
+    double width, {
+    int? targetDay,
+  }) {
+    if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
+    final dayBeforeAnimation = _tabController.index;
+    final mondayBeforeAnimation = _currentMonday;
+    final resolvedTargetDay = targetDay ?? dayBeforeAnimation + direction;
+    setState(() {
+      _isDayCarouselAnimating = true;
+      _dayCarouselTargetDay = direction == 0 ? null : resolvedTargetDay;
+    });
+    _dayCarouselAnimController?.dispose();
+    _dayCarouselAnimController = AnimationController(
+      duration: Duration(milliseconds: direction == 0 ? 220 : 300),
+      vsync: this,
+    );
+    final target = direction == 0 ? 0.0 : -direction * width;
+    final animation = Tween<double>(begin: _dayCarouselOffset, end: target)
+        .animate(
+          CurvedAnimation(
+            parent: _dayCarouselAnimController!,
+            curve: Curves.easeOutCubic,
+          ),
+        );
+    _dayCarouselAnimController!.addListener(() {
+      if (mounted) setState(() => _dayCarouselOffset = animation.value);
+    });
+    _dayCarouselAnimController!.addStatusListener((status) {
+      if (status != AnimationStatus.completed || !mounted) return;
+
+      if (direction != 0) {
+        if (resolvedTargetDay >= 0 && resolvedTargetDay < 5) {
+          _tabController.animateTo(resolvedTargetDay, duration: Duration.zero);
+        } else {
+          final weekDirection = resolvedTargetDay < 0 ? -1 : 1;
+          final newMonday = mondayBeforeAnimation.add(
+            Duration(days: 7 * weekDirection),
+          );
+          final cached = _adjacentWeekCache[_mondayKey(newMonday)];
+          setState(() {
+            _currentMonday = newMonday;
+            if (cached != null) {
+              _weekData = cached;
+              _showingCachedWeek = true;
+              _loading = false;
+            }
+          });
+          _tabController.animateTo(
+            resolvedTargetDay < 0 ? 4 : 0,
+            duration: Duration.zero,
+          );
+          _fetchFullWeek();
+          _prefetchAdjacentWeeks();
+        }
+        HapticFeedback.selectionClick();
+      }
+      setState(() {
+        _dayCarouselOffset = 0;
+        _dayCarouselTargetDay = null;
+        _isDayCarouselAnimating = false;
+      });
+    });
+    _dayCarouselAnimController!.forward();
+  }
+
+  void _onWeekCarouselDragStart(DragStartDetails details) {
+    if (_isWeekCarouselAnimating || _isDayCarouselAnimating) return;
+    setState(() => _carouselOffset = 0);
+    unawaited(_prefetchAdjacentWeeks());
+  }
+
+  void _onWeekCarouselDragUpdate(DragUpdateDetails details) {
+    if (_isWeekCarouselAnimating || _isDayCarouselAnimating) return;
+    final maxOffset = MediaQuery.of(context).size.width * 0.92;
+    setState(() {
+      _carouselOffset = (_carouselOffset + details.delta.dx)
+          .clamp(-maxOffset, maxOffset)
+          .toDouble();
+    });
+  }
+
+  void _onWeekCarouselDragEnd(DragEndDetails details) {
+    if (_isWeekCarouselAnimating || _isDayCarouselAnimating) return;
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final width = renderBox?.size.width ?? 400.0;
+    final velocity = details.primaryVelocity ?? 0;
+    final threshold = width * 0.25;
+    if (_carouselOffset < -threshold ||
+        (_carouselOffset < 0 && velocity < -400)) {
+      _animateCarouselTo(-1, width);
+    } else if (_carouselOffset > threshold ||
+        (_carouselOffset > 0 && velocity > 400)) {
+      _animateCarouselTo(1, width);
+    } else {
+      _animateCarouselTo(0, width);
     }
   }
 
@@ -2785,33 +2965,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     _carouselAnimController!.forward();
   }
 
-  bool _handleWeekViewScroll(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.horizontal ||
-        _isWeekCarouselAnimating) {
-      return false;
-    }
-    if (notification is ScrollStartNotification) {
-      _weekViewOverscroll = 0;
-      unawaited(_prefetchAdjacentWeeks());
-    } else if (notification is OverscrollNotification) {
-      _weekViewOverscroll += notification.overscroll;
-    } else if (notification is ScrollEndNotification) {
-      final overscroll = _weekViewOverscroll;
-      _weekViewOverscroll = 0;
-      if (overscroll.abs() >= 56) {
-        HapticFeedback.selectionClick();
-        final rb = context.findRenderObject() as RenderBox?;
-        final width = rb?.size.width ?? 400.0;
-        _animateCarouselTo(overscroll > 0 ? -1 : 1, width);
-      }
-    }
-    return false;
-  }
-
   @override
   void dispose() {
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.removeListener(_onHiddenSubjectsChanged);
+    monochromeLessonsNotifier.removeListener(_onHiddenSubjectsChanged);
+    monochromeLessonColorNotifier.removeListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.removeListener(_onHiddenSubjectsChanged);
     demoModeNotifier.removeListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
@@ -2827,8 +2986,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonCompactModeNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonCancelledPatternNotifier.removeListener(_onHiddenSubjectsChanged);
-    _tabController.dispose();
+    _tabController
+      ..removeListener(_onSelectedDayChanged)
+      ..dispose();
     _carouselAnimController?.dispose();
+    _dayCarouselAnimController?.dispose();
+    _cacheRefreshController.dispose();
     super.dispose();
   }
 
@@ -3468,9 +3631,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final cardRadius = BorderRadius.circular(effectiveRadius);
 
     final glowEnabled = tokens.glowEffectsEnabled;
-    final cardStyle = themeOwnsStyle
-        ? (tokens.id == AppThemeId.vivid ? 2 : 3)
-        : lessonCardStyleNotifier.value;
+    final cardStyle = themeOwnsStyle ? 3 : lessonCardStyleNotifier.value;
     final blurEnabled =
         tokens.supportsBlur &&
         blurEnabledNotifier.value &&
@@ -3638,22 +3799,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           color: tokens.shadowColor,
           offset: tokens.shadowOffset,
           blurRadius: 0,
-        ),
-      ];
-    } else if (tokens.id == AppThemeId.paper) {
-      effectiveFillColor = cs.surfaceContainerLow.withValues(
-        alpha: tokens.lessonSurfaceOpacity,
-      );
-      effectiveGradient = null;
-      effectiveBorder = Border.all(
-        color: fgColor.withValues(alpha: 0.52),
-        width: tokens.borderWidth,
-      );
-      shadows = [
-        BoxShadow(
-          color: tokens.shadowColor,
-          offset: tokens.shadowOffset,
-          blurRadius: 8,
         ),
       ];
     } else if (tokens.id == AppThemeId.cyber) {
@@ -4191,7 +4336,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   final fgColor = isCancelled
                                       ? cancelledColor
                                       : useMonochrome
-                                      ? cs.primary
+                                      ? Color(
+                                          monochromeLessonColorNotifier.value,
+                                        )
                                       : cv != null
                                       ? Color(cv)
                                       : _autoLessonColor(sk, isDark);
@@ -4376,6 +4523,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     const double timeColWidth = 40.0;
     const double minDayColWidth = 56.0;
     const double dayColGap = 4.0;
+    // Leave a real trailing gutter inside the horizontal viewport. Without
+    // it, the Friday column ends exactly at the clip edge on phones and its
+    // card border/shadow can be cut off.
+    const double trailingDayGridInset = 12.0;
     final timeRanges = _collectTimeRangesFromData(wd);
     final cs = Theme.of(context).colorScheme;
     final today = DateTime.now();
@@ -4408,21 +4559,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           builder: (context, constraints) {
             final dayGridWidth = math.max(
               (5 * minDayColWidth) + (dayColGap * 4),
-              constraints.maxWidth - timeColWidth - 4,
+              constraints.maxWidth - timeColWidth - 4 - trailingDayGridInset,
             );
             final dayColWidth = (dayGridWidth - (dayColGap * 4)) / 5;
 
             // On small screens five day columns cannot fit alongside the time
             // gutter. Keep their minimum readable width and scroll horizontally.
-            return NotificationListener<ScrollNotification>(
-              onNotification: _handleWeekViewScroll,
-              child: SingleChildScrollView(
+            return SingleChildScrollView(
+                key: const ValueKey('week-grid-horizontal-scroll'),
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(
                   parent: AlwaysScrollableScrollPhysics(),
                 ),
                 child: SizedBox(
-                  width: timeColWidth + 4 + dayGridWidth,
+                  width: timeColWidth + 4 + dayGridWidth + trailingDayGridInset,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -4769,7 +4919,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                 final fgColor = isCancelled
                                                     ? cancelledColor2
                                                     : useMonochrome2
-                                                    ? cs.primary
+                                                    ? Color(
+                                                        monochromeLessonColorNotifier
+                                                            .value,
+                                                      )
                                                     : cv2 != null
                                                     ? Color(cv2)
                                                     : _autoLessonColor(
@@ -4967,7 +5120,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     ],
                   ),
                 ),
-              ),
             );
           },
         ),
@@ -6234,13 +6386,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               if (_showingCachedWeek)
                 Tooltip(
                   message: l.timetableOfflineCache,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(left: 8, top: 2),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.tertiary,
-                      shape: BoxShape.circle,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 2),
+                    child: RotationTransition(
+                      turns: _cacheRefreshController,
+                      child: Icon(
+                        Icons.sync_rounded,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      ),
                     ),
                   ),
                 ),
@@ -6268,6 +6422,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             ? null
             : TabBar(
                 controller: _tabController,
+                onTap: _onDayTabBarTap,
                 indicatorColor: Theme.of(context).colorScheme.primary,
                 indicatorWeight: 3,
                 labelStyle: untisThemeTextStyle(
@@ -6291,6 +6446,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       dayDate.day == now.day;
                   return Tab(
                     child: GestureDetector(
+                      key: ValueKey('timetable-day-tab-$i'),
                       behavior: HitTestBehavior.opaque,
                       onLongPress: () {
                         HapticFeedback.mediumImpact();
@@ -6313,9 +6469,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   height: 1.2,
                                   color: isToday
                                       ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               if (dayOverride != null) ...[
@@ -6323,7 +6479,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 Icon(
                                   dayOverride.disabled
                                       ? Icons.alarm_off_rounded
-                                      : dayOverride.customTimeOfDayMinutes != null
+                                      : dayOverride.customTimeOfDayMinutes !=
+                                            null
                                       ? Icons.alarm_rounded
                                       : Icons.fast_forward_rounded,
                                   size: 12,
@@ -6340,9 +6497,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         fontSize: 8,
                                         height: 1,
                                         fontWeight: FontWeight.w800,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primary,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                       ),
                                     ),
                                   ),
@@ -6921,18 +7078,9 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
   );
 
   try {
-    final prompt =
-        '''Du bist ein Assistent, der Hausaufgaben von Tafeln, Arbeitsblättern oder Notizen erfasst.
-Extrahiere alle Aufgaben aus dem angehängten Bild${providerUsesGeminiProtocol ? ' oder PDF' : ''}.
-Antworte AUSSCHLIESSLICH im folgenden JSON Array Format (kein Markdown-Block, nur reines JSON):
-[
-  {
-    "subject": "Mathe",
-    "text": "Seite 42 Nr 1-5",
-    "dueDate": "20260905"
-  }
-]
-WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr oder Datum, leite es ab. Wenn die Datei keine Hausaufgaben enthält, gib ein leeres Array [] zurück.''';
+    final prompt = l.uiFormat('aiHomeworkVisionPrompt', {
+      'fileKind': providerUsesGeminiProtocol ? l.ui('aiFileKindPdf') : '',
+    });
 
     final text = await _requestAiVisionAnalysisGlobal(
       prompt: prompt,
@@ -8422,8 +8570,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       'systemInstruction': {
         'parts': [
           {
-            'text':
-                'Extrahiere strukturierte Prüfungsdaten und antworte nur mit JSON.',
+            'text': l.ui('aiExamJsonSystemPrompt'),
           },
         ],
       },
@@ -8503,8 +8650,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       'messages': [
         {
           'role': 'system',
-          'content':
-              'Extrahiere strukturierte Prüfungsdaten aus dem Bild. Antworte ausschließlich als JSON-Array.',
+          'content': l.ui('aiExamImageSystemPrompt'),
         },
         {
           'role': 'user',
@@ -8699,19 +8845,10 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     );
 
     try {
-      final prompt =
-          '''Du bist ein Assistent, der Klausurpläne von Schulen strukturiert erfasst.
-Extrahiere alle relevanten Klausuren/Prüfungen aus dem angehängten Bild${providerUsesGeminiProtocol ? ' oder PDF' : ''}.
-Antworte AUSSCHLIESSLICH im folgenden JSON Array Format (kein Markdown-Block, nur reines JSON, keine Grußformeln):
-[
-  {
-    "subject": "Mathe",
-    "examType": "Klausur",
-    "date": "20240325",
-    "description": "Ergänzende Infos oder leere Zeichenkette"
-  }
-]
-WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr, leite es aus dem aktuellen Datum (${DateTime.now().year}) ab. Wenn die Datei keine Klausuren enthält, gib ein leeres Array [] zurück.''';
+      final prompt = l.uiFormat('aiExamVisionPrompt', {
+        'fileKind': providerUsesGeminiProtocol ? l.ui('aiFileKindPdf') : '',
+        'year': DateTime.now().year,
+      });
 
       final text = await _requestExamImportResponse(
         prompt: prompt,
@@ -8946,7 +9083,7 @@ WICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt d
           ExpressiveRefreshIndicator(
             onRefresh: _refreshExams,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
+              padding: UntisLayout.pagePadding(context, bottom: 132),
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
@@ -9572,13 +9709,7 @@ ROHDATEN PRUEFUNGEN (JSON):
 
 ${l.aiSystemRules}
 
-ANTWORTFORMAT:
-- Antworte kurz und visuell.
-- Nutze bevorzugt ein JSON-Objekt mit den Feldern: headline, summary, tags, metrics und lessons.
-- metrics ist eine Liste von Objekten mit label und value.
-- lessons ist eine Liste von Objekten mit subject, subjectShort, room, teacher, time und status.
-- Vermeide lange Fließtexte.
-- WICHTIG: Gib NUR Felder an, die für die Frage relevant sind. Wenn die Frage nach keiner Metrik oder keinen Stunden verlangt, lasse metrics bzw. lessons im JSON einfach weg oder gib leere Arrays zurück.''';
+${l.ui('aiResponseFormat')}''';
 }
 
 // --- KI-ASSISTENT CHAT ---
@@ -11066,9 +11197,7 @@ class LessonCard extends StatelessWidget {
 
     final showTeacher = lessonShowTeacherNotifier.value;
     final showRoom = lessonShowRoomNotifier.value;
-    final cardStyle = themeOwnsStyle
-        ? (tokens.id == AppThemeId.vivid ? 2 : 3)
-        : lessonCardStyleNotifier.value;
+    final cardStyle = themeOwnsStyle ? 3 : lessonCardStyleNotifier.value;
     final blurEnabled =
         tokens.supportsBlur &&
         blurEnabledNotifier.value &&
@@ -11138,19 +11267,6 @@ class LessonCard extends StatelessWidget {
           color: tokens.shadowColor,
           offset: tokens.shadowOffset,
           blurRadius: 0,
-        ),
-      ];
-    } else if (tokens.id == AppThemeId.paper) {
-      surfaceColor = cs.surfaceContainerLow.withValues(alpha: 0.96);
-      border = Border.all(
-        color: primaryColor.withValues(alpha: 0.52),
-        width: tokens.borderWidth,
-      );
-      shadows = [
-        BoxShadow(
-          color: tokens.shadowColor,
-          offset: tokens.shadowOffset,
-          blurRadius: 8,
         ),
       ];
     } else if (tokens.id == AppThemeId.cyber) {
@@ -11390,6 +11506,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   List<_SchoolNotificationItem> _newsItems = const [];
   List<_SchoolNotificationItem> _inboxItems = const [];
   bool _showInbox = false;
+  String? _selectedNotificationId;
   bool _loading = true;
   String? _error;
   DateTime? _lastUpdated;
@@ -11444,6 +11561,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       setState(() {
         _newsItems = fetchedNews;
         _inboxItems = fetchedInbox;
+        _selectedNotificationId = _firstNotificationId(
+          _showInbox ? fetchedInbox : fetchedNews,
+        );
         _loading = false;
         _error = null;
         _lastUpdated = DateTime.now();
@@ -11473,6 +11593,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         setState(() {
           _newsItems = const [];
           _inboxItems = const [];
+          _selectedNotificationId = null;
           _loading = false;
           _error = null;
           _lastUpdated = DateTime.now();
@@ -11495,6 +11616,13 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       setState(() {
         _newsItems = fetched.news;
         _inboxItems = fetched.inbox;
+        final active = _showInbox ? fetched.inbox : fetched.news;
+        final hasExistingSelection = active.any(
+          (item) => item.id == _selectedNotificationId,
+        );
+        _selectedNotificationId = hasExistingSelection
+            ? _selectedNotificationId
+            : _firstNotificationId(active);
         _loading = false;
         _error = null;
         _lastUpdated = DateTime.now();
@@ -12035,11 +12163,98 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     );
   }
 
+  String? _firstNotificationId(List<_SchoolNotificationItem> items) =>
+      items.isEmpty ? null : items.first.id;
+
+  _SchoolNotificationItem? _selectedItem(List<_SchoolNotificationItem> items) {
+    for (final item in items) {
+      if (item.id == _selectedNotificationId) return item;
+    }
+    return items.isEmpty ? null : items.first;
+  }
+
+  Widget _buildTabletNotificationList(
+    BuildContext context,
+    List<_SchoolNotificationItem> items,
+    _SchoolNotificationItem? selected,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+      itemCount: items.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 6),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final isSelected = item.id == selected?.id;
+        return Material(
+          color: isSelected
+              ? cs.primaryContainer.withValues(alpha: 0.72)
+              : cs.surfaceContainerLow.withValues(alpha: 0.56),
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => setState(() => _selectedNotificationId = item.id),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Icon(
+                    _showInbox
+                        ? Icons.mail_outline_rounded
+                        : Icons.campaign_rounded,
+                    color: isSelected ? cs.primary : cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w800,
+                            color: isSelected
+                                ? cs.onPrimaryContainer
+                                : cs.onSurface,
+                          ),
+                        ),
+                        if (item.body.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            _normalizedDetailText(
+                              _detailToPlainText(
+                                _detailSafeInfoDocument(item.body),
+                              ),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final activeItems = _showInbox ? _inboxItems : _newsItems;
+    final isExpanded = UntisLayout.isExpanded(context);
+    final selectedItem = _selectedItem(activeItems);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -12068,7 +12283,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
             onRefresh: _reload,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
+              padding: UntisLayout.pagePadding(context, bottom: 150),
               children: [
                 if (_loading && activeItems.isEmpty) ...[
                   const SizedBox(height: 140),
@@ -12082,7 +12297,12 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                           label: l.ui('start'),
                           icon: Icons.campaign_rounded,
                           selected: !_showInbox,
-                          onTap: () => setState(() => _showInbox = false),
+                          onTap: () => setState(() {
+                            _showInbox = false;
+                            _selectedNotificationId = _firstNotificationId(
+                              _newsItems,
+                            );
+                          }),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -12091,7 +12311,12 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                           label: l.ui('notifications'),
                           icon: Icons.mail_outline_rounded,
                           selected: _showInbox,
-                          onTap: () => setState(() => _showInbox = true),
+                          onTap: () => setState(() {
+                            _showInbox = true;
+                            _selectedNotificationId = _firstNotificationId(
+                              _inboxItems,
+                            );
+                          }),
                         ),
                       ),
                     ],
@@ -12149,6 +12374,47 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             ),
                           ],
                         ),
+                      ),
+                    )
+                  else if (isExpanded)
+                    SizedBox(
+                      height: (MediaQuery.sizeOf(context).height - 250).clamp(
+                        420.0,
+                        980.0,
+                      ),
+                      child: Row(
+                        key: const ValueKey('notifications-master-detail'),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(
+                            width: 360,
+                            child: _buildTabletNotificationList(
+                              context,
+                              activeItems,
+                              selectedItem,
+                            ),
+                          ),
+                          VerticalDivider(
+                            width: 1,
+                            color: cs.outlineVariant.withValues(alpha: 0.45),
+                          ),
+                          Expanded(
+                            child: selectedItem == null
+                                ? Center(
+                                    child: Text(
+                                      l.infoEmpty,
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.w700,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  )
+                                : _SchoolNotificationDetailPage(
+                                    item: selectedItem,
+                                    isInbox: _showInbox,
+                                  ).buildEmbedded(context),
+                          ),
+                        ],
                       ),
                     )
                   else
@@ -13481,6 +13747,8 @@ class _SettingsPageState extends State<SettingsPage> {
     appLocaleNotifier.value = code;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('appLocale', code);
+    unawaited(WidgetService.publishNativeCopy(code));
+    unawaited(AlarmService.instance.refreshNativeCopy());
   }
 
   Future<void> _setThemeMode(ThemeMode mode) async {

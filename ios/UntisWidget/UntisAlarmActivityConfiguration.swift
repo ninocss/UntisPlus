@@ -35,7 +35,7 @@ struct UntisAlarmActivityConfiguration: Widget {
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
-                        Text(context.state.status == "snoozing" ? "Snooze" : "Active")
+                        Text(context.state.statusLabel)
                             .font(.caption2)
                             .foregroundStyle(.red)
                     }
