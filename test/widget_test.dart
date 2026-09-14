@@ -322,9 +322,10 @@ void main() {
     await tapVisible(tester, demoButton);
     await pumpUntilFound(tester, find.text('Google Gemini'));
 
-    await tester.tap(find.text('Google Gemini'));
-    await pumpUntilFound(tester, find.text('Lokal (On-Device)'));
-    await tester.tap(find.text('Lokal (On-Device)'));
+    await tapVisible(tester, find.text('Google Gemini'));
+    final localProvider = find.text('Lokal (On-Device)');
+    await pumpUntilFound(tester, localProvider);
+    await tapVisible(tester, localProvider);
     await pumpUntilFound(tester, find.text('Lokales Modell'));
 
     expect(find.text('Lokales Modell'), findsWidgets);

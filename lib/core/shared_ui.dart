@@ -519,35 +519,38 @@ Future<T?> _showUnifiedOptionSheet<T>({
                     itemCount: options.length,
                     itemBuilder: (context, index) {
                       final opt = options[index];
-                      return ListTile(
-                        leading:
-                            opt.leading ??
-                            (opt.icon != null
-                                ? Icon(
-                                    opt.icon,
-                                    color: opt.destructive
-                                        ? cs.error
-                                        : (opt.selected ? cs.primary : null),
-                                  )
-                                : null),
-                        title: Text(
-                          opt.title,
-                          style: TextStyle(
-                            color: opt.destructive
-                                ? cs.error
-                                : (opt.selected ? cs.primary : null),
-                            fontWeight: opt.selected ? FontWeight.bold : null,
+                      return Material(
+                        color: Colors.transparent,
+                        child: ListTile(
+                          leading:
+                              opt.leading ??
+                              (opt.icon != null
+                                  ? Icon(
+                                      opt.icon,
+                                      color: opt.destructive
+                                          ? cs.error
+                                          : (opt.selected ? cs.primary : null),
+                                    )
+                                  : null),
+                          title: Text(
+                            opt.title,
+                            style: TextStyle(
+                              color: opt.destructive
+                                  ? cs.error
+                                  : (opt.selected ? cs.primary : null),
+                              fontWeight: opt.selected ? FontWeight.bold : null,
+                            ),
                           ),
+                          subtitle: opt.subtitle != null
+                              ? Text(opt.subtitle!)
+                              : null,
+                          trailing: opt.selected
+                              ? Icon(Icons.check, color: cs.primary)
+                              : null,
+                          onTap: () {
+                            Navigator.pop(ctx, opt.value);
+                          },
                         ),
-                        subtitle: opt.subtitle != null
-                            ? Text(opt.subtitle!)
-                            : null,
-                        trailing: opt.selected
-                            ? Icon(Icons.check, color: cs.primary)
-                            : null,
-                        onTap: () {
-                          Navigator.pop(ctx, opt.value);
-                        },
                       );
                     },
                   ),
