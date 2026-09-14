@@ -61,3 +61,10 @@ analysis_options.yaml
 codex/
 test/
 .artifacts/
+windows/
+web/
+linux/
+macos/
+docs/
+changelog.json
+test/
