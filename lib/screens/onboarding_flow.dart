@@ -3038,14 +3038,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }) {
     final colors = Theme.of(context).colorScheme;
     return Material(
-      color: Colors.transparent,
+      color: colors.surface.withValues(alpha: 0.74),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
           decoration: BoxDecoration(
-            color: colors.surface.withValues(alpha: 0.74),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: colors.outlineVariant.withValues(alpha: 0.7),

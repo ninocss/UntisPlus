@@ -13,7 +13,7 @@ try {
 dependency_overrides:
   fllama:
     path: tool/fllama_stub
-'@ | Set-Content -LiteralPath $overridePath -Encoding utf8NoBOM
+'@ | Set-Content -LiteralPath $overridePath -Encoding UTF8
 
   Push-Location $projectRoot
   try {

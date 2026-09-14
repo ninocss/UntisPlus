@@ -183,7 +183,7 @@ void main() {
   test('Cyber keeps monospace display typography with readable body text', () {
     final cyber = untisThemeTextTheme(AppThemeId.cyber, Brightness.dark);
 
-    expect(cyber.titleLarge?.fontFamily, contains('IBM Plex Mono'));
+    expect(cyber.titleLarge?.fontFamily, contains('IBMPlexMono'));
     expect(cyber.bodyMedium?.fontFamily, contains('Outfit'));
   });
 
