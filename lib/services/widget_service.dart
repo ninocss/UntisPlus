@@ -132,7 +132,7 @@ class WidgetService {
   static const configurationsKey = 'widget_configurations_v1';
   static const String appGroupId = 'group.com.ninocss.untisplus';
   static const String androidWidgetName = 'UntisWidgetProvider';
-  static const String iOSWidgetName = 'UntisWidgetExtension';
+  static const String iOSWidgetName = 'UntisWidget';
   static const String iOSScheduleWidgetName = 'UntisWidgetDailySchedule';
   static const String iOSHomeworkWidgetName = 'UntisWidgetHomework';
   static const String iOSNotificationsWidgetName = 'UntisWidgetNotifications';

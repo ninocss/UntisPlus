@@ -6,7 +6,7 @@ import WidgetKit
 import BackgroundTasks
 
 // Must stay structurally identical to `UntisLessonActivityAttributes` in the
-// UntisWidgetExtension extension so ActivityKit matches both ends.
+// UntisWidget extension so ActivityKit matches both ends.
 @available(iOS 16.2, *)
 struct UntisLessonActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {

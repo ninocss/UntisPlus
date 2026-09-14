@@ -1,7 +1,7 @@
 import ActivityKit
 
 // Must stay structurally identical to `UntisAlarmActivityAttributes` in the
-// UntisWidgetExtension extension so ActivityKit matches both ends.
+// UntisWidget extension so ActivityKit matches both ends.
 @available(iOS 16.2, *)
 struct UntisAlarmActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
