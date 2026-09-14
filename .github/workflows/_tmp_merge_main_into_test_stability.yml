@@ -41,7 +41,7 @@ jobs:
               case "$file" in
                 test/app_theme_test.dart|test/widget_test.dart)
                   git checkout --ours -- "$file"
-                  git add "$file"
+                  git add -f "$file"
                   ;;
                 *)
                   echo "Unexpected merge conflict: $file"
