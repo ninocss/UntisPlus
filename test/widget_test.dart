@@ -323,23 +323,21 @@ void main() {
     await pumpUntilFound(tester, find.text('Google Gemini'));
 
     await tapVisible(tester, find.text('Google Gemini'));
-    final localProvider = find.text('Lokal (On-Device)');
-    await pumpUntilFound(tester, localProvider);
-    final providerScroll = find.ancestor(
-      of: localProvider,
+    final providerSheet = find.byType(BottomSheet);
+    await pumpUntilFound(tester, providerSheet);
+    final providerScroll = find.descendant(
+      of: providerSheet,
       matching: find.byType(Scrollable),
-    );
+    ).hitTestable();
     expect(providerScroll, findsOneWidget);
     await tester.drag(providerScroll, const Offset(0, -320));
     await tester.pump(const Duration(milliseconds: 150));
-    final localProviderTile = find.ancestor(
-      of: localProvider,
-      matching: find.byType(ListTile),
-    );
-    expect(localProviderTile, findsOneWidget);
-    final visibleLocalProviderTile = localProviderTile.hitTestable();
-    expect(visibleLocalProviderTile, findsOneWidget);
-    await tester.tap(visibleLocalProviderTile);
+    final localProvider = find.descendant(
+      of: providerSheet,
+      matching: find.text('Lokal (On-Device)'),
+    ).hitTestable();
+    expect(localProvider, findsOneWidget);
+    await tester.tap(localProvider);
     await pumpUntilFound(tester, find.text('Lokales Modell'));
 
     expect(find.text('Lokales Modell'), findsWidgets);
