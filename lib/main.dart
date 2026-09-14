@@ -9100,6 +9100,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           indicatorColor: cs.primary,
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
+          isScrollable: true,
           labelStyle: GoogleFonts.outfit(
             fontWeight: FontWeight.w800,
             fontSize: 14,
