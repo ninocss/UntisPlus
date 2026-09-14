@@ -330,15 +330,16 @@ void main() {
       matching: find.byType(Scrollable),
     );
     expect(providerScroll, findsOneWidget);
-    await tester.scrollUntilVisible(
-      localProvider,
-      -180,
-      scrollable: providerScroll,
+    await tester.drag(providerScroll, const Offset(0, -320));
+    await tester.pump(const Duration(milliseconds: 150));
+    final localProviderTile = find.ancestor(
+      of: localProvider,
+      matching: find.byType(ListTile),
     );
-    await tester.pump(const Duration(milliseconds: 100));
-    final visibleLocalProvider = localProvider.hitTestable();
-    expect(visibleLocalProvider, findsOneWidget);
-    await tester.tap(visibleLocalProvider);
+    expect(localProviderTile, findsOneWidget);
+    final visibleLocalProviderTile = localProviderTile.hitTestable();
+    expect(visibleLocalProviderTile, findsOneWidget);
+    await tester.tap(visibleLocalProviderTile);
     await pumpUntilFound(tester, find.text('Lokales Modell'));
 
     expect(find.text('Lokales Modell'), findsWidgets);
