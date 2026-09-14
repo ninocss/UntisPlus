@@ -9695,12 +9695,16 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
         children: [
           Icon(icon, size: 13, color: cs.primary),
           const SizedBox(width: 5),
-          Text(
-            text,
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: cs.onSurface,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+              ),
             ),
           ),
         ],
