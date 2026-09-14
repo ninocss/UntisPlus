@@ -10,6 +10,11 @@ on:
         required: true
         default: true
         type: boolean
+      include_trollstore_ipa:
+        description: 'Build and include the TrollStore IPA in the nightly release'
+        required: true
+        default: false
+        type: boolean
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -171,12 +176,26 @@ jobs:
           TAG: ${{ needs.check_changes.outputs.nightly_tag }}
         run: |
           set -euo pipefail
-          sed -i 's/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus;/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.Nightly;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' \
+            -e 's/PRODUCT_BUNDLE_IDENTIFIER = com\.ninocss\.untisplus;/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.Nightly;/g' \
+            -e 's/PRODUCT_BUNDLE_IDENTIFIER = com\.ninocss\.untisplus\.UntisWidget;/PRODUCT_BUNDLE_IDENTIFIER = com.ninocss.untisplus.Nightly.UntisWidget;/g' \
+            ios/Runner.xcodeproj/project.pbxproj
           flutter pub get
           flutter build ios --release --no-codesign
           mkdir -p release_assets/Payload
           ditto --norsrc build/ios/iphoneos/Runner.app release_assets/Payload/Runner.app
           (cd release_assets && zip -r "UntisPlus-${TAG}.ipa" Payload && rm -rf Payload)
+
+      - name: Build TrollStore IPA (nightly)
+        if: ${{ github.event.inputs.include_trollstore_ipa == 'true' }}
+        env:
+          TAG: ${{ needs.check_changes.outputs.nightly_tag }}
+        run: |
+          set -euo pipefail
+          bash tool/prepare_trollstore_ipa.sh \
+            build/ios/iphoneos/Runner.app \
+            release_assets \
+            "UntisPlus-${TAG}-trollstore.ipa"
 
       - uses: actions/upload-artifact@v7
         with:

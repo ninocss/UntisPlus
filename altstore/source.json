@@ -18,10 +18,13 @@
       "category": "education",
       "beta": false,
       "appPermissions": {
+        "privacy": {
+          "com.apple.developer.networking.wifi-info": true
+        },
         "entitlements": [
-          "com.apple.security.application-groups"
-        ],
-        "privacy": {}
+          "com.apple.security.application-groups",
+          "aps-environment"
+        ]
       },
       "screenshotURLs": [
         "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/assets/github/welcome.png",
@@ -32,6 +35,15 @@
         "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/assets/github/AI_assistant.png"
       ],
       "versions": [
+        {
+          "version": "5.3.3",
+          "buildVersion": "5.3.3",
+          "date": "2026-09-13",
+          "localizedDescription": "This update includes behind-the-scenes maintenance to keep Untis+ running smoothly. There are no new user-facing features in this version as we prepare for future updates.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.3.3/UntisPlus-v5.3.3.ipa",
+          "size": 41956305,
+          "minOSVersion": "15.0"
+        },
         {
           "version": "5.3.2",
           "buildVersion": "5.3.2",
@@ -54,10 +66,13 @@
       "category": "education",
       "beta": true,
       "appPermissions": {
+        "privacy": {
+          "com.apple.developer.networking.wifi-info": true
+        },
         "entitlements": [
-          "com.apple.security.application-groups"
-        ],
-        "privacy": {}
+          "com.apple.security.application-groups",
+          "aps-environment"
+        ]
       },
       "screenshotURLs": [
         "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/assets/github/welcome.png",
@@ -68,6 +83,15 @@
         "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/assets/github/AI_assistant.png"
       ],
       "versions": [
+        {
+          "version": "5.3.3-nightly.2026-09-13",
+          "buildVersion": "5.3.3-nightly.2026-09-13",
+          "date": "2026-09-13",
+          "localizedDescription": "Today's Nightly build of Untis+ with the latest changes and improvements. Please note that nightly builds may be less stable than official releases.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/nightly-2026-09-13/UntisPlus-nightly-2026-09-13.ipa",
+          "size": 41956307,
+          "minOSVersion": "15.0"
+        },
         {
           "version": "5.3.0-nightly.2026-09-09",
           "buildVersion": "5.3.0-nightly.2026-09-09",
@@ -85,6 +109,16 @@
   ],
   "news": [
     {
+      "title": "Untis+ 5.3.3 is here",
+      "identifier": "untisplus-release-5-3-3",
+      "caption": "This update includes behind-the-scenes maintenance to keep Untis+ running smoothly. There are no new user-facing features in this version as we prepare for future updates.",
+      "date": "2026-09-13",
+      "tintColor": "4A90D9",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus",
+      "notify": true
+    },
+    {
       "title": "Stand with Palastine",
       "identifier": "palastine-support",
       "caption": "Untis+ developers stand with Palastine and supports the people of Palastine in their fight for freedom and justice. We condemn the ongoing violence and oppression faced by the people of Palastine and call for an end to the occupation and the recognition of Palastine as a sovereign state.",
@@ -92,7 +126,6 @@
       "tintColor": "#ed2e38",
       "imageURL": "https://as2.ftcdn.net/v2/jpg/01/20/45/63/1000_F_120456326_XmcQ2KcxI6MGm4tcgZdZawro0aSgLFmj.jpg",
       "notify": true
-
     },
     {
       "title": "Untis+ Nightly is here",

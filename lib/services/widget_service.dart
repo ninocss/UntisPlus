@@ -349,6 +349,38 @@ class WidgetService {
     }
   }
 
+  /// Requests a refresh of every homescreen widget timeline without republishing
+  /// data. Mirrors the native iOS `WidgetCenter.shared.reloadAllTimelines()`.
+  static Future<void> reloadAllTimelines() async {
+    if (kIsWeb) return;
+    await _ensureConfigured();
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetCurrentLesson',
+      iOSName: iOSWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetCurrentLesson',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetHomework',
+      iOSName: iOSHomeworkWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetHomework',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetNotifications',
+      iOSName: iOSNotificationsWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetNotifications',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetDailySchedule',
+      iOSName: iOSScheduleWidgetName,
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetDailySchedule',
+    );
+    await HomeWidget.updateWidget(
+      name: 'UntisWidgetCustom',
+      iOSName: 'UntisWidgetCustom',
+      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetCustom',
+    );
+  }
+
   static Future<void> updateNotificationWidget(
     String summary, {
     String accountId = 'active',

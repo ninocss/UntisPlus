@@ -22,15 +22,128 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>Icon3D</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon3D</string>
+				</array>
+			</dict>
+			<key>IconChrom</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconChrom</string>
+				</array>
+			</dict>
+			<key>IconGalaxy</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconGalaxy</string>
+				</array>
+			</dict>
+			<key>IconGradient</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconGradient</string>
+				</array>
+			</dict>
+			<key>IconMarmor</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconMarmor</string>
+				</array>
+			</dict>
+			<key>IconPaper</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconPaper</string>
+				</array>
+			</dict>
+		</dict>
+	</dict>
+	<key>CFBundleIcons~ipad</key>
+	<dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>Icon3D</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>Icon3D</string>
+				</array>
+			</dict>
+			<key>IconChrom</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconChrom</string>
+				</array>
+			</dict>
+			<key>IconGalaxy</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconGalaxy</string>
+				</array>
+			</dict>
+			<key>IconGradient</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconGradient</string>
+				</array>
+			</dict>
+			<key>IconMarmor</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconMarmor</string>
+				</array>
+			</dict>
+			<key>IconPaper</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconPaper</string>
+				</array>
+			</dict>
+		</dict>
+	</dict>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.ninocss.untisplus.widget</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>untisplus</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
 		<string>fetch</string>
 		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.ninocss.untisplus.alarmRefresh</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

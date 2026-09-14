@@ -1,0 +1,97 @@
+name: Build TrollStore IPA
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build (branch or tag)'
+        required: false
+        default: 'main'
+      tag:
+        description: 'Existing release tag to attach the IPA to (leave empty for artifact-only build)'
+        required: false
+        default: ''
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trollstore-ipa
+  cancel-in-progress: false
+
+jobs:
+  build_trollstore_ipa:
+    name: Build TrollStore-compatible IPA
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || github.event.inputs.ref || 'main' }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Cache fllama native builds
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-ios-${{ hashFiles('pubspec.lock') }}
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Prepare TrollStore IPA
+        id: ipa
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)"
+          TAG="${RELEASE_TAG:-${DISPATCH_TAG:-}}"
+          if [ -z "$TAG" ]; then
+            TAG="v${VERSION}"
+          fi
+          mkdir -p release_assets
+          bash tool/prepare_trollstore_ipa.sh \
+            build/ios/iphoneos/Runner.app \
+            release_assets \
+            "UntisPlus-${TAG}-trollstore.ipa"
+          echo "ipa_path=release_assets/UntisPlus-${TAG}-trollstore.ipa" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Upload TrollStore IPA artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: trollstore-ipa
+          path: release_assets/*-trollstore.ipa
+          retention-days: 30
+
+      - name: Attach to Release
+        if: ${{ github.event.release.tag_name != '' || github.event.inputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ipa.outputs.tag }}
+          IPA_PATH: ${{ steps.ipa.outputs.ipa_path }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$IPA_PATH" --repo "$GITHUB_REPOSITORY" --clobber
+            echo "Attached $IPA_PATH to $TAG"
+          else
+            echo "Release $TAG not found - IPA uploaded as artifact only."
+          fi

@@ -149,7 +149,10 @@ void alarmRefreshDispatcher() async {
 }
 
 Future<void> _applyAndroidWindowBlur(bool enabled) async {
-  if (kIsWeb) return;
+  // Android only: blurs the launcher backdrop behind the transparent window.
+  // iOS overlays a full-screen UIVisualEffectView that covers the Flutter UI,
+  // so the whole app would render as a single frosted colour.
+  if (kIsWeb || !Platform.isAndroid) return;
   try {
     await _uiChannel.invokeMethod<void>('setWindowBlur', enabled ? 80 : 0);
   } catch (_) {
@@ -158,7 +161,7 @@ Future<void> _applyAndroidWindowBlur(bool enabled) async {
 }
 
 Future<bool> _applyLauncherIcon(String icon) async {
-  if (kIsWeb || !Platform.isAndroid) return false;
+  if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return false;
   try {
     return await _uiChannel.invokeMethod<bool>('setLauncherIcon', icon) ??
         false;
@@ -742,7 +745,7 @@ Future<void> _initializeDeferredNativeServices() async {
   if (kIsWeb) return;
   await NotificationService().init();
   BackgroundService.initialize();
-  if (Platform.isAndroid) {
+  if (Platform.isAndroid || Platform.isIOS) {
     await AlarmService.instance.restore();
   }
 }

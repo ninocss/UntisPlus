@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../l10n.dart';
+import 'widget_service.dart';
 
 /// Identifiers for different notification types.
 abstract class NotificationIds {
@@ -84,8 +85,10 @@ class NotificationService {
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
-    const iosSettings = DarwinInitializationSettings();
-    const settings = InitializationSettings(
+    final iosSettings = DarwinInitializationSettings(
+      notificationCategories: _iosNotificationCategories(),
+    );
+    final settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
@@ -106,6 +109,19 @@ class NotificationService {
       }
     }
 
+    // On iOS the native alarm scheduler needs to be the notification-center
+    // delegate so snooze/dismiss actions on alarm banners are handled, while
+    // every other notification keeps flowing through the plugin. Must run
+    // after the launch-details read above so the plugin stays authoritative
+    // during cold start.
+    if (Platform.isIOS) {
+      try {
+        await _nativeChannel.invokeMethod<void>('activateNotificationDelegation');
+      } catch (_) {
+        // Older native builds simply skip the handover.
+      }
+    }
+
     _initialized = true;
   }
 
@@ -122,6 +138,7 @@ class NotificationService {
         );
         _pendingEvent = event;
         _actionController.add(event);
+        WidgetService.reloadAllTimelines();
       }
     }
   }
@@ -258,6 +275,7 @@ class NotificationService {
         android: androidDetails,
         iOS: DarwinNotificationDetails(
           threadIdentifier: NotificationChannels.currentLesson,
+          categoryIdentifier: NotificationChannels.currentLesson,
         ),
       ),
       payload: jsonEncode(payloadMap),
@@ -380,6 +398,36 @@ class NotificationService {
   /// Cancels a specific notification by ID.
   Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id: id);
+  }
+
+  String get _deviceLocale {
+    final code = PlatformDispatcher.instance.locale.languageCode;
+    return AppL10n.supportedLocales.contains(code) ? code : 'de';
+  }
+
+  /// Registers the notification categories (and their action buttons) used on
+  /// iOS. Mirrors the Android action buttons of the progressive notification:
+  /// open the timetable or jump to the next lesson.
+  List<DarwinNotificationCategory> _iosNotificationCategories() {
+    final locale = _deviceLocale;
+    return [
+      DarwinNotificationCategory(
+        NotificationChannels.currentLesson,
+        actions: [
+          DarwinNotificationAction.plain(
+            'open_timetable',
+            _getActionLabel(locale, 'open_timetable'),
+            options: {DarwinNotificationActionOption.foreground},
+          ),
+          DarwinNotificationAction.plain(
+            'open_next_lesson',
+            _getActionLabel(locale, 'open_next_lesson'),
+            options: {DarwinNotificationActionOption.foreground},
+          ),
+        ],
+        options: const <DarwinNotificationCategoryOption>{},
+      ),
+    ];
   }
 
   String _getActionLabel(String locale, String actionId) {

@@ -13,6 +13,7 @@ import '../data/security/credential_vault.dart';
 import '../l10n.dart';
 
 import 'demo_mode_service.dart';
+import 'live_activity_service.dart';
 import 'notification_service.dart';
 import 'alarm_service.dart';
 import 'widget_service.dart';
@@ -930,6 +931,7 @@ Future<bool> updateUntisData() async {
     await NotificationService().cancelNotification(
       NotificationIds.currentLesson,
     );
+    await LiveActivityService.instance.end();
     return true;
   }
 
@@ -1005,15 +1007,22 @@ Future<bool> updateUntisData() async {
         locale: locale,
         nextLesson: nextLessonName,
       );
+      await LiveActivityService.instance.upsert(
+        lessonName: currentLessonName,
+        nextLesson: nextLessonName,
+        timeRemaining: timeRemaining,
+      );
     } else {
       await NotificationService().cancelNotification(
         NotificationIds.currentLesson,
       );
+      await LiveActivityService.instance.end();
     }
   } else {
     await NotificationService().cancelNotification(
       NotificationIds.currentLesson,
     );
+    await LiveActivityService.instance.end();
   }
 
   // Widgets intentionally update independently of notification permissions.

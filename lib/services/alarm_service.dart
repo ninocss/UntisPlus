@@ -395,7 +395,7 @@ class AlarmService {
   static const _configKey = 'alarmConfigV1';
   static const _smartPlanKey = 'alarmSmartPlanV1';
 
-  bool get _supported => !kIsWeb && Platform.isAndroid;
+  bool get _supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
   Future<AlarmConfig> loadConfig() async {
     final prefs = await SharedPreferences.getInstance();

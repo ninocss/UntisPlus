@@ -24,7 +24,7 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 | Aspect | Specification |
 | :--- | :--- |
 | **Data Policy** | Private by default. Credentials and schedule data never leave your device. |
-| **Current Version** | `5.3.2` |
+| **Current Version** | `5.3.3` |
 | **Target Platforms** | Android, iOS |
 
 ---
@@ -146,6 +146,19 @@ https://raw.githubusercontent.com/ninocss/untisplus/refs/heads/main/altstore/sou
     <img src="assets/altstore-download-light.png" alt="Download on AltStore" width="245"/>
   </a>
 </p>
+
+### iOS (TrollStore)
+TrollStore installs Untis+ permanently — no Apple ID and no 7-day re-signing.
+
+> Compatibility: TrollStore relies on the CoreTrust bug and works on **iOS 14.0 – 17.0** on supported devices (not iOS 17.0.1+ or newer). It is **not** a jailbreak. See [ios.cfw.guide](https://ios.cfw.guide/installing-trollstore) for device compatibility and installation of TrollStore itself.
+
+1. [Install TrollStore](https://ios.cfw.guide/installing-trollstore) on your device.
+2. Download the **TrollStore IPA** (`UntisPlus-v5.3.3-trollstore.ipa`) and nightly TrollStore builds from the [Releases](https://github.com/ninocss/untisplus/releases) page.
+3. Tap the downloaded file (visible in the Files app / your Downloads browser).
+4. Choose **Open with TrollStore**, then tap **Install**.
+5. Untis+ is now perma-signed; no signing renewal is ever needed.
+
+The TrollStore build is fake-signed with embedded entitlements (app groups, push) so home screen widgets, shared containers and notifications keep working. If apps stop launching after an OS update/reboot, re-select a **Persistence Helper** in TrollStore settings.
 
 ---
 

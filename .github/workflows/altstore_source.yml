@@ -3,6 +3,12 @@ name: Update AltStore Source
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (leer = neustes GitHub-Release, z.B. v5.2.0)'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -12,6 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  
   update_source:
     runs-on: ubuntu-latest
     steps:
@@ -20,6 +27,10 @@ jobs:
       - name: Resolve release metadata
         id: meta
         env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_NAME: ${{ github.event.release.name }}
           RELEASE_BODY: ${{ github.event.release.body }}
@@ -27,6 +38,19 @@ jobs:
           IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ -z "${DISPATCH_TAG:-}" ]; then
+              RELEASE_JSON="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName,name,body,publishedAt,isPrerelease)"
+            else
+              RELEASE_JSON="$(gh release view "$DISPATCH_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,name,body,publishedAt,isPrerelease)"
+            fi
+            RELEASE_TAG="$(echo "$RELEASE_JSON" | jq -r '.tagName')"
+            RELEASE_NAME="$(echo "$RELEASE_JSON" | jq -r '.name')"
+            RELEASE_BODY="$(echo "$RELEASE_JSON" | jq -r '.body')"
+            RELEASE_DATE="$(echo "$RELEASE_JSON" | jq -r '.publishedAt')"
+            IS_PRERELEASE="$(echo "$RELEASE_JSON" | jq -r '.isPrerelease')"
+          fi
 
           VERSION="${RELEASE_TAG#v}"
           DATE="$(date -d "$RELEASE_DATE" -u +%Y-%m-%d)"
@@ -246,12 +270,12 @@ jobs:
             |
             .news = ([
               {
-                "title": $app_name + " " + $version + " is here",
+                "title": ($app_name + " " + $version + " is here"),
                 "identifier": $news_id,
                 "caption": $desc,
                 "date": $date,
                 "tintColor": $news_tint,
-                "imageURL": "https://raw.githubusercontent.com/" + $repo + "/main/assets/icon.png",
+                "imageURL": ("https://raw.githubusercontent.com/" + $repo + "/main/assets/icon.png"),
                 "appID": $news_appid,
                 "notify": true
               }
