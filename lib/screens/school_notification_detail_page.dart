@@ -120,46 +120,6 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
     };
   }
 
-  String _copiedLabel() {
-    return switch (appLocaleNotifier.value) {
-      'de' => 'Nachricht in die Zwischenablage kopiert.',
-      'fr' => 'Message copie dans le presse-papiers.',
-      'es' => 'Mensaje copiado al portapapeles.',
-      _ => 'Message copied to clipboard.',
-    };
-  }
-
-  String _senderLabel() {
-    return switch (appLocaleNotifier.value) {
-      'de' => 'Absender',
-      'fr' => 'Expediteur',
-      'es' => 'Remitente',
-      _ => 'From',
-    };
-  }
-
-  String _formattedMessageForClipboard() {
-    final body = html_parser.parse(item.displayBody).body?.text.trim() ?? '';
-    final lines = <String>[item.title];
-    if ((item.author ?? '').isNotEmpty) {
-      lines.add('${_senderLabel()}: ${item.author}');
-    }
-    if (item.date != null) lines.add(_notificationDateLabel(item.date));
-    if (body.isNotEmpty) lines.add('\n$body');
-    return lines.join('\n');
-  }
-
-  Future<void> _copyMessage(BuildContext context) async {
-    await Clipboard.setData(
-      ClipboardData(text: _formattedMessageForClipboard()),
-    );
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_copiedLabel())));
-    }
-  }
-
   Future<void> _openDetailUrl(BuildContext context, String? url) async {
     if (!_detailIsSafeExternalUrl(url)) return;
     final ok = await url_launcher.launchUrlString(
