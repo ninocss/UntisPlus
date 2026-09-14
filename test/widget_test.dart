@@ -54,6 +54,7 @@ void main() {
       'onboardingCheckpoint': 0,
     });
     demoModeNotifier.value = false;
+    aiProvider = 'gemini';
     appLocaleNotifier.value = 'de';
     activeUntisAccountId = null;
     untisAccountsNotifier.value = const [];
@@ -201,13 +202,18 @@ void main() {
     expect(find.byKey(const ValueKey('theme-paper')), findsNothing);
     expect(tester.takeException(), isNull);
 
-    final onboardingPrefs = await SharedPreferences.getInstance();
-    await onboardingPrefs.setInt('onboardingCheckpoint', 0);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
-    await tester.pumpWidget(const UntisPlusApp(startScreen: OnboardingFlow()));
-    await tester.pump(const Duration(milliseconds: 100));
-    await tapVisible(tester, find.text('Weiter'));
+    SharedPreferences.setMockInitialValues({
+      'viewMode': 0,
+      // This test covers the theme page layout, not the welcome-page transition.
+      'onboardingCheckpoint': 1,
+    });
+    await tester.pumpWidget(
+      const UntisPlusApp(
+        startScreen: OnboardingFlow(key: ValueKey('theme-layout-onboarding')),
+      ),
+    );
 
     final onboardingCard = find.byKey(
       const ValueKey('onboarding-theme-default'),
@@ -305,13 +311,21 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(() => demoModeNotifier.value = false);
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('onboardingCheckpoint', 0);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    SharedPreferences.setMockInitialValues({
+      'viewMode': 0,
+      'onboardingCheckpoint': 0,
+      'aiProvider': 'local',
+    });
     aiProvider = 'local';
-    await prefs.setString('aiProvider', 'local');
     addTearDown(() => aiProvider = 'gemini');
-    await tester.pumpWidget(const UntisPlusApp(startScreen: OnboardingFlow()));
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpWidget(
+      const UntisPlusApp(
+        startScreen: OnboardingFlow(key: ValueKey('local-ai-onboarding')),
+      ),
+    );
+    await pumpUntilFound(tester, find.text('Weiter'));
 
     await tapVisible(tester, find.text('Weiter'));
     await pumpUntilFound(
@@ -400,8 +414,8 @@ void main() {
     final dayCarousel = await ensureDayTimetableView(tester);
     expect(dayCarousel, findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('timetable-day-tab-1')));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.byKey(const ValueKey('day-timetable-carousel')), findsOneWidget);
+    final refreshedDayCarousel = await ensureDayTimetableView(tester);
+    expect(refreshedDayCarousel, findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
     final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
