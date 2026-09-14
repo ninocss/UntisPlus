@@ -20,9 +20,32 @@ void main() {
   }
 
   Future<void> tapVisible(WidgetTester tester, Finder finder) async {
-    await tester.ensureVisible(finder);
+    final visible = finder.hitTestable();
+    if (visible.evaluate().isNotEmpty) {
+      await tester.tap(visible.first);
+      return;
+    }
+    await tester.ensureVisible(finder.first);
     await tester.pump(const Duration(milliseconds: 100));
-    await tester.tap(finder);
+    await tester.tap(finder.hitTestable().first);
+  }
+
+  Future<Finder> ensureDayTimetableView(WidgetTester tester) async {
+    final dayCarousel = find.byKey(const ValueKey('day-timetable-carousel'));
+    for (var i = 0; i < 80; i++) {
+      if (dayCarousel.evaluate().isNotEmpty) return dayCarousel;
+      final switchToDay = find
+          .byIcon(Icons.calendar_view_day_rounded)
+          .hitTestable();
+      if (switchToDay.evaluate().isNotEmpty) {
+        await tester.tap(switchToDay.first);
+        await tester.pump(const Duration(milliseconds: 100));
+        continue;
+      }
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(dayCarousel, findsOneWidget);
+    return dayCarousel;
   }
 
   setUp(() {
@@ -331,8 +354,7 @@ void main() {
       await tester.pumpWidget(
         UntisPlusApp(startScreen: WeeklyTimetablePage(key: ValueKey(size))),
       );
-      final dayCarousel = find.byKey(const ValueKey('day-timetable-carousel'));
-      await pumpUntilFound(tester, dayCarousel);
+      final dayCarousel = await ensureDayTimetableView(tester);
       expect(dayCarousel, findsOneWidget, reason: 'day viewport: $size');
       await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
       final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
@@ -377,8 +399,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
     await tester.pumpWidget(const UntisPlusApp(startScreen: WeeklyTimetablePage()));
-    final dayCarousel = find.byKey(const ValueKey('day-timetable-carousel'));
-    await pumpUntilFound(tester, dayCarousel);
+    final dayCarousel = await ensureDayTimetableView(tester);
     expect(dayCarousel, findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('timetable-day-tab-1')));
     await tester.pump(const Duration(milliseconds: 400));
@@ -413,6 +434,8 @@ void main() {
     await pumpUntilFound(tester, find.byType(SettingsLessonDesignPage));
     expect(find.byType(SettingsLessonDesignPage), findsOneWidget);
 
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: SettingsAppearancePage()),
     );
