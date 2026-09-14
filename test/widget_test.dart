@@ -325,7 +325,18 @@ void main() {
     await tapVisible(tester, find.text('Google Gemini'));
     final localProvider = find.text('Lokal (On-Device)');
     await pumpUntilFound(tester, localProvider);
-    await tapVisible(tester, localProvider);
+    final providerScroll = find.ancestor(
+      of: localProvider,
+      matching: find.byType(Scrollable),
+    );
+    expect(providerScroll, findsOneWidget);
+    await tester.scrollUntilVisible(
+      localProvider,
+      180,
+      scrollable: providerScroll,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(localProvider);
     await pumpUntilFound(tester, find.text('Lokales Modell'));
 
     expect(find.text('Lokales Modell'), findsWidgets);
