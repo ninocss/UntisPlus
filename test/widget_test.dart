@@ -332,11 +332,13 @@ void main() {
     expect(providerScroll, findsOneWidget);
     await tester.scrollUntilVisible(
       localProvider,
-      180,
+      -180,
       scrollable: providerScroll,
     );
     await tester.pump(const Duration(milliseconds: 100));
-    await tester.tap(localProvider);
+    final visibleLocalProvider = localProvider.hitTestable();
+    expect(visibleLocalProvider, findsOneWidget);
+    await tester.tap(visibleLocalProvider);
     await pumpUntilFound(tester, find.text('Lokales Modell'));
 
     expect(find.text('Lokales Modell'), findsWidgets);
