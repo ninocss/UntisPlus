@@ -204,7 +204,7 @@ Future<void> _settingsSetProgressivePush(bool value) async {
       NotificationIds.currentLesson,
     );
   } else {
-    updateUntisData().catchError((_) {});
+    updateUntisData().catchError((_) => false);
   }
 }
 
@@ -217,7 +217,7 @@ Future<void> _settingsSetDailyBriefingPush(bool value) async {
       NotificationIds.dailyBriefing,
     );
   } else {
-    updateUntisData().catchError((_) {});
+    updateUntisData().catchError((_) => false);
   }
 }
 
@@ -226,7 +226,7 @@ Future<void> _settingsSetImportantChangesPush(bool value) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool('importantChangesPush', value);
   if (value) {
-    updateUntisData().catchError((_) {});
+    updateUntisData().catchError((_) => false);
   } else {
     await NotificationService().cancelNotification(
       NotificationIds.importantChanges,
@@ -679,16 +679,23 @@ class SettingsHubPage extends StatelessWidget {
         subtitle: AppL10n.of(appLocaleNotifier.value).ui('widgetAccount'),
         pageBuilder: () => const SettingsWidgetsPage(),
       ),
-      if (!Platform.isIOS)
+      makeItem(
+        index: 8,
+        icon: Icons.explore_rounded,
+        title: l.tutorialReplay,
+        subtitle: l.tutorialReplayDesc,
+        onTap: () => tutorialReplayRequestNotifier.value++,
+      ),
+      if (kIsWeb || !Platform.isIOS)
         makeItem(
-          index: 8,
+          index: 9,
           icon: Icons.system_update_alt_rounded,
           title: l.settingsHubUpdatesAbout,
           subtitle: l.settingsAppVersion,
           pageBuilder: () => const SettingsAboutUpdatesPage(),
         ),
       makeItem(
-        index: 9,
+        index: 10,
         icon: Icons.coffee_rounded,
         title: l.settingsSupport,
         subtitle: l.settingsSupportDesc,
@@ -769,7 +776,8 @@ class SettingsHubPage extends StatelessWidget {
               },
               child: _buildGroupCard(cs, context, [
                 items[5],
-                if (!Platform.isIOS) items[8],
+                items[8],
+                if (kIsWeb || !Platform.isIOS) items[9],
                 items.last,
               ]),
             ),
@@ -812,7 +820,7 @@ Future<void> _settingsSetAppIcon(String icon) async {
   };
   if (!supported.contains(icon)) return;
   final applied = await _applyLauncherIcon(icon);
-  if (!applied && Platform.isAndroid) return;
+  if (!applied && !kIsWeb && Platform.isAndroid) return;
   appIconNotifier.value = icon;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('appIcon', icon);

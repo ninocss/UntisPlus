@@ -1267,7 +1267,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Verwende diese Platzhalter in deinem System-Prompt.',
+                  l.settingsAiPromptVariablesDesc,
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     color: cs.onSurfaceVariant,

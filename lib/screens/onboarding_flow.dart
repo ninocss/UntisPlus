@@ -39,6 +39,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   bool _manualSchoolEntry = false;
   bool _isSearching = false;
   bool _useLoginKey = false;
+  bool _localModelDownloading = false;
+  double _localModelDownloadProgress = 0;
+  String? _localModelDownloadError;
+  CancelToken? _localModelDownloadToken;
+  String? _inlineError;
   List<SchoolSearchResult> _searchResults = [];
   Timer? _debounce;
 
@@ -68,26 +73,51 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     _aiCustomBaseUrlController.text = aiCustomBaseUrl;
     _syncApiKeyControllerForProvider();
-    _pageController.addListener(_onPageChanged);
     SharedPreferences.getInstance().then((prefs) {
       if (!mounted) return;
       setState(() {
         _useLoginKey =
             prefs.getString('loginCredentialMode') == _credentialModeLoginKey;
       });
+      if (!widget.accountOnly) {
+        final saved = (prefs.getInt('onboardingCheckpoint') ?? 0).clamp(
+          0,
+          _totalOnboardingSteps - 1,
+        );
+        final canPassLogin =
+            activeUntisAccountId != null || demoModeNotifier.value;
+        final restored = saved > 2 && !canPassLogin ? 2 : saved;
+        if (restored != _currentPage) {
+          _currentPage = restored;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _pageController.hasClients) {
+              _pageController.jumpToPage(restored);
+            }
+          });
+        }
+      }
     });
   }
 
-  void _onPageChanged() {
-    final page = _pageController.page?.round() ?? _currentPage;
+  void _onPageChanged(int page) {
+    if (mounted && (_currentPage != page || _inlineError != null)) {
+      setState(() {
+        _currentPage = page;
+        _inlineError = null;
+      });
+    }
     if (!widget.accountOnly && page == 2) {
       _schoolSearchFocusNode.requestFocus();
+    }
+    if (!widget.accountOnly) {
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setInt('onboardingCheckpoint', page),
+      );
     }
   }
 
   @override
   void dispose() {
-    _pageController.removeListener(_onPageChanged);
     _pageController.dispose();
     _schoolSearchFocusNode.dispose();
     _serverController.dispose();
@@ -97,6 +127,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     _twoFactorController.dispose();
     _aiApiKeyController.dispose();
     _aiCustomBaseUrlController.dispose();
+    _localModelDownloadToken?.cancel('Onboarding closed');
     _debounce?.cancel();
     super.dispose();
   }
@@ -109,6 +140,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         return l.settingsAiProviderMistral;
       case 'custom':
         return l.settingsAiProviderCustom;
+      case 'local':
+        return l.settingsAiProviderLocal;
       case 'gemini':
       default:
         return l.settingsAiProviderGemini;
@@ -129,6 +162,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         return 'mistral-...';
       case 'custom':
         return 'token-...';
+      case 'local':
+        return '';
       case 'gemini':
       default:
         return 'AIza...';
@@ -150,6 +185,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _cacheCurrentProviderApiKey() {
+    if (_onboardingAiProvider == 'local') return;
     _onboardingProviderApiKeys[_onboardingAiProvider] = _aiApiKeyController.text
         .trim();
   }
@@ -160,6 +196,122 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     _aiApiKeyController.selection = TextSelection.collapsed(
       offset: _aiApiKeyController.text.length,
     );
+  }
+
+  LocalModelInfo get _selectedLocalModel {
+    return kLocalModels.firstWhere(
+      (model) => model.id == _onboardingAiModel,
+      orElse: _defaultLocalModel,
+    );
+  }
+
+  Future<String> _onboardingLocalModelPath(LocalModelInfo model) async {
+    final dir = await getApplicationDocumentsDirectory();
+    return '${dir.path}/${model.url.split('/').last}';
+  }
+
+  Future<bool> _isValidOnboardingLocalModel(
+    String path,
+    LocalModelInfo model,
+  ) async {
+    try {
+      final file = File(path);
+      if (!await file.exists()) return false;
+      final expected = (model.sizeGb * 1024 * 1024 * 1024).toInt();
+      if (await file.length() < expected * 0.6) return false;
+      final handle = await file.open();
+      try {
+        final header = await handle.read(4);
+        return header.length == 4 && String.fromCharCodes(header) == 'GGUF';
+      } finally {
+        await handle.close();
+      }
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _downloadSelectedLocalModel() async {
+    if (_localModelDownloading) return;
+    final model = _selectedLocalModel;
+    final path = await _onboardingLocalModelPath(model);
+    final partialPath = '$path.part';
+
+    if (await _isValidOnboardingLocalModel(path, model)) {
+      aiLocalModelPath = path;
+      if (mounted) setState(() => _localModelDownloadProgress = 1);
+      return;
+    }
+
+    for (final stalePath in [path, partialPath]) {
+      final stale = File(stalePath);
+      if (await stale.exists()) await stale.delete();
+    }
+
+    final token = CancelToken();
+    _localModelDownloadToken = token;
+    setState(() {
+      _localModelDownloading = true;
+      _localModelDownloadProgress = 0;
+      _localModelDownloadError = null;
+    });
+
+    try {
+      await Dio().download(
+        model.url,
+        partialPath,
+        cancelToken: token,
+        options: Options(headers: const {'User-Agent': 'UntisPlus/1.0'}),
+        onReceiveProgress: (received, total) {
+          if (!mounted || total <= 0 || token.isCancelled) return;
+          setState(() => _localModelDownloadProgress = received / total);
+        },
+      );
+      if (!await _isValidOnboardingLocalModel(partialPath, model)) {
+        throw Exception('GGUF verification failed');
+      }
+      await File(partialPath).rename(path);
+      aiLocalModelPath = path;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('aiLocalModelPath', path);
+      if (mounted) {
+        setState(() {
+          _localModelDownloading = false;
+          _localModelDownloadProgress = 1;
+        });
+      }
+    } on DioException catch (error) {
+      if (await File(partialPath).exists()) await File(partialPath).delete();
+      if (!mounted) return;
+      setState(() {
+        _localModelDownloading = false;
+        if (error.type != DioExceptionType.cancel) {
+          _localModelDownloadError = error.message;
+          _localModelDownloadProgress = -1;
+        }
+      });
+    } catch (error) {
+      if (await File(partialPath).exists()) await File(partialPath).delete();
+      if (!mounted) return;
+      setState(() {
+        _localModelDownloading = false;
+        _localModelDownloadError = error.toString();
+        _localModelDownloadProgress = -1;
+      });
+    } finally {
+      _localModelDownloadToken = null;
+    }
+  }
+
+  void _cancelLocalModelDownload() {
+    _localModelDownloadToken?.cancel('User cancelled');
+    if (mounted) {
+      setState(() {
+        _localModelDownloading = false;
+        _localModelDownloadProgress = 0;
+        _localModelDownloadError = null;
+      });
+    }
   }
 
   Future<void> _openApiKeyPortal() async {
@@ -182,6 +334,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   void _showOnboardingAiProviderDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
+    if (_localModelDownloading) {
+      _showError(l.settingsAiLocalModelDownloading);
+      return;
+    }
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiProvider,
@@ -196,6 +352,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   ? Icons.chat_bubble_outline_rounded
                   : provider == 'mistral'
                   ? Icons.cloud_rounded
+                  : provider == 'local'
+                  ? Icons.memory_rounded
                   : Icons.settings_ethernet_rounded,
               selected: _onboardingAiProvider == provider,
             ),
@@ -213,6 +371,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         if (!models.contains(_onboardingAiModel)) {
           _onboardingAiModel = models.first;
         }
+        _localModelDownloadProgress = 0;
+        _localModelDownloadError = null;
         _syncApiKeyControllerForProvider();
       });
     });
@@ -220,6 +380,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   void _showOnboardingAiModelDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
+    if (_localModelDownloading) {
+      _showError(l.settingsAiLocalModelDownloading);
+      return;
+    }
     final models = _modelsForProvider(
       _onboardingAiProvider,
       customCompatibility: _onboardingAiCustomCompatibility,
@@ -231,7 +395,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           .map(
             (model) => _SheetOption(
               value: model,
-              title: model,
+              title: _onboardingAiProvider == 'local'
+                  ? kLocalModels.firstWhere((entry) => entry.id == model).name
+                  : model,
               icon: Icons.memory_rounded,
               selected: _onboardingAiModel == model,
             ),
@@ -239,7 +405,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           .toList(),
     ).then((value) {
       if (value == null) return;
-      setState(() => _onboardingAiModel = value);
+      setState(() {
+        _onboardingAiModel = value;
+        _localModelDownloadProgress = 0;
+        _localModelDownloadError = null;
+      });
     });
   }
 
@@ -310,7 +480,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(height: 14),
                 Text(
                   l.settingsAiCustomBaseUrl,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -318,7 +489,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(height: 8),
                 Text(
                   l.settingsAiCustomBaseUrlDesc,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontSize: 13,
                     color: cs.onSurfaceVariant,
                   ),
@@ -326,7 +498,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: ctrl,
-                  style: GoogleFonts.outfit(fontSize: 14),
+                  style: untisThemeTextStyle(context, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: l.settingsAiCustomBaseUrlHint,
                     filled: true,
@@ -344,7 +516,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
                         l.settingsApiKeyCancel,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: untisThemeTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     FilledButton(
@@ -356,7 +531,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       },
                       child: Text(
                         l.settingsApiKeySave,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: untisThemeTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -408,7 +586,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(height: 14),
                 Text(
                   l.settingsAiPromptEditTitle,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -416,7 +595,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(height: 8),
                 Text(
                   l.settingsAiPromptDesc,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontSize: 13,
                     color: cs.onSurfaceVariant,
                   ),
@@ -446,7 +626,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
                         l.settingsApiKeyCancel,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: untisThemeTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     TextButton(
@@ -455,7 +638,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       },
                       child: Text(
                         l.settingsAiPromptReset,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: untisThemeTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     FilledButton(
@@ -465,7 +651,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       },
                       child: Text(
                         l.settingsApiKeySave,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: untisThemeTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -504,7 +693,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(height: 14),
                 Text(
                   l.settingsAiPromptVariables,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -512,7 +702,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(height: 6),
                 Text(
                   l.settingsAiPromptVariablesDesc,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontSize: 13,
                     color: cs.onSurfaceVariant,
                   ),
@@ -536,7 +727,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             ),
                             subtitle: Text(
                               entry.value,
-                              style: GoogleFonts.outfit(fontSize: 12.5),
+                              style: untisThemeTextStyle(
+                                context,
+                                fontSize: 12.5,
+                              ),
                             ),
                           ),
                         )
@@ -549,7 +743,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(
                       l.settingsApiKeyCancel,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      style: untisThemeTextStyle(
+                        context,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -561,8 +758,40 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
-  void _nextPage() {
+  Future<void> _persistOnboardingAiConfiguration() async {
+    _cacheCurrentProviderApiKey();
+    aiProvider = _normalizeAiProvider(_onboardingAiProvider);
+    aiCustomCompatibility = _normalizeAiCustomCompatibility(
+      _onboardingAiCustomCompatibility,
+    );
+    aiModel = _onboardingAiModel;
+    aiCustomBaseUrl = _aiCustomBaseUrlController.text.trim();
+    geminiApiKey = _onboardingProviderApiKeys['gemini'] ?? '';
+    openAiApiKey = _onboardingProviderApiKeys['openai'] ?? '';
+    mistralApiKey = _onboardingProviderApiKeys['mistral'] ?? '';
+    customAiApiKey = _onboardingProviderApiKeys['custom'] ?? '';
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('aiProvider', aiProvider);
+    await prefs.setString('aiModel', aiModel);
+    await prefs.setString('aiCustomCompatibility', aiCustomCompatibility);
+    await prefs.setString('aiCustomBaseUrl', aiCustomBaseUrl);
+    await prefs.setString('aiSystemPromptTemplate', aiSystemPromptTemplate);
+    await prefs.setString('aiLocalModelPath', aiLocalModelPath);
+    await Future.wait([
+      CredentialVault.instance.writeAiApiKey('gemini', geminiApiKey),
+      CredentialVault.instance.writeAiApiKey('openai', openAiApiKey),
+      CredentialVault.instance.writeAiApiKey('mistral', mistralApiKey),
+      CredentialVault.instance.writeAiApiKey('custom', customAiApiKey),
+    ]);
+  }
+
+  Future<void> _nextPage() async {
     FocusScope.of(context).unfocus();
+    if (!widget.accountOnly && _currentPage == 3) {
+      await _persistOnboardingAiConfiguration();
+      if (!mounted) return;
+    }
     if (_currentPage < _totalOnboardingSteps - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 560),
@@ -594,7 +823,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _showError(l.loginFailed);
       return;
     }
-    setState(() => _isLogginIn = true);
+    setState(() {
+      _isLogginIn = true;
+      _inlineError = null;
+    });
 
     schoolUrl = _serverController.text;
     schoolName = _schoolController.text;
@@ -654,7 +886,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               : _credentialModePassword,
         );
 
-        updateUntisData().catchError((_) {});
+        updateUntisData().catchError((_) => false);
 
         if (!mounted) return;
         if (widget.accountOnly) {
@@ -663,6 +895,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             (route) => false,
           );
         } else {
+          await prefs.setInt('onboardingCheckpoint', 3);
           _nextPage();
         }
       } else {
@@ -691,11 +924,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     await prefs.setInt('personType', personType);
     await prefs.setInt('personId', personId);
     await prefs.remove('sessionId');
+    await prefs.setInt('onboardingCheckpoint', 3);
 
     if (mounted) _nextPage();
   }
 
   void _showError(String msg) {
+    if (mounted) setState(() => _inlineError = msg);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -712,34 +947,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
-    _cacheCurrentProviderApiKey();
-
-    aiProvider = _normalizeAiProvider(_onboardingAiProvider);
-    aiCustomCompatibility = _normalizeAiCustomCompatibility(
-      _onboardingAiCustomCompatibility,
-    );
-    aiModel = _onboardingAiModel;
-    aiCustomBaseUrl = _aiCustomBaseUrlController.text.trim();
-
-    geminiApiKey = _onboardingProviderApiKeys['gemini'] ?? '';
-    openAiApiKey = _onboardingProviderApiKeys['openai'] ?? '';
-    mistralApiKey = _onboardingProviderApiKeys['mistral'] ?? '';
-    customAiApiKey = _onboardingProviderApiKeys['custom'] ?? '';
-
-    await prefs.setString('aiProvider', aiProvider);
-    await prefs.setString('aiModel', aiModel);
-    await prefs.setString('aiCustomCompatibility', aiCustomCompatibility);
-    await prefs.setString('aiCustomBaseUrl', aiCustomBaseUrl);
-    await prefs.setString('aiSystemPromptTemplate', aiSystemPromptTemplate);
-    await Future.wait([
-      CredentialVault.instance.writeAiApiKey('gemini', geminiApiKey),
-      CredentialVault.instance.writeAiApiKey('openai', openAiApiKey),
-      CredentialVault.instance.writeAiApiKey('mistral', mistralApiKey),
-      CredentialVault.instance.writeAiApiKey('custom', customAiApiKey),
-    ]);
+    await _persistOnboardingAiConfiguration();
 
     await prefs.setBool('onboardingCompleted', true);
     await prefs.setBool('tutorialCompleted', false);
+    await prefs.setInt('onboardingVersion', kCurrentOnboardingVersion);
+    await prefs.setInt('tutorialVersionCompleted', 0);
+    await prefs.remove('onboardingCheckpoint');
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
@@ -847,7 +1061,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     const SizedBox(height: 16),
                     Text(
                       l.settingsBackgroundStyle,
-                      style: GoogleFonts.outfit(
+                      style: untisThemeTextStyle(
+                        context,
                         fontWeight: FontWeight.w900,
                         fontSize: 22,
                         letterSpacing: 0.2,
@@ -917,7 +1132,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                   ),
                                   title: Text(
                                     _backgroundStyleLabel(l, idx),
-                                    style: GoogleFonts.outfit(
+                                    style: untisThemeTextStyle(
+                                      context,
                                       fontWeight: selected
                                           ? FontWeight.w700
                                           : FontWeight.w600,
@@ -991,16 +1207,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
           ),
           // Animated background scene
-          ValueListenableBuilder<bool>(
-            valueListenable: backgroundAnimationsNotifier,
-            builder: (context, enabled, _) {
-              if (!enabled) return const SizedBox.shrink();
-              return ValueListenableBuilder<int>(
-                valueListenable: backgroundAnimationStyleNotifier,
-                builder: (context, style, _) =>
-                    _AnimatedBackgroundScene(style: style),
-              );
-            },
+          ValueListenableBuilder<AppThemeId>(
+            valueListenable: visualThemeNotifier,
+            builder: (context, theme, _) => ValueListenableBuilder<bool>(
+              valueListenable: backgroundAnimationsNotifier,
+              builder: (context, enabled, _) {
+                if (!enabled ||
+                    !appThemeCapabilities(theme).supportsBackgroundMotion) {
+                  return const SizedBox.shrink();
+                }
+                return ValueListenableBuilder<int>(
+                  valueListenable: backgroundAnimationStyleNotifier,
+                  builder: (context, style, _) =>
+                      _AnimatedBackgroundScene(style: style),
+                );
+              },
+            ),
           ),
           SafeArea(
             child: Column(
@@ -1011,13 +1233,54 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: _buildProgressHeader(colors),
                 ),
+                if (_inlineError != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                    child: Material(
+                      key: const ValueKey('onboarding-inline-error'),
+                      color: colors.errorContainer,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline_rounded,
+                              color: colors.onErrorContainer,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _inlineError!,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: untisThemeTextStyle(
+                                  context,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () =>
+                                  setState(() => _inlineError = null),
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: colors.onErrorContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 8),
                 // Page content
                 Expanded(
                   child: PageView(
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
-                    onPageChanged: (idx) => setState(() => _currentPage = idx),
+                    onPageChanged: _onPageChanged,
                     children: [
                       if (widget.accountOnly)
                         _buildLoginStep()
@@ -1103,7 +1366,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
             child: Text(
               '${_currentPage + 1}/$_totalOnboardingSteps',
-              style: GoogleFonts.outfit(
+              style: untisThemeTextStyle(
+                context,
                 fontWeight: FontWeight.w700,
                 fontSize: 12.5,
                 color: colors.onPrimaryContainer,
@@ -1197,7 +1461,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               Expanded(
                 child: Text(
                   name,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontSize: 16,
                     fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
                     color: isSel ? colors.onPrimaryContainer : colors.onSurface,
@@ -1243,8 +1508,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             const SizedBox(height: 8),
             ValueListenableBuilder<AppThemeId>(
               valueListenable: visualThemeNotifier,
-              builder: (context, selected, _) =>
+              builder: (context, selected, _) => Column(
+                children: [
+                  _buildThemeLivePreview(l, selected, colors),
+                  const SizedBox(height: 10),
                   _buildOnboardingThemePicker(l, selected, colors),
+                ],
+              ),
             ),
             const SizedBox(height: 18),
             // Theme mode section
@@ -1254,95 +1524,114 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               valueListenable: themeModeNotifier,
               builder: (context, val, _) => _buildThemeModeRow(l, val, colors),
             ),
-            const SizedBox(height: 18),
-            // Background section
-            _buildSectionLabel(l.settingsBackgroundAnimations, colors),
-            const SizedBox(height: 8),
-            ValueListenableBuilder<bool>(
-              valueListenable: backgroundAnimationsNotifier,
-              builder: (context, animEnabled, _) => Column(
-                children: [
-                  _buildToggleTile(
-                    icon: Icons.animation_rounded,
-                    title: l.settingsBackgroundAnimations,
-                    subtitle: l.settingsBackgroundAnimationsDesc,
-                    value: animEnabled,
-                    onChanged: (nv) async {
-                      backgroundAnimationsNotifier.value = nv;
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setBool('backgroundAnimations', nv);
-                    },
-                    colors: colors,
-                  ),
-                  const SizedBox(height: 8),
-                  AnimatedOpacity(
-                    opacity: animEnabled ? 1.0 : 0.45,
-                    duration: const Duration(milliseconds: 250),
-                    child: IgnorePointer(
-                      ignoring: !animEnabled,
-                      child: Column(
-                        children: [
-                          ValueListenableBuilder<int>(
-                            valueListenable: backgroundAnimationStyleNotifier,
-                            builder: (context, style, _) => _buildChevronTile(
-                              icon: _backgroundStyleIcon(style),
-                              title: l.settingsBackgroundStyle,
-                              subtitle: _backgroundStyleLabel(l, style),
-                              onTap: () async {
-                                final selected =
-                                    await _showBackgroundStylePicker(style);
-                                if (selected != null) {
-                                  await _setBackgroundAnimationStyle(selected);
-                                }
+            ValueListenableBuilder<AppThemeId>(
+              valueListenable: visualThemeNotifier,
+              builder: (context, theme, _) {
+                final capabilities = appThemeCapabilities(theme);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (capabilities.supportsBackgroundMotion) ...[
+                      const SizedBox(height: 18),
+                      _buildSectionLabel(
+                        l.settingsBackgroundAnimations,
+                        colors,
+                      ),
+                      const SizedBox(height: 8),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: backgroundAnimationsNotifier,
+                        builder: (context, animEnabled, _) => Column(
+                          children: [
+                            _buildToggleTile(
+                              icon: Icons.animation_rounded,
+                              title: l.settingsBackgroundAnimations,
+                              subtitle: l.settingsBackgroundAnimationsDesc,
+                              value: animEnabled,
+                              onChanged: (nv) async {
+                                backgroundAnimationsNotifier.value = nv;
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                await prefs.setBool('backgroundAnimations', nv);
                               },
                               colors: colors,
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          ValueListenableBuilder<bool>(
-                            valueListenable: backgroundGyroscopeNotifier,
-                            builder: (context, val, _) => _buildToggleTile(
-                              icon: Icons.screen_rotation_rounded,
-                              title: l.settingsBackgroundGyroscope,
-                              subtitle: l.settingsBackgroundGyroscopeDesc,
-                              value: val,
-                              onChanged: _setBackgroundGyroscopeEnabled,
-                              colors: colors,
+                            const SizedBox(height: 8),
+                            AnimatedOpacity(
+                              opacity: animEnabled ? 1.0 : 0.45,
+                              duration: const Duration(milliseconds: 250),
+                              child: IgnorePointer(
+                                ignoring: !animEnabled,
+                                child: Column(
+                                  children: [
+                                    ValueListenableBuilder<int>(
+                                      valueListenable:
+                                          backgroundAnimationStyleNotifier,
+                                      builder: (context, style, _) =>
+                                          _buildChevronTile(
+                                            icon: _backgroundStyleIcon(style),
+                                            title: l.settingsBackgroundStyle,
+                                            subtitle: _backgroundStyleLabel(
+                                              l,
+                                              style,
+                                            ),
+                                            onTap: () async {
+                                              final selected =
+                                                  await _showBackgroundStylePicker(
+                                                    style,
+                                                  );
+                                              if (selected != null) {
+                                                await _setBackgroundAnimationStyle(
+                                                  selected,
+                                                );
+                                              }
+                                            },
+                                            colors: colors,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ValueListenableBuilder<bool>(
+                                      valueListenable:
+                                          backgroundGyroscopeNotifier,
+                                      builder: (context, val, _) =>
+                                          _buildToggleTile(
+                                            icon: Icons.screen_rotation_rounded,
+                                            title:
+                                                l.settingsBackgroundGyroscope,
+                                            subtitle: l
+                                                .settingsBackgroundGyroscopeDesc,
+                                            value: val,
+                                            onChanged:
+                                                _setBackgroundGyroscopeEnabled,
+                                            colors: colors,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  ValueListenableBuilder<AppThemeId>(
-                    valueListenable: visualThemeNotifier,
-                    builder: (context, theme, _) {
-                      if (!appThemeCapabilities(theme).supportsBlur) {
-                        return const SizedBox.shrink();
-                      }
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildSectionLabel(l.settingsGlassEffect, colors),
-                          const SizedBox(height: 8),
-                          ValueListenableBuilder<bool>(
-                            valueListenable: blurEnabledNotifier,
-                            builder: (context, val, _) => _buildToggleTile(
-                              icon: Icons.blur_on_rounded,
-                              title: l.settingsGlassEffect,
-                              subtitle: l.settingsGlassEffectDesc,
-                              value: val,
-                              onChanged: _setBlurEnabled,
-                              colors: colors,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
+                    ],
+                    if (capabilities.supportsBlur) ...[
+                      const SizedBox(height: 18),
+                      _buildSectionLabel(l.settingsGlassEffect, colors),
+                      const SizedBox(height: 8),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: blurEnabledNotifier,
+                        builder: (context, val, _) => _buildToggleTile(
+                          icon: Icons.blur_on_rounded,
+                          title: l.settingsGlassEffect,
+                          subtitle: l.settingsGlassEffectDesc,
+                          value: val,
+                          onChanged: _setBlurEnabled,
+                          colors: colors,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -1354,7 +1643,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Widget _buildSectionLabel(String text, ColorScheme colors) {
     return Text(
       text.toUpperCase(),
-      style: GoogleFonts.outfit(
+      style: untisThemeTextStyle(
+        context,
         fontSize: 11,
         fontWeight: FontWeight.w800,
         letterSpacing: 1.1,
@@ -1366,10 +1656,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   List<Color> _onboardingThemeColors(AppThemeId theme) => switch (theme) {
     AppThemeId.defaultTheme => const [Color(0xFF0F766E), Color(0xFFD5F5EF)],
     AppThemeId.manga => const [Color(0xFFF4ECDD), Color(0xFF17120C)],
-    AppThemeId.vivid => const [Color(0xFFFF4FC8), Color(0xFF4BE4FF)],
-    AppThemeId.glass => const [Color(0xFF76D6FF), Color(0xFFD8BCFF)],
-    AppThemeId.cyber => const [Color(0xFF02050A), Color(0xFF00F5FF)],
-    AppThemeId.paper => const [Color(0xFFFFF9E8), Color(0xFF9A4D24)],
+    AppThemeId.vivid => const [Color(0xFF6E37FF), Color(0xFFFF75BB)],
+    AppThemeId.glass => const [Color(0xFF195FC7), Color(0xFF7ADDC7)],
+    AppThemeId.cyber => const [Color(0xFF02070B), Color(0xFF35F0FF)],
+    AppThemeId.paper => const [Color(0xFFFFFBF1), Color(0xFF9A4D24)],
   };
 
   String _onboardingThemeName(AppL10n l, AppThemeId theme) => switch (theme) {
@@ -1381,21 +1671,94 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     AppThemeId.paper => l.themePaper,
   };
 
+  Widget _buildThemeLivePreview(
+    AppL10n l,
+    AppThemeId theme,
+    ColorScheme colors,
+  ) {
+    final preview = _onboardingThemeColors(theme);
+    final sharp = theme == AppThemeId.manga || theme == AppThemeId.cyber;
+    final radius = sharp ? 4.0 : 22.0;
+    return AnimatedContainer(
+      key: const ValueKey('onboarding-theme-preview'),
+      duration: MediaQuery.of(context).disableAnimations
+          ? Duration.zero
+          : const Duration(milliseconds: 280),
+      height: 132,
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: preview,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: colors.primary.withValues(alpha: 0.42),
+          width: sharp ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _onboardingThemeName(l, theme),
+                  style: untisThemeTextStyle(
+                    context,
+                    display: true,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ),
+              Icon(Icons.auto_awesome_rounded, color: colors.primary),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: colors.surface.withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(sharp ? 2 : 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer.withValues(alpha: 0.86),
+                    borderRadius: BorderRadius.circular(sharp ? 2 : 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildOnboardingThemePicker(
     AppL10n l,
     AppThemeId selected,
     ColorScheme colors,
   ) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+    return ResponsiveFixedGrid(
       itemCount: AppThemeId.values.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 2.45,
-      ),
+      mainAxisExtent: 64,
+      spacing: 8,
       itemBuilder: (context, index) {
         final theme = AppThemeId.values[index];
         final active = theme == selected;
@@ -1467,7 +1830,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       _onboardingThemeName(l, theme),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: untisThemeTextStyle(
+                        context,
                         fontWeight: FontWeight.w800,
                         fontSize: 12.5,
                         color: colors.onSurface,
@@ -1542,7 +1906,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       const SizedBox(height: 5),
                       Text(
                         label,
-                        style: GoogleFonts.outfit(
+                        style: untisThemeTextStyle(
+                          context,
                           fontSize: 12,
                           fontWeight: selected
                               ? FontWeight.w700
@@ -1606,7 +1971,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.outfit(
+                      style: untisThemeTextStyle(
+                        context,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: colors.onSurface,
@@ -1614,7 +1980,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     ),
                     Text(
                       subtitle,
-                      style: GoogleFonts.outfit(
+                      style: untisThemeTextStyle(
+                        context,
                         fontSize: 12,
                         color: colors.onSurfaceVariant,
                       ),
@@ -1675,7 +2042,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.outfit(
+                      style: untisThemeTextStyle(
+                        context,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: colors.onSurface,
@@ -1683,7 +2051,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     ),
                     Text(
                       subtitle,
-                      style: GoogleFonts.outfit(
+                      style: untisThemeTextStyle(
+                        context,
                         fontSize: 12,
                         color: colors.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -1726,10 +2095,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
             child: TextField(
               focusNode: _schoolSearchFocusNode,
-              style: GoogleFonts.outfit(fontSize: 15),
+              style: untisThemeTextStyle(context, fontSize: 15),
               decoration: InputDecoration(
                 hintText: l.loginSearchHint,
-                hintStyle: GoogleFonts.outfit(color: colors.onSurfaceVariant),
+                hintStyle: untisThemeTextStyle(
+                  context,
+                  color: colors.onSurfaceVariant,
+                ),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.only(left: 12, right: 8),
                   child: Icon(
@@ -1781,7 +2153,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         const SizedBox(height: 12),
                         Text(
                           l.loginNoSchoolsFound,
-                          style: GoogleFonts.outfit(
+                          style: untisThemeTextStyle(
+                            context,
                             fontSize: 14,
                             color: colors.onSurfaceVariant,
                           ),
@@ -1847,7 +2220,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                     children: [
                                       Text(
                                         s.displayName,
-                                        style: GoogleFonts.outfit(
+                                        style: untisThemeTextStyle(
+                                          context,
                                           fontWeight: FontWeight.w600,
                                           fontSize: 14,
                                         ),
@@ -1856,7 +2230,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                         s.address.isNotEmpty
                                             ? s.address
                                             : s.loginName,
-                                        style: GoogleFonts.outfit(
+                                        style: untisThemeTextStyle(
+                                          context,
                                           fontSize: 12,
                                           color: colors.onSurfaceVariant,
                                         ),
@@ -1920,7 +2295,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             Text(
               l.onboardingUseDemoModeDesc,
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
+              style: untisThemeTextStyle(
+                context,
                 fontSize: 12,
                 color: colors.onSurfaceVariant,
               ),
@@ -1966,7 +2342,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         children: [
                           Text(
                             _schoolController.text,
-                            style: GoogleFonts.outfit(
+                            style: untisThemeTextStyle(
+                              context,
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
                               color: colors.onSurface,
@@ -1974,7 +2351,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           ),
                           Text(
                             _serverController.text,
-                            style: GoogleFonts.outfit(
+                            style: untisThemeTextStyle(
+                              context,
                               fontSize: 12,
                               color: colors.onSurfaceVariant,
                             ),
@@ -2074,7 +2452,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
               child: Text(
                 _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
-                style: GoogleFonts.outfit(
+                style: untisThemeTextStyle(
+                  context,
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                 ),
@@ -2137,7 +2516,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
+            style: untisThemeTextStyle(
+              context,
               fontSize: 13,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: selected ? colors.onPrimaryContainer : colors.onSurface,
@@ -2148,10 +2528,161 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
+  Future<void> _continueWithLocalModel() async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final model = _selectedLocalModel;
+    final path = await _onboardingLocalModelPath(model);
+    if (!await _isValidOnboardingLocalModel(path, model)) {
+      _showError(l.settingsAiLocalModelDownload);
+      return;
+    }
+    aiLocalModelPath = path;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('aiLocalModelPath', path);
+    _nextPage();
+  }
+
+  Widget _buildOnboardingLocalModelCard(AppL10n l, ColorScheme colors) {
+    final model = _selectedLocalModel;
+    return FutureBuilder<bool>(
+      future: _onboardingLocalModelPath(
+        model,
+      ).then((path) => _isValidOnboardingLocalModel(path, model)),
+      builder: (context, snapshot) {
+        final downloaded = snapshot.data ?? false;
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: downloaded
+                ? colors.primaryContainer.withValues(alpha: 0.5)
+                : colors.surfaceContainerHigh.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: downloaded ? colors.primary : colors.outlineVariant,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l.settingsAiLocalModel,
+                style: untisThemeTextStyle(
+                  context,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.7,
+                  color: colors.primary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: colors.tertiaryContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.memory_rounded,
+                      color: colors.onTertiaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          model.name,
+                          style: untisThemeTextStyle(
+                            context,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
+                          ),
+                        ),
+                        Text(
+                          l.settingsAiLocalModelSize(model.sizeGb),
+                          style: untisThemeTextStyle(
+                            context,
+                            fontSize: 12.5,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (downloaded)
+                    Icon(Icons.check_circle_rounded, color: colors.primary),
+                ],
+              ),
+              if (_localModelDownloading) ...[
+                const SizedBox(height: 14),
+                LinearProgressIndicator(
+                  value: _localModelDownloadProgress > 0
+                      ? _localModelDownloadProgress
+                      : null,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${l.settingsAiLocalModelDownloading} ${(_localModelDownloadProgress * 100).clamp(0, 100).round()}%',
+                  style: untisThemeTextStyle(
+                    context,
+                    fontSize: 12.5,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              if (_localModelDownloadError != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  l.settingsAiLocalModelError,
+                  style: untisThemeTextStyle(
+                    context,
+                    fontWeight: FontWeight.w700,
+                    color: colors.error,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: _localModelDownloading
+                    ? OutlinedButton.icon(
+                        onPressed: _cancelLocalModelDownload,
+                        icon: const Icon(Icons.close_rounded),
+                        label: Text(l.settingsApiKeyCancel),
+                      )
+                    : FilledButton.tonalIcon(
+                        onPressed: downloaded
+                            ? null
+                            : _downloadSelectedLocalModel,
+                        icon: Icon(
+                          downloaded
+                              ? Icons.download_done_rounded
+                              : Icons.download_rounded,
+                        ),
+                        label: Text(
+                          downloaded
+                              ? l.settingsAiLocalModelInstalled
+                              : l.settingsAiLocalModelDownload,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildGeminiStep() {
     final l = AppL10n.of(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
     final isCustom = _onboardingAiProvider == 'custom';
+    final isLocal = _onboardingAiProvider == 'local';
     final providerPortal = _apiKeyPortalUrlForProvider(_onboardingAiProvider);
     final modelOptions = _modelsForProvider(
       _onboardingAiProvider,
@@ -2208,8 +2739,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l.settingsAiApiKeyDialogDesc,
-                          style: GoogleFonts.outfit(
+                          isLocal
+                              ? l.settingsAiLocalModelDesc
+                              : l.settingsAiApiKeyDialogDesc,
+                          style: untisThemeTextStyle(
+                            context,
                             fontSize: 13.5,
                             color: colors.onSurface.withValues(alpha: 0.88),
                             height: 1.45,
@@ -2225,7 +2759,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             ),
                             label: Text(
                               l.settingsAiApiKeyGet,
-                              style: GoogleFonts.outfit(
+                              style: untisThemeTextStyle(
+                                context,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -2257,7 +2792,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             _buildOnboardingAiOptionTile(
               icon: Icons.memory_rounded,
               title: l.settingsAiModel,
-              subtitle: currentModel,
+              subtitle: isLocal ? _selectedLocalModel.name : currentModel,
               onTap: _showOnboardingAiModelDialog,
             ),
             if (isCustom) ...[
@@ -2296,12 +2831,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               onTap: _showOnboardingAiVariablesDialog,
             ),
             const SizedBox(height: 14),
-            _buildField(
-              _aiApiKeyController,
-              '${l.settingsAiApiKey} · ${_providerLabel(l, _onboardingAiProvider)}',
-              Icons.key_rounded,
-              helperText: _apiKeyHintForProvider(_onboardingAiProvider),
-            ),
+            if (isLocal)
+              _buildOnboardingLocalModelCard(l, colors)
+            else
+              _buildField(
+                _aiApiKeyController,
+                '${l.settingsAiApiKey} · ${_providerLabel(l, _onboardingAiProvider)}',
+                Icons.key_rounded,
+                helperText: _apiKeyHintForProvider(_onboardingAiProvider),
+              ),
           ],
         ),
       ),
@@ -2316,7 +2854,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
               child: Text(
                 l.onboardingSkip,
-                style: GoogleFonts.outfit(
+                style: untisThemeTextStyle(
+                  context,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
@@ -2328,7 +2867,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             flex: 2,
             child: FilledButton(
               onPressed: () {
-                if (_aiApiKeyController.text.trim().isNotEmpty) {
+                if (isLocal) {
+                  _continueWithLocalModel();
+                } else if (_aiApiKeyController.text.trim().isNotEmpty) {
                   _nextPage();
                 } else {
                   _showError(l.onboardingGeminiEnterKeyOrSkip);
@@ -2340,7 +2881,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
               child: Text(
                 l.onboardingNext,
-                style: GoogleFonts.outfit(
+                style: untisThemeTextStyle(
+                  context,
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                 ),
@@ -2420,7 +2962,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         icon: const Icon(Icons.check_rounded),
         label: Text(
           l.onboardingFinishSetup,
-          style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.w800),
+          style: untisThemeTextStyle(
+            context,
+            display: true,
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         style: FilledButton.styleFrom(
           minimumSize: const Size(double.infinity, 58),
@@ -2462,7 +3009,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontWeight: FontWeight.w700,
                     fontSize: 14.5,
                     color: colors.onSurface,
@@ -2471,7 +3019,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(height: 2),
                 Text(
                   desc,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontSize: 12.5,
                     color: colors.onSurfaceVariant,
                     height: 1.4,
@@ -2521,7 +3070,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
             title: Text(
               title,
-              style: GoogleFonts.outfit(
+              style: untisThemeTextStyle(
+                context,
                 fontWeight: FontWeight.w700,
                 fontSize: 14.2,
                 color: colors.onSurface,
@@ -2529,7 +3079,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
             subtitle: Text(
               subtitle,
-              style: GoogleFonts.outfit(
+              style: untisThemeTextStyle(
+                context,
                 fontSize: 12.4,
                 color: colors.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -2557,16 +3108,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ),
       child: Text(
         lbl ?? l.onboardingNext,
-        style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800),
+        style: untisThemeTextStyle(
+          context,
+          display: true,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
 
   Future<void> _searchSchool(String query) async {
     if (query.length < 3) return;
+    final l = AppL10n.of(appLocaleNotifier.value);
     setState(() {
       _isSearching = true;
       _searchResults = [];
+      _inlineError = null;
     });
 
     try {
@@ -2591,8 +3149,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               .toList();
           if (mounted) setState(() => _searchResults = list);
         }
+      } else if (mounted) {
+        _showError('${l.loginConnectionError} (${response.statusCode})');
       }
     } catch (_) {
+      if (mounted) _showError(l.loginConnectionError);
     } finally {
       if (mounted) setState(() => _isSearching = false);
     }
@@ -2657,99 +3218,230 @@ class _StepWrapper extends StatelessWidget {
     final mq = MediaQuery.of(context);
     final keyboardOpen = mq.viewInsets.bottom > 0;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = keyboardOpen || constraints.maxHeight < 680;
-          final iconSize = compact ? 52.0 : 68.0;
-          final iconInner = compact ? 24.0 : 30.0;
-          final titleSize = compact ? 22.0 : 28.0;
-          final subtitleSize = compact ? 13.0 : 14.5;
-          final topSpacing = compact ? 8.0 : 14.0;
-          final sectionSpacing = compact ? 10.0 : 16.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = keyboardOpen || constraints.maxHeight < 680;
+        final wide = constraints.maxWidth >= 720 && !keyboardOpen;
+        final reduceMotion = mq.disableAnimations;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+        Widget header({required bool editorial}) {
+          final iconSize = editorial ? 82.0 : (compact ? 52.0 : 64.0);
+          final titleSize = editorial ? 34.0 : (compact ? 22.0 : 27.0);
+          final textColor = editorial ? cs.onPrimaryContainer : cs.onSurface;
+          final secondaryText = editorial
+              ? cs.onPrimaryContainer.withValues(alpha: 0.74)
+              : cs.onSurfaceVariant;
+
+          final text = Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: editorial
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
             children: [
-              // Icon
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
+              Container(
                 width: iconSize,
                 height: iconSize,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [cs.primaryContainer, cs.secondaryContainer],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  color: editorial ? cs.surface.withValues(alpha: 0.55) : null,
+                  gradient: editorial
+                      ? null
+                      : LinearGradient(
+                          colors: [cs.primaryContainer, cs.secondaryContainer],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                  borderRadius: BorderRadius.circular(
+                    editorial ? 26 : iconSize / 3.2,
                   ),
-                  borderRadius: BorderRadius.circular(iconSize / 3.2),
-                  border: Border.all(color: cs.primary.withValues(alpha: 0.18)),
+                  border: Border.all(
+                    color: editorial
+                        ? cs.onPrimaryContainer.withValues(alpha: 0.2)
+                        : cs.primary.withValues(alpha: 0.18),
+                  ),
                 ),
                 child: Icon(
                   icon,
-                  size: iconInner,
-                  color: cs.onPrimaryContainer,
+                  size: editorial ? 38 : (compact ? 24 : 29),
+                  color: editorial ? cs.primary : cs.onPrimaryContainer,
                 ),
               ),
-              SizedBox(height: topSpacing),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  compact ? 10 : 13,
-                  16,
-                  compact ? 12 : 15,
+              SizedBox(height: editorial ? 28 : (compact ? 8 : 12)),
+              Text(
+                title,
+                style: untisThemeTextStyle(
+                  context,
+                  display: true,
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: editorial ? -1.1 : -0.5,
+                  color: textColor,
+                  height: 1.02,
                 ),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.18),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.outfit(
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        color: cs.onSurface,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: compact ? 4 : 6),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.outfit(
-                        fontSize: subtitleSize,
-                        fontWeight: FontWeight.w500,
-                        color: cs.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+                textAlign: editorial ? TextAlign.start : TextAlign.center,
               ),
-              SizedBox(height: sectionSpacing),
-              // Content
-              Expanded(child: content),
-              if (footer != null) ...[
-                SizedBox(height: compact ? 6 : 10),
-                AnimatedPadding(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  padding: EdgeInsets.only(bottom: keyboardOpen ? 4 : 0),
-                  child: footer!,
+              SizedBox(height: editorial ? 12 : 5),
+              Text(
+                subtitle,
+                style: untisThemeTextStyle(
+                  context,
+                  fontSize: editorial ? 16 : (compact ? 13 : 14.5),
+                  fontWeight: FontWeight.w500,
+                  color: secondaryText,
+                  height: 1.45,
                 ),
-              ],
+                textAlign: editorial ? TextAlign.start : TextAlign.center,
+              ),
             ],
           );
-        },
-      ),
+
+          if (!editorial) {
+            return Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(
+                16,
+                compact ? 10 : 13,
+                16,
+                compact ? 12 : 15,
+              ),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.18),
+                ),
+              ),
+              child: text,
+            );
+          }
+
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [cs.primaryContainer, cs.secondaryContainer],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Positioned(
+                    right: -64,
+                    top: -52,
+                    child: Container(
+                      width: 190,
+                      height: 190,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: cs.tertiary.withValues(alpha: 0.16),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: -42,
+                    bottom: -70,
+                    child: Transform.rotate(
+                      angle: -0.18,
+                      child: Container(
+                        width: 180,
+                        height: 130,
+                        decoration: BoxDecoration(
+                          color: cs.surface.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(36),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Align(alignment: Alignment.centerLeft, child: text),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        Widget form() => Column(
+          children: [
+            Expanded(child: content),
+            if (footer != null) ...[
+              SizedBox(height: compact ? 6 : 12),
+              AnimatedPadding(
+                duration: reduceMotion
+                    ? Duration.zero
+                    : const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.only(bottom: keyboardOpen ? 4 : 0),
+                child: footer!,
+              ),
+            ],
+          ],
+        );
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1180),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                wide ? 28 : 20,
+                8,
+                wide ? 28 : 20,
+                20,
+              ),
+              child: wide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 4,
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0, end: 1),
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : const Duration(milliseconds: 420),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) =>
+                                Transform.translate(
+                                  offset: Offset(-18 * (1 - value), 0),
+                                  child: Opacity(opacity: value, child: child),
+                                ),
+                            child: header(editorial: true),
+                          ),
+                        ),
+                        const SizedBox(width: 22),
+                        Expanded(
+                          flex: 6,
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: cs.surfaceContainerLow.withValues(
+                                alpha: 0.82,
+                              ),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: form(),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        header(editorial: false),
+                        SizedBox(height: compact ? 10 : 14),
+                        Expanded(child: form()),
+                      ],
+                    ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

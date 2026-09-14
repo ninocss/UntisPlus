@@ -657,6 +657,9 @@ String _providerAwareMissingApiKeyMessage(AppL10n l, String provider) {
   return '${l.aiNoApiKey} (${_localizedAiProviderLabel(l, provider)})';
 }
 
+const int kCurrentOnboardingVersion = 2;
+const int kCurrentTutorialVersion = 2;
+
 final ValueNotifier<String> appLocaleNotifier = ValueNotifier('de');
 final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
   ThemeMode.system,
@@ -696,6 +699,9 @@ final ValueNotifier<bool> pendingAssistantOpenNotifier = ValueNotifier(false);
 final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(
   null,
 );
+
+/// Incremented when the user explicitly starts the tutorial from settings.
+final ValueNotifier<int> tutorialReplayRequestNotifier = ValueNotifier(0);
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);

@@ -95,6 +95,45 @@ class _ChatSession {
   );
 }
 
+class _AiProposedAction {
+  const _AiProposedAction(this.data);
+
+  final Map<String, dynamic> data;
+  String get kind => data['kind']?.toString() ?? '';
+  String get id => data['id']?.toString() ?? '';
+  String get subject => data['subject']?.toString().trim() ?? '';
+  String get text =>
+      (data['text'] ?? data['description'] ?? data['title'] ?? '')
+          .toString()
+          .trim();
+  int? get date => int.tryParse(
+    (data['date'] ?? data['dueDate'] ?? data['examDate'] ?? '')
+        .toString()
+        .replaceAll('-', ''),
+  );
+
+  String get summary => switch (kind) {
+    'create_homework' => 'Hausaufgabe erstellen: $subject · $text',
+    'update_homework' => 'Hausaufgabe bearbeiten: $subject · $text',
+    'delete_homework' => 'Hausaufgabe löschen: $id',
+    'complete_homework' => 'Hausaufgabe erledigt markieren: $id',
+    'create_exam' => 'Prüfung erstellen: $subject · $text',
+    'update_exam' => 'Prüfung bearbeiten: $subject · $text',
+    'delete_exam' => 'Prüfung löschen: $id',
+    _ => 'Unbekannte Aktion',
+  };
+
+  bool get isSupported => const {
+    'create_homework',
+    'update_homework',
+    'delete_homework',
+    'complete_homework',
+    'create_exam',
+    'update_exam',
+    'delete_exam',
+  }.contains(kind);
+}
+
 class _AiAssistantPageState extends State<AiAssistantPage>
     with TickerProviderStateMixin {
   final _inputController = TextEditingController();
@@ -123,6 +162,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   bool _thinking = false;
   bool _chatMode = false;
   final List<Map<String, String>> _chatMessages = [];
+  final List<AiChatAttachment> _attachments = [];
   final List<_ChatSession> _chatHistory = [];
   String? _currentChatId;
 
@@ -572,7 +612,12 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       now.day,
     ).subtract(Duration(days: now.weekday - 1));
 
-    Map<int, List<dynamic>> weekData = _emptyWeekData();
+    // The timetable tab is the source of truth while it is alive. Reading its
+    // published snapshot avoids an outdated SharedPreferences cache claiming
+    // that a currently loaded school day is free.
+    Map<int, List<dynamic>> weekData = currentWeekDataNotifier.value.isEmpty
+        ? _emptyWeekData()
+        : Map<int, List<dynamic>>.from(currentWeekDataNotifier.value);
     List<Map<String, dynamic>> exams = [];
 
     if (demoModeNotifier.value) {
@@ -580,7 +625,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
         monday,
         locale: appLocaleNotifier.value,
       );
-      exams = DemoModeService.demoExams();
+      exams = DemoModeService.demoExams(locale: appLocaleNotifier.value);
     } else {
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -822,7 +867,8 @@ $personaInstruction
 Antworte natürlich und freundlich im Chat. Du hast Zugriff auf den Stundenplan und die Prüfungen des Nutzers oben.
 Verwende Markdown für eine schöne Formatierung (Fettdruck, Listen, etc.).
 WICHTIG: Antworte in natürlicher Sprache, NIEMALS in JSON-Format, außer du wirst explizit darum gebeten.
-Halte deine Antworten eher kurz, aber präzise.''';
+Halte deine Antworten eher kurz, aber präzise. Beginne nicht mit einer Selbstvorstellung.
+Bei einer gewünschten lokalen Änderung schreibst du nach deiner normalen Antwort einen separaten Block im exakten Format ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam","id":"optional id","subject":"Fach","text":"Text","dueDate":"YYYYMMDD"} ```. Schlage nur sichere, konkrete Änderungen vor; sie werden erst nach ausdrücklicher Bestätigung ausgeführt.''';
   }
 
   Future<String> _requestProviderResponse(
@@ -1084,7 +1130,9 @@ Halte deine Antworten eher kurz, aber präzise.''';
     final l = AppL10n.of(appLocaleNotifier.value);
     final index = date.difference(_currentMonday).inDays;
     final dateLabel = DateFormat('dd.MM.yyyy').format(date);
-    if (index < 0 || index > 4) return '$dateLabel: ${l.noLesson}';
+    if (index < 0 || index > 4) {
+      return '$dateLabel: Stundenplandaten für diesen Tag sind noch nicht geladen.';
+    }
 
     final lessons = _weekData[index] ?? const [];
     if (lessons.isEmpty) return '$dateLabel: ${l.noLesson}';
@@ -1107,6 +1155,46 @@ Halte deine Antworten eher kurz, aber präzise.''';
     return buf.toString().trimRight();
   }
 
+  String? _deterministicScheduleReply(String query) {
+    final normalized = query.toLowerCase();
+    final asksSchedule = RegExp(
+      r'unterricht|stunde|stundenplan|schule|lesson|school|class',
+    ).hasMatch(normalized);
+    if (!asksSchedule) return null;
+    final asksTomorrow = RegExp(
+      r'\bmorgen\b|\btomorrow\b',
+    ).hasMatch(normalized);
+    final asksToday = RegExp(r'\bheute\b|\btoday\b').hasMatch(normalized);
+    if (!asksTomorrow && !asksToday) return null;
+    final date = DateTime.now().add(
+      asksTomorrow ? const Duration(days: 1) : Duration.zero,
+    );
+    final index = date.difference(_currentMonday).inDays;
+    final label = DateFormat(
+      'EEEE, dd.MM.',
+      _icuLocale(appLocaleNotifier.value),
+    ).format(date);
+    if (index < 0 || index > 4) {
+      return 'Für $label ist die passende Stundenplanwoche noch nicht geladen. Ich rate hier nicht.';
+    }
+    final lessons = (_weekData[index] ?? const <dynamic>[])
+        .whereType<Map>()
+        .where(
+          (lesson) => lesson['code']?.toString().toLowerCase() != 'cancelled',
+        )
+        .toList(growable: false);
+    if (lessons.isEmpty)
+      return 'Für $label ist keine nicht abgesagte Stunde eingetragen.';
+    final formatted = lessons
+        .map((lesson) {
+          final subject =
+              lesson['_subjectLong'] ?? lesson['_subjectShort'] ?? '?';
+          return '${_formatUntisTime(lesson['startTime'].toString())} $subject';
+        })
+        .join(', ');
+    return 'Ja. Du hast am $label: $formatted.';
+  }
+
   Object? _jsonSafeValue(Object? value) {
     if (value == null || value is String || value is num || value is bool) {
       return value;
@@ -1124,9 +1212,10 @@ Halte deine Antworten eher kurz, aber präzise.''';
   }
 
   String _currentLessonSummary() {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final now = DateTime.now();
     final todayIdx = now.weekday - 1;
-    if (todayIdx < 0 || todayIdx > 4) return 'Keine Schule heute.';
+    if (todayIdx < 0 || todayIdx > 4) return l.aiNoSchoolToday;
     final lessons = _weekData[todayIdx] ?? [];
     final nowMin = now.hour * 100 + now.minute;
     for (final lsn in lessons.whereType<Map>()) {
@@ -1135,17 +1224,22 @@ Halte deine Antworten eher kurz, aber präzise.''';
       if (nowMin >= start && nowMin <= end) {
         final subj = lsn['_subjectLong'] ?? lsn['_subjectShort'] ?? '?';
         final room = lsn['_room'] ?? '-';
-        return 'Aktuelle Stunde: $subj in Raum $room (bis ${_formatUntisTime(end.toString())})';
+        return l.aiCurrentLessonSummary(
+          subj.toString(),
+          room.toString(),
+          _formatUntisTime(end.toString()),
+        );
       }
     }
-    return 'Gerade findet kein Unterricht statt.';
+    return l.aiNoCurrentLesson;
   }
 
   String _nextLessonSummary() {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final now = DateTime.now();
     final todayIdx = now.weekday - 1;
     if (todayIdx < 0 || todayIdx > 4) {
-      return 'Nächste Stunde: Keine (heute ist keine Schule).';
+      return l.aiNoNextLessonSchool;
     }
     final lessons = _weekData[todayIdx] ?? [];
     final nowMin = now.hour * 100 + now.minute;
@@ -1154,19 +1248,26 @@ Halte deine Antworten eher kurz, aber präzise.''';
       if (start > nowMin) {
         final subj = lsn['_subjectLong'] ?? lsn['_subjectShort'] ?? '?';
         final room = lsn['_room'] ?? '-';
-        return 'Nächste Stunde: $subj in Raum $room um ${_formatUntisTime(start.toString())}';
+        return l.aiNextLessonSummary(
+          subj.toString(),
+          room.toString(),
+          _formatUntisTime(start.toString()),
+        );
       }
     }
-    return 'Keine weiteren Stunden heute.';
+    return l.aiNoMoreLessons;
   }
 
   String _formatExamsForAi() {
     final l = AppL10n.of(appLocaleNotifier.value);
-    if (_exams.isEmpty) return l.examsNoneEntered;
+    final relevantExams = _exams
+        .where(_examMatchesTimetable)
+        .toList(growable: false);
+    if (relevantExams.isEmpty) return l.examsNoneEntered;
     final buf = StringBuffer();
-    for (final ex in _exams) {
+    for (final ex in relevantExams) {
       final subject = ex['subject'] ?? ex['subjectName'] ?? '?';
-      final type = ex['type'] ?? 'Klausur';
+      final type = ex['type'] ?? l.aiDefaultExamType;
       final dateRaw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
           .toString();
       String dateStr = dateRaw;
@@ -1180,6 +1281,33 @@ Halte deine Antworten eher kurz, aber präzise.''';
       buf.writeln();
     }
     return buf.toString();
+  }
+
+  bool _examMatchesTimetable(Map<String, dynamic> exam) {
+    // Personal/API exams are already scoped to the active student. Imported
+    // plans, however, must prove a teacher or class match before entering the
+    // assistant context.
+    if (exam['_source'] == 'api' || exam['_source'] == 'custom') return true;
+    String normalized(Object? value) =>
+        value?.toString().toLowerCase().replaceAll(
+          RegExp(r'[^a-z0-9äöüß]'),
+          '',
+        ) ??
+        '';
+    final teacher = normalized(
+      exam['teacher'] ?? exam['teacherName'] ?? exam['lehrer'],
+    );
+    final className = normalized(
+      exam['class'] ?? exam['className'] ?? exam['klasse'],
+    );
+    if (teacher.isEmpty && className.isEmpty) return false;
+    final lessons = _weekData.values.expand((day) => day).whereType<Map>();
+    return lessons.any((lesson) {
+      final lessonTeacher = normalized(lesson['_teacher']);
+      final lessonClass = normalized(lesson['_classNames']);
+      return (teacher.isNotEmpty && lessonTeacher.contains(teacher)) ||
+          (className.isNotEmpty && lessonClass.contains(className));
+    });
   }
 
   void _scrollToBottom() {
@@ -1201,6 +1329,226 @@ Halte deine Antworten eher kurz, aber präzise.''';
       const Duration(milliseconds: 48),
       _flushStreamingText,
     );
+  }
+
+  String _attachmentMimeType(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    return switch (ext) {
+      'png' => 'image/png',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      'pdf' => 'application/pdf',
+      'csv' => 'text/csv',
+      'json' => 'application/json',
+      'md' => 'text/markdown',
+      _ => 'text/plain',
+    };
+  }
+
+  Future<void> _pickAssistantAttachment() async {
+    if (_thinking || _attachments.length >= 3) return;
+    final picked = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const [
+        'pdf',
+        'png',
+        'jpg',
+        'jpeg',
+        'webp',
+        'gif',
+        'txt',
+        'md',
+        'csv',
+        'json',
+      ],
+    );
+    final file = picked.singleOrNull;
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) return;
+    if (bytes.length > 8 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Anhänge dürfen höchstens 8 MB groß sein.'),
+          ),
+        );
+      }
+      return;
+    }
+    final mimeType = _attachmentMimeType(file.name);
+    final textLike =
+        mimeType.startsWith('text/') || mimeType == 'application/json';
+    final excerpt = textLike
+        ? utf8
+              .decode(bytes, allowMalformed: true)
+              .trim()
+              .substring(
+                0,
+                math.min(
+                  24000,
+                  utf8.decode(bytes, allowMalformed: true).trim().length,
+                ),
+              )
+        : '';
+    setState(() {
+      _attachments.add(
+        AiChatAttachment(
+          name: file.name,
+          mimeType: mimeType,
+          bytes: bytes,
+          textExcerpt: excerpt,
+        ),
+      );
+    });
+  }
+
+  List<_AiProposedAction> _actionsFromReply(String reply) {
+    final actions = <_AiProposedAction>[];
+    final blocks = RegExp(
+      r'```untis-action\s*([\s\S]*?)```',
+      multiLine: true,
+    ).allMatches(reply);
+    for (final block in blocks) {
+      try {
+        final decoded = jsonDecode(block.group(1)!.trim());
+        final values = decoded is List ? decoded : [decoded];
+        for (final value in values.whereType<Map>()) {
+          final action = _AiProposedAction(Map<String, dynamic>.from(value));
+          if (action.isSupported) actions.add(action);
+        }
+      } catch (_) {}
+    }
+    return actions;
+  }
+
+  Future<void> _applyActions(List<_AiProposedAction> actions) async {
+    for (final action in actions) {
+      final date = action.date;
+      switch (action.kind) {
+        case 'create_homework':
+        case 'update_homework':
+          if (action.subject.isEmpty || action.text.isEmpty || date == null)
+            continue;
+          final current = List<Map<String, dynamic>>.from(
+            customHomeworkNotifier.value,
+          );
+          final index = current.indexWhere(
+            (item) => item['id']?.toString() == action.id,
+          );
+          final item = <String, dynamic>{
+            'id': action.id.isEmpty
+                ? 'hw_${DateTime.now().millisecondsSinceEpoch}'
+                : action.id,
+            'subject': action.subject,
+            'text': action.text,
+            'dueDate': date,
+            'isDone': index >= 0 ? current[index]['isDone'] == true : false,
+            '_custom': true,
+          };
+          if (index >= 0)
+            current[index] = item;
+          else
+            current.add(item);
+          await saveCustomHomework(current);
+          break;
+        case 'delete_homework':
+          await saveCustomHomework(
+            customHomeworkNotifier.value
+                .where((item) => item['id']?.toString() != action.id)
+                .toList(growable: false),
+          );
+          break;
+        case 'complete_homework':
+          final current = List<Map<String, dynamic>>.from(
+            customHomeworkNotifier.value,
+          );
+          final index = current.indexWhere(
+            (item) => item['id']?.toString() == action.id,
+          );
+          if (index >= 0) {
+            current[index] = {...current[index], 'isDone': true};
+            await saveCustomHomework(current);
+          }
+          break;
+        case 'create_exam':
+        case 'update_exam':
+          if (action.subject.isEmpty || date == null) continue;
+          final current = List<Map<String, dynamic>>.from(
+            customExamsNotifier.value,
+          );
+          final index = current.indexWhere(
+            (item) => item['id']?.toString() == action.id,
+          );
+          final item = <String, dynamic>{
+            'id': action.id.isEmpty
+                ? 'exam_${DateTime.now().millisecondsSinceEpoch}'
+                : action.id,
+            'subject': action.subject,
+            'date': date,
+            'description': action.text,
+            'examType': action.data['examType']?.toString() ?? '',
+            '_custom': true,
+          };
+          if (index >= 0)
+            current[index] = item;
+          else
+            current.add(item);
+          await saveCustomExams(current);
+          break;
+        case 'delete_exam':
+          await saveCustomExams(
+            customExamsNotifier.value
+                .where((item) => item['id']?.toString() != action.id)
+                .toList(growable: false),
+          );
+          break;
+      }
+    }
+  }
+
+  Future<void> _confirmActions(List<_AiProposedAction> actions) async {
+    if (!mounted || actions.isEmpty) return;
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Änderungen bestätigen'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Der Assistent hat folgende lokale Änderungen vorgeschlagen:',
+            ),
+            const SizedBox(height: 12),
+            ...actions.map(
+              (action) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text('• ${action.summary}'),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Übernehmen'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true) return;
+    await _applyActions(actions);
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Änderungen übernommen.')));
+    }
   }
 
   void _flushStreamingText() {
@@ -1258,9 +1606,26 @@ Halte deine Antworten eher kurz, aber präzise.''';
       return;
     }
 
+    final attachments = List<AiChatAttachment>.from(_attachments);
+    if (isLocalProvider &&
+        attachments.any((attachment) => !attachment.isText)) {
+      setState(() {
+        _chatMessages.add({
+          'role': 'assistant',
+          'content':
+              'Dieses lokale Modell kann nur Textdateien lesen. Nutze für Bilder oder PDFs einen passenden Remote-Anbieter.',
+        });
+      });
+      return;
+    }
     _inputController.clear();
     setState(() {
-      _chatMessages.add({'role': 'user', 'content': text});
+      _chatMessages.add({
+        'role': 'user',
+        'content': attachments.isEmpty
+            ? text
+            : '$text\n\n📎 ${attachments.map((attachment) => attachment.name).join(', ')}',
+      });
       _thinking = true;
     });
     _hapticAction();
@@ -1281,6 +1646,18 @@ Halte deine Antworten eher kurz, aber präzise.''';
       _saveChatHistory();
     }
     _scrollToBottom();
+
+    final factualReply = _deterministicScheduleReply(text);
+    if (factualReply != null) {
+      setState(() {
+        _chatMessages.add({'role': 'assistant', 'content': factualReply});
+        _thinking = false;
+        _attachments.clear();
+      });
+      await _saveChatHistory();
+      _scrollToBottom();
+      return;
+    }
 
     AIProvider? aiProviderInstance;
     try {
@@ -1310,6 +1687,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
         systemPrompt: systemPrompt,
         history: _chatMessages.sublist(0, _chatMessages.length - 1),
         model: model,
+        attachments: attachments,
       );
 
       await for (final chunk in stream) {
@@ -1317,6 +1695,21 @@ Halte deine Antworten eher kurz, aber präzise.''';
         _queueStreamingText(chunk);
       }
       _flushStreamingText();
+      final rawReply = _chatMessages.isNotEmpty
+          ? _chatMessages.last['content'] ?? ''
+          : '';
+      final actions = _actionsFromReply(rawReply);
+      if (actions.isNotEmpty) {
+        setState(() {
+          _chatMessages.last['content'] = rawReply
+              .replaceAll(
+                RegExp(r'```untis-action\s*[\s\S]*?```', multiLine: true),
+                '',
+              )
+              .trim();
+        });
+        await _confirmActions(actions);
+      }
       _saveChatHistory();
     } catch (e) {
       _flushStreamingText();
@@ -1341,7 +1734,10 @@ Halte deine Antworten eher kurz, aber präzise.''';
       _flushStreamingText();
       await aiProviderInstance?.dispose();
       if (mounted) {
-        setState(() => _thinking = false);
+        setState(() {
+          _thinking = false;
+          _attachments.clear();
+        });
         _hapticSelection();
       }
       _scrollToBottom();
@@ -1942,7 +2338,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
       l.aiStepAlmostDone,
     ];
     final text = isChat
-        ? "KI schreibt..."
+        ? l.aiTyping
         : messages[_typingHintIndex % messages.length];
 
     return Container(
@@ -2004,71 +2400,108 @@ Halte deine Antworten eher kurz, aber präzise.''';
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _inputController,
-              focusNode: _promptFocusNode,
-              textInputAction: TextInputAction.search,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _send(),
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: isFocused ? FontWeight.w700 : FontWeight.w600,
-                color: cs.onSurface,
-              ),
-              decoration: InputDecoration(
-                hintText: _chatMode ? l.aiInputHint : l.aiSearchHintPlaceholder,
-                hintStyle: GoogleFonts.outfit(color: cs.onSurfaceVariant),
-                filled: true,
-                fillColor: Colors.transparent,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-          if (_inputController.text.isNotEmpty) ...[
-            IconButton(
-              onPressed: _thinking
-                  ? null
-                  : () {
-                      setState(() => _inputController.clear());
-                    },
-              icon: Icon(Icons.clear_rounded, color: cs.onSurfaceVariant),
-              tooltip: l.aiClearInput,
-            ),
-          ],
-          const SizedBox(width: 8),
-          FilledButton(
-            onPressed: _thinking ? null : _send,
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              shape: _legacyButtonShape(context, 18),
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _thinking
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: cs.onPrimary,
+          if (_attachments.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: _attachments.indexed
+                    .map(
+                      (entry) => InputChip(
+                        avatar: const Icon(Icons.attach_file_rounded, size: 16),
+                        label: Text(entry.$2.name),
+                        onDeleted: _thinking
+                            ? null
+                            : () => setState(
+                                () => _attachments.removeAt(entry.$1),
+                              ),
                       ),
                     )
-                  : Icon(
-                      _chatMode ? Icons.send_rounded : Icons.search_rounded,
-                      key: ValueKey<bool>(isFocused ^ _chatMode),
-                    ),
+                    .toList(growable: false),
+              ),
             ),
+          Row(
+            children: [
+              const SizedBox(width: 8),
+              if (_chatMode)
+                IconButton(
+                  onPressed: _thinking ? null : _pickAssistantAttachment,
+                  icon: const Icon(Icons.attach_file_rounded),
+                  tooltip: 'Datei anhängen',
+                ),
+              Expanded(
+                child: TextField(
+                  controller: _inputController,
+                  focusNode: _promptFocusNode,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _send(),
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: isFocused ? FontWeight.w700 : FontWeight.w600,
+                    color: cs.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: _chatMode
+                        ? l.aiInputHint
+                        : l.aiSearchHintPlaceholder,
+                    hintStyle: GoogleFonts.outfit(color: cs.onSurfaceVariant),
+                    filled: true,
+                    fillColor: Colors.transparent,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              if (_inputController.text.isNotEmpty) ...[
+                IconButton(
+                  onPressed: _thinking
+                      ? null
+                      : () {
+                          setState(() => _inputController.clear());
+                        },
+                  icon: Icon(Icons.clear_rounded, color: cs.onSurfaceVariant),
+                  tooltip: l.aiClearInput,
+                ),
+              ],
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: _thinking ? null : _send,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  shape: _legacyButtonShape(context, 18),
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _thinking
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: cs.onPrimary,
+                          ),
+                        )
+                      : Icon(
+                          _chatMode ? Icons.send_rounded : Icons.search_rounded,
+                          key: ValueKey<bool>(isFocused ^ _chatMode),
+                        ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -2453,7 +2886,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
           ),
           const SizedBox(height: 28),
           Text(
-            _chatMode ? "Dein KI-Chat" : l.aiEmptyPromptTitle,
+            _chatMode ? l.aiChatTitle : l.aiEmptyPromptTitle,
             style: GoogleFonts.outfit(
               fontWeight: FontWeight.w900,
               fontSize: 28,
@@ -2463,9 +2896,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
           ),
           const SizedBox(height: 10),
           Text(
-            _chatMode
-                ? "Stelle Fragen zu deinem Schulalltag oder chatte einfach so mit der KI."
-                : l.aiEmptyPromptSubtitle,
+            _chatMode ? l.aiChatSubtitle : l.aiEmptyPromptSubtitle,
             style: GoogleFonts.outfit(
               fontSize: 16,
               color: cs.onSurfaceVariant,
@@ -2476,7 +2907,7 @@ Halte deine Antworten eher kurz, aber präzise.''';
           const SizedBox(height: 40),
           if (_chatMode) ...[
             Text(
-              "Probiere es aus:",
+              l.aiTryIt,
               style: GoogleFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
@@ -2485,21 +2916,16 @@ Halte deine Antworten eher kurz, aber präzise.''';
               ),
             ),
             const SizedBox(height: 16),
-            _buildChatSuggestion(
-              cs,
-              "Wie kann ich meine Noten verbessern?",
-              Icons.trending_up_rounded,
-            ),
-            _buildChatSuggestion(
-              cs,
-              "Erkläre mir die Relativitätstheorie einfach.",
-              Icons.lightbulb_outline_rounded,
-            ),
-            _buildChatSuggestion(
-              cs,
-              "Schreibe eine Entschuldigung für Sport.",
-              Icons.edit_note_rounded,
-            ),
+            for (final suggestion in l.aiChatSuggestions.indexed)
+              _buildChatSuggestion(
+                cs,
+                suggestion.$2,
+                const [
+                  Icons.trending_up_rounded,
+                  Icons.lightbulb_outline_rounded,
+                  Icons.edit_note_rounded,
+                ][suggestion.$1],
+              ),
           ],
         ],
       ),
@@ -2634,7 +3060,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   Widget? _currentDrawer;
 
-  List<int> get _tutorialTargets => [0, 1, 2, 3];
+  final Map<int, GlobalKey> _tutorialNavKeys = {
+    0: GlobalKey(debugLabel: 'tutorial-timetable'),
+    1: GlobalKey(debugLabel: 'tutorial-exams'),
+    2: GlobalKey(debugLabel: 'tutorial-info'),
+    3: GlobalKey(debugLabel: 'tutorial-settings'),
+    4: GlobalKey(debugLabel: 'tutorial-ai'),
+  };
+
+  List<int> get _tutorialTargets => const [0, 1, 2, 4, 3];
 
   @override
   void initState() {
@@ -2643,6 +3077,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _handleNotificationAction,
     );
     pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
+    tutorialReplayRequestNotifier.addListener(_startTutorial);
     if (pendingAssistantOpenNotifier.value) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _openAssistantFromNative(),
@@ -2656,14 +3091,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       });
     }
     if (widget.showTutorialOnStart) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() {
-          _showTutorial = true;
-          _tutorialStep = 0;
-          _selectedIndex = 0;
-        });
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _startTutorial());
     } else if (showChangelogOnStartup) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
@@ -2716,9 +3144,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     _onNavTap(4);
   }
 
+  void _startTutorial() {
+    if (!mounted) return;
+    setState(() {
+      _showTutorial = true;
+      _tutorialStep = 0;
+      _selectedIndex = _tutorialTargets.first;
+    });
+  }
+
   Future<void> _finishTutorial() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('tutorialCompleted', true);
+    await prefs.setInt('tutorialVersionCompleted', kCurrentTutorialVersion);
     if (!mounted) return;
     setState(() {
       _showTutorial = false;
@@ -2737,21 +3175,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return _tutorialTargets[_tutorialStep] == index;
   }
 
+  void _nextTutorialStep() {
+    if (_tutorialStep >= _tutorialTargets.length - 1) {
+      unawaited(_finishTutorial());
+      return;
+    }
+    setState(() {
+      _tutorialStep += 1;
+      _selectedIndex = _tutorialTargets[_tutorialStep];
+    });
+  }
+
+  void _previousTutorialStep() {
+    if (_tutorialStep <= 0) return;
+    setState(() {
+      _tutorialStep -= 1;
+      _selectedIndex = _tutorialTargets[_tutorialStep];
+    });
+  }
+
   void _onNavTap(int index) {
     if (_selectedIndex != index) {
       setState(() => _selectedIndex = index);
     }
-
-    if (!_showTutorial) return;
-    if (_tutorialStep >= _tutorialTargets.length) return;
-    if (_tutorialTargets[_tutorialStep] != index) return;
-
-    if (_tutorialStep == _tutorialTargets.length - 1) {
-      setState(() => _tutorialStep = _tutorialTargets.length);
-      return;
-    }
-
-    setState(() => _tutorialStep += 1);
   }
 
   String _tutorialTitle(AppL10n l) {
@@ -2763,6 +3209,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case 2:
         return l.tutorialStepInfoTitle;
       case 3:
+        return l.tutorialStepAiTitle;
+      case 4:
         return l.tutorialStepSettingsTitle;
       default:
         return l.tutorialStepFinishTitle;
@@ -2778,6 +3226,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case 2:
         return l.tutorialStepInfoDesc;
       case 3:
+        return l.tutorialStepAiDesc;
+      case 4:
         return l.tutorialStepSettingsDesc;
       default:
         return l.tutorialStepFinishDesc;
@@ -2855,6 +3305,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void dispose() {
     _notificationActionSub?.cancel();
     pendingAssistantOpenNotifier.removeListener(_openAssistantFromNative);
+    tutorialReplayRequestNotifier.removeListener(_startTutorial);
     super.dispose();
   }
 
@@ -2877,37 +3328,52 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               if (isTablet)
                 SafeArea(
                   child: NavigationRail(
-                      selectedIndex: _selectedIndex,
-                      onDestinationSelected: _onNavTap,
-                      labelType: NavigationRailLabelType.selected,
-                      groupAlignment: 0,
-                      destinations: [
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.watch_later_outlined),
-                          selectedIcon: const Icon(Icons.watch_later_rounded),
-                          label: Text(l.timetableTitle),
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: _onNavTap,
+                    labelType: NavigationRailLabelType.selected,
+                    groupAlignment: 0,
+                    destinations: [
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.watch_later_outlined),
+                        selectedIcon: KeyedSubtree(
+                          key: _tutorialNavKeys[0],
+                          child: const Icon(Icons.watch_later_rounded),
                         ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.event_note_outlined),
-                          selectedIcon: const Icon(Icons.event_note_rounded),
-                          label: Text(l.examsTitle),
+                        label: Text(l.timetableTitle),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.event_note_outlined),
+                        selectedIcon: KeyedSubtree(
+                          key: _tutorialNavKeys[1],
+                          child: const Icon(Icons.event_note_rounded),
                         ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.campaign_outlined),
-                          selectedIcon: const Icon(Icons.campaign_rounded),
-                          label: Text(l.navInfo),
+                        label: Text(l.examsTitle),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.campaign_outlined),
+                        selectedIcon: KeyedSubtree(
+                          key: _tutorialNavKeys[2],
+                          child: const Icon(Icons.campaign_rounded),
                         ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.settings_outlined),
-                          selectedIcon: const Icon(Icons.settings_rounded),
-                          label: Text(l.navMenu),
+                        label: Text(l.navInfo),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.settings_outlined),
+                        selectedIcon: KeyedSubtree(
+                          key: _tutorialNavKeys[3],
+                          child: const Icon(Icons.settings_rounded),
                         ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.auto_awesome_outlined),
-                          selectedIcon: const Icon(Icons.auto_awesome_rounded),
-                          label: Text(l.navAi),
+                        label: Text(l.navMenu),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        selectedIcon: KeyedSubtree(
+                          key: _tutorialNavKeys[4],
+                          child: const Icon(Icons.auto_awesome_rounded),
                         ),
-                      ],
+                        label: Text(l.navAi),
+                      ),
+                    ],
                   ),
                 ),
               Expanded(
@@ -2957,187 +3423,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               ),
             ),
           if (_showTutorial)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: mq.padding.bottom + 104,
-              child: TweenAnimationBuilder<double>(
+            Positioned.fill(
+              child: _TutorialSpotlightOverlay(
                 key: ValueKey(_tutorialStep),
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 380),
-                curve: _kSmoothBounce,
-                builder: (context, val, child) => Transform.translate(
-                  offset: Offset(0, 16 * (1 - val)),
-                  child: Opacity(opacity: val.clamp(0, 1), child: child),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: _withOptionalBackdropBlur(
-                      sigma: 22,
-                      child: const SizedBox.shrink(),
-                      childBuilder: (blur) => Container(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                        decoration: BoxDecoration(
-                          color: blur
-                              ? cs.surface.withValues(alpha: 0.75)
-                              : cs.surface.withValues(alpha: 0.97),
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: cs.primary.withValues(alpha: 0.22),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: cs.shadow.withValues(alpha: 0.18),
-                              blurRadius: 28,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header row
-                            Row(
-                              children: [
-                                Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    color: cs.primaryContainer.withValues(
-                                      alpha: 0.8,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    Icons.school_rounded,
-                                    size: 17,
-                                    color: cs.onPrimaryContainer,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    l.tutorialTitle,
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13.5,
-                                      color: cs.onSurface,
-                                    ),
-                                  ),
-                                ),
-                                // Step dots
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: List.generate(
-                                    _tutorialTargets.length,
-                                    (i) {
-                                      final active = i == _tutorialStep;
-                                      final done = i < _tutorialStep;
-                                      return AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 300,
-                                        ),
-                                        margin: const EdgeInsets.only(left: 4),
-                                        width: active ? 18 : 6,
-                                        height: 6,
-                                        decoration: BoxDecoration(
-                                          color: active
-                                              ? cs.primary
-                                              : done
-                                              ? cs.primary.withValues(
-                                                  alpha: 0.4,
-                                                )
-                                              : cs.surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(
-                                            99,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                SizedBox(
-                                  height: 30,
-                                  child: TextButton(
-                                    onPressed: _skipTutorial,
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                      ),
-                                      minimumSize: Size.zero,
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: Text(
-                                      l.tutorialSkip,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: cs.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            // Divider
-                            Container(
-                              height: 1,
-                              color: cs.outlineVariant.withValues(alpha: 0.35),
-                            ),
-                            const SizedBox(height: 10),
-                            // Step title
-                            Text(
-                              _tutorialTitle(l),
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15.5,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _tutorialDesc(l),
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                color: cs.onSurfaceVariant,
-                                height: 1.4,
-                              ),
-                            ),
-                            if (_tutorialStep >= _tutorialTargets.length) ...[
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton.icon(
-                                  onPressed: _finishTutorial,
-                                  icon: const Icon(
-                                    Icons.check_rounded,
-                                    size: 17,
-                                  ),
-                                  label: Text(
-                                    l.tutorialDone,
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  style: FilledButton.styleFrom(
-                                    minimumSize: const Size(0, 44),
-                                    shape: _legacyButtonShape(context, 14),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                targetKey: _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
+                step: _tutorialStep,
+                totalSteps: _tutorialTargets.length,
+                title: _tutorialTitle(l),
+                description: _tutorialDesc(l),
+                onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
+                onNext: _nextTutorialStep,
+                onSkip: _skipTutorial,
+                isLast: _tutorialStep == _tutorialTargets.length - 1,
               ),
             ),
         ],
@@ -3156,6 +3453,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         selectedIcon: Icons.settings_rounded,
         label: l.navMenu,
         pageIndex: 3,
+        tutorialKey: _tutorialNavKeys[3],
         tutorialHighlight: _isTutorialTarget(3),
       ),
       _NavItem(
@@ -3163,6 +3461,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         selectedIcon: Icons.campaign_rounded,
         label: l.navInfo,
         pageIndex: 2,
+        tutorialKey: _tutorialNavKeys[2],
         tutorialHighlight: _isTutorialTarget(2),
       ),
       _NavItem(
@@ -3170,6 +3469,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         selectedIcon: Icons.assignment_rounded,
         label: l.navExams,
         pageIndex: 1,
+        tutorialKey: _tutorialNavKeys[1],
         tutorialHighlight: _isTutorialTarget(1),
       ),
       _NavItem(
@@ -3177,6 +3477,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         selectedIcon: Icons.auto_awesome_rounded,
         label: l.navAi,
         pageIndex: 4,
+        tutorialKey: _tutorialNavKeys[4],
+        tutorialHighlight: _isTutorialTarget(4),
       ),
     ];
 
@@ -3227,79 +3529,82 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   ),
                 );
               },
-              child: _BouncyButton(
-                onTap: () => _onNavTap(0),
-                scaleTarget: 0.88,
-                child: ValueListenableBuilder<bool>(
-                  valueListenable: blurEnabledNotifier,
-                  builder: (context, blurEnabled, _) {
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 480),
-                      curve: _kSoftBounce,
-                      height: _ExpressiveNavBarState._barHeight,
-                      width: _ExpressiveNavBarState._barHeight,
-                      child: ThemedSurface(
-                        blur: !timetableSelected,
-                        color: timetableSelected
-                            ? cs.primary
-                            : cs.surfaceContainerHigh.withValues(
-                                alpha: blurEnabled ? 0.72 : 1,
-                              ),
-                        borderRadius: BorderRadius.circular(
-                          timetableSelected ? 22 : 18,
-                        ),
-                        border: Border.all(
-                          color: _isTutorialTarget(0)
-                              ? cs.tertiary
-                              : timetableSelected
-                              ? cs.primary.withValues(alpha: 0.38)
-                              : cs.outlineVariant.withValues(alpha: 0.30),
-                          width: _isTutorialTarget(0) ? 2.0 : 0.8,
-                        ),
-                        child: Center(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 420),
-                            switchInCurve: _kSmoothBounce,
-                            switchOutCurve: _kSoftBounce,
-                            transitionBuilder: (child, anim) {
-                              final slide = Tween<Offset>(
-                                begin: const Offset(0, 0.15),
-                                end: Offset.zero,
-                              ).animate(anim);
-                              return FadeTransition(
-                                opacity: anim,
-                                child: SlideTransition(
-                                  position: slide,
-                                  child: ScaleTransition(
-                                    scale: Tween<double>(
-                                      begin: 0.85,
-                                      end: 1.0,
-                                    ).animate(anim),
-                                    child: child,
-                                  ),
+              child: KeyedSubtree(
+                key: _tutorialNavKeys[0],
+                child: _BouncyButton(
+                  onTap: () => _onNavTap(0),
+                  scaleTarget: 0.88,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: blurEnabledNotifier,
+                    builder: (context, blurEnabled, _) {
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 480),
+                        curve: _kSoftBounce,
+                        height: _ExpressiveNavBarState._barHeight,
+                        width: _ExpressiveNavBarState._barHeight,
+                        child: ThemedSurface(
+                          blur: !timetableSelected,
+                          color: timetableSelected
+                              ? cs.primary
+                              : cs.surfaceContainerHigh.withValues(
+                                  alpha: blurEnabled ? 0.72 : 1,
                                 ),
-                              );
-                            },
-                            child: AnimatedRotation(
-                              turns: timetableSelected ? 0 : -0.03,
-                              duration: const Duration(milliseconds: 400),
-                              curve: _kSmoothBounce,
-                              child: Icon(
-                                timetableSelected
-                                    ? Icons.watch_later_rounded
-                                    : Icons.watch_later_outlined,
-                                key: ValueKey('timetable_$timetableSelected'),
-                                color: timetableSelected
-                                    ? cs.onPrimary
-                                    : cs.onSurfaceVariant,
-                                size: timetableSelected ? 34 : 28,
+                          borderRadius: BorderRadius.circular(
+                            timetableSelected ? 22 : 18,
+                          ),
+                          border: Border.all(
+                            color: _isTutorialTarget(0)
+                                ? cs.tertiary
+                                : timetableSelected
+                                ? cs.primary.withValues(alpha: 0.38)
+                                : cs.outlineVariant.withValues(alpha: 0.30),
+                            width: _isTutorialTarget(0) ? 2.0 : 0.8,
+                          ),
+                          child: Center(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 420),
+                              switchInCurve: _kSmoothBounce,
+                              switchOutCurve: _kSoftBounce,
+                              transitionBuilder: (child, anim) {
+                                final slide = Tween<Offset>(
+                                  begin: const Offset(0, 0.15),
+                                  end: Offset.zero,
+                                ).animate(anim);
+                                return FadeTransition(
+                                  opacity: anim,
+                                  child: SlideTransition(
+                                    position: slide,
+                                    child: ScaleTransition(
+                                      scale: Tween<double>(
+                                        begin: 0.85,
+                                        end: 1.0,
+                                      ).animate(anim),
+                                      child: child,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: AnimatedRotation(
+                                turns: timetableSelected ? 0 : -0.03,
+                                duration: const Duration(milliseconds: 400),
+                                curve: _kSmoothBounce,
+                                child: Icon(
+                                  timetableSelected
+                                      ? Icons.watch_later_rounded
+                                      : Icons.watch_later_outlined,
+                                  key: ValueKey('timetable_$timetableSelected'),
+                                  color: timetableSelected
+                                      ? cs.onPrimary
+                                      : cs.onSurfaceVariant,
+                                  size: timetableSelected ? 34 : 28,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -3314,19 +3619,314 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 // Material You Expressive Navigation Bar
 // ---------------------------------------------------------------------------
 
+class _TutorialSpotlightOverlay extends StatelessWidget {
+  final GlobalKey? targetKey;
+  final int step;
+  final int totalSteps;
+  final String title;
+  final String description;
+  final VoidCallback? onBack;
+  final VoidCallback onNext;
+  final VoidCallback onSkip;
+  final bool isLast;
+
+  const _TutorialSpotlightOverlay({
+    super.key,
+    required this.targetKey,
+    required this.step,
+    required this.totalSteps,
+    required this.title,
+    required this.description,
+    required this.onBack,
+    required this.onNext,
+    required this.onSkip,
+    required this.isLast,
+  });
+
+  Rect? _targetRect() {
+    final targetContext = targetKey?.currentContext;
+    final renderObject = targetContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return null;
+    return renderObject.localToGlobal(Offset.zero) & renderObject.size;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final l = AppL10n.of(appLocaleNotifier.value);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        final tablet = size.width >= 720;
+        final fallback = Rect.fromCenter(
+          center: tablet
+              ? Offset(44, size.height / 2)
+              : Offset(size.width / 2, size.height - 68),
+          width: tablet ? 56 : 68,
+          height: 56,
+        );
+        final bounds = Offset.zero & size;
+        final target = (_targetRect() ?? fallback).inflate(9).intersect(bounds);
+
+        final callout = _TutorialCallout(
+          step: step,
+          totalSteps: totalSteps,
+          title: title,
+          description: description,
+          onBack: onBack,
+          onNext: onNext,
+          onSkip: onSkip,
+          nextLabel: isLast ? l.tutorialDone : l.onboardingNext,
+        );
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _TutorialSpotlightPainter(
+                    target: target,
+                    scrim: Colors.black.withValues(alpha: 0.58),
+                    accent: cs.primary,
+                  ),
+                ),
+              ),
+            ),
+            if (tablet)
+              Positioned(
+                left: math.min(
+                  math.max(target.right + 18, 94),
+                  math.max(16, size.width - 406),
+                ),
+                top: (target.center.dy - 130).clamp(
+                  mq.padding.top + 16,
+                  math.max(mq.padding.top + 16, size.height - 310),
+                ),
+                width: math.min(380, size.width - 110),
+                child: callout,
+              )
+            else if (target.top > size.height * 0.48)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: size.height - target.top + 16,
+                child: callout,
+              )
+            else
+              Positioned(
+                left: 16,
+                right: 16,
+                top: target.bottom + 16,
+                child: callout,
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TutorialCallout extends StatelessWidget {
+  final int step;
+  final int totalSteps;
+  final String title;
+  final String description;
+  final VoidCallback? onBack;
+  final VoidCallback onNext;
+  final VoidCallback onSkip;
+  final String nextLabel;
+
+  const _TutorialCallout({
+    required this.step,
+    required this.totalSteps,
+    required this.title,
+    required this.description,
+    required this.onBack,
+    required this.onNext,
+    required this.onSkip,
+    required this.nextLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) => Transform.translate(
+        offset: Offset(0, 12 * (1 - value)),
+        child: Opacity(opacity: value, child: child),
+      ),
+      child: Material(
+        key: const ValueKey('tutorial-callout'),
+        color: cs.surface,
+        elevation: 10,
+        shadowColor: cs.shadow.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: cs.primary.withValues(alpha: 0.28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.tutorialTitle,
+                      style: untisThemeTextStyle(
+                        context,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: cs.primary,
+                      ),
+                    ),
+                  ),
+                  TextButton(onPressed: onSkip, child: Text(l.tutorialSkip)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: List.generate(totalSteps, (index) {
+                  return Expanded(
+                    child: AnimatedContainer(
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 240),
+                      height: 5,
+                      margin: EdgeInsets.only(
+                        right: index == totalSteps - 1 ? 0 : 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: index <= step
+                            ? cs.primary
+                            : cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: untisThemeTextStyle(
+                  context,
+                  display: true,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  height: 1.05,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                description,
+                style: untisThemeTextStyle(
+                  context,
+                  fontSize: 13.5,
+                  color: cs.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (onBack != null) ...[
+                    OutlinedButton(
+                      key: const ValueKey('tutorial-back'),
+                      onPressed: onBack,
+                      child: Icon(
+                        Icons.arrow_back_rounded,
+                        semanticLabel: MaterialLocalizations.of(
+                          context,
+                        ).backButtonTooltip,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const ValueKey('tutorial-next'),
+                      onPressed: onNext,
+                      icon: Icon(
+                        step == totalSteps - 1
+                            ? Icons.check_rounded
+                            : Icons.arrow_forward_rounded,
+                      ),
+                      label: Text(nextLabel),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TutorialSpotlightPainter extends CustomPainter {
+  final Rect target;
+  final Color scrim;
+  final Color accent;
+
+  const _TutorialSpotlightPainter({
+    required this.target,
+    required this.scrim,
+    required this.accent,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cutout = RRect.fromRectAndRadius(target, const Radius.circular(18));
+    final scrimPath = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(Offset.zero & size)
+      ..addRRect(cutout);
+    canvas.drawPath(scrimPath, Paint()..color = scrim);
+    canvas.drawRRect(
+      cutout,
+      Paint()
+        ..color = accent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TutorialSpotlightPainter oldDelegate) {
+    return oldDelegate.target != target ||
+        oldDelegate.scrim != scrim ||
+        oldDelegate.accent != accent;
+  }
+}
+
 class _NavItem {
   final IconData icon;
   final IconData selectedIcon;
   final String label;
   final int pageIndex;
+  final GlobalKey? tutorialKey;
   final bool tutorialHighlight;
-
 
   const _NavItem({
     required this.icon,
     required this.selectedIcon,
     required this.label,
     required this.pageIndex,
+    this.tutorialKey,
     this.tutorialHighlight = false,
   });
 }
@@ -3514,9 +4114,11 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     final cs = widget.colorScheme;
     final n = widget.items.length;
     final tokens = untisThemeTokensOf(context);
-    final navRadius = BorderRadius.circular(
-      tokens.id == AppThemeId.manga ? 2 : 35,
-    );
+    final navRadius = BorderRadius.circular(switch (tokens.id) {
+      AppThemeId.defaultTheme => 35,
+      AppThemeId.manga => 2,
+      _ => tokens.controlRadius + 8,
+    });
 
     return ThemedSurface(
       // Vivid's backdrop is deliberately animated. Blurring the dock over it
@@ -3524,7 +4126,13 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       // running, and is costly on weaker devices.
       blur: tokens.id != AppThemeId.vivid,
       borderRadius: navRadius,
-      color: cs.surfaceContainerHigh.withValues(alpha: 0.66),
+      color: cs.surfaceContainerHigh.withValues(
+        alpha:
+            tokens.id == AppThemeId.defaultTheme ||
+                tokens.id == AppThemeId.manga
+            ? 0.66
+            : tokens.navigationOpacity,
+      ),
       border: Border.all(
         color: tokens.id == AppThemeId.manga
             ? cs.outline
@@ -3580,7 +4188,11 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                         height: _pillHeight,
                         decoration: BoxDecoration(
                           color: cs.primary,
-                          borderRadius: BorderRadius.circular(_pillHeight / 2),
+                          borderRadius: BorderRadius.circular(
+                            tokens.id == AppThemeId.cyber
+                                ? tokens.controlRadius
+                                : _pillHeight / 2,
+                          ),
                         ),
                       ),
                     ),
@@ -3611,6 +4223,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     final wiggle = _iconWiggle[i];
 
     return GestureDetector(
+      key: item.tutorialKey,
       onTap: () {
         HapticFeedback.lightImpact();
         widget.onTap(item.pageIndex);
@@ -3665,7 +4278,8 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                       padding: const EdgeInsets.only(left: 6),
                       child: Text(
                         item.label,
-                        style: GoogleFonts.outfit(
+                        style: untisThemeTextStyle(
+                          context,
                           color: cs.onPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: 13.5,

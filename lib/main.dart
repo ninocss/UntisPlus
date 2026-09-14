@@ -134,15 +134,16 @@ void _registerNativeUiActions() {
 @pragma('vm:entry-point')
 void alarmRefreshDispatcher() async {
   WidgetsFlutterBinding.ensureInitialized();
+  var refreshed = false;
   try {
-    await updateUntisData();
+    refreshed = await updateUntisData();
   } catch (_) {
     // The native scheduler retains the last confirmed alarm on a failed sync.
   } finally {
     try {
       await const MethodChannel(
         'untisplus/alarm_refresh',
-      ).invokeMethod<void>('completed');
+      ).invokeMethod<void>('completed', {'refreshed': refreshed});
     } catch (_) {}
   }
 }
@@ -172,9 +173,47 @@ abstract class AIProvider {
     required String systemPrompt,
     required List<Map<String, String>> history,
     required String model,
+    List<AiChatAttachment> attachments = const [],
   });
 
   Future<void> dispose();
+}
+
+/// Decodes server-sent events independently of arbitrary HTTP chunk
+/// boundaries. Providers are free to split an event at any byte, so splitting
+/// every decoded network chunk on `\n` loses tokens in practice.
+Stream<String> _sseDataEvents(Stream<List<int>> bytes) async* {
+  await for (final line
+      in bytes.transform(utf8.decoder).transform(const LineSplitter())) {
+    final data = line.startsWith('data:')
+        ? line.substring(5).trim()
+        // Some OpenAI-compatible endpoints silently ignore `stream: true`
+        // and return one compact JSON response. Feed it through the same
+        // parser instead of leaving the chat bubble empty.
+        : line.trim().startsWith('{')
+        ? line.trim()
+        : '';
+    if (data.isNotEmpty) yield data;
+  }
+}
+
+/// Kept in memory only for the duration of the pending assistant message.
+class AiChatAttachment {
+  const AiChatAttachment({
+    required this.name,
+    required this.mimeType,
+    required this.bytes,
+    this.textExcerpt = '',
+  });
+
+  final String name;
+  final String mimeType;
+  final Uint8List bytes;
+  final String textExcerpt;
+
+  bool get isImage => mimeType.startsWith('image/');
+  bool get isPdf => mimeType == 'application/pdf';
+  bool get isText => textExcerpt.isNotEmpty;
 }
 
 /// Base class for remote API providers (Gemini, OpenAI, Mistral, Custom).
@@ -195,22 +234,48 @@ abstract class RemoteAIProvider implements AIProvider {
 
 /// Gemini / Google Generative AI provider.
 class GeminiProvider extends RemoteAIProvider {
-  GeminiProvider({required super.apiKey}) : super(useGeminiProtocol: true);
+  GeminiProvider({required super.apiKey, String? endpoint})
+    : _endpoint = endpoint,
+      super(useGeminiProtocol: true);
+
+  final String? _endpoint;
 
   @override
   Stream<String> streamResponse({
     required String systemPrompt,
     required List<Map<String, String>> history,
     required String model,
+    List<AiChatAttachment> attachments = const [],
   }) async* {
-    final contents = history.map((m) {
+    final lastUserIndex = history.lastIndexWhere(
+      (message) => message['role'] == 'user',
+    );
+    final contents = history.indexed.map((entry) {
+      final index = entry.$1;
+      final m = entry.$2;
       final role = m['role'] == 'user' ? 'user' : 'model';
-      return {
-        'role': role,
-        'parts': [
-          {'text': m['content'] ?? ''},
-        ],
-      };
+      final parts = <Map<String, dynamic>>[
+        {'text': m['content'] ?? ''},
+      ];
+      if (index == lastUserIndex) {
+        for (final attachment in attachments) {
+          if (attachment.isImage || attachment.isPdf) {
+            parts.add({
+              'inlineData': {
+                'mimeType': attachment.mimeType,
+                'data': base64Encode(attachment.bytes),
+              },
+            });
+          }
+          if (attachment.isText) {
+            parts.add({
+              'text':
+                  '\n\nDatei ${attachment.name}:\n${attachment.textExcerpt}',
+            });
+          }
+        }
+      }
+      return <String, dynamic>{'role': role, 'parts': parts};
     }).toList();
 
     final body = jsonEncode({
@@ -228,42 +293,45 @@ class GeminiProvider extends RemoteAIProvider {
     });
 
     final endpoint =
+        _endpoint ??
         'https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
 
-    final request = http.Request('POST', Uri.parse(endpoint));
+    final endpointUri = Uri.parse(endpoint);
+    final request = http.Request(
+      'POST',
+      endpointUri.replace(
+        queryParameters: {
+          ...endpointUri.queryParameters,
+          if (!endpointUri.queryParameters.containsKey('alt')) 'alt': 'sse',
+          if (!endpointUri.queryParameters.containsKey('key')) 'key': apiKey,
+        },
+      ),
+    );
     request.headers.addAll({'Content-Type': 'application/json'});
     request.body = body;
 
     final response = await http.Client().send(request);
-    final stream = response.stream.transform(utf8.decoder);
-
-    await for (final chunk in stream) {
-      for (final line in chunk.split('\n')) {
-        if (line.startsWith('data: ')) {
-          final data = line.substring(6);
-          if (data == '[DONE]') return;
-          try {
-            final json = jsonDecode(data);
-            final candidates = json['candidates'];
-            if (candidates is List && candidates.isNotEmpty) {
-              final content = candidates.first['content'];
-              final parts = content is Map ? content['parts'] : null;
-              if (parts is List) {
-                for (final part in parts) {
-                  if (part is Map && part['text'] is String) {
-                    yield part['text'] as String;
-                  }
-                }
-              }
-            }
-          } catch (_) {}
-        }
-      }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('API: ${await response.stream.bytesToString()}');
     }
 
-    if (response.statusCode != 200) {
-      final errorBody = await response.stream.bytesToString();
-      throw Exception('API: $errorBody');
+    await for (final data in _sseDataEvents(response.stream)) {
+      if (data == '[DONE]') return;
+      try {
+        final json = jsonDecode(data);
+        final candidates = json['candidates'];
+        if (candidates is List && candidates.isNotEmpty) {
+          final content = candidates.first['content'];
+          final parts = content is Map ? content['parts'] : null;
+          if (parts is List) {
+            for (final part in parts) {
+              if (part is Map && part['text'] is String) {
+                yield part['text'] as String;
+              }
+            }
+          }
+        }
+      } catch (_) {}
     }
   }
 }
@@ -283,10 +351,44 @@ class OpenAICompatibleProvider extends RemoteAIProvider {
     required String systemPrompt,
     required List<Map<String, String>> history,
     required String model,
+    List<AiChatAttachment> attachments = const [],
   }) async* {
-    final messages = [
+    final lastUserIndex = history.lastIndexWhere(
+      (message) => message['role'] == 'user',
+    );
+    final messages = <Map<String, dynamic>>[
       {'role': 'system', 'content': systemPrompt},
-      ...history,
+      for (final entry in history.indexed)
+        if (entry.$1 != lastUserIndex)
+          Map<String, dynamic>.from(entry.$2)
+        else
+          {
+            'role': 'user',
+            'content': <Map<String, dynamic>>[
+              {'type': 'text', 'text': entry.$2['content'] ?? ''},
+              for (final attachment in attachments)
+                if (attachment.isImage)
+                  {
+                    'type': 'image_url',
+                    'image_url': {
+                      'url':
+                          'data:${attachment.mimeType};base64,${base64Encode(attachment.bytes)}',
+                    },
+                  }
+                else if (attachment.isText)
+                  {
+                    'type': 'text',
+                    'text':
+                        'Datei ${attachment.name}:\n${attachment.textExcerpt}',
+                  }
+                else
+                  {
+                    'type': 'text',
+                    'text':
+                        'Anhang ${attachment.name} (${attachment.mimeType}) kann von diesem Anbieter nicht gelesen werden.',
+                  },
+            ],
+          },
     ];
 
     final body = jsonEncode({
@@ -306,31 +408,31 @@ class OpenAICompatibleProvider extends RemoteAIProvider {
     request.body = body;
 
     final response = await http.Client().send(request);
-    final stream = response.stream.transform(utf8.decoder);
-
-    await for (final chunk in stream) {
-      for (final line in chunk.split('\n')) {
-        if (line.startsWith('data: ')) {
-          final data = line.substring(6).trim();
-          if (data == '[DONE]') return;
-          if (data.isEmpty) continue;
-          try {
-            final json = jsonDecode(data);
-            final choices = json['choices'];
-            if (choices is List && choices.isNotEmpty) {
-              final delta = choices.first['delta'];
-              if (delta is Map && delta['content'] is String) {
-                yield delta['content'] as String;
-              }
-            }
-          } catch (_) {}
-        }
-      }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('API: ${await response.stream.bytesToString()}');
     }
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final errorBody = await response.stream.bytesToString();
-      throw Exception('API: $errorBody');
+    await for (final data in _sseDataEvents(response.stream)) {
+      if (data == '[DONE]') return;
+      try {
+        final json = jsonDecode(data);
+        final choices = json['choices'];
+        if (choices is List && choices.isNotEmpty) {
+          final delta = choices.first['delta'];
+          if (delta is Map && delta['content'] is String) {
+            yield delta['content'] as String;
+          } else {
+            final message = choices.first['message'];
+            final content = message is Map ? message['content'] : null;
+            if (content is String && content.isNotEmpty) {
+              yield content;
+            } else if (choices.first['text'] is String &&
+                choices.first['text'].toString().isNotEmpty) {
+              yield choices.first['text'].toString();
+            }
+          }
+        }
+      } catch (_) {}
     }
   }
 }
@@ -348,6 +450,7 @@ class LocalModelProvider implements AIProvider {
     required String systemPrompt,
     required List<Map<String, String>> history,
     required String model,
+    List<AiChatAttachment> attachments = const [],
   }) async* {
     if (_isLoading) return;
 
@@ -364,12 +467,19 @@ class LocalModelProvider implements AIProvider {
       return;
     }
 
+    final attachmentContext = attachments
+        .where((attachment) => attachment.isText)
+        .map(
+          (attachment) =>
+              '\n\nDatei ${attachment.name}:\n${attachment.textExcerpt}',
+        )
+        .join();
     final messages = <Message>[
       Message(Role.system, systemPrompt),
-      for (final msg in history)
+      for (final entry in history.indexed)
         Message(
-          msg['role'] == 'user' ? Role.user : Role.assistant,
-          msg['content'] ?? '',
+          entry.$2['role'] == 'user' ? Role.user : Role.assistant,
+          '${entry.$2['content'] ?? ''}${entry.$1 == history.length - 1 ? attachmentContext : ''}',
         ),
     ];
 
@@ -571,18 +681,18 @@ AIProvider createAIProvider({
       );
       if (compat == 'gemini') {
         final baseUrl = customBaseUrl ?? '';
-        final endpoint = baseUrl.contains('/models/')
+        final endpoint = baseUrl.contains(':streamGenerateContent')
             ? baseUrl
+            : baseUrl.contains(':generateContent')
+            ? baseUrl.replaceFirst(':generateContent', ':streamGenerateContent')
+            : baseUrl.contains('/models/')
+            ? '$baseUrl:streamGenerateContent'
             : baseUrl.contains('/v1beta')
             ? '$baseUrl/models/$model:streamGenerateContent?alt=sse&key=$apiKey'
             : baseUrl.contains('/v1')
             ? '$baseUrl/models/$model:streamGenerateContent?alt=sse&key=$apiKey'
             : '$baseUrl/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
-        return OpenAICompatibleProvider(
-          apiKey: apiKey,
-          endpoint: endpoint,
-          baseUrl: baseUrl,
-        );
+        return GeminiProvider(apiKey: apiKey, endpoint: endpoint);
       }
       return OpenAICompatibleProvider(
         apiKey: apiKey,
@@ -678,9 +788,32 @@ void main() async {
             account.id == activeUntisAccountId &&
             (account.sessionId.isNotEmpty || account.password.isNotEmpty),
       );
-  final bool onboardingCompleted =
+  final legacyOnboardingCompleted =
       prefs.getBool('onboardingCompleted') ?? false;
-  final bool tutorialCompleted = prefs.getBool('tutorialCompleted') ?? false;
+  final legacyTutorialCompleted = prefs.getBool('tutorialCompleted') ?? false;
+  var onboardingVersion = prefs.getInt('onboardingVersion') ?? 0;
+  var tutorialVersionCompleted = prefs.getInt('tutorialVersionCompleted') ?? 0;
+
+  // Existing installations must never be forced through a redesigned setup.
+  // The legacy flags are promoted once; genuinely new/incomplete installs keep
+  // version 0 and use the new resumable flow.
+  final looksLikeConfiguredLegacyInstall =
+      (isLoggedIn || demoModeNotifier.value) &&
+      !prefs.containsKey('onboardingCheckpoint');
+  if ((legacyOnboardingCompleted || looksLikeConfiguredLegacyInstall) &&
+      onboardingVersion == 0) {
+    onboardingVersion = kCurrentOnboardingVersion;
+    await prefs.setInt('onboardingVersion', onboardingVersion);
+    if (tutorialVersionCompleted == 0) {
+      tutorialVersionCompleted = kCurrentTutorialVersion;
+      await prefs.setInt('tutorialVersionCompleted', tutorialVersionCompleted);
+    }
+  }
+  final onboardingCompleted =
+      legacyOnboardingCompleted || onboardingVersion > 0;
+  final tutorialCompleted =
+      legacyTutorialCompleted ||
+      tutorialVersionCompleted >= kCurrentTutorialVersion;
 
   // Account initialization has already hydrated the active session from the
   // native secure store. SharedPreferences now contains public metadata only.
@@ -824,7 +957,8 @@ void main() async {
   runApp(
     ProviderScope(
       child: UntisPlusApp(
-        startScreen: (isLoggedIn || demoModeNotifier.value)
+        startScreen:
+            onboardingCompleted && (isLoggedIn || demoModeNotifier.value)
             ? MainNavigationScreen(
                 showTutorialOnStart: onboardingCompleted && !tutorialCompleted,
               )
@@ -1175,10 +1309,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
   double _dayDragTotal = 0.0;
   bool _isWeekCarouselAnimating = false;
+  double _weekViewOverscroll = 0.0;
   int _weekFetchGeneration = 0;
   bool _isExportingTimetable = false;
   final GlobalKey _timetableExportKey = GlobalKey();
   final Map<String, Map<dynamic, dynamic>> _temporaryLessonOriginals = {};
+  AlarmConfig _alarmConfig = const AlarmConfig();
 
   String? _tempSessionId;
   int? _viewingClassId;
@@ -1637,6 +1773,146 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       _fetchFullWeek();
     }
     _loadViewPref();
+    _loadAlarmConfig();
+  }
+
+  Future<void> _loadAlarmConfig() async {
+    final config = await AlarmService.instance.loadConfig();
+    if (mounted) setState(() => _alarmConfig = config);
+  }
+
+  Future<void> _saveDateAlarmOverride(
+    DateTime date,
+    AlarmDateOverride? override,
+  ) async {
+    await AlarmService.instance.saveDateOverride(alarmDateKey(date), override);
+    await _loadAlarmConfig();
+    // Prefer a fresh current-day response. When offline, saveDateOverride has
+    // already adjusted the durable next plan if it is the selected day.
+    if (_alarmConfig.smartEnabled) {
+      updateUntisData().catchError((_) => false);
+    }
+  }
+
+  Future<void> _showDateAlarmActions(DateTime date) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final key = alarmDateKey(date);
+    final current = _alarmConfig.dateOverrides[key] ??
+        const AlarmDateOverride();
+    final dateLabel = DateFormat(
+      'EEEE, d. MMMM',
+      _icuLocale(appLocaleNotifier.value),
+    ).format(date);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l.ui('alarmDateActions').replaceAll('{date}', dateLabel),
+                style: GoogleFonts.outfit(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l.ui('alarmDateActionsDesc'),
+                style: GoogleFonts.outfit(
+                  color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 14),
+              SwitchListTile.adaptive(
+                value: current.disabled,
+                secondary: Icon(
+                  current.disabled
+                      ? Icons.alarm_off_rounded
+                      : Icons.alarm_rounded,
+                ),
+                title: Text(l.ui('alarmDisableDate')),
+                onChanged: (disabled) async {
+                  await _saveDateAlarmOverride(
+                    date,
+                    current.copyWith(disabled: disabled),
+                  );
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.schedule_rounded),
+                title: Text(l.ui('alarmCustomTime')),
+                subtitle: current.customTimeOfDayMinutes == null
+                    ? null
+                    : Text(
+                        TimeOfDay(
+                          hour: current.customTimeOfDayMinutes! ~/ 60,
+                          minute: current.customTimeOfDayMinutes! % 60,
+                        ).format(sheetContext),
+                      ),
+                onTap: () async {
+                  final initial = TimeOfDay(
+                    hour: current.customTimeOfDayMinutes == null
+                        ? 7
+                        : current.customTimeOfDayMinutes! ~/ 60,
+                    minute: current.customTimeOfDayMinutes == null
+                        ? 0
+                        : current.customTimeOfDayMinutes! % 60,
+                  );
+                  final chosen = await showTimePicker(
+                    context: sheetContext,
+                    initialTime: initial,
+                  );
+                  if (chosen == null) return;
+                  await _saveDateAlarmOverride(
+                    date,
+                    current.copyWith(
+                      disabled: false,
+                      customTimeOfDayMinutes: chosen.hour * 60 + chosen.minute,
+                    ),
+                  );
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.fast_forward_rounded),
+                title: Text(l.ui('alarmEarlier')),
+                subtitle: Text(
+                  l
+                      .ui('alarmEarlierValue')
+                      .replaceAll('{n}', '${_alarmConfig.nextAlarmEarlierMinutes}'),
+                ),
+                onTap: () async {
+                  await _saveDateAlarmOverride(
+                    date,
+                    current.copyWith(
+                      disabled: false,
+                      earlierMinutes: _alarmConfig.nextAlarmEarlierMinutes,
+                    ),
+                  );
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+              if (!current.isEmpty)
+                TextButton.icon(
+                  onPressed: () async {
+                    await _saveDateAlarmOverride(date, null);
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                  },
+                  icon: const Icon(Icons.restart_alt_rounded),
+                  label: Text(l.ui('alarmClearDate')),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _onPendingTimetableAction() {
@@ -1961,12 +2237,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (kIsWeb) return;
     final l = AppL10n.of(appLocaleNotifier.value);
     final now = DateTime.now();
-    final todayLessons = List<dynamic>.from(week[now.weekday - 1] ?? [])
-      ..sort(
-        (a, b) => _toMinutes(
-          (a['startTime'] as int?) ?? 0,
-        ).compareTo(_toMinutes((b['startTime'] as int?) ?? 0)),
-      );
+    final todayLessons =
+        List<dynamic>.from(week[now.weekday - 1] ?? [])
+            .whereType<Map>()
+            .where(
+              (lesson) =>
+                  !hiddenSubjectsNotifier.value.contains(
+                    lesson['_subjectShort']?.toString() ?? '',
+                  ) &&
+                  (showCancelledNotifier.value ||
+                      lesson['code'] != 'cancelled'),
+            )
+            .toList(growable: false)
+          ..sort(
+            (a, b) => _toMinutes(
+              (a['startTime'] as int?) ?? 0,
+            ).compareTo(_toMinutes((b['startTime'] as int?) ?? 0)),
+          );
     String label(dynamic lesson) {
       final subject = lesson['_subjectShort']?.toString();
       return subject?.isNotEmpty == true ? subject! : l.ui('widgetLesson');
@@ -1974,14 +2261,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     final nowMinutes = now.hour * 60 + now.minute;
     dynamic current;
-    dynamic next;
     for (final lesson in todayLessons) {
       final start = _toMinutes((lesson['startTime'] as int?) ?? 0);
       final end = _toMinutes((lesson['endTime'] as int?) ?? 0);
       if (start <= nowMinutes && nowMinutes < end) {
         current = lesson;
-      } else if (start > nowMinutes && next == null) {
-        next = lesson;
       }
     }
     final schedule = todayLessons
@@ -2049,16 +2333,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         }
       }
       await WidgetService.updateWidgets(
-        currentLesson: current == null
-            ? l.ui('widgetNoCurrentLesson')
-            : label(current),
-        nextLesson: next == null
-            ? ''
-            : l.ui('widgetNext').replaceAll('{title}', label(next)),
+        // A homescreen widget is a "now" surface. Empty values intentionally
+        // render as a neutral shell instead of inventing a Freistunde or
+        // advertising a lesson that is not currently taking place.
+        currentLesson: current == null ? '' : label(current),
+        nextLesson: '',
         timeRemaining: remaining,
-        dailySchedule: schedule.isEmpty
-            ? l.ui('widgetNoLessonsToday')
-            : schedule,
+        dailySchedule: schedule,
         homeworkSummary: homework.isEmpty
             ? l.ui('widgetNoOpenHomework')
             : homework,
@@ -2290,9 +2571,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   Widget _buildWeekCarousel() {
     return GestureDetector(
-      onHorizontalDragStart: _onCarouselDragStart,
-      onHorizontalDragUpdate: _onCarouselDragUpdate,
-      onHorizontalDragEnd: _onCarouselDragEnd,
+      // The weekly grid owns horizontal gestures because it may need to scroll
+      // its five columns. Week changes there are handled from edge overscroll.
+      onHorizontalDragStart: _viewMode == 0 ? _onCarouselDragStart : null,
+      onHorizontalDragUpdate: _viewMode == 0 ? _onCarouselDragUpdate : null,
+      onHorizontalDragEnd: _viewMode == 0 ? _onCarouselDragEnd : null,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final w = constraints.maxWidth;
@@ -2497,6 +2780,29 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     });
     _carouselAnimController!.forward();
+  }
+
+  bool _handleWeekViewScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.horizontal ||
+        _isWeekCarouselAnimating) {
+      return false;
+    }
+    if (notification is ScrollStartNotification) {
+      _weekViewOverscroll = 0;
+      unawaited(_prefetchAdjacentWeeks());
+    } else if (notification is OverscrollNotification) {
+      _weekViewOverscroll += notification.overscroll;
+    } else if (notification is ScrollEndNotification) {
+      final overscroll = _weekViewOverscroll;
+      _weekViewOverscroll = 0;
+      if (overscroll.abs() >= 56) {
+        HapticFeedback.selectionClick();
+        final rb = context.findRenderObject() as RenderBox?;
+        final width = rb?.size.width ?? 400.0;
+        _animateCarouselTo(overscroll > 0 ? -1 : 1, width);
+      }
+    }
+    return false;
   }
 
   @override
@@ -3147,6 +3453,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     double teacherFontSize = 9.5,
     double roomFontSize = 9.5,
     bool useStripes = true,
+    double? availableWidth,
+    double? availableHeight,
   }) {
     final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
@@ -3167,7 +3475,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final blurSigma = themeOwnsStyle
         ? tokens.blurSigma
         : lessonBlurAmountNotifier.value;
-    final cardOpacity = themeOwnsStyle ? 0.82 : lessonCardOpacityNotifier.value;
+    final cardOpacity = themeOwnsStyle
+        ? tokens.lessonSurfaceOpacity
+        : lessonCardOpacityNotifier.value;
     final accentStyle = themeOwnsStyle ? 0 : lessonAccentStyleNotifier.value;
     final showTeacher = lessonShowTeacherNotifier.value;
     final showRoom = lessonShowRoomNotifier.value;
@@ -3177,7 +3487,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         useStripes &&
         lessonCancelledPatternNotifier.value;
 
-    final effectivePadding = padding != null
+    final heightCompact = availableHeight != null && availableHeight < 58;
+    final heightMinimal = availableHeight != null && availableHeight < 40;
+    final widthCompact = availableWidth != null && availableWidth < 54;
+    final effectivePadding = heightMinimal
+        ? const EdgeInsets.fromLTRB(5, 2, 4, 2)
+        : heightCompact
+        ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
+        : padding != null
         ? (compact
               ? EdgeInsets.fromLTRB(
                   padding.left.clamp(3.0, 6.0),
@@ -3190,7 +3507,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
               : const EdgeInsets.fromLTRB(8, 5, 6, 5));
 
-    final effectiveSubjectFontSize = compact
+    final effectiveSubjectFontSize = compact || widthCompact || heightCompact
         ? (subjectFontSize * 0.92).clamp(8.5, 14.0)
         : subjectFontSize;
     final effectiveTeacherFontSize = compact
@@ -3321,7 +3638,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
       ];
     } else if (tokens.id == AppThemeId.paper) {
-      effectiveFillColor = cs.surfaceContainerLow.withValues(alpha: 0.94);
+      effectiveFillColor = cs.surfaceContainerLow.withValues(
+        alpha: tokens.lessonSurfaceOpacity,
+      );
       effectiveGradient = null;
       effectiveBorder = Border.all(
         color: fgColor.withValues(alpha: 0.52),
@@ -3416,7 +3735,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       subject,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: untisThemeTextStyle(
+                        context,
+                        display: true,
                         fontSize: effectiveSubjectFontSize,
                         fontWeight: FontWeight.w800,
                         color: effectiveTextColor,
@@ -3428,7 +3749,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       ),
                     ),
                   ),
-                  if (hasExam || hasHomework) ...[
+                  if ((hasExam || hasHomework) && !widthCompact) ...[
                     const SizedBox(width: 4),
                     Icon(
                       hasExam
@@ -3438,7 +3759,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       color: effectiveTextColor.withValues(alpha: 0.8),
                     ),
                   ],
-                  if (isTeacherMissing) ...[
+                  if (isTeacherMissing && !widthCompact) ...[
                     const SizedBox(width: 4),
                     Icon(
                       Icons.person_off_rounded,
@@ -3448,23 +3769,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   ],
                 ],
               ),
-              if (showTeacher && teacher.isNotEmpty)
+              if (!heightMinimal &&
+                  showTeacher &&
+                  teacher.isNotEmpty &&
+                  (availableHeight == null || availableHeight >= 42))
                 Text(
                   teacher,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontSize: effectiveTeacherFontSize,
                     fontWeight: FontWeight.w600,
                     color: effectiveSecondaryTextColor,
                   ),
                 ),
-              if (showRoom && room.isNotEmpty)
+              if (!heightCompact &&
+                  showRoom &&
+                  room.isNotEmpty &&
+                  (availableHeight == null || availableHeight >= 58))
                 Text(
                   room,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
+                  style: untisThemeTextStyle(
+                    context,
                     fontSize: effectiveRoomFontSize,
                     fontWeight: FontWeight.w600,
                     color: effectiveSecondaryTextColor,
@@ -4074,486 +4403,514 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final availableForDays = math.max(
-              5 * minDayColWidth,
-              constraints.maxWidth - timeColWidth - 4 - (dayColGap * 4),
+            final dayGridWidth = math.max(
+              (5 * minDayColWidth) + (dayColGap * 4),
+              constraints.maxWidth - timeColWidth - 4,
             );
-            final dayColWidth = availableForDays / 5;
+            final dayColWidth = (dayGridWidth - (dayColGap * 4)) / 5;
 
             // On small screens five day columns cannot fit alongside the time
             // gutter. Keep their minimum readable width and scroll horizontally.
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: SizedBox(
-                width: timeColWidth + 4 + availableForDays + dayColGap,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: timeColWidth + 4,
-                        bottom: 6,
-                      ),
-                      child: Row(
-                        children: List.generate(5, (i) {
-                          final d = m.add(Duration(days: i));
-                          final isToday =
-                              d.year == today.year &&
-                              d.month == today.month &&
-                              d.day == today.day;
-                          return SizedBox(
-                            width: dayColWidth + dayColGap,
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    _dayShort[i],
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: isToday
-                                          ? cs.primary
-                                          : cs.onSurfaceVariant.withValues(
-                                              alpha: 0.8,
-                                            ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      color: isToday
-                                          ? cs.primary
-                                          : Colors.transparent,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      '${d.day}',
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: isToday
-                                            ? cs.onPrimary
-                                            : cs.onSurface,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+            return NotificationListener<ScrollNotification>(
+              onNotification: _handleWeekViewScroll,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                child: SizedBox(
+                  width: timeColWidth + 4 + dayGridWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: timeColWidth + 4,
+                          bottom: 6,
+                        ),
+                        child: Row(
+                          children: List.generate(5, (i) {
+                            final d = m.add(Duration(days: i));
+                            final isToday =
+                                d.year == today.year &&
+                                d.month == today.month &&
+                                d.day == today.day;
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                right: i == 4 ? 0 : dayColGap,
                               ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: timeColWidth,
-                          height: totalHeight,
-                          child: Stack(
-                            children: timeRanges.isNotEmpty
-                                ? timeRanges.map((range) {
-                                    final top =
-                                        (range.startMin - globalMin) * _ppm;
-                                    final blockHeight =
-                                        ((range.endMin - range.startMin) * _ppm)
-                                            .clamp(16.0, 9999.0);
-                                    return Positioned(
-                                      top: top,
-                                      left: 0,
-                                      right: 0,
-                                      height: blockHeight,
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            _formatMinutes(range.startMin),
-                                            textAlign: TextAlign.right,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w600,
-                                              color: cs.onSurfaceVariant
-                                                  .withValues(alpha: 0.54),
-                                            ),
-                                          ),
-                                          Text(
-                                            _formatMinutes(range.endMin),
-                                            textAlign: TextAlign.right,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w500,
-                                              color: cs.onSurfaceVariant
-                                                  .withValues(alpha: 0.45),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList()
-                                : ticks.map((tick) {
-                                    final top = (tick - globalMin) * _ppm - 9;
-                                    return Positioned(
-                                      top: top,
-                                      left: 0,
-                                      right: 0,
-                                      child: Text(
-                                        _formatMinutes(tick),
-                                        textAlign: TextAlign.right,
+                              child: SizedBox(
+                                width: dayColWidth,
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        _dayShort[i],
                                         style: GoogleFonts.outfit(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                          color: cs.onSurfaceVariant.withValues(
-                                            alpha: 0.7,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: isToday
+                                              ? cs.primary
+                                              : cs.onSurfaceVariant.withValues(
+                                                  alpha: 0.8,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Container(
+                                        width: 28,
+                                        height: 28,
+                                        decoration: BoxDecoration(
+                                          color: isToday
+                                              ? cs.primary
+                                              : Colors.transparent,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          '${d.day}',
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                            color: isToday
+                                                ? cs.onPrimary
+                                                : cs.onSurface,
                                           ),
                                         ),
                                       ),
-                                    );
-                                  }).toList(),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: List.generate(5, (dayIndex) {
-                            final lessons = (wd[dayIndex] ?? [])
-                                .where(
-                                  (l) => !hiddenSubjectsNotifier.value.contains(
-                                    l['_subjectShort']?.toString() ?? '',
+                                    ],
                                   ),
-                                )
-                                .toList();
-                            final visibleLessons = lessons
-                                .where(
-                                  (l) =>
-                                      showCancelledNotifier.value ||
-                                      (l['code'] ?? '') != 'cancelled',
-                                )
-                                .toList();
-                            final mergedLessons = _mergeConsecutiveLessons(
-                              visibleLessons,
+                                ),
+                              ),
                             );
-                            final lessonSlots = _computeLessonSlots(
-                              mergedLessons,
-                            );
-                            return Container(
-                              width: dayColWidth,
-                              height: totalHeight,
-                              margin: const EdgeInsets.only(right: dayColGap),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return Stack(
-                                    children: [
-                                      ...ticks.map((tick) {
-                                        final top = (tick - globalMin) * _ppm;
-                                        return Positioned(
-                                          top: top,
-                                          left: 0,
-                                          right: 0,
-                                          child: Container(
-                                            height: 0.45,
-                                            color: cs.outlineVariant.withValues(
-                                              alpha: 0.28,
-                                            ),
-                                          ),
-                                        );
-                                      }),
-                                      ..._getHolidaysForDay(
-                                        m.add(Duration(days: dayIndex)),
-                                      ).map((holiday) {
-                                        final holidayStartMin = _toMinutes(800);
-                                        final holidayEndMin = _toMinutes(1800);
-                                        final top2 =
-                                            (holidayStartMin - globalMin) *
-                                            _ppm;
-                                        final height2 =
-                                            ((holidayEndMin - holidayStartMin) *
-                                                    _ppm)
-                                                .clamp(24.0, 9999.0);
-                                        final holidayName =
-                                            (holiday['longName'] ??
-                                                    holiday['name'] ??
-                                                    '')
-                                                .toString();
-                                        return Positioned(
-                                          top: top2,
-                                          left: 1,
-                                          right: 1,
-                                          height: height2,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: cs.tertiaryContainer
-                                                  .withValues(alpha: 0.85),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: cs.tertiary.withValues(
-                                                  alpha: 0.4,
-                                                ),
-                                                width: 1.5,
+                          }),
+                        ),
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: timeColWidth,
+                            height: totalHeight,
+                            child: Stack(
+                              children: timeRanges.isNotEmpty
+                                  ? timeRanges.map((range) {
+                                      final top =
+                                          (range.startMin - globalMin) * _ppm;
+                                      final blockHeight =
+                                          ((range.endMin - range.startMin) *
+                                                  _ppm)
+                                              .clamp(16.0, 9999.0);
+                                      return Positioned(
+                                        top: top,
+                                        left: 0,
+                                        right: 0,
+                                        height: blockHeight,
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              _formatMinutes(range.startMin),
+                                              textAlign: TextAlign.right,
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: cs.onSurfaceVariant
+                                                    .withValues(alpha: 0.54),
                                               ),
                                             ),
-                                            padding: const EdgeInsets.all(8),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Icon(
-                                                  Icons.celebration_rounded,
-                                                  size: 16,
-                                                  color: cs.tertiary,
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Expanded(
-                                                  child: Text(
-                                                    holidayName,
-                                                    style: GoogleFonts.outfit(
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      color: cs
-                                                          .onTertiaryContainer,
-                                                    ),
-                                                    maxLines: 3,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
+                                            Text(
+                                              _formatMinutes(range.endMin),
+                                              textAlign: TextAlign.right,
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w500,
+                                                color: cs.onSurfaceVariant
+                                                    .withValues(alpha: 0.45),
+                                              ),
                                             ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList()
+                                  : ticks.map((tick) {
+                                      final top = (tick - globalMin) * _ppm - 9;
+                                      return Positioned(
+                                        top: top,
+                                        left: 0,
+                                        right: 0,
+                                        child: Text(
+                                          _formatMinutes(tick),
+                                          textAlign: TextAlign.right,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: cs.onSurfaceVariant
+                                                .withValues(alpha: 0.7),
                                           ),
-                                        );
-                                      }),
-                                      ...lessonSlots.map((slot) {
-                                        final l = slot.lesson;
-                                        final startMin = slot.startMin;
-                                        final endMin = slot.endMin;
-                                        final top =
-                                            (startMin - globalMin) * _ppm;
-                                        final height =
-                                            ((endMin - startMin) * _ppm).clamp(
-                                              24.0,
-                                              9999.0,
-                                            );
-                                        final dim =
-                                            (dayIndex == todayIndex) &&
-                                            endMin <= nowMin;
-                                        const horizontalInset = 1.0;
-                                        const columnGap = 2.0;
-                                        final columns = slot.columnCount;
-                                        final availableWidth =
-                                            constraints.maxWidth -
-                                            (horizontalInset * 2);
-                                        final totalGap =
-                                            (columns - 1) * columnGap;
-                                        final rawCardWidth =
-                                            (availableWidth - totalGap) /
-                                            columns;
-                                        final cardWidth = rawCardWidth > 6
-                                            ? rawCardWidth
-                                            : 6.0;
-                                        final left =
-                                            horizontalInset +
-                                            (slot.column *
-                                                (cardWidth + columnGap));
-
-                                        return Positioned(
-                                          top: top,
-                                          left: left,
-                                          width: cardWidth,
-                                          height: height,
-                                          child: Builder(
-                                            builder: (context) {
-                                              final cs = Theme.of(
-                                                context,
-                                              ).colorScheme;
-                                              final isDark2 =
-                                                  Theme.of(
-                                                    context,
-                                                  ).brightness ==
-                                                  Brightness.dark;
-                                              final isCancelled =
-                                                  (l['code'] ?? '') ==
-                                                  'cancelled';
-                                              final isTeacherMissing =
-                                                  _hasMissingTeacher(l);
-                                              final subject =
-                                                  l['_subjectShort']
-                                                          ?.toString()
-                                                          .isNotEmpty ==
-                                                      true
-                                                  ? l['_subjectShort']
-                                                        .toString()
-                                                  : (l['_subjectLong']
-                                                                ?.toString()
-                                                                .isNotEmpty ==
-                                                            true
-                                                        ? l['_subjectLong']
-                                                              .toString()
-                                                        : '?');
-                                              final room =
-                                                  l['_room']?.toString() ?? '';
-                                              final teacher =
-                                                  l['_teacher']?.toString() ??
-                                                  '';
-                                              final sk2 =
-                                                  l['_subjectShort']
-                                                      ?.toString() ??
-                                                  '';
-                                              final useMonochrome2 =
-                                                  monochromeLessonsNotifier
-                                                      .value;
-                                              final cancelledColor2 = Color(
-                                                cancelledLessonColorNotifier
-                                                    .value,
-                                              );
-                                              final cv2 =
-                                                  isCancelled || useMonochrome2
-                                                  ? null
-                                                  : subjectColorsNotifier
-                                                        .value[sk2];
-                                              final fgColor = isCancelled
-                                                  ? cancelledColor2
-                                                  : useMonochrome2
-                                                  ? cs.primary
-                                                  : cv2 != null
-                                                  ? Color(cv2)
-                                                  : _autoLessonColor(
-                                                      sk2,
-                                                      isDark2,
-                                                    );
-                                              final bgColor = isCancelled
-                                                  ? Color.alphaBlend(
-                                                      cancelledColor2
-                                                          .withValues(
-                                                            alpha: isDark2
-                                                                ? 0.14
-                                                                : 0.10,
-                                                          ),
-                                                      cs.surfaceContainerHighest,
-                                                    )
-                                                  : Color.alphaBlend(
-                                                      fgColor.withValues(
-                                                        alpha: isDark2
-                                                            ? 0.14
-                                                            : 0.10,
-                                                      ),
-                                                      cs.surfaceContainerHighest,
-                                                    );
-                                              final isCurrent =
-                                                  (dayIndex == todayIndex) &&
-                                                  (slot.startMin <= nowMin &&
-                                                      nowMin < slot.endMin);
-                                              final isNow = isCurrent;
-
-                                              final lDateInt =
-                                                  int.tryParse(
-                                                    l['date']?.toString() ?? '',
-                                                  ) ??
-                                                  0;
-                                              final hasHomework =
-                                                  homeworksNotifier.value.any(
-                                                    (hw) =>
-                                                        hw['dueDate'] ==
-                                                            lDateInt &&
-                                                        (hw['subject'] == sk2 ||
-                                                            hw['subject'] ==
-                                                                subject),
-                                                  ) ||
-                                                  customHomeworkNotifier.value
-                                                      .any(
-                                                        (hw) =>
-                                                            hw['dueDate'] ==
-                                                                lDateInt &&
-                                                            (hw['subject'] ==
-                                                                    sk2 ||
-                                                                hw['subject'] ==
-                                                                    subject),
-                                                      );
-                                              final hasExam =
-                                                  apiExamsNotifier.value.any(
-                                                    (ex) =>
-                                                        (ex['date'] ??
-                                                                ex['examDate'] ??
-                                                                0) ==
-                                                            lDateInt &&
-                                                        (ex['subject'] == sk2 ||
-                                                            ex['subjectName'] ==
-                                                                sk2 ||
-                                                            ex['subject'] ==
-                                                                subject),
-                                                  ) ||
-                                                  customExamsNotifier.value.any(
-                                                    (ex) =>
-                                                        (ex['date'] ?? 0) ==
-                                                            lDateInt &&
-                                                        (ex['subject'] == sk2 ||
-                                                            ex['subject'] ==
-                                                                subject),
-                                                  );
-
-                                              return _dimPastLesson(
-                                                dim: dim,
-                                                child: GestureDetector(
-                                                  onTap: () =>
-                                                      _onLessonTap(context, l),
-                                                  onLongPress: () =>
-                                                      _editLessonTemporarily(l),
-                                                  child: _buildTimetableLessonCard(
-                                                    context: context,
-                                                    isCancelled: isCancelled,
-                                                    isDark: isDark2,
-                                                    fgColor: fgColor,
-                                                    bgColor: bgColor,
-                                                    subject: subject,
-                                                    teacher: teacher,
-                                                    room: room,
-                                                    isNow: isNow,
-                                                    isTeacherMissing:
-                                                        isTeacherMissing,
-                                                    hasHomework: hasHomework,
-                                                    hasExam: hasExam,
-                                                    padding:
-                                                        const EdgeInsets.fromLTRB(
-                                                          8,
-                                                          5,
-                                                          6,
-                                                          5,
-                                                        ),
-                                                    accentWidth: 3.5,
-                                                    subjectFontSize: 11.5,
-                                                    teacherFontSize: 9.5,
-                                                    roomFontSize: 9.5,
-                                                    useStripes: true,
+                                        ),
+                                      );
+                                    }).toList(),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: List.generate(5, (dayIndex) {
+                              final lessons = (wd[dayIndex] ?? [])
+                                  .where(
+                                    (l) =>
+                                        !hiddenSubjectsNotifier.value.contains(
+                                          l['_subjectShort']?.toString() ?? '',
+                                        ),
+                                  )
+                                  .toList();
+                              final visibleLessons = lessons
+                                  .where(
+                                    (l) =>
+                                        showCancelledNotifier.value ||
+                                        (l['code'] ?? '') != 'cancelled',
+                                  )
+                                  .toList();
+                              final mergedLessons = _mergeConsecutiveLessons(
+                                visibleLessons,
+                              );
+                              final lessonSlots = _computeLessonSlots(
+                                mergedLessons,
+                              );
+                              return Container(
+                                width: dayColWidth,
+                                height: totalHeight,
+                                margin: EdgeInsets.only(
+                                  right: dayIndex == 4 ? 0 : dayColGap,
+                                ),
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    return Stack(
+                                      children: [
+                                        ...ticks.map((tick) {
+                                          final top = (tick - globalMin) * _ppm;
+                                          return Positioned(
+                                            top: top,
+                                            left: 0,
+                                            right: 0,
+                                            child: Container(
+                                              height: 0.45,
+                                              color: cs.outlineVariant
+                                                  .withValues(alpha: 0.28),
+                                            ),
+                                          );
+                                        }),
+                                        ..._getHolidaysForDay(
+                                          m.add(Duration(days: dayIndex)),
+                                        ).map((holiday) {
+                                          final holidayStartMin = _toMinutes(
+                                            800,
+                                          );
+                                          final holidayEndMin = _toMinutes(
+                                            1800,
+                                          );
+                                          final top2 =
+                                              (holidayStartMin - globalMin) *
+                                              _ppm;
+                                          final height2 =
+                                              ((holidayEndMin -
+                                                          holidayStartMin) *
+                                                      _ppm)
+                                                  .clamp(24.0, 9999.0);
+                                          final holidayName =
+                                              (holiday['longName'] ??
+                                                      holiday['name'] ??
+                                                      '')
+                                                  .toString();
+                                          return Positioned(
+                                            top: top2,
+                                            left: 1,
+                                            right: 1,
+                                            height: height2,
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: cs.tertiaryContainer
+                                                    .withValues(alpha: 0.85),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: cs.tertiary.withValues(
+                                                    alpha: 0.4,
                                                   ),
+                                                  width: 1.5,
                                                 ),
-                                              );
-                                            },
-                                          ),
-                                        );
-                                      }),
-                                      if (showNowLine && dayIndex == todayIndex)
-                                        Positioned(
-                                          top: nowTop - 1.5,
-                                          left: 0,
-                                          right: 0,
-                                          child: IgnorePointer(
-                                            child: Row(
-                                              children: [
-                                                Container(
-                                                  width: 5,
-                                                  height: 5,
-                                                  decoration: BoxDecoration(
-                                                    color: cs.error,
-                                                    shape: BoxShape.circle,
-                                                    boxShadow:
-                                                        _glowShadows(context, [
+                                              ),
+                                              padding: const EdgeInsets.all(8),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Icon(
+                                                    Icons.celebration_rounded,
+                                                    size: 16,
+                                                    color: cs.tertiary,
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Expanded(
+                                                    child: Text(
+                                                      holidayName,
+                                                      style: GoogleFonts.outfit(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: cs
+                                                            .onTertiaryContainer,
+                                                      ),
+                                                      maxLines: 3,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                        ...lessonSlots.map((slot) {
+                                          final l = slot.lesson;
+                                          final startMin = slot.startMin;
+                                          final endMin = slot.endMin;
+                                          final top =
+                                              (startMin - globalMin) * _ppm;
+                                          final height =
+                                              ((endMin - startMin) * _ppm)
+                                                  .clamp(24.0, 9999.0);
+                                          final dim =
+                                              (dayIndex == todayIndex) &&
+                                              endMin <= nowMin;
+                                          const horizontalInset = 1.0;
+                                          const columnGap = 2.0;
+                                          final columns = slot.columnCount;
+                                          final availableWidth =
+                                              constraints.maxWidth -
+                                              (horizontalInset * 2);
+                                          final totalGap =
+                                              (columns - 1) * columnGap;
+                                          final rawCardWidth =
+                                              (availableWidth - totalGap) /
+                                              columns;
+                                          final cardWidth = rawCardWidth > 6
+                                              ? rawCardWidth
+                                              : 6.0;
+                                          final left =
+                                              horizontalInset +
+                                              (slot.column *
+                                                  (cardWidth + columnGap));
+
+                                          return Positioned(
+                                            top: top,
+                                            left: left,
+                                            width: cardWidth,
+                                            height: height,
+                                            child: Builder(
+                                              builder: (context) {
+                                                final cs = Theme.of(
+                                                  context,
+                                                ).colorScheme;
+                                                final isDark2 =
+                                                    Theme.of(
+                                                      context,
+                                                    ).brightness ==
+                                                    Brightness.dark;
+                                                final isCancelled =
+                                                    (l['code'] ?? '') ==
+                                                    'cancelled';
+                                                final isTeacherMissing =
+                                                    _hasMissingTeacher(l);
+                                                final subject =
+                                                    l['_subjectShort']
+                                                            ?.toString()
+                                                            .isNotEmpty ==
+                                                        true
+                                                    ? l['_subjectShort']
+                                                          .toString()
+                                                    : (l['_subjectLong']
+                                                                  ?.toString()
+                                                                  .isNotEmpty ==
+                                                              true
+                                                          ? l['_subjectLong']
+                                                                .toString()
+                                                          : '?');
+                                                final room =
+                                                    l['_room']?.toString() ??
+                                                    '';
+                                                final teacher =
+                                                    l['_teacher']?.toString() ??
+                                                    '';
+                                                final sk2 =
+                                                    l['_subjectShort']
+                                                        ?.toString() ??
+                                                    '';
+                                                final useMonochrome2 =
+                                                    monochromeLessonsNotifier
+                                                        .value;
+                                                final cancelledColor2 = Color(
+                                                  cancelledLessonColorNotifier
+                                                      .value,
+                                                );
+                                                final cv2 =
+                                                    isCancelled ||
+                                                        useMonochrome2
+                                                    ? null
+                                                    : subjectColorsNotifier
+                                                          .value[sk2];
+                                                final fgColor = isCancelled
+                                                    ? cancelledColor2
+                                                    : useMonochrome2
+                                                    ? cs.primary
+                                                    : cv2 != null
+                                                    ? Color(cv2)
+                                                    : _autoLessonColor(
+                                                        sk2,
+                                                        isDark2,
+                                                      );
+                                                final bgColor = isCancelled
+                                                    ? Color.alphaBlend(
+                                                        cancelledColor2
+                                                            .withValues(
+                                                              alpha: isDark2
+                                                                  ? 0.14
+                                                                  : 0.10,
+                                                            ),
+                                                        cs.surfaceContainerHighest,
+                                                      )
+                                                    : Color.alphaBlend(
+                                                        fgColor.withValues(
+                                                          alpha: isDark2
+                                                              ? 0.14
+                                                              : 0.10,
+                                                        ),
+                                                        cs.surfaceContainerHighest,
+                                                      );
+                                                final isCurrent =
+                                                    (dayIndex == todayIndex) &&
+                                                    (slot.startMin <= nowMin &&
+                                                        nowMin < slot.endMin);
+                                                final isNow = isCurrent;
+
+                                                final lDateInt =
+                                                    int.tryParse(
+                                                      l['date']?.toString() ??
+                                                          '',
+                                                    ) ??
+                                                    0;
+                                                final hasHomework =
+                                                    homeworksNotifier.value.any(
+                                                      (hw) =>
+                                                          hw['dueDate'] ==
+                                                              lDateInt &&
+                                                          (hw['subject'] ==
+                                                                  sk2 ||
+                                                              hw['subject'] ==
+                                                                  subject),
+                                                    ) ||
+                                                    customHomeworkNotifier.value
+                                                        .any(
+                                                          (hw) =>
+                                                              hw['dueDate'] ==
+                                                                  lDateInt &&
+                                                              (hw['subject'] ==
+                                                                      sk2 ||
+                                                                  hw['subject'] ==
+                                                                      subject),
+                                                        );
+                                                final hasExam =
+                                                    apiExamsNotifier.value.any(
+                                                      (ex) =>
+                                                          (ex['date'] ??
+                                                                  ex['examDate'] ??
+                                                                  0) ==
+                                                              lDateInt &&
+                                                          (ex['subject'] ==
+                                                                  sk2 ||
+                                                              ex['subjectName'] ==
+                                                                  sk2 ||
+                                                              ex['subject'] ==
+                                                                  subject),
+                                                    ) ||
+                                                    customExamsNotifier.value.any(
+                                                      (ex) =>
+                                                          (ex['date'] ?? 0) ==
+                                                              lDateInt &&
+                                                          (ex['subject'] ==
+                                                                  sk2 ||
+                                                              ex['subject'] ==
+                                                                  subject),
+                                                    );
+
+                                                return _dimPastLesson(
+                                                  dim: dim,
+                                                  child: GestureDetector(
+                                                    onTap: () => _onLessonTap(
+                                                      context,
+                                                      l,
+                                                    ),
+                                                    onLongPress: () =>
+                                                        _editLessonTemporarily(
+                                                          l,
+                                                        ),
+                                                    child: _buildTimetableLessonCard(
+                                                      context: context,
+                                                      isCancelled: isCancelled,
+                                                      isDark: isDark2,
+                                                      fgColor: fgColor,
+                                                      bgColor: bgColor,
+                                                      subject: subject,
+                                                      teacher: teacher,
+                                                      room: room,
+                                                      isNow: isNow,
+                                                      isTeacherMissing:
+                                                          isTeacherMissing,
+                                                      hasHomework: hasHomework,
+                                                      hasExam: hasExam,
+                                                      padding:
+                                                          const EdgeInsets.fromLTRB(
+                                                            8,
+                                                            5,
+                                                            6,
+                                                            5,
+                                                          ),
+                                                      accentWidth: 3.5,
+                                                      subjectFontSize: 11.5,
+                                                      teacherFontSize: 9.5,
+                                                      roomFontSize: 9.5,
+                                                      useStripes: true,
+                                                      availableWidth: cardWidth,
+                                                      availableHeight: height,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        }),
+                                        if (showNowLine &&
+                                            dayIndex == todayIndex)
+                                          Positioned(
+                                            top: nowTop - 1.5,
+                                            left: 0,
+                                            right: 0,
+                                            child: IgnorePointer(
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    width: 5,
+                                                    height: 5,
+                                                    decoration: BoxDecoration(
+                                                      color: cs.error,
+                                                      shape: BoxShape.circle,
+                                                      boxShadow: _glowShadows(
+                                                        context,
+                                                        [
                                                           BoxShadow(
                                                             color: cs.error
                                                                 .withValues(
@@ -4562,48 +4919,50 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                             blurRadius: 3,
                                                             spreadRadius: 0.5,
                                                           ),
-                                                        ]),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Expanded(
-                                                  child: Container(
-                                                    height: 2,
-                                                    decoration: BoxDecoration(
-                                                      color: cs.error,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            2,
-                                                          ),
-                                                      boxShadow: _glowShadows(
-                                                        context,
-                                                        [
-                                                          BoxShadow(
-                                                            color: cs.error
-                                                                .withValues(
-                                                                  alpha: 0.25,
-                                                                ),
-                                                            blurRadius: 3,
-                                                          ),
                                                         ],
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(width: 6),
+                                                  Expanded(
+                                                    child: Container(
+                                                      height: 2,
+                                                      decoration: BoxDecoration(
+                                                        color: cs.error,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              2,
+                                                            ),
+                                                        boxShadow: _glowShadows(
+                                                          context,
+                                                          [
+                                                            BoxShadow(
+                                                              color: cs.error
+                                                                  .withValues(
+                                                                    alpha: 0.25,
+                                                                  ),
+                                                              blurRadius: 3,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            );
-                          }),
-                        ),
-                      ],
-                    ),
-                  ],
+                                      ],
+                                    );
+                                  },
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -4656,6 +5015,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _fetchFullWeek({bool silent = false}) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
     final requestGeneration = ++_weekFetchGeneration;
     final requestedMonday = _currentMonday;
     final requestAccountId = activeUntisAccountId ?? 'legacy';
@@ -4747,7 +5107,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (!ok && !hasCachedWeek) {
         if (!mounted) return;
         setState(() {
-          _loadError = "Nicht angemeldet";
+          _loadError = l.timetableNotSignedIn;
           _weekData = _emptyWeekData();
           _showingCachedWeek = false;
           _loading = false;
@@ -4811,8 +5171,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         }
         if (!mounted) return;
         setState(() {
-          _loadError =
-              "HTTP ${response.statusCode}: Stundenplan konnte nicht geladen werden.";
+          _loadError = l.timetableHttpError(response.statusCode);
           _weekData = _emptyWeekData();
           _showingCachedWeek = false;
           _loading = false;
@@ -4826,7 +5185,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final errCode = decodedResponse['error']['code'] as int? ?? 0;
         final apiMsg =
             decodedResponse['error']['message']?.toString() ??
-            "Unbekannter API-Fehler";
+            l.timetableUnknownApiError;
 
         if (apiMsg.toLowerCase().contains('not within a school year') ||
             apiMsg.toLowerCase().contains('nicht in einem schuljahr')) {
@@ -5019,10 +5378,28 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         });
       });
 
-      _applyKnownSubjectsFromWeek(tempWeek);
+      final missingTeacherLessons = tempWeek.values
+          .expand((day) => day)
+          .where((l) => ((l['_teacher'] ?? '').toString().trim().isEmpty))
+          .toList();
+      if (missingTeacherLessons.isNotEmpty) {
+        // Resolve the data snapshot before it becomes visible. A week must
+        // never repaint merely because its teacher directory arrived later.
+        await _resolveMissingTeachers(
+          tempWeek: tempWeek,
+          missingTeacherLessons: missingTeacherLessons,
+          requestGeneration: requestGeneration,
+          requestedMonday: requestedMonday,
+          requestAccountId: requestAccountId,
+          requestPersonId: requestPersonId,
+          requestPersonType: requestPersonType,
+          startDate: startDate,
+          endDate: endDate,
+          classIdsInWeek: classIdsInWeek,
+        );
+      }
       if (!isCurrentRequest()) return;
-
-      // Update UI immediately so timetable is visible without waiting for secondary calls
+      _applyKnownSubjectsFromWeek(tempWeek);
       setState(() {
         _weekData = tempWeek;
         _showingCachedWeek = false;
@@ -5062,28 +5439,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
       );
 
-      final missingTeacherLessons = tempWeek.values
-          .expand((day) => day)
-          .where((l) => ((l['_teacher'] ?? '').toString().trim().isEmpty))
-          .toList();
-
-      if (missingTeacherLessons.isNotEmpty) {
-        unawaited(
-          _resolveMissingTeachers(
-            tempWeek: tempWeek,
-            missingTeacherLessons: missingTeacherLessons,
-            requestGeneration: requestGeneration,
-            requestedMonday: requestedMonday,
-            requestAccountId: requestAccountId,
-            requestPersonId: requestPersonId,
-            requestPersonType: requestPersonType,
-            startDate: startDate,
-            endDate: endDate,
-            classIdsInWeek: classIdsInWeek,
-          ),
-        );
-      }
-
       Future.delayed(const Duration(milliseconds: 500), () {
         if (isCurrentRequest()) {
           _prefetchAdjacentWeeks();
@@ -5116,7 +5471,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
       if (!mounted) return;
       setState(() {
-        _loadError = errMsg;
+        _loadError = l.timetableLoadError;
         _weekData = _emptyWeekData();
         _showingCachedWeek = false;
         _loading = false;
@@ -5328,19 +5683,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     }
 
-    if (updatedAny && isCurrent()) {
-      setState(() {});
-      currentWeekDataNotifier.value = Map<int, List<dynamic>>.from(_weekData);
-      unawaited(
-        _saveWeekToCache(
-          requestPersonId: requestPersonId,
-          requestPersonType: requestPersonType,
-          weekData: _weekData,
-          monday: requestedMonday,
-        ),
-      );
-      unawaited(_updateHomeWidgets(_weekData));
-    }
+    // The caller publishes this complete snapshot atomically. Keeping this
+    // method mutation-only prevents delayed teacher lookups from refreshing a
+    // different week after the user has already switched away.
+    if (updatedAny && !isCurrent()) return;
   }
 
   Future<String?> _authenticateAnonymous() async {
@@ -5875,7 +6221,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             children: [
               Text(
                 _viewingClassName ?? l.timetableTitle,
-                style: GoogleFonts.outfit(
+                style: untisThemeTextStyle(
+                  context,
+                  display: true,
                   fontWeight: FontWeight.w900,
                   fontSize: 17,
                 ),
@@ -5919,7 +6267,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 controller: _tabController,
                 indicatorColor: Theme.of(context).colorScheme.primary,
                 indicatorWeight: 3,
-                labelStyle: GoogleFonts.outfit(
+                labelStyle: untisThemeTextStyle(
+                  context,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -5930,44 +6279,87 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 dividerColor: Colors.transparent,
                 tabs: List.generate(5, (i) {
                   final dayDate = _currentMonday.add(Duration(days: i));
+                  final dayOverride =
+                      _alarmConfig.dateOverrides[alarmDateKey(dayDate)];
                   final now = DateTime.now();
                   final isToday =
                       dayDate.year == now.year &&
                       dayDate.month == now.month &&
                       dayDate.day == now.day;
                   return Tab(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _dayShort[i],
-                          style: TextStyle(fontSize: 13, height: 1.1),
-                        ),
-                        Text(
-                          '${dayDate.day}.',
-                          style: TextStyle(
-                            fontSize: 11,
-                            height: 1.2,
-                            color: isToday
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onLongPress: () {
+                        HapticFeedback.mediumImpact();
+                        _showDateAlarmActions(dayDate);
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _dayShort[i],
+                            style: const TextStyle(fontSize: 13, height: 1.1),
                           ),
-                        ),
-                        if (isToday)
-                          Container(
-                            width: 3,
-                            height: 3,
-                            margin: const EdgeInsets.only(top: 1),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          )
-                        else
-                          const SizedBox(height: 4),
-                      ],
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${dayDate.day}.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  height: 1.2,
+                                  color: isToday
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                ),
+                              ),
+                              if (dayOverride != null) ...[
+                                const SizedBox(width: 3),
+                                Icon(
+                                  dayOverride.disabled
+                                      ? Icons.alarm_off_rounded
+                                      : dayOverride.customTimeOfDayMinutes != null
+                                      ? Icons.alarm_rounded
+                                      : Icons.fast_forward_rounded,
+                                  size: 12,
+                                  color: dayOverride.disabled
+                                      ? Theme.of(context).colorScheme.error
+                                      : Theme.of(context).colorScheme.primary,
+                                ),
+                                if (dayOverride.customTimeOfDayMinutes != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 2),
+                                    child: Text(
+                                      '${(dayOverride.customTimeOfDayMinutes! ~/ 60).toString().padLeft(2, '0')}:${(dayOverride.customTimeOfDayMinutes! % 60).toString().padLeft(2, '0')}',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        height: 1,
+                                        fontWeight: FontWeight.w800,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ],
+                          ),
+                          if (isToday)
+                            Container(
+                              width: 3,
+                              height: 3,
+                              margin: const EdgeInsets.only(top: 1),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          else
+                            const SizedBox(height: 4),
+                        ],
+                      ),
                     ),
                   );
                 }),
@@ -7851,7 +8243,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
 
   Future<void> _fetchApiExams() async {
     if (demoModeNotifier.value) {
-      _apiExams = DemoModeService.demoExams();
+      _apiExams = DemoModeService.demoExams(locale: appLocaleNotifier.value);
       return;
     }
     if (sessionID.isEmpty) return;
@@ -9260,7 +9652,9 @@ class _TimetableChatSheetState extends State<_TimetableChatSheet> {
         .toList();
 
     if (demoModeNotifier.value) {
-      final demoExams = DemoModeService.demoExams();
+      final demoExams = DemoModeService.demoExams(
+        locale: appLocaleNotifier.value,
+      );
       if (mounted) {
         setState(() {
           _exams = [
@@ -13133,7 +13527,7 @@ class _SettingsPageState extends State<SettingsPage> {
         NotificationIds.currentLesson,
       );
     } else {
-      updateUntisData().catchError((_) {});
+      updateUntisData().catchError((_) => false);
     }
   }
 
@@ -13146,7 +13540,7 @@ class _SettingsPageState extends State<SettingsPage> {
         NotificationIds.dailyBriefing,
       );
     } else {
-      updateUntisData().catchError((_) {});
+      updateUntisData().catchError((_) => false);
     }
   }
 

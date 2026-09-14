@@ -123,9 +123,7 @@ class ThemedSurface extends StatelessWidget {
         final blurActive = blur && tokens.supportsBlur && blurEnabled;
         final translucent =
             color ??
-            cs.surfaceContainerLow.withValues(
-              alpha: tokens.id == AppThemeId.glass ? 0.48 : 0.72,
-            );
+            cs.surfaceContainerLow.withValues(alpha: tokens.surfaceOpacity);
         final opaque = Color.alphaBlend(translucent, cs.surface);
         final effectiveColor = blurActive ? translucent : opaque;
         final effectiveBorder =
@@ -485,6 +483,60 @@ Future<T?> _showUnifiedOptionSheet<T>({
 }
 
 // ── Settings UI Components (Material You Expressive Grouped Sections) ────────
+
+/// A non-scrolling choice grid whose cards keep a predictable height on every
+/// form factor. Using an aspect ratio here made the theme cards grow vertically
+/// with the width of a tablet.
+class ResponsiveFixedGrid extends StatelessWidget {
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final double mainAxisExtent;
+  final double maxWidth;
+  final double spacing;
+
+  const ResponsiveFixedGrid({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+    required this.mainAxisExtent,
+    this.maxWidth = 960,
+    this.spacing = 10,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = MediaQuery.sizeOf(context).width;
+            final requestedColumns =
+                screenWidth >= 1000 && constraints.maxWidth >= 840
+                ? 4
+                : screenWidth >= 720 && constraints.maxWidth >= 360
+                ? 3
+                : 2;
+            final columns = math.min(requestedColumns, math.max(1, itemCount));
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: itemCount,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisSpacing: spacing,
+                crossAxisSpacing: spacing,
+                mainAxisExtent: mainAxisExtent,
+              ),
+              itemBuilder: itemBuilder,
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
 
 class SettingsGroup extends StatelessWidget {
   final String? title;

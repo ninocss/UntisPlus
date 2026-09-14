@@ -209,24 +209,22 @@ class SettingsAppearancePage extends StatelessWidget {
           dark
               ? const [Color(0xFF171511), Color(0xFFF5EBD7)]
               : const [Color(0xFFF4ECDD), Color(0xFF17120C)],
-        AppThemeId.vivid => const [
-          Color(0xFFFF4FC8),
-          Color(0xFF4BE4FF),
-          Color(0xFFFFE04B),
-        ],
-        AppThemeId.glass => const [
-          Color(0xFF76D6FF),
-          Color(0xFFD8BCFF),
-          Color(0xFFBFFFF1),
-        ],
+        AppThemeId.vivid =>
+          dark
+              ? const [Color(0xFF100C1D), Color(0xFFBFA8FF), Color(0xFFFF75BB)]
+              : const [Color(0xFFFFF7FD), Color(0xFF6E37FF), Color(0xFFD81B82)],
+        AppThemeId.glass =>
+          dark
+              ? const [Color(0xFF091722), Color(0xFF8BC7FF), Color(0xFFC9B5FF)]
+              : const [Color(0xFFF4FAFF), Color(0xFF195FC7), Color(0xFF7ADDC7)],
         AppThemeId.cyber =>
           dark
-              ? const [Color(0xFF02050A), Color(0xFF00F5FF), Color(0xFFFF2FA8)]
-              : const [Color(0xFFE9FEFF), Color(0xFF006B75), Color(0xFFFF2FA8)],
+              ? const [Color(0xFF02070B), Color(0xFF35F0FF), Color(0xFFFF59B6)]
+              : const [Color(0xFFF1FCFD), Color(0xFF006B75), Color(0xFFB00069)],
         AppThemeId.paper =>
           dark
-              ? const [Color(0xFF1E2020), Color(0xFFFFC86B)]
-              : const [Color(0xFFFFF9E8), Color(0xFF9A4D24)],
+              ? const [Color(0xFF1C1A17), Color(0xFFF2A36F)]
+              : const [Color(0xFFFFFBF1), Color(0xFF9A4D24)],
       };
 
   Widget _buildThemePicker(
@@ -252,16 +250,9 @@ class SettingsAppearancePage extends StatelessWidget {
                 ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             ),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+            ResponsiveFixedGrid(
               itemCount: AppThemeId.values.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.36,
-              ),
+              mainAxisExtent: 148,
               itemBuilder: (context, index) {
                 final theme = AppThemeId.values[index];
                 final colors = _themePreviewColors(theme, dark);
@@ -877,10 +868,10 @@ class SettingsAppearancePage extends StatelessWidget {
                   ),
                   iconColor: cs.onSecondaryContainer,
                   title: l.ui('appearanceAppIcon'),
-                  subtitle: Platform.isAndroid
+                  subtitle: !kIsWeb && Platform.isAndroid
                       ? l.ui('appearanceIconChoose')
                       : l.ui('appearanceIconAndroidOnly'),
-                  onTap: Platform.isAndroid
+                  onTap: !kIsWeb && Platform.isAndroid
                       ? () => _showAppIconDialog(context)
                       : null,
                 ),

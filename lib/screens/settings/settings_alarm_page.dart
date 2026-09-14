@@ -101,6 +101,101 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     );
   }
 
+  Widget _buildExpressiveSmartCard(AppL10n l, ColorScheme cs) {
+    final active = _config.smartEnabled;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            cs.primaryContainer,
+            cs.tertiaryContainer.withValues(alpha: 0.78),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.22)),
+        boxShadow: [
+          BoxShadow(
+            color: cs.primary.withValues(alpha: 0.14),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: cs.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              active ? Icons.alarm_on_rounded : Icons.alarm_off_rounded,
+              color: cs.onPrimary,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.ui('alarmSchedule'),
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: cs.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  active ? l.ui('alarmScheduleDesc') : l.ui('alarmReadyNo'),
+                  style: GoogleFonts.outfit(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onPrimaryContainer.withValues(alpha: 0.76),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: active,
+            onChanged: (value) => _save(
+              _config.copyWith(smartEnabled: value),
+              refreshTimetable: value,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _makeNextAlarmEarlier() async {
+    final applied = await AlarmService.instance.makeNextSmartAlarmEarlier();
+    if (!mounted) return;
+    final l = AppL10n.of(appLocaleNotifier.value);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          applied
+              ? l
+                  .ui('alarmEarlierValue')
+                  .replaceAll('{n}', '${_config.nextAlarmEarlierMinutes}')
+              : l.ui('alarmScheduleDesc'),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    await _load();
+  }
+
   Future<void> _addManualAlarm() async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final alarm = ManualAlarmConfig(
@@ -254,8 +349,9 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+          padding: EdgeInsets.fromLTRB(0, 0, 0, mq.padding.bottom + 120),
           children: [
+            _buildExpressiveSmartCard(l, cs),
             SettingsGroup(
               title: l.ui('alarmReady'),
               children: [
@@ -312,16 +408,6 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
             SettingsGroup(
               title: l.ui('alarmSmart'),
               children: [
-                SettingsSwitchTile(
-                  icon: Icons.auto_awesome_rounded,
-                  title: l.ui('alarmSchedule'),
-                  subtitle: l.ui('alarmScheduleDesc'),
-                  value: _config.smartEnabled,
-                  onChanged: (value) => _save(
-                    _config.copyWith(smartEnabled: value),
-                    refreshTimetable: value,
-                  ),
-                ),
                 SettingsTile(
                   icon: Icons.directions_walk_rounded,
                   title: l.ui('alarmLead'),
@@ -340,10 +426,49 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   ),
                 ),
                 SettingsTile(
-                  icon: Icons.sync_rounded,
-                  title: l.ui('alarmUpdate'),
-                  subtitle: l.ui('alarmUpdateDesc'),
-                  trailing: const SizedBox.shrink(),
+                  icon: Icons.notifications_active_rounded,
+                  title: l.ui('alarmHeadsUp'),
+                  subtitle:
+                      '${l.ui('alarmHeadsUpValue').replaceAll('{n}', '${_config.preAlarmNotificationMinutes}')} · ${l.ui('alarmHeadsUpDesc')}',
+                  onTap: () => _chooseMinutes(
+                    title: l.ui('alarmHeadsUp'),
+                    current: _config.preAlarmNotificationMinutes,
+                    min: 0,
+                    max: 120,
+                    onChanged: (value) => _save(
+                      _config.copyWith(preAlarmNotificationMinutes: value),
+                    ),
+                  ),
+                ),
+                SettingsTile(
+                  icon: Icons.fast_forward_rounded,
+                  title: l.ui('alarmEarlier'),
+                  subtitle: l
+                      .ui('alarmEarlierValue')
+                      .replaceAll('{n}', '${_config.nextAlarmEarlierMinutes}'),
+                  onTap: () => _chooseMinutes(
+                    title: l.ui('alarmEarlier'),
+                    current: _config.nextAlarmEarlierMinutes,
+                    min: 1,
+                    max: 90,
+                    onChanged: (value) => _save(
+                      _config.copyWith(nextAlarmEarlierMinutes: value),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+                  child: FilledButton.tonalIcon(
+                    onPressed: _config.smartEnabled
+                        ? _makeNextAlarmEarlier
+                        : null,
+                    icon: const Icon(Icons.alarm_add_rounded),
+                    label: Text(
+                      l
+                          .ui('alarmEarlierValue')
+                          .replaceAll('{n}', '${_config.nextAlarmEarlierMinutes}'),
+                    ),
+                  ),
                 ),
               ],
             ),

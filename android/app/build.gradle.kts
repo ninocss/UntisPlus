@@ -17,7 +17,9 @@ plugins {
 
 android {
     namespace = "com.ninocss.untisplus"
-    compileSdk = flutter.compileSdkVersion
+    // androidx.core 1.19 requires API 37. This is deliberately independent
+    // from targetSdk/minSdk, so existing runtime compatibility remains intact.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -32,6 +34,10 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Flutter's source-manifest launcher discovery does not inspect
+        // activity aliases. Enable the real launcher for debug/profile runs;
+        // release keeps the selectable icon aliases as the sole launcher.
+        manifestPlaceholders["flutterToolLauncherEnabled"] = "true"
     }
 
     signingConfigs {
@@ -47,6 +53,7 @@ android {
     buildTypes {
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
+            manifestPlaceholders["flutterToolLauncherEnabled"] = "false"
         }
         getByName("debug") {
             signingConfig = signingConfigs.getByName("debug")

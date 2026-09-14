@@ -50,6 +50,7 @@
         </receiver>
         <receiver android:name=".AlarmReceiver" android:exported="false" />
         <receiver android:name=".AlarmPreWakeRefreshReceiver" android:exported="false" />
+        <receiver android:name=".AlarmReminderReceiver" android:exported="false" />
         <receiver android:name=".AlarmRescheduleReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -76,6 +77,7 @@
             android:theme="@style/AlarmTheme" />
         <activity
             android:name=".MainActivity"
+            android:enabled="${flutterToolLauncherEnabled}"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
@@ -88,6 +90,14 @@
               android:resource="@style/NormalTheme"
               />
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+            <!-- Flutter's Android launcher discovery only inspects activities,
+                 not activity-alias entries. Keep this real launcher target so
+                 debug/profile run can start the app. Release continues to
+                 use only the icon aliases, avoiding duplicate icons. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="com.ninocss.untisplus.OPEN_ASSISTANT" />
                 <data android:scheme="untisplus" android:host="assistant" />

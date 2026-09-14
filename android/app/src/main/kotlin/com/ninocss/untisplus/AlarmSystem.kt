@@ -9,6 +9,9 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -27,6 +30,7 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.Space
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import io.flutter.FlutterInjector
@@ -41,10 +45,13 @@ import java.util.Calendar
 object AlarmScheduler {
     const val alarmAction = "com.ninocss.untisplus.ALARM_RING"
     const val refreshAction = "com.ninocss.untisplus.ALARM_PRE_WAKE_REFRESH"
+    const val reminderAction = "com.ninocss.untisplus.ALARM_UPCOMING_REMINDER"
+    const val reminderDisableAction = "com.ninocss.untisplus.ALARM_REMINDER_DISABLE"
     const val extraPlan = "alarm_plan"
     const val extraAlarmId = "alarm_id"
     private const val prefsName = "untis_alarm_native"
     private const val plansKey = "plans"
+    private const val suppressedSmartDateKey = "suppressed_smart_date"
 
     private fun prefs(context: Context) = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     private fun alarmManager(context: Context) = context.getSystemService(AlarmManager::class.java)
@@ -96,6 +103,10 @@ object AlarmScheduler {
     private fun schedulePlan(context: Context, plan: JSONObject) {
         val id = plan.optString("id")
         if (id.isBlank()) return
+        if (plan.optString("kind") == "smart" &&
+            plan.optString("dateKey") == prefs(context).getString(suppressedSmartDateKey, "")) {
+            return
+        }
         val triggerAt = if (plan.optString("kind") == "manual") {
             nextRecurringTrigger(plan)
         } else {
@@ -118,6 +129,27 @@ object AlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         alarmManager(context).setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showIntent), operation)
+
+        val reminderMinutes = plan.optInt("preAlarmNotificationMinutes", 30).coerceIn(0, 180)
+        val reminderAt = triggerAt - reminderMinutes * 60_000L
+        // Timetable alarms are deliberately gated by AlarmRefreshService: a
+        // stale plan must never post a heads-up while today's refresh is still
+        // in flight. Manual alarms have no timetable dependency.
+        if (plan.optString("kind") != "smart" && reminderMinutes > 0 && reminderAt > System.currentTimeMillis()) {
+            val reminderOperation = PendingIntent.getBroadcast(
+                context,
+                requestCode(id, 3),
+                Intent(context, AlarmReminderReceiver::class.java)
+                    .setAction(reminderAction)
+                    .putExtra(extraPlan, plan.toString()),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            alarmManager(context).setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                reminderAt,
+                reminderOperation,
+            )
+        }
 
         if (plan.optString("kind") == "smart") {
             val refreshAt = plan.optLong("preRefreshAtMillis", 0L)
@@ -182,6 +214,13 @@ object AlarmScheduler {
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
         )
         if (refreshIntent != null) manager.cancel(refreshIntent)
+        val reminderIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode(id, 3),
+            Intent(context, AlarmReminderReceiver::class.java).setAction(reminderAction),
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        )
+        if (reminderIntent != null) manager.cancel(reminderIntent)
     }
 
     fun scheduleSnooze(context: Context, plan: JSONObject, minutes: Int) {
@@ -211,6 +250,83 @@ object AlarmScheduler {
 
     fun canScheduleExact(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager(context).canScheduleExactAlarms()
+
+    fun postDueSmartReminder(context: Context) {
+        for (index in 0 until storedPlans(context).length()) {
+            val plan = storedPlans(context).optJSONObject(index) ?: continue
+            if (plan.optString("kind") != "smart") continue
+            if (plan.optString("dateKey") == prefs(context).getString(suppressedSmartDateKey, "")) continue
+            val lead = plan.optInt("preAlarmNotificationMinutes", 30).coerceIn(0, 180)
+            val remaining = plan.optLong("triggerAtMillis", 0L) - System.currentTimeMillis()
+            if (lead > 0 && remaining in 1..(lead * 60_000L)) {
+                AlarmReminderReceiver.showReminder(context, plan)
+            }
+        }
+    }
+}
+
+/** Posted only after the smart-plan refresh had a chance to cancel or move it. */
+class AlarmReminderReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val rawPlan = intent.getStringExtra(AlarmScheduler.extraPlan) ?: return
+        val plan = try { JSONObject(rawPlan) } catch (_: Exception) { return }
+        if (intent.action == AlarmScheduler.reminderDisableAction) {
+            if (plan.optString("kind") == "smart") {
+                context.getSharedPreferences("untis_alarm_native", Context.MODE_PRIVATE)
+                    .edit()
+                    .putString("suppressed_smart_date", plan.optString("dateKey"))
+                    .apply()
+                AlarmScheduler.cancelAll(context)
+                AlarmScheduler.scheduleStoredPlans(context)
+            }
+            return
+        }
+        showReminder(context, plan)
+    }
+
+    companion object {
+    fun showReminder(context: Context, plan: JSONObject) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val channelId = "untis_alarm_upcoming"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            manager.createNotificationChannel(
+                NotificationChannel(channelId, "Untis+ Wecker-Erinnerungen", NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "Hinweise vor einem Untis+ Wecker"
+                    lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+                },
+            )
+        }
+        val minutes = plan.optInt("preAlarmNotificationMinutes", 30)
+        val builder = Notification.Builder(context, channelId)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("Wecker in $minutes Minuten")
+            .setContentText(plan.optString("label", "Untis+ Wecker"))
+            .setCategory(Notification.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(PendingIntent.getActivity(
+                context,
+                plan.optString("id").hashCode(),
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            ))
+        if (plan.optString("kind") == "smart") {
+            @Suppress("DEPRECATION")
+            builder.addAction(
+                R.mipmap.ic_launcher,
+                "Für diesen Tag ausschalten",
+                PendingIntent.getBroadcast(
+                    context,
+                    plan.optString("id").hashCode() xor 0x71,
+                    Intent(context, AlarmReminderReceiver::class.java)
+                        .setAction(AlarmScheduler.reminderDisableAction)
+                        .putExtra(AlarmScheduler.extraPlan, plan.toString()),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+        }
+        manager.notify(42050 + (plan.optString("id").hashCode() and 0x3ff), builder.build())
+    }
+    }
 }
 
 class AlarmReceiver : BroadcastReceiver() {
@@ -422,11 +538,25 @@ class AlarmActivity : android.app.Activity() {
     }
 
     private fun buildContent() {
+        fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+        fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+        }
+        fun text(value: String, size: Float, color: Int, weight: Int = Typeface.NORMAL) =
+            TextView(this).apply {
+                this.text = value
+                textSize = size
+                setTextColor(color)
+                gravity = Gravity.CENTER
+                typeface = Typeface.create("sans-serif", weight)
+                includeFontPadding = false
+            }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(32, 48, 32, 48)
-            setBackgroundColor(0xff102a2a.toInt())
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(28), dp(48), dp(28), dp(28))
+            setBackgroundColor(Color.rgb(39, 18, 16))
             setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> downX = event.rawX
@@ -441,26 +571,66 @@ class AlarmActivity : android.app.Activity() {
                 false
             }
         }
-        fun text(value: String, size: Float, alpha: Float = 1f) = TextView(this).apply {
-            this.text = value
-            textSize = size
-            setTextColor(android.graphics.Color.WHITE)
-            this.alpha = alpha
+        root.addView(Space(this), LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 0, 0.78f,
+        ))
+        root.addView(text("UNTIS+", 13f, Color.rgb(255, 183, 164), Typeface.BOLD).apply {
+            letterSpacing = 0.16f
+        })
+        root.addView(text(
+            java.text.SimpleDateFormat("HH:mm").format(java.util.Date()),
+            88f,
+            Color.rgb(255, 237, 233),
+            Typeface.BOLD,
+        ).apply { setPadding(0, dp(18), 0, dp(14)) })
+        root.addView(text(plan.optString("label", "Untis+ Wecker"), 18f, Color.rgb(255, 222, 214), Typeface.BOLD).apply {
+            background = rounded(Color.rgb(82, 38, 32), 28)
+            setPadding(dp(22), dp(11), dp(22), dp(11))
+        })
+        root.addView(text("Wische nach links für Schlummern · nach rechts zum Ausschalten", 13f, Color.rgb(225, 190, 182)).apply {
+            setPadding(0, dp(24), 0, dp(20))
+        })
+        root.addView(Space(this), LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.22f,
+        ))
+
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            background = rounded(Color.rgb(65, 29, 25), 42)
         }
-        root.addView(text(java.text.SimpleDateFormat("HH:mm").format(java.util.Date()), 72f))
-        root.addView(text(plan.optString("label", "Untis+ Wecker"), 22f, .9f))
-        root.addView(text("← Schlummern       Ausschalten →", 15f, .72f).apply {
-            setPadding(0, 36, 0, 24)
-        })
-        root.addView(Button(this).apply {
-            text = "Schlummern (${plan.optInt("snoozeMinutes", 5)} Min.)"
-            setOnClickListener { snooze() }
-        })
-        root.addView(Button(this).apply {
-            text = "Ausschalten"
-            setOnClickListener { dismiss() }
-        })
+        fun actionButton(label: String, fill: Int, foreground: Int, onClick: () -> Unit) =
+            Button(this).apply {
+                text = label
+                textSize = 16f
+                isAllCaps = false
+                setTextColor(foreground)
+                typeface = Typeface.create("sans-serif", Typeface.BOLD)
+                background = rounded(fill, 34)
+                minHeight = 0
+                minimumHeight = 0
+                elevation = dp(2).toFloat()
+                setOnClickListener { onClick() }
+            }
+        actions.addView(
+            actionButton(
+                "Schlummern · ${plan.optInt("snoozeMinutes", 5)} Min.",
+                Color.rgb(120, 56, 45),
+                Color.rgb(255, 238, 233),
+            ) { snooze() },
+            LinearLayout.LayoutParams(0, dp(68), 1f).apply { marginEnd = dp(8) },
+        )
+        actions.addView(
+            actionButton("Ausschalten", Color.rgb(255, 118, 82), Color.rgb(61, 20, 12)) {
+                dismiss()
+            },
+            LinearLayout.LayoutParams(0, dp(68), 0.88f),
+        )
+        root.addView(actions, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ))
         setContentView(root)
     }
 
@@ -483,7 +653,7 @@ class AlarmRefreshService : Service() {
     private var engine: FlutterEngine? = null
     private var completed = false
     private val handler = Handler(Looper.getMainLooper())
-    private val timeout = Runnable { complete() }
+    private val timeout = Runnable { complete(allowReminder = false) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(42003, refreshNotification())
@@ -498,7 +668,8 @@ class AlarmRefreshService : Service() {
                 .setMethodCallHandler { call, result ->
                     if (call.method == "completed") {
                         result.success(null)
-                        complete()
+                        val args = call.arguments as? Map<*, *>
+                        complete(allowReminder = args?.get("refreshed") == true)
                     } else result.notImplemented()
                 }
             val entrypoint = DartExecutor.DartEntrypoint(
@@ -509,7 +680,7 @@ class AlarmRefreshService : Service() {
         } catch (_: Exception) {
             // Do not let a refresh failure crash the process or outlive its
             // deadline. The already confirmed alarm remains scheduled.
-            complete()
+            complete(allowReminder = false)
         }
         return START_NOT_STICKY
     }
@@ -528,10 +699,15 @@ class AlarmRefreshService : Service() {
             .build()
     }
 
-    private fun complete() {
+    private fun complete(allowReminder: Boolean) {
         if (completed) return
         completed = true
         handler.removeCallbacks(timeout)
+        if (allowReminder) {
+            // Flutter has just refreshed (and possibly replaced) the smart
+            // plan. Only now may the upcoming-alarm notification be posted.
+            AlarmScheduler.postDueSmartReminder(this)
+        }
         engine?.destroy()
         engine = null
         stopForeground(STOP_FOREGROUND_REMOVE)

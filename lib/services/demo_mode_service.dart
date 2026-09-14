@@ -356,33 +356,87 @@ class DemoModeService {
     };
   }
 
-  static List<Map<String, dynamic>> demoExams() {
+  static List<Map<String, dynamic>> demoExams({String locale = 'de'}) {
     final now = DateTime.now();
     final y = now.year;
     return [
       {
-        'subject': 'Mathematics',
-        'examType': 'Midterm Exam',
+        'subject': _copy(
+          locale,
+          de: 'Mathematik',
+          en: 'Mathematics',
+          fr: 'Mathématiques',
+          es: 'Matemáticas',
+        ),
+        'examType': _copy(
+          locale,
+          de: 'Klausur',
+          en: 'Midterm exam',
+          fr: 'Examen',
+          es: 'Examen parcial',
+        ),
         'date': _dateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 3)),
         ),
-        'description': 'Functions, derivatives, and graph analysis.',
+        'description': _copy(
+          locale,
+          de: 'Funktionen, Ableitungen und Kurvendiskussion.',
+          en: 'Functions, derivatives, and graph analysis.',
+          fr: 'Fonctions, dérivées et étude de courbes.',
+          es: 'Funciones, derivadas y análisis de gráficas.',
+        ),
       },
       {
-        'subject': 'English Language Arts',
-        'examType': 'Vocabulary Quiz',
+        'subject': _copy(
+          locale,
+          de: 'Englisch',
+          en: 'English Language Arts',
+          fr: 'Anglais',
+          es: 'Inglés',
+        ),
+        'examType': _copy(
+          locale,
+          de: 'Vokabeltest',
+          en: 'Vocabulary quiz',
+          fr: 'Contrôle de vocabulaire',
+          es: 'Prueba de vocabulario',
+        ),
         'date': _dateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 8)),
         ),
-        'description': 'Unit 6: persuasive writing and reading comprehension.',
+        'description': _copy(
+          locale,
+          de: 'Einheit 6: argumentatives Schreiben und Leseverständnis.',
+          en: 'Unit 6: persuasive writing and reading comprehension.',
+          fr: 'Unité 6 : écriture argumentative et compréhension écrite.',
+          es: 'Unidad 6: escritura argumentativa y comprensión lectora.',
+        ),
       },
       {
-        'subject': 'Biology',
-        'examType': 'Lab Assessment',
+        'subject': _copy(
+          locale,
+          de: 'Biologie',
+          en: 'Biology',
+          fr: 'Biologie',
+          es: 'Biología',
+        ),
+        'examType': _copy(
+          locale,
+          de: 'Laborprüfung',
+          en: 'Lab assessment',
+          fr: 'Évaluation de laboratoire',
+          es: 'Evaluación de laboratorio',
+        ),
         'date': _dateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 12)),
         ),
-        'description': 'Microscopy report and cell structure analysis.',
+        'description': _copy(
+          locale,
+          de: 'Mikroskopiebericht und Analyse der Zellstruktur.',
+          en: 'Microscopy report and cell structure analysis.',
+          fr: 'Compte rendu de microscopie et analyse de la structure cellulaire.',
+          es: 'Informe de microscopía y análisis de la estructura celular.',
+        ),
       },
     ];
   }
@@ -404,7 +458,13 @@ class DemoModeService {
         {
           'id': 9001,
           'lessonId': math['id'],
-          'text': 'Übung 5 auf Seite 12 bearbeiten.',
+          'text': _copy(
+            locale,
+            de: 'Übung 5 auf Seite 12 bearbeiten.',
+            en: 'Complete exercise 5 on page 12.',
+            fr: 'Faire l’exercice 5 à la page 12.',
+            es: 'Completar el ejercicio 5 de la página 12.',
+          ),
           'dueDate': math['date'],
           'isDone': false,
           '_lesson': math,
@@ -412,7 +472,13 @@ class DemoModeService {
         {
           'id': 9002,
           'lessonId': english['id'],
-          'text': 'Die Vokabeln für die nächste Stunde wiederholen.',
+          'text': _copy(
+            locale,
+            de: 'Die Vokabeln für die nächste Stunde wiederholen.',
+            en: 'Review the vocabulary for the next lesson.',
+            fr: 'Réviser le vocabulaire pour le prochain cours.',
+            es: 'Repasar el vocabulario para la próxima clase.',
+          ),
           'dueDate': english['date'],
           'isDone': false,
           '_lesson': english,
@@ -420,7 +486,13 @@ class DemoModeService {
         {
           'id': 9003,
           'lessonId': chemistry['id'],
-          'text': 'Das Laborprotokoll fertigstellen.',
+          'text': _copy(
+            locale,
+            de: 'Das Laborprotokoll fertigstellen.',
+            en: 'Finish the lab report.',
+            fr: 'Terminer le compte rendu de laboratoire.',
+            es: 'Terminar el informe de laboratorio.',
+          ),
           'dueDate': chemistry['date'],
           'isDone': false,
           '_lesson': chemistry,
@@ -431,14 +503,26 @@ class DemoModeService {
           'id': 9101,
           'lessonId': math['id'],
           'date': math['date'],
-          'text': 'Arbeitsblatt in der Stunde ausgeteilt.',
+          'text': _copy(
+            locale,
+            de: 'Arbeitsblatt in der Stunde ausgeteilt.',
+            en: 'Worksheet handed out during the lesson.',
+            fr: 'Fiche distribuée pendant le cours.',
+            es: 'Hoja de ejercicios entregada durante la clase.',
+          ),
           '_lesson': math,
         },
         {
           'id': 9102,
           'lessonId': chemistry['id'],
           'date': chemistry['date'],
-          'text': 'Für den Versuch bitte Schutzbrille mitbringen.',
+          'text': _copy(
+            locale,
+            de: 'Für den Versuch bitte Schutzbrille mitbringen.',
+            en: 'Bring safety goggles for the experiment.',
+            fr: 'Apporter des lunettes de protection pour l’expérience.',
+            es: 'Traer gafas de seguridad para el experimento.',
+          ),
           '_lesson': chemistry,
         },
       ],
@@ -452,18 +536,47 @@ class DemoModeService {
     return [
       {
         'id': 'demo-notice-1',
-        'title': 'Willkommen bei Untis+',
-        'message':
-            'Im Demo-Modus werden alle Funktionen mit lokalen Beispieldaten gezeigt.',
+        'title': _copy(
+          locale,
+          de: 'Willkommen bei Untis+',
+          en: 'Welcome to Untis+',
+          fr: 'Bienvenue dans Untis+',
+          es: 'Te damos la bienvenida a Untis+',
+        ),
+        'message': _copy(
+          locale,
+          de: 'Im Demo-Modus werden alle Funktionen mit lokalen Beispieldaten gezeigt.',
+          en: 'Demo mode shows every feature using local sample data.',
+          fr: 'Le mode démo présente toutes les fonctions avec des données locales.',
+          es: 'El modo demo muestra todas las funciones con datos locales de ejemplo.',
+        ),
         'date': _dateInt(today),
         'author': 'Untis+',
       },
       {
         'id': 'demo-notice-2',
-        'title': 'Stundenplan aktualisiert',
-        'message': 'Der Chemieunterricht am Freitag findet regulär statt.',
+        'title': _copy(
+          locale,
+          de: 'Stundenplan aktualisiert',
+          en: 'Timetable updated',
+          fr: 'Emploi du temps mis à jour',
+          es: 'Horario actualizado',
+        ),
+        'message': _copy(
+          locale,
+          de: 'Der Chemieunterricht am Freitag findet regulär statt.',
+          en: 'Friday’s chemistry lesson will take place as scheduled.',
+          fr: 'Le cours de chimie du vendredi aura lieu comme prévu.',
+          es: 'La clase de química del viernes tendrá lugar según lo previsto.',
+        ),
         'date': _dateInt(today.subtract(const Duration(days: 1))),
-        'author': 'Sekretariat',
+        'author': _copy(
+          locale,
+          de: 'Sekretariat',
+          en: 'School office',
+          fr: 'Secrétariat',
+          es: 'Secretaría',
+        ),
       },
     ];
   }
@@ -560,8 +673,8 @@ class DemoModeService {
         {'name': subjectShort, 'longname': subjectLong},
       ],
       'code': code,
-      'lstext': startTime == 800 ? 'Please bring your textbooks.' : '',
-      'homework': startTime == 800 ? 'Complete exercise 5 on page 12.' : '',
+      'lstext': '',
+      'homework': '',
     };
   }
 
@@ -685,4 +798,17 @@ class DemoModeService {
 
     return map[code]?[lang] ?? map[code]?['de'] ?? code;
   }
+
+  static String _copy(
+    String locale, {
+    required String de,
+    required String en,
+    required String fr,
+    required String es,
+  }) => switch (locale.toLowerCase()) {
+    'en' => en,
+    'fr' => fr,
+    'es' => es,
+    _ => de,
+  };
 }

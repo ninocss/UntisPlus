@@ -3,10 +3,53 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:untisplus/l10n.dart';
 import 'package:untisplus/main.dart';
 import 'package:untisplus/services/backup_service.dart';
 
 void main() {
+  group('AppL10n', () {
+    test('localizes the AI chat surface in every supported locale', () {
+      final expectedTitles = <String, String>{
+        'de': 'Dein KI-Chat',
+        'en': 'Your AI chat',
+        'fr': 'Ton chat IA',
+        'es': 'Tu chat con IA',
+      };
+
+      for (final locale in AppL10n.supportedLocales) {
+        final l = AppL10n.of(locale);
+        expect(l.aiChatTitle, expectedTitles[locale]);
+        expect(l.aiTyping, isNotEmpty);
+        expect(l.aiChatSubtitle, isNotEmpty);
+        expect(l.aiTryIt, isNotEmpty);
+        expect(l.aiChatSuggestions, hasLength(3));
+        expect(l.aiChatSuggestions.every((value) => value.isNotEmpty), isTrue);
+      }
+    });
+
+    test('interpolates timetable and alarm labels without leaking tokens', () {
+      for (final locale in AppL10n.supportedLocales) {
+        final l = AppL10n.of(locale);
+        final timetableError = l.timetableHttpError(503);
+        final lesson = l.aiNextLessonSummary('Math', '204', '09:45');
+        final alarm = l
+            .ui('alarmAt')
+            .replaceAll('{label}', l.ui('alarmSchedule'))
+            .replaceAll('{time}', '07:15');
+
+        expect(timetableError, contains('503'));
+        expect(lesson, contains('Math'));
+        expect(lesson, contains('204'));
+        expect(lesson, contains('09:45'));
+        expect(
+          '$timetableError$lesson$alarm',
+          isNot(contains(RegExp(r'\{\w+\}'))),
+        );
+      }
+    });
+  });
+
   test('theme ids are stable and unknown ids fall back to default', () {
     for (final theme in AppThemeId.values) {
       expect(AppThemeIdX.fromStorage(theme.storageKey), theme);
@@ -106,6 +149,55 @@ void main() {
         theme,
       );
     }
+  });
+
+  test('redesigned themes keep distinct surface and navigation semantics', () {
+    for (final theme in [
+      AppThemeId.vivid,
+      AppThemeId.glass,
+      AppThemeId.cyber,
+      AppThemeId.paper,
+    ]) {
+      final scheme = untisThemeScheme(theme, Brightness.dark, 0xFF0F766E);
+      final tokens = UntisThemeTokens.forTheme(theme, Brightness.dark, scheme);
+      expect(tokens.surfaceOpacity, inInclusiveRange(0.45, 1.0));
+      expect(tokens.navigationOpacity, inInclusiveRange(0.45, 1.0));
+      expect(tokens.lessonSurfaceOpacity, inInclusiveRange(0.55, 1.0));
+    }
+
+    final vivid = untisThemeScheme(
+      AppThemeId.vivid,
+      Brightness.dark,
+      0xFF0F766E,
+    );
+    expect(vivid.surface, const Color(0xFF100C1D));
+
+    final glassScheme = untisThemeScheme(
+      AppThemeId.glass,
+      Brightness.light,
+      0xFF0F766E,
+    );
+    final glass = UntisThemeTokens.forTheme(
+      AppThemeId.glass,
+      Brightness.light,
+      glassScheme,
+    );
+    expect(glass.surfaceOpacity, lessThan(0.6));
+    expect(glass.navigationOpacity, lessThan(0.6));
+
+    final paper = appThemeCapabilities(AppThemeId.paper);
+    expect(paper.supportsBlur, isFalse);
+    expect(paper.supportsBackgroundMotion, isFalse);
+  });
+
+  test('Cyber and Paper use theme-specific display typography', () {
+    final cyber = untisThemeTextTheme(AppThemeId.cyber, Brightness.dark);
+    final paper = untisThemeTextTheme(AppThemeId.paper, Brightness.light);
+
+    expect(cyber.titleLarge?.fontFamily, contains('IBM Plex Mono'));
+    expect(cyber.bodyMedium?.fontFamily, contains('Outfit'));
+    expect(paper.titleLarge?.fontFamily, contains('Noto Serif'));
+    expect(paper.bodyMedium?.fontFamily, contains('Noto Sans'));
   });
 
   test(

@@ -45,6 +45,10 @@ class WidgetConfiguration {
   final int backgroundColor;
   final int accentColor;
   final int textColor;
+
+  /// `system` follows Android Material You colors; `custom` preserves the
+  /// colors selected in the editor.
+  final String colorMode;
   final double opacity;
   final double cornerRadius;
   final double textScale;
@@ -59,6 +63,7 @@ class WidgetConfiguration {
     this.backgroundColor = 0xFF171C25,
     this.accentColor = 0xFF8AB4F8,
     this.textColor = 0xFFF7F9FF,
+    this.colorMode = 'system',
     this.opacity = 0.94,
     this.cornerRadius = 24,
     this.textScale = 1,
@@ -73,6 +78,7 @@ class WidgetConfiguration {
     int? backgroundColor,
     int? accentColor,
     int? textColor,
+    String? colorMode,
     double? opacity,
     double? cornerRadius,
     double? textScale,
@@ -86,6 +92,7 @@ class WidgetConfiguration {
     backgroundColor: backgroundColor ?? this.backgroundColor,
     accentColor: accentColor ?? this.accentColor,
     textColor: textColor ?? this.textColor,
+    colorMode: colorMode ?? this.colorMode,
     opacity: opacity ?? this.opacity,
     cornerRadius: cornerRadius ?? this.cornerRadius,
     textScale: textScale ?? this.textScale,
@@ -101,6 +108,7 @@ class WidgetConfiguration {
     'backgroundColor': backgroundColor,
     'accentColor': accentColor,
     'textColor': textColor,
+    'colorMode': colorMode,
     'opacity': opacity,
     'cornerRadius': cornerRadius,
     'textScale': textScale,
@@ -120,6 +128,10 @@ class WidgetConfiguration {
       backgroundColor: (json['backgroundColor'] as num?)?.toInt() ?? 0xFF171C25,
       accentColor: (json['accentColor'] as num?)?.toInt() ?? 0xFF8AB4F8,
       textColor: (json['textColor'] as num?)?.toInt() ?? 0xFFF7F9FF,
+      // Existing profiles deliberately keep their configured colors.
+      colorMode: json['colorMode']?.toString() == 'system'
+          ? 'system'
+          : 'custom',
       opacity: (json['opacity'] as num?)?.toDouble() ?? 0.94,
       cornerRadius: (json['cornerRadius'] as num?)?.toDouble() ?? 24,
       textScale: (json['textScale'] as num?)?.toDouble() ?? 1,

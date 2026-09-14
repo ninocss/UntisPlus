@@ -54,4 +54,69 @@ void main() {
 
     expect(candidate, isNull);
   });
+
+  test(
+    'never schedules a later lesson when the first wake time has passed',
+    () {
+      final candidate = AlarmPlanner.nextSmartAlarm(
+        [
+          lesson(date: 20260907, start: 800),
+          lesson(date: 20260907, start: 1100, subject: 'Englisch'),
+          lesson(date: 20260908, start: 745, subject: 'Biologie'),
+        ],
+        leadMinutes: 30,
+        now: DateTime(2026, 9, 7, 9, 0),
+      );
+
+      expect(candidate?.at, DateTime(2026, 9, 8, 7, 15));
+      expect(candidate?.label, 'Biologie');
+    },
+  );
+
+  test('uses the next non-cancelled lesson when first period is cancelled', () {
+    final candidate = AlarmPlanner.nextSmartAlarm(
+      [
+        lesson(date: 20260908, start: 745, code: 'cancelled'),
+        lesson(date: 20260908, start: 900, subject: 'Physik'),
+      ],
+      leadMinutes: 30,
+      now: DateTime(2026, 9, 7, 18),
+    );
+
+    expect(candidate?.at, DateTime(2026, 9, 8, 8, 30));
+  });
+
+  test('skips a date explicitly disabled in the planner', () {
+    final candidate = AlarmPlanner.nextSmartAlarm(
+      [
+        lesson(date: 20260908, start: 800),
+        lesson(date: 20260909, start: 800, subject: 'Deutsch'),
+      ],
+      leadMinutes: 30,
+      now: DateTime(2026, 9, 7, 18),
+      dateOverrides: const {
+        '20260908': AlarmDateOverride(disabled: true),
+      },
+    );
+
+    expect(candidate?.at, DateTime(2026, 9, 9, 7, 30));
+    expect(candidate?.dateKey, '20260909');
+  });
+
+  test('uses a custom daily time and early offset', () {
+    final candidate = AlarmPlanner.nextSmartAlarm(
+      [lesson(date: 20260908, start: 800)],
+      leadMinutes: 30,
+      now: DateTime(2026, 9, 7, 18),
+      dateOverrides: const {
+        '20260908': AlarmDateOverride(
+          customTimeOfDayMinutes: 7 * 60,
+          earlierMinutes: 10,
+        ),
+      },
+    );
+
+    expect(candidate?.at, DateTime(2026, 9, 8, 6, 50));
+    expect(candidate?.baseAt, DateTime(2026, 9, 8, 7, 30));
+  });
 }

@@ -63,9 +63,9 @@ private fun customConfiguration(data: SharedPreferences, widgetId: Int): JSONObj
 }
 
 private fun customContent(data: SharedPreferences, widgetId: Int, account: String, block: String): String = when (block) {
-    "current" -> widgetValue(data, widgetId, "current_lesson", "Keine aktuelle Stunde")
-    "next" -> widgetValue(data, widgetId, "next_lesson", "Heute keine weitere Stunde")
-    "schedule" -> widgetValue(data, widgetId, "daily_schedule", "Heute keine Stunden")
+    "current" -> widgetValue(data, widgetId, "current_lesson", "")
+    "next" -> widgetValue(data, widgetId, "next_lesson", "")
+    "schedule" -> widgetValue(data, widgetId, "daily_schedule", "")
     "homework" -> widgetValue(data, widgetId, "homework_summary", "Keine offenen Aufgaben")
     "exams" -> widgetValue(data, widgetId, "exam_summary", "Keine Prüfungen synchronisiert")
     "notices" -> widgetValue(data, widgetId, "notification_summary", "Keine Mitteilungen")
@@ -78,11 +78,17 @@ class UntisWidgetCurrentLesson : HomeWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray, data: SharedPreferences) {
         ids.forEach { id ->
             val account = widgetAccount(data, id)
+            val current = compact(widgetValue(data, id, "current_lesson", ""), 28)
+            val next = compact(widgetValue(data, id, "next_lesson", ""), 44)
+            val remaining = compact(widgetValue(data, id, "time_remaining", ""), 24)
             val views = RemoteViews(context.packageName, R.layout.widget_current_lesson).apply {
                 setTextViewText(R.id.widget_account, compact(widgetValue(data, id, "account_label", "Untis+"), 22))
-                setTextViewText(R.id.widget_current_lesson, compact(widgetValue(data, id, "current_lesson", "Freistunde"), 28))
-                setTextViewText(R.id.widget_next_lesson, compact(widgetValue(data, id, "next_lesson", "Heute keine weitere Stunde"), 44))
-                setTextViewText(R.id.widget_time_remaining, compact(widgetValue(data, id, "time_remaining", ""), 24))
+                setTextViewText(R.id.widget_current_lesson, current)
+                setTextViewText(R.id.widget_next_lesson, next)
+                setTextViewText(R.id.widget_time_remaining, remaining)
+                setViewVisibility(R.id.widget_current_lesson, if (current.isEmpty()) View.GONE else View.VISIBLE)
+                setViewVisibility(R.id.widget_next_lesson, if (next.isEmpty()) View.GONE else View.VISIBLE)
+                setViewVisibility(R.id.widget_time_remaining, if (remaining.isEmpty()) View.GONE else View.VISIBLE)
                 setTextViewText(R.id.widget_status, compact(widgetValue(data, id, "status", ""), 10))
                 setOnClickPendingIntent(R.id.widget_current_root, openAppIntent(context, id, account))
                 setOnClickPendingIntent(R.id.widget_current_settings, configureIntent(context, id))
@@ -98,7 +104,9 @@ class UntisWidgetDailySchedule : HomeWidgetProvider() {
             val account = widgetAccount(data, id)
             val views = RemoteViews(context.packageName, R.layout.widget_daily_schedule).apply {
                 setTextViewText(R.id.widget_schedule_account, compact(widgetValue(data, id, "account_label", "Untis+"), 22))
-                setTextViewText(R.id.widget_daily_schedule, widgetValue(data, id, "daily_schedule", "Stundenplan wird geladen …").lineSequence().take(3).joinToString("\n"))
+                val schedule = widgetValue(data, id, "daily_schedule", "").lineSequence().take(3).joinToString("\n")
+                setTextViewText(R.id.widget_daily_schedule, schedule)
+                setViewVisibility(R.id.widget_daily_schedule, if (schedule.isEmpty()) View.GONE else View.VISIBLE)
                 setTextViewText(R.id.widget_schedule_status, compact(widgetValue(data, id, "status", ""), 10))
                 setOnClickPendingIntent(R.id.widget_schedule_root, openAppIntent(context, id, account))
             }
@@ -144,9 +152,13 @@ class UntisWidgetCustom : HomeWidgetProvider() {
             val config = customConfiguration(data, id)
             val account = config?.optString("accountId")?.takeIf { it.isNotEmpty() } ?: widgetAccount(data, id)
             val blocks = config?.optJSONArray("blocks") ?: JSONArray().put("current").put("next").put("status")
-            val textColor = config?.optInt("textColor", Color.WHITE) ?: Color.WHITE
-            val accent = config?.optInt("accentColor", textColor) ?: textColor
-            val background = config?.optInt("backgroundColor", Color.rgb(23, 28, 37)) ?: Color.rgb(23, 28, 37)
+            val useSystemColors = config?.optString("colorMode", "custom") == "system"
+            val textColor = if (useSystemColors) context.getColor(R.color.widget_on_surface)
+                else config?.optInt("textColor", Color.WHITE) ?: Color.WHITE
+            val accent = if (useSystemColors) context.getColor(R.color.widget_primary)
+                else config?.optInt("accentColor", textColor) ?: textColor
+            val background = if (useSystemColors) context.getColor(R.color.widget_surface)
+                else config?.optInt("backgroundColor", Color.rgb(23, 28, 37)) ?: Color.rgb(23, 28, 37)
             val scale = (config?.optDouble("textScale", 1.0) ?: 1.0).toFloat()
             val idsForText = intArrayOf(R.id.widget_custom_one, R.id.widget_custom_two, R.id.widget_custom_three, R.id.widget_custom_four)
             val views = RemoteViews(context.packageName, R.layout.widget_custom).apply {

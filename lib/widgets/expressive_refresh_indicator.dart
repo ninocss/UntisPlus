@@ -26,10 +26,13 @@ class ExpressiveRefreshIndicator extends StatefulWidget {
 class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
     with TickerProviderStateMixin {
   RefreshIndicatorStatus? _status;
-  final ValueNotifier<double> _pullProgressNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> _pullProgressNotifier = ValueNotifier<double>(
+    0.0,
+  );
   Timer? _resetTimer;
-  late final AnimationController _contentOffset =
-      AnimationController.unbounded(vsync: this);
+  late final AnimationController _contentOffset = AnimationController.unbounded(
+    vsync: this,
+  );
   late final AnimationController _motion = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
@@ -101,8 +104,11 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
         notification.overscroll < 0 &&
         (_status == RefreshIndicatorStatus.drag ||
             _status == RefreshIndicatorStatus.armed)) {
-      final newPull = (_pullProgressNotifier.value + (-notification.overscroll / 96))
-          .clamp(0.0, 1.0);
+      final newPull =
+          (_pullProgressNotifier.value + (-notification.overscroll / 96)).clamp(
+            0.0,
+            1.0,
+          );
       if (newPull != _pullProgressNotifier.value) {
         _pullProgressNotifier.value = newPull;
         _contentOffset.value = newPull * 12;
@@ -110,7 +116,8 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
     } else if (notification is ScrollEndNotification ||
         (notification is ScrollUpdateNotification &&
             notification.metrics.extentBefore > 0)) {
-      if (_status == RefreshIndicatorStatus.drag && _pullProgressNotifier.value > 0) {
+      if (_status == RefreshIndicatorStatus.drag &&
+          _pullProgressNotifier.value > 0) {
         _pullProgressNotifier.value = 0.0;
         _settleContent();
       }
@@ -159,56 +166,77 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
               right: 0,
               child: RepaintBoundary(
                 child: IgnorePointer(
-                  child: Semantics(
-                    liveRegion: true,
-                    label: 'Refreshing',
-                    child: ValueListenableBuilder<double>(
-                      valueListenable: _pullProgressNotifier,
-                      builder: (context, pullProgress, _) {
-                        final isPulling =
-                            _status == RefreshIndicatorStatus.drag || isArmed;
-                        final isVisible = _status != null &&
-                            _status != RefreshIndicatorStatus.canceled &&
-                            (_status == RefreshIndicatorStatus.snap ||
-                                _status == RefreshIndicatorStatus.refresh ||
-                                _status == RefreshIndicatorStatus.done ||
-                                pullProgress > 0.08);
-                        final effectiveOpacity = isVisible
-                            ? (isSpinning || isArmed
-                                ? 1.0
-                                : (pullProgress * 1.6).clamp(0.0, 1.0))
-                            : 0.0;
+                  child: AnimatedBuilder(
+                    animation: _contentOffset,
+                    builder: (context, child) {
+                      // The indicator itself follows the same spring as the
+                      // content. Previously only the list bounced back,
+                      // which made a pull-to-refresh feel visually rigid.
+                      final displacement = _contentOffset.value;
+                      final scale = (1 + displacement.abs() / 105).clamp(
+                        1.0,
+                        1.14,
+                      );
+                      return Transform.translate(
+                        offset: Offset(0, displacement * .52),
+                        child: Transform.scale(scale: scale, child: child),
+                      );
+                    },
+                    child: Semantics(
+                      liveRegion: true,
+                      label: 'Refreshing',
+                      child: ValueListenableBuilder<double>(
+                        valueListenable: _pullProgressNotifier,
+                        builder: (context, pullProgress, _) {
+                          final isPulling =
+                              _status == RefreshIndicatorStatus.drag || isArmed;
+                          final isVisible =
+                              _status != null &&
+                              _status != RefreshIndicatorStatus.canceled &&
+                              (_status == RefreshIndicatorStatus.snap ||
+                                  _status == RefreshIndicatorStatus.refresh ||
+                                  _status == RefreshIndicatorStatus.done ||
+                                  pullProgress > 0.08);
+                          final effectiveOpacity = isVisible
+                              ? (isSpinning || isArmed
+                                    ? 1.0
+                                    : (pullProgress * 1.6).clamp(0.0, 1.0))
+                              : 0.0;
 
-                        return AnimatedSlide(
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOutCubic,
-                          offset: isVisible ? Offset.zero : const Offset(0, -0.45),
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 140),
-                            opacity: effectiveOpacity,
-                            child: Center(
-                              child: AnimatedScale(
-                                duration: const Duration(milliseconds: 180),
-                                curve: Curves.easeOutBack,
-                                scale: isSpinning || isArmed ? 1.0 : 0.76,
-                                child: AnimatedBuilder(
-                                  animation: _motion,
-                                  builder: (context, _) => CustomPaint(
-                                    size: const Size.square(56),
-                                    painter: _ExpressiveLoaderPainter(
-                                      containerColor: cs.primaryContainer,
-                                      blobColor: cs.onPrimaryContainer,
-                                      turns: _motion.value,
-                                      pullProgress:
-                                          isPulling ? pullProgress : null,
+                          return AnimatedSlide(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutCubic,
+                            offset: isVisible
+                                ? Offset.zero
+                                : const Offset(0, -0.45),
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 140),
+                              opacity: effectiveOpacity,
+                              child: Center(
+                                child: AnimatedScale(
+                                  duration: const Duration(milliseconds: 180),
+                                  curve: Curves.easeOutBack,
+                                  scale: isSpinning || isArmed ? 1.0 : 0.76,
+                                  child: AnimatedBuilder(
+                                    animation: _motion,
+                                    builder: (context, _) => CustomPaint(
+                                      size: const Size.square(56),
+                                      painter: _ExpressiveLoaderPainter(
+                                        containerColor: cs.primaryContainer,
+                                        blobColor: cs.onPrimaryContainer,
+                                        turns: _motion.value,
+                                        pullProgress: isPulling
+                                            ? pullProgress
+                                            : null,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -247,24 +275,22 @@ class _ExpressiveLoaderPainter extends CustomPainter {
   );
 
   // 4-lobed expressive organic shape (symmetric with 12 vertices: 12 % 4 == 0)
-  static final List<Offset> _cookieShape = List<Offset>.generate(
-    _vertexCount,
-    (index) {
-      final angle = -math.pi / 2 + math.pi * 2 * index / _vertexCount;
-      final r = 0.98 + 0.16 * math.cos(4 * (angle + math.pi / 2));
-      return Offset(math.cos(angle) * r, math.sin(angle) * r);
-    },
-  );
+  static final List<Offset> _cookieShape = List<Offset>.generate(_vertexCount, (
+    index,
+  ) {
+    final angle = -math.pi / 2 + math.pi * 2 * index / _vertexCount;
+    final r = 0.98 + 0.16 * math.cos(4 * (angle + math.pi / 2));
+    return Offset(math.cos(angle) * r, math.sin(angle) * r);
+  });
 
   // 3-lobed soft clover/squircle (symmetric with 12 vertices: 12 % 3 == 0)
-  static final List<Offset> _cloverShape = List<Offset>.generate(
-    _vertexCount,
-    (index) {
-      final angle = -math.pi / 2 + math.pi * 2 * index / _vertexCount;
-      final r = 0.96 + 0.16 * math.cos(3 * (angle + math.pi / 2));
-      return Offset(math.cos(angle) * r, math.sin(angle) * r);
-    },
-  );
+  static final List<Offset> _cloverShape = List<Offset>.generate(_vertexCount, (
+    index,
+  ) {
+    final angle = -math.pi / 2 + math.pi * 2 * index / _vertexCount;
+    final r = 0.96 + 0.16 * math.cos(3 * (angle + math.pi / 2));
+    return Offset(math.cos(angle) * r, math.sin(angle) * r);
+  });
 
   static final List<List<Offset>> _shapes = [
     _circleShape,
@@ -318,11 +344,10 @@ class _ExpressiveLoaderPainter extends CustomPainter {
       // Explicit timeline: circle -> pill -> cookie -> clover -> circle.
       const boundaries = [0.0, .27, .57, .82, 1.0];
       final safeTurns = (turns.isFinite ? (turns % 1.0) : 0.0).clamp(0.0, 1.0);
-      final phase = List.generate(boundaries.length - 1, (index) => index)
-          .lastWhere(
-            (index) => safeTurns >= boundaries[index],
-            orElse: () => 0,
-          );
+      final phase = List.generate(
+        boundaries.length - 1,
+        (index) => index,
+      ).lastWhere((index) => safeTurns >= boundaries[index], orElse: () => 0);
       fromIndex = phase.clamp(0, _shapes.length - 1);
       toIndex = (phase + 1) % _shapes.length;
       final span = boundaries[fromIndex + 1] - boundaries[fromIndex];

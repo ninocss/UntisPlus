@@ -359,6 +359,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                             backgroundColor: value.backgroundColor,
                             accentColor: value.accentColor,
                             textColor: value.textColor,
+                            colorMode: value.colorMode,
                             opacity: value.opacity,
                             cornerRadius: value.cornerRadius,
                             textScale: value.textScale,
@@ -426,7 +427,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                         selected: active,
                         onSelected: (selected) {
                           final blocks = [...config.blocks];
-                          if (selected && blocks.length < WidgetConfiguration.maxBlocks) {
+                          if (selected &&
+                              blocks.length < WidgetConfiguration.maxBlocks) {
                             blocks.add(entry.key);
                           }
                           if (!selected) blocks.remove(entry.key);
@@ -476,38 +478,62 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             SettingsGroup(
               title: l.ui('editorDesign'),
               children: [
-                for (final item in <(String, int, ValueChanged<int>)>[
-                  (
-                    'editorBackground',
-                    config.backgroundColor,
-                    (value) =>
-                        _replace(config.copyWith(backgroundColor: value)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
                   ),
-                  (
-                    'editorAccent',
-                    config.accentColor,
-                    (value) => _replace(config.copyWith(accentColor: value)),
-                  ),
-                  (
-                    'editorText',
-                    config.textColor,
-                    (value) => _replace(config.copyWith(textColor: value)),
-                  ),
-                ])
-                  ListTile(
-                    title: Text(l.ui(item.$1)),
-                    leading: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: Color(item.$2),
-                        shape: BoxShape.circle,
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Material You'),
+                        selected: config.colorMode == 'system',
+                        onSelected: (_) =>
+                            _replace(config.copyWith(colorMode: 'system')),
                       ),
-                    ),
-                    trailing: const Icon(Icons.colorize_rounded),
-                    onTap: () =>
-                        _pickColor(current: item.$2, onChanged: item.$3),
+                      ChoiceChip(
+                        label: const Text('Eigene Farben'),
+                        selected: config.colorMode == 'custom',
+                        onSelected: (_) =>
+                            _replace(config.copyWith(colorMode: 'custom')),
+                      ),
+                    ],
                   ),
+                ),
+                if (config.colorMode == 'custom')
+                  for (final item in <(String, int, ValueChanged<int>)>[
+                    (
+                      'editorBackground',
+                      config.backgroundColor,
+                      (value) =>
+                          _replace(config.copyWith(backgroundColor: value)),
+                    ),
+                    (
+                      'editorAccent',
+                      config.accentColor,
+                      (value) => _replace(config.copyWith(accentColor: value)),
+                    ),
+                    (
+                      'editorText',
+                      config.textColor,
+                      (value) => _replace(config.copyWith(textColor: value)),
+                    ),
+                  ])
+                    ListTile(
+                      title: Text(l.ui(item.$1)),
+                      leading: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Color(item.$2),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.colorize_rounded),
+                      onTap: () =>
+                          _pickColor(current: item.$2, onChanged: item.$3),
+                    ),
                 SwitchListTile(
                   value: config.showIcons,
                   title: Text(l.ui('editorShowIcons')),

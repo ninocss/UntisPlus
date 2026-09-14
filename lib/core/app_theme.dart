@@ -95,6 +95,9 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
   final bool glassHighlights;
   final bool glowEffectsEnabled;
   final int motionStyle;
+  final double surfaceOpacity;
+  final double navigationOpacity;
+  final double lessonSurfaceOpacity;
 
   const UntisThemeTokens({
     required this.id,
@@ -110,6 +113,9 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
     required this.glassHighlights,
     this.glowEffectsEnabled = false,
     required this.motionStyle,
+    required this.surfaceOpacity,
+    required this.navigationOpacity,
+    required this.lessonSurfaceOpacity,
   });
 
   bool get supportsBlur => appThemeCapabilities(id).supportsBlur;
@@ -137,47 +143,56 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
         hardShadow: true,
         glassHighlights: false,
         motionStyle: 1,
+        surfaceOpacity: 0.72,
+        navigationOpacity: 0.66,
+        lessonSurfaceOpacity: 1,
       ),
       AppThemeId.vivid => UntisThemeTokens(
         id: id,
-        surfaceRadius: 28,
-        controlRadius: 24,
-        borderWidth: 1.5,
-        blurSigma: 24,
-        shadowOffset: const Offset(0, 10),
-        shadowColor: scheme.primary.withValues(alpha: 0.28),
-        patternColor: scheme.tertiary.withValues(alpha: 0.12),
+        surfaceRadius: 30,
+        controlRadius: 26,
+        borderWidth: 1.25,
+        blurSigma: 22,
+        shadowOffset: const Offset(0, 12),
+        shadowColor: scheme.secondary.withValues(alpha: dark ? 0.22 : 0.18),
+        patternColor: scheme.tertiary.withValues(alpha: dark ? 0.10 : 0.08),
         backdropColors: dark
-            ? const [Color(0xFF19002E), Color(0xFF001F39), Color(0xFF311000)]
-            : const [Color(0xFFFFE04B), Color(0xFFFF6BCA), Color(0xFF4BE4FF)],
+            ? const [Color(0xFF100C1D), Color(0xFF211135), Color(0xFF082D38)]
+            : const [Color(0xFFFFF7FD), Color(0xFFF4E9FF), Color(0xFFE8FBFF)],
         hardShadow: false,
         glassHighlights: false,
         motionStyle: 2,
+        surfaceOpacity: 0.82,
+        navigationOpacity: 0.78,
+        lessonSurfaceOpacity: 0.86,
       ),
       AppThemeId.glass => UntisThemeTokens(
         id: id,
-        surfaceRadius: 30,
-        controlRadius: 24,
+        surfaceRadius: 32,
+        controlRadius: 26,
         borderWidth: 1,
-        blurSigma: 34,
-        shadowOffset: const Offset(0, 12),
-        shadowColor: scheme.shadow.withValues(alpha: dark ? 0.34 : 0.16),
-        patternColor: Colors.white.withValues(alpha: dark ? 0.16 : 0.5),
+        blurSigma: 38,
+        shadowOffset: const Offset(0, 14),
+        shadowColor: scheme.shadow.withValues(alpha: dark ? 0.30 : 0.14),
+        patternColor: Colors.white.withValues(alpha: dark ? 0.12 : 0.42),
         backdropColors: dark
-            ? const [Color(0xFF071A34), Color(0xFF301750), Color(0xFF073B3B)]
-            : const [Color(0xFFB9E7FF), Color(0xFFE8CCFF), Color(0xFFBFFFF1)],
+            ? const [Color(0xFF071421), Color(0xFF152642), Color(0xFF281C3D)]
+            : const [Color(0xFFD9F2FF), Color(0xFFE9E2FF), Color(0xFFE0FFF6)],
         hardShadow: false,
         glassHighlights: true,
         motionStyle: 3,
+        surfaceOpacity: 0.52,
+        navigationOpacity: 0.54,
+        lessonSurfaceOpacity: 0.62,
       ),
       AppThemeId.cyber => UntisThemeTokens(
         id: id,
-        surfaceRadius: 8,
-        controlRadius: 5,
+        surfaceRadius: 10,
+        controlRadius: 6,
         borderWidth: 1.5,
-        blurSigma: 18,
-        shadowOffset: const Offset(5, 5),
-        shadowColor: const Color(0x9900F5FF),
+        blurSigma: 16,
+        shadowOffset: const Offset(4, 4),
+        shadowColor: const Color(0x6600E5FF),
         patternColor: (dark ? const Color(0xFF00F5FF) : const Color(0xFF005B66))
             .withValues(alpha: 0.18),
         backdropColors: dark
@@ -186,25 +201,31 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
         hardShadow: true,
         glassHighlights: false,
         motionStyle: 4,
+        surfaceOpacity: 0.90,
+        navigationOpacity: 0.92,
+        lessonSurfaceOpacity: 0.90,
       ),
       AppThemeId.paper => UntisThemeTokens(
         id: id,
-        surfaceRadius: 6,
-        controlRadius: 4,
-        borderWidth: 1.4,
+        surfaceRadius: 12,
+        controlRadius: 8,
+        borderWidth: 1.15,
         blurSigma: 0,
-        shadowOffset: const Offset(4, 6),
+        shadowOffset: const Offset(2, 5),
         shadowColor: (dark ? Colors.black : const Color(0xFF604D37)).withValues(
           alpha: 0.28,
         ),
-        patternColor: (dark ? const Color(0xFF90A8C0) : const Color(0xFF6686A6))
-            .withValues(alpha: 0.20),
+        patternColor: (dark ? const Color(0xFFC6B99F) : const Color(0xFF8F8068))
+            .withValues(alpha: dark ? 0.10 : 0.13),
         backdropColors: dark
-            ? const [Color(0xFF1E2020), Color(0xFF292824)]
-            : const [Color(0xFFFFF9E8), Color(0xFFF5E8C9)],
+            ? const [Color(0xFF1C1A17), Color(0xFF29251F)]
+            : const [Color(0xFFFFFBF1), Color(0xFFF5EBD7)],
         hardShadow: false,
         glassHighlights: false,
         motionStyle: 5,
+        surfaceOpacity: 0.97,
+        navigationOpacity: 0.98,
+        lessonSurfaceOpacity: 0.97,
       ),
       AppThemeId.defaultTheme => UntisThemeTokens(
         id: id,
@@ -219,6 +240,9 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
         hardShadow: false,
         glassHighlights: false,
         motionStyle: 0,
+        surfaceOpacity: 0.72,
+        navigationOpacity: 0.68,
+        lessonSurfaceOpacity: 0.82,
       ),
     };
   }
@@ -238,6 +262,9 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
     bool? glassHighlights,
     bool? glowEffectsEnabled,
     int? motionStyle,
+    double? surfaceOpacity,
+    double? navigationOpacity,
+    double? lessonSurfaceOpacity,
   }) => UntisThemeTokens(
     id: id ?? this.id,
     surfaceRadius: surfaceRadius ?? this.surfaceRadius,
@@ -252,6 +279,9 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
     glassHighlights: glassHighlights ?? this.glassHighlights,
     glowEffectsEnabled: glowEffectsEnabled ?? this.glowEffectsEnabled,
     motionStyle: motionStyle ?? this.motionStyle,
+    surfaceOpacity: surfaceOpacity ?? this.surfaceOpacity,
+    navigationOpacity: navigationOpacity ?? this.navigationOpacity,
+    lessonSurfaceOpacity: lessonSurfaceOpacity ?? this.lessonSurfaceOpacity,
   );
 
   @override
@@ -273,6 +303,17 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
           ? glowEffectsEnabled
           : other.glowEffectsEnabled,
       motionStyle: motionStyle,
+      surfaceOpacity: lerpDouble(surfaceOpacity, other.surfaceOpacity, t)!,
+      navigationOpacity: lerpDouble(
+        navigationOpacity,
+        other.navigationOpacity,
+        t,
+      )!,
+      lessonSurfaceOpacity: lerpDouble(
+        lessonSurfaceOpacity,
+        other.lessonSurfaceOpacity,
+        t,
+      )!,
     );
   }
 }
@@ -307,11 +348,158 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
       onSurface: dark ? const Color(0xFFF5EBD7) : const Color(0xFF17120C),
       outline: dark ? const Color(0xFFF5EBD7) : const Color(0xFF17120C),
     );
+  } else if (id == AppThemeId.vivid) {
+    scheme = scheme.copyWith(
+      primary: dark ? const Color(0xFFBFA8FF) : const Color(0xFF6E37FF),
+      onPrimary: dark ? const Color(0xFF251052) : Colors.white,
+      primaryContainer: dark
+          ? const Color(0xFF4D2A98)
+          : const Color(0xFFE9DFFF),
+      onPrimaryContainer: dark
+          ? const Color(0xFFF0E9FF)
+          : const Color(0xFF28105D),
+      secondary: dark ? const Color(0xFFFF75BB) : const Color(0xFFD81B82),
+      secondaryContainer: dark
+          ? const Color(0xFF5D1439)
+          : const Color(0xFFFFD8EA),
+      tertiary: dark ? const Color(0xFF67DBE8) : const Color(0xFF007B8A),
+      tertiaryContainer: dark
+          ? const Color(0xFF064C54)
+          : const Color(0xFFB5F2F7),
+      surface: dark ? const Color(0xFF100C1D) : const Color(0xFFFFF7FD),
+      surfaceContainerLowest: dark
+          ? const Color(0xFF0B0815)
+          : const Color(0xFFFFFBFF),
+      surfaceContainerLow: dark
+          ? const Color(0xFF171124)
+          : const Color(0xFFFFF0FA),
+      surfaceContainer: dark
+          ? const Color(0xFF1E152D)
+          : const Color(0xFFF9EAFB),
+      surfaceContainerHigh: dark
+          ? const Color(0xFF251836)
+          : const Color(0xFFF3E2F7),
+      surfaceContainerHighest: dark
+          ? const Color(0xFF342047)
+          : const Color(0xFFE9D8F2),
+      onSurface: dark ? const Color(0xFFF8F1FF) : const Color(0xFF21182B),
+      onSurfaceVariant: dark
+          ? const Color(0xFFD6C7DE)
+          : const Color(0xFF5E5066),
+      outline: dark ? const Color(0xFF9B86A8) : const Color(0xFF78677F),
+      outlineVariant: dark ? const Color(0xFF4F4058) : const Color(0xFFD8C6DE),
+    );
+  } else if (id == AppThemeId.glass) {
+    scheme = scheme.copyWith(
+      primary: dark ? const Color(0xFF8BC7FF) : const Color(0xFF195FC7),
+      primaryContainer: dark
+          ? const Color(0xFF173D69)
+          : const Color(0xFFD8E9FF),
+      secondary: dark ? const Color(0xFFC9B5FF) : const Color(0xFF7054B8),
+      secondaryContainer: dark
+          ? const Color(0xFF3E3261)
+          : const Color(0xFFE9E0FF),
+      tertiary: dark ? const Color(0xFF7ADDC7) : const Color(0xFF157866),
+      tertiaryContainer: dark
+          ? const Color(0xFF174D45)
+          : const Color(0xFFC5F3E8),
+      surface: dark ? const Color(0xFF091722) : const Color(0xFFF4FAFF),
+      surfaceContainerLowest: dark ? const Color(0xFF061018) : Colors.white,
+      surfaceContainerLow: dark
+          ? const Color(0xFF10202E)
+          : const Color(0xFFEBF5FC),
+      surfaceContainer: dark
+          ? const Color(0xFF172837)
+          : const Color(0xFFE4F0F8),
+      surfaceContainerHigh: dark
+          ? const Color(0xFF203242)
+          : const Color(0xFFDCEAF4),
+      surfaceContainerHighest: dark
+          ? const Color(0xFF2A3D4D)
+          : const Color(0xFFD2E2ED),
+      onSurface: dark ? const Color(0xFFF1F7FC) : const Color(0xFF17232C),
+      onSurfaceVariant: dark
+          ? const Color(0xFFC5D2DB)
+          : const Color(0xFF4E606D),
+      outline: dark ? const Color(0xFF8FA4B3) : const Color(0xFF718591),
+      outlineVariant: dark ? const Color(0xFF405362) : const Color(0xFFC2D2DD),
+    );
   } else if (id == AppThemeId.cyber) {
     scheme = scheme.copyWith(
-      secondary: const Color(0xFFFF2FA8),
-      tertiary: const Color(0xFFC8FF00),
-      surface: dark ? const Color(0xFF02050A) : const Color(0xFFE9FEFF),
+      primary: dark ? const Color(0xFF35F0FF) : const Color(0xFF006B75),
+      onPrimary: dark ? const Color(0xFF002023) : Colors.white,
+      primaryContainer: dark
+          ? const Color(0xFF003E45)
+          : const Color(0xFFB5F3F7),
+      secondary: dark ? const Color(0xFFFF59B6) : const Color(0xFFB00069),
+      secondaryContainer: dark
+          ? const Color(0xFF4D1234)
+          : const Color(0xFFFFD8E9),
+      tertiary: dark ? const Color(0xFFD0FF52) : const Color(0xFF527200),
+      tertiaryContainer: dark
+          ? const Color(0xFF314500)
+          : const Color(0xFFDDF5A5),
+      surface: dark ? const Color(0xFF02070B) : const Color(0xFFF1FCFD),
+      surfaceContainerLowest: dark ? Colors.black : Colors.white,
+      surfaceContainerLow: dark
+          ? const Color(0xFF071016)
+          : const Color(0xFFE8F5F6),
+      surfaceContainer: dark
+          ? const Color(0xFF0B171F)
+          : const Color(0xFFDFEEF0),
+      surfaceContainerHigh: dark
+          ? const Color(0xFF10212B)
+          : const Color(0xFFD5E8EA),
+      surfaceContainerHighest: dark
+          ? const Color(0xFF17303B)
+          : const Color(0xFFC9DEE1),
+      onSurface: dark ? const Color(0xFFE8FAFC) : const Color(0xFF10272B),
+      onSurfaceVariant: dark
+          ? const Color(0xFFB3C9CD)
+          : const Color(0xFF425F64),
+      outline: dark ? const Color(0xFF62AEB6) : const Color(0xFF557A80),
+      outlineVariant: dark ? const Color(0xFF244A51) : const Color(0xFFB5CED1),
+    );
+  } else if (id == AppThemeId.paper) {
+    scheme = scheme.copyWith(
+      primary: dark ? const Color(0xFFF2A36F) : const Color(0xFF9A4D24),
+      onPrimary: dark ? const Color(0xFF3B1807) : Colors.white,
+      primaryContainer: dark
+          ? const Color(0xFF55301D)
+          : const Color(0xFFFFDCC6),
+      onPrimaryContainer: dark
+          ? const Color(0xFFFFE7D8)
+          : const Color(0xFF3A1705),
+      secondary: dark ? const Color(0xFFB9CAA2) : const Color(0xFF536844),
+      secondaryContainer: dark
+          ? const Color(0xFF35432C)
+          : const Color(0xFFD8E8C5),
+      tertiary: dark ? const Color(0xFFD6B983) : const Color(0xFF745C2F),
+      tertiaryContainer: dark
+          ? const Color(0xFF48391F)
+          : const Color(0xFFF5DDAA),
+      surface: dark ? const Color(0xFF1C1A17) : const Color(0xFFFFFBF1),
+      surfaceContainerLowest: dark
+          ? const Color(0xFF151310)
+          : const Color(0xFFFFFEF8),
+      surfaceContainerLow: dark
+          ? const Color(0xFF24211C)
+          : const Color(0xFFF9F1E2),
+      surfaceContainer: dark
+          ? const Color(0xFF2B2721)
+          : const Color(0xFFF3E9D6),
+      surfaceContainerHigh: dark
+          ? const Color(0xFF332E27)
+          : const Color(0xFFEDE2CC),
+      surfaceContainerHighest: dark
+          ? const Color(0xFF3D372F)
+          : const Color(0xFFE5D8BF),
+      onSurface: dark ? const Color(0xFFF0E7D7) : const Color(0xFF29231C),
+      onSurfaceVariant: dark
+          ? const Color(0xFFCFC3B1)
+          : const Color(0xFF665C4F),
+      outline: dark ? const Color(0xFF9B8F7E) : const Color(0xFF867966),
+      outlineVariant: dark ? const Color(0xFF51493E) : const Color(0xFFD6C8B1),
     );
   }
   return scheme;
@@ -320,12 +508,21 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
 TextTheme untisThemeTextTheme(AppThemeId id, Brightness brightness) {
   final base = ThemeData(brightness: brightness, useMaterial3: true).textTheme;
   final body = switch (id) {
-    AppThemeId.cyber => GoogleFonts.ibmPlexMonoTextTheme(base),
+    AppThemeId.cyber => GoogleFonts.outfitTextTheme(base),
     AppThemeId.paper => GoogleFonts.notoSansTextTheme(base),
     _ => GoogleFonts.outfitTextTheme(base),
   };
-  if (id != AppThemeId.manga) return body;
-  final display = GoogleFonts.bebasNeueTextTheme(base);
+  if (id != AppThemeId.manga &&
+      id != AppThemeId.cyber &&
+      id != AppThemeId.paper) {
+    return body;
+  }
+  final display = switch (id) {
+    AppThemeId.manga => GoogleFonts.bebasNeueTextTheme(base),
+    AppThemeId.cyber => GoogleFonts.ibmPlexMonoTextTheme(base),
+    AppThemeId.paper => GoogleFonts.notoSerifTextTheme(base),
+    _ => body,
+  };
   return body.copyWith(
     displayLarge: display.displayLarge,
     displayMedium: display.displayMedium,
@@ -333,7 +530,35 @@ TextTheme untisThemeTextTheme(AppThemeId id, Brightness brightness) {
     headlineLarge: display.headlineLarge,
     headlineMedium: display.headlineMedium,
     headlineSmall: display.headlineSmall,
-    titleLarge: display.titleLarge?.copyWith(letterSpacing: 0.4),
+    titleLarge: display.titleLarge?.copyWith(
+      letterSpacing: id == AppThemeId.cyber ? 0.8 : 0.2,
+    ),
+  );
+}
+
+TextStyle untisThemeTextStyle(
+  BuildContext context, {
+  bool display = false,
+  double? fontSize,
+  FontWeight? fontWeight,
+  Color? color,
+  double? height,
+  double? letterSpacing,
+  TextDecoration? decoration,
+  Color? decorationColor,
+  double? decorationThickness,
+}) {
+  final textTheme = Theme.of(context).textTheme;
+  final base = display ? textTheme.titleLarge : textTheme.bodyMedium;
+  return (base ?? const TextStyle()).copyWith(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    height: height,
+    letterSpacing: letterSpacing,
+    decoration: decoration,
+    decorationColor: decorationColor,
+    decorationThickness: decorationThickness,
   );
 }
 
@@ -419,7 +644,7 @@ class ThemedBackdrop extends StatelessWidget {
     // instead of silently disappearing after a theme switch.
     final sceneStyle = appThemeCapabilities(tokens.id).supportsBackgroundMotion
         ? (backgroundStyle ?? themeSceneStyle)
-        : themeSceneStyle;
+        : -1;
     return Stack(
       children: [
         Positioned.fill(

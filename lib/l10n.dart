@@ -96,12 +96,16 @@ class AppL10n {
   String get tutorialTitle => _t('tutorialTitle');
   String get tutorialSkip => _t('tutorialSkip');
   String get tutorialDone => _t('tutorialDone');
+  String get tutorialReplay => _t('tutorialReplay');
+  String get tutorialReplayDesc => _t('tutorialReplayDesc');
   String get tutorialStepWeekTitle => _t('tutorialStepWeekTitle');
   String get tutorialStepWeekDesc => _t('tutorialStepWeekDesc');
   String get tutorialStepExamsTitle => _t('tutorialStepExamsTitle');
   String get tutorialStepExamsDesc => _t('tutorialStepExamsDesc');
   String get tutorialStepInfoTitle => _t('tutorialStepInfoTitle');
   String get tutorialStepInfoDesc => _t('tutorialStepInfoDesc');
+  String get tutorialStepAiTitle => _t('tutorialStepAiTitle');
+  String get tutorialStepAiDesc => _t('tutorialStepAiDesc');
   String get tutorialStepSettingsTitle => _t('tutorialStepSettingsTitle');
   String get tutorialStepSettingsDesc => _t('tutorialStepSettingsDesc');
   String get tutorialStepFinishTitle => _t('tutorialStepFinishTitle');
@@ -127,6 +131,11 @@ class AppL10n {
   String get freeRoomsNoRangesHint => _t('freeRoomsNoRangesHint');
   String get noLesson => _t('noLesson');
   String get timetableOfflineCache => _t('timetableOfflineCache');
+  String get timetableNotSignedIn => _t('timetableNotSignedIn');
+  String timetableHttpError(int status) =>
+      _t('timetableHttpError').replaceAll('{status}', '$status');
+  String get timetableUnknownApiError => _t('timetableUnknownApiError');
+  String get timetableLoadError => _t('timetableLoadError');
   String freeRoomsCount(int n) => _t('freeRoomsCount').replaceAll('{n}', '$n');
 
   List<String> get weekDayShort =>
@@ -323,11 +332,34 @@ class AppL10n {
   String get aiLocalModelDescMultilingual => _t('aiLocalModelDescMultilingual');
   String get aiLocalModelDescHighQuality => _t('aiLocalModelDescHighQuality');
   String get aiLocalModelDescStrong => _t('aiLocalModelDescStrong');
+  String get aiTyping => _t('aiTyping');
+  String get aiChatTitle => _t('aiChatTitle');
+  String get aiChatSubtitle => _t('aiChatSubtitle');
+  String get aiTryIt => _t('aiTryIt');
   List<String> get aiSuggestions =>
       List<String>.from(_strings[locale]!['aiSuggestions'] as List);
+  List<String> get aiChatSuggestions =>
+      List<String>.from(_strings[locale]!['aiChatSuggestions'] as List);
+
+  String get aiNoSchoolToday => _t('aiNoSchoolToday');
+  String aiCurrentLessonSummary(String subject, String room, String end) =>
+      _t('aiCurrentLessonSummary')
+          .replaceAll('{subject}', subject)
+          .replaceAll('{room}', room)
+          .replaceAll('{end}', end);
+  String get aiNoCurrentLesson => _t('aiNoCurrentLesson');
+  String get aiNoNextLessonSchool => _t('aiNoNextLessonSchool');
+  String aiNextLessonSummary(String subject, String room, String start) =>
+      _t('aiNextLessonSummary')
+          .replaceAll('{subject}', subject)
+          .replaceAll('{room}', room)
+          .replaceAll('{start}', start);
+  String get aiNoMoreLessons => _t('aiNoMoreLessons');
+  String get aiDefaultExamType => _t('aiDefaultExamType');
 
   // ── Settings ─────────────────────────────────────────────────────────────────
   String get settingsTitle => _t('settingsTitle');
+  String get commonSaveChanges => _t('commonSaveChanges');
   String get settingsLoggedInAs => _t('settingsLoggedInAs');
   String get settingsLogout => _t('settingsLogout');
   String get settingsSectionQuick => _t('settingsSectionQuick');
@@ -826,6 +858,12 @@ class AppL10n {
       'navMenu': 'Menü',
       'navAi': 'KI',
       'timetableOfflineCache': 'Offline-Cache aktiv',
+      'timetableNotSignedIn': 'Nicht angemeldet',
+      'timetableHttpError':
+          'HTTP {status}: Der Stundenplan konnte nicht geladen werden.',
+      'timetableUnknownApiError': 'Unbekannter WebUntis-Fehler',
+      'timetableLoadError':
+          'Der Stundenplan konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.',
 
       'aiClearHistoryTitle': 'Verlauf löschen?',
       'aiClearHistoryDesc': 'Alle bisherigen Chats werden dauerhaft gelöscht.',
@@ -930,21 +968,26 @@ class AppL10n {
       'onboardingUseDemoMode': 'Demo-Modus starten',
       'onboardingUseDemoModeDesc':
           'Teste Untis+ ohne Schul-Login mit realistisch gefullten Beispieldaten.',
-      'tutorialTitle': 'Kurzes App-Tutorial',
-      'tutorialSkip': 'Tutorial überspringen',
-      'tutorialDone': 'Tutorial beenden',
-      'tutorialStepWeekTitle': '1. Stundenplan',
+      'tutorialTitle': 'Geführte App-Tour',
+      'tutorialSkip': 'Tour überspringen',
+      'tutorialDone': 'Tour beenden',
+      'tutorialReplay': 'App-Tutorial wiederholen',
+      'tutorialReplayDesc': 'Die wichtigsten Bereiche erneut kennenlernen',
+      'tutorialStepWeekTitle': 'Stundenplan',
       'tutorialStepWeekDesc':
-          'Tippe auf den großen Uhren-Button, um zur Wochenansicht zu wechseln.',
-      'tutorialStepExamsTitle': '2. Prüfungen',
+          'Dein Schultag beginnt hier. Wechsle Wochen und öffne Stunden für alle Details.',
+      'tutorialStepExamsTitle': 'Prüfungen & Aufgaben',
       'tutorialStepExamsDesc':
-          'Tippe auf den Prüfungs-Button, um Klausuren zu sehen sowie zu importieren und zu exportieren.',
-      'tutorialStepInfoTitle': '3. Schul-Info',
+          'Behalte Klausuren und Aufgaben im Blick und verwalte eigene Einträge.',
+      'tutorialStepInfoTitle': 'Schul-Info',
       'tutorialStepInfoDesc':
-          'Tippe auf den Info-Button für aktuelle Mitteilungen deiner Schule.',
-      'tutorialStepSettingsTitle': '4. Einstellungen',
+          'Mitteilungen deiner Schule landen gesammelt in diesem Bereich.',
+      'tutorialStepAiTitle': 'KI-Assistent',
+      'tutorialStepAiDesc':
+          'Frage deinen Assistenten zu Stundenplan, Aufgaben und deinem Schulalltag.',
+      'tutorialStepSettingsTitle': 'Einstellungen',
       'tutorialStepSettingsDesc':
-          'Tippe auf den Einstellungs-Button, um Sprache, Design und Benachrichtigungen anzupassen.',
+          'Passe Design, Benachrichtigungen, Konten und Datenschutz jederzeit an.',
       'tutorialStepFinishTitle': 'Fertig!',
       'tutorialStepFinishDesc':
           'Du kennst jetzt alle Hauptbereiche der App. Viel Spaß mit Untis+!',
@@ -1103,14 +1146,34 @@ class AppL10n {
           '⚠️ Bitte setze zuerst die Custom Base URL in den KI-Einstellungen.',
       'aiClearHistoryTileTitle': 'Verlauf löschen',
       'aiClearHistoryTileDesc': 'Alle Chats vom Gerät entfernen',
+      'aiTyping': 'KI schreibt …',
+      'aiChatTitle': 'Dein KI-Chat',
+      'aiChatSubtitle':
+          'Stelle Fragen zu deinem Schulalltag oder chatte einfach so mit der KI.',
+      'aiTryIt': 'Probiere es aus:',
       'aiSuggestions': [
         'Was hab ich morgen?',
         'Hab ich heute eine Freistunde?',
         'Wann ist morgen Schulschluss?',
         'Fällt heute etwas aus?',
       ],
+      'aiChatSuggestions': [
+        'Wie kann ich meine Noten verbessern?',
+        'Erkläre mir die Relativitätstheorie einfach.',
+        'Schreibe eine Entschuldigung für Sport.',
+      ],
+      'aiNoSchoolToday': 'Keine Schule heute.',
+      'aiCurrentLessonSummary':
+          'Aktuelle Stunde: {subject} in Raum {room} (bis {end})',
+      'aiNoCurrentLesson': 'Gerade findet kein Unterricht statt.',
+      'aiNoNextLessonSchool': 'Nächste Stunde: Keine (heute ist keine Schule).',
+      'aiNextLessonSummary':
+          'Nächste Stunde: {subject} in Raum {room} um {start}',
+      'aiNoMoreLessons': 'Keine weiteren Stunden heute.',
+      'aiDefaultExamType': 'Klausur',
 
       'settingsTitle': 'Einstellungen',
+      'commonSaveChanges': 'Änderungen speichern',
       'settingsLoggedInAs': 'Angemeldet als',
       'settingsLogout': 'Abmelden',
       'settingsSectionQuick': 'Schnellzugriff',
@@ -1688,6 +1751,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Erlaubt aktivierten Weckern, trotz „Nicht stören“ zu klingeln.',
       'ui_alarmSmart': 'Smart-Wecker',
       'ui_alarmSchedule': 'Stundenplan-Wecker',
+      'ui_alarmAt': '{label} um {time}',
       'ui_alarmScheduleDesc':
           'Weckt vor der ersten nicht ausgefallenen Stunde.',
       'ui_alarmLead': 'Vorlauf',
@@ -1706,6 +1770,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmOwnAlarms': 'Eigene Wecker',
       'ui_alarmAdd': 'Wecker hinzufügen',
       'ui_alarmAddDesc': 'Wiederholt sich an ausgewählten Wochentagen.',
+      'ui_alarmHeadsUp': 'Vor dem Wecker erinnern',
+      'ui_alarmHeadsUpValue': '{n} Min. vorher',
+      'ui_alarmHeadsUpDesc':
+          'Der aktuelle Tag wird davor noch einmal mit WebUntis abgeglichen.',
+      'ui_alarmEarlier': 'Nächsten Wecker früher klingeln lassen',
+      'ui_alarmEarlierValue': '{n} Min. früher',
+      'ui_alarmEarlierDesc': 'Gilt nur für den nächsten Stundenplan-Wecker.',
+      'ui_alarmDateActions': 'Wecker für {date}',
+      'ui_alarmDateActionsDesc': 'Diese Ausnahme gilt nur für diesen Schultag.',
+      'ui_alarmDisableDate': 'Wecker an diesem Tag ausschalten',
+      'ui_alarmCustomTime': 'Eigene Weckzeit',
+      'ui_alarmClearDate': 'Ausnahme zurücksetzen',
+      'ui_alarmDateDisabled': 'An diesem Tag ausgeschaltet',
+      'ui_alarmDateCustom': 'Eigene Zeit: {time}',
+      'ui_alarmDateEarlier': '{n} Min. früher',
       'ui_widgets': 'Widgets',
       'ui_widgetPreview': 'Vorschau',
       'ui_widgetPreviewTitle': 'Widgets & Vorschau',
@@ -1851,6 +1930,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'navMenu': 'Menu',
       'navAi': 'AI',
       'timetableOfflineCache': 'Offline cache active',
+      'timetableNotSignedIn': 'Not signed in',
+      'timetableHttpError': 'HTTP {status}: The timetable could not be loaded.',
+      'timetableUnknownApiError': 'Unknown WebUntis error',
+      'timetableLoadError':
+          'The timetable could not be loaded. Check your connection and try again.',
 
       'aiClearHistoryTitle': 'Clear history?',
       'aiClearHistoryDesc': 'All previous chats will be permanently deleted.',
@@ -1949,21 +2033,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingUseDemoMode': 'Start demo mode',
       'onboardingUseDemoModeDesc':
           'Try Untis+ without school login using realistic sample data.',
-      'tutorialTitle': 'Quick app tutorial',
-      'tutorialSkip': 'Skip tutorial',
-      'tutorialDone': 'Finish tutorial',
-      'tutorialStepWeekTitle': '1. Timetable',
+      'tutorialTitle': 'Guided app tour',
+      'tutorialSkip': 'Skip tour',
+      'tutorialDone': 'Finish tour',
+      'tutorialReplay': 'Replay app tutorial',
+      'tutorialReplayDesc': 'Explore the most important areas again',
+      'tutorialStepWeekTitle': 'Timetable',
       'tutorialStepWeekDesc':
-          'Tap the large clock button to switch to your weekly timetable.',
-      'tutorialStepExamsTitle': '2. Exams',
+          'Your school day starts here. Switch weeks and open lessons for every detail.',
+      'tutorialStepExamsTitle': 'Exams & tasks',
       'tutorialStepExamsDesc':
-          'Tap the exams button to view, import, and export exams.',
-      'tutorialStepInfoTitle': '3. School info',
+          'Keep exams and tasks in view and manage your own entries.',
+      'tutorialStepInfoTitle': 'School info',
       'tutorialStepInfoDesc':
-          'Tap the info button to view current announcements from your school.',
-      'tutorialStepSettingsTitle': '4. Settings',
+          'Announcements from your school are collected in this area.',
+      'tutorialStepAiTitle': 'AI assistant',
+      'tutorialStepAiDesc':
+          'Ask your assistant about your timetable, tasks and school day.',
+      'tutorialStepSettingsTitle': 'Settings',
       'tutorialStepSettingsDesc':
-          'Tap the settings button to customize language, design and notifications.',
+          'Adjust design, notifications, accounts and privacy whenever you like.',
       'tutorialStepFinishTitle': 'Done!',
       'tutorialStepFinishDesc':
           'You now know all core sections of the app. Have fun with Untis+!',
@@ -2112,14 +2201,33 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           '⚠️ Please configure the custom base URL in AI settings first.',
       'aiClearHistoryTileTitle': 'Clear history',
       'aiClearHistoryTileDesc': 'Remove all chats from device',
+      'aiTyping': 'AI is typing …',
+      'aiChatTitle': 'Your AI chat',
+      'aiChatSubtitle':
+          'Ask questions about school or simply chat with the AI.',
+      'aiTryIt': 'Try it:',
       'aiSuggestions': [
         "What do I have tomorrow?",
         "Do I have a free period today?",
         "When does school end tomorrow?",
         "Is anything cancelled today?",
       ],
+      'aiChatSuggestions': [
+        'How can I improve my grades?',
+        'Explain relativity to me in simple terms.',
+        'Write an excuse note for PE.',
+      ],
+      'aiNoSchoolToday': 'No school today.',
+      'aiCurrentLessonSummary':
+          'Current lesson: {subject} in room {room} (until {end})',
+      'aiNoCurrentLesson': 'There is no lesson right now.',
+      'aiNoNextLessonSchool': 'Next lesson: None (there is no school today).',
+      'aiNextLessonSummary': 'Next lesson: {subject} in room {room} at {start}',
+      'aiNoMoreLessons': 'No more lessons today.',
+      'aiDefaultExamType': 'Exam',
 
       'settingsTitle': 'Settings',
+      'commonSaveChanges': 'Save changes',
       'settingsLoggedInAs': 'Logged in as',
       'settingsLogout': 'Sign out',
       'settingsSectionQuick': 'Quick Controls',
@@ -2681,6 +2789,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Allows enabled alarms to ring despite Do Not Disturb.',
       'ui_alarmSmart': 'Smart alarm',
       'ui_alarmSchedule': 'Timetable alarm',
+      'ui_alarmAt': '{label} at {time}',
       'ui_alarmScheduleDesc':
           'Wakes you before the first non-cancelled lesson.',
       'ui_alarmLead': 'Lead time',
@@ -2698,6 +2807,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmOwnAlarms': 'Custom alarms',
       'ui_alarmAdd': 'Add alarm',
       'ui_alarmAddDesc': 'Repeats on selected weekdays.',
+      'ui_alarmHeadsUp': 'Remind before the alarm',
+      'ui_alarmHeadsUpValue': '{n} min beforehand',
+      'ui_alarmHeadsUpDesc':
+          'The current day is checked with WebUntis again first.',
+      'ui_alarmEarlier': 'Make the next alarm ring earlier',
+      'ui_alarmEarlierValue': '{n} min earlier',
+      'ui_alarmEarlierDesc': 'Only applies to the next timetable alarm.',
+      'ui_alarmDateActions': 'Alarm for {date}',
+      'ui_alarmDateActionsDesc': 'This exception only applies to this school day.',
+      'ui_alarmDisableDate': 'Disable alarm on this day',
+      'ui_alarmCustomTime': 'Custom alarm time',
+      'ui_alarmClearDate': 'Reset exception',
+      'ui_alarmDateDisabled': 'Disabled on this day',
+      'ui_alarmDateCustom': 'Custom time: {time}',
+      'ui_alarmDateEarlier': '{n} min earlier',
       'ui_widgets': 'Widgets',
       'ui_widgetPreview': 'Preview',
       'ui_widgetPreviewTitle': 'Widgets & preview',
@@ -2852,6 +2976,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'navMenu': 'Menu',
       'navAi': 'IA',
       'timetableOfflineCache': 'Cache hors ligne actif',
+      'timetableNotSignedIn': 'Non connecté',
+      'timetableHttpError':
+          'HTTP {status} : impossible de charger l’emploi du temps.',
+      'timetableUnknownApiError': 'Erreur WebUntis inconnue',
+      'timetableLoadError':
+          'Impossible de charger l’emploi du temps. Vérifie ta connexion et réessaie.',
 
       'aiClearHistoryTitle': 'Effacer l\'historique ?',
       'aiClearHistoryDesc':
@@ -2955,21 +3085,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingUseDemoMode': 'Lancer le mode démo',
       'onboardingUseDemoModeDesc':
           'Teste Untis+ sans connexion école avec des données réalistes.',
-      'tutorialTitle': 'Tutoriel rapide de l\'app',
-      'tutorialSkip': 'Passer le tutoriel',
-      'tutorialDone': 'Terminer le tutoriel',
-      'tutorialStepWeekTitle': '1. Emploi du temps',
+      'tutorialTitle': 'Visite guidée de l\'app',
+      'tutorialSkip': 'Passer la visite',
+      'tutorialDone': 'Terminer la visite',
+      'tutorialReplay': 'Revoir le tutoriel',
+      'tutorialReplayDesc': 'Redécouvrir les zones principales de l’app',
+      'tutorialStepWeekTitle': 'Emploi du temps',
       'tutorialStepWeekDesc':
-          'Appuie sur le grand bouton horloge pour ouvrir la vue semaine.',
-      'tutorialStepExamsTitle': '2. Examens',
+          'Ta journée commence ici. Change de semaine et ouvre un cours pour les détails.',
+      'tutorialStepExamsTitle': 'Examens et tâches',
       'tutorialStepExamsDesc':
-          'Appuie sur le bouton examens pour voir, importer et exporter des examens.',
-      'tutorialStepInfoTitle': '3. Infos école',
+          'Garde les examens et les tâches en vue et ajoute tes propres entrées.',
+      'tutorialStepInfoTitle': 'Infos école',
       'tutorialStepInfoDesc':
-          'Appuie sur le bouton infos pour lire les annonces de ton école.',
-      'tutorialStepSettingsTitle': '4. Paramètres',
+          'Les annonces de ton école sont regroupées dans cette zone.',
+      'tutorialStepAiTitle': 'Assistant IA',
+      'tutorialStepAiDesc':
+          'Interroge ton assistant sur ton emploi du temps et tes tâches.',
+      'tutorialStepSettingsTitle': 'Paramètres',
       'tutorialStepSettingsDesc':
-          'Appuie sur le bouton paramètres pour ajuster la langue, le design et les notifications.',
+          'Ajuste le design, les notifications, les comptes et la confidentialité.',
       'tutorialStepFinishTitle': 'Terminé !',
       'tutorialStepFinishDesc':
           'Tu connais maintenant toutes les zones principales de l\'app. Amuse-toi avec Untis+ !',
@@ -3099,14 +3234,35 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiConnectionError': '⚠️ Erreur de connexion :',
       'aiClearHistoryTileTitle': 'Effacer l\'historique',
       'aiClearHistoryTileDesc': 'Supprimer tous les chats de l\'appareil',
+      'aiTyping': 'L’IA écrit …',
+      'aiChatTitle': 'Ton chat IA',
+      'aiChatSubtitle':
+          'Pose des questions sur ta vie scolaire ou discute simplement avec l’IA.',
+      'aiTryIt': 'Essaie :',
       'aiSuggestions': [
         "Qu'est-ce que j'ai demain ?",
         "Ai-je une heure libre aujourd'hui ?",
         "À quelle heure finit l'école demain ?",
         "Y a-t-il des cours annulés aujourd'hui ?",
       ],
+      'aiChatSuggestions': [
+        'Comment puis-je améliorer mes notes ?',
+        'Explique-moi simplement la théorie de la relativité.',
+        'Rédige un mot d’excuse pour le sport.',
+      ],
+      'aiNoSchoolToday': 'Pas d’école aujourd’hui.',
+      'aiCurrentLessonSummary':
+          'Cours actuel : {subject}, salle {room} (jusqu’à {end})',
+      'aiNoCurrentLesson': 'Il n’y a pas de cours en ce moment.',
+      'aiNoNextLessonSchool':
+          'Cours suivant : aucun (il n’y a pas école aujourd’hui).',
+      'aiNextLessonSummary':
+          'Cours suivant : {subject}, salle {room}, à {start}',
+      'aiNoMoreLessons': 'Plus aucun cours aujourd’hui.',
+      'aiDefaultExamType': 'Examen',
 
       'settingsTitle': 'Paramètres',
+      'commonSaveChanges': 'Enregistrer les modifications',
       'settingsLoggedInAs': 'Connecté en tant que',
       'settingsLogout': 'Se déconnecter',
       'settingsSectionQuick': 'Accès rapide',
@@ -3684,6 +3840,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Permet aux alarmes activées de sonner malgré Ne pas déranger.',
       'ui_alarmSmart': 'Alarme intelligente',
       'ui_alarmSchedule': 'Alarme de l’emploi du temps',
+      'ui_alarmAt': '{label} à {time}',
       'ui_alarmScheduleDesc': 'Réveille avant le premier cours non annulé.',
       'ui_alarmLead': 'Délai',
       'ui_alarmLeadValue': '{n} min avant le premier cours',
@@ -3700,6 +3857,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmOwnAlarms': 'Alarmes personnalisées',
       'ui_alarmAdd': 'Ajouter une alarme',
       'ui_alarmAddDesc': 'Se répète les jours sélectionnés.',
+      'ui_alarmHeadsUp': 'Rappeler avant l’alarme',
+      'ui_alarmHeadsUpValue': '{n} min avant',
+      'ui_alarmHeadsUpDesc':
+          'La journée en cours est d’abord vérifiée à nouveau dans WebUntis.',
+      'ui_alarmEarlier': 'Faire sonner la prochaine alarme plus tôt',
+      'ui_alarmEarlierValue': '{n} min plus tôt',
+      'ui_alarmEarlierDesc': 'S’applique seulement à la prochaine alarme d’emploi du temps.',
+      'ui_alarmDateActions': 'Alarme pour le {date}',
+      'ui_alarmDateActionsDesc': 'Cette exception ne s’applique qu’à ce jour de cours.',
+      'ui_alarmDisableDate': 'Désactiver l’alarme ce jour',
+      'ui_alarmCustomTime': 'Heure d’alarme personnalisée',
+      'ui_alarmClearDate': 'Réinitialiser l’exception',
+      'ui_alarmDateDisabled': 'Désactivée ce jour',
+      'ui_alarmDateCustom': 'Heure personnalisée : {time}',
+      'ui_alarmDateEarlier': '{n} min plus tôt',
       'ui_widgets': 'Widgets',
       'ui_widgetPreview': 'Aperçu',
       'ui_widgetPreviewTitle': 'Widgets et aperçu',
@@ -3875,6 +4047,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'navMenu': 'Menú',
       'navAi': 'IA',
       'timetableOfflineCache': 'Caché sin conexión activo',
+      'timetableNotSignedIn': 'Sesión no iniciada',
+      'timetableHttpError': 'HTTP {status}: no se pudo cargar el horario.',
+      'timetableUnknownApiError': 'Error de WebUntis desconocido',
+      'timetableLoadError':
+          'No se pudo cargar el horario. Comprueba tu conexión e inténtalo de nuevo.',
 
       'aiClearHistoryTitle': '¿Borrar historial?',
       'aiClearHistoryDesc':
@@ -3979,21 +4156,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingUseDemoMode': 'Iniciar modo demo',
       'onboardingUseDemoModeDesc':
           'Prueba Untis+ sin inicio escolar con datos de ejemplo realistas.',
-      'tutorialTitle': 'Tutorial rápido de la app',
-      'tutorialSkip': 'Saltar tutorial',
-      'tutorialDone': 'Finalizar tutorial',
-      'tutorialStepWeekTitle': '1. Horario',
+      'tutorialTitle': 'Tour guiado de la app',
+      'tutorialSkip': 'Saltar el tour',
+      'tutorialDone': 'Finalizar el tour',
+      'tutorialReplay': 'Repetir el tutorial',
+      'tutorialReplayDesc': 'Volver a conocer las áreas principales',
+      'tutorialStepWeekTitle': 'Horario',
       'tutorialStepWeekDesc':
-          'Toca el botón grande del reloj para abrir la vista semanal.',
-      'tutorialStepExamsTitle': '2. Exámenes',
+          'Tu día escolar empieza aquí. Cambia de semana y abre clases para ver detalles.',
+      'tutorialStepExamsTitle': 'Exámenes y tareas',
       'tutorialStepExamsDesc':
-          'Toca el botón de exámenes para ver, importar y exportar exámenes.',
-      'tutorialStepInfoTitle': '3. Info escolar',
+          'Mantén a la vista exámenes y tareas y añade tus propias entradas.',
+      'tutorialStepInfoTitle': 'Info escolar',
       'tutorialStepInfoDesc':
-          'Toca el botón de info para leer avisos actuales de tu escuela.',
-      'tutorialStepSettingsTitle': '4. Configuración',
+          'Los avisos de tu escuela se reúnen en esta sección.',
+      'tutorialStepAiTitle': 'Asistente de IA',
+      'tutorialStepAiDesc':
+          'Pregunta por tu horario, tus tareas y tu día escolar.',
+      'tutorialStepSettingsTitle': 'Configuración',
       'tutorialStepSettingsDesc':
-          'Toca el botón de configuración para ajustar idioma, diseño y notificaciones.',
+          'Ajusta el diseño, las notificaciones, las cuentas y la privacidad.',
       'tutorialStepFinishTitle': '¡Listo!',
       'tutorialStepFinishDesc':
           'Ya conoces todas las áreas principales de la app. ¡Disfruta Untis+!',
@@ -4123,14 +4305,34 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'aiConnectionError': '⚠️ Error de conexión:',
       'aiClearHistoryTileTitle': 'Borrar historial',
       'aiClearHistoryTileDesc': 'Eliminar todos los chats del dispositivo',
+      'aiTyping': 'La IA está escribiendo …',
+      'aiChatTitle': 'Tu chat con IA',
+      'aiChatSubtitle':
+          'Haz preguntas sobre tu vida escolar o simplemente habla con la IA.',
+      'aiTryIt': 'Pruébalo:',
       'aiSuggestions': [
         '¿Qué tengo mañana?',
         '¿Tengo una hora libre hoy?',
         '¿A qué hora termina la escuela mañana?',
         '¿Se cancela algo hoy?',
       ],
+      'aiChatSuggestions': [
+        '¿Cómo puedo mejorar mis notas?',
+        'Explícame la teoría de la relatividad de forma sencilla.',
+        'Escribe una justificación para educación física.',
+      ],
+      'aiNoSchoolToday': 'Hoy no hay clase.',
+      'aiCurrentLessonSummary':
+          'Clase actual: {subject} en el aula {room} (hasta las {end})',
+      'aiNoCurrentLesson': 'Ahora mismo no hay ninguna clase.',
+      'aiNoNextLessonSchool': 'Siguiente clase: ninguna (hoy no hay clase).',
+      'aiNextLessonSummary':
+          'Siguiente clase: {subject} en el aula {room} a las {start}',
+      'aiNoMoreLessons': 'No hay más clases hoy.',
+      'aiDefaultExamType': 'Examen',
 
       'settingsTitle': 'Configuración',
+      'commonSaveChanges': 'Guardar cambios',
       'settingsLoggedInAs': 'Conectado como',
       'settingsLogout': 'Cerrar sesión',
       'settingsSectionQuick': 'Acceso rápido',
@@ -4704,6 +4906,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Permite que las alarmas activas suenen aunque esté activado No molestar.',
       'ui_alarmSmart': 'Alarma inteligente',
       'ui_alarmSchedule': 'Alarma del horario',
+      'ui_alarmAt': '{label} a las {time}',
       'ui_alarmScheduleDesc':
           'Te despierta antes de la primera clase no cancelada.',
       'ui_alarmLead': 'Antelación',
@@ -4721,6 +4924,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmOwnAlarms': 'Alarmas personalizadas',
       'ui_alarmAdd': 'Añadir alarma',
       'ui_alarmAddDesc': 'Se repite en los días seleccionados.',
+      'ui_alarmHeadsUp': 'Recordar antes de la alarma',
+      'ui_alarmHeadsUpValue': '{n} min antes',
+      'ui_alarmHeadsUpDesc':
+          'Primero se vuelve a comprobar el día actual con WebUntis.',
+      'ui_alarmEarlier': 'Hacer sonar antes la próxima alarma',
+      'ui_alarmEarlierValue': '{n} min antes',
+      'ui_alarmEarlierDesc': 'Solo se aplica a la próxima alarma del horario.',
+      'ui_alarmDateActions': 'Alarma para {date}',
+      'ui_alarmDateActionsDesc': 'Esta excepción solo se aplica a este día de clase.',
+      'ui_alarmDisableDate': 'Desactivar alarma este día',
+      'ui_alarmCustomTime': 'Hora de alarma personalizada',
+      'ui_alarmClearDate': 'Restablecer excepción',
+      'ui_alarmDateDisabled': 'Desactivada este día',
+      'ui_alarmDateCustom': 'Hora personalizada: {time}',
+      'ui_alarmDateEarlier': '{n} min antes',
       'ui_widgets': 'Widgets',
       'ui_widgetPreview': 'Vista previa',
       'ui_widgetPreviewTitle': 'Widgets y vista previa',

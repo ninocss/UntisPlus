@@ -10,6 +10,7 @@ import 'package:otp_auth/otp_auth.dart';
 import 'package:workmanager/workmanager.dart';
 import '../core/time_utils.dart';
 import '../data/security/credential_vault.dart';
+import '../l10n.dart';
 
 import 'demo_mode_service.dart';
 import 'notification_service.dart';
@@ -634,7 +635,8 @@ Future<void> checkGithubUpdateAndNotify() async {
   }
 }
 
-Future<void> updateUntisData() async {
+/// Returns true only after a valid current-day timetable response was applied.
+Future<bool> updateUntisData() async {
   final prefs = await SharedPreferences.getInstance();
   final isDemoMode = prefs.getBool('demoMode') ?? false;
   final activeAccountId = prefs.getString('activeUntisAccountId') ?? '';
@@ -656,13 +658,14 @@ Future<void> updateUntisData() async {
       ? credentials.credentialMode == 'loginKey'
       : prefs.getString('loginCredentialMode') == 'loginKey';
   final locale = prefs.getString('appLocale') ?? 'de';
+  final l = AppL10n.of(locale);
 
   if (!isDemoMode &&
       (schoolUrl.isEmpty ||
           schoolName.isEmpty ||
           user.isEmpty ||
           pass.isEmpty)) {
-    return;
+    return false;
   }
 
   final now = DateTime.now();
@@ -715,12 +718,12 @@ Future<void> updateUntisData() async {
       }
     }
 
-    if (sessionId.isEmpty) return;
+    if (sessionId.isEmpty) return false;
 
     final personId = prefs.getInt('personId') ?? 0;
     final personType = prefs.getInt('personType') ?? 5;
 
-    if (personId == 0) return;
+    if (personId == 0) return false;
 
     final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
     final finalPlanningDate = int.parse(
@@ -751,7 +754,7 @@ Future<void> updateUntisData() async {
       }),
     );
 
-    if (timetableRes.statusCode != 200) return;
+    if (timetableRes.statusCode != 200) return false;
 
     final decoded = jsonDecode(timetableRes.body);
     final dynamic result = decoded['result'];
@@ -766,7 +769,7 @@ Future<void> updateUntisData() async {
 
   // A malformed or incomplete server response must never silently remove an
   // already confirmed smart alarm. An actual empty timetable remains valid.
-  if (!hasValidTimetableResult) return;
+  if (!hasValidTimetableResult) return false;
 
   // The alarm must see the raw server plan: hiding a subject is a display
   // preference, not a reason to sleep through a real lesson.
@@ -799,7 +802,7 @@ Future<void> updateUntisData() async {
     await NotificationService().cancelNotification(
       NotificationIds.currentLesson,
     );
-    return;
+    return true;
   }
 
   lessons.sort(
@@ -927,7 +930,7 @@ Future<void> updateUntisData() async {
     await NotificationService().cancelNotification(
       NotificationIds.currentLesson,
     );
-    return;
+    return true;
   }
 
   final isProgressivePushEnabled = prefs.getBool('progressivePush') ?? true;
@@ -1033,9 +1036,9 @@ Future<void> updateUntisData() async {
     }
   } catch (_) {}
   await WidgetService.updateWidgets(
-    currentLesson: currentLessonName,
-    nextLesson: nextLessonName,
-    timeRemaining: timeRemaining,
+    currentLesson: hasActiveLesson ? currentLessonName : '',
+    nextLesson: '',
+    timeRemaining: hasActiveLesson ? timeRemaining : '',
     dailySchedule: lessons
         .take(3)
         .map(
@@ -1043,8 +1046,8 @@ Future<void> updateUntisData() async {
               '${formatUntisTime(lesson['startTime'].toString())} · ${lessonDisplayName(lesson)}',
         )
         .join('\n'),
-    homeworkSummary: 'Öffne Untis+ für Aufgaben',
-    notificationSummary: 'Öffne Untis+ für Mitteilungen',
+    homeworkSummary: l.ui('widgetNoOpenHomework'),
+    notificationSummary: l.ui('widgetOpenNotifications'),
     accountId: widgetAccountId,
     accountLabel: accountLabel,
     status: DateFormat('HH:mm').format(now),
@@ -1052,6 +1055,7 @@ Future<void> updateUntisData() async {
   if (!isDemoMode) {
     await _refreshInactiveWidgetAccounts(prefs, now: now, locale: locale);
   }
+  return true;
 }
 
 /// Widget-bound accounts do not become notification accounts. This compact
@@ -1062,6 +1066,7 @@ Future<void> _refreshInactiveWidgetAccounts(
   required DateTime now,
   required String locale,
 }) async {
+  final l = AppL10n.of(locale);
   final activeId = prefs.getString('activeUntisAccountId');
   final raw = prefs.getString('untisAccountsV1') ?? '[]';
   dynamic decoded;
@@ -1189,14 +1194,12 @@ Future<void> _refreshInactiveWidgetAccounts(
             return subject.toString().trim();
           }
         }
-        return lesson['_subjectShort']?.toString() ?? 'Unterricht';
+        return lesson['_subjectShort']?.toString() ?? l.ui('widgetLesson');
       }
 
       await WidgetService.updateWidgets(
-        currentLesson: current == null ? 'Freistunde' : label(current),
-        nextLesson: next == null
-            ? 'Heute keine weitere Stunde'
-            : 'Nächste: ${label(next)}',
+        currentLesson: current == null ? '' : label(current),
+        nextLesson: '',
         timeRemaining: '',
         dailySchedule: lessons
             .take(3)
@@ -1205,8 +1208,8 @@ Future<void> _refreshInactiveWidgetAccounts(
                   '${formatUntisTime(lesson['startTime'].toString())} · ${label(lesson)}',
             )
             .join('\n'),
-        homeworkSummary: 'Öffne Untis+ für Aufgaben',
-        notificationSummary: 'Öffne Untis+ für Mitteilungen',
+        homeworkSummary: l.ui('widgetNoOpenHomework'),
+        notificationSummary: l.ui('widgetOpenNotifications'),
         accountId: id,
         accountLabel: user,
         status: DateFormat('HH:mm').format(now),

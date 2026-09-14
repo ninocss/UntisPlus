@@ -61,11 +61,7 @@ class UntisPlusApp extends StatelessWidget {
       FontWeight? fontWeight,
       double? letterSpacing,
     }) {
-      final base = visualTheme == AppThemeId.manga
-          ? GoogleFonts.bebasNeue()
-          : visualTheme == AppThemeId.cyber
-          ? GoogleFonts.ibmPlexMono()
-          : GoogleFonts.outfit();
+      final base = baseText.titleLarge ?? const TextStyle();
       return base.copyWith(
         color: color,
         fontSize: fontSize,
@@ -99,7 +95,9 @@ class UntisPlusApp extends StatelessWidget {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: useBlur
-            ? scheme.surfaceContainer.withValues(alpha: 0.68)
+            ? scheme.surfaceContainer.withValues(
+                alpha: tokens.navigationOpacity,
+              )
             : scheme.surfaceContainer,
         height: expressive ? 76 : null,
         indicatorShape: expressive ? const StadiumBorder() : null,
@@ -134,12 +132,16 @@ class UntisPlusApp extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         elevation: 0,
         color: useBlur
-            ? scheme.surfaceContainerLow.withValues(alpha: 0.8)
+            ? scheme.surfaceContainerLow.withValues(
+                alpha: tokens.surfaceOpacity,
+              )
             : scheme.surfaceContainerLow,
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: useBlur
-            ? scheme.surfaceContainerHigh.withValues(alpha: 0.85)
+            ? scheme.surfaceContainerHigh.withValues(
+                alpha: tokens.surfaceOpacity,
+              )
             : scheme.surfaceContainerHigh,
         surfaceTintColor: scheme.primary,
         shape: RoundedRectangleBorder(
@@ -150,7 +152,9 @@ class UntisPlusApp extends StatelessWidget {
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: useBlur
-            ? scheme.surfaceContainerLow.withValues(alpha: 0.85)
+            ? scheme.surfaceContainerLow.withValues(
+                alpha: tokens.surfaceOpacity,
+              )
             : scheme.surfaceContainerLow,
         surfaceTintColor: scheme.primary,
         shape: RoundedRectangleBorder(
