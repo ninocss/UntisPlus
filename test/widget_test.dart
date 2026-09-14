@@ -7,7 +7,8 @@ import 'package:untisplus/main.dart';
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'viewMode': 0});
+    demoModeNotifier.value = false;
     appLocaleNotifier.value = 'de';
     activeUntisAccountId = null;
     untisAccountsNotifier.value = const [];
@@ -289,13 +290,26 @@ void main() {
       const Size(1024, 768),
     ]) {
       tester.view.physicalSize = size;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('viewMode', 0);
       await tester.pumpWidget(
         UntisPlusApp(startScreen: WeeklyTimetablePage(key: ValueKey(size))),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(
+        find.byKey(const ValueKey('day-timetable-carousel')),
+        findsOneWidget,
+        reason: 'day viewport: $size',
+      );
       await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(
+        find.byKey(const ValueKey('week-grid-horizontal-scroll')),
+        findsOneWidget,
+        reason: 'week viewport: $size',
+      );
       expect(tester.takeException(), isNull, reason: 'viewport: $size');
+      await prefs.setInt('viewMode', 0);
     }
   });
 
@@ -330,19 +344,27 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('viewMode', 0);
     await tester.pumpWidget(const UntisPlusApp(startScreen: WeeklyTimetablePage()));
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byKey(const ValueKey('day-timetable-carousel')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('timetable-day-tab-1')));
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('day-timetable-carousel')), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+      find.byKey(const ValueKey('week-grid-horizontal-scroll')),
+      findsOneWidget,
+    );
     await tester.drag(
       find.byKey(const ValueKey('week-grid-horizontal-scroll')),
       const Offset(-260, 0),
     );
     await tester.pump(const Duration(milliseconds: 400));
+    await prefs.setInt('viewMode', 0);
     expect(tester.takeException(), isNull);
   });
 
@@ -354,9 +376,12 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('Stunden- & Kartendesign'), findsOneWidget);
-    await tester.tap(find.text('Stunden- & Kartendesign'));
-    await tester.pump(const Duration(milliseconds: 250));
+    final designEntry = find.text('Stunden- & Kartendesign');
+    expect(designEntry, findsOneWidget);
+    await tester.ensureVisible(designEntry);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(designEntry);
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(SettingsLessonDesignPage), findsOneWidget);
 
     await tester.pumpWidget(
@@ -407,10 +432,13 @@ void main() {
 
     tester.view.physicalSize = const Size(768, 1024);
     await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('settings-master-detail')), findsNothing);
-    await tester.tap(find.text('Erscheinungsbild').first);
-    await tester.pump(const Duration(milliseconds: 250));
+    final appearanceEntry = find.text('Erscheinungsbild').first;
+    await tester.ensureVisible(appearanceEntry);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(appearanceEntry);
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(SettingsAppearancePage), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
