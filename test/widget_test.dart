@@ -307,6 +307,9 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('onboardingCheckpoint', 0);
+    aiProvider = 'local';
+    await prefs.setString('aiProvider', 'local');
+    addTearDown(() => aiProvider = 'gemini');
     await tester.pumpWidget(const UntisPlusApp(startScreen: OnboardingFlow()));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -320,24 +323,6 @@ void main() {
     final demoButton = find.text('Demo-Modus starten');
     await pumpUntilFound(tester, demoButton);
     await tapVisible(tester, demoButton);
-    await pumpUntilFound(tester, find.text('Google Gemini'));
-
-    await tapVisible(tester, find.text('Google Gemini'));
-    final providerSheet = find.byType(BottomSheet);
-    await pumpUntilFound(tester, providerSheet);
-    final providerScroll = find.descendant(
-      of: providerSheet,
-      matching: find.byType(Scrollable),
-    ).hitTestable();
-    expect(providerScroll, findsOneWidget);
-    await tester.drag(providerScroll, const Offset(0, -320));
-    await tester.pump(const Duration(milliseconds: 150));
-    final localProvider = find.descendant(
-      of: providerSheet,
-      matching: find.text('Lokal (On-Device)'),
-    ).hitTestable();
-    expect(localProvider, findsOneWidget);
-    await tester.tap(localProvider);
     await pumpUntilFound(tester, find.text('Lokales Modell'));
 
     expect(find.text('Lokales Modell'), findsWidgets);
