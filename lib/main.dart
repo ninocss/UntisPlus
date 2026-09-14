@@ -1346,6 +1346,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   AnimationController? _dayCarouselAnimController;
   bool _isWeekCarouselAnimating = false;
   bool _isDayCarouselAnimating = false;
+  bool _moreMenuOpen = false;
   late final AnimationController _cacheRefreshController;
   int _weekFetchGeneration = 0;
   bool _isExportingTimetable = false;
@@ -2403,7 +2404,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return _adjacentWeekCache[_mondayKey(monday)];
   }
 
-  Future<void> _prefetchAdjacentWeeks() async {
+  /// Makes adjacent weeks available before the user reaches them. When the
+  /// current week came from local storage, [allowNetwork] stays false so an
+  /// offline swipe can still reveal the already cached cancellation state
+  /// immediately instead of waiting for a new request to finish.
+  Future<void> _prefetchAdjacentWeeks({bool allowNetwork = true}) async {
     if (demoModeNotifier.value) {
       for (final delta in [-1, 1, 2]) {
         final monday = _weekMondayFromDelta(delta);
@@ -2418,7 +2423,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final pid = _viewingClassId ?? personId;
     final pType = _viewingClassId != null ? 1 : personType;
     if (pid == 0) return;
-    await _fetchMasterData();
+    if (allowNetwork) await _fetchMasterData();
     for (final delta in [-1, 1, 2]) {
       final adjMonday = _weekMondayFromDelta(delta);
       final key = _mondayKey(adjMonday);
@@ -2433,6 +2438,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         if (mounted) setState(() {});
         continue;
       }
+      if (!allowNetwork) continue;
       try {
         DateTime friday = adjMonday.add(const Duration(days: 4));
         int startDate = int.parse(DateFormat('yyyyMMdd').format(adjMonday));
@@ -5246,6 +5252,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       });
       currentWeekDataNotifier.value = cachedWeek;
       unawaited(_updateHomeWidgets(cachedWeek));
+      // Populate the carousel from disk straight away. This avoids showing
+      // stale lesson state during the first swipe while the online refresh is
+      // still in flight (notably for already cached cancellations).
+      unawaited(_prefetchAdjacentWeeks(allowNetwork: false));
     } else if (!silent && mounted && !hasCachedWeek) {
       setState(() {
         _loading = true;
@@ -6338,6 +6348,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: RoundedBlurAppBar(
         leading: MenuAnchor(
+          onOpen: () {
+            if (mounted) setState(() => _moreMenuOpen = true);
+          },
+          onClose: () {
+            if (mounted) setState(() => _moreMenuOpen = false);
+          },
+          style: MenuStyle(
+            backgroundColor: WidgetStatePropertyAll(
+              Theme.of(context).colorScheme.surfaceContainerHigh,
+            ),
+            surfaceTintColor: WidgetStatePropertyAll(
+              Theme.of(context).colorScheme.surfaceTint,
+            ),
+            elevation: const WidgetStatePropertyAll(8),
+            shadowColor: WidgetStatePropertyAll(
+              Colors.black.withValues(alpha: 0.22),
+            ),
+            minimumSize: const WidgetStatePropertyAll(Size(224, 0)),
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            ),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+                side: BorderSide(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.48),
+                ),
+              ),
+            ),
+          ),
           menuChildren: [
             MenuItemButton(
               leadingIcon: const Icon(Icons.groups_rounded),
@@ -6357,7 +6399,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           ],
           builder: (context, controller, child) => IconButton(
             tooltip: l.timetableMoreActions,
-            icon: const Icon(Icons.more_vert_rounded),
+            icon: AnimatedRotation(
+              turns: _moreMenuOpen ? 0.125 : 0,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: const Icon(Icons.more_vert_rounded),
+            ),
             onPressed: () =>
                 controller.isOpen ? controller.close() : controller.open(),
           ),
@@ -6383,21 +6430,40 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   fontSize: 17,
                 ),
               ),
-              if (_showingCachedWeek)
-                Tooltip(
-                  message: l.timetableOfflineCache,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8, top: 2),
-                    child: RotationTransition(
-                      turns: _cacheRefreshController,
-                      child: Icon(
-                        Icons.sync_rounded,
-                        size: 16,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.72, end: 1).animate(
+                      animation,
                     ),
+                    child: child,
                   ),
                 ),
+                child: _showingCachedWeek
+                    ? Semantics(
+                        key: const ValueKey('timetable-cache-sync'),
+                        label: l.timetableOfflineCache,
+                        child: Tooltip(
+                          message: l.timetableOfflineCache,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 8, top: 2),
+                            child: RotationTransition(
+                              turns: _cacheRefreshController,
+                              child: Icon(
+                                Icons.cloud_sync_rounded,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.tertiary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : const SizedBox(key: ValueKey('timetable-cache-idle')),
+              ),
             ],
           ),
         ),

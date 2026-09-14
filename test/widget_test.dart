@@ -299,6 +299,27 @@ void main() {
     }
   });
 
+  testWidgets('timetable more menu uses the expressive menu actions', (
+    tester,
+  ) async {
+    demoModeNotifier.value = true;
+    addTearDown(() => demoModeNotifier.value = false);
+
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: WeeklyTimetablePage()),
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pump(const Duration(milliseconds: 260));
+
+    expect(find.byType(MenuAnchor), findsOneWidget);
+    expect(find.text('Andere Klasse'), findsOneWidget);
+    expect(find.text('Freie Räume'), findsOneWidget);
+    expect(find.text('Stundenplan als Bild exportieren'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('timetable date tabs and weekly swipe stay interactive', (
     tester,
   ) async {
