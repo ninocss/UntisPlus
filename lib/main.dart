@@ -1819,6 +1819,17 @@ Timer? _progressiveNotificationTimer;
     }
     _loadViewPref();
     _loadAlarmConfig();
+
+    // Start foreground timer to keep the progressive notification fresh.
+    // It reads from the offline cache (works without network) and updates
+    // the ongoing "current lesson" notification every minute while the app
+    // is open, preventing the notification from drifting hours behind.
+    if (!kIsWeb) {
+      _progressiveNotificationTimer = Timer.periodic(
+        const Duration(minutes: 1),
+        (_) => unawaited(refreshProgressiveNotificationFromCache()),
+      );
+    }
   }
 
   Future<void> _loadAlarmConfig() async {
@@ -2993,6 +3004,7 @@ Timer? _progressiveNotificationTimer;
     lessonCompactModeNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonCancelledPatternNotifier.removeListener(_onHiddenSubjectsChanged);
+    _progressiveNotificationTimer?.cancel();
     _tabController
       ..removeListener(_onSelectedDayChanged)
       ..dispose();
