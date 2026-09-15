@@ -62,6 +62,24 @@ class OfflineCacheStore {
     }
   }
 
+  /// Returns all cached documents whose keys start with [prefix].
+  Future<List<CachedDocument>> readAllWithPrefix(String prefix) async {
+    try {
+      final box = await _box();
+      final docs = <CachedDocument>[];
+      for (final key in box.keys.whereType<String>()) {
+        if (!key.startsWith(prefix)) continue;
+        final candidate = _decode(box.get(key));
+        if (candidate != null) {
+          docs.add(candidate);
+        }
+      }
+      return docs;
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Future<void> write(String key, Map<String, dynamic> value) async {
     final payload = jsonEncode({
       'schemaVersion': 1,

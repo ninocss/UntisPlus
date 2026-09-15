@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:otp_auth/otp_auth.dart';
 import 'package:workmanager/workmanager.dart';
 import '../core/time_utils.dart';
+import '../data/cache/offline_cache_store.dart';
 import '../data/security/credential_vault.dart';
 import '../l10n.dart';
 
@@ -20,6 +21,7 @@ import 'widget_service.dart';
 
 const String kTimetableUpdateTask = 'update_timetable_task';
 const String kGithubUpdateCheckTask = 'check_github_updates_task';
+const String kProgressiveCacheRefreshTask = 'refresh_progressive_cache_task';
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -28,6 +30,8 @@ void callbackDispatcher() {
       await NotificationService().init();
       if (task == kGithubUpdateCheckTask) {
         await checkGithubUpdateAndNotify();
+      } else if (task == kProgressiveCacheRefreshTask) {
+        await refreshProgressiveNotificationFromCache();
       } else {
         await updateUntisData();
       }
@@ -995,6 +999,242 @@ Future<void> _refreshInactiveWidgetAccounts(
       // Retain the last confirmed widget payload for an unavailable account.
     }
   }
+}
+}
+
+/// Synchronizes the persistent "current lesson" progressive notification from
+/// an already-available lesson list (no network required). Used by the foreground
+/// timer, the offline cache refresh, and the periodic background sync.
+Future<void> syncProgressiveNotification({
+  required List<dynamic> lessons,
+  required DateTime now,
+  required String locale,
+  required bool enabled,
+}) async {
+  await NotificationService().init();
+
+  if (!enabled) {
+    await NotificationService().cancelNotification(NotificationIds.currentLesson);
+    await LiveActivityService.instance.end();
+    return;
+  }
+
+  final l = AppL10n.of(locale);
+  final currentTimeInt = now.hour * 100 + now.minute;
+
+  String currentLessonName = _localizedFreeLabel(locale);
+  String nextLessonName = '-';
+  String timeRemaining = '';
+  int? currentProgress;
+  int? maxProgress;
+  int? endTimeMs;
+  bool hasActiveLesson = false;
+
+  DateTime untisTimeToDate(int timeStr) {
+    final hour = timeStr ~/ 100;
+    final minute = timeStr % 100;
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  }
+
+  String lessonDisplayName(Map<dynamic, dynamic> lesson) {
+    final subjectList = lesson['su'];
+    if (subjectList is List && subjectList.isNotEmpty) {
+      final first = subjectList.first;
+      if (first is Map) {
+        final raw =
+            first['longName'] ?? first['longname'] ?? first['name'] ?? '';
+        final label = raw.toString().trim();
+        if (label.isNotEmpty) return label;
+      }
+    }
+    final start = lesson['startTime'];
+    final end = lesson['endTime'];
+    if (start is int && end is int) {
+      final startStr = formatUntisTime(start.toString());
+      final endStr = formatUntisTime(end.toString());
+      return _localizedFallbackLessonName(locale, startStr, endStr);
+    }
+    return _localizedStatusCurrentLesson(locale);
+  }
+
+  for (int i = 0; i < lessons.length; i++) {
+    var lesson = lessons[i];
+    int start = lesson['startTime'] as int;
+    int end = lesson['endTime'] as int;
+
+    final name = lessonDisplayName(lesson);
+
+    String startStr = formatUntisTime(start.toString());
+    String endStr = formatUntisTime(end.toString());
+
+    if (currentTimeInt >= start && currentTimeInt <= end) {
+      hasActiveLesson = true;
+      currentLessonName = name;
+      timeRemaining = _localizedUntilTime(locale, endStr);
+
+      final startTimeDate = untisTimeToDate(start);
+      final endTimeDate = untisTimeToDate(end);
+
+      maxProgress = endTimeDate.difference(startTimeDate).inMinutes;
+      currentProgress = now.difference(startTimeDate).inMinutes;
+      endTimeMs = endTimeDate.millisecondsSinceEpoch;
+
+      if (i + 1 < lessons.length) {
+        final nextL = lessons[i + 1];
+        nextLessonName = lessonDisplayName(nextL);
+      } else {
+        nextLessonName = _localizedClosedLabel(locale);
+      }
+      break;
+    }
+
+    if (currentTimeInt < start) {
+      timeRemaining = _localizedLessonStartsAt(locale, startStr);
+      nextLessonName = name;
+      endTimeMs = untisTimeToDate(start).millisecondsSinceEpoch;
+      break;
+    }
+  }
+
+  final firstLesson = lessons.isNotEmpty ? lessons.first : null;
+  final lastLesson = lessons.isNotEmpty ? lessons.last : null;
+  if (!hasActiveLesson && lastLesson != null && currentTimeInt > (lastLesson['endTime'] as int)) {
+    await NotificationService().cancelNotification(NotificationIds.currentLesson);
+    await LiveActivityService.instance.end();
+    return;
+  }
+
+  if (hasActiveLesson) {
+    await NotificationService().showProgressiveNotification(
+      id: NotificationIds.currentLesson,
+      title: currentLessonName,
+      body: timeRemaining,
+      subText: null,
+      currentProgress: currentProgress,
+      maxProgress: maxProgress,
+      endTimeMs: endTimeMs,
+      locale: locale,
+      nextLesson: nextLessonName,
+    );
+    await LiveActivityService.instance.upsert(
+      lessonName: currentLessonName,
+      nextLesson: nextLessonName,
+      timeRemaining: timeRemaining,
+    );
+  } else {
+    await NotificationService().cancelNotification(NotificationIds.currentLesson);
+    await LiveActivityService.instance.end();
+  }
+}
+
+/// Loads today's lessons from the offline cache, applying user filters.
+Future<List<dynamic>?> _loadTodaysLessonsFromCache(
+  SharedPreferences prefs,
+  String? accountId,
+  DateTime now,
+) async {
+  final accountPrefix =
+      '${(accountId?.trim().isNotEmpty ?? false) ? accountId!.trim() : 'legacy'}|timetableWeek|';
+  final docs = await OfflineCacheStore.instance.readAllWithPrefix(accountPrefix);
+  if (docs.isEmpty) return null;
+
+  final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
+  final hiddenSubjects = prefs.getStringList('hiddenSubjects') ?? <String>[];
+  final showCancelled = prefs.getBool('showCancelled') ?? true;
+
+  final lessons = <dynamic>[];
+  for (final doc in docs) {
+    final week = doc.value['weekData'];
+    if (week is! Map) continue;
+    for (final dayRaw in week.values) {
+      if (dayRaw is! List) continue;
+      for (final lesson in dayRaw.whereType<Map>()) {
+        if ((lesson['date'] as num?)?.toInt() != todayDate) continue;
+        if (hiddenSubjects.contains(lesson['_subjectShort']?.toString() ?? '')) continue;
+        if (!showCancelled && (lesson['code'] ?? '') == 'cancelled') continue;
+        lessons.add(lesson);
+      }
+    }
+  }
+
+  lessons.sort(
+    (a, b) => ((a['startTime'] as num?)?.toInt() ?? 0).compareTo(
+      (b['startTime'] as num?)?.toInt() ?? 0,
+    ),
+  );
+  return lessons;
+}
+
+/// Schedules the next progressive notification refresh at the next lesson boundary.
+void _scheduleProgressiveBoundaryRefresh({
+  required List<dynamic> lessons,
+  required DateTime now,
+}) {
+  if (kIsWeb) return;
+
+  final nowInt = now.hour * 100 + now.minute;
+  Duration? delay;
+
+  for (final lesson in lessons.whereType<Map>()) {
+    final start = (lesson['startTime'] as num?)?.toInt() ?? 0;
+    final end = (lesson['endTime'] as num?)?.toInt() ?? 0;
+
+    if (nowInt >= start && nowInt <= end) {
+      // Currently in a lesson: schedule for 1 minute after it ends
+      final endMinutes = (end ~/ 100) * 60 + (end % 100);
+      final nowMinutes = now.hour * 60 + now.minute;
+      delay = Duration(minutes: endMinutes - nowMinutes + 1);
+      break;
+    }
+
+    if (nowInt < start) {
+      // Next lesson hasn't started yet: schedule for its start
+      final startMinutes = (start ~/ 100) * 60 + (start % 100);
+      final nowMinutes = now.hour * 60 + now.minute;
+      delay = Duration(minutes: startMinutes - nowMinutes);
+      break;
+    }
+  }
+
+  if (delay == null) return;
+  // Clamp to reasonable bounds: at least 1 min, at most 12 hours
+  if (delay < const Duration(minutes: 1)) delay = const Duration(minutes: 1);
+  if (delay > const Duration(hours: 12)) return;
+
+  // Use a unique name with timestamp to avoid replacement issues
+  final uniqueName =
+      'untis_progressive_refresh_${now.millisecondsSinceEpoch ~/ 60000}';
+
+  Workmanager().registerOneOffTask(
+    uniqueName: uniqueName,
+    taskName: kProgressiveCacheRefreshTask,
+    initialDelay: delay,
+    constraints: const Constraints(networkType: NetworkType.not_required),
+    existingWorkPolicy: ExistingWorkPolicy.replace,
+  );
+}
+
+/// Refreshes the progressive notification from the offline cache and reschedules
+/// the next boundary refresh. Can be called from the foreground timer or the
+/// background one-off task.
+Future<void> refreshProgressiveNotificationFromCache({DateTime? now}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final locale = prefs.getString('appLocale') ?? 'de';
+  final enabled = prefs.getBool('progressivePush') ?? true;
+  final time = now ?? DateTime.now();
+  final accountId = prefs.getString('activeUntisAccountId');
+
+  final lessons = await _loadTodaysLessonsFromCache(prefs, accountId, time);
+  if (lessons == null) return;
+
+  await syncProgressiveNotification(
+    lessons: lessons,
+    now: time,
+    locale: locale,
+    enabled: enabled,
+  );
+
+  _scheduleProgressiveBoundaryRefresh(lessons: lessons, now: time);
 }
 
 @Deprecated('Use DemoModeService.buildWeek instead.')

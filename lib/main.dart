@@ -1353,6 +1353,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final GlobalKey _timetableExportKey = GlobalKey();
   final Map<String, Map<dynamic, dynamic>> _temporaryLessonOriginals = {};
   AlarmConfig _alarmConfig = const AlarmConfig();
+Timer? _progressiveNotificationTimer;
 
   String? _tempSessionId;
   int? _viewingClassId;
