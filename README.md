@@ -150,7 +150,7 @@ https://raw.githubusercontent.com/ninocss/untisplus/refs/heads/main/altstore/sou
 ### iOS (TrollStore)
 TrollStore installs Untis+ permanently — no Apple ID and no 7-day re-signing.
 > [!WARNING]
-> This Version/Installation Method is not activly maintained, as TrollStore is'nt Supported anymore on iOS 17+
+> This version and installation method are not actively maintained, as TrollStore is no longer supported on iOS 17+.
 
 > Compatibility: TrollStore relies on the CoreTrust bug and works on **iOS 14.0 – 17.0** on supported devices (not iOS 17.0.1+ or newer). It is **not** a jailbreak. See [ios.cfw.guide](https://ios.cfw.guide/installing-trollstore) for device compatibility and installation of TrollStore itself.
 
