@@ -274,7 +274,7 @@ object AlarmScheduler {
             val lead = plan.optInt("preAlarmNotificationMinutes", 30).coerceIn(0, 180)
             val remaining = plan.optLong("triggerAtMillis", 0L) - System.currentTimeMillis()
             if (lead > 0 && remaining in 1..(lead * 60_000L)) {
-                AlarmReminderReceiver.showReminder(context, plan)
+                AlarmReminderReceiver().showReminder(context, plan)
             }
         }
     }
