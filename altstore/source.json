@@ -18,8 +18,7 @@
       "category": "education",
       "beta": false,
       "appPermissions": {
-        "privacy": {
-        },
+        "privacy": {},
         "entitlements": [
           "com.apple.security.application-groups",
           "aps-environment"
@@ -34,6 +33,15 @@
         "https://raw.githubusercontent.com/ninocss/UntisPlus/refs/heads/main/assets/github/AI_assistant.png"
       ],
       "versions": [
+        {
+          "version": "5.4.0",
+          "buildVersion": "5.4.0",
+          "date": "2026-09-15",
+          "localizedDescription": "Track your school day in real-time with new Live Activities and a highly customizable home screen widget. This update also introduces alternate app icons to personalize your device, along with full localization in German, English, Spanish, and French.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.4.0/UntisPlus-v5.4.0.ipa",
+          "size": 42335877,
+          "minOSVersion": "15.0"
+        },
         {
           "version": "5.3.3",
           "buildVersion": "5.3.3",
@@ -65,8 +73,7 @@
       "category": "education",
       "beta": true,
       "appPermissions": {
-        "privacy": {
-        },
+        "privacy": {},
         "entitlements": [
           "com.apple.security.application-groups",
           "aps-environment"
@@ -106,6 +113,16 @@
     "com.ninocss.untisplus"
   ],
   "news": [
+    {
+      "title": "Untis+ 5.4.0 is here",
+      "identifier": "untisplus-release-5-4-0",
+      "caption": "Track your school day in real-time with new Live Activities and a highly customizable home screen widget. This update also introduces alternate app icons to personalize your device, along with full localization in German, English, Spanish, and French.",
+      "date": "2026-09-15",
+      "tintColor": "4A90D9",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus",
+      "notify": true
+    },
     {
       "title": "Untis+ 5.3.3 is here",
       "identifier": "untisplus-release-5-3-3",
