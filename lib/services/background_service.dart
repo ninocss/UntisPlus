@@ -612,6 +612,7 @@ Future<bool> updateUntisData() async {
 
   int? currentProgress;
   int? maxProgress;
+  int? startTimeMs;
   int? endTimeMs;
 
   int computeBreakCount(List<dynamic> dayLessons) {
@@ -675,6 +676,7 @@ Future<bool> updateUntisData() async {
 
       maxProgress = endTimeDate.difference(startTimeDate).inMinutes;
       currentProgress = now.difference(startTimeDate).inMinutes;
+      startTimeMs = startTimeDate.millisecondsSinceEpoch;
       endTimeMs = endTimeDate.millisecondsSinceEpoch;
 
       if (i + 1 < lessons.length) {
@@ -786,6 +788,8 @@ Future<bool> updateUntisData() async {
         lessonName: currentLessonName,
         nextLesson: nextLessonName,
         timeRemaining: timeRemaining,
+        startTimeMs: startTimeMs,
+        endTimeMs: endTimeMs,
       );
     } else {
       await NotificationService().cancelNotification(
@@ -1033,6 +1037,7 @@ Future<void> syncProgressiveNotification({
   String timeRemaining = '';
   int? currentProgress;
   int? maxProgress;
+  int? startTimeMs;
   int? endTimeMs;
   bool hasActiveLesson = false;
 
@@ -1083,6 +1088,7 @@ Future<void> syncProgressiveNotification({
 
       maxProgress = endTimeDate.difference(startTimeDate).inMinutes;
       currentProgress = now.difference(startTimeDate).inMinutes;
+      startTimeMs = startTimeDate.millisecondsSinceEpoch;
       endTimeMs = endTimeDate.millisecondsSinceEpoch;
 
       if (i + 1 < lessons.length) {
@@ -1125,6 +1131,8 @@ Future<void> syncProgressiveNotification({
       lessonName: currentLessonName,
       nextLesson: nextLessonName,
       timeRemaining: timeRemaining,
+      startTimeMs: startTimeMs,
+      endTimeMs: endTimeMs,
     );
   } else {
     await NotificationService().cancelNotification(NotificationIds.currentLesson);

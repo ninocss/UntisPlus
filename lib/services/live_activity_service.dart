@@ -18,10 +18,16 @@ class LiveActivityService {
   );
 
   /// Starts or updates the Live Activity with the current lesson state.
+  ///
+  /// `startTimeMs`/`endTimeMs` (epoch milliseconds, local time) let the widget
+  /// render a live system-driven countdown instead of the static
+  /// `timeRemaining` string, mirroring Android's chronometer.
   Future<void> upsert({
     required String lessonName,
     required String nextLesson,
     required String timeRemaining,
+    int? startTimeMs,
+    int? endTimeMs,
   }) async {
     if (kIsWeb || !Platform.isIOS) return;
     try {
@@ -29,6 +35,8 @@ class LiveActivityService {
         'lessonName': lessonName,
         'nextLesson': nextLesson,
         'timeRemaining': timeRemaining,
+        'startTimeMs': startTimeMs,
+        'endTimeMs': endTimeMs,
       });
     } catch (e) {
       debugPrint('LiveActivity upsert failed: $e');

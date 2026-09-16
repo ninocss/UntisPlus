@@ -12,6 +12,7 @@ struct UntisAlarmActivityAttributes: ActivityAttributes {
         let statusLabel: String
         let timeAccessibilityLabel: String
         let countdown: String?
+        let alarmDateMs: Int64?
     }
     init() {}
 }
@@ -28,7 +29,8 @@ enum UntisAlarmActivityManager {
             status: plan["status"] as? String ?? "active",
             statusLabel: plan["statusLabel"] as? String ?? "Alarm active",
             timeAccessibilityLabel: plan["timeAccessibilityLabel"] as? String ?? "Alarm time",
-            countdown: plan["countdown"] as? String
+            countdown: plan["countdown"] as? String,
+            alarmDateMs: (plan["alarmDateMs"] as? NSNumber)?.int64Value
         )
         do {
             if let activity = Activity<UntisAlarmActivityAttributes>.activities.first {

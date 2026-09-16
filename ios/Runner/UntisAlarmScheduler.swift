@@ -173,6 +173,18 @@ enum UntisAlarmScheduler {
     static func presentRinging(_ plan: [AnyHashable: Any], snoozing: Bool = false) async {
         guard #available(iOS 16.2, *) else { return }
         let label = (plan["label"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Absolute ring target: while snoozing count down to the re-ring, on a
+        // smart alarm keep the original trigger, otherwise use now (ringing).
+        let now = Date()
+        let alarmDateMs: Int64
+        if snoozing {
+            let minutes = (plan["snoozeMinutes"] as? NSNumber)?.intValue ?? 5
+            alarmDateMs = Int64(now.addingTimeInterval(Double(max(1, min(60, minutes))) * 60).timeIntervalSince1970 * 1000)
+        } else if let millis = (plan["triggerAtMillis"] as? NSNumber)?.int64Value, millis > 0 {
+            alarmDateMs = millis
+        } else {
+            alarmDateMs = Int64(now.timeIntervalSince1970 * 1000)
+        }
         let snapshot: [String: Any] = [
             "id": plan["id"] as? String ?? "",
             "label": (label?.isEmpty ?? true) ? copy(plan, "defaultLabel", "Untis+ Wecker") : label!,
@@ -181,6 +193,7 @@ enum UntisAlarmScheduler {
             "statusLabel": copy(plan, snoozing ? "statusSnoozing" : "statusActive", snoozing ? "Snoozing" : "Alarm active"),
             "timeAccessibilityLabel": copy(plan, "timeAccessibility", "Alarm time {time}")
                 .replacingOccurrences(of: "{time}", with: alarmTimeString(plan)),
+            "alarmDateMs": alarmDateMs,
         ]
         await UntisAlarmActivityManager.upsert(plan: snapshot)
     }

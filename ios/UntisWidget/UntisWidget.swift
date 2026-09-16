@@ -411,8 +411,22 @@ struct UntisLessonActivityAttributes: ActivityAttributes {
         let lessonName: String
         let nextLesson: String
         let timeRemaining: String
+        let lessonStartMs: Int64?
+        let lessonEndMs: Int64?
     }
     init() {}
+}
+
+@available(iOSApplicationExtension 16.1, *)
+func untisLessonCountdownText(_ state: UntisLessonActivityAttributes.ContentState) -> Text {
+    if let startMs = state.lessonStartMs, let endMs = state.lessonEndMs {
+        let start = Date(timeIntervalSince1970: Double(startMs) / 1000)
+        let end = Date(timeIntervalSince1970: Double(endMs) / 1000)
+        if start < end, Date() < end {
+            return Text(timerInterval: start...end, countsDown: true)
+        }
+    }
+    return Text(state.timeRemaining)
 }
 
 @available(iOSApplicationExtension 16.1, *)
@@ -431,7 +445,7 @@ struct UntisLessonLiveActivityView: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            Text(context.state.timeRemaining)
+            untisLessonCountdownText(context.state)
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundStyle(.blue)
@@ -463,7 +477,7 @@ struct UntisLessonActivityConfiguration: Widget {
                         .lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.state.timeRemaining)
+                    untisLessonCountdownText(context.state)
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(.blue)
@@ -480,13 +494,13 @@ struct UntisLessonActivityConfiguration: Widget {
                     .font(.headline)
                     .lineLimit(1)
             } compactTrailing: {
-                Text(context.state.timeRemaining)
+                untisLessonCountdownText(context.state)
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .foregroundStyle(.blue)
                     .lineLimit(1)
             } minimal: {
-                Text(context.state.timeRemaining)
+                untisLessonCountdownText(context.state)
                     .font(.caption2)
                     .fontWeight(.semibold)
                     .foregroundStyle(.blue)

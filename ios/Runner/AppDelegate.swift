@@ -13,6 +13,8 @@ struct UntisLessonActivityAttributes: ActivityAttributes {
         let lessonName: String
         let nextLesson: String
         let timeRemaining: String
+        let lessonStartMs: Int64?
+        let lessonEndMs: Int64?
     }
     init() {}
 }
@@ -23,7 +25,9 @@ enum UntisLiveActivityController {
         let state = UntisLessonActivityAttributes.ContentState(
             lessonName: payload["lessonName"] as? String ?? "",
             nextLesson: payload["nextLesson"] as? String ?? "",
-            timeRemaining: payload["timeRemaining"] as? String ?? ""
+            timeRemaining: payload["timeRemaining"] as? String ?? "",
+            lessonStartMs: (payload["startTimeMs"] as? NSNumber)?.int64Value,
+            lessonEndMs: (payload["endTimeMs"] as? NSNumber)?.int64Value
         )
         if let activity = Activity<UntisLessonActivityAttributes>.activities.first {
             Task {

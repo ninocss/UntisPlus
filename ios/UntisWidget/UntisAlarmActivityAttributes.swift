@@ -4,8 +4,9 @@ import ActivityKit
 ///
 /// `alarmId` is the normalized plan id (`manual-<id>` or `smart-primary`).
 /// `time` is the alarm trigger formatted as `HH:mm`. `status` is either
-/// `"active"` or `"snoozing"`. The countdown is pushed by the app while
-/// foregrounded; it is not a system-driven timer on iOS.
+/// `"active"` or `"snoozing"`. `alarmDateMs` is the absolute epoch-millisecond
+/// time the alarm rings (or re-rings after snooze), driving a system countdown.
+/// The `countdown` string is pushed by the app while foregrounded as a fallback.
 @available(iOS 16.2, *)
 struct UntisAlarmActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
@@ -16,6 +17,7 @@ struct UntisAlarmActivityAttributes: ActivityAttributes {
         let statusLabel: String
         let timeAccessibilityLabel: String
         let countdown: String?
+        let alarmDateMs: Int64?
     }
 
     init() {}

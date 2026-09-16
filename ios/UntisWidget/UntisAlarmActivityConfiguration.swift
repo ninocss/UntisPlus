@@ -30,7 +30,18 @@ struct UntisAlarmActivityConfiguration: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        if let countdown = context.state.countdown {
+                        if let ms = context.state.alarmDateMs {
+                            let target = Date(timeIntervalSince1970: Double(ms) / 1000)
+                            if target > Date() {
+                                Text(timerInterval: Date()...target, countsDown: true)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            } else if let countdown = context.state.countdown {
+                                Text(countdown)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else if let countdown = context.state.countdown {
                             Text(countdown)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
