@@ -343,6 +343,9 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
         let target = names[icon]
         guard icon == "default" || target != nil else { result(false); return }
         UIApplication.shared.setAlternateIconName(target) { error in
+            if let error {
+                NSLog("setAlternateIconName(%@) failed: %@", icon, error as NSError)
+            }
             result(error == nil)
         }
     }

@@ -711,6 +711,9 @@ class AppL10n {
   String get settingsSectionAbout => _t('settingsSectionAbout');
   String get settingsSectionCredits => _t('settingsSectionCredits');
   String get settingsCreditsDevelopers => _t('settingsCreditsDevelopers');
+  String get settingsCreditsDeveloper => _t('settingsCreditsDeveloper');
+  String get settingsCreditsFounderDeveloper =>
+      _t('settingsCreditsFounderDeveloper');
   String get appName => _t('appName');
   String get settingsAppVersion => _t('settingsAppVersion');
   String get settingsBuild => _t('settingsBuild');
@@ -1286,7 +1289,7 @@ class AppL10n {
       'settingsHubAccount': 'Account & Demo',
       'settingsHubUpdatesAbout': 'Updates & Über',
       'settingsSupport': 'Entwicklung unterstützen',
-      'settingsSupportDesc': 'Unterstütz mich auf Ko-fi',
+      'settingsSupportDesc': 'Unterstütz uns auf Ko-fi',
       'settingsReportIssue': 'Problem melden oder Idee teilen',
       'settingsReportIssueDesc': 'Öffnet die Untis+ Issues auf GitHub',
       'settingsLanguage': 'Sprache',
@@ -1643,6 +1646,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionAbout': 'Über die App',
       'settingsSectionCredits': 'Credits',
       'settingsCreditsDevelopers': 'Entwickler',
+      'settingsCreditsDeveloper': 'Entwickler',
+      'settingsCreditsFounderDeveloper': 'Gründer & Entwickler',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsBuild': 'Build',
@@ -2770,6 +2775,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionAbout': 'About',
       'settingsSectionCredits': 'Credits',
       'settingsCreditsDevelopers': 'Developers',
+      'settingsCreditsDeveloper': 'Developer',
+      'settingsCreditsFounderDeveloper': 'Founder & Developer',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsBuild': 'Build',
@@ -2816,7 +2823,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubAccount': 'Account & Demo',
       'settingsHubUpdatesAbout': 'Updates & About',
       'settingsSupport': 'Support Development',
-      'settingsSupportDesc': 'Buy me a coffee on Ko-fi',
+      'settingsSupportDesc': 'Support us on Ko-fi',
       'settingsReportIssue': 'Report a problem or share an idea',
       'settingsReportIssueDesc': 'Open the Untis+ issue tracker on GitHub',
       'settingsBackupIncludeApiKeys': 'Include API keys',
@@ -3545,7 +3552,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubAccount': 'Compte & Démo',
       'settingsHubUpdatesAbout': 'Mises à jour & À propos',
       'settingsSupport': 'Soutenir le développement',
-      'settingsSupportDesc': 'Offrez-moi un café sur Ko-fi',
+      'settingsSupportDesc': 'Soutenez-nous sur Ko-fi',
       'settingsReportIssue': 'Signaler un problème ou partager une idée',
       'settingsReportIssueDesc': 'Ouvre les tickets Untis+ sur GitHub',
       'settingsLanguage': 'Langue',
@@ -3902,6 +3909,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionAbout': 'À propos',
       'settingsSectionCredits': 'Crédits',
       'settingsCreditsDevelopers': 'Développeurs',
+      'settingsCreditsDeveloper': 'Développeur',
+      'settingsCreditsFounderDeveloper': 'Fondateur & Développeur',
       'appName': 'Untis+',
       'settingsAppVersion': 'Version',
       'settingsBuild': 'Build',
@@ -4700,7 +4709,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsHubAccount': 'Cuenta & Demo',
       'settingsHubUpdatesAbout': 'Actualizaciones & Acerca de',
       'settingsSupport': 'Apoyar el desarrollo',
-      'settingsSupportDesc': 'Cómprame un café en Ko-fi',
+      'settingsSupportDesc': 'Apóyanos en Ko-fi',
       'settingsReportIssue': 'Informar de un problema o compartir una idea',
       'settingsReportIssueDesc': 'Abre los issues de Untis+ en GitHub',
       'settingsLanguage': 'Idioma',
@@ -5058,6 +5067,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionAbout': 'Acerca de',
       'settingsSectionCredits': 'Créditos',
       'settingsCreditsDevelopers': 'Desarrolladores',
+      'settingsCreditsDeveloper': 'Desarrollador',
+      'settingsCreditsFounderDeveloper': 'Fundador y desarrollador',
       'appName': 'Untis+',
       'settingsAppVersion': 'Versión',
       'settingsBuild': 'Build',

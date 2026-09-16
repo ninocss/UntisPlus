@@ -7,6 +7,179 @@ const Map<String, String> _settingsLocaleLabels = {
   'es': 'Español',
 };
 
+/// Slide-up "Support" sheet showing the project team as contributor cards.
+/// Selecting a card opens that developer's Ko-fi page.
+Future<void> _showSupportSheet(BuildContext context, AppL10n l) async {
+  final mq = MediaQuery.of(context);
+  final cs = Theme.of(context).colorScheme;
+  final tokens = untisThemeTokensOf(context);
+
+  Widget donorTile({
+    required String value,
+    required IconData icon,
+    required List<Color> avatarColors,
+    required String title,
+    required String role,
+  }) {
+    return Material(
+      color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(tokens.surfaceRadius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(tokens.surfaceRadius),
+        onTap: () => Navigator.pop(context, value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: avatarColors,
+                  ),
+                ),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      role,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHigh.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Text(
+                  'Ko-fi',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded, color: cs.outline),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  final choice = await _showUnifiedSheet<String>(
+    context: context,
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 22, 20, 10 + mq.padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFFB7185), Color(0xFFE11D48)],
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.favorite_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.settingsSupport,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        l.settingsSupportDesc,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            donorTile(
+              value: 'nino',
+              icon: Icons.coffee_rounded,
+              avatarColors: const [Color(0xFFF59E0B), Color(0xFFEA580C)],
+              title: 'Nino',
+              role: l.settingsCreditsFounderDeveloper,
+            ),
+            const SizedBox(height: 10),
+            donorTile(
+              value: 'oskar',
+              icon: Icons.code_rounded,
+              avatarColors: const [Color(0xFF38BDF8), Color(0xFF0284C7)],
+              title: 'OseMine (Oskar)',
+              role: l.settingsCreditsDeveloper,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  final url = switch (choice) {
+    'nino' => 'https://ko-fi.com/nino161er',
+    'oskar' => 'https://ko-fi.com/osemine',
+    _ => null,
+  };
+  if (url == null) return;
+  url_launcher.launchUrlString(
+    url,
+    mode: url_launcher.LaunchMode.externalApplication,
+  );
+}
+
 Future<void> _settingsSetLocale(String code) async {
   await ensureDateFormattingForLocale(code);
   appLocaleNotifier.value = code;
@@ -728,12 +901,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         icon: Icons.coffee_rounded,
         title: l.settingsSupport,
         subtitle: l.settingsSupportDesc,
-        onTap: () {
-          url_launcher.launchUrlString(
-            'https://ko-fi.com/nino161er',
-            mode: url_launcher.LaunchMode.externalApplication,
-          );
-        },
+        onTap: () => _showSupportSheet(context, l),
       ),
       makeItem(
         index: 11,

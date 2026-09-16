@@ -646,7 +646,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                   ),
                   iconColor: cs.onPrimaryContainer,
                   title: 'ninocss',
-                  subtitle: l.settingsCreditsDevelopers,
+                  subtitle: l.settingsCreditsFounderDeveloper,
                   onTap: () {
                     url_launcher.launchUrlString(
                       'https://github.com/ninocss',
@@ -661,7 +661,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                   ),
                   iconColor: cs.onSecondaryContainer,
                   title: 'OseMine',
-                  subtitle: l.settingsCreditsDevelopers,
+                  subtitle: l.settingsCreditsDeveloper,
                   onTap: () {
                     url_launcher.launchUrlString(
                       'https://github.com/OseMine',

@@ -27,6 +27,12 @@
 BAAA000020 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA00001F /* LiveActivityManager.swift */; };
 		BAAA000021 /* UntisAlarmScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAA000022 /* UntisAlarmScheduler.swift */; };
 		AABB000035 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = AABB000034 /* Localizable.strings */; };
+		D1CE000001 /* Icon3D.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CE000101 /* Icon3D.png */; };
+		D1CE000002 /* IconChrom.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CE000102 /* IconChrom.png */; };
+		D1CE000003 /* IconGalaxy.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CE000103 /* IconGalaxy.png */; };
+		D1CE000004 /* IconGradient.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CE000104 /* IconGradient.png */; };
+		D1CE000005 /* IconMarmor.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CE000105 /* IconMarmor.png */; };
+		D1CE000006 /* IconPaper.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CE000106 /* IconPaper.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -104,6 +110,12 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 		AABB000031 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AABB000032 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AABB000033 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
+		D1CE000101 /* Icon3D.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon3D.png; sourceTree = "<group>"; };
+		D1CE000102 /* IconChrom.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = IconChrom.png; sourceTree = "<group>"; };
+		D1CE000103 /* IconGalaxy.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = IconGalaxy.png; sourceTree = "<group>"; };
+		D1CE000104 /* IconGradient.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = IconGradient.png; sourceTree = "<group>"; };
+		D1CE000105 /* IconMarmor.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = IconMarmor.png; sourceTree = "<group>"; };
+		D1CE000106 /* IconPaper.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = IconPaper.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -181,6 +193,12 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 				BAAA000022 /* UntisAlarmScheduler.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				D1CE000101 /* Icon3D.png */,
+				D1CE000102 /* IconChrom.png */,
+				D1CE000103 /* IconGalaxy.png */,
+				D1CE000104 /* IconGradient.png */,
+				D1CE000105 /* IconMarmor.png */,
+				D1CE000106 /* IconPaper.png */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -326,6 +344,12 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				AABB000017 /* Runner.entitlements in Resources */,
+				D1CE000001 /* Icon3D.png in Resources */,
+				D1CE000002 /* IconChrom.png in Resources */,
+				D1CE000003 /* IconGalaxy.png in Resources */,
+				D1CE000004 /* IconGradient.png in Resources */,
+				D1CE000005 /* IconMarmor.png in Resources */,
+				D1CE000006 /* IconPaper.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
