@@ -3049,6 +3049,143 @@ Timer? _progressiveNotificationTimer;
 
   static String _norm(dynamic value) => value?.toString().trim() ?? '';
 
+  /// Returns a Material icon glyph for common German/international school
+  /// subjects, or null when the subject is unrecognized.
+  static IconData? _subjectIconFor(String sk, String subject) {
+    final key = (sk.isNotEmpty ? sk : subject).toLowerCase().trim();
+    if (key.isEmpty) return null;
+
+    // Exact short-name matches for common German abbreviations.
+    switch (key) {
+      case 'ma':
+      case 'mat':
+      case 'mathe':
+      case 'math':
+        return Icons.calculate_rounded;
+      case 'de':
+      case 'deu':
+      case 'deutsch':
+      case 'german':
+        return Icons.abc_rounded;
+      case 'en':
+      case 'eng':
+      case 'engl':
+      case 'englisch':
+      case 'english':
+        return Icons.translate_rounded;
+      case 'fr':
+      case 'fre':
+      case 'fran':
+      case 'franz':
+      case 'französisch':
+        return Icons.translate_rounded;
+      case 'la':
+      case 'lat':
+      case 'lati':
+      case 'latein':
+      case 'latin':
+        return Icons.menu_book_rounded;
+      case 'ph':
+      case 'phy':
+      case 'physik':
+      case 'physics':
+        return Icons.science_rounded;
+      case 'ch':
+      case 'chem':
+      case 'chemie':
+      case 'chemistry':
+        return Icons.science_rounded;
+      case 'bi':
+      case 'bio':
+      case 'biologie':
+      case 'biology':
+        return Icons.eco_rounded;
+      case 'geo':
+      case 'geog':
+      case 'geographie':
+      case 'geography':
+        return Icons.public_rounded;
+      case 'ge':
+      case 'ges':
+      case 'gesc':
+      case 'geschichte':
+      case 'history':
+        return Icons.history_edu_rounded;
+      case 'ek':
+      case 'ev':
+      case 'eth':
+      case 'phil':
+      case 'relig':
+      case 'religion':
+      case 'ethik':
+      case 'philosophie':
+        return Icons.auto_stories_rounded;
+      case 'inf':
+      case 'it':
+      case 'info':
+      case 'informatik':
+      case 'comp':
+      case 'cs':
+        return Icons.computer_rounded;
+      case 'mu':
+      case 'mus':
+      case 'musik':
+      case 'music':
+        return Icons.music_note_rounded;
+      case 'ku':
+      case 'kunst':
+      case 'art':
+        return Icons.palette_rounded;
+      case 'sp':
+      case 'sport':
+      case 'pe':
+        return Icons.sports_soccer_rounded;
+      case 'wl':
+      case 'pol':
+      case 'poli':
+      case 'soz':
+      case 'politik':
+        return Icons.groups_rounded;
+      case 'sy':
+      case 'psych':
+      case 'psychologie':
+        return Icons.psychology_rounded;
+      case 'nw':
+      case 'nwv':
+      case 'ne':
+        return Icons.biotech_rounded;
+      case 'kr':
+      case 'ko':
+      case 'kl':
+      case 'klassenstunde':
+        return Icons.forum_rounded;
+      case 'prak':
+      case 'pd':
+      case 'praktikum':
+        return Icons.school_rounded;
+    }
+
+    // Substring fallbacks for longer subject names.
+    if (key.contains('math')) return Icons.calculate_rounded;
+    if (key.contains('deutsch')) return Icons.abc_rounded;
+    if (key.contains('englisch') || key.contains('english')) return Icons.translate_rounded;
+    if (key.contains('franz')) return Icons.translate_rounded;
+    if (key.contains('latein')) return Icons.menu_book_rounded;
+    if (key.contains('physik')) return Icons.science_rounded;
+    if (key.contains('chemie') || key.contains('chem')) return Icons.science_rounded;
+    if (key.contains('biologie') || key.contains('natur')) return Icons.eco_rounded;
+    if (key.contains('geographie')) return Icons.public_rounded;
+    if (key.contains('geschichte')) return Icons.history_edu_rounded;
+    if (key.contains('religion') || key.contains('ethik') || key.contains('evangelisch') || key.contains('katholisch')) return Icons.auto_stories_rounded;
+    if (key.contains('informatik') || key.contains('computer')) return Icons.computer_rounded;
+    if (key.contains('musik')) return Icons.music_note_rounded;
+    if (key.contains('kunst')) return Icons.palette_rounded;
+    if (key.contains('sport')) return Icons.sports_soccer_rounded;
+    if (key.contains('politik') || key.contains('sozialkunde')) return Icons.groups_rounded;
+    if (key.contains('psychologie') || key.contains('psycho')) return Icons.psychology_rounded;
+    return null;
+  }
+
   bool _isSameConsecutiveLessonBlock(
     Map<dynamic, dynamic> a,
     Map<dynamic, dynamic> b,
@@ -3636,6 +3773,7 @@ Timer? _progressiveNotificationTimer;
     required String teacher,
     required String room,
     required bool isNow,
+    IconData? subjectIcon,
     bool isTeacherMissing = false,
     bool hasHomework = false,
     bool hasExam = false,
@@ -3924,6 +4062,14 @@ Timer? _progressiveNotificationTimer;
                       ),
                     ),
                   ),
+                  if (subjectIcon != null && !widthCompact && !heightMinimal) ...[
+                    Icon(
+                      subjectIcon,
+                      size: (effectiveSubjectFontSize * 1.15).clamp(11.0, 17.0),
+                      color: effectiveTextColor.withValues(alpha: 0.85),
+                    ),
+                    const SizedBox(width: 3.5),
+                  ],
                   if ((hasExam || hasHomework) && !widthCompact) ...[
                     const SizedBox(width: 4),
                     Icon(
@@ -4448,6 +4594,7 @@ Timer? _progressiveNotificationTimer;
                                       fgColor: fgColor,
                                       bgColor: bgColor,
                                       subject: subject,
+                                      subjectIcon: _subjectIconFor(sk, subject),
                                       teacher: teacher,
                                       room: room,
                                       isNow: isNow,
@@ -5046,6 +5193,10 @@ Timer? _progressiveNotificationTimer;
                                                       fgColor: fgColor,
                                                       bgColor: bgColor,
                                                       subject: subject,
+                                                      subjectIcon: _subjectIconFor(
+                                                        sk2,
+                                                        subject,
+                                                      ),
                                                       teacher: teacher,
                                                       room: room,
                                                       isNow: isNow,

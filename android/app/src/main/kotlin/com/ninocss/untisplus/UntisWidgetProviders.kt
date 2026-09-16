@@ -159,6 +159,7 @@ class UntisWidgetCustom : HomeWidgetProvider() {
             val account = config?.optString("accountId")?.takeIf { it.isNotEmpty() } ?: widgetAccount(data, id)
             val blocks = config?.optJSONArray("blocks") ?: JSONArray().put("current").put("next").put("status")
             val useSystemColors = config?.optString("colorMode", "custom") == "system"
+            val showIcons = config?.optBoolean("showIcons", true) ?: true
             val textColor = if (useSystemColors) context.getColor(R.color.widget_on_surface)
                 else config?.optInt("textColor", Color.WHITE) ?: Color.WHITE
             val accent = if (useSystemColors) context.getColor(R.color.widget_primary)
@@ -167,6 +168,7 @@ class UntisWidgetCustom : HomeWidgetProvider() {
                 else config?.optInt("backgroundColor", Color.rgb(23, 28, 37)) ?: Color.rgb(23, 28, 37)
             val scale = (config?.optDouble("textScale", 1.0) ?: 1.0).toFloat()
             val idsForText = intArrayOf(R.id.widget_custom_one, R.id.widget_custom_two, R.id.widget_custom_three, R.id.widget_custom_four)
+            val idsForIcon = intArrayOf(R.id.widget_custom_icon_one, R.id.widget_custom_icon_two, R.id.widget_custom_icon_three, R.id.widget_custom_icon_four)
             val views = RemoteViews(context.packageName, R.layout.widget_custom).apply {
                 setInt(R.id.widget_custom_root, "setBackgroundColor", background)
                 idsForText.forEachIndexed { index, viewId ->
@@ -175,10 +177,37 @@ class UntisWidgetCustom : HomeWidgetProvider() {
                     setTextViewText(viewId, compact(text, if (index == 0) 56 else 96))
                     setTextColor(viewId, if (index == 0) accent else textColor)
                     setFloat(viewId, "setTextSize", if (index == 0) 18f * scale else 14f * scale)
+                    val iconViewId = idsForIcon[index]
+                    if (showIcons && index < blocks.length()) {
+                        val res = customIconRes(blocks.optString(index))
+                        if (res != 0) {
+                            setViewVisibility(iconViewId, View.VISIBLE)
+                            setImageViewResource(iconViewId, res)
+                            setInt(iconViewId, "setColorFilter", if (index == 0) accent else textColor)
+                        } else {
+                            setViewVisibility(iconViewId, View.GONE)
+                        }
+                    } else {
+                        setViewVisibility(iconViewId, View.GONE)
+                    }
                 }
                 setOnClickPendingIntent(R.id.widget_custom_root, openAppIntent(context, id, account))
             }
             manager.updateAppWidget(id, views)
         }
     }
+}
+
+/// Icon for a custom widget block, matching the SF Symbol row glyphs the iOS
+/// extension renders (`UntisCustomView`). 0 hides the icon for unknown blocks.
+private fun customIconRes(block: String): Int = when (block) {
+    "current" -> R.drawable.widget_icon_play
+    "next" -> R.drawable.widget_icon_forward
+    "schedule" -> R.drawable.widget_icon_list
+    "homework" -> R.drawable.widget_icon_checklist
+    "exams" -> R.drawable.widget_icon_calendar
+    "notices" -> R.drawable.widget_icon_bell
+    "account" -> R.drawable.widget_icon_person
+    "status" -> R.drawable.widget_icon_clock
+    else -> 0
 }

@@ -895,7 +895,7 @@ Future<void> _settingsSetAppIcon(String icon) async {
   };
   if (!supported.contains(icon)) return;
   final applied = await _applyLauncherIcon(icon);
-  if (!applied && !kIsWeb && Platform.isAndroid) return;
+  if (!applied && !kIsWeb) return;
   appIconNotifier.value = icon;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('appIcon', icon);

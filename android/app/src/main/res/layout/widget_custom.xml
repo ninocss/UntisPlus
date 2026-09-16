@@ -5,8 +5,112 @@
     android:orientation="vertical"
     android:padding="16dp"
     android:background="@drawable/widget_expressive_surface">
-    <TextView android:id="@+id/widget_custom_one" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="3" android:ellipsize="end" android:textSize="18sp" android:textStyle="bold" android:textColor="@color/widget_on_surface" />
-    <TextView android:id="@+id/widget_custom_two" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="3" android:ellipsize="end" android:textSize="14sp" android:textColor="@color/widget_on_surface" />
-    <TextView android:id="@+id/widget_custom_three" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="3" android:ellipsize="end" android:textSize="14sp" android:textColor="@color/widget_on_surface" />
-    <TextView android:id="@+id/widget_custom_four" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:maxLines="3" android:ellipsize="end" android:textSize="12sp" android:textColor="@color/widget_on_surface_variant" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="top"
+        android:minHeight="22dp">
+        <ImageView
+            android:id="@+id/widget_custom_icon_one"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:layout_marginTop="1dp"
+            android:src="@drawable/widget_icon_play"
+            android:contentDescription="@null" />
+        <Space
+            android:layout_width="6dp"
+            android:layout_height="1dp" />
+        <TextView
+            android:id="@+id/widget_custom_one"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_on_surface" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal"
+        android:gravity="top"
+        android:minHeight="22dp">
+        <ImageView
+            android:id="@+id/widget_custom_icon_two"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:layout_marginTop="1dp"
+            android:src="@drawable/widget_icon_forward"
+            android:contentDescription="@null" />
+        <Space
+            android:layout_width="6dp"
+            android:layout_height="1dp" />
+        <TextView
+            android:id="@+id/widget_custom_two"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textSize="14sp"
+            android:textColor="@color/widget_on_surface" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal"
+        android:gravity="top"
+        android:minHeight="22dp">
+        <ImageView
+            android:id="@+id/widget_custom_icon_three"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:layout_marginTop="1dp"
+            android:src="@drawable/widget_icon_calendar"
+            android:contentDescription="@null" />
+        <Space
+            android:layout_width="6dp"
+            android:layout_height="1dp" />
+        <TextView
+            android:id="@+id/widget_custom_three"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textSize="14sp"
+            android:textColor="@color/widget_on_surface" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal"
+        android:gravity="top"
+        android:minHeight="22dp">
+        <ImageView
+            android:id="@+id/widget_custom_icon_four"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:layout_marginTop="1dp"
+            android:src="@drawable/widget_icon_clock"
+            android:contentDescription="@null" />
+        <Space
+            android:layout_width="6dp"
+            android:layout_height="1dp" />
+        <TextView
+            android:id="@+id/widget_custom_four"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textSize="12sp"
+            android:textColor="@color/widget_on_surface_variant" />
+    </LinearLayout>
 </LinearLayout>
