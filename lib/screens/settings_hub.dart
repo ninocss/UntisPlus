@@ -7,93 +7,11 @@ const Map<String, String> _settingsLocaleLabels = {
   'es': 'Español',
 };
 
-/// Slide-up "Support" sheet showing the project team as contributor cards.
-/// Selecting a card opens that developer's Ko-fi page.
+/// Slide-up "Support" sheet styled like the settings credits section.
+/// Selecting a contributor opens that developer's Ko-fi page.
 Future<void> _showSupportSheet(BuildContext context, AppL10n l) async {
   final mq = MediaQuery.of(context);
   final cs = Theme.of(context).colorScheme;
-  final tokens = untisThemeTokensOf(context);
-
-  Widget donorTile({
-    required String value,
-    required IconData icon,
-    required List<Color> avatarColors,
-    required String title,
-    required String role,
-  }) {
-    return Material(
-      color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(tokens.surfaceRadius),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(tokens.surfaceRadius),
-        onTap: () => Navigator.pop(context, value),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: avatarColors,
-                  ),
-                ),
-                child: Icon(icon, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      role,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHigh.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: cs.outlineVariant.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Text(
-                  'Ko-fi',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(Icons.chevron_right_rounded, color: cs.outline),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   final choice = await _showUnifiedSheet<String>(
     context: context,
@@ -105,62 +23,38 @@ Future<void> _showSupportSheet(BuildContext context, AppL10n l) async {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFFFB7185), Color(0xFFE11D48)],
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.favorite_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l.settingsSupport,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        l.settingsSupportDesc,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(
+              l.settingsSupport,
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
-            donorTile(
-              value: 'nino',
+            const SizedBox(height: 8),
+            Text(
+              l.settingsSupportDesc,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            SettingsTile(
               icon: Icons.coffee_rounded,
-              avatarColors: const [Color(0xFFF59E0B), Color(0xFFEA580C)],
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
               title: 'Nino',
-              role: l.settingsCreditsFounderDeveloper,
+              subtitle: l.settingsCreditsFounderDeveloper,
+              onTap: () => Navigator.pop(context, 'nino'),
             ),
-            const SizedBox(height: 10),
-            donorTile(
-              value: 'oskar',
+            const SizedBox(height: 8),
+            SettingsTile(
               icon: Icons.code_rounded,
-              avatarColors: const [Color(0xFF38BDF8), Color(0xFF0284C7)],
-              title: 'OseMine (Oskar)',
-              role: l.settingsCreditsDeveloper,
+              iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onSecondaryContainer,
+              title: 'Oskar',
+              subtitle: l.settingsCreditsDeveloper,
+              onTap: () => Navigator.pop(context, 'oskar'),
             ),
           ],
         ),
@@ -574,16 +468,15 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getBool('backgroundGyroscope') ?? backgroundGyroscopeNotifier.value;
   Map? rawThemeBlurs;
   try {
-    rawThemeBlurs = jsonDecode(
-      prefs.getString('themeBlurPreferences') ?? '{}',
-    );
+    rawThemeBlurs = jsonDecode(prefs.getString('themeBlurPreferences') ?? '{}');
   } catch (_) {}
   final savedThemeBlurs = AppThemeIdX.normalizeBlurPreferences(
     rawThemeBlurs,
     defaultThemeBlur: prefs.getBool('blurEnabled') ?? true,
   );
   themeBlurPreferencesNotifier.value = savedThemeBlurs;
-  final hadUnsupportedThemeBlur = rawThemeBlurs is Map &&
+  final hadUnsupportedThemeBlur =
+      rawThemeBlurs is Map &&
       rawThemeBlurs.keys.any(
         (key) => key is! String || !AppThemeIdX.isSupportedStorageKey(key),
       );
@@ -666,12 +559,10 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
   Widget _buildGroupCard(
     ColorScheme cs,
     BuildContext context,
-    List<_SettingsHubItem> groupItems,
-    {
+    List<_SettingsHubItem> groupItems, {
     required bool expanded,
     required List<_SettingsHubItem> allItems,
-  }
-  ) {
+  }) {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -752,7 +643,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           expanded && allItems.indexOf(item) == _selectedDetail
                               ? Icons.check_circle_rounded
                               : Icons.chevron_right_rounded,
-                          color: expanded && allItems.indexOf(item) == _selectedDetail
+                          color:
+                              expanded &&
+                                  allItems.indexOf(item) == _selectedDetail
                               ? cs.primary
                               : cs.onSurfaceVariant,
                         ),
@@ -1006,7 +899,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             final detailIndex = _selectedDetail
                 .clamp(0, items.length - 1)
                 .toInt();
-            final detail = items[detailIndex].pageBuilder?.call() ??
+            final detail =
+                items[detailIndex].pageBuilder?.call() ??
                 const SettingsTimetablePage();
             return Row(
               key: const ValueKey('settings-master-detail'),
