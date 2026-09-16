@@ -23,6 +23,10 @@ const String kTimetableUpdateTask = 'update_timetable_task';
 const String kGithubUpdateCheckTask = 'check_github_updates_task';
 const String kProgressiveCacheRefreshTask = 'refresh_progressive_cache_task';
 
+/// Fixed unique name for the one-off boundary refresh. iOS delivers the unique
+/// name (not the task name) to the handler, so the dispatcher recognizes both.
+const String kProgressiveBoundaryRefreshId = 'untis_progressive_boundary_refresh';
+
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
@@ -30,7 +34,8 @@ void callbackDispatcher() {
       await NotificationService().init();
       if (task == kGithubUpdateCheckTask) {
         await checkGithubUpdateAndNotify();
-      } else if (task == kProgressiveCacheRefreshTask) {
+      } else if (task == kProgressiveCacheRefreshTask ||
+          task == kProgressiveBoundaryRefreshId) {
         await refreshProgressiveNotificationFromCache();
       } else {
         await updateUntisData();
@@ -835,6 +840,9 @@ Future<bool> updateUntisData() async {
   if (!isDemoMode) {
     await _refreshInactiveWidgetAccounts(prefs, now: now, locale: locale);
   }
+  // Keep the progressive notification fresh at the next lesson boundary even
+  // when the app is never opened again (one-off task, no network required).
+  _scheduleProgressiveBoundaryRefresh(lessons: lessons, now: now);
   return true;
 }
 
@@ -1000,7 +1008,6 @@ Future<void> _refreshInactiveWidgetAccounts(
     }
   }
 }
-}
 
 /// Synchronizes the persistent "current lesson" progressive notification from
 /// an already-available lesson list (no network required). Used by the foreground
@@ -1019,7 +1026,6 @@ Future<void> syncProgressiveNotification({
     return;
   }
 
-  final l = AppL10n.of(locale);
   final currentTimeInt = now.hour * 100 + now.minute;
 
   String currentLessonName = _localizedFreeLabel(locale);
@@ -1096,7 +1102,6 @@ Future<void> syncProgressiveNotification({
     }
   }
 
-  final firstLesson = lessons.isNotEmpty ? lessons.first : null;
   final lastLesson = lessons.isNotEmpty ? lessons.last : null;
   if (!hasActiveLesson && lastLesson != null && currentTimeInt > (lastLesson['endTime'] as int)) {
     await NotificationService().cancelNotification(NotificationIds.currentLesson);
@@ -1201,15 +1206,13 @@ void _scheduleProgressiveBoundaryRefresh({
   if (delay < const Duration(minutes: 1)) delay = const Duration(minutes: 1);
   if (delay > const Duration(hours: 12)) return;
 
-  // Use a unique name with timestamp to avoid replacement issues
-  final uniqueName =
-      'untis_progressive_refresh_${now.millisecondsSinceEpoch ~/ 60000}';
-
+  // Fixed unique name with replace policy so every re-schedule replaces the
+  // previous pending refresh instead of accumulating tasks.
   Workmanager().registerOneOffTask(
-    uniqueName: uniqueName,
-    taskName: kProgressiveCacheRefreshTask,
+    kProgressiveBoundaryRefreshId,
+    kProgressiveCacheRefreshTask,
     initialDelay: delay,
-    constraints: const Constraints(networkType: NetworkType.not_required),
+    constraints: Constraints(networkType: NetworkType.notRequired),
     existingWorkPolicy: ExistingWorkPolicy.replace,
   );
 }

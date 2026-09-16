@@ -766,6 +766,14 @@ Future<void> _initializeDeferredNativeServices() async {
   if (Platform.isAndroid || Platform.isIOS) {
     await AlarmService.instance.restore();
   }
+  // Refresh the persistent "current lesson" notification immediately from the
+  // offline cache on launch (no network required) and schedule the next one-off
+  // boundary refresh so the notification can never be more than ~1 minute stale.
+  try {
+    await refreshProgressiveNotificationFromCache();
+  } catch (_) {
+    // Non-fatal: the periodic background sync will recover.
+  }
 }
 
 Future<void> _initializeDeferredAccountData() async {
