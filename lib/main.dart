@@ -4595,9 +4595,7 @@ Timer? _progressiveNotificationTimer;
             return SingleChildScrollView(
                 key: const ValueKey('week-grid-horizontal-scroll'),
                 scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
+                physics: const BouncingScrollPhysics(),
                 child: SizedBox(
                   width: timeColWidth + 4 + dayGridWidth + trailingDayGridInset,
                   child: Column(
