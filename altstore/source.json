@@ -34,6 +34,15 @@
       ],
       "versions": [
         {
+          "version": "5.4.1",
+          "buildVersion": "5.4.1",
+          "date": "2026-09-16",
+          "localizedDescription": "This update makes notifications more reliable with smoother background handling and faster cache refreshes. You will also notice a much smoother scrolling experience when navigating through your weekly timetable.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.4.1/UntisPlus-v5.4.1.ipa",
+          "size": 42343504,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "5.4.0",
           "buildVersion": "5.4.0",
           "date": "2026-09-15",
@@ -122,6 +131,16 @@
     "com.ninocss.untisplus"
   ],
   "news": [
+    {
+      "title": "Untis+ 5.4.1 is here",
+      "identifier": "untisplus-release-5-4-1",
+      "caption": "This update makes notifications more reliable with smoother background handling and faster cache refreshes. You will also notice a much smoother scrolling experience when navigating through your weekly timetable.",
+      "date": "2026-09-16",
+      "tintColor": "4A90D9",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus",
+      "notify": true
+    },
     {
       "title": "Untis+ 5.4.0 is here",
       "identifier": "untisplus-release-5-4-0",
