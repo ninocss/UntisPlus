@@ -7555,6 +7555,9 @@ class _HomeworkViewState extends State<_HomeworkView> {
             }
 
             allItems.sort((a, b) {
+              final aOpen = a['isDone'] != true ? 0 : 1;
+              final bOpen = b['isDone'] != true ? 0 : 1;
+              if (aOpen != bOpen) return aOpen.compareTo(bOpen);
               final da = int.tryParse(a['dueDate'].toString()) ?? 0;
               final db = int.tryParse(b['dueDate'].toString()) ?? 0;
               return da.compareTo(db);
