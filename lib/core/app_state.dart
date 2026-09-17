@@ -524,14 +524,6 @@ class LocalModelInfo {
 
 const List<LocalModelInfo> kLocalModels = [
   LocalModelInfo(
-    id: 'gemma-4-e4b-it-q4_k_m',
-    name: 'Gemma 4 E4B-IT (Q4_K_M)',
-    url:
-        'https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf',
-    sizeGb: 4.98,
-    description: '',
-  ),
-  LocalModelInfo(
     id: 'gemma-3-1b-it-q4_k_m',
     name: 'Gemma 3 1B-IT (Q4_K_M)',
     url:
@@ -569,6 +561,14 @@ const List<LocalModelInfo> kLocalModels = [
     url:
         'https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf',
     sizeGb: 2.4,
+    description: '',
+  ),
+  LocalModelInfo(
+    id: 'gemma-4-e4b-it-q4_k_m',
+    name: 'Gemma 4 E4B-IT (Q4_K_M)',
+    url:
+        'https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf',
+    sizeGb: 4.98,
     description: '',
   ),
 ];
