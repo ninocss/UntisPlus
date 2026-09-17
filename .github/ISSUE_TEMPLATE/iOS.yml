@@ -1,0 +1,96 @@
+name: iOS issue
+description: Report a problem specific to iPhone/iPad (widgets, Live Activities, notifications, background refresh)
+title: '[iOS]: '
+labels: [bug, ios]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an iOS-specific issue! Please fill out the details below.
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      description: What iPhone/iPad model are you using?
+      multiple: false
+      options:
+        - iPhone
+        - iPad
+        - iPod touch
+    validations:
+      required: true
+  - type: input
+    id: ios-version
+    attributes:
+      label: iOS / iPadOS version
+      description: e.g. iOS 18.0
+      placeholder: iOS 18.0
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: UntisPlus version
+      description: e.g. 5.4.0
+      placeholder: 5.4.0
+    validations:
+      required: true
+  - type: input
+    id: install-method
+    attributes:
+      label: Install method
+      description: How did you install the app (App Store, TestFlight, AltStore/TrollStore, sideload)?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Home Screen widget
+        - Live Activity
+        - Notifications / alarms
+        - Background refresh
+        - App itself
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: describe-bug
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Go to '...'
+        2. Tap on '....'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+      render: shell
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
