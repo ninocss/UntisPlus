@@ -248,7 +248,9 @@ final class UntisNotificationProxy: NSObject, UNUserNotificationCenterDelegate {
     /// instance; capturing it lets us forward non-alarm notifications to it.
     static func activate() {
         let center = UNUserNotificationCenter.current()
-        passthroughDelegate = center.delegate
+        if center.delegate !== shared {
+            passthroughDelegate = center.delegate
+        }
         center.delegate = shared
     }
 
