@@ -1,0 +1,10 @@
+name: Custom issue template
+description: Describe this issue template's purpose here.
+title: ''
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe your issue here.
