@@ -2,7 +2,7 @@ name: iOS issue
 description: Report a problem specific to iPhone/iPad (widgets, Live Activities, notifications, background refresh)
 title: '[iOS]: '
 labels: [bug, ios]
-assignees: []
+assignees: [OseMine]
 body:
   - type: markdown
     attributes:
