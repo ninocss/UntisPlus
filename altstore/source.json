@@ -37,9 +37,9 @@
           "version": "5.4.2",
           "buildVersion": "5.4.2",
           "date": "2026-09-17",
-          "localizedDescription": "This update fixes an issue that caused local AI model downloads to freeze on iOS. It also improves your workflow by automatically prioritizing open homework over completed tasks across all filters.",
-          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.4.2/UntisPlus-v5.4.2.ipa",
-          "size": 53027026,
+          "localizedDescription": "This hotfix resolves a crash some iPhone users experienced on launch when a notification was presented. It installs in place of the current build with the same version number, and also includes the earlier fix for local AI model downloads freezing on iOS.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.4.2/UntisPlus-5.4.2.ipa",
+          "size": 53026925,
           "minOSVersion": "15.0"
         },
         {
@@ -161,7 +161,7 @@
     {
       "title": "Untis+ 5.4.2 is here",
       "identifier": "untisplus-release-5-4-2",
-      "caption": "This update fixes an issue that caused local AI model downloads to freeze on iOS. It also improves your workflow by automatically prioritizing open homework over completed tasks across all filters.",
+      "caption": "This hotfix resolves a crash some iPhone users experienced on launch when a notification was presented. It installs in place of the current build with the same version number, and also includes the earlier fix for local AI model downloads freezing on iOS.",
       "date": "2026-09-17",
       "tintColor": "4A90D9",
       "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
