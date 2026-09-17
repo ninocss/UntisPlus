@@ -34,6 +34,7 @@ class BackupService {
     'aiCustomCompatibility',
     'aiCustomBaseUrl',
     'aiSystemPromptTemplate',
+    'aiLocalModelPath',
     'subjectColors',
     'selectedCustomBackgroundId',
     'alarmConfigV1',

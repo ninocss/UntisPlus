@@ -974,6 +974,7 @@ void main() async {
   aiMaxTokens = prefs.getInt('aiMaxTokens') ?? 2600;
   aiTopP = prefs.getDouble('aiTopP') ?? 0.95;
   aiPersona = prefs.getString('aiPersona') ?? 'helpful';
+  aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
   final savedModel = prefs.getString('aiModel') ?? '';
   final availableModels = _modelsForProvider(
     aiProvider,
