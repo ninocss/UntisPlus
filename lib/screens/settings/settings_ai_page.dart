@@ -167,12 +167,14 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     _downloadTokens[model.id] = cancelToken;
 
     try {
-      final dio = Dio();
       final tempPath = '$path.part';
-      await dio.download(
-        model.url,
-        tempPath,
-        onReceiveProgress: (received, total) {
+      final expectedBytes = (model.sizeGb * 1024 * 1024 * 1024).toInt();
+      await _downloadLocalModelFile(
+        url: model.url,
+        targetPath: tempPath,
+        cancelToken: cancelToken,
+        expectedBytes: expectedBytes,
+        onProgress: (received, total) {
           if (cancelToken.isCancelled) return;
           if (total > 0) {
             final now = DateTime.now();
@@ -194,8 +196,6 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             }
           }
         },
-        cancelToken: cancelToken,
-        options: Options(headers: {'User-Agent': 'UntisPlus/1.0'}),
       );
 
       // Verify the downloaded file is a valid GGUF model before promoting it
@@ -226,7 +226,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         await File(path).delete();
         await File('$path.part').delete();
       } else {
-        await File('$path.part').delete();
+        // Keep the partial file so the next attempt can resume.
         setState(() {
           _downloadProgress[model.id] = -1.0; // Error state
           _downloadSpeed.remove(model.id);
