@@ -107,6 +107,15 @@
       ],
       "versions": [
         {
+          "version": "5.4.2-nightly.2026-09-17",
+          "buildVersion": "5.4.2-nightly.2026-09-17",
+          "date": "2026-09-17",
+          "localizedDescription": "Today's Nightly build of Untis+ with the latest changes and improvements. Please note that nightly builds may be less stable than official releases.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/nightly-2026-09-17/UntisPlus-nightly-2026-09-17.ipa",
+          "size": 53026939,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "5.4.1-nightly.2026-09-17",
           "buildVersion": "5.4.1-nightly.2026-09-17",
           "date": "2026-09-17",
