@@ -466,6 +466,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     switch (model.id) {
       case 'gemma-3-1b-it-q4_k_m':
         return l.aiLocalModelDescSmall;
+      case 'gemma-4-e4b-it-q4_k_m':
+        return l.aiLocalModelDescBalanced;
       case 'llama-3.2-1b-instruct-q4_k_m':
         return l.aiLocalModelDescBalanced;
       case 'qwen-2.5-1.5b-instruct-q4_k_m':
