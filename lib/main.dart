@@ -79,6 +79,7 @@ part 'widgets/expressive_refresh_indicator.dart';
 part 'widgets/custom_background_view.dart';
 part 'widgets/changelog_bottom_sheet.dart';
 part 'widgets/rounded_blur_app_bar.dart';
+part 'services/local_model_download.dart';
 
 int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 

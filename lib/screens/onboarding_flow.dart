@@ -243,7 +243,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       return;
     }
 
-    for (final stalePath in [path, partialPath]) {
+    for (final stalePath in [path]) {
       final stale = File(stalePath);
       if (await stale.exists()) await stale.delete();
     }
@@ -257,17 +257,20 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     });
 
     try {
-      await Dio().download(
-        model.url,
-        partialPath,
+      final expectedBytes = (model.sizeGb * 1024 * 1024 * 1024).toInt();
+      await _downloadLocalModelFile(
+        url: model.url,
+        targetPath: partialPath,
         cancelToken: token,
-        options: Options(headers: const {'User-Agent': 'UntisPlus/1.0'}),
-        onReceiveProgress: (received, total) {
+        expectedBytes: expectedBytes,
+        onProgress: (received, total) {
           if (!mounted || total <= 0 || token.isCancelled) return;
           setState(() => _localModelDownloadProgress = received / total);
         },
       );
       if (!await _isValidOnboardingLocalModel(partialPath, model)) {
+        // Corrupt partial file must not be resumed later.
+        await File(partialPath).delete();
         throw Exception('GGUF verification failed');
       }
       await File(partialPath).rename(path);
@@ -281,7 +284,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         });
       }
     } on DioException catch (error) {
-      if (await File(partialPath).exists()) await File(partialPath).delete();
+      if (error.type == DioExceptionType.cancel) {
+        if (await File(partialPath).exists()) {
+          await File(partialPath).delete();
+        }
+      }
       if (!mounted) return;
       setState(() {
         _localModelDownloading = false;
