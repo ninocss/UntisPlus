@@ -15,6 +15,7 @@ class BackupService {
     'showCancelled',
     'blurEnabled',
     'surfaceBlurEnabled',
+    'lessonShowSubjectIcons',
     'glowEffectsEnabled',
     'backgroundAnimations',
     'backgroundGyroscope',
@@ -24,7 +25,12 @@ class BackupService {
     'demoMode',
   };
 
-  static const Set<String> _intKeys = {'themeMode', 'backgroundAnimationStyle'};
+  static const Set<String> _intKeys = {
+    'themeMode',
+    'backgroundAnimationStyle',
+    'surfaceCornerMode',
+    'surfaceCornerRadius',
+  };
 
   static const Set<String> _stringKeys = {
     'appLocale',
