@@ -581,6 +581,16 @@ class AppL10n {
   String get settingsThemeSystem => _t('settingsThemeSystem');
   String get settingsThemeDark => _t('settingsThemeDark');
   String get settingsSectionTimetable => _t('settingsSectionTimetable');
+  String get settingsTimetableSwitchAnimation =>
+      _t('settingsTimetableSwitchAnimation');
+  String get settingsTimetableSwitchAnimationDesc =>
+      _t('settingsTimetableSwitchAnimationDesc');
+  String get settingsTimetableSwitchAnimationDefault =>
+      _t('settingsTimetableSwitchAnimationDefault');
+  String get settingsTimetableSwitchAnimationMaterial =>
+      _t('settingsTimetableSwitchAnimationMaterial');
+  String get settingsTimetableSwitchAnimationDepth =>
+      _t('settingsTimetableSwitchAnimationDepth');
   String get settingsShowCancelled => _t('settingsShowCancelled');
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
   String get settingsCancelledColor => _t('settingsCancelledColor');
@@ -1412,6 +1422,12 @@ class AppL10n {
       'settingsThemeSystem': 'System',
       'settingsThemeDark': 'Dunkel',
       'settingsSectionTimetable': 'Stundenplan',
+      'settingsTimetableSwitchAnimation': 'Wechselanimation',
+      'settingsTimetableSwitchAnimationDesc':
+          'Animation beim Wechsel zwischen Tagen und Wochen.',
+      'settingsTimetableSwitchAnimationDefault': 'Standard',
+      'settingsTimetableSwitchAnimationMaterial': 'Material 3 Carousel',
+      'settingsTimetableSwitchAnimationDepth': 'Tiefe & Fade',
       'settingsShowCancelled': 'Ausgefallene Stunden anzeigen',
       'settingsShowCancelledDesc':
           'Ausgefallene Stunden werden im Stundenplan angezeigt',
@@ -2560,6 +2576,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsThemeSystem': 'System',
       'settingsThemeDark': 'Dark',
       'settingsSectionTimetable': 'Timetable',
+      'settingsTimetableSwitchAnimation': 'Switch animation',
+      'settingsTimetableSwitchAnimationDesc':
+          'Animation used when moving between timetable days and weeks.',
+      'settingsTimetableSwitchAnimationDefault': 'Default',
+      'settingsTimetableSwitchAnimationMaterial': 'Material 3 Carousel',
+      'settingsTimetableSwitchAnimationDepth': 'Depth & Fade',
       'settingsShowCancelled': 'Show cancelled lessons',
       'settingsShowCancelledDesc':
           'Cancelled lessons are shown in the timetable',
@@ -3733,6 +3755,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsThemeSystem': 'Système',
       'settingsThemeDark': 'Sombre',
       'settingsSectionTimetable': 'Emploi du temps',
+      'settingsTimetableSwitchAnimation': 'Animation de transition',
+      'settingsTimetableSwitchAnimationDesc':
+          'Animation utilisée pour passer entre les jours et les semaines.',
+      'settingsTimetableSwitchAnimationDefault': 'Par défaut',
+      'settingsTimetableSwitchAnimationMaterial': 'Material 3 Carousel',
+      'settingsTimetableSwitchAnimationDepth': 'Profondeur & fondu',
       'settingsShowCancelled': 'Afficher les cours annulés',
       'settingsShowCancelledDesc':
           'Les cours annulés sont visibles dans l\'emploi du temps',
@@ -4906,6 +4934,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsThemeSystem': 'Sistema',
       'settingsThemeDark': 'Oscuro',
       'settingsSectionTimetable': 'Horario',
+      'settingsTimetableSwitchAnimation': 'Animación de cambio',
+      'settingsTimetableSwitchAnimationDesc':
+          'Animación usada al cambiar entre días y semanas del horario.',
+      'settingsTimetableSwitchAnimationDefault': 'Predeterminada',
+      'settingsTimetableSwitchAnimationMaterial': 'Material 3 Carousel',
+      'settingsTimetableSwitchAnimationDepth': 'Profundidad y fundido',
       'settingsShowCancelled': 'Mostrar clases canceladas',
       'settingsShowCancelledDesc':
           'Las clases canceladas se muestran en el horario',
