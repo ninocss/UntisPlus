@@ -921,6 +921,10 @@ void main() async {
       (themeBlurPreferences[activeVisualTheme.storageKey] ?? true);
   surfaceBlurEnabledNotifier.value =
       prefs.getBool('surfaceBlurEnabled') ?? true;
+  surfaceCornerModeNotifier.value =
+      (prefs.getInt('surfaceCornerMode') ?? 0).clamp(0, 2);
+  surfaceCornerRadiusNotifier.value =
+      (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
   appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
   unawaited(_applyAndroidWindowBlur(blurEnabledNotifier.value));
@@ -946,6 +950,8 @@ void main() async {
   lessonAccentStyleNotifier.value = (prefs.getInt('lessonAccentStyle') ?? 0)
       .clamp(0, 3);
   lessonShowTeacherNotifier.value = prefs.getBool('lessonShowTeacher') ?? true;
+  lessonShowSubjectIconsNotifier.value =
+      prefs.getBool('lessonShowSubjectIcons') ?? false;
   lessonShowRoomNotifier.value = prefs.getBool('lessonShowRoom') ?? true;
   lessonCompactModeNotifier.value = prefs.getBool('lessonCompactMode') ?? false;
   lessonDimPastNotifier.value = prefs.getBool('lessonDimPast') ?? true;
@@ -4094,7 +4100,10 @@ Timer? _progressiveNotificationTimer;
                       ),
                     ),
                   ),
-                  if (subjectIcon != null && !widthCompact && !heightMinimal) ...[
+                  if (lessonShowSubjectIconsNotifier.value &&
+                      subjectIcon != null &&
+                      !widthCompact &&
+                      !heightMinimal) ...[
                     Icon(
                       subjectIcon,
                       size: (effectiveSubjectFontSize * 1.15).clamp(11.0, 17.0),
@@ -6555,8 +6564,8 @@ Timer? _progressiveNotificationTimer;
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: RoundedBlurAppBar(
-        leading: MenuAnchor(
-          style: _untisMenuStyle(context),
+        leading: _untisDropdownMenu(
+          context: context,
           menuChildren: [
             MenuItemButton(
               leadingIcon: const Icon(Icons.groups_rounded),
@@ -6778,9 +6787,11 @@ Timer? _progressiveNotificationTimer;
                                 AnimatedPositioned(
                                   duration: const Duration(milliseconds: 300),
                                   curve: Curves.easeOutCubic,
-                                  left: tabWidth * dayIndicatorIndex,
+                                  left:
+                                      (tabWidth * dayIndicatorIndex) +
+                                      ((tabWidth - 38) / 2),
                                   bottom: 0,
-                                  width: tabWidth,
+                                  width: 38,
                                   height: 3,
                                   child: ColoredBox(
                                     color: Theme.of(context).colorScheme.primary,
@@ -9256,8 +9267,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                     onPressed: () =>
                         _gradesTrackerKey.currentState?.showAddGradeDialog(),
                   )
-                : MenuAnchor(
-                    style: _untisMenuStyle(context),
+                : _untisDropdownMenu(
+                    context: context,
                     menuChildren: _tabController.index == 0
                         ? [
                             MenuItemButton(
