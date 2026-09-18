@@ -3620,6 +3620,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         child: ThemedSurface(
                           blur: !timetableSelected,
                           respectSurfaceBlurPreference: false,
+                          respectSurfaceCornerPreference: false,
                           color: timetableSelected
                               ? cs.primary
                               : cs.surfaceContainerHigh.withValues(
@@ -4198,6 +4199,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
 
     return ThemedSurface(
       respectSurfaceBlurPreference: false,
+      respectSurfaceCornerPreference: false,
       borderRadius: navRadius,
       color: cs.surfaceContainerHigh.withValues(
         alpha:
