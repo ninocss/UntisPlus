@@ -4,6 +4,7 @@ import ActivityKit
 import UserNotifications
 import WidgetKit
 import BackgroundTasks
+import workmanager_apple
 
 // Must stay structurally identical to `UntisLessonActivityAttributes` in the
 // UntisWidget extension so ActivityKit matches both ends.
@@ -29,15 +30,21 @@ enum UntisLiveActivityController {
             lessonStartMs: (payload["startTimeMs"] as? NSNumber)?.int64Value,
             lessonEndMs: (payload["endTimeMs"] as? NSNumber)?.int64Value
         )
+        // Mark the activity stale once the lesson ends so a missed background
+        // refresh dims the card instead of showing frozen "live" content.
+        let staleDate: Date? = (payload["endTimeMs"] as? NSNumber).map {
+            Date(timeIntervalSince1970: $0.doubleValue / 1000)
+        }
+        let content = ActivityContent(state: state, staleDate: staleDate)
         if let activity = Activity<UntisLessonActivityAttributes>.activities.first {
             Task {
-                await activity.update(ActivityContent(state: state, staleDate: nil))
+                await activity.update(content)
             }
         } else {
             do {
                 _ = try Activity.request(
                     attributes: UntisLessonActivityAttributes(),
-                    content: ActivityContent(state: state, staleDate: nil),
+                    content: content,
                     pushType: nil
                 )
             } catch {
@@ -362,6 +369,12 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
     UntisNotificationProxy.activate()
     requestNotificationPermission()
     registerBackgroundRefresh()
+    // This app adopts the UIScene lifecycle, so Flutter registers plugins
+    // (and thus WorkmanagerPlugin's application delegate) only after this
+    // method returns. BGTaskScheduler requires its launch handlers to be
+    // registered during `didFinishLaunching`, so re-arm the persisted
+    // workmanager task identifiers explicitly here.
+    WorkmanagerPlugin.registerLaunchHandlers()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

@@ -2,6 +2,37 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 import ActivityKit
+import ExpressiveUI
+
+/// Material 3 colour roles mapped onto a single Untis+ accent, so every
+/// ExpressiveUI component below the theme picks up the app's accent.
+enum UntisExpressiveTheme {
+    static func accent(_ color: Color) -> ExpressiveColors {
+        ExpressiveColors(
+            primary: color,
+            onPrimary: .white,
+            onPrimaryContainer: Color(uiColor: .white),
+            surfaceContainerHighest: color.opacity(0.24),
+            outline: color.opacity(0.6),
+            primaryContainer: color.opacity(0.28),
+            secondaryContainer: color.opacity(0.16),
+            onTertiaryContainer: Color(uiColor: .label),
+            tertiaryContainer: color.opacity(0.20),
+            outlineVariant: color.opacity(0.38),
+            onSecondaryContainer: Color(uiColor: .label),
+            surfaceContainerLow: color.opacity(0.10),
+            onSurface: Color(uiColor: .label),
+            onSurfaceVariant: Color(uiColor: .secondaryLabel),
+            surfaceContainer: color.opacity(0.14)
+        )
+    }
+
+    /// Alarm Live Activity: red, matching the alarm alert UI.
+    static let alarm = accent(Color(uiColor: .systemRed))
+
+    /// Lesson Live Activity: blue, matching the schedule.
+    static let lesson = accent(Color(uiColor: .systemBlue))
+}
 
 func untisWidgetValue(_ key: String, accountId: String? = nil) -> String? {
     let defaults = UserDefaults(suiteName: "group.com.ninocss.untisplus") ?? UserDefaults.standard
@@ -42,14 +73,15 @@ func untisWidgetURL(accountId: String) -> URL {
 
 struct UntisStatusPill: View {
     let text: String
+    @Environment(\.expressiveColors) private var colors
     var body: some View {
         Text(text)
             .font(.caption2)
             .fontWeight(.semibold)
-            .foregroundStyle(.blue)
+            .foregroundStyle(colors.primary)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Capsule().fill(Color.blue.opacity(0.15)))
+            .background(Capsule().fill(colors.primaryContainer))
     }
 }
 
@@ -199,6 +231,7 @@ struct UntisCurrentLessonView: View {
             }
         }
         .padding()
+        .expressiveColors(UntisExpressiveTheme.lesson)
         .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
         .widgetURL(untisWidgetURL(accountId: entry.accountId))
     }
@@ -270,6 +303,7 @@ struct UntisSummaryView: View {
                 Spacer()
             }
         }.padding()
+        .expressiveColors(UntisExpressiveTheme.lesson)
         .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
         .widgetURL(untisWidgetURL(accountId: entry.accountId))
     }
@@ -430,11 +464,22 @@ func untisLessonCountdownText(_ state: UntisLessonActivityAttributes.ContentStat
 }
 
 @available(iOSApplicationExtension 16.1, *)
+func untisLessonProgress(_ state: UntisLessonActivityAttributes.ContentState) -> Double {
+    guard let startMs = state.lessonStartMs, let endMs = state.lessonEndMs, endMs > startMs else { return 0 }
+    let start = Date(timeIntervalSince1970: Double(startMs) / 1000)
+    let end = Date(timeIntervalSince1970: Double(endMs) / 1000)
+    let now = Date()
+    guard now > start else { return 0 }
+    return min(max(now.timeIntervalSince(start) / end.timeIntervalSince(start), 0), 1)
+}
+
+@available(iOSApplicationExtension 16.1, *)
 struct UntisLessonLiveActivityView: View {
     let context: ActivityViewContext<UntisLessonActivityAttributes>
 
     var body: some View {
         HStack(spacing: 12) {
+            ExpressiveCircularProgressIndicator(progress: untisLessonProgress(context.state))
             VStack(alignment: .leading, spacing: 2) {
                 Text(context.state.lessonName)
                     .font(.headline)
@@ -452,6 +497,7 @@ struct UntisLessonLiveActivityView: View {
                 .lineLimit(1)
         }
         .padding()
+        .expressiveColors(UntisExpressiveTheme.lesson)
         .activityBackgroundTint(Color(UIColor.systemBackground))
     }
 }
@@ -507,6 +553,7 @@ struct UntisLessonActivityConfiguration: Widget {
                     .lineLimit(1)
             }
             .keylineTint(.blue)
+            .expressiveColors(UntisExpressiveTheme.lesson)
         }
     }
 }

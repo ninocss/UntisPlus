@@ -1,6 +1,7 @@
 import ActivityKit
 import SwiftUI
 import WidgetKit
+import ExpressiveUI
 
 @available(iOS 16.2, *)
 struct UntisAlarmLiveActivityView: View {
@@ -23,24 +24,30 @@ struct UntisAlarmLiveActivityView: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            Text(context.state.time)
-                .font(.system(.largeTitle, design: .monospaced))
-                .fontWeight(.bold)
-                .foregroundStyle(.red)
-                .accessibilityLabel(context.state.timeAccessibilityLabel)
-            Text(context.state.label)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel(context.state.label)
-            countdownText
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(context.state.statusLabel)
-                .font(.caption2)
-                .foregroundStyle(.red)
+        HStack(spacing: 14) {
+            ExpressiveCircularWavyProgressIndicator()
+            VStack(alignment: .leading, spacing: 2) {
+                Text(context.state.time)
+                    .font(.system(.largeTitle, design: .monospaced))
+                    .fontWeight(.bold)
+                    .foregroundStyle(.red)
+                    .accessibilityLabel(context.state.timeAccessibilityLabel)
+                Text(context.state.label)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(context.state.label)
+                countdownText
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(context.state.statusLabel)
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.red)
+            }
+            Spacer(minLength: 0)
         }
         .padding()
-        .activityBackgroundTint(Color.red)
+        .expressiveColors(UntisExpressiveTheme.alarm)
+        .activityBackgroundTint(Color.red.opacity(0.12))
     }
 }

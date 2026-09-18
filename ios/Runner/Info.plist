@@ -144,6 +144,8 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.ninocss.untisplus.alarmRefresh</string>
+		<string>untis_school_notification_update</string>
+		<string>untis_progressive_boundary_refresh</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

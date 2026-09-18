@@ -13,6 +13,7 @@
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		E15E000003 /* ExpressiveUI in Frameworks */ = {isa = PBXBuildFile; productRef = E15E000002 /* ExpressiveUI */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
@@ -131,6 +132,7 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E15E000003 /* ExpressiveUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -277,6 +279,9 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 			dependencies = (
 			);
 			name = UntisWidget;
+			packageProductDependencies = (
+				E15E000002 /* ExpressiveUI */,
+			);
 			productName = UntisWidget;
 			productReference = AABB000007 /* UntisWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -315,6 +320,7 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 			mainGroup = 97C146E51CF9000F007C117D;
 			packageReferences = (
 				781AD8BC2B33823900A9FFBB /* XCLocalSwiftPackageReference "Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage" */,
+				E15E000001 /* XCRemoteSwiftPackageReference "ExpressiveUI" */,
 			);
 			productRefGroup = 97C146EF1CF9000F007C117D /* Products */;
 			projectDirPath = "";
@@ -768,7 +774,7 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 				INFOPLIST_KEY_CFBundleDisplayName = UntisWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSExtension_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -799,7 +805,7 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 				INFOPLIST_KEY_CFBundleDisplayName = UntisWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSExtension_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -828,7 +834,7 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 				INFOPLIST_KEY_CFBundleDisplayName = UntisWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSExtension_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -895,10 +901,26 @@ BAAA00001F /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownF
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		E15E000001 /* XCRemoteSwiftPackageReference "ExpressiveUI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/edenkollcinaku/ExpressiveUI.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = FlutterGeneratedPluginSwiftPackage;
+		};
+		E15E000002 /* ExpressiveUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E15E000001 /* XCRemoteSwiftPackageReference "ExpressiveUI" */;
+			productName = ExpressiveUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

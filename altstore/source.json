@@ -40,7 +40,7 @@
           "localizedDescription": "This hotfix (build 5.4.2.1) resolves a crash some iPhone users experienced on launch when a notification was presented. It installs over 5.4.2 with the same version number, and also includes the earlier fix for local AI model downloads freezing on iOS.",
           "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.4.2/UntisPlus-5.4.2.ipa",
           "size": 53026609,
-          "minOSVersion": "15.0"
+          "minOSVersion": "16.0"
         },
         {
           "version": "5.4.1",

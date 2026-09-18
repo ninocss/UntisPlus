@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../l10n.dart';
 import 'widget_service.dart';
@@ -24,6 +25,10 @@ abstract class NotificationChannels {
   static const String importantChanges = 'important_changes_channel';
   static const String updates = 'updates_channel';
 }
+
+/// Persisted signature of the last iOS progressive notification content. Used
+/// to avoid re-presenting an unchanged "current lesson" notification.
+const String _progressiveSignatureKey = 'lastProgressiveNotificationSignature';
 
 /// Represents an action triggered from a notification.
 class NotificationActionEvent {
@@ -201,6 +206,23 @@ class NotificationService {
     String? nextLesson,
   }) async {
     if (kIsWeb) return;
+
+    // iOS re-presents a local notification on every `show` call, so an
+    // unchanged "current lesson" is silently replaced on Android but would
+    // buzz/banner again on iOS (foreground timer, launch sync, background
+    // refresh). Track the last presented content and skip redundant updates.
+    if (Platform.isIOS && id == NotificationIds.currentLesson) {
+      final signature = [
+        title,
+        body,
+        subText ?? '',
+        nextLesson ?? '',
+        endTimeMs?.toString() ?? '',
+      ].join('\u0001');
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getString(_progressiveSignatureKey) == signature) return;
+      await prefs.setString(_progressiveSignatureKey, signature);
+    }
 
     final hasProgress = maxProgress != null && currentProgress != null;
     final payloadMap = {
@@ -398,6 +420,10 @@ class NotificationService {
   /// Cancels a specific notification by ID.
   Future<void> cancelNotification(int id) async {
     await _plugin.cancel(id: id);
+    if (id == NotificationIds.currentLesson) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_progressiveSignatureKey);
+    }
   }
 
   String get _deviceLocale {

@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import ExpressiveUI
 
 struct UntisScheduleEntry: TimelineEntry {
     let date: Date
@@ -103,6 +104,7 @@ struct UntisDailyScheduleView: View {
             }
         }
         .padding()
+        .expressiveColors(UntisExpressiveTheme.lesson)
         .containerBackground(for: .widget) { Color(UIColor.systemBackground) }
         .widgetURL(untisWidgetURL(accountId: entry.accountId))
     }
