@@ -1385,7 +1385,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   AnimationController? _dayCarouselAnimController;
   bool _isWeekCarouselAnimating = false;
   bool _isDayCarouselAnimating = false;
-  bool _moreMenuOpen = false;
   late final AnimationController _cacheRefreshController;
   int _weekFetchGeneration = 0;
   bool _isExportingTimetable = false;
@@ -6548,43 +6547,14 @@ Timer? _progressiveNotificationTimer;
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
+    final dayIndicatorIndex =
+        (_dayCarouselTargetDay ?? _tabController.index).clamp(0, 4).toInt();
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: RoundedBlurAppBar(
         leading: MenuAnchor(
-          onOpen: () {
-            if (mounted) setState(() => _moreMenuOpen = true);
-          },
-          onClose: () {
-            if (mounted) setState(() => _moreMenuOpen = false);
-          },
-          style: MenuStyle(
-            backgroundColor: WidgetStatePropertyAll(
-              Theme.of(context).colorScheme.surfaceContainerHigh,
-            ),
-            surfaceTintColor: WidgetStatePropertyAll(
-              Theme.of(context).colorScheme.surfaceTint,
-            ),
-            elevation: const WidgetStatePropertyAll(8),
-            shadowColor: WidgetStatePropertyAll(
-              Colors.black.withValues(alpha: 0.22),
-            ),
-            minimumSize: const WidgetStatePropertyAll(Size(224, 0)),
-            padding: const WidgetStatePropertyAll(
-              EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            ),
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-                side: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.48),
-                ),
-              ),
-            ),
-          ),
+          style: _untisMenuStyle(context),
           menuChildren: [
             MenuItemButton(
               leadingIcon: const Icon(Icons.groups_rounded),
@@ -6604,12 +6574,7 @@ Timer? _progressiveNotificationTimer;
           ],
           builder: (context, controller, child) => IconButton(
             tooltip: l.timetableMoreActions,
-            icon: AnimatedRotation(
-              turns: _moreMenuOpen ? 0.125 : 0,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              child: const Icon(Icons.more_vert_rounded),
-            ),
+            icon: const Icon(Icons.more_vert_rounded),
             onPressed: () =>
                 controller.isOpen ? controller.close() : controller.open(),
           ),
@@ -6659,7 +6624,7 @@ Timer? _progressiveNotificationTimer;
                             child: RotationTransition(
                               turns: _cacheRefreshController,
                               child: Icon(
-                                Icons.cloud_sync_rounded,
+                                Icons.sync_rounded,
                                 size: 18,
                                 color: Theme.of(context).colorScheme.tertiary,
                               ),
@@ -6691,11 +6656,18 @@ Timer? _progressiveNotificationTimer;
         ],
         bottom: _viewMode == 1
             ? null
-            : TabBar(
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(kTextTabBarHeight),
+                child: SizedBox(
+                  height: kTextTabBarHeight,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      TabBar(
                 controller: _tabController,
                 onTap: _onDayTabBarTap,
-                indicatorColor: Theme.of(context).colorScheme.primary,
-                indicatorWeight: 3,
+                indicatorColor: Colors.transparent,
+                indicatorWeight: 0,
                 labelStyle: untisThemeTextStyle(
                   context,
                   fontWeight: FontWeight.bold,
@@ -6794,6 +6766,28 @@ Timer? _progressiveNotificationTimer;
                     ),
                   );
                 }),
+                      ),
+                      IgnorePointer(
+                        child: AnimatedAlign(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment(
+                            -0.8 + (dayIndicatorIndex * 0.4),
+                            1,
+                          ),
+                          child: Container(
+                            width: 38,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
       ),
       body: _AnimatedBackground(
@@ -9257,6 +9251,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                         _gradesTrackerKey.currentState?.showAddGradeDialog(),
                   )
                 : MenuAnchor(
+                    style: _untisMenuStyle(context),
                     menuChildren: _tabController.index == 0
                         ? [
                             MenuItemButton(
@@ -9308,7 +9303,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           indicatorColor: cs.primary,
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
-          isScrollable: true,
+          isScrollable: false,
+          indicatorSize: TabBarIndicatorSize.tab,
           labelStyle: GoogleFonts.outfit(
             fontWeight: FontWeight.w800,
             fontSize: 14,
@@ -9321,7 +9317,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           tabs: [
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.assignment_late_rounded, size: 18),
                   const SizedBox(width: 8),
@@ -9331,7 +9328,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
             ),
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.assignment_rounded, size: 18),
                   const SizedBox(width: 8),
@@ -9341,7 +9339,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
             ),
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.auto_graph_rounded, size: 18),
                   const SizedBox(width: 8),
