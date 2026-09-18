@@ -37,7 +37,11 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     setState(() => _config = config);
     await AlarmService.instance.saveConfig(config, reschedule: false);
     if (refreshTimetable && config.smartEnabled) {
-      await updateUntisData();
+      try {
+        await updateUntisData();
+      } catch (_) {
+        // Keep the previously confirmed smart plan if the network refresh fails.
+      }
     }
     await AlarmService.instance.syncStoredPlans();
     final readiness = await AlarmService.instance.readiness();
