@@ -866,6 +866,23 @@ class SettingsAppearancePage extends StatelessWidget {
                   ),
                 if (capabilities.supportsBlur)
                   ValueListenableBuilder<bool>(
+                    valueListenable: surfaceBlurEnabledNotifier,
+                    builder: (context, value, _) {
+                      return SettingsSwitchTile(
+                        icon: Icons.blur_circular_rounded,
+                        iconBackgroundColor: cs.secondaryContainer.withValues(
+                          alpha: 0.7,
+                        ),
+                        iconColor: cs.onSecondaryContainer,
+                        title: l.settingsSurfaceBlur,
+                        subtitle: l.settingsSurfaceBlurDesc,
+                        value: value,
+                        onChanged: _settingsSetSurfaceBlurEnabled,
+                      );
+                    },
+                  ),
+                if (capabilities.supportsBlur)
+                  ValueListenableBuilder<bool>(
                     valueListenable: appBgBlurEnabledNotifier,
                     builder: (context, value, _) {
                       return SettingsSwitchTile(
