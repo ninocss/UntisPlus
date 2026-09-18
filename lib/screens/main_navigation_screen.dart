@@ -3127,87 +3127,6 @@ ${l.ui('aiAssistantRules')}''';
   }
 }
 
-class _MainTabFadeUp extends StatefulWidget {
-  final bool active;
-  final bool enabled;
-  final Widget child;
-
-  const _MainTabFadeUp({
-    required this.active,
-    required this.enabled,
-    required this.child,
-  });
-
-  @override
-  State<_MainTabFadeUp> createState() => _MainTabFadeUpState();
-}
-
-class _MainTabFadeUpState extends State<_MainTabFadeUp>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _opacity;
-  late final Animation<Offset> _offset;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 480),
-    );
-    final expo = CurvedAnimation(
-      parent: _controller,
-      curve: const Cubic(0.16, 1.0, 0.3, 1.0),
-    );
-    _opacity = Tween<double>(begin: 0, end: 1).animate(expo);
-    _offset = Tween<Offset>(
-      begin: const Offset(0, 0.055),
-      end: Offset.zero,
-    ).animate(expo);
-
-    if (!widget.enabled) {
-      _controller.value = 1;
-    } else if (widget.active) {
-      _controller.forward();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _MainTabFadeUp oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.enabled) {
-      _controller.value = 1;
-      return;
-    }
-    if (!oldWidget.enabled && widget.active) {
-      // Enabling the setting from the currently visible Settings tab should
-      // not make that screen jump. The animation starts on the next tab entry.
-      _controller.value = 1;
-    } else if (widget.active && !oldWidget.active) {
-      _controller.forward(from: 0);
-    } else if (!widget.active && oldWidget.active) {
-      _controller.value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.enabled || MediaQuery.of(context).disableAnimations) {
-      return widget.child;
-    }
-    return FadeTransition(
-      opacity: _opacity,
-      child: SlideTransition(position: _offset, child: widget.child),
-    );
-  }
-}
-
 class _MainTabTransitionLayer extends StatelessWidget {
   final bool active;
   final int relativePosition;
@@ -3226,99 +3145,51 @@ class _MainTabTransitionLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     final type = transitionType.clamp(0, 7);
-    final duration = reduceMotion
-        ? Duration.zero
-        : Duration(
-            milliseconds: switch (type) {
-              0 => 420,
-              7 => 440,
-              _ => 340,
-            },
-          );
-
-    final motionCurve = switch (type) {
-      0 => Curves.easeOutBack,
-      5 => Curves.easeInCubic,
-      6 => Curves.easeOutCubic,
-      7 => const Cubic(0.16, 1.0, 0.3, 1.0),
-      _ => Curves.easeOutCubic,
-    };
-    final fadeCurve = switch (type) {
-      5 => Curves.easeInCubic,
-      7 => const Cubic(0.16, 1.0, 0.3, 1.0),
-      _ => Curves.easeOutCubic,
-    };
-
+    final duration = reduceMotion ? Duration.zero : _pageMotionDuration(type);
     final direction = relativePosition < 0 ? -1.0 : 1.0;
-    var targetOffset = Offset.zero;
-    var targetScale = 1.0;
-
-    if (!active) {
-      switch (type) {
-        case 0:
-          targetOffset = const Offset(0, 0.035);
-          targetScale = 0.965;
-          break;
-        case 2:
-          targetOffset = Offset(0.065 * direction, 0);
-          break;
-        case 3:
-          targetScale = 0.92;
-          break;
-        case 4:
-          targetScale = 0.985;
-          break;
-        case 5:
-        case 6:
-          targetOffset = const Offset(0, 0.045);
-          break;
-        case 7:
-          targetOffset = const Offset(0, 0.065);
-          targetScale = 0.985;
-          break;
-      }
-    }
+    final hiddenOffset = _pageMotionOffset(type, direction: direction);
+    final hiddenScale = _pageMotionScale(type);
+    final hiddenBlur = _pageMotionBlur(type);
+    final curve = _pageMotionCurve(type);
 
     Widget content = child;
-    if (type == 4) {
+
+    if (hiddenBlur > 0) {
       content = TweenAnimationBuilder<double>(
+        key: ValueKey('main-tab-blur-$active-$type'),
         tween: Tween<double>(
-          begin: active ? 8 : 0,
-          end: active ? 0 : 8,
+          begin: active ? hiddenBlur : 0,
+          end: active ? 0 : hiddenBlur,
         ),
         duration: duration,
-        curve: Curves.easeOutCubic,
+        curve: curve,
         child: content,
         builder: (context, sigma, child) => ImageFiltered(
           imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
           child: child,
         ),
       );
-      content = AnimatedScale(
-        scale: targetScale,
-        duration: duration,
-        curve: Curves.easeOutCubic,
-        child: content,
-      );
-    } else {
-      content = AnimatedScale(
-        scale: targetScale,
-        duration: duration,
-        curve: motionCurve,
-        child: content,
-      );
     }
 
-    content = AnimatedSlide(
-      offset: targetOffset,
+    content = AnimatedScale(
+      scale: active ? 1 : hiddenScale,
       duration: duration,
-      curve: motionCurve,
+      curve: curve,
+      alignment: Alignment.center,
       child: content,
     );
+
+    content = AnimatedSlide(
+      offset: active ? Offset.zero : hiddenOffset,
+      duration: duration,
+      curve: curve,
+      child: content,
+    );
+
     content = AnimatedOpacity(
       opacity: active ? 1 : 0,
       duration: duration,
-      curve: fadeCurve,
+      curve: Curves.easeOutCubic,
       child: content,
     );
 
@@ -3663,13 +3534,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           : mq.padding.bottom + 104,
                     ),
                   ),
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: pageTransitionNotifier,
-                    builder: (context, transitionType, _) {
-                      return ValueListenableBuilder<bool>(
-                        valueListenable: mainTabFadeUpEnabledNotifier,
-                        builder: (context, fadeUpEnabled, _) {
-                          final pages = _pages;
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: mainTabFadeUpEnabledNotifier,
+                    builder: (context, animationsEnabled, _) {
+                      final pages = _pages;
+
+                      if (!animationsEnabled ||
+                          MediaQuery.of(context).disableAnimations) {
+                        return IndexedStack(
+                          index: _selectedIndex,
+                          children: pages.asMap().entries.map((entry) {
+                            final active = entry.key == _selectedIndex;
+                            return TickerMode(
+                              enabled: active,
+                              child: _buildPageWithBackground(
+                                context,
+                                entry.value,
+                              ),
+                            );
+                          }).toList(growable: false),
+                        );
+                      }
+
+                      return ValueListenableBuilder<int>(
+                        valueListenable: pageTransitionNotifier,
+                        builder: (context, transitionType, _) {
                           return Stack(
                             fit: StackFit.expand,
                             children: pages.asMap().entries.map((entry) {
@@ -3679,15 +3568,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                 active: active,
                                 relativePosition: entry.key - _selectedIndex,
                                 transitionType: transitionType,
-                                child: _MainTabFadeUp(
-                                  active: active,
-                                  enabled: fadeUpEnabled,
-                                  child: TickerMode(
-                                    enabled: active,
-                                    child: _buildPageWithBackground(
-                                      context,
-                                      entry.value,
-                                    ),
+                                child: TickerMode(
+                                  enabled: active,
+                                  child: _buildPageWithBackground(
+                                    context,
+                                    entry.value,
                                   ),
                                 ),
                               );
