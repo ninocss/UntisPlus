@@ -18,10 +18,11 @@
       "category": "education",
       "beta": false,
       "appPermissions": {
-        "privacy": {},
+        "privacy": {
+          "NSSupportsFrequentLiveActivityUpdates": "YES"
+        },
         "entitlements": [
           "com.apple.security.application-groups",
-          "aps-environment"
         ]
       },
       "screenshotURLs": [
