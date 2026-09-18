@@ -745,6 +745,7 @@ final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(
 );
 
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
+final ValueNotifier<bool> surfaceBlurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
