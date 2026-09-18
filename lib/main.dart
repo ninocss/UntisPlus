@@ -6770,21 +6770,25 @@ Timer? _progressiveNotificationTimer;
                 }),
                       ),
                       IgnorePointer(
-                        child: AnimatedAlign(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutCubic,
-                          alignment: Alignment(
-                            -0.8 + (dayIndicatorIndex * 0.4),
-                            1,
-                          ),
-                          child: Container(
-                            width: 38,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final tabWidth = constraints.maxWidth / 5;
+                            return Stack(
+                              children: [
+                                AnimatedPositioned(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutCubic,
+                                  left: tabWidth * dayIndicatorIndex,
+                                  bottom: 0,
+                                  width: tabWidth,
+                                  height: 3,
+                                  child: ColoredBox(
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -9305,8 +9309,6 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           indicatorColor: cs.primary,
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
-          isScrollable: false,
-          indicatorSize: TabBarIndicatorSize.tab,
           labelStyle: GoogleFonts.outfit(
             fontWeight: FontWeight.w800,
             fontSize: 14,
@@ -9319,8 +9321,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           tabs: [
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.assignment_late_rounded, size: 18),
                   const SizedBox(width: 8),
@@ -9330,8 +9331,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
             ),
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.assignment_rounded, size: 18),
                   const SizedBox(width: 8),
@@ -9341,8 +9341,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
             ),
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.auto_graph_rounded, size: 18),
                   const SizedBox(width: 8),
