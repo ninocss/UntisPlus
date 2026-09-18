@@ -3681,14 +3681,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                 active: active,
                                 relativePosition: entry.key - _selectedIndex,
                                 transitionType: transitionType,
-                                child: TickerMode(
-                                  enabled: active,
-                                  child: _buildPageWithBackground(
-                                    context,
-                                    _MainTabFadeUp(
-                                      active: active,
-                                      enabled: fadeUpEnabled,
-                                      child: entry.value,
+                                child: _MainTabFadeUp(
+                                  active: active,
+                                  enabled: fadeUpEnabled,
+                                  child: TickerMode(
+                                    enabled: active,
+                                    child: _buildPageWithBackground(
+                                      context,
+                                      entry.value,
                                     ),
                                   ),
                                 ),
