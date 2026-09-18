@@ -457,6 +457,10 @@ class AppL10n {
   String get settingsSectionGeneral => _t('settingsSectionGeneral');
   String get settingsAppearance => _t('settingsAppearance');
   String get settingsAppearanceDesc => _t('settingsAppearanceDesc');
+  String get settingsAppearanceSurfaces => _t('settingsAppearanceSurfaces');
+  String get settingsAppearanceMotion => _t('settingsAppearanceMotion');
+  String get settingsAppearanceTimetable => _t('settingsAppearanceTimetable');
+  String get settingsAppearanceApp => _t('settingsAppearanceApp');
   String get settingsVisualTheme => _t('settingsVisualTheme');
   String get settingsVisualThemeDesc => _t('settingsVisualThemeDesc');
   String get themeDefault => _t('themeDefault');
@@ -581,6 +585,16 @@ class AppL10n {
   String get settingsThemeSystem => _t('settingsThemeSystem');
   String get settingsThemeDark => _t('settingsThemeDark');
   String get settingsSectionTimetable => _t('settingsSectionTimetable');
+  String get settingsTimetableSwitchAnimation =>
+      _t('settingsTimetableSwitchAnimation');
+  String get settingsTimetableSwitchAnimationDesc =>
+      _t('settingsTimetableSwitchAnimationDesc');
+  String get settingsTimetableSwitchAnimationDefault =>
+      _t('settingsTimetableSwitchAnimationDefault');
+  String get settingsTimetableSwitchAnimationMaterial =>
+      _t('settingsTimetableSwitchAnimationMaterial');
+  String get settingsTimetableSwitchAnimationDepth =>
+      _t('settingsTimetableSwitchAnimationDepth');
   String get settingsShowCancelled => _t('settingsShowCancelled');
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
   String get settingsCancelledColor => _t('settingsCancelledColor');
@@ -1290,6 +1304,10 @@ class AppL10n {
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Erscheinungsbild',
       'settingsAppearanceDesc': 'System (Hell/Dunkel)',
+      'settingsAppearanceSurfaces': 'Oberflächen',
+      'settingsAppearanceMotion': 'Animationen & Effekte',
+      'settingsAppearanceTimetable': 'Stundenplanfarben',
+      'settingsAppearanceApp': 'App',
       'settingsVisualTheme': 'App-Theme',
       'settingsVisualThemeDesc':
           'Ändert Farben, Formen, Schrift und Bewegung in der gesamten App.',
@@ -1412,6 +1430,12 @@ class AppL10n {
       'settingsThemeSystem': 'System',
       'settingsThemeDark': 'Dunkel',
       'settingsSectionTimetable': 'Stundenplan',
+      'settingsTimetableSwitchAnimation': 'Wechselanimation',
+      'settingsTimetableSwitchAnimationDesc':
+          'Animation beim Wechsel zwischen Tagen und Wochen.',
+      'settingsTimetableSwitchAnimationDefault': 'Standard',
+      'settingsTimetableSwitchAnimationMaterial': 'Material 3 Carousel',
+      'settingsTimetableSwitchAnimationDepth': 'Tiefe & Fade',
       'settingsShowCancelled': 'Ausgefallene Stunden anzeigen',
       'settingsShowCancelledDesc':
           'Ausgefallene Stunden werden im Stundenplan angezeigt',
@@ -2447,6 +2471,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Appearance',
       'settingsAppearanceDesc': 'System (Light/Dark)',
+      'settingsAppearanceSurfaces': 'Surfaces',
+      'settingsAppearanceMotion': 'Motion & effects',
+      'settingsAppearanceTimetable': 'Timetable colors',
+      'settingsAppearanceApp': 'App',
       'settingsVisualTheme': 'App theme',
       'settingsVisualThemeDesc':
           'Changes colors, shapes, type and motion throughout the app.',
@@ -2560,6 +2588,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsThemeSystem': 'System',
       'settingsThemeDark': 'Dark',
       'settingsSectionTimetable': 'Timetable',
+      'settingsTimetableSwitchAnimation': 'Switch animation',
+      'settingsTimetableSwitchAnimationDesc':
+          'Animation used when moving between timetable days and weeks.',
+      'settingsTimetableSwitchAnimationDefault': 'Default',
+      'settingsTimetableSwitchAnimationMaterial': 'Material 3 Carousel',
+      'settingsTimetableSwitchAnimationDepth': 'Depth & Fade',
       'settingsShowCancelled': 'Show cancelled lessons',
       'settingsShowCancelledDesc':
           'Cancelled lessons are shown in the timetable',
@@ -3585,6 +3619,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Application',
       'settingsAppearance': 'Apparence',
       'settingsAppearanceDesc': 'Système (Clair/Sombre)',
+      'settingsAppearanceSurfaces': 'Surfaces',
+      'settingsAppearanceMotion': 'Animations & effets',
+      'settingsAppearanceTimetable': 'Couleurs de l’emploi du temps',
+      'settingsAppearanceApp': 'Application',
       'settingsVisualTheme': 'Thème de l’application',
       'settingsVisualThemeDesc':
           'Modifie les couleurs, les formes, la typographie et les mouvements.',
@@ -3733,6 +3771,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsThemeSystem': 'Système',
       'settingsThemeDark': 'Sombre',
       'settingsSectionTimetable': 'Emploi du temps',
+      'settingsTimetableSwitchAnimation': 'Animation de transition',
+      'settingsTimetableSwitchAnimationDesc':
+          'Animation utilisée pour passer entre les jours et les semaines.',
+      'settingsTimetableSwitchAnimationDefault': 'Par défaut',
+      'settingsTimetableSwitchAnimationMaterial': 'Material 3 Carousel',
+      'settingsTimetableSwitchAnimationDepth': 'Profondeur & fondu',
       'settingsShowCancelled': 'Afficher les cours annulés',
       'settingsShowCancelledDesc':
           'Les cours annulés sont visibles dans l\'emploi du temps',
@@ -4758,6 +4802,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Aplicación',
       'settingsAppearance': 'Apariencia',
       'settingsAppearanceDesc': 'Sistema (Claro/Oscuro)',
+      'settingsAppearanceSurfaces': 'Superficies',
+      'settingsAppearanceMotion': 'Animaciones y efectos',
+      'settingsAppearanceTimetable': 'Colores del horario',
+      'settingsAppearanceApp': 'Aplicación',
       'settingsVisualTheme': 'Tema de la aplicación',
       'settingsVisualThemeDesc':
           'Cambia colores, formas, tipografía y movimiento en toda la aplicación.',
@@ -4906,6 +4954,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsThemeSystem': 'Sistema',
       'settingsThemeDark': 'Oscuro',
       'settingsSectionTimetable': 'Horario',
+      'settingsTimetableSwitchAnimation': 'Animación de cambio',
+      'settingsTimetableSwitchAnimationDesc':
+          'Animación usada al cambiar entre días y semanas del horario.',
+      'settingsTimetableSwitchAnimationDefault': 'Predeterminada',
+      'settingsTimetableSwitchAnimationMaterial': 'Material 3 Carousel',
+      'settingsTimetableSwitchAnimationDepth': 'Profundidad y fundido',
       'settingsShowCancelled': 'Mostrar clases canceladas',
       'settingsShowCancelledDesc':
           'Las clases canceladas se muestran en el horario',

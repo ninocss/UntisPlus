@@ -716,6 +716,7 @@ final ValueNotifier<Map<String, bool>> themeBlurPreferencesNotifier =
       AppThemeId.cyber.storageKey: true,
     });
 final ValueNotifier<bool> showCancelledNotifier = ValueNotifier(true);
+final ValueNotifier<int> timetableSwitchAnimationNotifier = ValueNotifier(0);
 final ValueNotifier<int> cancelledLessonColorNotifier = ValueNotifier(
   0xFFFF1744,
 );

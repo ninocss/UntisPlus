@@ -42,6 +42,13 @@ Future<void> _settingsSetShowCancelled(bool value) async {
   await prefs.setBool('showCancelled', value);
 }
 
+Future<void> _settingsSetTimetableSwitchAnimation(int value) async {
+  final normalized = value.clamp(0, 2);
+  timetableSwitchAnimationNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('timetableSwitchAnimation', normalized);
+}
+
 Future<void> _settingsSetBackgroundAnimations(bool value) async {
   backgroundAnimationsNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -424,6 +431,10 @@ Future<void> _settingsSyncFromPrefs() async {
   }
   showCancelledNotifier.value =
       prefs.getBool('showCancelled') ?? showCancelledNotifier.value;
+  timetableSwitchAnimationNotifier.value =
+      (prefs.getInt('timetableSwitchAnimation') ??
+              timetableSwitchAnimationNotifier.value)
+          .clamp(0, 2);
   backgroundAnimationsNotifier.value =
       prefs.getBool('backgroundAnimations') ??
       backgroundAnimationsNotifier.value;

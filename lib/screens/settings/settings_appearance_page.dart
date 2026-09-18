@@ -777,120 +777,9 @@ class SettingsAppearancePage extends StatelessWidget {
               ],
             ),
 
+            // ── SURFACES ──
             SettingsGroup(
-              title: l.settingsGlowEffects,
-              children: [
-                ValueListenableBuilder<bool>(
-                  valueListenable: glowEffectsEnabledNotifier,
-                  builder: (context, glowEnabled, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.flare_rounded,
-                      iconBackgroundColor: cs.tertiaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onTertiaryContainer,
-                      title: l.settingsGlowEffects,
-                      subtitle: l.settingsGlowEffectsDesc,
-                      value: glowEnabled,
-                      onChanged: _settingsSetGlowEffectsEnabled,
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            // ── GROUP 2: BACKGROUND & MOTION ──
-            if (capabilities.supportsBackgroundMotion ||
-                capabilities.supportsCustomBackgrounds)
-              SettingsGroup(
-                title: l.settingsBackgroundAnimations,
-                children: [
-                  if (capabilities.supportsBackgroundMotion)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: backgroundAnimationsNotifier,
-                      builder: (context, value, _) {
-                        return SettingsSwitchTile(
-                          icon: Icons.auto_awesome_rounded,
-                          iconBackgroundColor: cs.tertiaryContainer.withValues(
-                            alpha: 0.7,
-                          ),
-                          iconColor: cs.onTertiaryContainer,
-                          title: l.settingsBackgroundAnimations,
-                          subtitle: l.settingsBackgroundAnimationsDesc,
-                          value: value,
-                          onChanged: _settingsSetBackgroundAnimations,
-                        );
-                      },
-                    ),
-                  if (capabilities.supportsBackgroundMotion)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: backgroundAnimationsNotifier,
-                      builder: (context, animationsEnabled, _) {
-                        if (!animationsEnabled) return const SizedBox.shrink();
-                        return ValueListenableBuilder<bool>(
-                          valueListenable: backgroundGyroscopeNotifier,
-                          builder: (context, value, _) {
-                            return SettingsSwitchTile(
-                              icon: Icons.screen_rotation_rounded,
-                              iconBackgroundColor: cs.tertiaryContainer
-                                  .withValues(alpha: 0.7),
-                              iconColor: cs.onTertiaryContainer,
-                              title: l.settingsBackgroundGyroscope,
-                              subtitle: l.settingsBackgroundGyroscopeDesc,
-                              value: value,
-                              onChanged: _settingsSetBackgroundGyroscope,
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  if (capabilities.supportsBackgroundMotion)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: backgroundAnimationsNotifier,
-                      builder: (context, animationsEnabled, _) {
-                        if (!animationsEnabled) return const SizedBox.shrink();
-                        return ValueListenableBuilder<int>(
-                          valueListenable: backgroundAnimationStyleNotifier,
-                          builder: (context, style, _) {
-                            return SettingsTile(
-                              icon: Icons.style_rounded,
-                              iconBackgroundColor: cs.tertiaryContainer
-                                  .withValues(alpha: 0.7),
-                              iconColor: cs.onTertiaryContainer,
-                              title: l.settingsBackgroundStyle,
-                              subtitle: _backgroundStyleLabel(l, style),
-                              onTap: () => _showBackgroundStyleDialog(context),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  if (capabilities.supportsCustomBackgrounds)
-                    SettingsTile(
-                      icon: Icons.wallpaper_rounded,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onSecondaryContainer,
-                      title: l.settingsCustomBackgrounds,
-                      subtitle: l.settingsCustomBackgroundsDesc,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          _buildBouncyRoute(
-                            const CustomBackgroundEditorScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                ],
-              ),
-
-            // ── GROUP 3: INTERFACE & BEHAVIOR ──
-            SettingsGroup(
-              title: capabilities.supportsBlur
-                  ? l.settingsGlassEffect
-                  : l.settingsAppearance,
+              title: l.settingsAppearanceSurfaces,
               children: [
                 if (capabilities.supportsBlur)
                   ValueListenableBuilder<bool>(
@@ -1027,34 +916,113 @@ class SettingsAppearancePage extends StatelessWidget {
                       );
                     },
                   ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: monochromeLessonsNotifier,
-                  builder: (context, value, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.tonality_rounded,
-                      iconBackgroundColor: cs.surfaceContainerHighest,
-                      iconColor: cs.onSurfaceVariant,
-                      title: l.settingsMonochromeLessons,
-                      subtitle: l.settingsMonochromeLessonsDesc,
-                      value: value,
-                      onChanged: _settingsSetMonochromeLessons,
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: monochromeLessonsNotifier,
-                  builder: (context, enabled, _) {
-                    if (!enabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<int>(
-                      valueListenable: monochromeLessonColorNotifier,
-                      builder: (context, color, _) => SettingsTile(
-                        icon: Icons.palette_rounded,
-                        iconBackgroundColor: Color(color).withValues(alpha: 0.18),
-                        iconColor: Color(color),
-                        title: l.settingsCustomColor,
-                        subtitle: '#${color.toRadixString(16).substring(2).toUpperCase()}',
-                        onTap: () => _showMonochromeLessonColorDialog(context),
+              ],
+            ),
+
+            // ── BACKGROUND ──
+            if (capabilities.supportsBackgroundMotion ||
+                capabilities.supportsCustomBackgrounds)
+              SettingsGroup(
+                title: l.settingsBackgroundAnimations,
+                children: [
+                  if (capabilities.supportsCustomBackgrounds)
+                    SettingsTile(
+                      icon: Icons.wallpaper_rounded,
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
                       ),
+                      iconColor: cs.onSecondaryContainer,
+                      title: l.settingsCustomBackgrounds,
+                      subtitle: l.settingsCustomBackgroundsDesc,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          _buildBouncyRoute(
+                            const CustomBackgroundEditorScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  if (capabilities.supportsBackgroundMotion)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: backgroundAnimationsNotifier,
+                      builder: (context, value, _) {
+                        return SettingsSwitchTile(
+                          icon: Icons.auto_awesome_rounded,
+                          iconBackgroundColor: cs.tertiaryContainer.withValues(
+                            alpha: 0.7,
+                          ),
+                          iconColor: cs.onTertiaryContainer,
+                          title: l.settingsBackgroundAnimations,
+                          subtitle: l.settingsBackgroundAnimationsDesc,
+                          value: value,
+                          onChanged: _settingsSetBackgroundAnimations,
+                        );
+                      },
+                    ),
+                  if (capabilities.supportsBackgroundMotion)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: backgroundAnimationsNotifier,
+                      builder: (context, animationsEnabled, _) {
+                        if (!animationsEnabled) return const SizedBox.shrink();
+                        return ValueListenableBuilder<int>(
+                          valueListenable: backgroundAnimationStyleNotifier,
+                          builder: (context, style, _) {
+                            return SettingsTile(
+                              icon: Icons.style_rounded,
+                              iconBackgroundColor: cs.tertiaryContainer
+                                  .withValues(alpha: 0.7),
+                              iconColor: cs.onTertiaryContainer,
+                              title: l.settingsBackgroundStyle,
+                              subtitle: _backgroundStyleLabel(l, style),
+                              onTap: () => _showBackgroundStyleDialog(context),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  if (capabilities.supportsBackgroundMotion)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: backgroundAnimationsNotifier,
+                      builder: (context, animationsEnabled, _) {
+                        if (!animationsEnabled) return const SizedBox.shrink();
+                        return ValueListenableBuilder<bool>(
+                          valueListenable: backgroundGyroscopeNotifier,
+                          builder: (context, value, _) {
+                            return SettingsSwitchTile(
+                              icon: Icons.screen_rotation_rounded,
+                              iconBackgroundColor: cs.tertiaryContainer
+                                  .withValues(alpha: 0.7),
+                              iconColor: cs.onTertiaryContainer,
+                              title: l.settingsBackgroundGyroscope,
+                              subtitle: l.settingsBackgroundGyroscopeDesc,
+                              value: value,
+                              onChanged: _settingsSetBackgroundGyroscope,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                ],
+              ),
+
+            // ── MOTION & EFFECTS ──
+            SettingsGroup(
+              title: l.settingsAppearanceMotion,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: glowEffectsEnabledNotifier,
+                  builder: (context, glowEnabled, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.flare_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsGlowEffects,
+                      subtitle: l.settingsGlowEffectsDesc,
+                      value: glowEnabled,
+                      onChanged: _settingsSetGlowEffectsEnabled,
                     );
                   },
                 ),
@@ -1089,6 +1057,51 @@ class SettingsAppearancePage extends StatelessWidget {
                     );
                   },
                 ),
+              ],
+            ),
+
+            // ── TIMETABLE COLORS ──
+            SettingsGroup(
+              title: l.settingsAppearanceTimetable,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: monochromeLessonsNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.tonality_rounded,
+                      iconBackgroundColor: cs.surfaceContainerHighest,
+                      iconColor: cs.onSurfaceVariant,
+                      title: l.settingsMonochromeLessons,
+                      subtitle: l.settingsMonochromeLessonsDesc,
+                      value: value,
+                      onChanged: _settingsSetMonochromeLessons,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: monochromeLessonsNotifier,
+                  builder: (context, enabled, _) {
+                    if (!enabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<int>(
+                      valueListenable: monochromeLessonColorNotifier,
+                      builder: (context, color, _) => SettingsTile(
+                        icon: Icons.palette_rounded,
+                        iconBackgroundColor: Color(color).withValues(alpha: 0.18),
+                        iconColor: Color(color),
+                        title: l.settingsCustomColor,
+                        subtitle: '#${color.toRadixString(16).substring(2).toUpperCase()}',
+                        onTap: () => _showMonochromeLessonColorDialog(context),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+
+            // ── APP ──
+            SettingsGroup(
+              title: l.settingsAppearanceApp,
+              children: [
                 SettingsTile(
                   icon: Icons.app_shortcut_rounded,
                   iconBackgroundColor: cs.secondaryContainer.withValues(
