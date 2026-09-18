@@ -2756,20 +2756,24 @@ Timer? _progressiveNotificationTimer;
     // Build the expensive timetable grids once. During a programmatic date-tab
     // animation only the cheap Transform widgets below are rebuilt.
     final currentPage = SizedBox(width: width, child: dayAt(dayIndex));
-    final previousPage = SizedBox(width: width, child: dayAt(previousIndex));
-    final nextPage = SizedBox(width: width, child: dayAt(nextIndex));
+    final previousPage = targetDay == null || targetDay < dayIndex
+        ? SizedBox(width: width, child: dayAt(previousIndex))
+        : null;
+    final nextPage = targetDay == null || targetDay > dayIndex
+        ? SizedBox(width: width, child: dayAt(nextIndex))
+        : null;
 
     Widget buildPages(double rawOffset) {
       final offset = rawOffset.clamp(-width, width).toDouble();
       return ClipRect(
         child: Stack(
           children: [
-            if (offset > 0)
+            if (offset > 0 && previousPage != null)
               Transform.translate(
                 offset: Offset(-width + offset, 0),
                 child: previousPage,
               ),
-            if (offset < 0)
+            if (offset < 0 && nextPage != null)
               Transform.translate(
                 offset: Offset(width + offset, 0),
                 child: nextPage,
