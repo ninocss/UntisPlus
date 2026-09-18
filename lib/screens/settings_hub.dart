@@ -113,6 +113,12 @@ Future<void> _settingsSetPageTransition(int value) async {
   await prefs.setInt('pageTransition', normalized);
 }
 
+Future<void> _settingsSetMainTabFadeUpEnabled(bool value) async {
+  mainTabFadeUpEnabledNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('mainTabFadeUpEnabled', value);
+}
+
 Future<void> _settingsSetUseMaterialYou(bool value) async {
   useMaterialYouNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -456,6 +462,8 @@ Future<void> _settingsSyncFromPrefs() async {
     0,
     7,
   );
+  mainTabFadeUpEnabledNotifier.value =
+      prefs.getBool('mainTabFadeUpEnabled') ?? false;
   useMaterialYouNotifier.value = prefs.getBool('useMaterialYou') ?? true;
   isAmoledNotifier.value = prefs.getBool('isAmoled') ?? false;
   customColorSeedNotifier.value = prefs.getInt('customColorSeed') ?? 0xFF0F766E;
