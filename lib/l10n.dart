@@ -457,6 +457,10 @@ class AppL10n {
   String get settingsSectionGeneral => _t('settingsSectionGeneral');
   String get settingsAppearance => _t('settingsAppearance');
   String get settingsAppearanceDesc => _t('settingsAppearanceDesc');
+  String get settingsAppearanceSurfaces => _t('settingsAppearanceSurfaces');
+  String get settingsAppearanceMotion => _t('settingsAppearanceMotion');
+  String get settingsAppearanceTimetable => _t('settingsAppearanceTimetable');
+  String get settingsAppearanceApp => _t('settingsAppearanceApp');
   String get settingsVisualTheme => _t('settingsVisualTheme');
   String get settingsVisualThemeDesc => _t('settingsVisualThemeDesc');
   String get themeDefault => _t('themeDefault');
@@ -1300,6 +1304,10 @@ class AppL10n {
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Erscheinungsbild',
       'settingsAppearanceDesc': 'System (Hell/Dunkel)',
+      'settingsAppearanceSurfaces': 'Oberflächen',
+      'settingsAppearanceMotion': 'Animationen & Effekte',
+      'settingsAppearanceTimetable': 'Stundenplanfarben',
+      'settingsAppearanceApp': 'App',
       'settingsVisualTheme': 'App-Theme',
       'settingsVisualThemeDesc':
           'Ändert Farben, Formen, Schrift und Bewegung in der gesamten App.',
@@ -2463,6 +2471,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'App',
       'settingsAppearance': 'Appearance',
       'settingsAppearanceDesc': 'System (Light/Dark)',
+      'settingsAppearanceSurfaces': 'Surfaces',
+      'settingsAppearanceMotion': 'Motion & effects',
+      'settingsAppearanceTimetable': 'Timetable colors',
+      'settingsAppearanceApp': 'App',
       'settingsVisualTheme': 'App theme',
       'settingsVisualThemeDesc':
           'Changes colors, shapes, type and motion throughout the app.',
@@ -3607,6 +3619,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Application',
       'settingsAppearance': 'Apparence',
       'settingsAppearanceDesc': 'Système (Clair/Sombre)',
+      'settingsAppearanceSurfaces': 'Surfaces',
+      'settingsAppearanceMotion': 'Animations & effets',
+      'settingsAppearanceTimetable': 'Couleurs de l’emploi du temps',
+      'settingsAppearanceApp': 'Application',
       'settingsVisualTheme': 'Thème de l’application',
       'settingsVisualThemeDesc':
           'Modifie les couleurs, les formes, la typographie et les mouvements.',
@@ -4786,6 +4802,10 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSectionGeneral': 'Aplicación',
       'settingsAppearance': 'Apariencia',
       'settingsAppearanceDesc': 'Sistema (Claro/Oscuro)',
+      'settingsAppearanceSurfaces': 'Superficies',
+      'settingsAppearanceMotion': 'Animaciones y efectos',
+      'settingsAppearanceTimetable': 'Colores del horario',
+      'settingsAppearanceApp': 'Aplicación',
       'settingsVisualTheme': 'Tema de la aplicación',
       'settingsVisualThemeDesc':
           'Cambia colores, formas, tipografía y movimiento en toda la aplicación.',
