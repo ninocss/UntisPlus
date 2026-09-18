@@ -3181,7 +3181,11 @@ class _MainTabFadeUpState extends State<_MainTabFadeUp>
       _controller.value = 1;
       return;
     }
-    if (widget.active && (!oldWidget.active || !oldWidget.enabled)) {
+    if (!oldWidget.enabled && widget.active) {
+      // Enabling the setting from the currently visible Settings tab should
+      // not make that screen jump. The animation starts on the next tab entry.
+      _controller.value = 1;
+    } else if (widget.active && !oldWidget.active) {
       _controller.forward(from: 0);
     } else if (!widget.active && oldWidget.active) {
       _controller.value = 0;
