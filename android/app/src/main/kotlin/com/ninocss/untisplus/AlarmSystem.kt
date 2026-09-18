@@ -70,7 +70,6 @@ object AlarmScheduler {
     }
 
     fun scheduleStoredPlans(context: Context) {
-        if (!canScheduleExact(context)) return
         val plans = storedPlans(context)
         for (index in 0 until plans.length()) {
             val plan = plans.optJSONObject(index) ?: continue
@@ -143,7 +142,7 @@ object AlarmScheduler {
             Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        alarmManager(context).setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showIntent), operation)
+        scheduleWakeup(context, triggerAt, operation, showIntent)
 
         val reminderMinutes = plan.optInt("preAlarmNotificationMinutes", 30).coerceIn(0, 180)
         val reminderAt = triggerAt - reminderMinutes * 60_000L
@@ -159,8 +158,8 @@ object AlarmScheduler {
                     .putExtra(extraPlan, plan.toString()),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
-            alarmManager(context).setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
+            scheduleWakeup(
+                context,
                 reminderAt,
                 reminderOperation,
             )
@@ -178,8 +177,8 @@ object AlarmScheduler {
                     refreshIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
-                alarmManager(context).setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
+                scheduleWakeup(
+                    context,
                     refreshAt,
                     refreshOperation,
                 )
@@ -239,7 +238,6 @@ object AlarmScheduler {
     }
 
     fun scheduleSnooze(context: Context, plan: JSONObject, minutes: Int) {
-        if (!canScheduleExact(context)) return
         val triggerAt = System.currentTimeMillis() + minutes.coerceIn(1, 60) * 60_000L
         val snoozePlan = JSONObject(plan.toString()).apply {
             put("id", "${plan.optString("id")}-snooze-$triggerAt")
@@ -260,7 +258,41 @@ object AlarmScheduler {
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        alarmManager(context).setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showIntent), operation)
+        scheduleWakeup(context, triggerAt, operation, showIntent)
+    }
+
+    private fun scheduleWakeup(
+        context: Context,
+        triggerAt: Long,
+        operation: PendingIntent,
+        showIntent: PendingIntent? = null,
+    ) {
+        val manager = alarmManager(context)
+        if (canScheduleExact(context)) {
+            try {
+                if (showIntent != null) {
+                    manager.setAlarmClock(
+                        AlarmManager.AlarmClockInfo(triggerAt, showIntent),
+                        operation,
+                    )
+                } else {
+                    manager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerAt,
+                        operation,
+                    )
+                }
+                return
+            } catch (_: SecurityException) {
+                // Permission may be revoked between readiness and scheduling.
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, operation)
+        } else {
+            manager.set(AlarmManager.RTC_WAKEUP, triggerAt, operation)
+        }
     }
 
     fun canScheduleExact(context: Context): Boolean =
