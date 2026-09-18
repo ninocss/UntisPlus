@@ -2522,7 +2522,10 @@ Timer? _progressiveNotificationTimer;
   /// current week came from local storage, [allowNetwork] stays false so an
   /// offline swipe can still reveal the already cached cancellation state
   /// immediately instead of waiting for a new request to finish.
-  Future<void> _prefetchAdjacentWeeks({bool allowNetwork = true}) async {
+  Future<void> _prefetchAdjacentWeeks({
+    bool allowNetwork = true,
+    bool refreshFromDisk = false,
+  }) async {
     if (demoModeNotifier.value) {
       for (final delta in [-1, 1, 2]) {
         final monday = _weekMondayFromDelta(delta);
@@ -2534,14 +2537,20 @@ Timer? _progressiveNotificationTimer;
       if (mounted) setState(() {});
       return;
     }
+
     final pid = _viewingClassId ?? personId;
     final pType = _viewingClassId != null ? 1 : personType;
     if (pid == 0) return;
-    if (allowNetwork) await _fetchMasterData();
+
+    // Disk first: the background updater can refresh an upcoming week while
+    // this page is still alive. Reconcile that durable cache before a swipe so
+    // cancellations/room changes are visible during the gesture, not only
+    // after the new week has been committed or the app has been restarted.
     for (final delta in [-1, 1, 2]) {
       final adjMonday = _weekMondayFromDelta(delta);
       final key = _mondayKey(adjMonday);
-      if (_adjacentWeekCache.containsKey(key)) continue;
+      if (!refreshFromDisk && _adjacentWeekCache.containsKey(key)) continue;
+
       final cached = await _loadWeekFromCache(
         requestPersonId: pid,
         requestPersonType: pType,
@@ -2550,9 +2559,16 @@ Timer? _progressiveNotificationTimer;
       if (cached != null && cached.values.any((l) => l.isNotEmpty)) {
         _adjacentWeekCache[key] = cached;
         if (mounted) setState(() {});
-        continue;
       }
-      if (!allowNetwork) continue;
+    }
+
+    if (!allowNetwork) return;
+
+    await _fetchMasterData();
+    for (final delta in [-1, 1, 2]) {
+      final adjMonday = _weekMondayFromDelta(delta);
+      final key = _mondayKey(adjMonday);
+      if (_adjacentWeekCache.containsKey(key)) continue;
       try {
         DateTime friday = adjMonday.add(const Duration(days: 4));
         int startDate = int.parse(DateFormat('yyyyMMdd').format(adjMonday));
@@ -2604,6 +2620,7 @@ Timer? _progressiveNotificationTimer;
           }
         }
       } catch (_) {}
+
     }
   }
 
@@ -2776,11 +2793,22 @@ Timer? _progressiveNotificationTimer;
       ),
     ];
 
-    return NotificationListener<ScrollEndNotification>(
+    return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (notification.depth != 0 || notification.metrics.axis != Axis.horizontal) {
+        if (notification.depth != 0 ||
+            notification.metrics.axis != Axis.horizontal) {
           return false;
         }
+        if (notification is ScrollStartNotification) {
+          unawaited(
+            _prefetchAdjacentWeeks(
+              allowNetwork: false,
+              refreshFromDisk: true,
+            ),
+          );
+          return false;
+        }
+        if (notification is! ScrollEndNotification) return false;
         final index = controller.hasClients
             ? controller.leadingItem.clamp(0, 2).toInt()
             : _materialWeekIndex;
@@ -2846,11 +2874,22 @@ Timer? _progressiveNotificationTimer;
     final itemExtent = width <= 0 ? 1.0 : math.max(1.0, width * 0.88);
     final shrinkExtent = math.max(56.0, itemExtent * 0.16);
 
-    return NotificationListener<ScrollEndNotification>(
+    return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (notification.depth != 0 || notification.metrics.axis != Axis.horizontal) {
+        if (notification.depth != 0 ||
+            notification.metrics.axis != Axis.horizontal) {
           return false;
         }
+        if (notification is ScrollStartNotification) {
+          unawaited(
+            _prefetchAdjacentWeeks(
+              allowNetwork: false,
+              refreshFromDisk: true,
+            ),
+          );
+          return false;
+        }
+        if (notification is! ScrollEndNotification) return false;
         final index = controller.hasClients
             ? controller.leadingItem.clamp(0, 6).toInt()
             : _materialDayIndex;
@@ -3261,7 +3300,12 @@ Timer? _progressiveNotificationTimer;
       _dayCarouselOffset = 0;
       _dayCarouselTargetDay = null;
     });
-    _prefetchAdjacentWeeks();
+    unawaited(
+      _prefetchAdjacentWeeks(
+        allowNetwork: false,
+        refreshFromDisk: true,
+      ),
+    );
   }
 
   void _onDayCarouselDragUpdate(DragUpdateDetails details) {
@@ -3433,7 +3477,12 @@ Timer? _progressiveNotificationTimer;
   void _onWeekCarouselDragStart(DragStartDetails details) {
     if (_isWeekCarouselAnimating || _isDayCarouselAnimating) return;
     setState(() => _carouselOffset = 0);
-    unawaited(_prefetchAdjacentWeeks());
+    unawaited(
+      _prefetchAdjacentWeeks(
+        allowNetwork: false,
+        refreshFromDisk: true,
+      ),
+    );
   }
 
   void _onWeekCarouselDragUpdate(DragUpdateDetails details) {
