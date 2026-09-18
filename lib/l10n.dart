@@ -615,6 +615,10 @@ class AppL10n {
   String get settingsLessonShowTeacher => _t('settingsLessonShowTeacher');
   String get settingsLessonShowTeacherDesc =>
       _t('settingsLessonShowTeacherDesc');
+  String get settingsLessonShowSubjectIcons =>
+      _t('settingsLessonShowSubjectIcons');
+  String get settingsLessonShowSubjectIconsDesc =>
+      _t('settingsLessonShowSubjectIconsDesc');
   String get settingsLessonShowRoom => _t('settingsLessonShowRoom');
   String get settingsLessonShowRoomDesc => _t('settingsLessonShowRoomDesc');
   String get settingsLessonCompactMode => _t('settingsLessonCompactMode');
@@ -667,6 +671,16 @@ class AppL10n {
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
   String get settingsSurfaceBlur => _t('settingsSurfaceBlur');
   String get settingsSurfaceBlurDesc => _t('settingsSurfaceBlurDesc');
+  String get settingsSurfaceCorners => _t('settingsSurfaceCorners');
+  String get settingsSurfaceCornersDesc => _t('settingsSurfaceCornersDesc');
+  String get settingsSurfaceCornersCurrent =>
+      _t('settingsSurfaceCornersCurrent');
+  String get settingsSurfaceCornersSharper =>
+      _t('settingsSurfaceCornersSharper');
+  String get settingsSurfaceCornersCustom =>
+      _t('settingsSurfaceCornersCustom');
+  String get settingsSurfaceCornerRadius =>
+      _t('settingsSurfaceCornerRadius');
   String get settingsGlowEffects => _t('settingsGlowEffects');
   String get settingsGlowEffectsDesc => _t('settingsGlowEffectsDesc');
   String get settingsAppBgBlur =>
@@ -1425,6 +1439,9 @@ class AppL10n {
       'settingsLessonShowTeacher': 'Lehrkraft anzeigen',
       'settingsLessonShowTeacherDesc':
           'Kürzel bzw. Name der Lehrkraft auf der Karte einblenden.',
+      'settingsLessonShowSubjectIcons': 'Fach-Icons anzeigen',
+      'settingsLessonShowSubjectIconsDesc':
+          'Zeigt passende Symbole neben den Fächern im Stundenplan.',
       'settingsLessonShowRoom': 'Raum anzeigen',
       'settingsLessonShowRoomDesc':
           'Raumnummer auf der Stundenkarte einblenden.',
@@ -1614,6 +1631,13 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSurfaceBlur': 'Blur auf Oberflächen',
       'settingsSurfaceBlurDesc':
           'Verwischt normale Karten und Flächen. Bottom Sheets, Stunden und Overlays bleiben unverändert.',
+      'settingsSurfaceCorners': 'Oberflächen-Ecken',
+      'settingsSurfaceCornersDesc':
+          'Legt fest, wie stark normale Karten und Oberflächen abgerundet sind.',
+      'settingsSurfaceCornersCurrent': 'Wie aktuell',
+      'settingsSurfaceCornersSharper': 'Eckiger',
+      'settingsSurfaceCornersCustom': 'Benutzerdefiniert',
+      'settingsSurfaceCornerRadius': 'Eckenradius',
       'settingsGlowEffects': 'Glow-Effekte',
       'settingsGlowEffectsDesc':
           'Farbige Leuchthöfe bei Stunden, Aufgaben, Noten und Symbolen',
@@ -2561,6 +2585,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonShowTeacher': 'Show Teacher',
       'settingsLessonShowTeacherDesc':
           'Display teacher name or initials on the card.',
+      'settingsLessonShowSubjectIcons': 'Show subject icons',
+      'settingsLessonShowSubjectIconsDesc':
+          'Show matching icons next to subjects in the timetable.',
       'settingsLessonShowRoom': 'Show Room',
       'settingsLessonShowRoomDesc': 'Display room number on the card.',
       'settingsLessonCompactMode': 'Compact View',
@@ -2745,6 +2772,13 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSurfaceBlur': 'Surface blur',
       'settingsSurfaceBlurDesc':
           'Blurs regular cards and surfaces. Bottom sheets, lessons, and overlays stay unchanged.',
+      'settingsSurfaceCorners': 'Surface corners',
+      'settingsSurfaceCornersDesc':
+          'Controls how rounded regular cards and surfaces are.',
+      'settingsSurfaceCornersCurrent': 'Current',
+      'settingsSurfaceCornersSharper': 'Sharper',
+      'settingsSurfaceCornersCustom': 'Custom',
+      'settingsSurfaceCornerRadius': 'Corner radius',
       'settingsGlowEffects': 'Glow effects',
       'settingsGlowEffectsDesc':
           'Colored halos around lessons, tasks, grades, and icons',
@@ -3717,6 +3751,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonShowTeacher': 'Afficher le professeur',
       'settingsLessonShowTeacherDesc':
           'Afficher les initiales ou le nom de l\'enseignant.',
+      'settingsLessonShowSubjectIcons': 'Afficher les icônes des matières',
+      'settingsLessonShowSubjectIconsDesc':
+          'Affiche des icônes adaptées à côté des matières dans l’emploi du temps.',
       'settingsLessonShowRoom': 'Afficher la salle',
       'settingsLessonShowRoomDesc': 'Afficher le numéro de salle sur la carte.',
       'settingsLessonCompactMode': 'Mode compact',
@@ -3900,6 +3937,13 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSurfaceBlur': 'Flou des surfaces',
       'settingsSurfaceBlurDesc':
           'Floute les cartes et surfaces normales. Les panneaux, cours et superpositions restent inchangés.',
+      'settingsSurfaceCorners': 'Coins des surfaces',
+      'settingsSurfaceCornersDesc':
+          'Règle l’arrondi des cartes et surfaces normales.',
+      'settingsSurfaceCornersCurrent': 'Actuel',
+      'settingsSurfaceCornersSharper': 'Plus anguleux',
+      'settingsSurfaceCornersCustom': 'Personnalisé',
+      'settingsSurfaceCornerRadius': 'Rayon des coins',
       'settingsGlowEffects': 'Effets lumineux',
       'settingsGlowEffectsDesc':
           'Halos colorés autour des cours, tâches, notes et icônes',
@@ -4878,6 +4922,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonShowTeacher': 'Mostrar profesor',
       'settingsLessonShowTeacherDesc':
           'Mostrar nombre o iniciales del profesor en la tarjeta.',
+      'settingsLessonShowSubjectIcons': 'Mostrar iconos de asignaturas',
+      'settingsLessonShowSubjectIconsDesc':
+          'Muestra iconos adecuados junto a las asignaturas del horario.',
       'settingsLessonShowRoom': 'Mostrar aula',
       'settingsLessonShowRoomDesc': 'Mostrar número de aula en la tarjeta.',
       'settingsLessonCompactMode': 'Modo compacto',
@@ -5060,6 +5107,13 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsSurfaceBlur': 'Desenfoque de superficies',
       'settingsSurfaceBlurDesc':
           'Desenfoca tarjetas y superficies normales. Las hojas inferiores, clases y superposiciones no cambian.',
+      'settingsSurfaceCorners': 'Esquinas de superficies',
+      'settingsSurfaceCornersDesc':
+          'Controla cuánto se redondean las tarjetas y superficies normales.',
+      'settingsSurfaceCornersCurrent': 'Actual',
+      'settingsSurfaceCornersSharper': 'Más cuadrado',
+      'settingsSurfaceCornersCustom': 'Personalizado',
+      'settingsSurfaceCornerRadius': 'Radio de esquina',
       'settingsGlowEffects': 'Efectos de brillo',
       'settingsGlowEffectsDesc':
           'Halos de color alrededor de clases, tareas, notas e iconos',
