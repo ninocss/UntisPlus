@@ -19,6 +19,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   }
 
   Future<void> _load() async {
+    await AlarmService.instance.restore();
     final config = await AlarmService.instance.loadConfig();
     final readiness = await AlarmService.instance.readiness();
     if (!mounted) return;
@@ -34,11 +35,18 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     bool refreshTimetable = false,
   }) async {
     setState(() => _config = config);
-    await AlarmService.instance.saveConfig(config);
+    await AlarmService.instance.saveConfig(config, reschedule: false);
     if (refreshTimetable && config.smartEnabled) {
-      await updateUntisData();
+      try {
+        await updateUntisData();
+      } catch (_) {
+        // Keep the previously confirmed smart plan if the network refresh fails.
+      }
     }
-    await _load();
+    await AlarmService.instance.syncStoredPlans();
+    final readiness = await AlarmService.instance.readiness();
+    if (!mounted) return;
+    setState(() => _readiness = readiness);
   }
 
   Future<void> _chooseMinutes({
@@ -205,82 +213,6 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     );
     if (selected == null || !mounted) return;
     await _chooseLeadOverride(selected.hour * 60 + selected.minute);
-  }
-
-  Widget _buildExpressiveSmartCard(AppL10n l, ColorScheme cs) {
-    final active = _config.smartEnabled;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cs.primaryContainer,
-            cs.tertiaryContainer.withValues(alpha: 0.78),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.22)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.primary.withValues(alpha: 0.14),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: cs.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              active ? Icons.alarm_on_rounded : Icons.alarm_off_rounded,
-              color: cs.onPrimary,
-              size: 30,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.ui('alarmSchedule'),
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: cs.onPrimaryContainer,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  active ? l.ui('alarmScheduleDesc') : l.ui('alarmReadyNo'),
-                  style: GoogleFonts.outfit(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onPrimaryContainer.withValues(alpha: 0.76),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: active,
-            onChanged: (value) => _save(
-              _config.copyWith(smartEnabled: value),
-              refreshTimetable: value,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _makeNextAlarmEarlier() async {
@@ -457,9 +389,29 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(0, 0, 0, mq.padding.bottom + 120),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
-            _buildExpressiveSmartCard(l, cs),
+            SettingsGroup(
+              title: l.ui('alarmSchedule'),
+              children: [
+                SettingsSwitchTile(
+                  icon: _config.smartEnabled
+                      ? Icons.alarm_on_rounded
+                      : Icons.alarm_off_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.ui('alarmSchedule'),
+                  subtitle: l.ui('alarmScheduleDesc'),
+                  value: _config.smartEnabled,
+                  onChanged: (value) => _save(
+                    _config.copyWith(smartEnabled: value),
+                    refreshTimetable: value,
+                  ),
+                ),
+              ],
+            ),
             SettingsGroup(
               title: l.ui('alarmReady'),
               children: [

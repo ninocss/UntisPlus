@@ -7,73 +7,6 @@ const Map<String, String> _settingsLocaleLabels = {
   'es': 'Español',
 };
 
-/// Slide-up "Support" sheet styled like the settings credits section.
-/// Selecting a contributor opens that developer's Ko-fi page.
-Future<void> _showSupportSheet(BuildContext context, AppL10n l) async {
-  final mq = MediaQuery.of(context);
-  final cs = Theme.of(context).colorScheme;
-
-  final choice = await _showUnifiedSheet<String>(
-    context: context,
-    child: SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20, 22, 20, 10 + mq.padding.bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l.settingsSupport,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l.settingsSupportDesc,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            SettingsTile(
-              icon: Icons.coffee_rounded,
-              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
-              iconColor: cs.onPrimaryContainer,
-              title: 'Nino',
-              subtitle: l.settingsCreditsFounderDeveloper,
-              onTap: () => Navigator.pop(context, 'nino'),
-            ),
-            const SizedBox(height: 8),
-            SettingsTile(
-              icon: Icons.code_rounded,
-              iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
-              iconColor: cs.onSecondaryContainer,
-              title: 'Oskar',
-              subtitle: l.settingsCreditsDeveloper,
-              onTap: () => Navigator.pop(context, 'oskar'),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  final url = switch (choice) {
-    'nino' => 'https://ko-fi.com/nino161er',
-    'oskar' => 'https://ko-fi.com/osemine',
-    _ => null,
-  };
-  if (url == null) return;
-  url_launcher.launchUrlString(
-    url,
-    mode: url_launcher.LaunchMode.externalApplication,
-  );
-}
-
 Future<void> _settingsSetLocale(String code) async {
   await ensureDateFormattingForLocale(code);
   appLocaleNotifier.value = code;
@@ -139,6 +72,26 @@ Future<void> _settingsSetBlurEnabled(bool value) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('themeBlurPreferences', jsonEncode(updated));
   await prefs.setBool('blurEnabled', value);
+}
+
+Future<void> _settingsSetSurfaceBlurEnabled(bool value) async {
+  surfaceBlurEnabledNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('surfaceBlurEnabled', value);
+}
+
+Future<void> _settingsSetSurfaceCornerMode(int value) async {
+  final normalized = value.clamp(0, 2);
+  surfaceCornerModeNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('surfaceCornerMode', normalized);
+}
+
+Future<void> _settingsSetSurfaceCornerRadius(double value) async {
+  final normalized = value.round().clamp(0, 48);
+  surfaceCornerRadiusNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('surfaceCornerRadius', normalized);
 }
 
 Future<void> _settingsSetAppBgBlurEnabled(bool value) async {
@@ -244,6 +197,12 @@ Future<void> _settingsSetLessonShowTeacher(bool value) async {
   lessonShowTeacherNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool('lessonShowTeacher', value);
+}
+
+Future<void> _settingsSetLessonShowSubjectIcons(bool value) async {
+  lessonShowSubjectIconsNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonShowSubjectIcons', value);
 }
 
 Future<void> _settingsSetLessonShowRoom(bool value) async {
@@ -487,6 +446,12 @@ Future<void> _settingsSyncFromPrefs() async {
   blurEnabledNotifier.value =
       appThemeCapabilities(activeTheme).supportsBlur &&
       (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
+  surfaceBlurEnabledNotifier.value =
+      prefs.getBool('surfaceBlurEnabled') ?? true;
+  surfaceCornerModeNotifier.value =
+      (prefs.getInt('surfaceCornerMode') ?? 0).clamp(0, 2);
+  surfaceCornerRadiusNotifier.value =
+      (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
     0,
     7,
@@ -508,6 +473,8 @@ Future<void> _settingsSyncFromPrefs() async {
   lessonAccentStyleNotifier.value = (prefs.getInt('lessonAccentStyle') ?? 0)
       .clamp(0, 3);
   lessonShowTeacherNotifier.value = prefs.getBool('lessonShowTeacher') ?? true;
+  lessonShowSubjectIconsNotifier.value =
+      prefs.getBool('lessonShowSubjectIcons') ?? false;
   lessonShowRoomNotifier.value = prefs.getBool('lessonShowRoom') ?? true;
   lessonCompactModeNotifier.value = prefs.getBool('lessonCompactMode') ?? false;
   lessonDimPastNotifier.value = prefs.getBool('lessonDimPast') ?? true;
@@ -724,90 +691,118 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       );
     }
 
+    final timetableItem = makeItem(
+      index: 0,
+      icon: Icons.calendar_view_week_rounded,
+      title: l.settingsSectionTimetable,
+      subtitle: l.settingsShowCancelled,
+      pageBuilder: () => const SettingsTimetablePage(),
+    );
+    final notificationsItem = makeItem(
+      index: 1,
+      icon: Icons.notifications_active_rounded,
+      title: l.settingsHubNotifications,
+      subtitle: l.settingsProgressivePush,
+      pageBuilder: () => const SettingsNotificationsPage(),
+    );
+    final appearanceItem = makeItem(
+      index: 2,
+      icon: Icons.palette_rounded,
+      title: l.settingsAppearance,
+      subtitle: l.settingsCustomBackgrounds,
+      pageBuilder: () => const SettingsAppearancePage(),
+    );
+    final subjectsItem = makeItem(
+      index: 3,
+      icon: Icons.color_lens_rounded,
+      title: l.settingsSectionSubjects,
+      subtitle: l.settingsSectionColors,
+      pageBuilder: () => const SettingsSubjectsPage(),
+    );
+    final aiItem = makeItem(
+      index: 4,
+      icon: Icons.auto_awesome_rounded,
+      title: l.settingsSectionAI,
+      subtitle: l.settingsAiProvider,
+      pageBuilder: () => const SettingsAiPage(),
+    );
+    final backupItem = makeItem(
+      index: 5,
+      icon: Icons.cloud_sync_rounded,
+      title: l.settingsHubDataBackup,
+      subtitle: l.settingsHubDataBackupDesc,
+      pageBuilder: () => const SettingsBackupPage(),
+    );
+    final accountItem = makeItem(
+      index: 6,
+      icon: Icons.manage_accounts_rounded,
+      title: l.settingsHubAccount,
+      subtitle: l.settingsDemoMode,
+      pageBuilder: () => const SettingsAccountPage(),
+    );
+    final widgetsItem = makeItem(
+      index: 7,
+      icon: Icons.widgets_rounded,
+      title: l.ui('widgets'),
+      subtitle: l.ui('widgetAccount'),
+      pageBuilder: () => const SettingsWidgetsPage(),
+    );
+    final alarmItem = !kIsWeb && Platform.isAndroid
+        ? makeItem(
+            index: 8,
+            icon: Icons.alarm_rounded,
+            title: l.ui('alarmTitle'),
+            subtitle: l.ui('alarmScheduleDesc'),
+            pageBuilder: () => const SettingsAlarmPage(),
+          )
+        : null;
+    final updatesItem = kIsWeb || !Platform.isIOS
+        ? makeItem(
+            index: 9,
+            icon: Icons.system_update_alt_rounded,
+            title: l.settingsHubUpdatesAbout,
+            subtitle: l.settingsAppVersion,
+            pageBuilder: () => const SettingsAboutUpdatesPage(),
+          )
+        : null;
+    final supportItem = makeItem(
+      index: 10,
+      icon: Icons.coffee_rounded,
+      title: l.settingsSupport,
+      subtitle: l.settingsSupportDesc,
+      onTap: () {
+        url_launcher.launchUrlString(
+          'https://ko-fi.com/nino161er',
+          mode: url_launcher.LaunchMode.externalApplication,
+        );
+      },
+    );
+    final reportItem = makeItem(
+      index: 11,
+      icon: Icons.bug_report_rounded,
+      title: l.settingsReportIssue,
+      subtitle: l.settingsReportIssueDesc,
+      onTap: () {
+        url_launcher.launchUrlString(
+          'https://github.com/ninocss/UntisPlus/issues',
+          mode: url_launcher.LaunchMode.externalApplication,
+        );
+      },
+    );
+
     final items = <_SettingsHubItem>[
-      makeItem(
-        index: 0,
-        icon: Icons.calendar_view_week_rounded,
-        title: l.settingsSectionTimetable,
-        subtitle: l.settingsShowCancelled,
-        pageBuilder: () => const SettingsTimetablePage(),
-      ),
-      makeItem(
-        index: 1,
-        icon: Icons.notifications_active_rounded,
-        title: l.settingsHubNotifications,
-        subtitle: l.settingsProgressivePush,
-        pageBuilder: () => const SettingsNotificationsPage(),
-      ),
-      makeItem(
-        index: 2,
-        icon: Icons.palette_rounded,
-        title: l.settingsAppearance,
-        subtitle: l.settingsCustomBackgrounds,
-        pageBuilder: () => const SettingsAppearancePage(),
-      ),
-      makeItem(
-        index: 3,
-        icon: Icons.color_lens_rounded,
-        title: l.settingsSectionSubjects,
-        subtitle: l.settingsSectionColors,
-        pageBuilder: () => const SettingsSubjectsPage(),
-      ),
-      makeItem(
-        index: 4,
-        icon: Icons.auto_awesome_rounded,
-        title: l.settingsSectionAI,
-        subtitle: l.settingsAiProvider,
-        pageBuilder: () => const SettingsAiPage(),
-      ),
-      makeItem(
-        index: 5,
-        icon: Icons.cloud_sync_rounded,
-        title: l.settingsHubDataBackup,
-        subtitle: l.settingsHubDataBackupDesc,
-        pageBuilder: () => const SettingsBackupPage(),
-      ),
-      makeItem(
-        index: 6,
-        icon: Icons.manage_accounts_rounded,
-        title: l.settingsHubAccount,
-        subtitle: l.settingsDemoMode,
-        pageBuilder: () => const SettingsAccountPage(),
-      ),
-      makeItem(
-        index: 7,
-        icon: Icons.widgets_rounded,
-        title: AppL10n.of(appLocaleNotifier.value).ui('widgets'),
-        subtitle: AppL10n.of(appLocaleNotifier.value).ui('widgetAccount'),
-        pageBuilder: () => const SettingsWidgetsPage(),
-      ),
-      if (kIsWeb || !Platform.isIOS)
-        makeItem(
-          index: 9,
-          icon: Icons.system_update_alt_rounded,
-          title: l.settingsHubUpdatesAbout,
-          subtitle: l.settingsAppVersion,
-          pageBuilder: () => const SettingsAboutUpdatesPage(),
-        ),
-      makeItem(
-        index: 10,
-        icon: Icons.coffee_rounded,
-        title: l.settingsSupport,
-        subtitle: l.settingsSupportDesc,
-        onTap: () => _showSupportSheet(context, l),
-      ),
-      makeItem(
-        index: 11,
-        icon: Icons.bug_report_rounded,
-        title: l.settingsReportIssue,
-        subtitle: l.settingsReportIssueDesc,
-        onTap: () {
-          url_launcher.launchUrlString(
-            'https://github.com/ninocss/UntisPlus/issues',
-            mode: url_launcher.LaunchMode.externalApplication,
-          );
-        },
-      ),
+      timetableItem,
+      notificationsItem,
+      appearanceItem,
+      subjectsItem,
+      aiItem,
+      backupItem,
+      accountItem,
+      widgetsItem,
+      ?alarmItem,
+      ?updatesItem,
+      supportItem,
+      reportItem,
     ];
 
     Widget settingsList({required bool expanded}) => ListView(
@@ -830,7 +825,12 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           child: _buildGroupCard(
             cs,
             context,
-            [items[0], items[3], items[2]],
+            [
+              timetableItem,
+              subjectsItem,
+              appearanceItem,
+              ?alarmItem,
+            ],
             expanded: expanded,
             allItems: items,
           ),
@@ -850,7 +850,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           child: _buildGroupCard(
             cs,
             context,
-            [items[1], items[4], items[6], items[7]],
+            [notificationsItem, aiItem, accountItem, widgetsItem],
             expanded: expanded,
             allItems: items,
           ),
@@ -871,10 +871,10 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             cs,
             context,
             [
-              items[5],
-              items[8],
-              if (kIsWeb || !Platform.isIOS) items[9],
-              items.last,
+              backupItem,
+              ?updatesItem,
+              supportItem,
+              reportItem,
             ],
             expanded: expanded,
             allItems: items,

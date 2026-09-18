@@ -172,11 +172,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: _glassContainer(
+            child: _sheetSurface(
               context: ctx,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
-              ),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(28),
                 child: Column(

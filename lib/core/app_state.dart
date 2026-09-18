@@ -745,6 +745,9 @@ final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(
 );
 
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
+final ValueNotifier<bool> surfaceBlurEnabledNotifier = ValueNotifier(true);
+final ValueNotifier<int> surfaceCornerModeNotifier = ValueNotifier(0);
+final ValueNotifier<int> surfaceCornerRadiusNotifier = ValueNotifier(24);
 final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -762,6 +765,7 @@ final ValueNotifier<double> lessonCardOpacityNotifier = ValueNotifier(0.9);
 final ValueNotifier<double> lessonBorderRadiusNotifier = ValueNotifier(12.0);
 final ValueNotifier<int> lessonAccentStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> lessonShowTeacherNotifier = ValueNotifier(true);
+final ValueNotifier<bool> lessonShowSubjectIconsNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonShowRoomNotifier = ValueNotifier(true);
 final ValueNotifier<bool> lessonCompactModeNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonDimPastNotifier = ValueNotifier(true);

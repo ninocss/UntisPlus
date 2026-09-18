@@ -919,6 +919,12 @@ void main() async {
   blurEnabledNotifier.value =
       appThemeCapabilities(activeVisualTheme).supportsBlur &&
       (themeBlurPreferences[activeVisualTheme.storageKey] ?? true);
+  surfaceBlurEnabledNotifier.value =
+      prefs.getBool('surfaceBlurEnabled') ?? true;
+  surfaceCornerModeNotifier.value =
+      (prefs.getInt('surfaceCornerMode') ?? 0).clamp(0, 2);
+  surfaceCornerRadiusNotifier.value =
+      (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
   appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
   unawaited(_applyAndroidWindowBlur(blurEnabledNotifier.value));
@@ -944,6 +950,8 @@ void main() async {
   lessonAccentStyleNotifier.value = (prefs.getInt('lessonAccentStyle') ?? 0)
       .clamp(0, 3);
   lessonShowTeacherNotifier.value = prefs.getBool('lessonShowTeacher') ?? true;
+  lessonShowSubjectIconsNotifier.value =
+      prefs.getBool('lessonShowSubjectIcons') ?? false;
   lessonShowRoomNotifier.value = prefs.getBool('lessonShowRoom') ?? true;
   lessonCompactModeNotifier.value = prefs.getBool('lessonCompactMode') ?? false;
   lessonDimPastNotifier.value = prefs.getBool('lessonDimPast') ?? true;
@@ -1385,7 +1393,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   AnimationController? _dayCarouselAnimController;
   bool _isWeekCarouselAnimating = false;
   bool _isDayCarouselAnimating = false;
-  bool _moreMenuOpen = false;
   late final AnimationController _cacheRefreshController;
   int _weekFetchGeneration = 0;
   bool _isExportingTimetable = false;
@@ -4093,7 +4100,10 @@ Timer? _progressiveNotificationTimer;
                       ),
                     ),
                   ),
-                  if (subjectIcon != null && !widthCompact && !heightMinimal) ...[
+                  if (lessonShowSubjectIconsNotifier.value &&
+                      subjectIcon != null &&
+                      !widthCompact &&
+                      !heightMinimal) ...[
                     Icon(
                       subjectIcon,
                       size: (effectiveSubjectFontSize * 1.15).clamp(11.0, 17.0),
@@ -6548,43 +6558,14 @@ Timer? _progressiveNotificationTimer;
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
+    final dayIndicatorIndex =
+        (_dayCarouselTargetDay ?? _tabController.index).clamp(0, 4).toInt();
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: RoundedBlurAppBar(
-        leading: MenuAnchor(
-          onOpen: () {
-            if (mounted) setState(() => _moreMenuOpen = true);
-          },
-          onClose: () {
-            if (mounted) setState(() => _moreMenuOpen = false);
-          },
-          style: MenuStyle(
-            backgroundColor: WidgetStatePropertyAll(
-              Theme.of(context).colorScheme.surfaceContainerHigh,
-            ),
-            surfaceTintColor: WidgetStatePropertyAll(
-              Theme.of(context).colorScheme.surfaceTint,
-            ),
-            elevation: const WidgetStatePropertyAll(8),
-            shadowColor: WidgetStatePropertyAll(
-              Colors.black.withValues(alpha: 0.22),
-            ),
-            minimumSize: const WidgetStatePropertyAll(Size(224, 0)),
-            padding: const WidgetStatePropertyAll(
-              EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            ),
-            shape: WidgetStatePropertyAll(
-              RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-                side: BorderSide(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.48),
-                ),
-              ),
-            ),
-          ),
+        leading: _untisDropdownMenu(
+          context: context,
           menuChildren: [
             MenuItemButton(
               leadingIcon: const Icon(Icons.groups_rounded),
@@ -6604,12 +6585,7 @@ Timer? _progressiveNotificationTimer;
           ],
           builder: (context, controller, child) => IconButton(
             tooltip: l.timetableMoreActions,
-            icon: AnimatedRotation(
-              turns: _moreMenuOpen ? 0.125 : 0,
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              child: const Icon(Icons.more_vert_rounded),
-            ),
+            icon: const Icon(Icons.more_vert_rounded),
             onPressed: () =>
                 controller.isOpen ? controller.close() : controller.open(),
           ),
@@ -6659,7 +6635,7 @@ Timer? _progressiveNotificationTimer;
                             child: RotationTransition(
                               turns: _cacheRefreshController,
                               child: Icon(
-                                Icons.cloud_sync_rounded,
+                                Icons.sync_rounded,
                                 size: 18,
                                 color: Theme.of(context).colorScheme.tertiary,
                               ),
@@ -6691,11 +6667,18 @@ Timer? _progressiveNotificationTimer;
         ],
         bottom: _viewMode == 1
             ? null
-            : TabBar(
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(kTextTabBarHeight),
+                child: SizedBox(
+                  height: kTextTabBarHeight,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      TabBar(
                 controller: _tabController,
                 onTap: _onDayTabBarTap,
-                indicatorColor: Theme.of(context).colorScheme.primary,
-                indicatorWeight: 3,
+                indicator: const BoxDecoration(),
+                indicatorWeight: 0,
                 labelStyle: untisThemeTextStyle(
                   context,
                   fontWeight: FontWeight.bold,
@@ -6794,6 +6777,34 @@ Timer? _progressiveNotificationTimer;
                     ),
                   );
                 }),
+                      ),
+                      IgnorePointer(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final tabWidth = constraints.maxWidth / 5;
+                            return Stack(
+                              children: [
+                                AnimatedPositioned(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutCubic,
+                                  left:
+                                      (tabWidth * dayIndicatorIndex) +
+                                      ((tabWidth - 38) / 2),
+                                  bottom: 0,
+                                  width: 38,
+                                  height: 3,
+                                  child: ColoredBox(
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
       ),
       body: _AnimatedBackground(
@@ -6951,9 +6962,8 @@ Future<void> _showAddHomeworkDialog(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
-          child: _glassContainer(
+          child: _sheetSurface(
             context: ctx,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(28),
               child: Column(
@@ -8244,9 +8254,8 @@ Future<void> _showAddExamDialog(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
-          child: _glassContainer(
+          child: _sheetSurface(
             context: ctx,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(28),
               child: Column(
@@ -9256,7 +9265,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                     onPressed: () =>
                         _gradesTrackerKey.currentState?.showAddGradeDialog(),
                   )
-                : MenuAnchor(
+                : _untisDropdownMenu(
+                    context: context,
                     menuChildren: _tabController.index == 0
                         ? [
                             MenuItemButton(
@@ -9308,7 +9318,6 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           indicatorColor: cs.primary,
           indicatorWeight: 3,
           dividerColor: Colors.transparent,
-          isScrollable: true,
           labelStyle: GoogleFonts.outfit(
             fontWeight: FontWeight.w800,
             fontSize: 14,

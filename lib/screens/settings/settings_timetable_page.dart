@@ -831,6 +831,16 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     ),
                   ),
                   ValueListenableBuilder<bool>(
+                    valueListenable: lessonShowSubjectIconsNotifier,
+                    builder: (context, value, _) => SettingsSwitchTile(
+                      icon: Icons.category_outlined,
+                      title: l.settingsLessonShowSubjectIcons,
+                      subtitle: l.settingsLessonShowSubjectIconsDesc,
+                      value: value,
+                      onChanged: _settingsSetLessonShowSubjectIcons,
+                    ),
+                  ),
+                  ValueListenableBuilder<bool>(
                     valueListenable: lessonShowRoomNotifier,
                     builder: (context, value, _) => SettingsSwitchTile(
                       icon: Icons.room_outlined,
@@ -1136,6 +1146,22 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       subtitle: l.settingsLessonShowTeacherDesc,
                       value: showTeacher,
                       onChanged: _settingsSetLessonShowTeacher,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: lessonShowSubjectIconsNotifier,
+                  builder: (context, showSubjectIcons, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.category_outlined,
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onSecondaryContainer,
+                      title: l.settingsLessonShowSubjectIcons,
+                      subtitle: l.settingsLessonShowSubjectIconsDesc,
+                      value: showSubjectIcons,
+                      onChanged: _settingsSetLessonShowSubjectIcons,
                     );
                   },
                 ),
