@@ -11246,8 +11246,8 @@ class _LessonDetailSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => StudentNotesPage(
+                    _buildBouncyRoute(
+                      StudentNotesPage(
                         notes: studentNotes,
                         registerNotes: registerNotes,
                       ),
@@ -11266,8 +11266,8 @@ class _LessonDetailSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => StudentNotesPage(
+                    _buildBouncyRoute(
+                      StudentNotesPage(
                         notes: studentNotes,
                         registerNotes: registerNotes,
                       ),
@@ -11286,9 +11286,9 @@ class _LessonDetailSheet extends StatelessWidget {
             if (homework.isNotEmpty)
               InkWell(
                 onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const HomeworkPage()),
-                  );
+                  Navigator.of(
+                    context,
+                  ).push(_buildBouncyRoute(const HomeworkPage()));
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: _row(
@@ -12723,8 +12723,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) => _SchoolNotificationDetailPage(
+                                _buildBouncyRoute(
+                                  _SchoolNotificationDetailPage(
                                     item: item,
                                     isInbox: _showInbox,
                                   ),
