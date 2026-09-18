@@ -15,15 +15,15 @@ enum UntisExpressiveTheme {
             surfaceContainerHighest: color.opacity(0.24),
             outline: color.opacity(0.6),
             primaryContainer: color.opacity(0.28),
-            secondaryContainer: color.opacity(0.16),
-            onTertiaryContainer: Color(uiColor: .label),
-            tertiaryContainer: color.opacity(0.20),
-            outlineVariant: color.opacity(0.38),
-            onSecondaryContainer: Color(uiColor: .label),
-            surfaceContainerLow: color.opacity(0.10),
-            onSurface: Color(uiColor: .label),
+            surfaceContainer: color.opacity(0.14),
             onSurfaceVariant: Color(uiColor: .secondaryLabel),
-            surfaceContainer: color.opacity(0.14)
+            onSurface: Color(uiColor: .label),
+            surfaceContainerLow: color.opacity(0.10),
+            secondaryContainer: color.opacity(0.16),
+            onSecondaryContainer: Color(uiColor: .label),
+            outlineVariant: color.opacity(0.38),
+            tertiaryContainer: color.opacity(0.20),
+            onTertiaryContainer: Color(uiColor: .label)
         )
     }
 
@@ -518,42 +518,59 @@ struct UntisLessonActivityConfiguration: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text(context.state.lessonName)
+                    Group {
+                        Text(context.state.lessonName)
+                            .font(.headline)
+                            .lineLimit(1)
+                    }
+                    .expressiveColors(UntisExpressiveTheme.lesson)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Group {
+                        untisLessonCountdownText(context.state)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.blue)
+                            .lineLimit(1)
+                    }
+                    .expressiveColors(UntisExpressiveTheme.lesson)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    Group {
+                        Text(context.state.nextLesson)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .expressiveColors(UntisExpressiveTheme.lesson)
+                }
+            } compactLeading: {
+                Group {
+                    Text(untisLiveActivityCompactLabel(context.state.lessonName))
                         .font(.headline)
                         .lineLimit(1)
                 }
-                DynamicIslandExpandedRegion(.trailing) {
+                .expressiveColors(UntisExpressiveTheme.lesson)
+            } compactTrailing: {
+                Group {
                     untisLessonCountdownText(context.state)
-                        .font(.subheadline)
+                        .font(.caption2)
                         .fontWeight(.semibold)
                         .foregroundStyle(.blue)
                         .lineLimit(1)
                 }
-                DynamicIslandExpandedRegion(.bottom) {
-                    Text(context.state.nextLesson)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                .expressiveColors(UntisExpressiveTheme.lesson)
+            } minimal: {
+                Group {
+                    untisLessonCountdownText(context.state)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.blue)
                         .lineLimit(1)
                 }
-            } compactLeading: {
-                Text(untisLiveActivityCompactLabel(context.state.lessonName))
-                    .font(.headline)
-                    .lineLimit(1)
-            } compactTrailing: {
-                untisLessonCountdownText(context.state)
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.blue)
-                    .lineLimit(1)
-            } minimal: {
-                untisLessonCountdownText(context.state)
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.blue)
-                    .lineLimit(1)
+                .expressiveColors(UntisExpressiveTheme.lesson)
             }
             .keylineTint(.blue)
-            .expressiveColors(UntisExpressiveTheme.lesson)
         }
     }
 }

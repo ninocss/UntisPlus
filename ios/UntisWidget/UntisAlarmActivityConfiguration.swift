@@ -17,59 +17,76 @@ struct UntisAlarmActivityConfiguration: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text(context.state.time)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.red)
-                        .lineLimit(1)
+                    Group {
+                        Text(context.state.time)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.red)
+                            .lineLimit(1)
+                    }
+                    .expressiveColors(UntisExpressiveTheme.alarm)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.state.label)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    Group {
+                        Text(context.state.label)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .expressiveColors(UntisExpressiveTheme.alarm)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
-                        if let ms = context.state.alarmDateMs {
-                            let target = Date(timeIntervalSince1970: Double(ms) / 1000)
-                            if target > Date() {
-                                Text(timerInterval: Date()...target, countsDown: true)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                    Group {
+                        HStack {
+                            if let ms = context.state.alarmDateMs {
+                                let target = Date(timeIntervalSince1970: Double(ms) / 1000)
+                                if target > Date() {
+                                    Text(timerInterval: Date()...target, countsDown: true)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                } else if let countdown = context.state.countdown {
+                                    Text(countdown)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                             } else if let countdown = context.state.countdown {
                                 Text(countdown)
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
-                        } else if let countdown = context.state.countdown {
-                            Text(countdown)
+                            Text(context.state.statusLabel)
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.red)
                         }
-                        Text(context.state.statusLabel)
-                            .font(.caption2)
-                            .foregroundStyle(.red)
                     }
+                    .expressiveColors(UntisExpressiveTheme.alarm)
                 }
             } compactLeading: {
-                Text(context.state.time)
-                    .font(.headline)
-                    .foregroundStyle(.red)
-                    .lineLimit(1)
+                Group {
+                    Text(context.state.time)
+                        .font(.headline)
+                        .foregroundStyle(.red)
+                        .lineLimit(1)
+                }
+                .expressiveColors(UntisExpressiveTheme.alarm)
             } compactTrailing: {
-                Text(context.state.label)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                Group {
+                    Text(context.state.label)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .expressiveColors(UntisExpressiveTheme.alarm)
             } minimal: {
-                Text(context.state.time)
-                    .font(.headline)
-                    .foregroundStyle(.red)
-                    .lineLimit(1)
+                Group {
+                    Text(context.state.time)
+                        .font(.headline)
+                        .foregroundStyle(.red)
+                        .lineLimit(1)
+                }
+                .expressiveColors(UntisExpressiveTheme.alarm)
             }
             .keylineTint(.red)
-            .expressiveColors(UntisExpressiveTheme.alarm)
         }
     }
 }
