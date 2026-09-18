@@ -61,6 +61,7 @@ void main() {
     themeModeNotifier.value = ThemeMode.light;
     visualThemeNotifier.value = AppThemeId.defaultTheme;
     blurEnabledNotifier.value = true;
+    timetableSwitchAnimationNotifier.value = 0;
     // An endless decorative animation is not relevant to theme selection and
     // would keep pumpAndSettle from completing in this widget test.
     backgroundAnimationsNotifier.value = false;
@@ -427,6 +428,87 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 400));
     await prefs.setInt('viewMode', 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('timetable switch animation setting persists the selection', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SettingsTimetablePage()),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final animationEntry = find.text('Wechselanimation');
+    expect(animationEntry, findsOneWidget);
+    await tester.tap(animationEntry);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Standard'), findsWidgets);
+    expect(find.text('Material 3 Carousel'), findsOneWidget);
+    expect(find.text('Tiefe & Fade'), findsOneWidget);
+
+    await tester.tap(find.text('Material 3 Carousel'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(timetableSwitchAnimationNotifier.value, 1);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getInt('timetableSwitchAnimation'), 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('alternate timetable switch animations render their own paths', (
+    tester,
+  ) async {
+    demoModeNotifier.value = true;
+    addTearDown(() {
+      demoModeNotifier.value = false;
+      timetableSwitchAnimationNotifier.value = 0;
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(430, 932);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('viewMode', 0);
+
+    timetableSwitchAnimationNotifier.value = 1;
+    await tester.pumpWidget(
+      const UntisPlusApp(
+        startScreen: WeeklyTimetablePage(
+          key: ValueKey('material-carousel-timetable'),
+        ),
+      ),
+    );
+    final materialDay = await ensureDayTimetableView(tester);
+    expect(materialDay, findsOneWidget);
+    expect(find.byType(CarouselView), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
+    await pumpUntilFound(
+      tester,
+      find.byKey(const ValueKey('material-week-timetable-carousel')),
+    );
+    expect(
+      find.byKey(const ValueKey('material-week-timetable-carousel')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await prefs.setInt('viewMode', 0);
+    timetableSwitchAnimationNotifier.value = 2;
+    await tester.pumpWidget(
+      const UntisPlusApp(
+        startScreen: WeeklyTimetablePage(
+          key: ValueKey('depth-fade-timetable'),
+        ),
+      ),
+    );
+    final depthDay = await ensureDayTimetableView(tester);
+    expect(depthDay, findsOneWidget);
+    expect(find.byType(CarouselView), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
