@@ -273,7 +273,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
       return;
     }
 
-    final picked = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFiles(
       allowMultiple: true,
       withData: true,
     );

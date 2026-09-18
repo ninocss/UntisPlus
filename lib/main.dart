@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13145,7 +13144,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
             IconButton(
               tooltip: l.messageComposeTitle,
               onPressed: _openMessageComposer,
-              icon: const Icon(Icons.edit_square_rounded),
+              icon: const Icon(Icons.edit_rounded),
             ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
