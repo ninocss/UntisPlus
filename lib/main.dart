@@ -2773,9 +2773,10 @@ Timer? _progressiveNotificationTimer;
     ];
 
     return NotificationListener<ScrollEndNotification>(
-      onNotification: (_) {
+      onNotification: (notification) {
+        if (notification.metrics.axis != Axis.horizontal) return false;
         final index = controller.hasClients
-            ? controller.leadingItem.clamp(0, 2)
+            ? controller.leadingItem.clamp(0, 2).toInt()
             : _materialWeekIndex;
         _materialWeekIndex = index;
         _commitMaterialWeekIndex(index);
@@ -2835,9 +2836,10 @@ Timer? _progressiveNotificationTimer;
     final shrinkExtent = itemExtent * 0.82;
 
     return NotificationListener<ScrollEndNotification>(
-      onNotification: (_) {
+      onNotification: (notification) {
+        if (notification.metrics.axis != Axis.horizontal) return false;
         final index = controller.hasClients
-            ? controller.leadingItem.clamp(0, 6)
+            ? controller.leadingItem.clamp(0, 6).toInt()
             : _materialDayIndex;
         _materialDayIndex = index;
         _commitMaterialDayIndex(index);
@@ -2871,7 +2873,7 @@ Timer? _progressiveNotificationTimer;
 
   void _commitMaterialDayIndex(int index) {
     if (!mounted || timetableSwitchAnimationNotifier.value != 1) return;
-    final normalized = index.clamp(0, 6);
+    final normalized = index.clamp(0, 6).toInt();
     final currentItem = _tabController.index + 1;
     if (normalized == currentItem) return;
 
@@ -2916,7 +2918,7 @@ Timer? _progressiveNotificationTimer;
 
   void _commitMaterialWeekIndex(int index) {
     if (!mounted || timetableSwitchAnimationNotifier.value != 1) return;
-    final normalized = index.clamp(0, 2);
+    final normalized = index.clamp(0, 2).toInt();
     if (normalized == 1) return;
 
     final weekDelta = normalized == 0 ? -1 : 1;
