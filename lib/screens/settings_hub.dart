@@ -773,8 +773,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       backupItem,
       accountItem,
       widgetsItem,
-      if (alarmItem != null) alarmItem,
-      if (updatesItem != null) updatesItem,
+      ?alarmItem,
+      ?updatesItem,
       supportItem,
       reportItem,
     ];
@@ -803,7 +803,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
               timetableItem,
               subjectsItem,
               appearanceItem,
-              if (alarmItem != null) alarmItem,
+              ?alarmItem,
             ],
             expanded: expanded,
             allItems: items,
@@ -846,7 +846,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             context,
             [
               backupItem,
-              if (updatesItem != null) updatesItem,
+              ?updatesItem,
               supportItem,
               reportItem,
             ],
