@@ -886,6 +886,8 @@ void main() async {
     );
   }
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
+  timetableSwitchAnimationNotifier.value =
+      (prefs.getInt('timetableSwitchAnimation') ?? 0).clamp(0, 2);
   cancelledLessonColorNotifier.value =
       prefs.getInt('cancelledLessonColor') ?? 0xFFFF1744;
   monochromeLessonsNotifier.value = prefs.getBool('monochromeLessons') ?? false;
@@ -1394,6 +1396,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   int? _dayCarouselTargetDay;
   AnimationController? _dayCarouselAnimController;
   Animation<double>? _dayCarouselAnimation;
+  CarouselController? _materialDayCarouselController;
+  CarouselController? _materialWeekCarouselController;
+  int _materialDayIndex = 1;
+  int _materialWeekIndex = 1;
   bool _isWeekCarouselAnimating = false;
   bool _isDayCarouselAnimating = false;
   bool _suppressDayTabControllerRebuild = false;
@@ -1843,6 +1849,9 @@ Timer? _progressiveNotificationTimer;
     monochromeLessonsNotifier.addListener(_onHiddenSubjectsChanged);
     monochromeLessonColorNotifier.addListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
+    timetableSwitchAnimationNotifier.addListener(
+      _onTimetableSwitchAnimationChanged,
+    );
     demoModeNotifier.addListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.addListener(_onHiddenSubjectsChanged);
@@ -2440,6 +2449,43 @@ Timer? _progressiveNotificationTimer;
 
   void _onHiddenSubjectsChanged() => setState(() {});
 
+  void _replaceMaterialDayCarouselController(int initialItem) {
+    final previous = _materialDayCarouselController;
+    _materialDayIndex = initialItem;
+    _materialDayCarouselController = CarouselController(
+      initialItem: initialItem,
+    );
+    if (previous != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+    }
+  }
+
+  void _replaceMaterialWeekCarouselController() {
+    final previous = _materialWeekCarouselController;
+    _materialWeekIndex = 1;
+    _materialWeekCarouselController = CarouselController(initialItem: 1);
+    if (previous != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+    }
+  }
+
+  void _onTimetableSwitchAnimationChanged() {
+    if (!mounted) return;
+    _carouselAnimController?.stop();
+    _dayCarouselAnimController?.stop();
+    _replaceMaterialDayCarouselController(_tabController.index + 1);
+    _replaceMaterialWeekCarouselController();
+    setState(() {
+      _carouselOffset = 0;
+      _dayCarouselOffset = 0;
+      _dayCarouselTargetDay = null;
+      _dayCarouselAnimation = null;
+      _isWeekCarouselAnimating = false;
+      _isDayCarouselAnimating = false;
+    });
+    unawaited(_prefetchAdjacentWeeks());
+  }
+
   void _onSelectedDayChanged() {
     // A TabBar tap calls TabController.animateTo before its onTap callback.
     // Ignore that temporary controller state: the day carousel owns the
@@ -2672,6 +2718,394 @@ Timer? _progressiveNotificationTimer;
     );
   }
 
+  // --- Timetable switch animation styles ---
+
+  Widget _buildTimetableSwitcher() {
+    switch (timetableSwitchAnimationNotifier.value) {
+      case 1:
+        return _buildMaterialCarouselSwitcher();
+      case 2:
+        return _buildDepthCarouselSwitcher();
+      case 0:
+      default:
+        // Keep the original switcher as the exact default behavior.
+        return _buildWeekCarousel();
+    }
+  }
+
+  Widget _buildMaterialCarouselSwitcher() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        return _viewMode == 1
+            ? _buildMaterialWeekCarousel(width)
+            : _buildMaterialDayCarousel(width);
+      },
+    );
+  }
+
+  Widget _materialCarouselItem({
+    required Widget child,
+    required String keyName,
+  }) {
+    return KeyedSubtree(key: ValueKey(keyName), child: child);
+  }
+
+  Widget _buildMaterialWeekCarousel(double width) {
+    final controller =
+        _materialWeekCarouselController ??= CarouselController(initialItem: 1);
+    final itemExtent = width > 24 ? width - 18 : width;
+    final shrinkExtent = itemExtent * 0.82;
+
+    final children = <Widget>[
+      _materialCarouselItem(
+        keyName: 'm3-week-prev-${_mondayKey(_currentMonday)}',
+        child: _buildAdjacentWeekView(-1),
+      ),
+      _materialCarouselItem(
+        keyName: 'm3-week-current-${_mondayKey(_currentMonday)}',
+        child: _buildWeekView(),
+      ),
+      _materialCarouselItem(
+        keyName: 'm3-week-next-${_mondayKey(_currentMonday)}',
+        child: _buildAdjacentWeekView(1),
+      ),
+    ];
+
+    return NotificationListener<ScrollEndNotification>(
+      onNotification: (_) {
+        final index = controller.hasClients
+            ? controller.leadingItem.clamp(0, 2)
+            : _materialWeekIndex;
+        _materialWeekIndex = index;
+        _commitMaterialWeekIndex(index);
+        return false;
+      },
+      child: CarouselView(
+        key: const ValueKey('material-week-timetable-carousel'),
+        controller: controller,
+        itemExtent: itemExtent,
+        shrinkExtent: shrinkExtent,
+        itemSnapping: true,
+        enableSplash: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        itemClipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        onIndexChanged: (index) => _materialWeekIndex = index,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildMaterialDayCarousel(double width) {
+    final currentDay = _tabController.index.clamp(0, 4).toInt();
+    final controller =
+        _materialDayCarouselController ??= CarouselController(
+          initialItem: currentDay + 1,
+        );
+    if (_materialDayIndex < 0 || _materialDayIndex > 6) {
+      _materialDayIndex = currentDay + 1;
+    }
+
+    Widget dayForItem(int item) {
+      if (item == 0) {
+        final monday = _weekMondayFromDelta(-1);
+        final cached = _getAdjacentWeekData(monday);
+        if (cached != null) {
+          return _buildGridView(4, monday: monday, weekData: cached);
+        }
+        return _buildAdjacentWeekView(-1);
+      }
+      if (item == 6) {
+        final monday = _weekMondayFromDelta(1);
+        final cached = _getAdjacentWeekData(monday);
+        if (cached != null) {
+          return _buildGridView(0, monday: monday, weekData: cached);
+        }
+        return _buildAdjacentWeekView(1);
+      }
+      return _buildGridView(item - 1);
+    }
+
+    final itemExtent = width > 24 ? width - 18 : width;
+    final shrinkExtent = itemExtent * 0.82;
+
+    return NotificationListener<ScrollEndNotification>(
+      onNotification: (_) {
+        final index = controller.hasClients
+            ? controller.leadingItem.clamp(0, 6)
+            : _materialDayIndex;
+        _materialDayIndex = index;
+        _commitMaterialDayIndex(index);
+        return false;
+      },
+      child: CarouselView(
+        key: const ValueKey('day-timetable-carousel'),
+        controller: controller,
+        itemExtent: itemExtent,
+        shrinkExtent: shrinkExtent,
+        itemSnapping: true,
+        enableSplash: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        itemClipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        onIndexChanged: (index) => _materialDayIndex = index,
+        children: List<Widget>.generate(
+          7,
+          (index) => _materialCarouselItem(
+            keyName: 'm3-day-${_mondayKey(_currentMonday)}-$index',
+            child: dayForItem(index),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _commitMaterialDayIndex(int index) {
+    if (!mounted || timetableSwitchAnimationNotifier.value != 1) return;
+    final normalized = index.clamp(0, 6);
+    final currentItem = _tabController.index + 1;
+    if (normalized == currentItem) return;
+
+    if (normalized >= 1 && normalized <= 5) {
+      final targetDay = normalized - 1;
+      _suppressDayTabControllerRebuild = true;
+      try {
+        _tabController.animateTo(targetDay, duration: Duration.zero);
+      } finally {
+        _suppressDayTabControllerRebuild = false;
+      }
+      _materialDayIndex = normalized;
+      setState(() {});
+      HapticFeedback.selectionClick();
+      return;
+    }
+
+    final weekDelta = normalized == 0 ? -1 : 1;
+    final newMonday = _currentMonday.add(Duration(days: weekDelta * 7));
+    final cached = _adjacentWeekCache[_mondayKey(newMonday)];
+    final targetDay = normalized == 0 ? 4 : 0;
+    setState(() {
+      _currentMonday = newMonday;
+      if (cached != null) {
+        _weekData = cached;
+        _showingCachedWeek = true;
+        _loading = false;
+      }
+    });
+    _suppressDayTabControllerRebuild = true;
+    try {
+      _tabController.animateTo(targetDay, duration: Duration.zero);
+    } finally {
+      _suppressDayTabControllerRebuild = false;
+    }
+    _replaceMaterialDayCarouselController(targetDay + 1);
+    _replaceMaterialWeekCarouselController();
+    HapticFeedback.selectionClick();
+    unawaited(_fetchFullWeek());
+    unawaited(_prefetchAdjacentWeeks());
+  }
+
+  void _commitMaterialWeekIndex(int index) {
+    if (!mounted || timetableSwitchAnimationNotifier.value != 1) return;
+    final normalized = index.clamp(0, 2);
+    if (normalized == 1) return;
+
+    final weekDelta = normalized == 0 ? -1 : 1;
+    final newMonday = _currentMonday.add(Duration(days: weekDelta * 7));
+    final cached = _adjacentWeekCache[_mondayKey(newMonday)];
+    final targetDay = normalized == 0 ? 4 : 0;
+    setState(() {
+      _currentMonday = newMonday;
+      if (cached != null) {
+        _weekData = cached;
+        _showingCachedWeek = true;
+        _loading = false;
+      }
+    });
+    _suppressDayTabControllerRebuild = true;
+    try {
+      _tabController.animateTo(targetDay, duration: Duration.zero);
+    } finally {
+      _suppressDayTabControllerRebuild = false;
+    }
+    _replaceMaterialWeekCarouselController();
+    _replaceMaterialDayCarouselController(targetDay + 1);
+    HapticFeedback.selectionClick();
+    unawaited(_fetchFullWeek());
+    unawaited(_prefetchAdjacentWeeks());
+  }
+
+  Widget _buildDepthCarouselSwitcher() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        if (_viewMode == 1) {
+          return _buildDepthWeekCarousel(width);
+        }
+        return _buildDepthDayCarousel(width);
+      },
+    );
+  }
+
+  Widget _depthPage({
+    required Widget child,
+    required double x,
+    required double scale,
+    required double opacity,
+  }) {
+    return Transform.translate(
+      offset: Offset(x, 0),
+      child: Opacity(
+        opacity: opacity.clamp(0.0, 1.0),
+        child: Transform.scale(
+          scale: scale,
+          alignment: Alignment.center,
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDepthWeekCarousel(double width) {
+    final offset = _carouselOffset.clamp(-width, width).toDouble();
+    final progress = width <= 0
+        ? 0.0
+        : (offset.abs() / width).clamp(0.0, 1.0);
+
+    final carousel = ClipRect(
+      child: Stack(
+        children: [
+          if (offset > 0)
+            _depthPage(
+              x: -width + offset,
+              scale: 0.92 + (0.08 * progress),
+              opacity: 0.32 + (0.68 * progress),
+              child: SizedBox(
+                width: width,
+                child: _buildAdjacentWeekView(-1),
+              ),
+            ),
+          if (offset < 0)
+            _depthPage(
+              x: width + offset,
+              scale: 0.92 + (0.08 * progress),
+              opacity: 0.32 + (0.68 * progress),
+              child: SizedBox(
+                width: width,
+                child: _buildAdjacentWeekView(1),
+              ),
+            ),
+          _depthPage(
+            x: offset,
+            scale: 1.0 - (0.04 * progress),
+            opacity: 1.0 - (0.18 * progress),
+            child: SizedBox(width: width, child: _buildWeekView()),
+          ),
+        ],
+      ),
+    );
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: _onWeekCarouselDragStart,
+      onHorizontalDragUpdate: _onWeekCarouselDragUpdate,
+      onHorizontalDragEnd: _onWeekCarouselDragEnd,
+      child: carousel,
+    );
+  }
+
+  Widget _buildDepthDayCarousel(double width) {
+    final dayIndex = _tabController.index.clamp(0, 4).toInt();
+
+    Widget dayAt(int index) {
+      if (index >= 0 && index < 5) return _buildGridView(index);
+      final direction = index < 0 ? -1 : 1;
+      final monday = _weekMondayFromDelta(direction);
+      final cached = _getAdjacentWeekData(monday);
+      if (cached != null) {
+        return _buildGridView(
+          index < 0 ? 4 : 0,
+          monday: monday,
+          weekData: cached,
+        );
+      }
+      return _buildAdjacentWeekView(direction);
+    }
+
+    final targetDay = _dayCarouselTargetDay;
+    final previousIndex =
+        targetDay != null && targetDay < dayIndex ? targetDay : dayIndex - 1;
+    final nextIndex =
+        targetDay != null && targetDay > dayIndex ? targetDay : dayIndex + 1;
+
+    final currentPage = SizedBox(width: width, child: dayAt(dayIndex));
+    final previousPage = targetDay == null || targetDay < dayIndex
+        ? SizedBox(width: width, child: dayAt(previousIndex))
+        : null;
+    final nextPage = targetDay == null || targetDay > dayIndex
+        ? SizedBox(width: width, child: dayAt(nextIndex))
+        : null;
+
+    Widget buildPages(double rawOffset) {
+      final offset = rawOffset.clamp(-width, width).toDouble();
+      final progress = width <= 0
+          ? 0.0
+          : (offset.abs() / width).clamp(0.0, 1.0);
+      return ClipRect(
+        child: Stack(
+          children: [
+            if (offset > 0 && previousPage != null)
+              _depthPage(
+                x: -width + offset,
+                scale: 0.92 + (0.08 * progress),
+                opacity: 0.32 + (0.68 * progress),
+                child: previousPage,
+              ),
+            if (offset < 0 && nextPage != null)
+              _depthPage(
+                x: width + offset,
+                scale: 0.92 + (0.08 * progress),
+                opacity: 0.32 + (0.68 * progress),
+                child: nextPage,
+              ),
+            _depthPage(
+              x: offset,
+              scale: 1.0 - (0.04 * progress),
+              opacity: 1.0 - (0.18 * progress),
+              child: currentPage,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final animation = _dayCarouselAnimation;
+    final pages = _isDayCarouselAnimating && animation != null
+        ? AnimatedBuilder(
+            animation: animation,
+            builder: (context, _) => buildPages(animation.value),
+          )
+        : buildPages(_dayCarouselOffset);
+
+    return GestureDetector(
+      key: const ValueKey('day-timetable-carousel'),
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: _onDayCarouselDragStart,
+      onHorizontalDragUpdate: _onDayCarouselDragUpdate,
+      onHorizontalDragEnd: _onDayCarouselDragEnd,
+      child: pages,
+    );
+  }
+
   // --- Week carousel ---
 
   Widget _buildWeekCarousel() {
@@ -2853,6 +3287,32 @@ Timer? _progressiveNotificationTimer;
         _isWeekCarouselAnimating) {
       return;
     }
+
+    if (timetableSwitchAnimationNotifier.value == 1) {
+      final controller =
+          _materialDayCarouselController ??= CarouselController(
+            initialItem: currentDay + 1,
+          );
+      _materialDayIndex = currentDay + 1;
+      final targetItem = targetDay + 1;
+      if (controller.hasClients) {
+        unawaited(
+          controller
+              .animateToItem(
+                targetItem,
+                duration: const Duration(milliseconds: 360),
+                curve: Curves.easeInOutCubicEmphasized,
+              )
+              .then((_) {
+                if (mounted) _commitMaterialDayIndex(targetItem);
+              }),
+        );
+      } else {
+        _commitMaterialDayIndex(targetItem);
+      }
+      return;
+    }
+
     final renderBox = context.findRenderObject() as RenderBox?;
     final width = renderBox?.size.width ?? 400.0;
     _animateDayCarouselTo(
@@ -3075,6 +3535,9 @@ Timer? _progressiveNotificationTimer;
     monochromeLessonsNotifier.removeListener(_onHiddenSubjectsChanged);
     monochromeLessonColorNotifier.removeListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.removeListener(_onHiddenSubjectsChanged);
+    timetableSwitchAnimationNotifier.removeListener(
+      _onTimetableSwitchAnimationChanged,
+    );
     demoModeNotifier.removeListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -3095,6 +3558,8 @@ Timer? _progressiveNotificationTimer;
       ..dispose();
     _carouselAnimController?.dispose();
     _dayCarouselAnimController?.dispose();
+    _materialDayCarouselController?.dispose();
+    _materialWeekCarouselController?.dispose();
     _cacheRefreshController.dispose();
     super.dispose();
   }
@@ -6899,7 +7364,7 @@ Timer? _progressiveNotificationTimer;
               )
             : RepaintBoundary(
                 key: _timetableExportKey,
-                child: _buildWeekCarousel(),
+                child: _buildTimetableSwitcher(),
               ),
       ),
     );
