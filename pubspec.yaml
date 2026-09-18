@@ -45,6 +45,13 @@ dependencies:
   flutter_riverpod: ^3.4.3
   hive_ce_flutter: ^2.3.4
   cryptography: ^2.9.0
+  flutter_native_calendar: ^0.3.0
+# dynamic_color pulls in material_ui/cupertino_ui transitively. Newer versions
+# use @awaitNotRequired, which Flutter 3.44.x does not expose via
+# package:flutter/foundation.dart. Pin the versions compatible with this SDK.
+dependency_overrides:
+  material_ui: 1.2.0
+  cupertino_ui: 1.0.2
 
 dev_dependencies:
   flutter_test:

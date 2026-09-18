@@ -776,6 +776,13 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       ),
       makeItem(
         index: 7,
+        icon: Icons.language_rounded,
+        title: l.settingsSectionCalendar,
+        subtitle: l.settingsShowCalendarEventsDesc,
+        pageBuilder: () => const SettingsCalendarPage(),
+      ),
+      makeItem(
+        index: 8,
         icon: Icons.widgets_rounded,
         title: AppL10n.of(appLocaleNotifier.value).ui('widgets'),
         subtitle: AppL10n.of(appLocaleNotifier.value).ui('widgetAccount'),

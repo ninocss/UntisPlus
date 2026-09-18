@@ -133,19 +133,25 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-		<string>fetch</string>
-		<string>processing</string>
-	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.ninocss.untisplus.alarmRefresh</string>
 		<string>untis_school_notification_update</string>
 		<string>untis_progressive_boundary_refresh</string>
+	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Access most functions for calendar viewing and editing.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Access most functions for calendar viewing and editing.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>This app needs access to reminders to manage calendar events.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>fetch</string>
+		<string>processing</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

@@ -184,6 +184,43 @@ class AppL10n {
   String get onboardingFinishSetup => _t('onboardingFinishSetup');
   String get onboardingUseDemoMode => _t('onboardingUseDemoMode');
   String get onboardingUseDemoModeDesc => _t('onboardingUseDemoModeDesc');
+  String get onboardingCalendarTitle => _t('onboardingCalendarTitle');
+  String get onboardingCalendarSubtitle => _t('onboardingCalendarSubtitle');
+  String get onboardingCalendarTargetLocal =>
+      _t('onboardingCalendarTargetLocal');
+  String get onboardingCalendarTargetLocalDesc =>
+      _t('onboardingCalendarTargetLocalDesc');
+  String get onboardingCalendarLocalPermission =>
+      _t('onboardingCalendarLocalPermission');
+  String get onboardingCalendarLocalGrant => _t('onboardingCalendarLocalGrant');
+  String get onboardingCalendarLocalGranted =>
+      _t('onboardingCalendarLocalGranted');
+  String get onboardingCalendarWhatToSync =>
+      _t('onboardingCalendarWhatToSync');
+  String get onboardingCalendarWhatToSyncDesc =>
+      _t('onboardingCalendarWhatToSyncDesc');
+  String get onboardingCalendarEventTests => _t('onboardingCalendarEventTests');
+  String get onboardingCalendarEventTestsDesc =>
+      _t('onboardingCalendarEventTestsDesc');
+  String get onboardingCalendarEventHomework =>
+      _t('onboardingCalendarEventHomework');
+  String get onboardingCalendarEventHomeworkDesc =>
+      _t('onboardingCalendarEventHomeworkDesc');
+  String get onboardingCalendarEventConversations =>
+      _t('onboardingCalendarEventConversations');
+  String get onboardingCalendarEventConversationsDesc =>
+      _t('onboardingCalendarEventConversationsDesc');
+  String get onboardingCalendarEventLearning =>
+      _t('onboardingCalendarEventLearning');
+  String get onboardingCalendarEventLearningDesc =>
+      _t('onboardingCalendarEventLearningDesc');
+  String get onboardingCalendarEventAssignments =>
+      _t('onboardingCalendarEventAssignments');
+  String get onboardingCalendarEventAssignmentsDesc =>
+      _t('onboardingCalendarEventAssignmentsDesc');
+  String get onboardingCalendarSelectAll => _t('onboardingCalendarSelectAll');
+  String get onboardingCalendarSelectNone => _t('onboardingCalendarSelectNone');
+  
   String get tutorialTitle => _t('tutorialTitle');
   String get tutorialSkip => _t('tutorialSkip');
   String get tutorialDone => _t('tutorialDone');
@@ -778,6 +815,20 @@ class AppL10n {
   String get settingsBackupConfirmTitle => _t('settingsBackupConfirmTitle');
   String get settingsBackupConfirmDesc => _t('settingsBackupConfirmDesc');
   String get settingsBackupConfirmAction => _t('settingsBackupConfirmAction');
+  String get settingsSectionCalendar => _t('settingsSectionCalendar');
+  String get settingsShowCalendarEvents => _t('settingsShowCalendarEvents');
+  String get settingsShowCalendarEventsDesc => _t('settingsShowCalendarEventsDesc');
+  String get settingsCalendarSync => _t('settingsCalendarSync');
+  String get settingsCalendarSyncDesc => _t('settingsCalendarSyncDesc');
+  String get settingsCalendarEventTypes => _t('settingsCalendarEventTypes');
+  String get settingsCalendarEventTypesDesc => _t('settingsCalendarEventTypesDesc');
+  String get settingsCalendarSyncNow => _t('settingsCalendarSyncNow');
+  String get settingsCalendarPermission => _t('settingsCalendarPermission');
+  String get settingsCalendarPermissionDesc => _t('settingsCalendarPermissionDesc');
+  String get settingsCalendarConnected => _t('settingsCalendarConnected');
+  String get settingsCalendarNotConnected => _t('settingsCalendarNotConnected');
+  String get settingsCalendarGrantAccess => _t('settingsCalendarGrantAccess');
+  String get settingsCalendarRevokeAccess => _t('settingsCalendarRevokeAccess');
 
   // ── AI System Prompt ─────────────────────────────────────────────────────────
   String get aiSystemPersona => _t('aiSystemPersona');
@@ -1060,6 +1111,27 @@ class AppL10n {
       'onboardingUseDemoMode': 'Demo-Modus starten',
       'onboardingUseDemoModeDesc':
           'Teste Untis+ ohne Schul-Login mit realistisch gefullten Beispieldaten.',
+      'onboardingCalendarTitle': 'Kalender',
+      'onboardingCalendarSubtitle': 'Synchronisiere deinen Stundenplan mit deinem Kalender',
+      'onboardingCalendarTargetLocal': 'Lokaler Kalender',
+      'onboardingCalendarTargetLocalDesc': 'Kalender auf diesem Gerät',
+      'onboardingCalendarLocalPermission': 'Erlaube den Zugriff auf deinen lokalen Kalender, damit Termine überall synchronisiert werden können.',
+      'onboardingCalendarLocalGrant': 'Zugriff erlauben',
+      'onboardingCalendarLocalGranted': 'Zugriff erteilt',
+      'onboardingCalendarWhatToSync': 'Was soll synchronisiert werden?',
+      'onboardingCalendarWhatToSyncDesc': 'Wähle, welche Ereignistypen zwischen Schule und Kalender übertragen werden.',
+      'onboardingCalendarEventTests': 'Tests & Prüfungen',
+      'onboardingCalendarEventTestsDesc': 'Klausuren, Klassenarbeiten und Tests',
+      'onboardingCalendarEventHomework': 'Hausaufgaben',
+      'onboardingCalendarEventHomeworkDesc': 'Aufgaben und Abgabetermine',
+      'onboardingCalendarEventConversations': 'Lehrergespräche',
+      'onboardingCalendarEventConversationsDesc': 'Gesprächstermine mit Lehrkräften',
+      'onboardingCalendarEventLearning': 'Lerneinheiten',
+      'onboardingCalendarEventLearningDesc': 'Lernphasen und Session-Termine',
+      'onboardingCalendarEventAssignments': 'Aufgaben & Vertretungen',
+      'onboardingCalendarEventAssignmentsDesc': 'Zuteilungen und Vertretungsstunden',
+      'onboardingCalendarSelectAll': 'Alle auswählen',
+      'onboardingCalendarSelectNone': 'Alle abwählen',
       'tutorialTitle': 'Geführte App-Tour',
       'tutorialSkip': 'Tour überspringen',
       'tutorialDone': 'Tour beenden',
@@ -1726,6 +1798,24 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 
       'settingsChangelogTitle': 'Neuigkeiten (Changelog)',
       'settingsChangelogSubtitle': 'Was ist neu in Untis+?',
+      'settingsSectionCalendar': 'Kalender & Termine',
+      'settingsShowCalendarEvents': 'Kalender-Termine anzeigen',
+      'settingsShowCalendarEventsDesc':
+          'Zeigt Termine aus dem Systemkalender in der App an.',
+      'settingsCalendarSync': 'Kalender synchronisieren',
+      'settingsCalendarSyncDesc':
+          'Synchronisiert Stundenplan-Änderungen mit dem Systemkalender.',
+      'settingsCalendarEventTypes': 'Zu synchronisierende Ereignisse',
+      'settingsCalendarEventTypesDesc':
+          'Wähle, welche Ereignistypen in den Kalender eingetragen werden.',
+      'settingsCalendarSyncNow': 'Jetzt synchronisieren',
+      'settingsCalendarPermission': 'Kalender-Berechtigung',
+      'settingsCalendarPermissionDesc':
+          'Erlaube den Zugriff auf deinen lokalen Kalender, damit Termine überall synchronisiert werden können.',
+      'settingsCalendarConnected': 'Verbunden',
+      'settingsCalendarNotConnected': 'Nicht verbunden',
+      'settingsCalendarGrantAccess': 'Zugriff erlauben',
+      'settingsCalendarRevokeAccess': 'Zugriff entziehen',
       'changelogTitle': 'Neuigkeiten',
       'changelogLoadError': 'Fehler beim Laden',
       'changelogNoData': '# Keine Daten verfügbar',
@@ -2212,6 +2302,31 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingUseDemoMode': 'Start demo mode',
       'onboardingUseDemoModeDesc':
           'Try Untis+ without school login using realistic sample data.',
+      'onboardingCalendarTitle': 'Calendar',
+      'onboardingCalendarSubtitle': 'Sync your timetable with your calendar',
+      'onboardingCalendarTargetLocal': 'Local calendar',
+      'onboardingCalendarTargetLocalDesc': 'Calendar on this device',
+      'onboardingCalendarLocalPermission':
+          'Allow access to your local calendar so appointments can be synced everywhere.',
+      'onboardingCalendarLocalGrant': 'Allow access',
+      'onboardingCalendarLocalGranted': 'Access granted',
+      'onboardingCalendarWhatToSync': 'What should be synced?',
+      'onboardingCalendarWhatToSyncDesc':
+          'Choose which event types are transferred between school and calendar.',
+      'onboardingCalendarEventTests': 'Tests & exams',
+      'onboardingCalendarEventTestsDesc': 'Quizzes, exams and class tests',
+      'onboardingCalendarEventHomework': 'Homework',
+      'onboardingCalendarEventHomeworkDesc': 'Assignments and due dates',
+      'onboardingCalendarEventConversations': 'Teacher conversations',
+      'onboardingCalendarEventConversationsDesc':
+          'Meeting appointments with teachers',
+      'onboardingCalendarEventLearning': 'Learning sessions',
+      'onboardingCalendarEventLearningDesc':
+          'Study phases and session appointments',
+      'onboardingCalendarEventAssignments': 'Assignments & cover',
+      'onboardingCalendarEventAssignmentsDesc': 'Allocations and cover lessons',
+      'onboardingCalendarSelectAll': 'Select all',
+      'onboardingCalendarSelectNone': 'Select none',
       'tutorialTitle': 'Guided app tour',
       'tutorialSkip': 'Skip tour',
       'tutorialDone': 'Finish tour',
@@ -2781,6 +2896,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAppVersion': 'Version',
       'settingsBuild': 'Build',
       'settingsSectionSubjects': 'Subjects & Colors',
+      'settingsSectionCalendar': 'Calendar & Events',
+      'settingsShowCalendarEvents': 'Show Calendar Events',
+      'settingsShowCalendarEventsDesc': 'Shows events from the system calendar in the app.',
+      'settingsCalendarSync': 'Sync Calendar',
+      'settingsCalendarSyncDesc': 'Syncs timetable changes to the system calendar.',
+      'settingsCalendarEventTypes': 'Events to Sync',
+      'settingsCalendarEventTypesDesc': 'Choose which event types are added to the calendar.',
+      'settingsCalendarSyncNow': 'Sync Now',
+      'settingsCalendarPermission': 'Calendar Permission',
+      'settingsCalendarPermissionDesc':
+          'Allow access to your local calendar so events can be synced everywhere.',
+      'settingsCalendarConnected': 'Connected',
+      'settingsCalendarNotConnected': 'Not Connected',
+      'settingsCalendarGrantAccess': 'Grant Access',
+      'settingsCalendarRevokeAccess': 'Revoke Access',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Check for updates on GitHub',
       'settingsGithubUpdateCheckDesc':
@@ -3351,6 +3481,33 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingUseDemoMode': 'Lancer le mode démo',
       'onboardingUseDemoModeDesc':
           'Teste Untis+ sans connexion école avec des données réalistes.',
+      'onboardingCalendarTitle': 'Calendrier',
+      'onboardingCalendarSubtitle':
+          'Synchronise ton emploi du temps avec ton calendrier',
+      'onboardingCalendarTargetLocal': 'Calendrier local',
+      'onboardingCalendarTargetLocalDesc': 'Calendrier sur cet appareil',
+      'onboardingCalendarLocalPermission':
+          'Autorise l\'accès à ton calendrier local pour synchroniser les rendez-vous partout.',
+      'onboardingCalendarLocalGrant': 'Autoriser l\'accès',
+      'onboardingCalendarLocalGranted': 'Accès accordé',
+      'onboardingCalendarWhatToSync': 'Que faut-il synchroniser ?',
+      'onboardingCalendarWhatToSyncDesc':
+          'Choisis les types d\'événements transférés entre l\'école et ton calendrier.',
+      'onboardingCalendarEventTests': 'Tests & examens',
+      'onboardingCalendarEventTestsDesc': 'Interrogations, examens et contrôles',
+      'onboardingCalendarEventHomework': 'Devoirs',
+      'onboardingCalendarEventHomeworkDesc': 'Tâches et dates limites',
+      'onboardingCalendarEventConversations': 'Entretiens avec les profs',
+      'onboardingCalendarEventConversationsDesc':
+          'Rendez-vous avec les enseignants',
+      'onboardingCalendarEventLearning': 'Séances d\'apprentissage',
+      'onboardingCalendarEventLearningDesc':
+          'Phases d\'étude et rendez-vous de session',
+      'onboardingCalendarEventAssignments': 'Affectations & remplacements',
+      'onboardingCalendarEventAssignmentsDesc':
+          'Affectations et cours de remplacement',
+      'onboardingCalendarSelectAll': 'Tout sélectionner',
+      'onboardingCalendarSelectNone': 'Tout désélectionner',
       'tutorialTitle': 'Visite guidée de l\'app',
       'tutorialSkip': 'Passer la visite',
       'tutorialDone': 'Terminer la visite',
@@ -3915,6 +4072,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAppVersion': 'Version',
       'settingsBuild': 'Build',
       'settingsSectionSubjects': 'Matières & Couleurs',
+      'settingsSectionCalendar': 'Calendrier & Événements',
+      'settingsShowCalendarEvents': 'Afficher les événements du calendrier',
+      'settingsShowCalendarEventsDesc': 'Affiche les événements du calendrier système dans l\'application.',
+      'settingsCalendarSync': 'Synchroniser le calendrier',
+      'settingsCalendarSyncDesc': 'Synchronise les changements d\'emploi du temps avec le calendrier système.',
+      'settingsCalendarEventTypes': 'Événements à synchroniser',
+      'settingsCalendarEventTypesDesc': 'Choisis quels types d\'événements sont ajoutés au calendrier.',
+      'settingsCalendarSyncNow': 'Synchroniser maintenant',
+      'settingsCalendarPermission': 'Permission Calendrier',
+      'settingsCalendarPermissionDesc':
+          'Autorise l\'accès à ton calendrier local pour synchroniser les rendez-vous partout.',
+      'settingsCalendarConnected': 'Connecté',
+      'settingsCalendarNotConnected': 'Non connecté',
+      'settingsCalendarGrantAccess': 'Autoriser l\'accès',
+      'settingsCalendarRevokeAccess': 'Révoquer l\'accès',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Rechercher des mises à jour sur GitHub',
       'settingsGithubUpdateCheckDesc':
@@ -4509,6 +4681,32 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingUseDemoMode': 'Iniciar modo demo',
       'onboardingUseDemoModeDesc':
           'Prueba Untis+ sin inicio escolar con datos de ejemplo realistas.',
+      'onboardingCalendarTitle': 'Calendario',
+      'onboardingCalendarSubtitle': 'Sincroniza tu horario con tu calendario',
+      'onboardingCalendarTargetLocal': 'Calendario local',
+      'onboardingCalendarTargetLocalDesc': 'Calendario en este dispositivo',
+      'onboardingCalendarLocalPermission':
+          'Permite el acceso a tu calendario local para sincronizar las citas en todas partes.',
+      'onboardingCalendarLocalGrant': 'Permitir acceso',
+      'onboardingCalendarLocalGranted': 'Acceso concedido',
+      'onboardingCalendarWhatToSync': '¿Qué se debe sincronizar?',
+      'onboardingCalendarWhatToSyncDesc':
+          'Elige qué tipos de eventos se transfieren entre la escuela y tu calendario.',
+      'onboardingCalendarEventTests': 'Pruebas y exámenes',
+      'onboardingCalendarEventTestsDesc': 'Exámenes, controles y pruebas',
+      'onboardingCalendarEventHomework': 'Deberes',
+      'onboardingCalendarEventHomeworkDesc': 'Tareas y fechas de entrega',
+      'onboardingCalendarEventConversations': 'Charlas con profesores',
+      'onboardingCalendarEventConversationsDesc':
+          'Citas de conversación con el profesorado',
+      'onboardingCalendarEventLearning': 'Sesiones de estudio',
+      'onboardingCalendarEventLearningDesc':
+          'Fases de estudio y citas de sesión',
+      'onboardingCalendarEventAssignments': 'Asignaciones y sustituciones',
+      'onboardingCalendarEventAssignmentsDesc':
+          'Asignaciones y clases de sustitución',
+      'onboardingCalendarSelectAll': 'Seleccionar todo',
+      'onboardingCalendarSelectNone': 'Deseleccionar todo',
       'tutorialTitle': 'Tour guiado de la app',
       'tutorialSkip': 'Saltar el tour',
       'tutorialDone': 'Finalizar el tour',
@@ -5073,6 +5271,21 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAppVersion': 'Versión',
       'settingsBuild': 'Build',
       'settingsSectionSubjects': 'Asignaturas & Colores',
+      'settingsSectionCalendar': 'Calendario & Eventos',
+      'settingsShowCalendarEvents': 'Mostrar eventos del calendario',
+      'settingsShowCalendarEventsDesc': 'Muestra los eventos del calendario del sistema en la app.',
+      'settingsCalendarSync': 'Sincronizar calendario',
+      'settingsCalendarSyncDesc': 'Sincroniza los cambios de horario con el calendario del sistema.',
+      'settingsCalendarEventTypes': 'Eventos a sincronizar',
+      'settingsCalendarEventTypesDesc': 'Elige qué tipos de eventos se añaden al calendario.',
+      'settingsCalendarSyncNow': 'Sincronizar ahora',
+      'settingsCalendarPermission': 'Permiso de calendario',
+      'settingsCalendarPermissionDesc':
+          'Permite el acceso a tu calendario local para sincronizar las citas en todas partes.',
+      'settingsCalendarConnected': 'Conectado',
+      'settingsCalendarNotConnected': 'No conectado',
+      'settingsCalendarGrantAccess': 'Permitir acceso',
+      'settingsCalendarRevokeAccess': 'Revocar acceso',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Buscar actualizaciones en GitHub',
       'settingsGithubUpdateCheckDesc':

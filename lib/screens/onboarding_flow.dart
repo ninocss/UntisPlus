@@ -15,7 +15,7 @@ class OnboardingFlow extends StatefulWidget {
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
   final PageController _pageController = PageController();
-  int get _totalOnboardingSteps => widget.accountOnly ? 1 : 5;
+  int get _totalOnboardingSteps => widget.accountOnly ? 1 : 6;
   static const String _credentialModePassword = 'password';
   static const String _credentialModeLoginKey = 'loginKey';
   int _currentPage = 0;
@@ -46,6 +46,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   String? _inlineError;
   List<SchoolSearchResult> _searchResults = [];
   Timer? _debounce;
+  final Set<String> _calendarSyncConnected = {};
+  final Set<String> _calendarSyncEventTypes = {
+    'tests',
+    'homework',
+    'conversations',
+    'learning',
+    'assignments',
+  };
 
   @override
   void initState() {
@@ -79,6 +87,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _useLoginKey =
             prefs.getString('loginCredentialMode') == _credentialModeLoginKey;
       });
+      _loadCalendarSyncPreferences(prefs);
       if (!widget.accountOnly) {
         final saved = (prefs.getInt('onboardingCheckpoint') ?? 0).clamp(
           0,
@@ -371,6 +380,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       });
     });
   }
+
 
   void _showOnboardingAiModelDialog() {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -750,6 +760,50 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         },
       ),
     );
+  }
+  Future<void> _persistCalendarSyncSelection() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      'calendarSyncTargets',
+      ['local'],
+    );
+    await prefs.setStringList(
+      'calendarSyncConnected',
+      _calendarSyncConnected.toList(),
+    );
+    await prefs.setStringList(
+      'calendarSyncEventTypes',
+      _calendarSyncEventTypes.toList(),
+    );
+  }
+
+  void _loadCalendarSyncPreferences(SharedPreferences prefs) {
+    final connected = prefs.getStringList('calendarSyncConnected');
+    final events = prefs.getStringList('calendarSyncEventTypes');
+    setState(() {
+      if (connected != null) {
+        _calendarSyncConnected
+          ..clear()
+          ..addAll(connected);
+      }
+      if (events != null) {
+        _calendarSyncEventTypes
+          ..clear()
+          ..addAll(events);
+      }
+    });
+  }
+
+  void _toggleCalendarConnection() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      if (_calendarSyncConnected.contains('local')) {
+        _calendarSyncConnected.remove('local');
+      } else {
+        _calendarSyncConnected.add('local');
+      }
+    });
+    unawaited(_persistCalendarSyncSelection());
   }
 
   Future<void> _persistOnboardingAiConfiguration() async {
@@ -1283,6 +1337,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         _buildThemeStep(),
                         _buildLoginStep(),
                         _buildGeminiStep(),
+                        _buildCalendarStep(),
                         _buildTutorialStep(),
                       ],
                     ],
@@ -1629,9 +1684,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 );
               },
             ),
-          ],
+],
+          ),
         ),
-      ),
       footer: _buildNextBtn(),
     );
   }
@@ -2884,6 +2939,410 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
+  Widget _buildCalendarStep() {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final colors = Theme.of(context).colorScheme;
+
+    final eventTypes = [
+      (
+        'tests',
+        Icons.quiz_rounded,
+        l.onboardingCalendarEventTests,
+        l.onboardingCalendarEventTestsDesc,
+      ),
+      (
+        'homework',
+        Icons.assignment_rounded,
+        l.onboardingCalendarEventHomework,
+        l.onboardingCalendarEventHomeworkDesc,
+      ),
+      (
+        'conversations',
+        Icons.forum_rounded,
+        l.onboardingCalendarEventConversations,
+        l.onboardingCalendarEventConversationsDesc,
+      ),
+      (
+        'learning',
+        Icons.menu_book_rounded,
+        l.onboardingCalendarEventLearning,
+        l.onboardingCalendarEventLearningDesc,
+      ),
+      (
+        'assignments',
+        Icons.event_available_rounded,
+        l.onboardingCalendarEventAssignments,
+        l.onboardingCalendarEventAssignmentsDesc,
+      ),
+    ];
+
+    return _StepWrapper(
+      icon: Icons.calendar_month_rounded,
+      title: l.onboardingCalendarTitle,
+      subtitle: l.onboardingCalendarSubtitle,
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildCalendarTargetStatusRow(l, colors),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSectionLabel(
+                    l.onboardingCalendarWhatToSync,
+                    colors,
+                  ),
+                ),
+                _buildEventBulkAction(
+                  l.onboardingCalendarSelectAll,
+                  () {
+                    setState(
+                      () => _calendarSyncEventTypes.addAll(
+                        eventTypes.map((e) => e.$1),
+                      ),
+                    );
+                    unawaited(_persistCalendarSyncSelection());
+                  },
+                  colors,
+                ),
+                _buildEventBulkAction(
+                  l.onboardingCalendarSelectNone,
+                  () {
+                    setState(() => _calendarSyncEventTypes.clear());
+                    unawaited(_persistCalendarSyncSelection());
+                  },
+                  colors,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            for (final eventType in eventTypes) ...[
+              _buildCalendarEventToggle(
+                key: eventType.$1,
+                icon: eventType.$2,
+                title: eventType.$3,
+                desc: eventType.$4,
+              ),
+              if (eventType != eventTypes.last) const SizedBox(height: 8),
+            ],
+          ],
+        ),
+      ),
+      footer: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _nextPage,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 54),
+                shape: _legacyButtonShape(context, 16),
+              ),
+              child: Text(
+                l.onboardingSkip,
+                style: untisThemeTextStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 2,
+            child: FilledButton(
+              onPressed: _nextPage,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 54),
+                shape: _legacyButtonShape(context, 16),
+              ),
+              child: Text(
+                l.onboardingNext,
+                style: untisThemeTextStyle(
+                  context,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarTargetStatusRow(
+    AppL10n l,
+    ColorScheme colors,
+  ) {
+    final connected = _calendarSyncConnected.contains('local');
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: connected
+            ? colors.primaryContainer.withValues(alpha: 0.5)
+            : colors.surfaceContainerHigh.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: connected
+              ? colors.primary.withValues(alpha: 0.5)
+              : colors.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.calendar_view_day_rounded,
+                  size: 18,
+                  color: colors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.onboardingCalendarTargetLocal,
+                      style: untisThemeTextStyle(
+                        context,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    Text(
+                      l.onboardingCalendarTargetLocalDesc,
+                      style: untisThemeTextStyle(
+                        context,
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _buildCalendarConnectionAction(l, colors),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 15,
+                color: colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  l.onboardingCalendarLocalPermission,
+                  style: untisThemeTextStyle(
+                    context,
+                    fontSize: 12,
+                    height: 1.4,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarConnectionAction(
+    AppL10n l,
+    ColorScheme colors,
+  ) {
+    final connected = _calendarSyncConnected.contains('local');
+    if (connected) {
+      return _buildCalendarSyncConnectedState(l.onboardingCalendarLocalGranted, colors);
+    }
+    return FilledButton.tonalIcon(
+      onPressed: _toggleCalendarConnection,
+      icon: const Icon(Icons.verified_user_rounded, size: 16),
+      label: Text(
+        l.onboardingCalendarLocalGrant,
+        style: untisThemeTextStyle(
+          context,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        visualDensity: VisualDensity.compact,
+        shape: _legacyButtonShape(context, 12),
+      ),
+    );
+  }
+
+  Widget _buildCalendarSyncConnectedState(String mark, ColorScheme colors) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.check_circle_rounded, size: 18, color: colors.primary),
+        const SizedBox(width: 6),
+        Text(
+          mark,
+          style: untisThemeTextStyle(
+            context,
+            fontWeight: FontWeight.w700,
+            fontSize: 13.5,
+            color: colors.primary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEventBulkAction(
+    String label,
+    VoidCallback onTap,
+    ColorScheme colors,
+  ) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        label,
+        style: untisThemeTextStyle(
+          context,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+          color: colors.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalendarEventToggle({
+    required String key,
+    required IconData icon,
+    required String title,
+    required String desc,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    final selected = _calendarSyncEventTypes.contains(key);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() {
+            if (selected) {
+              _calendarSyncEventTypes.remove(key);
+            } else {
+              _calendarSyncEventTypes.add(key);
+            }
+          });
+          unawaited(_persistCalendarSyncSelection());
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: MediaQuery.of(context).disableAnimations
+              ? Duration.zero
+              : const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? colors.primaryContainer.withValues(alpha: 0.6)
+                : colors.surfaceContainerHigh.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? colors.primary.withValues(alpha: 0.6)
+                  : colors.outlineVariant.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: colors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: untisThemeTextStyle(
+                        context,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    Text(
+                      desc,
+                      style: untisThemeTextStyle(
+                        context,
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: selected
+                    ? Icon(
+                        Icons.check_circle_rounded,
+                        key: const ValueKey('check'),
+                        color: colors.primary,
+                        size: 20,
+                      )
+                    : Icon(
+                        Icons.radio_button_unchecked_rounded,
+                        key: const ValueKey('empty'),
+                        color: colors.outlineVariant,
+                        size: 20,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
+
+
+
+
   Widget _buildTutorialStep() {
     final l = AppL10n.of(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
@@ -2902,28 +3361,34 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         colors.secondary,
       ),
       (
+        Icons.sync_alt_rounded,
+        l.onboardingCalendarTitle,
+        l.onboardingCalendarSubtitle,
+        colors.tertiary,
+      ),
+      (
         Icons.auto_awesome_rounded,
         l.onboardingFeatureAiTitle,
         l.onboardingFeatureAiDesc,
-        colors.tertiary,
+        colors.primary,
       ),
       (
         Icons.notifications_active_rounded,
         l.onboardingFeatureNotifyTitle,
         l.onboardingFeatureNotifyDesc,
-        colors.primary,
+        colors.secondary,
       ),
       (
         Icons.system_update_alt_rounded,
         l.onboardingFeatureUpdatesTitle,
         l.onboardingFeatureUpdatesDesc,
-        colors.secondary,
+        colors.tertiary,
       ),
       (
         Icons.backup_rounded,
         l.onboardingFeatureBackupTitle,
         l.onboardingFeatureBackupDesc,
-        colors.tertiary,
+        colors.primary,
       ),
     ];
 
@@ -3435,3 +3900,5 @@ class _StepWrapper extends StatelessWidget {
     );
   }
 }
+
+

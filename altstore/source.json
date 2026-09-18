@@ -18,10 +18,13 @@
       "category": "education",
       "beta": false,
       "appPermissions": {
-        "privacy": {},
+        "privacy": {
+          "NSCalendarsUsageDescription": "Access most functions for calendar viewing and editing.",
+          "NSCalendarsFullAccessUsageDescription": "Access most functions for calendar viewing and editing.",
+          "NSRemindersUsageDescription": "This app needs access to reminders to manage calendar events."
+        },
         "entitlements": [
-          "com.apple.security.application-groups",
-          "aps-environment"
+          "com.apple.security.application-groups"
         ]
       },
       "screenshotURLs": [
@@ -91,7 +94,11 @@
       "category": "education",
       "beta": true,
       "appPermissions": {
-        "privacy": {},
+        "privacy": {
+          "NSCalendarsUsageDescription": "Access most functions for calendar viewing and editing.",
+          "NSCalendarsFullAccessUsageDescription": "Access most functions for calendar viewing and editing.",
+          "NSRemindersUsageDescription": "This app needs access to reminders to manage calendar events."
+        },
         "entitlements": [
           "com.apple.security.application-groups",
           "aps-environment"
