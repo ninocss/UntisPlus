@@ -2774,7 +2774,9 @@ Timer? _progressiveNotificationTimer;
 
     return NotificationListener<ScrollEndNotification>(
       onNotification: (notification) {
-        if (notification.metrics.axis != Axis.horizontal) return false;
+        if (notification.depth != 0 || notification.metrics.axis != Axis.horizontal) {
+          return false;
+        }
         final index = controller.hasClients
             ? controller.leadingItem.clamp(0, 2).toInt()
             : _materialWeekIndex;
@@ -2837,7 +2839,9 @@ Timer? _progressiveNotificationTimer;
 
     return NotificationListener<ScrollEndNotification>(
       onNotification: (notification) {
-        if (notification.metrics.axis != Axis.horizontal) return false;
+        if (notification.depth != 0 || notification.metrics.axis != Axis.horizontal) {
+          return false;
+        }
         final index = controller.hasClients
             ? controller.leadingItem.clamp(0, 6).toInt()
             : _materialDayIndex;
