@@ -428,13 +428,136 @@ Color _autoLessonColor(String subject, bool isDark) {
 
 Route<T> _buildBouncyRoute<T>(
   Widget page, {
-  Duration duration = const Duration(milliseconds: 300),
-  Duration reverseDuration = const Duration(milliseconds: 300),
+  Duration duration = const Duration(milliseconds: 340),
+  Duration reverseDuration = const Duration(milliseconds: 280),
   int? transitionType,
 }) {
-  // We rely on Material 3 standard page transitions now.
-  // This wrapper just delegates to the standard MaterialPageRoute.
-  return MaterialPageRoute<T>(builder: (context) => page);
+  final selectedTransition =
+      (transitionType ?? pageTransitionNotifier.value).clamp(0, 7);
+
+  return PageRouteBuilder<T>(
+    transitionDuration: duration,
+    reverseTransitionDuration: reverseDuration,
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+        return child;
+      }
+
+      final fade = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+
+      Curve motionCurve;
+      switch (selectedTransition) {
+        case 0:
+          motionCurve = Curves.easeOutBack;
+          break;
+        case 5:
+          motionCurve = Curves.easeInCubic;
+          break;
+        case 6:
+          motionCurve = Curves.easeOutCubic;
+          break;
+        case 7:
+          motionCurve = const Cubic(0.16, 1.0, 0.3, 1.0);
+          break;
+        default:
+          motionCurve = Curves.easeOutCubic;
+      }
+
+      final motion = CurvedAnimation(
+        parent: animation,
+        curve: motionCurve,
+        reverseCurve: Curves.easeInCubic,
+      );
+
+      switch (selectedTransition) {
+        case 1:
+          return FadeTransition(opacity: fade, child: child);
+        case 2:
+          return FadeTransition(
+            opacity: fade,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.08, 0),
+                end: Offset.zero,
+              ).animate(motion),
+              child: child,
+            ),
+          );
+        case 3:
+          return FadeTransition(
+            opacity: fade,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.92, end: 1).animate(motion),
+              child: child,
+            ),
+          );
+        case 4:
+          return AnimatedBuilder(
+            animation: fade,
+            child: child,
+            builder: (context, child) {
+              final value = fade.value.clamp(0.0, 1.0);
+              return Opacity(
+                opacity: value,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(
+                    sigmaX: (1 - value) * 10,
+                    sigmaY: (1 - value) * 10,
+                  ),
+                  child: child,
+                ),
+              );
+            },
+          );
+        case 5:
+        case 6:
+          return FadeTransition(
+            opacity: fade,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.045),
+                end: Offset.zero,
+              ).animate(motion),
+              child: child,
+            ),
+          );
+        case 7:
+          return FadeTransition(
+            opacity: fade,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.065),
+                end: Offset.zero,
+              ).animate(motion),
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.985, end: 1).animate(motion),
+                child: child,
+              ),
+            ),
+          );
+        case 0:
+        default:
+          return FadeTransition(
+            opacity: fade,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.035),
+                end: Offset.zero,
+              ).animate(motion),
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.965, end: 1).animate(motion),
+                child: child,
+              ),
+            ),
+          );
+      }
+    },
+  );
 }
 
 class _SheetOption<T> {
