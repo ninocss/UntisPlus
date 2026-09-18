@@ -1058,22 +1058,37 @@ class SettingsAppearancePage extends StatelessWidget {
                     );
                   },
                 ),
-                if (selectedTheme == AppThemeId.defaultTheme)
-                  ValueListenableBuilder<int>(
-                    valueListenable: pageTransitionNotifier,
-                    builder: (context, transition, _) {
-                      return SettingsTile(
-                        icon: Icons.animation_rounded,
-                        iconBackgroundColor: cs.primaryContainer.withValues(
-                          alpha: 0.7,
-                        ),
-                        iconColor: cs.onPrimaryContainer,
-                        title: l.settingsPageTransition,
-                        subtitle: _transitionLabel(l, transition),
-                        onTap: () => _showTransitionDialog(context),
-                      );
-                    },
-                  ),
+                ValueListenableBuilder<int>(
+                  valueListenable: pageTransitionNotifier,
+                  builder: (context, transition, _) {
+                    return SettingsTile(
+                      icon: Icons.animation_rounded,
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onPrimaryContainer,
+                      title: l.settingsPageTransition,
+                      subtitle: _transitionLabel(l, transition),
+                      onTap: () => _showTransitionDialog(context),
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: mainTabFadeUpEnabledNotifier,
+                  builder: (context, enabled, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.motion_photos_auto_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsMainTabFadeUp,
+                      subtitle: l.settingsMainTabFadeUpDesc,
+                      value: enabled,
+                      onChanged: _settingsSetMainTabFadeUpEnabled,
+                    );
+                  },
+                ),
                 SettingsTile(
                   icon: Icons.app_shortcut_rounded,
                   iconBackgroundColor: cs.secondaryContainer.withValues(

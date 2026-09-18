@@ -933,6 +933,8 @@ void main() async {
     0,
     7,
   );
+  mainTabFadeUpEnabledNotifier.value =
+      prefs.getBool('mainTabFadeUpEnabled') ?? false;
   useMaterialYouNotifier.value = prefs.getBool('useMaterialYou') ?? true;
   isAmoledNotifier.value = prefs.getBool('isAmoled') ?? false;
   customColorSeedNotifier.value = prefs.getInt('customColorSeed') ?? 0xFF0F766E;
@@ -1391,8 +1393,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   // adjacent day. Keep it explicit until the carousel has completed.
   int? _dayCarouselTargetDay;
   AnimationController? _dayCarouselAnimController;
+  Animation<double>? _dayCarouselAnimation;
   bool _isWeekCarouselAnimating = false;
   bool _isDayCarouselAnimating = false;
+  bool _suppressDayTabControllerRebuild = false;
   late final AnimationController _cacheRefreshController;
   int _weekFetchGeneration = 0;
   bool _isExportingTimetable = false;
@@ -2437,10 +2441,16 @@ Timer? _progressiveNotificationTimer;
   void _onHiddenSubjectsChanged() => setState(() {});
 
   void _onSelectedDayChanged() {
-    // TabBarView used to repaint the selected day implicitly. The custom day
-    // carousel below renders only the active page, so tab taps need to request
-    // that repaint explicitly as well.
-    if (mounted && !_isDayCarouselAnimating) setState(() {});
+    // A TabBar tap calls TabController.animateTo before its onTap callback.
+    // Ignore that temporary controller state: the day carousel owns the
+    // visual transition and commits the selected day only when it is finished.
+    if (!mounted ||
+        _isDayCarouselAnimating ||
+        _suppressDayTabControllerRebuild ||
+        _tabController.indexIsChanging) {
+      return;
+    }
+    setState(() {});
   }
 
   void _onDemoModeChanged() {
@@ -2720,8 +2730,7 @@ Timer? _progressiveNotificationTimer;
   }
 
   Widget _buildDayCarousel(double width) {
-    final offset = _dayCarouselOffset.clamp(-width, width);
-    final dayIndex = _tabController.index.clamp(0, 4);
+    final dayIndex = _tabController.index.clamp(0, 4).toInt();
 
     Widget dayAt(int index) {
       if (index >= 0 && index < 5) return _buildGridView(index);
@@ -2738,38 +2747,61 @@ Timer? _progressiveNotificationTimer;
       return _buildAdjacentWeekView(direction);
     }
 
+    final targetDay = _dayCarouselTargetDay;
+    final previousIndex =
+        targetDay != null && targetDay < dayIndex ? targetDay : dayIndex - 1;
+    final nextIndex =
+        targetDay != null && targetDay > dayIndex ? targetDay : dayIndex + 1;
+
+    // Build the expensive timetable grids once. During a programmatic date-tab
+    // animation only the cheap Transform widgets below are rebuilt.
+    final currentPage = SizedBox(width: width, child: dayAt(dayIndex));
+    final previousPage = targetDay == null || targetDay < dayIndex
+        ? SizedBox(width: width, child: dayAt(previousIndex))
+        : null;
+    final nextPage = targetDay == null || targetDay > dayIndex
+        ? SizedBox(width: width, child: dayAt(nextIndex))
+        : null;
+
+    Widget buildPages(double rawOffset) {
+      final offset = rawOffset.clamp(-width, width).toDouble();
+      return ClipRect(
+        child: Stack(
+          children: [
+            if (offset > 0 && previousPage != null)
+              Transform.translate(
+                offset: Offset(-width + offset, 0),
+                child: previousPage,
+              ),
+            if (offset < 0 && nextPage != null)
+              Transform.translate(
+                offset: Offset(width + offset, 0),
+                child: nextPage,
+              ),
+            Transform.translate(
+              offset: Offset(offset, 0),
+              child: currentPage,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final animation = _dayCarouselAnimation;
+    final pages = _isDayCarouselAnimating && animation != null
+        ? AnimatedBuilder(
+            animation: animation,
+            builder: (context, _) => buildPages(animation.value),
+          )
+        : buildPages(_dayCarouselOffset);
+
     return GestureDetector(
       key: const ValueKey('day-timetable-carousel'),
       behavior: HitTestBehavior.opaque,
       onHorizontalDragStart: _onDayCarouselDragStart,
       onHorizontalDragUpdate: _onDayCarouselDragUpdate,
       onHorizontalDragEnd: _onDayCarouselDragEnd,
-      child: ClipRect(
-        child: Stack(
-          children: [
-            if (offset > 0)
-              Transform.translate(
-                offset: Offset(-width + offset, 0),
-                child: SizedBox(
-                  width: width,
-                  child: dayAt(_dayCarouselTargetDay ?? dayIndex - 1),
-                ),
-              ),
-            if (offset < 0)
-              Transform.translate(
-                offset: Offset(width + offset, 0),
-                child: SizedBox(
-                  width: width,
-                  child: dayAt(_dayCarouselTargetDay ?? dayIndex + 1),
-                ),
-              ),
-            Transform.translate(
-              offset: Offset(offset, 0),
-              child: SizedBox(width: width, child: dayAt(dayIndex)),
-            ),
-          ],
-        ),
-      ),
+      child: pages,
     );
   }
 
@@ -2832,20 +2864,28 @@ Timer? _progressiveNotificationTimer;
 
   void _onDayTabBarTap(int targetDay) {
     if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
-    // TabBar owns the controller and may update it either immediately before
-    // or immediately after its callback. Capture the old day, then restore it
-    // on the next frame before starting our controlled carousel transition.
+    // Tapping the already-selected date must remain a no-op. For a real tab
+    // change TabBar has already started animateTo(), so indexIsChanging is true.
+    if (!_tabController.indexIsChanging &&
+        _tabController.index == targetDay) {
+      return;
+    }
+
+    // TabBar has already started changing the controller when this callback
+    // runs. Restore the previous day synchronously so the heavy timetable grid
+    // never renders the target once before our own carousel begins.
     final previousDay = _tabController.index == targetDay
         ? _tabController.previousIndex
         : _tabController.index;
     if (previousDay == targetDay) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _isDayCarouselAnimating || _isWeekCarouselAnimating) {
-        return;
-      }
+
+    _suppressDayTabControllerRebuild = true;
+    try {
       _tabController.animateTo(previousDay, duration: Duration.zero);
-      _animateDayTabTo(targetDay);
-    });
+    } finally {
+      _suppressDayTabControllerRebuild = false;
+    }
+    _animateDayTabTo(targetDay);
   }
 
   void _animateDayCarouselTo(
@@ -2874,9 +2914,7 @@ Timer? _progressiveNotificationTimer;
             curve: Curves.easeOutCubic,
           ),
         );
-    _dayCarouselAnimController!.addListener(() {
-      if (mounted) setState(() => _dayCarouselOffset = animation.value);
-    });
+    _dayCarouselAnimation = animation;
     _dayCarouselAnimController!.addStatusListener((status) {
       if (status != AnimationStatus.completed || !mounted) return;
 
@@ -2909,6 +2947,7 @@ Timer? _progressiveNotificationTimer;
       setState(() {
         _dayCarouselOffset = 0;
         _dayCarouselTargetDay = null;
+        _dayCarouselAnimation = null;
         _isDayCarouselAnimating = false;
       });
     });
@@ -11244,8 +11283,8 @@ class _LessonDetailSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => StudentNotesPage(
+                    _buildBouncyRoute(
+                      StudentNotesPage(
                         notes: studentNotes,
                         registerNotes: registerNotes,
                       ),
@@ -11264,8 +11303,8 @@ class _LessonDetailSheet extends StatelessWidget {
               InkWell(
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => StudentNotesPage(
+                    _buildBouncyRoute(
+                      StudentNotesPage(
                         notes: studentNotes,
                         registerNotes: registerNotes,
                       ),
@@ -11284,9 +11323,9 @@ class _LessonDetailSheet extends StatelessWidget {
             if (homework.isNotEmpty)
               InkWell(
                 onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const HomeworkPage()),
-                  );
+                  Navigator.of(
+                    context,
+                  ).push(_buildBouncyRoute(const HomeworkPage()));
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: _row(
@@ -12721,8 +12760,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) => _SchoolNotificationDetailPage(
+                                _buildBouncyRoute(
+                                  _SchoolNotificationDetailPage(
                                     item: item,
                                     isInbox: _showInbox,
                                   ),

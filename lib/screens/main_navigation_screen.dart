@@ -752,16 +752,14 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SettingsAiPage()));
+    await Navigator.of(context).push(
+      _buildBouncyRoute(const SettingsAiPage()),
+    );
   }
 
   Future<void> _openPromptEditor() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const SettingsAiPage(openPromptEditor: true),
-      ),
+      _buildBouncyRoute(const SettingsAiPage(openPromptEditor: true)),
     );
   }
 
@@ -3129,6 +3127,82 @@ ${l.ui('aiAssistantRules')}''';
   }
 }
 
+class _MainTabTransitionLayer extends StatelessWidget {
+  final bool active;
+  final int relativePosition;
+  final int transitionType;
+  final Widget child;
+
+  const _MainTabTransitionLayer({
+    super.key,
+    required this.active,
+    required this.relativePosition,
+    required this.transitionType,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final type = transitionType.clamp(0, 7);
+    final duration = reduceMotion ? Duration.zero : _pageMotionDuration(type);
+    final direction = relativePosition < 0 ? -1.0 : 1.0;
+    final hiddenOffset = _pageMotionOffset(type, direction: direction);
+    final hiddenScale = _pageMotionScale(type);
+    final hiddenBlur = _pageMotionBlur(type);
+    final curve = _pageMotionCurve(type);
+
+    Widget content = child;
+
+    if (hiddenBlur > 0) {
+      content = TweenAnimationBuilder<double>(
+        key: ValueKey('main-tab-blur-$active-$type'),
+        tween: Tween<double>(
+          begin: active ? hiddenBlur : 0,
+          end: active ? 0 : hiddenBlur,
+        ),
+        duration: duration,
+        curve: curve,
+        child: content,
+        builder: (context, sigma, child) => ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+          child: child,
+        ),
+      );
+    }
+
+    content = AnimatedScale(
+      scale: active ? 1 : hiddenScale,
+      duration: duration,
+      curve: curve,
+      alignment: Alignment.center,
+      child: content,
+    );
+
+    content = AnimatedSlide(
+      offset: active ? Offset.zero : hiddenOffset,
+      duration: duration,
+      curve: curve,
+      child: content,
+    );
+
+    content = AnimatedOpacity(
+      opacity: active ? 1 : 0,
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      child: content,
+    );
+
+    return IgnorePointer(
+      ignoring: !active,
+      child: ExcludeSemantics(
+        excluding: !active,
+        child: RepaintBoundary(child: content),
+      ),
+    );
+  }
+}
+
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
   bool _showTutorial = false;
@@ -3460,21 +3534,53 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           : mq.padding.bottom + 104,
                     ),
                   ),
-                  child: IndexedStack(
-                    index: _selectedIndex,
-                    children: _pages
-                        .asMap()
-                        .entries
-                        .map(
-                          (entry) => TickerMode(
-                            enabled: entry.key == _selectedIndex,
-                            child: _buildPageWithBackground(
-                              context,
-                              entry.value,
-                            ),
-                          ),
-                        )
-                        .toList(),
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: mainTabFadeUpEnabledNotifier,
+                    builder: (context, animationsEnabled, _) {
+                      final pages = _pages;
+
+                      if (!animationsEnabled ||
+                          MediaQuery.of(context).disableAnimations) {
+                        return IndexedStack(
+                          index: _selectedIndex,
+                          children: pages.asMap().entries.map((entry) {
+                            final active = entry.key == _selectedIndex;
+                            return TickerMode(
+                              enabled: active,
+                              child: _buildPageWithBackground(
+                                context,
+                                entry.value,
+                              ),
+                            );
+                          }).toList(growable: false),
+                        );
+                      }
+
+                      return ValueListenableBuilder<int>(
+                        valueListenable: pageTransitionNotifier,
+                        builder: (context, transitionType, _) {
+                          return Stack(
+                            fit: StackFit.expand,
+                            children: pages.asMap().entries.map((entry) {
+                              final active = entry.key == _selectedIndex;
+                              return _MainTabTransitionLayer(
+                                key: ValueKey('main-tab-layer-${entry.key}'),
+                                active: active,
+                                relativePosition: entry.key - _selectedIndex,
+                                transitionType: transitionType,
+                                child: TickerMode(
+                                  enabled: active,
+                                  child: _buildPageWithBackground(
+                                    context,
+                                    entry.value,
+                                  ),
+                                ),
+                              );
+                            }).toList(growable: false),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ),

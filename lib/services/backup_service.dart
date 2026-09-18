@@ -15,6 +15,7 @@ class BackupService {
     'showCancelled',
     'blurEnabled',
     'surfaceBlurEnabled',
+    'mainTabFadeUpEnabled',
     'lessonShowSubjectIcons',
     'glowEffectsEnabled',
     'backgroundAnimations',
@@ -28,6 +29,7 @@ class BackupService {
   static const Set<String> _intKeys = {
     'themeMode',
     'backgroundAnimationStyle',
+    'pageTransition',
     'surfaceCornerMode',
     'surfaceCornerRadius',
   };
@@ -247,6 +249,9 @@ class BackupService {
         }
         if (key == 'backgroundAnimationStyle') {
           normalized = normalized.clamp(0, 10);
+        }
+        if (key == 'pageTransition') {
+          normalized = normalized.clamp(0, 7);
         }
         await prefs.setInt(key, normalized);
       }
