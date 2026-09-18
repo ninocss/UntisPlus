@@ -1,0 +1,24 @@
+<b>Untis+ is a privacy-first companion app for WebUntis.</b>
+
+Untis+ gives students and teachers a fast, modern and secure way to view their school timetable, homework, exams, absences and messages - directly on their device. All credentials and schedule data stay strictly on your phone and are never sent to any central server.
+
+<h3>Features</h3>
+<ul>
+<li><b>Advanced timetable</b> - fast, fluid navigation for daily and weekly class schedules.</li>
+<li><b>Exam and info tracker</b> - a consolidated overview of upcoming exams and direct school announcements.</li>
+<li><b>Homework and lesson notes</b> - seamlessly integrated straight from WebUntis.</li>
+<li><b>Absences and change center</b> - offline-first absence history plus a deduplicated timeline of cancellations and room, teacher, subject and time changes.</li>
+<li><b>Multi-account by design</b> - account-scoped schedules, personal data, widgets, alarms, credentials and caches.</li>
+<li><b>Home screen widgets</b> - current lesson, daily schedule, homework and notification widgets at a glance.</li>
+<li><b>Reliable alarms</b> - notifications for lesson start, changes and reminders.</li>
+<li><b>Local intelligence</b> - optional on-device AI helpers that manage workflows privately, without sending your data to the cloud.</li>
+<li><b>Material You</b> - dynamic color, light and dark themes, plus several alternate app icons.</li>
+</ul>
+
+<h3>Privacy</h3>
+Untis+ is built with privacy as the default. Authentication details, credentials and schedule data are stored locally on your device using encrypted storage and are never shared with central servers. The optional local AI features run on your device; any model downloads only happen when you explicitly start them.
+
+Untis+ is an independent developer project. It is not affiliated, associated, authorized, endorsed by or in any way officially connected with WebUntis or any of its subsidiaries or affiliates.
+
+Source code and issue tracker:
+https://github.com/ninocss/UntisPlus

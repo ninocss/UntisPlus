@@ -69,3 +69,9 @@ macos/
 docs/
 changelog.json
 test/
+
+# F-Droid / IzzyOnDroid fastlane metadata – must be tracked for store listings
+!fastlane/**/*.txt
+!fastlane/**/*.png
+!fastlane/**/*.md
+security-results/

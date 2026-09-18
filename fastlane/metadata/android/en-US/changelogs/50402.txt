@@ -1,0 +1,6 @@
+This hotfix resolves a crash some users experienced on launch when a notification was presented. It also fixes local AI model downloads freezing on iOS.
+
+Highlights:
+- Fixed launch crash when a notification was shown
+- Fixed local AI model downloads freezing
+- Smoother, more reliable background notifications

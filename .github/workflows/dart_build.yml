@@ -80,6 +80,7 @@ jobs:
       split_per_abi: ${{ steps.meta.outputs.split_per_abi }}
       last_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}
       app_version: ${{ steps.meta.outputs.app_version }}
+      version_code: ${{ steps.meta.outputs.version_code }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -190,6 +191,16 @@ jobs:
 
           echo "app_version=$app_version"
 
+          # Derive an Android versionCode from the semantic version so every
+          # release gets a unique, increasing code (required by F-Droid /
+          # IzzyOnDroid repositories). Format: MAJOR*10000 + MINOR*100 + PATCH.
+          version_code="1"
+          if [[ "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            IFS='.' read -r v_major v_minor v_patch <<< "$app_version"
+            version_code=$((10#$v_major * 10000 + 10#$v_minor * 100 + 10#$v_patch))
+          fi
+          echo "version_code=$version_code"
+
           {
             echo "release_tag=$resolved_tag"
             echo "release_name=$resolved_name"
@@ -203,6 +214,7 @@ jobs:
             echo "split_per_abi=$split_per_abi"
             echo "last_semver_tag=$last_tag"
             echo "app_version=$app_version"
+            echo "version_code=$version_code"
           } >> "$GITHUB_OUTPUT"
 
       - name: Summary
@@ -219,6 +231,8 @@ jobs:
           echo "- build_ipa: ${{ steps.meta.outputs.build_ipa }}" >> $GITHUB_STEP_SUMMARY
           echo "- split_per_abi: ${{ steps.meta.outputs.split_per_abi }}" >> $GITHUB_STEP_SUMMARY
           echo "- latest_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- app_version: ${{ steps.meta.outputs.app_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- version_code: ${{ steps.meta.outputs.version_code }}" >> $GITHUB_STEP_SUMMARY
 
   quality_checks:
     name: Analyse & Tests
@@ -348,10 +362,12 @@ jobs:
         run: |
           # Keep a universal recovery APK and the ABI-specific APKs used by
           # the in-app updater. All artifacts are signed by the same key.
-          flutter build apk --release
+          # --build-number keeps versionCode unique/increasing per release
+          # (required by F-Droid / IzzyOnDroid repositories).
+          flutter build apk --release --build-number=${{ needs.meta.outputs.version_code }}
           mkdir -p universal_apk
           cp build/app/outputs/flutter-apk/app-release.apk universal_apk/
-          flutter build apk --release --split-per-abi
+          flutter build apk --release --split-per-abi --build-number=${{ needs.meta.outputs.version_code }}
 
       - name: Prepare APK Artifacts
         run: |
@@ -457,7 +473,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Android AAB
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --build-number=${{ needs.meta.outputs.version_code }}
 
       - name: Prepare AAB Artifact
         run: |
