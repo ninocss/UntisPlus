@@ -59,6 +59,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    dependenciesInfo {
+        // Disable Google dependency-metadata blob (flagged by IzzyOnDroid/F-Droid APK scanners)
+        includeInApk = false
+        includeInBundle = false
+    }
 }
 
 flutter {
