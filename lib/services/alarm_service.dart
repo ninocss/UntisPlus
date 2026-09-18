@@ -636,10 +636,17 @@ class AlarmService {
           'nativeCopy': nativeCopy,
         },
     ];
-    try {
-      await _channel.invokeMethod<void>('replacePlans', {'plans': plans});
-    } on PlatformException catch (error) {
-      debugPrint('Alarm scheduling unavailable: ${error.code}');
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        await _channel.invokeMethod<void>('replacePlans', {'plans': plans});
+        return;
+      } on PlatformException catch (error) {
+        if (attempt == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 120));
+          continue;
+        }
+        debugPrint('Alarm scheduling unavailable: ${error.code}');
+      }
     }
   }
 
