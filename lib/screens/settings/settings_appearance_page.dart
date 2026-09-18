@@ -925,6 +925,24 @@ class SettingsAppearancePage extends StatelessWidget {
               SettingsGroup(
                 title: l.settingsBackgroundAnimations,
                 children: [
+                  if (capabilities.supportsCustomBackgrounds)
+                    SettingsTile(
+                      icon: Icons.wallpaper_rounded,
+                      iconBackgroundColor: cs.secondaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onSecondaryContainer,
+                      title: l.settingsCustomBackgrounds,
+                      subtitle: l.settingsCustomBackgroundsDesc,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          _buildBouncyRoute(
+                            const CustomBackgroundEditorScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   if (capabilities.supportsBackgroundMotion)
                     ValueListenableBuilder<bool>(
                       valueListenable: backgroundAnimationsNotifier,
@@ -939,28 +957,6 @@ class SettingsAppearancePage extends StatelessWidget {
                           subtitle: l.settingsBackgroundAnimationsDesc,
                           value: value,
                           onChanged: _settingsSetBackgroundAnimations,
-                        );
-                      },
-                    ),
-                  if (capabilities.supportsBackgroundMotion)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: backgroundAnimationsNotifier,
-                      builder: (context, animationsEnabled, _) {
-                        if (!animationsEnabled) return const SizedBox.shrink();
-                        return ValueListenableBuilder<bool>(
-                          valueListenable: backgroundGyroscopeNotifier,
-                          builder: (context, value, _) {
-                            return SettingsSwitchTile(
-                              icon: Icons.screen_rotation_rounded,
-                              iconBackgroundColor: cs.tertiaryContainer
-                                  .withValues(alpha: 0.7),
-                              iconColor: cs.onTertiaryContainer,
-                              title: l.settingsBackgroundGyroscope,
-                              subtitle: l.settingsBackgroundGyroscopeDesc,
-                              value: value,
-                              onChanged: _settingsSetBackgroundGyroscope,
-                            );
-                          },
                         );
                       },
                     ),
@@ -985,21 +981,25 @@ class SettingsAppearancePage extends StatelessWidget {
                         );
                       },
                     ),
-                  if (capabilities.supportsCustomBackgrounds)
-                    SettingsTile(
-                      icon: Icons.wallpaper_rounded,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onSecondaryContainer,
-                      title: l.settingsCustomBackgrounds,
-                      subtitle: l.settingsCustomBackgroundsDesc,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          _buildBouncyRoute(
-                            const CustomBackgroundEditorScreen(),
-                          ),
+                  if (capabilities.supportsBackgroundMotion)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: backgroundAnimationsNotifier,
+                      builder: (context, animationsEnabled, _) {
+                        if (!animationsEnabled) return const SizedBox.shrink();
+                        return ValueListenableBuilder<bool>(
+                          valueListenable: backgroundGyroscopeNotifier,
+                          builder: (context, value, _) {
+                            return SettingsSwitchTile(
+                              icon: Icons.screen_rotation_rounded,
+                              iconBackgroundColor: cs.tertiaryContainer
+                                  .withValues(alpha: 0.7),
+                              iconColor: cs.onTertiaryContainer,
+                              title: l.settingsBackgroundGyroscope,
+                              subtitle: l.settingsBackgroundGyroscopeDesc,
+                              value: value,
+                              onChanged: _settingsSetBackgroundGyroscope,
+                            );
+                          },
                         );
                       },
                     ),
