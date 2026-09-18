@@ -2754,8 +2754,12 @@ Timer? _progressiveNotificationTimer;
   Widget _buildMaterialWeekCarousel(double width) {
     final controller =
         _materialWeekCarouselController ??= CarouselController(initialItem: 1);
-    final itemExtent = width > 24 ? width - 18 : width;
-    final shrinkExtent = itemExtent * 0.82;
+    // Keep a visible neighbour and let edge items collapse substantially.
+    // This makes the official Material 3 uncontained carousel feel distinct
+    // from a regular page swipe while retaining the timetable's full gesture
+    // and index semantics.
+    final itemExtent = width <= 0 ? 1.0 : math.max(1.0, width * 0.88);
+    final shrinkExtent = math.max(56.0, itemExtent * 0.16);
 
     final children = <Widget>[
       _materialCarouselItem(
@@ -2787,6 +2791,7 @@ Timer? _progressiveNotificationTimer;
       child: CarouselView(
         key: const ValueKey('material-week-timetable-carousel'),
         controller: controller,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         itemExtent: itemExtent,
         shrinkExtent: shrinkExtent,
         itemSnapping: true,
@@ -2795,7 +2800,7 @@ Timer? _progressiveNotificationTimer;
         elevation: 0,
         itemClipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(30),
         ),
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         onIndexChanged: (index) => _materialWeekIndex = index,
@@ -2834,8 +2839,12 @@ Timer? _progressiveNotificationTimer;
       return _buildGridView(item - 1);
     }
 
-    final itemExtent = width > 24 ? width - 18 : width;
-    final shrinkExtent = itemExtent * 0.82;
+    // Keep a visible neighbour and let edge items collapse substantially.
+    // This makes the official Material 3 uncontained carousel feel distinct
+    // from a regular page swipe while retaining the timetable's full gesture
+    // and index semantics.
+    final itemExtent = width <= 0 ? 1.0 : math.max(1.0, width * 0.88);
+    final shrinkExtent = math.max(56.0, itemExtent * 0.16);
 
     return NotificationListener<ScrollEndNotification>(
       onNotification: (notification) {
@@ -2852,6 +2861,7 @@ Timer? _progressiveNotificationTimer;
       child: CarouselView(
         key: const ValueKey('day-timetable-carousel'),
         controller: controller,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         itemExtent: itemExtent,
         shrinkExtent: shrinkExtent,
         itemSnapping: true,
@@ -2860,7 +2870,7 @@ Timer? _progressiveNotificationTimer;
         elevation: 0,
         itemClipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(30),
         ),
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         onIndexChanged: (index) => _materialDayIndex = index,
@@ -3306,7 +3316,7 @@ Timer? _progressiveNotificationTimer;
           controller
               .animateToItem(
                 targetItem,
-                duration: const Duration(milliseconds: 360),
+                duration: const Duration(milliseconds: 420),
                 curve: Curves.easeInOutCubicEmphasized,
               )
               .then((_) {
