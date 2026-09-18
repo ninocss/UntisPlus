@@ -506,11 +506,9 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
                   ),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const CustomWidgetEditorPage(),
-                    ),
-                  ),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).push(_buildBouncyRoute(const CustomWidgetEditorPage())),
                 ),
               ],
             ),
