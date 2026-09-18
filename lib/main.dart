@@ -6668,7 +6668,7 @@ Timer? _progressiveNotificationTimer;
                       TabBar(
                 controller: _tabController,
                 onTap: _onDayTabBarTap,
-                indicatorColor: Colors.transparent,
+                indicator: const BoxDecoration(),
                 indicatorWeight: 0,
                 labelStyle: untisThemeTextStyle(
                   context,
