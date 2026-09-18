@@ -169,6 +169,52 @@ Widget _blurEffect({
   );
 }
 
+double _resolvedSurfaceCornerRadius(double baseRadius) {
+  switch (surfaceCornerModeNotifier.value) {
+    case 1:
+      return math.min(baseRadius, 12.0);
+    case 2:
+      return surfaceCornerRadiusNotifier.value.clamp(0, 48).toDouble();
+    case 0:
+    default:
+      return baseRadius;
+  }
+}
+
+BorderRadiusGeometry _resolvedSurfaceBorderRadius(
+  BorderRadiusGeometry baseRadius,
+) {
+  final mode = surfaceCornerModeNotifier.value;
+  if (mode == 0) return baseRadius;
+
+  if (baseRadius is! BorderRadius) {
+    return BorderRadius.circular(
+      mode == 1
+          ? 12
+          : surfaceCornerRadiusNotifier.value.clamp(0, 48).toDouble(),
+    );
+  }
+
+  Radius resolve(Radius original) {
+    if (original.x == 0 && original.y == 0) return Radius.zero;
+    if (mode == 1) {
+      return Radius.elliptical(
+        math.min(original.x, 12),
+        math.min(original.y, 12),
+      );
+    }
+    final radius = surfaceCornerRadiusNotifier.value.clamp(0, 48).toDouble();
+    return Radius.circular(radius);
+  }
+
+  return BorderRadius.only(
+    topLeft: resolve(baseRadius.topLeft),
+    topRight: resolve(baseRadius.topRight),
+    bottomLeft: resolve(baseRadius.bottomLeft),
+    bottomRight: resolve(baseRadius.bottomRight),
+  );
+}
+
 class ThemedSurface extends StatelessWidget {
   final Widget child;
   final BorderRadiusGeometry? borderRadius;
@@ -178,6 +224,7 @@ class ThemedSurface extends StatelessWidget {
   final Border? border;
   final bool blur;
   final bool respectSurfaceBlurPreference;
+  final bool respectSurfaceCornerPreference;
 
   const ThemedSurface({
     super.key,
@@ -189,24 +236,31 @@ class ThemedSurface extends StatelessWidget {
     this.border,
     this.blur = true,
     this.respectSurfaceBlurPreference = true,
+    this.respectSurfaceCornerPreference = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tokens = untisThemeTokensOf(context);
-    final radius = borderRadius ?? BorderRadius.circular(tokens.surfaceRadius);
-    return ValueListenableBuilder<bool>(
-      valueListenable: blurEnabledNotifier,
-      builder: (context, blurEnabled, _) {
-        return ValueListenableBuilder<bool>(
-          valueListenable: surfaceBlurEnabledNotifier,
-          builder: (context, surfaceBlurEnabled, _) {
-            final blurActive =
-                blur &&
-                tokens.supportsBlur &&
-                blurEnabled &&
-                (!respectSurfaceBlurPreference || surfaceBlurEnabled);
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        blurEnabledNotifier,
+        surfaceBlurEnabledNotifier,
+        surfaceCornerModeNotifier,
+        surfaceCornerRadiusNotifier,
+      ]),
+      builder: (context, _) {
+        final cs = Theme.of(context).colorScheme;
+        final tokens = untisThemeTokensOf(context);
+        final baseRadius =
+            borderRadius ?? BorderRadius.circular(tokens.surfaceRadius);
+        final radius = respectSurfaceCornerPreference
+            ? _resolvedSurfaceBorderRadius(baseRadius)
+            : baseRadius;
+        final blurActive =
+            blur &&
+            tokens.supportsBlur &&
+            blurEnabledNotifier.value &&
+            (!respectSurfaceBlurPreference || surfaceBlurEnabledNotifier.value);
         final translucent =
             color ??
             cs.surfaceContainerLow.withValues(alpha: tokens.surfaceOpacity);
@@ -226,6 +280,7 @@ class ThemedSurface extends StatelessWidget {
                         : cs.outlineVariant.withValues(alpha: 0.46)),
               width: tokens.borderWidth,
             );
+
         Widget surface = DecoratedBox(
           decoration: BoxDecoration(
             color: gradient == null ? effectiveColor : null,
@@ -273,25 +328,24 @@ class ThemedSurface extends StatelessWidget {
                 )
               : surface,
         );
-            return RepaintBoundary(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: radius,
-                  boxShadow: [
-                    BoxShadow(
-                      color: !tokens.glowEffectsEnabled &&
-                              tokens.id == AppThemeId.cyber
-                          ? cs.shadow.withValues(alpha: 0.12)
-                          : tokens.shadowColor,
-                      offset: tokens.shadowOffset,
-                      blurRadius: tokens.hardShadow ? 0 : 20,
-                    ),
-                  ],
+
+        return RepaintBoundary(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              boxShadow: [
+                BoxShadow(
+                  color: !tokens.glowEffectsEnabled &&
+                          tokens.id == AppThemeId.cyber
+                      ? cs.shadow.withValues(alpha: 0.12)
+                      : tokens.shadowColor,
+                  offset: tokens.shadowOffset,
+                  blurRadius: tokens.hardShadow ? 0 : 20,
                 ),
-                child: surface,
-              ),
-            );
-          },
+              ],
+            ),
+            child: surface,
+          ),
         );
       },
     );
@@ -349,6 +403,7 @@ Widget _sheetSurface({
     sigma: 45,
     blur: blur,
     respectSurfaceBlurPreference: false,
+    respectSurfaceCornerPreference: false,
     child: child,
   );
 }
@@ -415,12 +470,35 @@ MenuStyle _untisMenuStyle(BuildContext context) {
     ),
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(_resolvedSurfaceCornerRadius(22)),
         side: BorderSide(
           color: cs.outlineVariant.withValues(alpha: 0.48),
         ),
       ),
     ),
+  );
+}
+
+Widget _untisDropdownMenu({
+  required BuildContext context,
+  required List<Widget> menuChildren,
+  required MenuAnchorChildBuilder builder,
+  MenuController? controller,
+  Offset? alignmentOffset = Offset.zero,
+  bool consumeOutsideTap = false,
+  bool useRootOverlay = false,
+  Widget? child,
+}) {
+  return MenuAnchor(
+    controller: controller,
+    style: _untisMenuStyle(context),
+    alignmentOffset: alignmentOffset,
+    consumeOutsideTap: consumeOutsideTap,
+    useRootOverlay: useRootOverlay,
+    animated: !MediaQuery.of(context).disableAnimations,
+    menuChildren: menuChildren,
+    builder: builder,
+    child: child,
   );
 }
 
@@ -436,8 +514,8 @@ Widget _m3SelectionMenu({
   required IconData icon,
 }) {
   final cs = Theme.of(context).colorScheme;
-  return MenuAnchor(
-    style: _untisMenuStyle(context),
+  return _untisDropdownMenu(
+    context: context,
     menuChildren: [
       for (final entry in entries)
         MenuItemButton(
@@ -700,41 +778,50 @@ class SettingsGroup extends StatelessWidget {
               ),
             ),
           ],
-          _glassContainer(
-            context: context,
-            borderRadius: BorderRadius.circular(tokens.surfaceRadius),
-            color: cs.surfaceContainerLow.withValues(alpha: 0.5),
-            border: Border.all(
-              color: tokens.id == AppThemeId.manga
-                  ? cs.outline
-                  : cs.primary.withValues(alpha: 0.20),
-              width: tokens.borderWidth,
-            ),
-            child: Padding(
-              padding: padding ?? EdgeInsets.zero,
-              child: Material(
-                type: MaterialType.transparency,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(tokens.surfaceRadius),
+          AnimatedBuilder(
+            animation: Listenable.merge([
+              surfaceCornerModeNotifier,
+              surfaceCornerRadiusNotifier,
+            ]),
+            builder: (context, _) {
+              final radius = _resolvedSurfaceBorderRadius(
+                BorderRadius.circular(tokens.surfaceRadius),
+              );
+              return _glassContainer(
+                context: context,
+                borderRadius: radius,
+                color: cs.surfaceContainerLow.withValues(alpha: 0.5),
+                border: Border.all(
+                  color: tokens.id == AppThemeId.manga
+                      ? cs.outline
+                      : cs.primary.withValues(alpha: 0.20),
+                  width: tokens.borderWidth,
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (int i = 0; i < validChildren.length; i++) ...[
-                      validChildren[i],
-                      if (i < validChildren.length - 1)
-                        Divider(
-                          height: 1,
-                          indent: 58,
-                          endIndent: 16,
-                          color: cs.outlineVariant.withValues(alpha: 0.35),
-                        ),
-                    ],
-                  ],
+                child: Padding(
+                  padding: padding ?? EdgeInsets.zero,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    shape: RoundedRectangleBorder(borderRadius: radius),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (int i = 0; i < validChildren.length; i++) ...[
+                          validChildren[i],
+                          if (i < validChildren.length - 1)
+                            Divider(
+                              height: 1,
+                              indent: 58,
+                              endIndent: 16,
+                              color: cs.outlineVariant.withValues(alpha: 0.35),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
