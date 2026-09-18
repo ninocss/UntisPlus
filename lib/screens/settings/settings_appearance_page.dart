@@ -1077,7 +1077,7 @@ class SettingsAppearancePage extends StatelessWidget {
                   valueListenable: mainTabFadeUpEnabledNotifier,
                   builder: (context, enabled, _) {
                     return SettingsSwitchTile(
-                      icon: Icons.vertical_align_top_rounded,
+                      icon: Icons.motion_photos_auto_rounded,
                       iconBackgroundColor: cs.tertiaryContainer.withValues(
                         alpha: 0.7,
                       ),
