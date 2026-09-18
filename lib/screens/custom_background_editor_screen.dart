@@ -1396,8 +1396,8 @@ class _CustomBackgroundEditorScreenState
               icon: const Icon(Icons.upload_file_rounded),
               onPressed: _showImportSheet,
             ),
-            MenuAnchor(
-              style: _untisMenuStyle(context),
+            _untisDropdownMenu(
+              context: context,
               menuChildren: [
                 MenuItemButton(
                   leadingIcon: const Icon(Icons.ios_share_rounded),
