@@ -61,20 +61,6 @@ class SettingsNotificationsPage extends StatelessWidget {
                     _buildBouncyRoute(const SettingsWidgetsPage()),
                   ),
                 ),
-                if (!kIsWeb && Platform.isAndroid)
-                  SettingsTile(
-                    icon: Icons.alarm_rounded,
-                    iconBackgroundColor: cs.primaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onPrimaryContainer,
-                    title: l.ui('notificationsAlarms'),
-                    subtitle: l.ui('notificationsAlarmsDesc'),
-                    onTap: () => Navigator.push(
-                      context,
-                      _buildBouncyRoute(const SettingsAlarmPage()),
-                    ),
-                  ),
                 ValueListenableBuilder<bool>(
                   valueListenable: progressivePushNotifier,
                   builder: (context, value, _) {
