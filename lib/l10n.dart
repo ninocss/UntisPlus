@@ -711,6 +711,8 @@ class AppL10n {
   String get settingsPageTransitionEaseOut =>
       _t('settingsPageTransitionEaseOut');
   String get settingsPageTransitionExpo => _t('settingsPageTransitionExpo');
+  String get settingsMainTabFadeUp => _t('settingsMainTabFadeUp');
+  String get settingsMainTabFadeUpDesc => _t('settingsMainTabFadeUpDesc');
   String get settingsProgressivePush => _t('settingsProgressivePush');
   String get settingsProgressivePushDesc => _t('settingsProgressivePushDesc');
   String get settingsDailyBriefingPush => _t('settingsDailyBriefingPush');
@@ -1651,6 +1653,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransitionEaseIn': 'Ease In',
       'settingsPageTransitionEaseOut': 'Ease Out',
       'settingsPageTransitionExpo': 'Expo',
+      'settingsMainTabFadeUp': 'Main-Tab Objekt-Fade-up',
+      'settingsMainTabFadeUpDesc':
+          'Blendet den Inhalt jedes Main-Tabs mit einer Expo-Bewegung von unten nach oben ein.',
       'settingsUseMaterialYou': 'Material You',
       'settingsUseMaterialYouDesc':
           'Farben automatisch an Systemakzentfarbe anpassen',
@@ -2800,6 +2805,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransitionEaseIn': 'Ease In',
       'settingsPageTransitionEaseOut': 'Ease Out',
       'settingsPageTransitionExpo': 'Expo',
+      'settingsMainTabFadeUp': 'Main-tab object fade-up',
+      'settingsMainTabFadeUpDesc':
+          'Fades each main-tab content upward with an Expo curve when the tab opens.',
       'settingsProgressivePush': 'Progressive push notification',
       'settingsProgressivePushDesc':
           'Show the current lesson as a persistent notification',
@@ -3688,6 +3696,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransitionEaseIn': 'Ease In',
       'settingsPageTransitionEaseOut': 'Ease Out',
       'settingsPageTransitionExpo': 'Expo',
+      'settingsMainTabFadeUp': 'Fondu ascendant des onglets',
+      'settingsMainTabFadeUpDesc':
+          'Fait apparaître le contenu de chaque onglet principal vers le haut avec une courbe Expo.',
       'bgEditorUndo': 'Annuler',
       'bgEditorRedo': 'Rétablir',
       'bgEditorRandomize': 'Aléatoire',
@@ -4858,6 +4869,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransitionEaseIn': 'Ease In',
       'settingsPageTransitionEaseOut': 'Ease Out',
       'settingsPageTransitionExpo': 'Expo',
+      'settingsMainTabFadeUp': 'Aparición ascendente de pestañas',
+      'settingsMainTabFadeUpDesc':
+          'Hace aparecer hacia arriba el contenido de cada pestaña principal con una curva Expo.',
       'bgEditorUndo': 'Deshacer',
       'bgEditorRedo': 'Rehacer',
       'bgEditorRandomize': 'Aleatorio',
