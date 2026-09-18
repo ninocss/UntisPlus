@@ -35,11 +35,11 @@
       "versions": [
         {
           "version": "5.5.0",
-          "buildVersion": "5.5.0",
+          "buildVersion": "5.5.0.1",
           "date": "2026-09-18",
-          "localizedDescription": "This update brings a brand new WebUntis message composer, fresh visual customization options like ExpressiveUI styling, and smoother page transitions. We have also improved alarm reliability and streamlined editing workflows for grades, exams, and homework.",
+          "localizedDescription": "This update introduces a new WebUntis message composer, customizable timetable switch animations, and a polished visual redesign. It also brings smoother navigation transitions and improves overall alarm reliability and timetable performance.",
           "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.5.0/UntisPlus-v5.5.0.ipa",
-          "size": 53410411,
+          "size": 53410400,
           "minOSVersion": "15.0"
         },
         {
@@ -179,7 +179,7 @@
     {
       "title": "Untis+ 5.5.0 is here",
       "identifier": "untisplus-release-5-5-0",
-      "caption": "This update brings a brand new WebUntis message composer, fresh visual customization options like ExpressiveUI styling, and smoother page transitions. We have also improved alarm reliability and streamlined editing workflows for grades, exams, and homework.",
+      "caption": "This update introduces a new WebUntis message composer, customizable timetable switch animations, and a polished visual redesign. It also brings smoother navigation transitions and improves overall alarm reliability and timetable performance.",
       "date": "2026-09-18",
       "tintColor": "4A90D9",
       "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
