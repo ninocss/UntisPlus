@@ -665,6 +665,8 @@ class AppL10n {
       _t('settingsCustomBackgroundsSelected').replaceAll('{name}', name);
   String get settingsGlassEffect => _t('settingsGlassEffect');
   String get settingsGlassEffectDesc => _t('settingsGlassEffectDesc');
+  String get settingsSurfaceBlur => _t('settingsSurfaceBlur');
+  String get settingsSurfaceBlurDesc => _t('settingsSurfaceBlurDesc');
   String get settingsGlowEffects => _t('settingsGlowEffects');
   String get settingsGlowEffectsDesc => _t('settingsGlowEffectsDesc');
   String get settingsAppBgBlur =>
@@ -1609,6 +1611,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiError': 'KI: ',
       'settingsGlassEffect': 'Blur-Effekt',
       'settingsGlassEffectDesc': 'Aktiviert Blur in der Oberfläche',
+      'settingsSurfaceBlur': 'Blur auf Oberflächen',
+      'settingsSurfaceBlurDesc':
+          'Verwischt normale Karten und Flächen. Bottom Sheets, Stunden und Overlays bleiben unverändert.',
       'settingsGlowEffects': 'Glow-Effekte',
       'settingsGlowEffectsDesc':
           'Farbige Leuchthöfe bei Stunden, Aufgaben, Noten und Symbolen',
@@ -2737,6 +2742,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiError': 'AI: ',
       'settingsGlassEffect': 'Blur Effect',
       'settingsGlassEffectDesc': 'Enables blur effects across the interface',
+      'settingsSurfaceBlur': 'Surface blur',
+      'settingsSurfaceBlurDesc':
+          'Blurs regular cards and surfaces. Bottom sheets, lessons, and overlays stay unchanged.',
       'settingsGlowEffects': 'Glow effects',
       'settingsGlowEffectsDesc':
           'Colored halos around lessons, tasks, grades, and icons',
@@ -3889,6 +3897,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiError': 'IA: ',
       'settingsGlassEffect': 'Effet de flou',
       'settingsGlassEffectDesc': 'Active le flou dans l\'interface',
+      'settingsSurfaceBlur': 'Flou des surfaces',
+      'settingsSurfaceBlurDesc':
+          'Floute les cartes et surfaces normales. Les panneaux, cours et superpositions restent inchangés.',
       'settingsGlowEffects': 'Effets lumineux',
       'settingsGlowEffectsDesc':
           'Halos colorés autour des cours, tâches, notes et icônes',
@@ -5046,6 +5057,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'bgEditorAiError': 'IA: ',
       'settingsGlassEffect': 'Efecto de desenfoque',
       'settingsGlassEffectDesc': 'Activa el desenfoque en la interfaz',
+      'settingsSurfaceBlur': 'Desenfoque de superficies',
+      'settingsSurfaceBlurDesc':
+          'Desenfoca tarjetas y superficies normales. Las hojas inferiores, clases y superposiciones no cambian.',
       'settingsGlowEffects': 'Efectos de brillo',
       'settingsGlowEffectsDesc':
           'Halos de color alrededor de clases, tareas, notas e iconos',
