@@ -1397,6 +1397,7 @@ class _CustomBackgroundEditorScreenState
               onPressed: _showImportSheet,
             ),
             MenuAnchor(
+              style: _untisMenuStyle(context),
               menuChildren: [
                 MenuItemButton(
                   leadingIcon: const Icon(Icons.ios_share_rounded),
