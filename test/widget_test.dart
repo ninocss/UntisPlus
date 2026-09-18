@@ -448,7 +448,7 @@ void main() {
     expect(find.text('Material 3 Carousel'), findsOneWidget);
     expect(find.text('Tiefe & Fade'), findsOneWidget);
 
-    await tester.tap(find.text('Material 3 Carousel'));
+    await tapVisible(tester, find.text('Material 3 Carousel'));
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(timetableSwitchAnimationNotifier.value, 1);

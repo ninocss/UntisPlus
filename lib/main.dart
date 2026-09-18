@@ -1390,6 +1390,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   double _carouselOffset = 0.0;
   AnimationController? _carouselAnimController;
   final Map<String, Map<int, List<dynamic>>> _adjacentWeekCache = {};
+  bool _adjacentWeekRefreshScheduled = false;
   // The day view has its own carousel so its page follows the finger instead
   // of only changing the selected tab after a drag has finished.
   double _dayCarouselOffset = 0.0;
@@ -2524,6 +2525,16 @@ Timer? _progressiveNotificationTimer;
   /// current week came from local storage, [allowNetwork] stays false so an
   /// offline swipe can still reveal the already cached cancellation state
   /// immediately instead of waiting for a new request to finish.
+  void _notifyAdjacentWeekCacheChanged() {
+    if (!mounted || _adjacentWeekRefreshScheduled) return;
+    _adjacentWeekRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _adjacentWeekRefreshScheduled = false;
+      if (mounted) setState(() {});
+    });
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
   Future<void> _prefetchAdjacentWeeks({
     bool allowNetwork = true,
     bool refreshFromDisk = false,
@@ -2536,7 +2547,7 @@ Timer? _progressiveNotificationTimer;
           locale: appLocaleNotifier.value,
         );
       }
-      if (mounted) setState(() {});
+      _notifyAdjacentWeekCacheChanged();
       return;
     }
 
@@ -2560,7 +2571,7 @@ Timer? _progressiveNotificationTimer;
       );
       if (cached != null && cached.values.any((l) => l.isNotEmpty)) {
         _adjacentWeekCache[key] = cached;
-        if (mounted) setState(() {});
+        _notifyAdjacentWeekCacheChanged();
       }
     }
 
@@ -2617,7 +2628,7 @@ Timer? _progressiveNotificationTimer;
                 weekData: tempWeek,
                 monday: adjMonday,
               );
-              if (mounted) setState(() {});
+              _notifyAdjacentWeekCacheChanged();
             }
           }
         }
@@ -9901,31 +9912,46 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           tabs: [
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.assignment_late_rounded, size: 18),
                   const SizedBox(width: 8),
-                  Text(l.navExams),
+                  Expanded(
+                    child: Text(
+                      l.navExams,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.assignment_rounded, size: 18),
                   const SizedBox(width: 8),
-                  Text(l.navHomework),
+                  Expanded(
+                    child: Text(
+                      l.navHomework,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
             Tab(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.auto_graph_rounded, size: 18),
                   const SizedBox(width: 8),
-                  Text(l.navGrades),
+                  Expanded(
+                    child: Text(
+                      l.navGrades,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
