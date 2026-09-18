@@ -933,6 +933,8 @@ void main() async {
     0,
     7,
   );
+  mainTabFadeUpEnabledNotifier.value =
+      prefs.getBool('mainTabFadeUpEnabled') ?? false;
   useMaterialYouNotifier.value = prefs.getBool('useMaterialYou') ?? true;
   isAmoledNotifier.value = prefs.getBool('isAmoled') ?? false;
   customColorSeedNotifier.value = prefs.getInt('customColorSeed') ?? 0xFF0F766E;
