@@ -80,6 +80,20 @@ Future<void> _settingsSetSurfaceBlurEnabled(bool value) async {
   await prefs.setBool('surfaceBlurEnabled', value);
 }
 
+Future<void> _settingsSetSurfaceCornerMode(int value) async {
+  final normalized = value.clamp(0, 2);
+  surfaceCornerModeNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('surfaceCornerMode', normalized);
+}
+
+Future<void> _settingsSetSurfaceCornerRadius(double value) async {
+  final normalized = value.round().clamp(0, 48);
+  surfaceCornerRadiusNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('surfaceCornerRadius', normalized);
+}
+
 Future<void> _settingsSetAppBgBlurEnabled(bool value) async {
   appBgBlurEnabledNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -183,6 +197,12 @@ Future<void> _settingsSetLessonShowTeacher(bool value) async {
   lessonShowTeacherNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool('lessonShowTeacher', value);
+}
+
+Future<void> _settingsSetLessonShowSubjectIcons(bool value) async {
+  lessonShowSubjectIconsNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('lessonShowSubjectIcons', value);
 }
 
 Future<void> _settingsSetLessonShowRoom(bool value) async {
@@ -428,6 +448,10 @@ Future<void> _settingsSyncFromPrefs() async {
       (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
   surfaceBlurEnabledNotifier.value =
       prefs.getBool('surfaceBlurEnabled') ?? true;
+  surfaceCornerModeNotifier.value =
+      (prefs.getInt('surfaceCornerMode') ?? 0).clamp(0, 2);
+  surfaceCornerRadiusNotifier.value =
+      (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
     0,
     7,
@@ -449,6 +473,8 @@ Future<void> _settingsSyncFromPrefs() async {
   lessonAccentStyleNotifier.value = (prefs.getInt('lessonAccentStyle') ?? 0)
       .clamp(0, 3);
   lessonShowTeacherNotifier.value = prefs.getBool('lessonShowTeacher') ?? true;
+  lessonShowSubjectIconsNotifier.value =
+      prefs.getBool('lessonShowSubjectIcons') ?? false;
   lessonShowRoomNotifier.value = prefs.getBool('lessonShowRoom') ?? true;
   lessonCompactModeNotifier.value = prefs.getBool('lessonCompactMode') ?? false;
   lessonDimPastNotifier.value = prefs.getBool('lessonDimPast') ?? true;
