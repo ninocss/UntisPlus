@@ -1644,7 +1644,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGlowEffectsDesc':
           'Farbige Leuchthöfe bei Stunden, Aufgaben, Noten und Symbolen',
       'settingsPageTransition': 'Seitenübergang',
-      'settingsPageTransitionDesc': 'Wähle den Übergangsstil für Seitenwechsel',
+      'settingsPageTransitionDesc': 'Wähle den Stil für Seitenwechsel und optionale Main-Tab-Animationen',
       'settingsPageTransitionBounce': 'Spring',
       'settingsPageTransitionFade': 'Soft Fade',
       'settingsPageTransitionSlide': 'Shared Axis',
@@ -2789,7 +2789,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Colored halos around lessons, tasks, grades, and icons',
       'settingsPageTransition': 'Page Transition',
       'settingsPageTransitionDesc':
-          'Choose the transition style for page navigation',
+          'Choose the style for page navigation and optional main-tab animations',
       'settingsUseMaterialYou': 'Material You',
       'settingsUseMaterialYouDesc':
           'Automatically adapt to your system accent color',
@@ -2797,14 +2797,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsIsAmoled': 'Pitch Black (AMOLED)',
       'settingsIsAmoledDesc':
           'Deep black background in dark mode for OLED displays.',
-      'settingsPageTransitionBounce': 'Bounce',
-      'settingsPageTransitionFade': 'Fade',
-      'settingsPageTransitionSlide': 'Slide',
-      'settingsPageTransitionZoom': 'Zoom focus',
-      'settingsPageTransitionBlur': 'Blur',
-      'settingsPageTransitionEaseIn': 'Élévation',
-      'settingsPageTransitionEaseOut': 'Dérive',
-      'settingsPageTransitionExpo': 'Montée Expo',
+      'settingsPageTransitionBounce': 'Spring',
+      'settingsPageTransitionFade': 'Soft Fade',
+      'settingsPageTransitionSlide': 'Shared Axis',
+      'settingsPageTransitionZoom': 'Focus Zoom',
+      'settingsPageTransitionBlur': 'Focus Blur',
+      'settingsPageTransitionEaseIn': 'Lift',
+      'settingsPageTransitionEaseOut': 'Drift',
+      'settingsPageTransitionExpo': 'Expo Rise',
       'settingsMainTabFadeUp': 'Main-tab animations',
       'settingsMainTabFadeUpDesc':
           'Animates main-tab changes with the transition selected above. Off switches tabs instantly.',
@@ -3680,7 +3680,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           '⚠️ Configure d\'abord l\'URL de base personnalisée dans les paramètres IA.',
       'settingsPageTransition': 'Transition de page',
       'settingsPageTransitionDesc':
-          'Choisis le style de transition pour la navigation',
+          'Choisis le style des transitions de page et des animations optionnelles des onglets principaux',
       'settingsUseMaterialYou': 'Material You',
       'settingsUseMaterialYouDesc':
           "S'adapter automatiquement à la couleur d'accentuation du système",
@@ -3691,11 +3691,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransitionBounce': 'Ressort',
       'settingsPageTransitionFade': 'Fondu doux',
       'settingsPageTransitionSlide': 'Axe partagé',
-      'settingsPageTransitionZoom': 'Zoom focal',
+      'settingsPageTransitionZoom': 'Zoom focus',
       'settingsPageTransitionBlur': 'Flou focus',
-      'settingsPageTransitionEaseIn': 'Elevación',
-      'settingsPageTransitionEaseOut': 'Deriva',
-      'settingsPageTransitionExpo': 'Subida Expo',
+      'settingsPageTransitionEaseIn': 'Élévation',
+      'settingsPageTransitionEaseOut': 'Dérive',
+      'settingsPageTransitionExpo': 'Montée Expo',
       'settingsMainTabFadeUp': 'Animations des onglets principaux',
       'settingsMainTabFadeUpDesc':
           'Anime les changements d’onglet principal avec la transition choisie ci-dessus. Désactivé = changement immédiat.',
@@ -4853,7 +4853,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           '⚠️ Configura primero la URL base personalizada en los ajustes de IA.',
       'settingsPageTransition': 'Transición de página',
       'settingsPageTransitionDesc':
-          'Elige el estilo de transición para la navegación',
+          'Elige el estilo para las transiciones de página y las animaciones opcionales de pestañas principales',
       'settingsUseMaterialYou': 'Material You',
       'settingsUseMaterialYouDesc':
           'Adaptar automáticamente al color de acento del sistema',
@@ -4864,11 +4864,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsPageTransitionBounce': 'Resorte',
       'settingsPageTransitionFade': 'Fundido suave',
       'settingsPageTransitionSlide': 'Eje compartido',
-      'settingsPageTransitionZoom': 'Zoom',
+      'settingsPageTransitionZoom': 'Zoom focal',
       'settingsPageTransitionBlur': 'Desenfoque focal',
-      'settingsPageTransitionEaseIn': 'Ease In',
-      'settingsPageTransitionEaseOut': 'Ease Out',
-      'settingsPageTransitionExpo': 'Expo',
+      'settingsPageTransitionEaseIn': 'Elevación',
+      'settingsPageTransitionEaseOut': 'Deriva',
+      'settingsPageTransitionExpo': 'Subida Expo',
       'settingsMainTabFadeUp': 'Animaciones de pestañas principales',
       'settingsMainTabFadeUpDesc':
           'Anima los cambios de pestaña principal con la transición elegida arriba. Desactivado = cambio inmediato.',
