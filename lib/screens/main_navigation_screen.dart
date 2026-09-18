@@ -3283,6 +3283,19 @@ class _MainTabTransitionLayer extends StatelessWidget {
 
     Widget content = child;
     if (type == 4) {
+      content = TweenAnimationBuilder<double>(
+        tween: Tween<double>(
+          begin: active ? 8 : 0,
+          end: active ? 0 : 8,
+        ),
+        duration: duration,
+        curve: Curves.easeOutCubic,
+        child: content,
+        builder: (context, sigma, child) => ImageFiltered(
+          imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+          child: child,
+        ),
+      );
       content = AnimatedScale(
         scale: targetScale,
         duration: duration,
