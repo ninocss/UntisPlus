@@ -6962,9 +6962,8 @@ Future<void> _showAddHomeworkDialog(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
-          child: _glassContainer(
+          child: _sheetSurface(
             context: ctx,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(28),
               child: Column(
@@ -8255,9 +8254,8 @@ Future<void> _showAddExamDialog(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
-          child: _glassContainer(
+          child: _sheetSurface(
             context: ctx,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(28),
               child: Column(
