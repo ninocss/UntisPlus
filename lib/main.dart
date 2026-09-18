@@ -2730,7 +2730,7 @@ Timer? _progressiveNotificationTimer;
   }
 
   Widget _buildDayCarousel(double width) {
-    final dayIndex = _tabController.index.clamp(0, 4);
+    final dayIndex = _tabController.index.clamp(0, 4).toInt();
 
     Widget dayAt(int index) {
       if (index >= 0 && index < 5) return _buildGridView(index);
@@ -2864,6 +2864,12 @@ Timer? _progressiveNotificationTimer;
 
   void _onDayTabBarTap(int targetDay) {
     if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
+    // Tapping the already-selected date must remain a no-op. For a real tab
+    // change TabBar has already started animateTo(), so indexIsChanging is true.
+    if (!_tabController.indexIsChanging &&
+        _tabController.index == targetDay) {
+      return;
+    }
 
     // TabBar has already started changing the controller when this callback
     // runs. Restore the previous day synchronously so the heavy timetable grid
