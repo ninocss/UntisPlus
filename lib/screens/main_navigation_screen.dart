@@ -1836,6 +1836,7 @@ ${l.ui('aiAssistantRules')}''';
       backgroundColor: Colors.transparent,
       child: ThemedSurface(
         blur: true,
+        respectSurfaceBlurPreference: false,
         borderRadius: BorderRadius.zero,
         color: cs.surface.withValues(alpha: 0.88),
         child: SafeArea(
@@ -3618,6 +3619,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         width: _ExpressiveNavBarState._barHeight,
                         child: ThemedSurface(
                           blur: !timetableSelected,
+                          respectSurfaceBlurPreference: false,
                           color: timetableSelected
                               ? cs.primary
                               : cs.surfaceContainerHigh.withValues(
@@ -4195,6 +4197,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     });
 
     return ThemedSurface(
+      respectSurfaceBlurPreference: false,
       borderRadius: navRadius,
       color: cs.surfaceContainerHigh.withValues(
         alpha:
