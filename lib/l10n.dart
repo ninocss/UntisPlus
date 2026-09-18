@@ -361,6 +361,26 @@ class AppL10n {
   String get attachmentDemoUnavailable => _t('attachmentDemoUnavailable');
   String get infoCopyMessage => _t('infoCopyMessage');
   String get infoMessageCopied => _t('infoMessageCopied');
+  String get messageComposeTitle => _t('messageComposeTitle');
+  String get messageRecipients => _t('messageRecipients');
+  String get messageRecipientsLoading => _t('messageRecipientsLoading');
+  String get messageRecipientSelect => _t('messageRecipientSelect');
+  String get messageRecipientsApply => _t('messageRecipientsApply');
+  String get messageNoRecipients => _t('messageNoRecipients');
+  String get messageRecipientsFailed => _t('messageRecipientsFailed');
+  String get messageSubject => _t('messageSubject');
+  String get messageBody => _t('messageBody');
+  String get messageAttach => _t('messageAttach');
+  String get messageAttachmentLimit => _t('messageAttachmentLimit');
+  String get messageAttachmentTooLarge => _t('messageAttachmentTooLarge');
+  String get messageDraftAutosave => _t('messageDraftAutosave');
+  String get messageDiscardDraft => _t('messageDiscardDraft');
+  String get messageRequiredFields => _t('messageRequiredFields');
+  String get messageSend => _t('messageSend');
+  String get messageSending => _t('messageSending');
+  String get messageSent => _t('messageSent');
+  String get messageSendFailed => _t('messageSendFailed');
+  String get messageDemoUnavailable => _t('messageDemoUnavailable');
 
   /// Label for an attachment counter, e.g. "2 Attached PDFs" or
   /// "1 Attached File". Pass an [extension] (upper case, e.g. "PDF") when all
@@ -1250,6 +1270,26 @@ class AppL10n {
           'Im Demo-Modus sind keine echten Dateien verfügbar.',
       'infoCopyMessage': 'Nachricht kopieren',
       'infoMessageCopied': 'Nachricht in Zwischenablage kopiert.',
+      'messageComposeTitle': 'Nachricht verfassen',
+      'messageRecipients': 'Empfänger',
+      'messageRecipientsLoading': 'Empfänger werden geladen…',
+      'messageRecipientSelect': 'Lehrkraft auswählen',
+      'messageRecipientsApply': 'Übernehmen',
+      'messageNoRecipients': 'Keine verfügbaren Empfänger gefunden.',
+      'messageRecipientsFailed': 'Empfänger konnten nicht geladen werden.',
+      'messageSubject': 'Betreff',
+      'messageBody': 'Nachricht',
+      'messageAttach': 'Anhänge',
+      'messageAttachmentLimit': 'Maximal {count} Anhänge sind erlaubt.',
+      'messageAttachmentTooLarge': '{name} ist zu groß.',
+      'messageDraftAutosave': 'Entwurf wird automatisch gespeichert',
+      'messageDiscardDraft': 'Entwurf verwerfen',
+      'messageRequiredFields': 'Empfänger, Betreff und Nachricht sind erforderlich.',
+      'messageSend': 'Senden',
+      'messageSending': 'Wird gesendet…',
+      'messageSent': 'Nachricht gesendet.',
+      'messageSendFailed': 'Die Nachricht konnte nicht gesendet werden.',
+      'messageDemoUnavailable': 'Im Demo-Modus können keine echten Nachrichten gesendet werden.',
       'notificationActionCurrentLesson': 'Aktuelle Stunde: {lesson}',
       'notificationActionNextLessonLabel': 'Nächste Stunde',
       'notificationActionNoNextLesson':
@@ -2419,6 +2459,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'attachmentDemoUnavailable': 'Real files are not available in demo mode.',
       'infoCopyMessage': 'Copy message',
       'infoMessageCopied': 'Message copied to clipboard.',
+      'messageComposeTitle': 'Compose message',
+      'messageRecipients': 'Recipients',
+      'messageRecipientsLoading': 'Loading recipients…',
+      'messageRecipientSelect': 'Choose a teacher',
+      'messageRecipientsApply': 'Apply',
+      'messageNoRecipients': 'No available recipients found.',
+      'messageRecipientsFailed': 'Recipients could not be loaded.',
+      'messageSubject': 'Subject',
+      'messageBody': 'Message',
+      'messageAttach': 'Attachments',
+      'messageAttachmentLimit': 'A maximum of {count} attachments is allowed.',
+      'messageAttachmentTooLarge': '{name} is too large.',
+      'messageDraftAutosave': 'Draft saves automatically',
+      'messageDiscardDraft': 'Discard draft',
+      'messageRequiredFields': 'Recipient, subject and message are required.',
+      'messageSend': 'Send',
+      'messageSending': 'Sending…',
+      'messageSent': 'Message sent.',
+      'messageSendFailed': 'The message could not be sent.',
+      'messageDemoUnavailable': 'Real messages cannot be sent in demo mode.',
       'notificationActionCurrentLesson': 'Current lesson: {lesson}',
       'notificationActionNextLessonLabel': 'Next lesson',
       'notificationActionNoNextLesson': 'No next lesson found for today',
@@ -3567,6 +3627,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Les fichiers réels ne sont pas disponibles en mode démo.',
       'infoCopyMessage': 'Copier le message',
       'infoMessageCopied': 'Message copié dans le presse-papiers.',
+      'messageComposeTitle': 'Rédiger un message',
+      'messageRecipients': 'Destinataires',
+      'messageRecipientsLoading': 'Chargement des destinataires…',
+      'messageRecipientSelect': 'Choisir un enseignant',
+      'messageRecipientsApply': 'Appliquer',
+      'messageNoRecipients': 'Aucun destinataire disponible.',
+      'messageRecipientsFailed': 'Impossible de charger les destinataires.',
+      'messageSubject': 'Objet',
+      'messageBody': 'Message',
+      'messageAttach': 'Pièces jointes',
+      'messageAttachmentLimit': 'Un maximum de {count} pièces jointes est autorisé.',
+      'messageAttachmentTooLarge': '{name} est trop volumineux.',
+      'messageDraftAutosave': 'Le brouillon est enregistré automatiquement',
+      'messageDiscardDraft': 'Supprimer le brouillon',
+      'messageRequiredFields': 'Le destinataire, l’objet et le message sont requis.',
+      'messageSend': 'Envoyer',
+      'messageSending': 'Envoi…',
+      'messageSent': 'Message envoyé.',
+      'messageSendFailed': 'Le message n’a pas pu être envoyé.',
+      'messageDemoUnavailable': 'Aucun vrai message ne peut être envoyé en mode démo.',
       'notificationActionCurrentLesson': 'Cours actuel : {lesson}',
       'notificationActionNextLessonLabel': 'Cours suivant',
       'notificationActionNoNextLesson':
@@ -4751,6 +4831,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Los archivos reales no están disponibles en el modo de demostración.',
       'infoCopyMessage': 'Copiar mensaje',
       'infoMessageCopied': 'Mensaje copiado al portapapeles.',
+      'messageComposeTitle': 'Redactar mensaje',
+      'messageRecipients': 'Destinatarios',
+      'messageRecipientsLoading': 'Cargando destinatarios…',
+      'messageRecipientSelect': 'Elegir profesor',
+      'messageRecipientsApply': 'Aplicar',
+      'messageNoRecipients': 'No se encontraron destinatarios disponibles.',
+      'messageRecipientsFailed': 'No se pudieron cargar los destinatarios.',
+      'messageSubject': 'Asunto',
+      'messageBody': 'Mensaje',
+      'messageAttach': 'Adjuntos',
+      'messageAttachmentLimit': 'Se permiten como máximo {count} adjuntos.',
+      'messageAttachmentTooLarge': '{name} es demasiado grande.',
+      'messageDraftAutosave': 'El borrador se guarda automáticamente',
+      'messageDiscardDraft': 'Descartar borrador',
+      'messageRequiredFields': 'Se requieren destinatario, asunto y mensaje.',
+      'messageSend': 'Enviar',
+      'messageSending': 'Enviando…',
+      'messageSent': 'Mensaje enviado.',
+      'messageSendFailed': 'No se pudo enviar el mensaje.',
+      'messageDemoUnavailable': 'No se pueden enviar mensajes reales en modo demo.',
       'notificationActionCurrentLesson': 'Clase actual: {lesson}',
       'notificationActionNextLessonLabel': 'Siguiente clase',
       'notificationActionNoNextLesson':

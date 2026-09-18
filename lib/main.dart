@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ import 'services/alarm_service.dart';
 import 'services/backup_service.dart';
 import 'services/demo_mode_service.dart';
 import 'services/homework_service.dart';
+import 'services/webuntis_message_service.dart';
 import 'services/widget_service.dart';
 import 'core/app_providers.dart';
 import 'data/cache/offline_cache_store.dart';
@@ -75,6 +77,7 @@ part 'screens/settings/custom_widget_editor_page.dart';
 part 'screens/settings/settings_account_page.dart';
 part 'screens/settings/settings_about_updates_page.dart';
 part 'screens/school_notification_detail_page.dart';
+part 'screens/message_compose_page.dart';
 part 'widgets/animated_background.dart';
 part 'widgets/expressive_refresh_indicator.dart';
 part 'widgets/custom_background_view.dart';
@@ -13105,6 +13108,22 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     );
   }
 
+  Future<void> _openMessageComposer() async {
+    final sent = await Navigator.push<bool>(
+      context,
+      _buildBouncyRoute(const _MessageComposePage()),
+    );
+    if (!mounted || sent != true) return;
+    setState(() => _showInbox = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppL10n.of(appLocaleNotifier.value).messageSent),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    unawaited(_reload());
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -13122,6 +13141,12 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         ),
         centerTitle: true,
         actions: [
+          if (_showInbox)
+            IconButton(
+              tooltip: l.messageComposeTitle,
+              onPressed: _openMessageComposer,
+              icon: const Icon(Icons.edit_square_rounded),
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
