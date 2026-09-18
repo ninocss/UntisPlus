@@ -209,6 +209,51 @@ class SettingsAppearancePage extends StatelessWidget {
     }
   }
 
+  String _surfaceCornerModeLabel(AppL10n l, int mode) {
+    switch (mode) {
+      case 1:
+        return l.settingsSurfaceCornersSharper;
+      case 2:
+        return l.settingsSurfaceCornersCustom;
+      case 0:
+      default:
+        return l.settingsSurfaceCornersCurrent;
+    }
+  }
+
+  void _showSurfaceCornerModeDialog(BuildContext context) {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    _showUnifiedOptionSheet<int>(
+      context: context,
+      title: l.settingsSurfaceCorners,
+      subtitle: l.settingsSurfaceCornersDesc,
+      options: [
+        _SheetOption(
+          value: 0,
+          title: l.settingsSurfaceCornersCurrent,
+          icon: Icons.rounded_corner_rounded,
+          selected: surfaceCornerModeNotifier.value == 0,
+        ),
+        _SheetOption(
+          value: 1,
+          title: l.settingsSurfaceCornersSharper,
+          icon: Icons.crop_square_rounded,
+          selected: surfaceCornerModeNotifier.value == 1,
+        ),
+        _SheetOption(
+          value: 2,
+          title: l.settingsSurfaceCornersCustom,
+          icon: Icons.tune_rounded,
+          selected: surfaceCornerModeNotifier.value == 2,
+        ),
+      ],
+    ).then((value) {
+      if (value != null) {
+        _settingsSetSurfaceCornerMode(value);
+      }
+    });
+  }
+
   void _showAppIconDialog(BuildContext context) {
     const labels = {
       'default': 'Standard',
@@ -881,6 +926,56 @@ class SettingsAppearancePage extends StatelessWidget {
                       );
                     },
                   ),
+                ValueListenableBuilder<int>(
+                  valueListenable: surfaceCornerModeNotifier,
+                  builder: (context, mode, _) {
+                    return SettingsTile(
+                      icon: Icons.rounded_corner_rounded,
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onPrimaryContainer,
+                      title: l.settingsSurfaceCorners,
+                      subtitle: _surfaceCornerModeLabel(l, mode),
+                      onTap: () => _showSurfaceCornerModeDialog(context),
+                    );
+                  },
+                ),
+                ValueListenableBuilder<int>(
+                  valueListenable: surfaceCornerModeNotifier,
+                  builder: (context, mode, _) {
+                    if (mode != 2) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: surfaceCornerRadiusNotifier,
+                        builder: (context, radius, _) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${l.settingsSurfaceCornerRadius}: $radius px',
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                              Slider(
+                                value: radius.toDouble(),
+                                min: 0,
+                                max: 48,
+                                divisions: 48,
+                                label: '$radius px',
+                                onChanged: _settingsSetSurfaceCornerRadius,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
                 if (capabilities.supportsBlur)
                   ValueListenableBuilder<bool>(
                     valueListenable: appBgBlurEnabledNotifier,
