@@ -919,6 +919,8 @@ void main() async {
   blurEnabledNotifier.value =
       appThemeCapabilities(activeVisualTheme).supportsBlur &&
       (themeBlurPreferences[activeVisualTheme.storageKey] ?? true);
+  surfaceBlurEnabledNotifier.value =
+      prefs.getBool('surfaceBlurEnabled') ?? true;
   appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
   appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
   unawaited(_applyAndroidWindowBlur(blurEnabledNotifier.value));
