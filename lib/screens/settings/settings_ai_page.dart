@@ -110,28 +110,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   /// Validate that a file is a plausible GGUF model (magic bytes + size close
   /// to the advertised model size). Prevents activating a truncated/corrupt
   /// download that llama.cpp would reject with "Failed to create inference
-  /// context".
+  /// context". Delegates to the shared validator also used by the downloader,
+  /// onboarding and startup.
   Future<bool> _isValidModelFile(String path, {LocalModelInfo? model}) async {
-    try {
-      final file = File(path);
-      if (!await file.exists()) return false;
-      final length = await file.length();
-      if (length < 1024 * 1024) return false;
-      if (model != null) {
-        final expectedBytes = (model.sizeGb * 1024 * 1024 * 1024).toInt();
-        if (length < expectedBytes * 0.6) return false;
-      }
-      final raf = await file.open();
-      try {
-        final header = await raf.read(4);
-        if (header.length < 4) return false;
-        return String.fromCharCodes(header) == 'GGUF';
-      } finally {
-        await raf.close();
-      }
-    } catch (_) {
-      return false;
-    }
+    return _isValidLocalModelFile(path, model: model);
   }
 
   /// Download a local model
@@ -198,10 +180,12 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         },
       );
 
-      // Verify the downloaded file is a valid GGUF model before promoting it
-      // to the final path. A truncated/corrupt download never becomes visible
-      // as an "installed" model.
-      if (await _isValidModelFile(tempPath, model: model)) {
+      // Verify the downloaded file is the exact pinned GGUF model before
+      // promoting it to the final path. Both the cheap magic/size gate and
+      // the full pinned SHA-256 digest must pass; a truncated, corrupt or
+      // tampered download never becomes visible as an "installed" model.
+      if (await _isValidModelFile(tempPath, model: model) &&
+          await _verifyLocalModelChecksum(tempPath, model)) {
         if (await File(path).exists()) {
           await File(path).delete();
         }

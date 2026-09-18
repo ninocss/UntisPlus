@@ -24,6 +24,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:otp_auth/otp_auth.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:cryptography/dart.dart';
 import 'package:dio/dio.dart';
 import 'package:fllama/fllama.dart';
 import 'package:path_provider/path_provider.dart';
@@ -474,14 +475,18 @@ class LocalModelProvider implements AIProvider {
     if (_isLoading) return;
 
     final file = File(modelPath);
-    if (await file.exists()) {
-      final length = await file.length();
-      if (length < 1024 * 1024) {
-        // Remove corrupted or incomplete model file
-        await file.delete();
+    if (!await _isValidLocalModelFile(
+      modelPath,
+      model: _localModelForPath(modelPath),
+    )) {
+      // Never hand a stale/tampered path to the native GGUF parser. Tiny
+      // files are corrupt partials and are removed; anything else merely
+      // yields the load error and keeps the file for re-download.
+      if (await file.exists() && await file.length() < 1024 * 1024) {
+        try {
+          await file.delete();
+        } catch (_) {}
       }
-    }
-    if (!await file.exists() || await file.length() < 1024 * 1024) {
       yield* _streamLocalModelError();
       return;
     }
@@ -595,14 +600,17 @@ Future<String> _requestLocalModelText({
   required String modelPath,
 }) async {
   final file = File(modelPath);
-  if (await file.exists()) {
-    final length = await file.length();
-    if (length < 1024 * 1024) {
-      // Remove corrupted or incomplete model file
-      await file.delete();
+  if (!await _isValidLocalModelFile(
+    modelPath,
+    model: _localModelForPath(modelPath),
+  )) {
+    // Same protection as the streaming path: never parse a stale/tampered
+    // path. Tiny files are corrupt partials and are removed.
+    if (await file.exists() && await file.length() < 1024 * 1024) {
+      try {
+        await file.delete();
+      } catch (_) {}
     }
-  }
-  if (!await file.exists() || await file.length() < 1024 * 1024) {
     throw Exception(
       'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}',
     );
@@ -975,6 +983,27 @@ void main() async {
   aiTopP = prefs.getDouble('aiTopP') ?? 0.95;
   aiPersona = prefs.getString('aiPersona') ?? 'helpful';
   aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
+  if (aiLocalModelPath.isNotEmpty) {
+    // A stale or tampered path (file deleted, moved, truncated or replaced
+    // with something that is not a GGUF) must never reach the native
+    // llama.cpp parser. Validate it with the same magic/size rules used on
+    // download and fall back to a cleared path on failure.
+    if (!await _isValidLocalModelFile(
+      aiLocalModelPath,
+      model: _localModelForPath(aiLocalModelPath),
+    )) {
+      aiLocalModelPath = '';
+      await prefs.setString('aiLocalModelPath', '');
+      // With no usable model file a 'local' provider is a broken state.
+      // Mirror _deleteLocalModel and fall back to Gemini.
+      if (_normalizeAiProvider(aiProvider) == 'local') {
+        aiProvider = 'gemini';
+        aiModel = _defaultModelForProvider('gemini');
+        await prefs.setString('aiProvider', aiProvider);
+        await prefs.setString('aiModel', aiModel);
+      }
+    }
+  }
   final savedModel = prefs.getString('aiModel') ?? '';
   final availableModels = _modelsForProvider(
     aiProvider,

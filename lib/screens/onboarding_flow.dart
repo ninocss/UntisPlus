@@ -214,21 +214,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     String path,
     LocalModelInfo model,
   ) async {
-    try {
-      final file = File(path);
-      if (!await file.exists()) return false;
-      final expected = (model.sizeGb * 1024 * 1024 * 1024).toInt();
-      if (await file.length() < expected * 0.6) return false;
-      final handle = await file.open();
-      try {
-        final header = await handle.read(4);
-        return header.length == 4 && String.fromCharCodes(header) == 'GGUF';
-      } finally {
-        await handle.close();
-      }
-    } catch (_) {
-      return false;
-    }
+    return _isValidLocalModelFile(path, model: model);
   }
 
   Future<void> _downloadSelectedLocalModel() async {
@@ -268,8 +254,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           setState(() => _localModelDownloadProgress = received / total);
         },
       );
-      if (!await _isValidOnboardingLocalModel(partialPath, model)) {
-        // Corrupt partial file must not be resumed later.
+      if (!await _isValidOnboardingLocalModel(partialPath, model) ||
+          !await _verifyLocalModelChecksum(partialPath, model)) {
+        // Corrupt or tampered file must not be promoted or resumed later.
         await File(partialPath).delete();
         throw Exception('GGUF verification failed');
       }

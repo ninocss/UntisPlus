@@ -506,6 +506,17 @@ const List<String> kSupportedAiProviders = [
 const List<String> kSupportedAiCustomCompatibilities = ['openai', 'gemini'];
 
 /// Available local models for on-device inference.
+///
+/// [sha256] pins the exact artifact that this version of the app is built
+/// against. A downloaded GGUF is only promoted to the final model path after
+/// its digest matches the pinned value, so a tampered, swapped or compromised
+/// upstream file is rejected before it ever reaches the native llama.cpp
+/// parser. Keep the digest in sync whenever the upstream artifact changes.
+///
+/// Digests are the git-LFS SHA-256 of the resolved HuggingFace file and can be
+/// looked up via
+/// `https://huggingface.co/api/models/<repo>/tree/main?recursive=true`
+/// (the `lfs.oid` field).
 class LocalModelInfo {
   final String id;
   final String name;
@@ -513,12 +524,18 @@ class LocalModelInfo {
   final double sizeGb;
   final String description;
 
+  /// Lowercase hex SHA-256 of the exact file served by [url]. Empty means
+  /// "no pinned digest" and skips checksum verification (never leave it empty
+  /// for freshly added models when a digest can be pinned).
+  final String sha256;
+
   const LocalModelInfo({
     required this.id,
     required this.name,
     required this.url,
     required this.sizeGb,
     required this.description,
+    required this.sha256,
   });
 }
 
@@ -530,6 +547,7 @@ const List<LocalModelInfo> kLocalModels = [
         'https://huggingface.co/bartowski/google_gemma-3-1b-it-GGUF/resolve/main/google_gemma-3-1b-it-Q4_K_M.gguf',
     sizeGb: 0.8,
     description: '',
+    sha256: '12bf0fff8815d5f73a3c9b586bd8fee8e7b248c935de70dec367679873d0f29d',
   ),
   LocalModelInfo(
     id: 'llama-3.2-1b-instruct-q4_k_m',
@@ -538,6 +556,7 @@ const List<LocalModelInfo> kLocalModels = [
         'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
     sizeGb: 0.8,
     description: '',
+    sha256: '6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83',
   ),
   LocalModelInfo(
     id: 'qwen-2.5-1.5b-instruct-q4_k_m',
@@ -546,6 +565,7 @@ const List<LocalModelInfo> kLocalModels = [
         'https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
     sizeGb: 1.0,
     description: '',
+    sha256: '1adf0b11065d8ad2e8123ea110d1ec956dab4ab038eab665614adba04b6c3370',
   ),
   LocalModelInfo(
     id: 'llama-3.2-3b-instruct-q4_k_m',
@@ -554,6 +574,7 @@ const List<LocalModelInfo> kLocalModels = [
         'https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf',
     sizeGb: 2.0,
     description: '',
+    sha256: '6c1a2b41161032677be168d354123594c0e6e67d2b9227c84f296ad037c728ff',
   ),
   LocalModelInfo(
     id: 'phi-3.5-mini-instruct-q4_k_m',
@@ -562,6 +583,7 @@ const List<LocalModelInfo> kLocalModels = [
         'https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf',
     sizeGb: 2.4,
     description: '',
+    sha256: 'e4165e3a71af97f1b4820da61079826d8752a2088e313af0c7d346796c38eff5',
   ),
   LocalModelInfo(
     id: 'gemma-4-e4b-it-q4_k_m',
@@ -570,8 +592,20 @@ const List<LocalModelInfo> kLocalModels = [
         'https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf',
     sizeGb: 4.98,
     description: '',
+    sha256: '85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87',
   ),
 ];
+
+/// Returns the catalog entry whose served file name matches [path]'s file
+/// name, or null when [path] does not correspond to any pinned model.
+LocalModelInfo? _localModelForPath(String path) {
+  final fileName = path.split(Platform.pathSeparator).last;
+  if (fileName.isEmpty) return null;
+  for (final model in kLocalModels) {
+    if (model.url.split('/').last == fileName) return model;
+  }
+  return null;
+}
 
 LocalModelInfo _defaultLocalModel() => kLocalModels.first;
 
