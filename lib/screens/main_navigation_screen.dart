@@ -752,16 +752,14 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SettingsAiPage()));
+    await Navigator.of(context).push(
+      _buildBouncyRoute(const SettingsAiPage()),
+    );
   }
 
   Future<void> _openPromptEditor() async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const SettingsAiPage(openPromptEditor: true),
-      ),
+      _buildBouncyRoute(const SettingsAiPage(openPromptEditor: true)),
     );
   }
 
