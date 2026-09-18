@@ -752,6 +752,7 @@ final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
 final ValueNotifier<int> pageTransitionNotifier = ValueNotifier(0);
+final ValueNotifier<bool> mainTabFadeUpEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<bool> useMaterialYouNotifier = ValueNotifier(true);
 final ValueNotifier<bool> isAmoledNotifier = ValueNotifier(false);
 final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
