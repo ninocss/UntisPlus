@@ -177,6 +177,7 @@ class ThemedSurface extends StatelessWidget {
   final Gradient? gradient;
   final Border? border;
   final bool blur;
+  final bool respectSurfaceBlurPreference;
 
   const ThemedSurface({
     super.key,
@@ -187,6 +188,7 @@ class ThemedSurface extends StatelessWidget {
     this.gradient,
     this.border,
     this.blur = true,
+    this.respectSurfaceBlurPreference = true,
   });
 
   @override
@@ -197,7 +199,14 @@ class ThemedSurface extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: blurEnabledNotifier,
       builder: (context, blurEnabled, _) {
-        final blurActive = blur && tokens.supportsBlur && blurEnabled;
+        return ValueListenableBuilder<bool>(
+          valueListenable: surfaceBlurEnabledNotifier,
+          builder: (context, surfaceBlurEnabled, _) {
+            final blurActive =
+                blur &&
+                tokens.supportsBlur &&
+                blurEnabled &&
+                (!respectSurfaceBlurPreference || surfaceBlurEnabled);
         final translucent =
             color ??
             cs.surfaceContainerLow.withValues(alpha: tokens.surfaceOpacity);
@@ -264,23 +273,25 @@ class ThemedSurface extends StatelessWidget {
                 )
               : surface,
         );
-        return RepaintBoundary(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              boxShadow: [
-                BoxShadow(
-                  color: !tokens.glowEffectsEnabled &&
-                          tokens.id == AppThemeId.cyber
-                      ? cs.shadow.withValues(alpha: 0.12)
-                      : tokens.shadowColor,
-                  offset: tokens.shadowOffset,
-                  blurRadius: tokens.hardShadow ? 0 : 20,
+            return RepaintBoundary(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: radius,
+                  boxShadow: [
+                    BoxShadow(
+                      color: !tokens.glowEffectsEnabled &&
+                              tokens.id == AppThemeId.cyber
+                          ? cs.shadow.withValues(alpha: 0.12)
+                          : tokens.shadowColor,
+                      offset: tokens.shadowOffset,
+                      blurRadius: tokens.hardShadow ? 0 : 20,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: surface,
-          ),
+                child: surface,
+              ),
+            );
+          },
         );
       },
     );
@@ -337,6 +348,7 @@ Widget _sheetSurface({
     borderRadius: borderRadius,
     sigma: 45,
     blur: blur,
+    respectSurfaceBlurPreference: false,
     child: child,
   );
 }
@@ -390,6 +402,28 @@ class _SheetOption<T> {
   });
 }
 
+MenuStyle _untisMenuStyle(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  return MenuStyle(
+    backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
+    surfaceTintColor: WidgetStatePropertyAll(cs.surfaceTint),
+    elevation: const WidgetStatePropertyAll(8),
+    shadowColor: WidgetStatePropertyAll(Colors.black.withValues(alpha: 0.22)),
+    minimumSize: const WidgetStatePropertyAll(Size(224, 0)),
+    padding: const WidgetStatePropertyAll(
+      EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+    ),
+    shape: WidgetStatePropertyAll(
+      RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(
+          color: cs.outlineVariant.withValues(alpha: 0.48),
+        ),
+      ),
+    ),
+  );
+}
+
 /// A Material 3 anchored menu styled like the app's filled form controls.
 ///
 /// Keeping the trigger in the sheet lets the menu open next to the field rather
@@ -403,6 +437,7 @@ Widget _m3SelectionMenu({
 }) {
   final cs = Theme.of(context).colorScheme;
   return MenuAnchor(
+    style: _untisMenuStyle(context),
     menuChildren: [
       for (final entry in entries)
         MenuItemButton(
