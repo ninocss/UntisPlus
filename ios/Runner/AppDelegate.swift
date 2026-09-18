@@ -373,8 +373,15 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
     // (and thus WorkmanagerPlugin's application delegate) only after this
     // method returns. BGTaskScheduler requires its launch handlers to be
     // registered during `didFinishLaunching`, so re-arm the persisted
-    // workmanager task identifiers explicitly here.
+    // workmanager task identifiers explicitly here. The periodic timetable
+    // refresh is registered eagerly as well: on a fresh install nothing is
+    // persisted yet, and Dart's registerPeriodicTask submits a BGTaskRequest
+    // that aborts if its identifier has no launch handler.
     WorkmanagerPlugin.registerLaunchHandlers()
+    WorkmanagerPlugin.registerPeriodicTask(
+      withIdentifier: "untis_school_notification_update",
+      earliestBeginInSeconds: nil
+    )
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
