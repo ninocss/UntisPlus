@@ -4,6 +4,63 @@ part of '../../main.dart';
 class SettingsTimetablePage extends StatelessWidget {
   const SettingsTimetablePage({super.key});
 
+  String _switchAnimationLabel(AppL10n l, int style) {
+    switch (style) {
+      case 1:
+        return l.settingsTimetableSwitchAnimationMaterial;
+      case 2:
+        return l.settingsTimetableSwitchAnimationDepth;
+      case 0:
+      default:
+        return l.settingsTimetableSwitchAnimationDefault;
+    }
+  }
+
+  IconData _switchAnimationIcon(int style) {
+    switch (style) {
+      case 1:
+        return Icons.view_carousel_rounded;
+      case 2:
+        return Icons.layers_rounded;
+      case 0:
+      default:
+        return Icons.swap_horiz_rounded;
+    }
+  }
+
+  Future<void> _showSwitchAnimationPicker(BuildContext context) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final current = timetableSwitchAnimationNotifier.value;
+    final selected = await _showUnifiedOptionSheet<int>(
+      context: context,
+      title: l.settingsTimetableSwitchAnimation,
+      subtitle: l.settingsTimetableSwitchAnimationDesc,
+      options: [
+        _SheetOption(
+          value: 0,
+          title: l.settingsTimetableSwitchAnimationDefault,
+          icon: _switchAnimationIcon(0),
+          selected: current == 0,
+        ),
+        _SheetOption(
+          value: 1,
+          title: l.settingsTimetableSwitchAnimationMaterial,
+          icon: _switchAnimationIcon(1),
+          selected: current == 1,
+        ),
+        _SheetOption(
+          value: 2,
+          title: l.settingsTimetableSwitchAnimationDepth,
+          icon: _switchAnimationIcon(2),
+          selected: current == 2,
+        ),
+      ],
+    );
+    if (selected != null) {
+      await _settingsSetTimetableSwitchAnimation(selected);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -34,6 +91,19 @@ class SettingsTimetablePage extends StatelessWidget {
                   subtitle: l.settingsLessonDesignDesc,
                   onTap: () => Navigator.of(context).push(
                     _buildBouncyRoute(const SettingsLessonDesignPage()),
+                  ),
+                ),
+                ValueListenableBuilder<int>(
+                  valueListenable: timetableSwitchAnimationNotifier,
+                  builder: (context, style, _) => SettingsTile(
+                    icon: _switchAnimationIcon(style),
+                    iconBackgroundColor: cs.secondaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onSecondaryContainer,
+                    title: l.settingsTimetableSwitchAnimation,
+                    subtitle: _switchAnimationLabel(l, style),
+                    onTap: () => _showSwitchAnimationPicker(context),
                   ),
                 ),
                 ValueListenableBuilder<bool>(
