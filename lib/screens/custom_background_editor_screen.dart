@@ -1431,19 +1431,17 @@ class _CustomBackgroundEditorScreenState
           ],
           bottom: TabBar(
             controller: _tabController,
-            isScrollable: false,
+            indicatorColor: cs.primary,
+            indicatorWeight: 3,
             dividerColor: Colors.transparent,
-            indicatorSize: TabBarIndicatorSize.tab,
-            labelPadding: const EdgeInsets.symmetric(
-              horizontal: 6,
-              vertical: 4,
+            labelStyle: GoogleFonts.outfit(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
             ),
-            indicator: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(999),
+            unselectedLabelStyle: GoogleFonts.outfit(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
             ),
-            labelColor: cs.onPrimaryContainer,
-            unselectedLabelColor: cs.onSurfaceVariant,
             onTap: (index) {
               final target = switch (index) {
                 0 => _previewSectionKey,
