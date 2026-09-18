@@ -273,21 +273,17 @@ class _MessageComposePageState extends State<_MessageComposePage>
       return;
     }
 
-    final picked = await FilePicker.pickFiles(
-      allowMultiple: true,
-      withData: true,
-    );
-    if (picked == null || !mounted) return;
+    final picked = await FilePicker.pickFiles();
+    if (picked.isEmpty || !mounted) return;
 
     final added = <WebUntisOutgoingAttachment>[];
-    for (final file in picked.files.take(remaining)) {
-      Uint8List? bytes = file.bytes;
-      if (bytes == null && file.path != null) {
-        try {
-          bytes = await File(file.path!).readAsBytes();
-        } catch (_) {}
+    for (final file in picked.take(remaining)) {
+      Uint8List bytes;
+      try {
+        bytes = await file.readAsBytes();
+      } catch (_) {
+        continue;
       }
-      if (bytes == null) continue;
       if (bytes.length > _permissions.maxFileSize) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
