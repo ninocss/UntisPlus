@@ -290,10 +290,10 @@ private func untisHasCalendarAccess(_ status: EKAuthorizationStatus) -> Bool {
     }
 }
 
-/// Formats an `EKCalendar`'s color as a `#RRGGBB` string using its `UIColor`.
+/// Formats an `EKCalendar`'s color as a `#RRGGBB` string using its `CGColor`.
 /// Falls back to opaque red when the color cannot be decomposed.
 private func untisCalendarHexColor(_ calendar: EKCalendar) -> String {
-    let uiColor = calendar.color ?? UIColor.red
+    let uiColor = UIColor(cgColor: calendar.cgColor)
     var r: CGFloat = 1, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 1
     uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
     return String(format: "#%06X", Int(r * 255) << 16 | Int(g * 255) << 8 | Int(b * 255))
