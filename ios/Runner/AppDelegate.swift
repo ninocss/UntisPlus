@@ -1,6 +1,7 @@
 import EventKit
 import Flutter
 import UIKit
+import CoreGraphics
 import ActivityKit
 import UserNotifications
 import WidgetKit
