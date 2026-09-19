@@ -168,6 +168,31 @@ class _SettingsCalendarPageState extends State<SettingsCalendarPage> {
                     },
                     trailing: const Icon(Icons.chevron_right_rounded),
                   ),
+                  const SizedBox(height: 12),
+                  // Automatic sync after every timetable refresh
+                  ValueListenableBuilder<bool>(
+                    valueListenable: calendarAutoSyncNotifier,
+                    builder: (context, autoSync, _) {
+                      return SettingsTile(
+                        icon: Icons.event_repeat_rounded,
+                        iconBackgroundColor: colors.secondaryContainer.withValues(
+                          alpha: 0.7,
+                        ),
+                        iconColor: colors.onSecondaryContainer,
+                        title: l.settingsCalendarAutoSync,
+                        subtitle: l.settingsCalendarAutoSyncDesc,
+                        trailing: Switch(
+                          value: autoSync,
+                          onChanged: (v) {
+                            calendarAutoSyncNotifier.value = v;
+                            SharedPreferences.getInstance().then(
+                              (p) => p.setBool('calendarAutoSync', v),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 16),

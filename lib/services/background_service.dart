@@ -412,6 +412,13 @@ Future<void> checkGithubUpdateAndNotify() async {
 }
 
 /// Returns true only after a valid current-day timetable response was applied.
+/// Registered once at startup by main() so the background library stays free of
+/// app-level imports (it must keep working in the isolated WorkManager isolate).
+/// Invoked after every successful timetable refresh, regardless of which entry
+/// point triggered it (foreground, onboarding, alarm, periodic background task
+/// or settings screens). Failures are swallowed by the caller of this hook.
+Future<void> Function()? onAutoCalendarSyncRequested;
+
 Future<bool> updateUntisData() async {
   final prefs = await SharedPreferences.getInstance();
   final isDemoMode = prefs.getBool('demoMode') ?? false;
@@ -846,7 +853,15 @@ Future<bool> updateUntisData() async {
   }
   // Keep the progressive notification fresh at the next lesson boundary even
   // when the app is never opened again (one-off task, no network required).
-  _scheduleProgressiveBoundaryRefresh(lessons: lessons, now: now);
+  // After every successful data refresh (foreground, onboarding, alarm,
+  // periodic background task or settings screens) run the automatic
+  // calendar-sync hook registered by the app. Best-effort by design: a
+  // calendar problem must never fail the timetable refresh itself.
+  try {
+    await onAutoCalendarSyncRequested?.call();
+  } catch (_) {
+    // Calendar sync is best-effort and must not break the refresh.
+  }
   return true;
 }
 

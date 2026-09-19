@@ -1,3 +1,4 @@
+import 'dart:core';
 import 'dart:ui';
 import 'dart:async';
 import 'dart:convert';
@@ -800,6 +801,19 @@ Future<void> _initializeDeferredAccountData() async {
   unreadTimetableChangesNotifier.value = changes
       .where((change) => !change.isRead)
       .length;
+
+}
+
+vo
+Future<void> _autoSyncCalendarsAfterRefresh() async {
+  if (!calendarAutoSyncNotifier.value) return;
+  if (demoModeNotifier.value) return;
+  if (calendarSyncEnabledEventTypesNotifier.value.isEmpty) return;
+  try {
+    final service = await CalendarSyncService.create();
+    await service.syncAll();
+  } catch (_) {}
+}
 }
 
 void main() async {
@@ -961,7 +975,24 @@ void main() async {
   importantChangesPushNotifier.value =
       prefs.getBool('importantChangesPush') ?? true;
 
+  calendarAutoSyncNotifier.value =
+      prefs.getBool('calendarAutoSync') ?? true;
+  onAutoCalendarSyncRequested = _autoSyncCalendarsAfterRefresh;
+  onAutoCalendarSyncRequested = _autoSyncCalendarsAfterRefresh;
+
   await loadCustomBackgroundsFromPrefs(prefs);
+
+  // Auto calendar sync preference (persisted via Settings > Calendar).
+  calendarAutoSyncNotifier.value = prefs.getBool('calendarAutoSync') ?? true;
+  onAutoCalendarSyncRequested = () async {
+    if (!calendarAutoSyncNotifier.value) return;
+    if (demoModeNotifier.value) return;
+    if (calendarSyncEnabledEventTypesNotifier.value.isEmpty) return;
+    try {
+      final service = await CalendarSyncService.create();
+      await service.syncAll();
+    } catch (_) {}
+  };
 
   final hasProviderConfig = prefs.containsKey('aiProvider');
   if (!hasProviderConfig && (prefs.getString('geminiApiKey') ?? '').isEmpty) {

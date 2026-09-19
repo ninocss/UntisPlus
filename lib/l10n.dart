@@ -823,6 +823,8 @@ class AppL10n {
   String get settingsCalendarEventTypes => _t('settingsCalendarEventTypes');
   String get settingsCalendarEventTypesDesc => _t('settingsCalendarEventTypesDesc');
   String get settingsCalendarSyncNow => _t('settingsCalendarSyncNow');
+  String get settingsCalendarAutoSync => _t('settingsCalendarAutoSync');
+  String get settingsCalendarAutoSyncDesc => _t('settingsCalendarAutoSyncDesc');
   String get settingsCalendarPermission => _t('settingsCalendarPermission');
   String get settingsCalendarPermissionDesc => _t('settingsCalendarPermissionDesc');
   String get settingsCalendarConnected => _t('settingsCalendarConnected');
@@ -1811,6 +1813,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCalendarEventTypesDesc':
           'Wähle, welche Ereignistypen in den Kalender eingetragen werden.',
       'settingsCalendarSyncNow': 'Jetzt synchronisieren',
+      'settingsCalendarAutoSync': 'Automatisch synchronisieren',
+      'settingsCalendarAutoSyncDesc': 'Synchronisiert Stundenplananderungen automatisch nach jeder Aktualisierung in den Systemkalender.',
       'settingsCalendarPermission': 'Kalender-Berechtigung',
       'settingsCalendarPermissionDesc':
           'Erlaube den Zugriff auf deinen lokalen Kalender, damit Termine überall synchronisiert werden können.',
@@ -2909,6 +2913,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCalendarEventTypes': 'Events to Sync',
       'settingsCalendarEventTypesDesc': 'Choose which event types are added to the calendar.',
       'settingsCalendarSyncNow': 'Sync Now',
+      'settingsCalendarAutoSync': 'Auto sync after refresh',
+      'settingsCalendarAutoSyncDesc': 'Timetable changes are written automatically to the system calendar after each refresh.',
       'settingsCalendarPermission': 'Calendar Permission',
       'settingsCalendarPermissionDesc':
           'Allow access to your local calendar so events can be synced everywhere.',
@@ -4086,6 +4092,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCalendarEventTypes': 'Événements à synchroniser',
       'settingsCalendarEventTypesDesc': 'Choisis quels types d\'événements sont ajoutés au calendrier.',
       'settingsCalendarSyncNow': 'Synchroniser maintenant',
+      'settingsCalendarAutoSync': 'Synchronisation automatique',
+      'settingsCalendarAutoSyncDesc': 'Ecrit automatiquement les changements dans le calendrier systeme apres chaque actualisation.',
       'settingsCalendarPermission': 'Permission Calendrier',
       'settingsCalendarPermissionDesc':
           'Autorise l\'accès à ton calendrier local pour synchroniser les rendez-vous partout.',
@@ -5291,6 +5299,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCalendarEventTypes': 'Eventos a sincronizar',
       'settingsCalendarEventTypesDesc': 'Elige qué tipos de eventos se añaden al calendario.',
       'settingsCalendarSyncNow': 'Sincronizar ahora',
+      'settingsCalendarAutoSync': 'Sincronizar automáticamente',
+      'settingsCalendarAutoSyncDesc': 'Escribe los cambios de horario en el calendario del sistema tras cada actualizacion.',
       'settingsCalendarPermission': 'Permiso de calendario',
       'settingsCalendarPermissionDesc':
           'Permite el acceso a tu calendario local para sincronizar las citas en todas partes.',
