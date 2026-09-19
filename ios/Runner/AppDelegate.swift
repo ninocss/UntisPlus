@@ -65,6 +65,7 @@ enum UntisLiveActivityController {
     }
 }
 
+@MainActor
 private class UntisLiveActivityPlugin: NSObject, FlutterPlugin {
     static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
@@ -106,6 +107,7 @@ private class UntisLiveActivityPlugin: NSObject, FlutterPlugin {
 // `AlarmSystem.kt`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+@MainActor
 private class UntisAlarmLiveActivityPlugin: NSObject, FlutterPlugin {
     static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
@@ -142,6 +144,7 @@ private class UntisAlarmLiveActivityPlugin: NSObject, FlutterPlugin {
 // Alarm channel (`untisplus/alarm`) mirroring `MainActivity.kt`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+@MainActor
 private class UntisAlarmPlugin: NSObject, FlutterPlugin {
     static let channelName = "untisplus/alarm"
 
@@ -202,13 +205,14 @@ private class UntisAlarmPlugin: NSObject, FlutterPlugin {
 // `showProgressiveNotification` and `onNotificationAction`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+@MainActor
 private class UntisNotificationsPlugin: NSObject, FlutterPlugin {
     static let channelName = "untisplus/notifications"
 
     /// One channel per running engine (main app + transient background-refresh
     /// engine). Alarm actions are broadcast to all of them; only the app's own
     /// Dart handler reacts to them.
-    private static var registeredChannels: [FlutterMethodChannel] = []
+    nonisolated(unsafe) private static var registeredChannels: [FlutterMethodChannel] = []
 
     static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
@@ -310,6 +314,7 @@ private func untisHasFullCalendarAccess(_ status: EKAuthorizationStatus) -> Bool
     }
 }
 
+@MainActor
 private class UntisCalendarPlugin: NSObject, FlutterPlugin {
     static let channelName = "untisplus/calendar"
     private let eventStore = EKEventStore()
@@ -479,6 +484,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
     }
 }
 
+@MainActor
 private class UntisUIPlugin: NSObject, FlutterPlugin {
     static let channelName = "untisplus/ui"
 
@@ -567,6 +573,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
 }
 
 @main
+@MainActor
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override func application(
     _ application: UIApplication,
@@ -602,6 +609,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
     AppDelegate.registerNativePlugins(with: engineBridge.pluginRegistry)
   }
 
+  @MainActor
   static func registerNativePlugins(with registry: FlutterPluginRegistry) {
     GeneratedPluginRegistrant.register(with: registry)
     UntisLiveActivityPlugin.register(with: registry.registrar(forPlugin: "UntisLiveActivityPlugin")!)
@@ -639,6 +647,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
 /// Runs the Dart `alarmRefreshDispatcher` entrypoint in a throwaway engine so
 /// smart alarms get a pre-wake timetable refresh, then completes the pending
 /// `BGAppRefreshTask`. Mirrors Android's `AlarmRefreshService`.
+@MainActor
 enum UntisAlarmRefreshController {
     private static var engine: FlutterEngine?
     private static var task: BGAppRefreshTask?
