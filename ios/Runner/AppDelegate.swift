@@ -277,9 +277,46 @@ private class UntisNotificationsPlugin: NSObject, FlutterPlugin {
 // new calendars. Mirrors Android's MainActivity.kt calendar channel.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// True when the app may read and/or write the user's event store, independent
+/// of the runtime OS version. iOS 17 introduced `.fullAccess` / `.writeOnly`;
+/// earlier releases only expose `.authorized`, so the check must be
+/// availability-routed to compile against the 16.0 deployment target.
+private func untisHasCalendarAccess(_ status: EKAuthorizationStatus) -> Bool {
+    if #available(iOS 17.0, *) {
+        return status == .fullAccess || status == .writeOnly
+    } else {
+        return status == .authorized
+    }
+}
+
+/// Formats an `EKCalendar`'s color as a `#RRGGBB` string using the first three
+/// RGB components of its `CGColor`. Falls back to opaque red when the color
+/// cannot be decomposed (e.g. a pattern or uninitialized backing color).
+private func untisCalendarHexColor(_ calendar: EKCalendar) -> String {
+    guard let components = calendar.cgColor.colorComponents, components.count >= 3 else {
+        return "#FF0000"
+    }
+    let r = Int(components[0] * 255.0)
+    let g = Int(components[1] * 255.0)
+    let b = Int(components[2] * 255.0)
+    return String(format: "#%06X", (r << 16) | (g << 8) | b)
+}
+
+/// True when the caller may access the event store. iOS 17 split the old
+/// `.authorized` case into `.fullAccess`/`.writeOnly`, so compare those when
+/// available and fall back to `.authorized` on iOS 16.x.
+private func untisHasFullCalendarAccess(_ status: EKAuthorizationStatus) -> Bool {
+    if #available(iOS 17.0, *) {
+        return status == .fullAccess || status == .writeOnly
+    } else {
+        return status == .authorized
+    }
+}
+
 private class UntisCalendarPlugin: NSObject, FlutterPlugin {
     static let channelName = "untisplus/calendar"
     private let eventStore = EKEventStore()
+
 
     static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
@@ -315,6 +352,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
                 let events = await getEvents(calendarId: calendarId, startMs: startMs, endMs: endMs)
                 result(events)
             }
+
         case "deleteEvent":
             let args = call.arguments as? [String: Any] ?? [:]
             let calendarId = args["calendarId"] as? String ?? ""
@@ -330,7 +368,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
 
     private func getCalendars() async -> [[String: Any]] {
         let status = EKEventStore.authorizationStatus(for: .event)
-        guard status == .fullAccess || status == .writeOnly else {
+        guard untisHasFullCalendarAccess(status) else {
             return []
         }
         let calendars = eventStore.calendars(for: .event)
@@ -342,7 +380,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
             return [
                 "id": cal.calendarIdentifier,
                 "name": cal.title,
-                "color": String(format: "#%06X", cal.cgColor.colorComponents.map { Int($0[0] * 255) << 16 | Int($0[1] * 255) << 8 | Int($0[2] * 255) } ?? 0xFF0000),
+                "color": untisCalendarHexColor(cal),
                 "accountName": cal.source.title,
                 "accountType": cal.source.sourceType.rawValue,
                 "isReadOnly": !cal.allowsContentModifications,
@@ -353,7 +391,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
 
     private func createCalendar(name: String, colorHex: String, accountName: String) async -> String? {
         let status = EKEventStore.authorizationStatus(for: .event)
-        guard status == .fullAccess || status == .writeOnly else {
+        guard untisHasFullCalendarAccess(status) else {
             return nil
         }
         let sources = eventStore.sources
@@ -392,7 +430,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
 
     private func getEvents(calendarId: String?, startMs: Int64, endMs: Int64) async -> [[String: Any]] {
         let status = EKEventStore.authorizationStatus(for: .event)
-        guard status == .fullAccess || status == .writeOnly else {
+        guard untisHasFullCalendarAccess(status) else {
             return []
         }
         let predicate: NSPredicate
@@ -428,7 +466,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
 
     private func deleteEvent(calendarId: String, eventId: String) async -> Bool {
         let status = EKEventStore.authorizationStatus(for: .event)
-        guard status == .fullAccess || status == .writeOnly else {
+        guard untisHasFullCalendarAccess(status) else {
             return false
         }
         guard let event = eventStore.event(withIdentifier: eventId) else {
