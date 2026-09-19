@@ -730,6 +730,7 @@ final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> dailyBriefingPushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> importantChangesPushNotifier = ValueNotifier(true);
   final ValueNotifier<bool> showCalendarEventsNotifier = ValueNotifier(true);
+  final ValueNotifier<bool> calendarAutoSyncNotifier = ValueNotifier(true);
   final ValueNotifier<Set<String>> _calendarSyncEventTypesNotifier = ValueNotifier({
     'tests',
     'homework',

@@ -1,5 +1,7 @@
 package com.ninocss.untisplus
 
+import android.accounts.Account
+import android.accounts.AccountManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -438,6 +440,13 @@ class MainActivity : FlutterActivity() {
             put(CalendarContract.Calendars.SYNC_EVENTS, 1)
         }
 
+        // A calendar row inserted under a LOCAL account is only published as VISIBLE=1
+        // (and therefore shown in the Calendar app and in getCalendars) if the account is
+        // registered with AccountManager. Inserting into an unknown local account silently
+        // creates an invisible row, which is exactly the reported bug. So ensure the account
+        // exists before the sync-adapter insert.
+        ensureLocalAccount(accountName)
+
         try {
             val uri = contentResolver.insert(
                 CalendarContract.Calendars.CONTENT_URI.buildUpon()
@@ -452,7 +461,9 @@ class MainActivity : FlutterActivity() {
             return id
         } catch (e: Exception) {
             android.util.Log.e("UntisPlus", "Failed to create calendar: ${e.message}")
-            // Fallback: try without CALLER_IS_SYNCADAPTER
+            // Fallback: sync-adapter path imporperly requires the account; direct insert
+            // may work on some builds but those calendars are not reliably VISIBLE, so keep
+            // it as last resort only.
             try {
                 val uri = contentResolver.insert(CalendarContract.Calendars.CONTENT_URI, values)
                 val id = uri?.lastPathSegment
@@ -462,6 +473,28 @@ class MainActivity : FlutterActivity() {
                 android.util.Log.e("UntisPlus", "Failed to create calendar (fallback): ${e2.message}")
                 return null
             }
+        }
+    }
+
+    private fun ensureLocalAccount(accountName: String) {
+        try {
+            val am = getSystemService(android.content.Context.ACCOUNT_SERVICE) as AccountManager
+            val exists = am.getAccountsByType(CalendarContract.ACCOUNT_TYPE_LOCAL)
+                .any { it.name == accountName }
+            if (!exists) {
+                if (am.addAccountExplicitly(
+                        android.accounts.Account(accountName, CalendarContract.ACCOUNT_TYPE_LOCAL),
+                        null, // password (unused for LOCAL)
+                        null  // userdata
+                    )) {
+                    android.util.Log.d("UntisPlus", "Registered local account: $accountName")
+                } else {
+                    android.util.Log.w("UntisPlus", "addAccountExplicitly returned false for $accountName")
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("UntisPlus", "ensureLocalAccount failed: ${e.message}")
+            // Non-fatal: fall back to the direct-insert path in createCalendar.
         }
     }
 
