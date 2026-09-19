@@ -104,8 +104,8 @@ struct UntisAccountOptions: DynamicOptionsProvider {
 
 @available(iOSApplicationExtension 17.0, *)
 struct UntisAccountIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "widget.account.title"
-    static var description = IntentDescription("Wähle das Untis+-Konto für dieses Widget.")
+    @MainActor static var title: LocalizedStringResource = "widget.account.title"
+    @MainActor static var description = IntentDescription("Wähle das Untis+-Konto für dieses Widget.")
     @Parameter(title: "widget.account.parameter", optionsProvider: UntisAccountOptions()) var account: String?
 
     init() {}
@@ -347,7 +347,7 @@ struct UntisWidgetProfileOptions: DynamicOptionsProvider {
 
 @available(iOSApplicationExtension 17.0, *)
 struct UntisWidgetProfileIntent: WidgetConfigurationIntent {
-    static var title: LocalizedStringResource = "widget.profile.title"
+    @MainActor static var title: LocalizedStringResource = "widget.profile.title"
     @Parameter(title: "widget.profile.parameter", optionsProvider: UntisWidgetProfileOptions()) var profile: String?
     init() {}
 }
