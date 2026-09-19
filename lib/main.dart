@@ -804,16 +804,14 @@ Future<void> _initializeDeferredAccountData() async {
 
 }
 
-vo
 Future<void> _autoSyncCalendarsAfterRefresh() async {
   if (!calendarAutoSyncNotifier.value) return;
   if (demoModeNotifier.value) return;
-  if (calendarSyncEnabledEventTypesNotifier.value.isEmpty) return;
+  if (calendarSyncEventTypesNotifier.value.isEmpty) return;
   try {
     final service = await CalendarSyncService.create();
     await service.syncAll();
-  } catch (_) {}
-}
+} catch (_) {}
 }
 
 void main() async {
@@ -987,7 +985,7 @@ void main() async {
   onAutoCalendarSyncRequested = () async {
     if (!calendarAutoSyncNotifier.value) return;
     if (demoModeNotifier.value) return;
-    if (calendarSyncEnabledEventTypesNotifier.value.isEmpty) return;
+    if (calendarSyncEventTypesNotifier.value.isEmpty) return;
     try {
       final service = await CalendarSyncService.create();
       await service.syncAll();
