@@ -119,7 +119,6 @@ private class UntisAlarmLiveActivityPlugin: NSObject, FlutterPlugin {
         registrar.addMethodCallDelegate(instance, channel: channel)
     }
 
-    @MainActor
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         let notImplemented = FlutterMethodNotImplemented
         switch call.method {
@@ -370,7 +369,6 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
                 result(success)
             }
         default:
-            let notImplemented = FlutterMethodNotImplemented
             result(notImplemented)
         }
     }
