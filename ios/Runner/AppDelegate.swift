@@ -1,5 +1,5 @@
 import EventKit
-import Flutter
+@preconcurrency import Flutter
 import UIKit
 import CoreGraphics
 import ActivityKit
@@ -77,6 +77,7 @@ private class UntisLiveActivityPlugin: NSObject, FlutterPlugin {
     }
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let notImplemented = FlutterMethodNotImplemented
         switch call.method {
         case "upsert":
             guard #available(iOS 16.2, *) else {
@@ -96,7 +97,7 @@ private class UntisLiveActivityPlugin: NSObject, FlutterPlugin {
             UntisLiveActivityController.end()
             result(true)
         default:
-            result(FlutterMethodNotImplemented)
+            result(notImplemented)
         }
     }
 }
@@ -118,7 +119,9 @@ private class UntisAlarmLiveActivityPlugin: NSObject, FlutterPlugin {
         registrar.addMethodCallDelegate(instance, channel: channel)
     }
 
+    @MainActor
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let notImplemented = FlutterMethodNotImplemented
         switch call.method {
         case "upsert":
             guard #available(iOS 16.2, *) else {
@@ -135,7 +138,7 @@ private class UntisAlarmLiveActivityPlugin: NSObject, FlutterPlugin {
             Task { await UntisAlarmActivityManager.end() }
             result(true)
         default:
-            result(FlutterMethodNotImplemented)
+            result(notImplemented)
         }
     }
 }
@@ -158,6 +161,7 @@ private class UntisAlarmPlugin: NSObject, FlutterPlugin {
     }
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let notImplemented = FlutterMethodNotImplemented
         switch call.method {
         case "replacePlans":
             let maps = (call.arguments as? [String: Any])?["plans"] as? [[String: Any]] ?? []
@@ -195,7 +199,7 @@ private class UntisAlarmPlugin: NSObject, FlutterPlugin {
             // iOS exposes only bundled sounds; the system default is used.
             result(nil)
         default:
-            result(FlutterMethodNotImplemented)
+            result(notImplemented)
         }
     }
 }
@@ -236,6 +240,7 @@ private class UntisNotificationsPlugin: NSObject, FlutterPlugin {
     }
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let notImplemented = FlutterMethodNotImplemented
         switch call.method {
         case "showProgressiveNotification":
             let args = call.arguments as? [String: Any] ?? [:]
@@ -255,7 +260,7 @@ private class UntisNotificationsPlugin: NSObject, FlutterPlugin {
             UntisNotificationProxy.activate()
             result(nil)
         default:
-            result(FlutterMethodNotImplemented)
+            result(notImplemented)
         }
     }
 
@@ -330,6 +335,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
     }
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let notImplemented = FlutterMethodNotImplemented
         switch call.method {
         case "getCalendars":
             Task {
@@ -364,7 +370,8 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
                 result(success)
             }
         default:
-            result(FlutterMethodNotImplemented)
+            let notImplemented = FlutterMethodNotImplemented
+            result(notImplemented)
         }
     }
 
@@ -498,6 +505,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
     }
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let notImplemented = FlutterMethodNotImplemented
         switch call.method {
         case "setWindowBlur":
             let radius = (call.arguments as? NSNumber)?.intValue ?? 0
@@ -515,7 +523,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
         case "installApk":
             result("unsupported")
         default:
-            result(FlutterMethodNotImplemented)
+            result(notImplemented)
         }
     }
 
@@ -647,7 +655,6 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
 /// Runs the Dart `alarmRefreshDispatcher` entrypoint in a throwaway engine so
 /// smart alarms get a pre-wake timetable refresh, then completes the pending
 /// `BGAppRefreshTask`. Mirrors Android's `AlarmRefreshService`.
-@MainActor
 enum UntisAlarmRefreshController {
     private static var engine: FlutterEngine?
     private static var task: BGAppRefreshTask?

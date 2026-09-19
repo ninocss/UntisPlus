@@ -1,5 +1,5 @@
 import UIKit
-import UserNotifications
+@preconcurrency import UserNotifications
 import BackgroundTasks
 
 /// Native, durable scheduling layer for iOS alarms.
@@ -10,7 +10,6 @@ import BackgroundTasks
 /// wake UI, pick arbitrary ringtones or guarantee exact background refreshes;
 /// the closest equivalents are time-sensitive alerts, the system default
 /// sound and opportunistic `BGAppRefreshTask` runs.
-@MainActor
 enum UntisAlarmScheduler {
     static let channelIdentifier = "untisplus/alarm_refresh"
     static let refreshIdentifier = "com.ninocss.untisplus.alarmRefresh"
@@ -239,11 +238,11 @@ enum UntisAlarmScheduler {
 /// alarm actions while passing everything else through to the
 /// flutter_local_notifications delegate (so launch details, payload parsing
 /// and the progressive/update notifications keep working).
-@MainActor
+@preconcurrency
 final class UntisNotificationProxy: NSObject, UNUserNotificationCenterDelegate {
     /// Installed by `UntisNotificationsPlugin.register` to push alarm actions
     /// into Dart through the `untisplus/notifications` channel.
-    nonisolated(unsafe) static var forwardAction: ((String, [AnyHashable: Any]) -> Void)?
+    static var forwardAction: ((String, [AnyHashable: Any]) -> Void)?
 
     /// Re-activates the proxy right after Dart finished `NotificationService
     /// .init()`. At that point `center.delegate` is the flutter_local_notifications
@@ -257,7 +256,13 @@ final class UntisNotificationProxy: NSObject, UNUserNotificationCenterDelegate {
     }
 
     nonisolated(unsafe) private static var passthroughDelegate: UNUserNotificationCenterDelegate?
-    nonisolated(unsafe) private static let shared = UntisNotificationProxy()
+    nonisolated(unsafe) private static var _shared: UntisNotificationProxy?
+    private static var shared: UntisNotificationProxy {
+        if _shared == nil {
+            DispatchQueue.main.sync { _shared = UntisNotificationProxy() }
+        }
+        return _shared!
+    }
 
     private override init() {
         super.init()
