@@ -290,17 +290,13 @@ private func untisHasCalendarAccess(_ status: EKAuthorizationStatus) -> Bool {
     }
 }
 
-/// Formats an `EKCalendar`'s color as a `#RRGGBB` string using the first three
-/// RGB components of its `CGColor`. Falls back to opaque red when the color
-/// cannot be decomposed (e.g. a pattern or uninitialized backing color).
+/// Formats an `EKCalendar`'s color as a `#RRGGBB` string using its `UIColor`.
+/// Falls back to opaque red when the color cannot be decomposed.
 private func untisCalendarHexColor(_ calendar: EKCalendar) -> String {
-    guard let components = calendar.cgColor.colorComponents, components.count >= 3 else {
-        return "#FF0000"
-    }
-    let r = Int(components[0] * 255.0)
-    let g = Int(components[1] * 255.0)
-    let b = Int(components[2] * 255.0)
-    return String(format: "#%06X", (r << 16) | (g << 8) | b)
+    let uiColor = calendar.color ?? UIColor.red
+    var r: CGFloat = 1, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 1
+    uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+    return String(format: "#%06X", Int(r * 255) << 16 | Int(g * 255) << 8 | Int(b * 255))
 }
 
 /// True when the caller may access the event store. iOS 17 split the old
