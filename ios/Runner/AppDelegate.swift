@@ -1,3 +1,4 @@
+import EventKit
 import Flutter
 import UIKit
 import ActivityKit
@@ -271,6 +272,178 @@ private class UntisNotificationsPlugin: NSObject, FlutterPlugin {
 // UI channel (`untisplus/ui`) mirroring `MainActivity.kt`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Calendar channel (`untisplus/calendar`) for fetching calendars and creating
+// new calendars. Mirrors Android's MainActivity.kt calendar channel.
+// ─────────────────────────────────────────────────────────────────────────────
+
+private class UntisCalendarPlugin: NSObject, FlutterPlugin {
+    static let channelName = "untisplus/calendar"
+    private let eventStore = EKEventStore()
+
+    static func register(with registrar: FlutterPluginRegistrar) {
+        let channel = FlutterMethodChannel(
+            name: channelName,
+            binaryMessenger: registrar.messenger()
+        )
+        let instance = UntisCalendarPlugin()
+        registrar.addMethodCallDelegate(instance, channel: channel)
+    }
+
+    func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "getCalendars":
+            Task {
+                let calendars = await getCalendars()
+                result(calendars)
+            }
+        case "createCalendar":
+            let args = call.arguments as? [String: Any] ?? [:]
+            let name = args["name"] as? String ?? "Untis+ Calendar"
+            let colorHex = args["color"] as? String ?? "#FF0000"
+            let accountName = args["accountName"] as? String ?? "Untis+"
+            Task {
+                let calendarId = await createCalendar(name: name, colorHex: colorHex, accountName: accountName)
+                result(calendarId)
+            }
+        case "getEvents":
+            let args = call.arguments as? [String: Any] ?? [:]
+            let calendarId = args["calendarId"] as? String
+            let startMs = (args["startMs"] as? NSNumber)?.int64Value ?? 0
+            let endMs = (args["endMs"] as? NSNumber)?.int64Value ?? 0
+            Task {
+                let events = await getEvents(calendarId: calendarId, startMs: startMs, endMs: endMs)
+                result(events)
+            }
+        case "deleteEvent":
+            let args = call.arguments as? [String: Any] ?? [:]
+            let calendarId = args["calendarId"] as? String ?? ""
+            let eventId = args["eventId"] as? String ?? ""
+            Task {
+                let success = await deleteEvent(calendarId: calendarId, eventId: eventId)
+                result(success)
+            }
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
+    private func getCalendars() async -> [[String: Any]] {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status == .fullAccess || status == .writeOnly else {
+            return []
+        }
+        let calendars = eventStore.calendars(for: .event)
+        return calendars.map { cal in
+            var isDefault = false
+            if let defaultCal = eventStore.defaultCalendarForNewEvents {
+                isDefault = defaultCal.calendarIdentifier == cal.calendarIdentifier
+            }
+            return [
+                "id": cal.calendarIdentifier,
+                "name": cal.title,
+                "color": String(format: "#%06X", cal.cgColor.colorComponents.map { Int($0[0] * 255) << 16 | Int($0[1] * 255) << 8 | Int($0[2] * 255) } ?? 0xFF0000),
+                "accountName": cal.source.title,
+                "accountType": cal.source.sourceType.rawValue,
+                "isReadOnly": !cal.allowsContentModifications,
+                "isDefault": isDefault
+            ]
+        }
+    }
+
+    private func createCalendar(name: String, colorHex: String, accountName: String) async -> String? {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status == .fullAccess || status == .writeOnly else {
+            return nil
+        }
+        let sources = eventStore.sources
+        guard let localSource = sources.first(where: { $0.sourceType == .local }) else {
+            return nil
+        }
+        let calendar = EKCalendar(for: .event, eventStore: eventStore)
+        calendar.title = name
+        calendar.source = localSource
+        if let color = colorFromHex(colorHex) {
+            calendar.cgColor = color.cgColor
+        }
+        do {
+            try eventStore.saveCalendar(calendar, commit: true)
+            return calendar.calendarIdentifier
+        } catch {
+            print("Untis+: failed to create calendar: \(error)")
+            return nil
+        }
+    }
+
+    private func colorFromHex(_ hex: String) -> UIColor? {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if hexSanitized.hasPrefix("#") {
+            hexSanitized.removeFirst()
+        }
+        guard hexSanitized.count == 6,
+              let rgbValue = UInt32(hexSanitized, radix: 16) else {
+            return nil
+        }
+        let red = CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0
+        let green = CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0
+        let blue = CGFloat(rgbValue & 0x0000FF) / 255.0
+        return UIColor(red: red, green: green, blue: blue, alpha: 1.0)
+    }
+
+    private func getEvents(calendarId: String?, startMs: Int64, endMs: Int64) async -> [[String: Any]] {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status == .fullAccess || status == .writeOnly else {
+            return []
+        }
+        let predicate: NSPredicate
+        if let calendarId = calendarId, !calendarId.isEmpty,
+           let calendar = eventStore.calendar(withIdentifier: calendarId) {
+            predicate = eventStore.predicateForEvents(
+                withStart: Date(timeIntervalSince1970: TimeInterval(startMs) / 1000),
+                end: Date(timeIntervalSince1970: TimeInterval(endMs) / 1000),
+                calendars: [calendar]
+            )
+        } else {
+            predicate = eventStore.predicateForEvents(
+                withStart: Date(timeIntervalSince1970: TimeInterval(startMs) / 1000),
+                end: Date(timeIntervalSince1970: TimeInterval(endMs) / 1000),
+                calendars: nil
+            )
+        }
+        let events = eventStore.events(matching: predicate)
+        return events.map { event in
+            [
+                "id": event.eventIdentifier,
+                "title": event.title ?? "",
+                "description": event.notes ?? "",
+                "start": Int64(event.startDate.timeIntervalSince1970 * 1000),
+                "end": Int64(event.endDate.timeIntervalSince1970 * 1000),
+                "location": event.location ?? "",
+                "calendarId": event.calendar.calendarIdentifier,
+                "rrule": event.recurrenceRules?.first?.description ?? "",
+                "status": event.status.rawValue
+            ]
+        }
+    }
+
+    private func deleteEvent(calendarId: String, eventId: String) async -> Bool {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard status == .fullAccess || status == .writeOnly else {
+            return false
+        }
+        guard let event = eventStore.event(withIdentifier: eventId) else {
+            return false
+        }
+        do {
+            try eventStore.remove(event, span: .thisEvent, commit: true)
+            return true
+        } catch {
+            print("Untis+: failed to delete event: \(error)")
+            return false
+        }
+    }
+}
+
 private class UntisUIPlugin: NSObject, FlutterPlugin {
     static let channelName = "untisplus/ui"
 
@@ -401,6 +574,7 @@ private class UntisUIPlugin: NSObject, FlutterPlugin {
     UntisAlarmPlugin.register(with: registry.registrar(forPlugin: "UntisAlarmPlugin")!)
     UntisNotificationsPlugin.register(with: registry.registrar(forPlugin: "UntisNotificationsPlugin")!)
     UntisUIPlugin.register(with: registry.registrar(forPlugin: "UntisUIPlugin")!)
+    UntisCalendarPlugin.register(with: registry.registrar(forPlugin: "UntisCalendarPlugin")!)
   }
 
   private func registerBackgroundRefresh() {

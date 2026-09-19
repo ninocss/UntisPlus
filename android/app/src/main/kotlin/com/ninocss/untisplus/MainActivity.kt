@@ -4,25 +4,33 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentValues
+import android.content.ContentUris
 import android.content.Intent
 import android.content.ComponentName
 import android.content.pm.PackageManager
+import android.database.Cursor
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.provider.CalendarContract
 import android.provider.Settings
 import android.media.RingtoneManager
 import androidx.core.content.FileProvider
-import java.io.File
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.PluginRegistry
+import java.io.File
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
     companion object {
         private const val NOTIFICATION_CHANNEL = "untisplus/notifications"
         private const val UI_CHANNEL = "untisplus/ui"
         private const val ALARM_CHANNEL = "untisplus/alarm"
+        private const val CALENDAR_CHANNEL = "untisplus/calendar"
         private const val RINGTONE_PICK_REQUEST = 8341
         
         private const val EXTRA_ACTION_ID = "notification_action_id"
@@ -33,6 +41,7 @@ class MainActivity : FlutterActivity() {
     private var notificationChannel: MethodChannel? = null
     private var uiChannel: MethodChannel? = null
     private var alarmChannel: MethodChannel? = null
+    private var calendarChannel: MethodChannel? = null
     private var ringtoneResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -76,6 +85,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        // Alarm Channel
         alarmChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ALARM_CHANNEL)
         alarmChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -95,6 +105,32 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "pickRingtone" -> pickAlarmRingtone(call.arguments as? Map<*, *>, result)
+                else -> result.notImplemented()
+            }
+        }
+
+        // Calendar Channel
+        calendarChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CALENDAR_CHANNEL)
+        calendarChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getCalendars" -> result.success(getCalendars())
+                "createCalendar" -> {
+                    val name = call.argument<String>("name") ?: "Untis+ Calendar"
+                    val color = call.argument<String>("color") ?: "#FF0000"
+                    val accountName = call.argument<String>("accountName") ?: "Untis+"
+                    result.success(createCalendar(name, color, accountName))
+                }
+                "getEvents" -> {
+                    val calendarId = call.argument<String>("calendarId")
+                    val startMs = call.argument<Long>("startMs") ?: 0
+                    val endMs = call.argument<Long>("endMs") ?: 0
+                    result.success(getEvents(calendarId, startMs, endMs))
+                }
+                "deleteEvent" -> {
+                    val calendarId = call.argument<String>("calendarId") ?: ""
+                    val eventId = call.argument<String>("eventId") ?: ""
+                    result.success(deleteEvent(calendarId, eventId))
+                }
                 else -> result.notImplemented()
             }
         }
@@ -335,5 +371,172 @@ class MainActivity : FlutterActivity() {
 
         manager.notify(id, builder.build())
         return true
+    }
+
+    private fun getCalendars(): List<Map<String, Any>> {
+        val calendars = mutableListOf<Map<String, Any>>()
+        val projection = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
+            CalendarContract.Calendars.CALENDAR_COLOR,
+            CalendarContract.Calendars.ACCOUNT_NAME,
+            CalendarContract.Calendars.ACCOUNT_TYPE,
+            CalendarContract.Calendars.OWNER_ACCOUNT,
+            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL
+        )
+
+        val cursor = contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            projection,
+            "${CalendarContract.Calendars.VISIBLE} = 1",
+            null,
+            "${CalendarContract.Calendars.CALENDAR_DISPLAY_NAME} ASC"
+        )
+
+        cursor?.use { c ->
+            android.util.Log.d("UntisPlus", "getCalendars: found ${c.count} calendars")
+            while (c.moveToNext()) {
+                val id = c.getLong(c.getColumnIndexOrThrow(CalendarContract.Calendars._ID)).toString()
+                val name = c.getString(c.getColumnIndexOrThrow(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)) ?: "Unknown"
+                val color = c.getInt(c.getColumnIndexOrThrow(CalendarContract.Calendars.CALENDAR_COLOR))
+                val accountName = c.getString(c.getColumnIndexOrThrow(CalendarContract.Calendars.ACCOUNT_NAME)) ?: ""
+                val accountType = c.getString(c.getColumnIndexOrThrow(CalendarContract.Calendars.ACCOUNT_TYPE)) ?: ""
+                val ownerAccount = c.getString(c.getColumnIndexOrThrow(CalendarContract.Calendars.OWNER_ACCOUNT)) ?: ""
+                val accessLevel = c.getInt(c.getColumnIndexOrThrow(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL))
+
+                val isReadOnly = accessLevel < CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR
+                val isDefault = ownerAccount == accountName && accountType == "com.google"
+
+                android.util.Log.d("UntisPlus", "Calendar: id=$id, name=$name, accountName=$accountName, accountType=$accountType, isReadOnly=$isReadOnly, isDefault=$isDefault")
+
+                calendars.add(mapOf(
+                    "id" to id,
+                    "name" to name,
+                    "color" to String.format("#%06X", (0xFFFFFF and color)),
+                    "accountName" to accountName,
+                    "accountType" to accountType,
+                    "isReadOnly" to isReadOnly,
+                    "isDefault" to isDefault
+                ))
+            }
+        }
+
+        return calendars
+    }
+
+    private fun createCalendar(name: String, colorHex: String, accountName: String): String? {
+        val values = ContentValues().apply {
+            put(CalendarContract.Calendars.NAME, name)
+            put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, name)
+            put(CalendarContract.Calendars.ACCOUNT_NAME, accountName)
+            put(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL)
+            put(CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL, CalendarContract.Calendars.CAL_ACCESS_OWNER)
+            put(CalendarContract.Calendars.CALENDAR_COLOR, Color.parseColor(colorHex))
+            put(CalendarContract.Calendars.OWNER_ACCOUNT, accountName)
+            put(CalendarContract.Calendars.CALENDAR_TIME_ZONE, java.util.TimeZone.getDefault().id)
+            put(CalendarContract.Calendars.VISIBLE, 1)
+            put(CalendarContract.Calendars.SYNC_EVENTS, 1)
+        }
+
+        try {
+            val uri = contentResolver.insert(
+                CalendarContract.Calendars.CONTENT_URI.buildUpon()
+                    .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
+                    .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME, accountName)
+                    .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL)
+                    .build(),
+                values
+            )
+            val id = uri?.lastPathSegment
+            android.util.Log.d("UntisPlus", "Created calendar: $name with id: $id")
+            return id
+        } catch (e: Exception) {
+            android.util.Log.e("UntisPlus", "Failed to create calendar: ${e.message}")
+            // Fallback: try without CALLER_IS_SYNCADAPTER
+            try {
+                val uri = contentResolver.insert(CalendarContract.Calendars.CONTENT_URI, values)
+                val id = uri?.lastPathSegment
+                android.util.Log.d("UntisPlus", "Created calendar (fallback): $name with id: $id")
+                return id
+            } catch (e2: Exception) {
+                android.util.Log.e("UntisPlus", "Failed to create calendar (fallback): ${e2.message}")
+                return null
+            }
+        }
+    }
+
+    private fun getEvents(calendarId: String?, startMs: Long, endMs: Long): List<Map<String, Any>> {
+        val events = mutableListOf<Map<String, Any>>()
+        val projection = arrayOf(
+            CalendarContract.Events._ID,
+            CalendarContract.Events.TITLE,
+            CalendarContract.Events.DESCRIPTION,
+            CalendarContract.Events.DTSTART,
+            CalendarContract.Events.DTEND,
+            CalendarContract.Events.EVENT_LOCATION,
+            CalendarContract.Events.CALENDAR_ID,
+            CalendarContract.Events.RRULE,
+            CalendarContract.Events.STATUS
+        )
+
+        val selection = StringBuilder()
+        val selectionArgs = mutableListOf<String>()
+
+        if (calendarId != null && calendarId.isNotEmpty()) {
+            selection.append("${CalendarContract.Events.CALENDAR_ID} = ?")
+            selectionArgs.add(calendarId)
+        }
+
+        if (startMs > 0) {
+            if (selection.isNotEmpty()) selection.append(" AND ")
+            selection.append("${CalendarContract.Events.DTEND} >= ?")
+            selectionArgs.add(startMs.toString())
+        }
+        if (endMs > 0) {
+            if (selection.isNotEmpty()) selection.append(" AND ")
+            selection.append("${CalendarContract.Events.DTSTART} <= ?")
+            selectionArgs.add(endMs.toString())
+        }
+
+        val cursor = contentResolver.query(
+            CalendarContract.Events.CONTENT_URI,
+            projection,
+            if (selection.isNotEmpty()) selection.toString() else null,
+            selectionArgs.toTypedArray(),
+            "${CalendarContract.Events.DTSTART} ASC"
+        )
+
+        cursor?.use { c ->
+            while (c.moveToNext()) {
+                val id = c.getLong(c.getColumnIndexOrThrow(CalendarContract.Events._ID)).toString()
+                val title = c.getString(c.getColumnIndexOrThrow(CalendarContract.Events.TITLE)) ?: ""
+                val description = c.getString(c.getColumnIndexOrThrow(CalendarContract.Events.DESCRIPTION)) ?: ""
+                val start = c.getLong(c.getColumnIndexOrThrow(CalendarContract.Events.DTSTART))
+                val end = c.getLong(c.getColumnIndexOrThrow(CalendarContract.Events.DTEND))
+                val location = c.getString(c.getColumnIndexOrThrow(CalendarContract.Events.EVENT_LOCATION)) ?: ""
+                val calId = c.getLong(c.getColumnIndexOrThrow(CalendarContract.Events.CALENDAR_ID)).toString()
+                val rrule = c.getString(c.getColumnIndexOrThrow(CalendarContract.Events.RRULE)) ?: ""
+                val status = c.getInt(c.getColumnIndexOrThrow(CalendarContract.Events.STATUS))
+
+                events.add(mapOf(
+                    "id" to id,
+                    "title" to title,
+                    "description" to description,
+                    "start" to start,
+                    "end" to end,
+                    "location" to location,
+                    "calendarId" to calId,
+                    "rrule" to rrule,
+                    "status" to status
+                ))
+            }
+        }
+        return events
+    }
+
+    private fun deleteEvent(calendarId: String, eventId: String): Boolean {
+        val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId.toLong())
+        val rowsDeleted = contentResolver.delete(uri, null, null)
+        return rowsDeleted > 0
     }
 }

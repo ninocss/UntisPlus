@@ -29,8 +29,10 @@ import 'package:dio/dio.dart';
 import 'package:fllama/fllama.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_native_calendar/native_calendar.dart';
+import 'package:flutter_native_calendar/calendar_event.dart' as native_cal;
 
 import 'l10n.dart';
+import 'services/calendar_platform.dart';
 import 'core/time_utils.dart';
 import 'core/timetable_date_utils.dart';
 import 'services/notification_service.dart';

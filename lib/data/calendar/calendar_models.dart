@@ -115,6 +115,16 @@ class SystemCalendar {
       isDefault: json['isDefault'] as bool? ?? false,
     );
   }
+
+  factory SystemCalendar.fromMap(Map<String, dynamic> map) {
+    return SystemCalendar(
+      id: map['id']?.toString() ?? '',
+      name: map['name']?.toString() ?? 'Unknown',
+      color: map['color']?.toString() ?? '#000000',
+      isReadOnly: map['isReadOnly'] as bool? ?? false,
+      isDefault: map['isDefault'] as bool? ?? false,
+    );
+  }
 }
 
 /// Event to be synced to native calendar

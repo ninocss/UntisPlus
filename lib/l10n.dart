@@ -829,7 +829,9 @@ class AppL10n {
   String get settingsCalendarNotConnected => _t('settingsCalendarNotConnected');
   String get settingsCalendarGrantAccess => _t('settingsCalendarGrantAccess');
   String get settingsCalendarRevokeAccess => _t('settingsCalendarRevokeAccess');
-
+  String get settingsCalendarUseDefault => _t('settingsCalendarUseDefault');
+  String get settingsDefaultCalendar => _t('settingsDefaultCalendar');
+  String get settingsUseDefaultCalendar => _t('settingsUseDefaultCalendar');
   // ── AI System Prompt ─────────────────────────────────────────────────────────
   String get aiSystemPersona => _t('aiSystemPersona');
   String get aiSystemRules => _t('aiSystemRules');
@@ -1816,6 +1818,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCalendarNotConnected': 'Nicht verbunden',
       'settingsCalendarGrantAccess': 'Zugriff erlauben',
       'settingsCalendarRevokeAccess': 'Zugriff entziehen',
+      'settingsCalendarUseDefault': 'Standard-Kalender verwenden',
+      'settingsDefaultCalendar': 'Standard-Kalender',
+      'settingsUseDefaultCalendar': 'Standard-Kalender stattdessen verwenden',
       'changelogTitle': 'Neuigkeiten',
       'changelogLoadError': 'Fehler beim Laden',
       'changelogNoData': '# Keine Daten verfügbar',
@@ -2911,6 +2916,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCalendarNotConnected': 'Not Connected',
       'settingsCalendarGrantAccess': 'Grant Access',
       'settingsCalendarRevokeAccess': 'Revoke Access',
+      'settingsCalendarUseDefault': 'Use default calendar',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Check for updates on GitHub',
       'settingsGithubUpdateCheckDesc':
@@ -4087,6 +4093,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCalendarNotConnected': 'Non connecté',
       'settingsCalendarGrantAccess': 'Autoriser l\'accès',
       'settingsCalendarRevokeAccess': 'Révoquer l\'accès',
+      'settingsCalendarUseDefault': 'Utiliser le calendrier par défaut',
+      'settingsCalendarUseDefaultDesc':
+          'Utilise le calendrier par défaut du système pour les événements.',
+      'settingsCalendarSelectCalendar': 'Sélectionner le calendrier',
+      'settingsCalendarSelectCalendarDesc':
+          'Choisis le calendrier dans lequel les événements sont synchronisés.',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Rechercher des mises à jour sur GitHub',
       'settingsGithubUpdateCheckDesc':
@@ -5286,6 +5298,12 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsCalendarNotConnected': 'No conectado',
       'settingsCalendarGrantAccess': 'Permitir acceso',
       'settingsCalendarRevokeAccess': 'Revocar acceso',
+      'settingsCalendarUseDefault': 'Utilizar calendario por defecto',
+      'settingsCalendarUseDefaultDesc':
+          'Si está activado, se utiliza el calendario predeterminado del sistema para sincronizar los eventos de la escuela.',
+      'settingsCalendarSelectCalendar': 'Sleccionar calendario',
+      'settingsCalendarSelectCalendarDesc':
+          'Elige el calendario en el que se sincronizan los eventos.',
       'settingsGithubRepoLabel': 'github.com/ninocss/UntisPlus',
       'settingsGithubUpdateCheck': 'Buscar actualizaciones en GitHub',
       'settingsGithubUpdateCheckDesc':

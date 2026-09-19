@@ -3,13 +3,11 @@ part of '../../main.dart';
 /// Repository for managing calendar sync configuration and operations
 class CalendarSyncRepository {
   static const _prefsKeyConfigs = 'calendarSyncConfigs';
-  static const _prefsKeyCalendars = 'calendarSyncSystemCalendars';
   static const _prefsKeyLastSync = 'calendarSyncLastSync';
 
   final SharedPreferences _prefs;
-  final dynamic _nativeCalendar; // Use dynamic to avoid compile-time method checks
 
-  CalendarSyncRepository(this._prefs, this._nativeCalendar);
+  CalendarSyncRepository(this._prefs);
 
   /// Load all sync configurations
   List<CalendarSyncConfig> loadConfigs() {
@@ -86,41 +84,27 @@ class CalendarSyncRepository {
     }
   }
 
-  /// Load cached system calendars
-  List<SystemCalendar> loadSystemCalendars() {
-    final jsonList = _prefs.getStringList(_prefsKeyCalendars) ?? [];
-    return jsonList
-        .map((j) => SystemCalendar.fromJson(jsonDecode(j) as Map<String, dynamic>))
-        .toList();
+  /// Fetch system calendars from native platform
+  Future<List<SystemCalendar>> fetchSystemCalendars() async {
+    try {
+      final calendars = await CalendarPlatform.getCalendars();
+      return calendars
+          .map((c) => SystemCalendar.fromMap(c))
+          .where((c) => c.id.isNotEmpty)
+          .toList();
+    } catch (e) {
+      return [];
+    }
   }
 
-  /// Fetch and cache system calendars
-  Future<List<SystemCalendar>> fetchAndCacheSystemCalendars() async {
-    try {
-      // NativeCalendar API might differ - wrap in try-catch
-      dynamic calendars;
-      try {
-        calendars = await _nativeCalendar.getCalendars();
-      } catch (_) {
-        calendars = <dynamic>[];
-      }
-      final systemCalendars = (calendars as List?)
-          ?.map((c) => SystemCalendar(
-                id: c['id']?.toString() ?? '',
-                name: c['name']?.toString() ?? 'Unknown',
-                color: c['color']?.toString() ?? '#000000',
-                isReadOnly: c['isReadOnly'] as bool? ?? false,
-                isDefault: c['isDefault'] as bool? ?? false,
-              ))
-          .where((c) => c.id.isNotEmpty)
-          .toList() ?? <SystemCalendar>[];
-
-      final jsonList = systemCalendars.map((c) => jsonEncode(c.toJson())).toList();
-      await _prefs.setStringList(_prefsKeyCalendars, jsonList);
-      return systemCalendars;
-    } catch (e) {
-      return loadSystemCalendars(); // return cached on error
-    }
+  /// Create a new calendar on the native platform
+  Future<String?> createCalendar(String name, Color color) async {
+    final colorHex = '#${color.value.toRadixString(16).padLeft(8, '0').substring(2)}';
+    return await CalendarPlatform.createCalendar(
+      name: name,
+      color: colorHex,
+      accountName: 'Untis+',
+    );
   }
 
   /// Get the target calendar ID for a given event type
@@ -133,22 +117,6 @@ class CalendarSyncRepository {
   String? getTargetCalendarName(CalendarEventType type) {
     final config = getConfig(type);
     return config?.subCalendarName;
-  }
-
-  /// Create a dedicated sub-calendar for an event type
-  Future<String?> createSubCalendar(
-    String name,
-    Color color,
-  ) async {
-    try {
-      final colorHex = '#${color.value.toRadixString(16).padLeft(8, '0').substring(2)}';
-      return await _nativeCalendar.createCalendar(
-        name: name,
-        color: colorHex,
-      );
-    } catch (e) {
-      return null;
-    }
   }
 
   /// Get last sync timestamp
