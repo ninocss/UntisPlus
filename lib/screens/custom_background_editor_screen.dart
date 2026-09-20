@@ -162,7 +162,6 @@ class _CustomBackgroundEditorScreenState
     await upsertCustomBackground(spec);
     if (!mounted) return;
     _commitDraft(spec);
-    _tabController.animateTo(1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _scrollToSection(_editSectionKey);
@@ -1746,8 +1745,7 @@ class _CustomBackgroundEditorScreenState
                                     );
                                 if (choice == 'edit') {
                                   _commitDraft(s);
-                                  _tabController.animateTo(1);
-                                  WidgetsBinding.instance.addPostFrameCallback((
+                                                                WidgetsBinding.instance.addPostFrameCallback((
                                     _,
                                   ) {
                                     if (mounted) {
