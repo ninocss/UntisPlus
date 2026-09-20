@@ -933,12 +933,21 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       supportItem,
       reportItem,
     ];
+    // Keep the internal detail indices stable for existing tablet navigation
+    // and widget tests. Visual grouping is independent from this order.
     final items = <_SettingsHubItem>[
-      ...schoolItems,
-      ...personalizeItems,
-      ...smartItems,
-      ...dataItems,
-      ...appItems,
+      timetableItem,
+      notificationsItem,
+      appearanceItem,
+      subjectsItem,
+      aiItem,
+      backupItem,
+      accountItem,
+      widgetsItem,
+      ?alarmItem,
+      ?updatesItem,
+      supportItem,
+      reportItem,
     ];
 
     Widget settingsList({required bool expanded}) {
