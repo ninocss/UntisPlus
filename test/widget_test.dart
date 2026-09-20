@@ -72,6 +72,30 @@ void main() {
     };
   });
 
+  testWidgets('settings descriptions appear only after long press', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SettingsTile(
+            title: 'Test setting',
+            subtitle: 'Long press description',
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Long press description'), findsNothing);
+
+    await tester.longPress(find.text('Test setting'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Long press description'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('theme picker applies Manga immediately and disables blur', (
     tester,
   ) async {
