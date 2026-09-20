@@ -1338,10 +1338,7 @@ class _CustomBackgroundEditorScreenState
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNo  Widget _backgroundPreviewStage(
+  Widget _backgroundPreviewStage(
     BuildContext context,
     ColorScheme cs,
     AppL10n l, {
@@ -1417,24 +1414,10 @@ class _CustomBackgroundEditorScreenState
                         color: cs.tertiaryContainer.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.edit_rounded,
-                            size: 14,
-                            color: cs.onTertiaryContainer,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            l.bgEditorSave,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11.5,
-                              color: cs.onTertiaryContainer,
-                            ),
-                          ),
-                        ],
+                      child: Icon(
+                        Icons.edit_rounded,
+                        size: 16,
+                        color: cs.onTertiaryContainer,
                       ),
                     ),
                 ],
@@ -2608,7 +2591,10 @@ class _CustomBackgroundEditorScreenState
                   child: Text(l.bgEditorDuplicate),
                 ),
                 MenuItemButton(
-                  leadingIcon: Icon(Icons.delete_outline_rounded, color: cs.error),
+                  leadingIcon: Icon(
+                    Icons.delete_outline_rounded,
+                    color: cs.error,
+                  ),
                   onPressed: _deleteBackground,
                   child: Text(
                     l.bgEditorDelete,
