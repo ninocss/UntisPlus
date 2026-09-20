@@ -640,6 +640,12 @@ class AlarmService {
       try {
         await _channel.invokeMethod<void>('replacePlans', {'plans': plans});
         return;
+      } on MissingPluginException {
+        // Workmanager runs in a headless Flutter engine. The custom native
+        // alarm channel is registered by the app host, so it is unavailable
+        // in that background isolate. The normalized plan is already persisted
+        // above and will be pushed again from the foreground app isolate.
+        return;
       } on PlatformException catch (error) {
         if (attempt == 0) {
           await Future<void>.delayed(const Duration(milliseconds: 120));
