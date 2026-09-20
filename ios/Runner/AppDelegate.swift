@@ -368,6 +368,20 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
                 let success = await deleteEvent(calendarId: calendarId, eventId: eventId)
                 result(success)
             }
+        case "addEvent":
+            let args = call.arguments as? [String: Any] ?? [:]
+            let title = args["title"] as? String ?? ""
+            let description = args["description"] as? String ?? ""
+            let startMs = (args["startMs"] as? NSNumber)?.int64Value ?? 0
+            let endMs = (args["endMs"] as? NSNumber)?.int64Value ?? 0
+            let location = args["location"] as? String
+            let calendarId = args["calendarId"] as? String
+            let reminderMinutes = args["reminderMinutes"] as? [Int] ?? [15, 60]
+            let allDay = args["allDay"] as? Bool ?? false
+            Task {
+                let success = await addEvent(title: title, description: description, startMs: startMs, endMs: endMs, location: location, calendarId: calendarId, reminderMinutes: reminderMinutes, allDay: allDay)
+                result(success)
+            }
         default:
             result(notImplemented)
         }
@@ -484,6 +498,41 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
             return true
         } catch {
             print("Untis+: failed to delete event: \(error)")
+            return false
+        }
+    }
+
+    private func addEvent(title: String, description: String, startMs: Int64, endMs: Int64, location: String?, calendarId: String?, reminderMinutes: [Int], allDay: Bool) async -> Bool {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        guard untisHasFullCalendarAccess(status) else {
+            return false
+        }
+        let event = EKEvent(eventStore: eventStore)
+        event.title = title
+        event.notes = description
+        event.startDate = Date(timeIntervalSince1970: TimeInterval(startMs) / 1000)
+        event.endDate = Date(timeIntervalSince1970: TimeInterval(endMs) / 1000)
+        event.isAllDay = allDay
+        if let location = location, !location.isEmpty {
+            event.location = location
+        }
+        if let calendarId = calendarId, !calendarId.isEmpty,
+           let calendar = eventStore.calendar(withIdentifier: calendarId) {
+            event.calendar = calendar
+        }
+        // Add alarms
+        var alarms: [EKAlarm] = []
+        for minutes in reminderMinutes {
+            let alarm = EKAlarm(relativeOffset: TimeInterval(-minutes * 60))
+            alarms.append(alarm)
+        }
+        event.alarms = alarms
+        do {
+            try eventStore.save(event, span: .thisEvent, commit: true)
+            print("Untis+: created event: \(title) with id: \(event.eventIdentifier)")
+            return true
+        } catch {
+            print("Untis+: failed to create event: \(error)")
             return false
         }
     }

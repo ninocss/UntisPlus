@@ -81,7 +81,7 @@ class _SettingsCalendarPageState extends State<SettingsCalendarPage> {
                     trailing: ValueListenableBuilder<bool>(
                       valueListenable: showCalendarEventsNotifier,
                       builder: (context, value, _) {
-                        return Switch.adaptive(
+                        return Switch(
                           value: value,
                           onChanged: (v) {
                             showCalendarEventsNotifier.value = v;

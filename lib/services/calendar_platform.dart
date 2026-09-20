@@ -61,4 +61,30 @@ class CalendarPlatform {
       return false;
     }
   }
+
+  static Future<bool> addEvent({
+    required String title,
+    required String description,
+    required int startMs,
+    required int endMs,
+    String? location,
+    String? calendarId,
+    List<int>? reminderMinutes,
+    bool allDay = false,
+  }) async {
+    try {
+      return await _channel.invokeMethod('addEvent', {
+        'title': title,
+        'description': description,
+        'startMs': startMs,
+        'endMs': endMs,
+        'location': location,
+        'calendarId': calendarId,
+        'reminderMinutes': reminderMinutes ?? [15, 60],
+        'allDay': allDay,
+      }) as bool? ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
 }

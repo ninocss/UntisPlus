@@ -82,60 +82,30 @@ class CalendarSyncService {
   }
 
   Future<void> _tryCreateEvent(CalendarSyncEvent event, String? calendarId) async {
-    final androidCalId = calendarId != null ? int.tryParse(calendarId) : null;
     // Include sourceId in description for tracking
     final description = '${event.description}\n\n[UntisPlus:sourceId:${event.sourceId}]';
-    
-    final nativeEvent = native_cal.CalendarEvent(
+    final startMs = event.startTime.millisecondsSinceEpoch;
+    final endMs = event.endTime.millisecondsSinceEpoch;
+
+    final success = await CalendarPlatform.addEvent(
       title: event.title,
       description: description,
-      startDate: event.startTime,
-      endDate: event.endTime,
+      startMs: startMs,
+      endMs: endMs,
       location: event.location,
-      androidSettings: native_cal.AndroidEventSettings(
-        calendarId: androidCalId,
-        hasAlarm: true,
-        reminderMinutes: const [15, 60],
-      ),
-      iosSettings: native_cal.IosEventSettings(
-        calendarIdentifier: calendarId,
-        alarmMinutes: const [15, 60],
-        priority: 5,
-      ),
+      calendarId: calendarId,
+      reminderMinutes: const [15, 60],
     );
-
-    final success = await NativeCalendar.addEventToCalendar(nativeEvent);
     if (!success) {
       throw Exception('Failed to create event: ${event.title}');
     }
   }
 
   Future<void> _tryUpdateEvent(String eventId, CalendarSyncEvent event, String? calendarId) async {
-    final androidCalId = calendarId != null ? int.tryParse(calendarId) : null;
-    final description = '${event.description}\n\n[UntisPlus:sourceId:${event.sourceId}]';
-    
-    final nativeEvent = native_cal.CalendarEvent(
-      title: event.title,
-      description: description,
-      startDate: event.startTime,
-      endDate: event.endTime,
-      location: event.location,
-      androidSettings: native_cal.AndroidEventSettings(
-        calendarId: androidCalId,
-        hasAlarm: true,
-        reminderMinutes: const [15, 60],
-      ),
-      iosSettings: native_cal.IosEventSettings(
-        calendarIdentifier: calendarId,
-        alarmMinutes: const [15, 60],
-        priority: 5,
-      ),
-    );
-
-    final success = await NativeCalendar.addEventToCalendar(nativeEvent);
-    if (!success) {
-      throw Exception('Failed to update event: ${event.title}');
-    }
+    // For update, we delete the old event and create a new one
+    // since the native calendar API doesn't have a direct update method
+    await CalendarPlatform.deleteEvent(calendarId: calendarId ?? '', eventId: eventId);
+    await _tryCreateEvent(event, calendarId);
   }
 
   /// Find existing native event ID for a given event type and source ID

@@ -133,6 +133,17 @@ class MainActivity : FlutterActivity() {
                     val eventId = call.argument<String>("eventId") ?: ""
                     result.success(deleteEvent(calendarId, eventId))
                 }
+                "addEvent" -> {
+                    val title = call.argument<String>("title") ?: ""
+                    val description = call.argument<String>("description") ?: ""
+                    val startMs = call.argument<Long>("startMs") ?: 0
+                    val endMs = call.argument<Long>("endMs") ?: 0
+                    val location = call.argument<String>("location")
+                    val calendarId = call.argument<String>("calendarId")
+                    val reminderMinutes = call.argument<List<*>>("reminderMinutes")?.map { it as Int }?.toList() ?: listOf(15, 60)
+                    val allDay = call.argument<Boolean>("allDay") ?: false
+                    result.success(addEvent(title, description, startMs, endMs, location, calendarId, reminderMinutes, allDay))
+                }
                 else -> result.notImplemented()
             }
         }
@@ -571,5 +582,48 @@ class MainActivity : FlutterActivity() {
         val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId.toLong())
         val rowsDeleted = contentResolver.delete(uri, null, null)
         return rowsDeleted > 0
+    }
+
+    private fun addEvent(
+        title: String,
+        description: String,
+        startMs: Long,
+        endMs: Long,
+        location: String?,
+        calendarId: String?,
+        reminderMinutes: List<Int>,
+        allDay: Boolean
+    ): Boolean {
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DESCRIPTION, description)
+            put(CalendarContract.Events.DTSTART, startMs)
+            put(CalendarContract.Events.DTEND, endMs)
+            put(CalendarContract.Events.EVENT_LOCATION, location ?: "")
+            put(CalendarContract.Events.EVENT_TIMEZONE, java.util.TimeZone.getDefault().id)
+            if (allDay) {
+                put(CalendarContract.Events.ALL_DAY, 1)
+            }
+            if (calendarId != null && calendarId.isNotEmpty()) {
+                put(CalendarContract.Events.CALENDAR_ID, calendarId.toLong())
+            }
+            put(CalendarContract.Events.HAS_ALARM, 1)
+        }
+
+        val uri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+        val eventId = uri?.lastPathSegment?.toLongOrNull() ?: return false
+
+        // Add reminders
+        for (minutes in reminderMinutes) {
+            val reminderValues = ContentValues().apply {
+                put(CalendarContract.Reminders.EVENT_ID, eventId)
+                put(CalendarContract.Reminders.MINUTES, minutes)
+                put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+            }
+            contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, reminderValues)
+        }
+
+        android.util.Log.d("UntisPlus", "Created event: $title with id: $eventId")
+        return true
     }
 }
