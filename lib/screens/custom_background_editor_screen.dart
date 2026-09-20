@@ -380,24 +380,6 @@ class _CustomBackgroundEditorScreenState
     );
   }
 
-  Widget _quickStatChip({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    return ActionChip(
-      onPressed: onTap,
-      label: Text(
-        label,
-        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-      ),
-      avatar: Icon(icon, size: 16, color: cs.primary),
-      backgroundColor: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-    );
-  }
-
   Future<void> _scrollToSection(GlobalKey key) async {
     final ctx = key.currentContext;
     if (ctx == null) return;
