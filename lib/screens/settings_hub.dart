@@ -611,7 +611,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final selected =
         expanded && item.pageBuilder != null && itemIndex == _selectedDetail;
     final radius = BorderRadius.circular(
-      _expressiveRadius(context, 18, expressiveRadius: 24),
+      _expressiveRadius(context, 22, expressiveRadius: 30),
     );
 
     final tile = Semantics(
@@ -619,14 +619,20 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       selected: selected,
       label: '${item.title}. ${item.subtitle}',
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        constraints: const BoxConstraints(minHeight: 112),
         decoration: BoxDecoration(
           color: selected
-              ? cs.secondaryContainer.withValues(alpha: 0.72)
-              : Colors.transparent,
+              ? cs.secondaryContainer.withValues(alpha: 0.86)
+              : cs.surfaceContainerLow.withValues(alpha: 0.80),
           borderRadius: radius,
+          border: Border.all(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.38)
+                : cs.outlineVariant.withValues(alpha: 0.38),
+            width: selected ? 1.4 : 1,
+          ),
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -640,58 +646,71 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
               allItems: allItems,
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(13, 13, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
+                  Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? item.iconColor.withValues(alpha: 0.22)
+                              : item.iconBackground,
+                          borderRadius: BorderRadius.circular(
+                            selected
+                                ? _expressiveRadius(
+                                    context,
+                                    15,
+                                    expressiveRadius: 20,
+                                  )
+                                : _expressiveRadius(
+                                    context,
+                                    14,
+                                    expressiveRadius: 17,
+                                  ),
+                          ),
+                        ),
+                        child: Icon(item.icon, color: item.iconColor, size: 23),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? cs.primary.withValues(alpha: 0.12)
+                              : cs.surfaceContainerHighest.withValues(alpha: 0.62),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          item.pageBuilder != null
+                              ? (selected
+                                    ? Icons.check_rounded
+                                    : Icons.arrow_forward_rounded)
+                              : Icons.north_east_rounded,
+                          size: 17,
+                          color: selected ? cs.primary : cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 13),
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                      fontSize: 14.5,
+                      height: 1.12,
                       color: selected
-                          ? item.iconColor.withValues(alpha: 0.22)
-                          : item.iconBackground,
-                      borderRadius: BorderRadius.circular(
-                        selected
-                            ? _expressiveRadius(
-                                context,
-                                15,
-                                expressiveRadius: 19,
-                              )
-                            : _expressiveRadius(
-                                context,
-                                14,
-                                expressiveRadius: 16,
-                              ),
-                      ),
+                          ? cs.onSecondaryContainer
+                          : cs.onSurface,
                     ),
-                    child: Icon(item.icon, color: item.iconColor, size: 23),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                        fontSize: 15.5,
-                        color: selected
-                            ? cs.onSecondaryContainer
-                            : cs.onSurface,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    item.pageBuilder != null
-                        ? (selected
-                              ? Icons.check_circle_rounded
-                              : Icons.chevron_right_rounded)
-                        : Icons.open_in_new_rounded,
-                    size: selected ? 22 : 21,
-                    color: selected ? cs.primary : cs.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -721,23 +740,20 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     required List<_SettingsHubItem> allItems,
   }) {
     final cs = Theme.of(context).colorScheme;
-    final sectionRadius = BorderRadius.circular(
-      _expressiveRadius(context, 24, expressiveRadius: 32),
-    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(6, 2, 6, 9),
+          padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
           child: Row(
             children: [
               Container(
-                width: 28,
-                height: 28,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(11),
                 ),
                 child: Icon(icon, size: 17, color: accent),
               ),
@@ -748,7 +764,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
-                    letterSpacing: 0.15,
+                    letterSpacing: 0.12,
                     color: cs.onSurfaceVariant,
                   ),
                 ),
@@ -756,24 +772,29 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             ],
           ),
         ),
-        ThemedSurface(
-          borderRadius: sectionRadius,
-          color: cs.surfaceContainerLow.withValues(alpha: 0.72),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = items.length == 1 ? 1 : 2;
+            final gap = 10.0;
+            final itemWidth =
+                (constraints.maxWidth - gap * (columns - 1)) / columns;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
               children: [
                 for (final item in items)
-                  _buildHubItem(
-                    context,
-                    item,
-                    expanded: expanded,
-                    allItems: allItems,
+                  SizedBox(
+                    width: itemWidth,
+                    child: _buildHubItem(
+                      context,
+                      item,
+                      expanded: expanded,
+                      allItems: allItems,
+                    ),
                   ),
               ],
-            ),
-          ),
+            );
+          },
         ),
       ],
     );
