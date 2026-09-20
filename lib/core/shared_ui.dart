@@ -1198,3 +1198,28 @@ class SettingsSwitchTile extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Switch(
+                value: value,
+                onChanged: (val) {
+                  HapticFeedback.selectionClick();
+                  onChanged(val);
+                },
+                thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const Icon(Icons.check, size: 14);
+                  }
+                  return const Icon(Icons.close, size: 14);
+                }),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return _settingsTooltip(
+      message: subtitle,
+      showInline: showSubtitle,
+      child: tile,
+    );
+  }
+}
