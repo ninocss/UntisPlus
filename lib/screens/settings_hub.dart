@@ -605,13 +605,16 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     _SettingsHubItem item, {
     required bool expanded,
     required List<_SettingsHubItem> allItems,
+    required bool isFirst,
+    required bool isLast,
   }) {
     final cs = Theme.of(context).colorScheme;
     final itemIndex = allItems.indexOf(item);
     final selected =
         expanded && item.pageBuilder != null && itemIndex == _selectedDetail;
-    final radius = BorderRadius.circular(
-      _expressiveRadius(context, 22, expressiveRadius: 30),
+    final radius = BorderRadius.vertical(
+      top: isFirst ? const Radius.circular(28) : Radius.zero,
+      bottom: isLast ? const Radius.circular(28) : Radius.zero,
     );
 
     final tile = Semantics(
@@ -619,20 +622,13 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       selected: selected,
       label: '${item.title}. ${item.subtitle}',
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 240),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        constraints: const BoxConstraints(minHeight: 112),
         decoration: BoxDecoration(
           color: selected
-              ? cs.secondaryContainer.withValues(alpha: 0.86)
-              : cs.surfaceContainerLow.withValues(alpha: 0.80),
+              ? cs.secondaryContainer.withValues(alpha: 0.78)
+              : cs.surfaceContainerLow.withValues(alpha: 0.86),
           borderRadius: radius,
-          border: Border.all(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.38)
-                : cs.outlineVariant.withValues(alpha: 0.38),
-            width: selected ? 1.4 : 1,
-          ),
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -646,71 +642,69 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
               allItems: allItems,
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(13, 13, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(18, 15, 14, 15),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 240),
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? item.iconColor.withValues(alpha: 0.22)
-                              : item.iconBackground,
-                          borderRadius: BorderRadius.circular(
-                            selected
-                                ? _expressiveRadius(
-                                    context,
-                                    15,
-                                    expressiveRadius: 20,
-                                  )
-                                : _expressiveRadius(
-                                    context,
-                                    14,
-                                    expressiveRadius: 17,
-                                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? item.iconColor.withValues(alpha: 0.20)
+                          : item.iconBackground,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      item.icon,
+                      color: item.iconColor,
+                      size: 25,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontWeight:
+                                selected ? FontWeight.w800 : FontWeight.w700,
+                            fontSize: 17,
+                            color: selected
+                                ? cs.onSecondaryContainer
+                                : cs.onSurface,
                           ),
                         ),
-                        child: Icon(item.icon, color: item.iconColor, size: 23),
-                      ),
-                      const Spacer(),
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? cs.primary.withValues(alpha: 0.12)
-                              : cs.surfaceContainerHighest.withValues(alpha: 0.62),
-                          shape: BoxShape.circle,
+                        const SizedBox(height: 2),
+                        Text(
+                          item.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13.2,
+                            color: selected
+                                ? cs.onSecondaryContainer.withValues(alpha: 0.75)
+                                : cs.onSurfaceVariant,
+                          ),
                         ),
-                        child: Icon(
-                          item.pageBuilder != null
-                              ? (selected
-                                    ? Icons.check_rounded
-                                    : Icons.arrow_forward_rounded)
-                              : Icons.north_east_rounded,
-                          size: 17,
-                          color: selected ? cs.primary : cs.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 13),
-                  Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                      fontSize: 14.5,
-                      height: 1.12,
-                      color: selected
-                          ? cs.onSecondaryContainer
-                          : cs.onSurface,
+                      ],
                     ),
+                  ),
+                  const SizedBox(width: 10),
+                  Icon(
+                    item.pageBuilder != null
+                        ? (selected
+                              ? Icons.check_rounded
+                              : Icons.chevron_right_rounded)
+                        : Icons.open_in_new_rounded,
+                    size: 22,
+                    color: selected ? cs.primary : cs.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -733,8 +727,6 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
   Widget _buildSection(
     BuildContext context, {
     required String title,
-    required IconData icon,
-    required Color accent,
     required List<_SettingsHubItem> items,
     required bool expanded,
     required List<_SettingsHubItem> allItems,
@@ -745,56 +737,49 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 2, 4, 10),
-          child: Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(icon, size: 17, color: accent),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    letterSpacing: 0.12,
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
+          padding: const EdgeInsets.fromLTRB(14, 2, 14, 9),
+          child: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w800,
+              fontSize: 13.5,
+              color: cs.primary,
+              letterSpacing: 0.15,
+            ),
           ),
         ),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final columns = items.length == 1 ? 1 : 2;
-            final gap = 10.0;
-            final itemWidth =
-                (constraints.maxWidth - gap * (columns - 1)) / columns;
-            return Wrap(
-              spacing: gap,
-              runSpacing: gap,
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.30),
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                for (final item in items)
-                  SizedBox(
-                    width: itemWidth,
-                    child: _buildHubItem(
-                      context,
-                      item,
-                      expanded: expanded,
-                      allItems: allItems,
-                    ),
+                for (var index = 0; index < items.length; index++) ...[
+                  _buildHubItem(
+                    context,
+                    items[index],
+                    expanded: expanded,
+                    allItems: allItems,
+                    isFirst: index == 0,
+                    isLast: index == items.length - 1,
                   ),
+                  if (index < items.length - 1)
+                    Divider(
+                      height: 1,
+                      indent: 84,
+                      endIndent: 18,
+                      color: cs.outlineVariant.withValues(alpha: 0.34),
+                    ),
+                ],
               ],
-            );
-          },
+            ),
+          ),
         ),
       ],
     );
@@ -995,8 +980,6 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'school'),
-                  icon: Icons.school_rounded,
-                  accent: cs.primary,
                   items: schoolItems,
                   expanded: expanded,
                   allItems: items,
@@ -1005,8 +988,6 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'personalize'),
-                  icon: Icons.brush_rounded,
-                  accent: cs.tertiary,
                   items: personalizeItems,
                   expanded: expanded,
                   allItems: items,
@@ -1015,8 +996,6 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'smart'),
-                  icon: Icons.auto_awesome_rounded,
-                  accent: cs.secondary,
                   items: smartItems,
                   expanded: expanded,
                   allItems: items,
@@ -1025,8 +1004,6 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'data'),
-                  icon: Icons.folder_shared_rounded,
-                  accent: cs.primary,
                   items: dataItems,
                   expanded: expanded,
                   allItems: items,
@@ -1035,8 +1012,6 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'app'),
-                  icon: Icons.info_rounded,
-                  accent: cs.tertiary,
                   items: appItems,
                   expanded: expanded,
                   allItems: items,
