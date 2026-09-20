@@ -542,114 +542,240 @@ class SettingsHubPage extends StatefulWidget {
 class _SettingsHubPageState extends State<SettingsHubPage> {
   int _selectedDetail = 0;
 
-  Widget _buildGroupCard(
-    ColorScheme cs,
+  String _sectionTitle(AppL10n l, String key) {
+    const labels = <String, Map<String, String>>{
+      'de': {
+        'school': 'Schule & Stundenplan',
+        'personalize': 'Darstellung & Widgets',
+        'smart': 'KI & Automatisierung',
+        'data': 'Account & Daten',
+        'app': 'App & Support',
+      },
+      'en': {
+        'school': 'School & timetable',
+        'personalize': 'Appearance & widgets',
+        'smart': 'AI & automation',
+        'data': 'Account & data',
+        'app': 'App & support',
+      },
+      'fr': {
+        'school': 'École & emploi du temps',
+        'personalize': 'Apparence & widgets',
+        'smart': 'IA & automatisation',
+        'data': 'Compte & données',
+        'app': 'App & assistance',
+      },
+      'es': {
+        'school': 'Escuela y horario',
+        'personalize': 'Apariencia y widgets',
+        'smart': 'IA y automatización',
+        'data': 'Cuenta y datos',
+        'app': 'App y soporte',
+      },
+    };
+    return (labels[l.locale] ?? labels['en']!)[key] ?? key;
+  }
+
+  void _activateItem(
     BuildContext context,
-    List<_SettingsHubItem> groupItems, {
+    _SettingsHubItem item, {
     required bool expanded,
     required List<_SettingsHubItem> allItems,
   }) {
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-          _expressiveRadius(context, 22, expressiveRadius: 28),
+    if (item.onTap != null) {
+      item.onTap!();
+      return;
+    }
+    if (item.pageBuilder == null) return;
+
+    if (expanded) {
+      final index = allItems.indexOf(item);
+      if (index >= 0 && index != _selectedDetail) {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedDetail = index);
+      }
+      return;
+    }
+
+    Navigator.push(context, _buildBouncyRoute(item.pageBuilder!()));
+  }
+
+  Widget _buildHubItem(
+    BuildContext context,
+    _SettingsHubItem item, {
+    required bool expanded,
+    required List<_SettingsHubItem> allItems,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final itemIndex = allItems.indexOf(item);
+    final selected =
+        expanded && item.pageBuilder != null && itemIndex == _selectedDetail;
+    final radius = BorderRadius.circular(
+      _expressiveRadius(context, 18, expressiveRadius: 24),
+    );
+
+    final tile = Semantics(
+      button: true,
+      selected: selected,
+      label: '${item.title}. ${item.subtitle}',
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+        decoration: BoxDecoration(
+          color: selected
+              ? cs.secondaryContainer.withValues(alpha: 0.72)
+              : Colors.transparent,
+          borderRadius: radius,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _activateItem(
+              context,
+              item,
+              expanded: expanded,
+              allItems: allItems,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? item.iconColor.withValues(alpha: 0.22)
+                          : item.iconBackground,
+                      borderRadius: BorderRadius.circular(
+                        selected
+                            ? _expressiveRadius(
+                                context,
+                                15,
+                                expressiveRadius: 19,
+                              )
+                            : _expressiveRadius(
+                                context,
+                                14,
+                                expressiveRadius: 16,
+                              ),
+                      ),
+                    ),
+                    child: Icon(item.icon, color: item.iconColor, size: 23),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                        fontSize: 15.5,
+                        color: selected
+                            ? cs.onSecondaryContainer
+                            : cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Icon(
+                    item.pageBuilder != null
+                        ? (selected
+                              ? Icons.check_circle_rounded
+                              : Icons.chevron_right_rounded)
+                        : Icons.open_in_new_rounded,
+                    size: selected ? 22 : 21,
+                    color: selected ? cs.primary : cs.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
-      color: cs.surfaceContainerLow,
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: groupItems.asMap().entries.map((entry) {
-          final index = entry.key;
-          final item = entry.value;
-          final isLast = index == groupItems.length - 1;
-          return Column(
+    );
+
+    return Tooltip(
+      message: item.subtitle,
+      triggerMode: TooltipTriggerMode.longPress,
+      showDuration: const Duration(seconds: 4),
+      preferBelow: false,
+      verticalOffset: 30,
+      child: tile,
+    );
+  }
+
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Color accent,
+    required List<_SettingsHubItem> items,
+    required bool expanded,
+    required List<_SettingsHubItem> allItems,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final sectionRadius = BorderRadius.circular(
+      _expressiveRadius(context, 24, expressiveRadius: 32),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(6, 2, 6, 9),
+          child: Row(
             children: [
-              InkWell(
-                onTap: () {
-                  if (item.onTap != null) {
-                    item.onTap!();
-                  } else if (item.pageBuilder != null) {
-                    if (expanded) {
-                      setState(() => _selectedDetail = allItems.indexOf(item));
-                    } else {
-                      Navigator.push(
-                        context,
-                        _buildBouncyRoute(item.pageBuilder!()),
-                      );
-                    }
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: item.iconBackground,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(item.icon, color: item.iconColor, size: 22),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15.5,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              item.subtitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.outfit(
-                                color: cs.onSurfaceVariant,
-                                fontSize: 12.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (item.pageBuilder != null)
-                        Icon(
-                          expanded && allItems.indexOf(item) == _selectedDetail
-                              ? Icons.check_circle_rounded
-                              : Icons.chevron_right_rounded,
-                          color:
-                              expanded &&
-                                  allItems.indexOf(item) == _selectedDetail
-                              ? cs.primary
-                              : cs.onSurfaceVariant,
-                        ),
-                    ],
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 17, color: accent),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    letterSpacing: 0.15,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
-              if (!isLast)
-                Divider(
-                  height: 1,
-                  indent: 70,
-                  endIndent: 16,
-                  color: cs.outlineVariant.withValues(alpha: 0.35),
-                ),
             ],
-          );
-        }).toList(),
-      ),
+          ),
+        ),
+        ThemedSurface(
+          borderRadius: sectionRadius,
+          color: cs.surfaceContainerLow.withValues(alpha: 0.72),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final item in items)
+                  _buildHubItem(
+                    context,
+                    item,
+                    expanded: expanded,
+                    allItems: allItems,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -658,31 +784,17 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Color getAccent(int index) {
-      switch (index) {
-        case 0:
-          return cs.primary;
-        case 1:
-          return cs.error;
-        case 2:
-          return cs.tertiary;
-        case 3:
-          return cs.secondary;
-        case 4:
-          return cs.surfaceTint;
-        case 5:
-          return isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
-        case 6:
-          return isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED);
-        case 7:
-          return isDark ? const Color(0xFFF472B6) : const Color(0xFFDB2777);
-        case 8:
-        default:
-          return isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A);
-      }
+      return switch (index % 6) {
+        0 => cs.primary,
+        1 => cs.tertiary,
+        2 => cs.secondary,
+        3 => cs.error,
+        4 => isDark ? cs.primaryFixedDim : cs.primaryFixed,
+        _ => isDark ? cs.tertiaryFixedDim : cs.tertiaryFixed,
+      };
     }
 
     _SettingsHubItem makeItem({
@@ -694,14 +806,12 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       VoidCallback? onTap,
     }) {
       final accent = getAccent(index);
-      final bgAlpha = isDark ? 0.22 : 0.14;
       final iconColor = isDark
-          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.18), accent)
+          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.12), accent)
           : accent;
-
       return _SettingsHubItem(
         icon: icon,
-        iconBackground: accent.withValues(alpha: bgAlpha),
+        iconBackground: accent.withValues(alpha: isDark ? 0.20 : 0.12),
         iconColor: iconColor,
         title: title,
         subtitle: subtitle,
@@ -717,64 +827,64 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       subtitle: l.settingsShowCancelled,
       pageBuilder: () => const SettingsTimetablePage(),
     );
-    final notificationsItem = makeItem(
+    final subjectsItem = makeItem(
       index: 1,
+      icon: Icons.school_rounded,
+      title: l.settingsSectionSubjects,
+      subtitle: l.settingsSectionColors,
+      pageBuilder: () => const SettingsSubjectsPage(),
+    );
+    final notificationsItem = makeItem(
+      index: 2,
       icon: Icons.notifications_active_rounded,
       title: l.settingsHubNotifications,
       subtitle: l.settingsProgressivePush,
       pageBuilder: () => const SettingsNotificationsPage(),
     );
-    final appearanceItem = makeItem(
-      index: 2,
-      icon: Icons.palette_rounded,
-      title: l.settingsAppearance,
-      subtitle: l.settingsCustomBackgrounds,
-      pageBuilder: () => const SettingsAppearancePage(),
-    );
-    final subjectsItem = makeItem(
-      index: 3,
-      icon: Icons.color_lens_rounded,
-      title: l.settingsSectionSubjects,
-      subtitle: l.settingsSectionColors,
-      pageBuilder: () => const SettingsSubjectsPage(),
-    );
-    final aiItem = makeItem(
-      index: 4,
-      icon: Icons.auto_awesome_rounded,
-      title: l.settingsSectionAI,
-      subtitle: l.settingsAiProvider,
-      pageBuilder: () => const SettingsAiPage(),
-    );
-    final backupItem = makeItem(
-      index: 5,
-      icon: Icons.cloud_sync_rounded,
-      title: l.settingsHubDataBackup,
-      subtitle: l.settingsHubDataBackupDesc,
-      pageBuilder: () => const SettingsBackupPage(),
-    );
-    final accountItem = makeItem(
-      index: 6,
-      icon: Icons.manage_accounts_rounded,
-      title: l.settingsHubAccount,
-      subtitle: l.settingsDemoMode,
-      pageBuilder: () => const SettingsAccountPage(),
-    );
-    final widgetsItem = makeItem(
-      index: 7,
-      icon: Icons.widgets_rounded,
-      title: l.ui('widgets'),
-      subtitle: l.ui('widgetAccount'),
-      pageBuilder: () => const SettingsWidgetsPage(),
-    );
     final alarmItem = !kIsWeb && Platform.isAndroid
         ? makeItem(
-            index: 8,
+            index: 3,
             icon: Icons.alarm_rounded,
             title: l.ui('alarmTitle'),
             subtitle: l.ui('alarmScheduleDesc'),
             pageBuilder: () => const SettingsAlarmPage(),
           )
         : null;
+    final appearanceItem = makeItem(
+      index: 4,
+      icon: Icons.palette_rounded,
+      title: l.settingsAppearance,
+      subtitle: l.settingsCustomBackgrounds,
+      pageBuilder: () => const SettingsAppearancePage(),
+    );
+    final widgetsItem = makeItem(
+      index: 5,
+      icon: Icons.widgets_rounded,
+      title: l.ui('widgets'),
+      subtitle: l.ui('widgetAccount'),
+      pageBuilder: () => const SettingsWidgetsPage(),
+    );
+    final aiItem = makeItem(
+      index: 6,
+      icon: Icons.auto_awesome_rounded,
+      title: l.settingsSectionAI,
+      subtitle: l.settingsAiProvider,
+      pageBuilder: () => const SettingsAiPage(),
+    );
+    final accountItem = makeItem(
+      index: 7,
+      icon: Icons.manage_accounts_rounded,
+      title: l.settingsHubAccount,
+      subtitle: l.settingsDemoMode,
+      pageBuilder: () => const SettingsAccountPage(),
+    );
+    final backupItem = makeItem(
+      index: 8,
+      icon: Icons.cloud_sync_rounded,
+      title: l.settingsHubDataBackup,
+      subtitle: l.settingsHubDataBackupDesc,
+      pageBuilder: () => const SettingsBackupPage(),
+    );
     final updatesItem = kIsWeb || !Platform.isIOS
         ? makeItem(
             index: 9,
@@ -786,7 +896,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         : null;
     final supportItem = makeItem(
       index: 10,
-      icon: Icons.coffee_rounded,
+      icon: Icons.volunteer_activism_rounded,
       title: l.settingsSupport,
       subtitle: l.settingsSupportDesc,
       onTap: () {
@@ -809,122 +919,144 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       },
     );
 
-    final items = <_SettingsHubItem>[
+    final schoolItems = <_SettingsHubItem>[
       timetableItem,
-      notificationsItem,
-      appearanceItem,
       subjectsItem,
-      aiItem,
-      backupItem,
-      accountItem,
-      widgetsItem,
+      notificationsItem,
       ?alarmItem,
+    ];
+    final personalizeItems = <_SettingsHubItem>[appearanceItem, widgetsItem];
+    final smartItems = <_SettingsHubItem>[aiItem];
+    final dataItems = <_SettingsHubItem>[accountItem, backupItem];
+    final appItems = <_SettingsHubItem>[
       ?updatesItem,
       supportItem,
       reportItem,
     ];
+    final items = <_SettingsHubItem>[
+      ...schoolItems,
+      ...personalizeItems,
+      ...smartItems,
+      ...dataItems,
+      ...appItems,
+    ];
 
-    Widget settingsList({required bool expanded}) => ListView(
-      padding: UntisLayout.pagePadding(
-        context,
-        bottom: mq.padding.bottom + (expanded ? 28 : 132),
-      ),
-      children: [
-        TweenAnimationBuilder<double>(
-          duration: const Duration(milliseconds: 300),
-          tween: Tween(begin: 0, end: 1),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) => Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, (1 - value) * 16),
-              child: child,
+    Widget settingsList({required bool expanded}) {
+      final width = MediaQuery.sizeOf(context).width;
+      final horizontal = expanded
+          ? 18.0
+          : width >= UntisLayout.tabletBreakpoint
+          ? 24.0
+          : 16.0;
+      final bottom = mq.padding.bottom + (expanded ? 28 : 118);
+
+      return CustomScrollView(
+        key: PageStorageKey<String>(
+          expanded ? 'settings-hub-expanded' : 'settings-hub-compact',
+        ),
+        primary: !expanded,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(horizontal, 14, horizontal, bottom),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildSection(
+                  context,
+                  title: _sectionTitle(l, 'school'),
+                  icon: Icons.school_rounded,
+                  accent: cs.primary,
+                  items: schoolItems,
+                  expanded: expanded,
+                  allItems: items,
+                ),
+                const SizedBox(height: 20),
+                _buildSection(
+                  context,
+                  title: _sectionTitle(l, 'personalize'),
+                  icon: Icons.brush_rounded,
+                  accent: cs.tertiary,
+                  items: personalizeItems,
+                  expanded: expanded,
+                  allItems: items,
+                ),
+                const SizedBox(height: 20),
+                _buildSection(
+                  context,
+                  title: _sectionTitle(l, 'smart'),
+                  icon: Icons.auto_awesome_rounded,
+                  accent: cs.secondary,
+                  items: smartItems,
+                  expanded: expanded,
+                  allItems: items,
+                ),
+                const SizedBox(height: 20),
+                _buildSection(
+                  context,
+                  title: _sectionTitle(l, 'data'),
+                  icon: Icons.folder_shared_rounded,
+                  accent: cs.primary,
+                  items: dataItems,
+                  expanded: expanded,
+                  allItems: items,
+                ),
+                const SizedBox(height: 20),
+                _buildSection(
+                  context,
+                  title: _sectionTitle(l, 'app'),
+                  icon: Icons.info_rounded,
+                  accent: cs.tertiary,
+                  items: appItems,
+                  expanded: expanded,
+                  allItems: items,
+                ),
+              ]),
             ),
           ),
-          child: _buildGroupCard(
-            cs,
-            context,
-            [
-              timetableItem,
-              subjectsItem,
-              appearanceItem,
-              ?alarmItem,
-            ],
-            expanded: expanded,
-            allItems: items,
-          ),
-        ),
-        const SizedBox(height: 16),
-        TweenAnimationBuilder<double>(
-          duration: const Duration(milliseconds: 400),
-          tween: Tween(begin: 0, end: 1),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) => Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, (1 - value) * 16),
-              child: child,
-            ),
-          ),
-          child: _buildGroupCard(
-            cs,
-            context,
-            [notificationsItem, aiItem, accountItem, widgetsItem],
-            expanded: expanded,
-            allItems: items,
-          ),
-        ),
-        const SizedBox(height: 16),
-        TweenAnimationBuilder<double>(
-          duration: const Duration(milliseconds: 500),
-          tween: Tween(begin: 0, end: 1),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) => Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, (1 - value) * 16),
-              child: child,
-            ),
-          ),
-          child: _buildGroupCard(
-            cs,
-            context,
-            [
-              backupItem,
-              ?updatesItem,
-              supportItem,
-              reportItem,
-            ],
-            expanded: expanded,
-            allItems: items,
-          ),
-        ),
-      ],
-    );
+        ],
+      );
+    }
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.tune_rounded, size: 22, color: cs.primary),
+            const SizedBox(width: 9),
+            Text(
+              l.settingsTitle,
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+            ),
+          ],
         ),
-        centerTitle: true,
+        centerTitle: false,
       ),
       body: _AnimatedBackground(
         child: LayoutBuilder(
           builder: (context, _) {
             final expanded = UntisLayout.isExpanded(context);
             if (!expanded) return settingsList(expanded: false);
+
             final detailIndex = _selectedDetail
                 .clamp(0, items.length - 1)
                 .toInt();
             final detail =
                 items[detailIndex].pageBuilder?.call() ??
                 const SettingsTimetablePage();
+            final masterWidth =
+                (MediaQuery.sizeOf(context).width * 0.34)
+                    .clamp(350.0, 420.0)
+                    .toDouble();
+
             return Row(
               key: const ValueKey('settings-master-detail'),
               children: [
-                SizedBox(width: 360, child: settingsList(expanded: true)),
+                SizedBox(
+                  width: masterWidth,
+                  child: settingsList(expanded: true),
+                ),
                 VerticalDivider(
                   width: 1,
                   color: cs.outlineVariant.withValues(alpha: 0.45),
