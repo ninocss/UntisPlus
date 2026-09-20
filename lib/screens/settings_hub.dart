@@ -792,8 +792,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         1 => cs.tertiary,
         2 => cs.secondary,
         3 => cs.error,
-        4 => isDark ? cs.primaryFixedDim : cs.primaryFixed,
-        _ => isDark ? cs.tertiaryFixedDim : cs.tertiaryFixed,
+        4 => cs.inversePrimary,
+        _ => isDark ? cs.onTertiaryContainer : cs.tertiary,
       };
     }
 
