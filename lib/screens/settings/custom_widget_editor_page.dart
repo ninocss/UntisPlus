@@ -702,7 +702,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             if (accounts.isNotEmpty) ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: accounts.any((item) => item.id == config.accountId)
+                initialValue: accounts.any((item) => item.id == config.accountId)
                     ? config.accountId
                     : null,
                 decoration: InputDecoration(
