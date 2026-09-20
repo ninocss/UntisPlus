@@ -12,7 +12,7 @@ class CalendarSyncService {
     return CalendarSyncService._(CalendarSyncRepository(prefs));
   }
 
-  /// Sync all enabled event types
+  /// Sync all enabled event types (bidirectional)
   Future<SyncResult> syncAll() async {
     final configs = _repository.loadConfigs();
     final enabledConfigs = configs.where((c) => c.enabled).toList();
@@ -23,14 +23,16 @@ class CalendarSyncService {
 
     int totalCreated = 0;
     int totalUpdated = 0;
+    int totalSyncedFromCalendar = 0;
     final errors = <String>[];
 
     for (final config in enabledConfigs) {
       if (!config.enabled) continue;
 
-      final result = await _syncEventType(config);
+      final result = await _syncEventTypeBidirectional(config);
       totalCreated += result.created;
       totalUpdated += result.updated;
+      totalSyncedFromCalendar += result.syncedFromCalendar;
       if (result.error != null) {
         errors.add('${config.type.key}: ${result.error}');
       }
@@ -42,44 +44,180 @@ class CalendarSyncService {
       totalCreated,
       totalUpdated,
       errors.isEmpty ? null : errors.join('; '),
+      syncedFromCalendar: totalSyncedFromCalendar,
     );
   }
 
-  /// Sync a specific event type
+  /// Sync a specific event type (bidirectional)
   Future<SyncResult> syncEventType(CalendarEventType type) async {
     final config = _repository.getConfig(type);
     if (config == null || !config.enabled) {
       return SyncResult(0, 0, 'Event type not enabled');
     }
-    return _syncEventType(config);
+    return _syncEventTypeBidirectional(config);
   }
 
-  Future<SyncResult> _syncEventType(CalendarSyncConfig config) async {
-    final events = await _fetchEventsForType(config.type);
-    if (events.isEmpty) return SyncResult(0, 0, null);
-
+  Future<SyncResult> _syncEventTypeBidirectional(CalendarSyncConfig config) async {
+    final localEvents = await _fetchEventsForType(config.type);
     final targetCalendarId = config.subCalendarId;
-    debugPrint('[CalendarSyncService] _syncEventType: type=${config.type.key}, targetCalendarId=$targetCalendarId, events=${events.length}');
+    
+    debugPrint('[CalendarSyncService] _syncEventTypeBidirectional: type=${config.type.key}, targetCalendarId=$targetCalendarId, localEvents=${localEvents.length}');
+
     int created = 0;
     int updated = 0;
+    int syncedFromCalendar = 0;
     String? error;
 
-    for (final event in events) {
+    // Fetch native events for this calendar
+    final now = DateTime.now();
+    final startDate = now.subtract(const Duration(days: 30));
+    final endDate = now.add(const Duration(days: 60));
+    
+    final nativeEvents = await fetchNativeEvents(
+      type: config.type,
+      calendarId: targetCalendarId,
+      start: startDate,
+      end: endDate,
+    );
+    
+    debugPrint('[CalendarSyncService] Found ${nativeEvents.length} native events for ${config.type.key}');
+
+    // Create maps for efficient lookup
+    final localEventMap = <String, CalendarSyncEvent>{};
+    for (final e in localEvents) {
+      localEventMap[e.sourceId ?? e.id] = e;
+    }
+    
+    final nativeEventMap = <String, CalendarSyncEvent>{};
+    for (final e in nativeEvents) {
+      if (e.sourceId != null) {
+        nativeEventMap[e.sourceId!] = e;
+      }
+    }
+
+    // 1. Push local changes to calendar (create/update)
+    for (final localEvent in localEvents) {
       try {
-        final existingId = await _findExistingEvent(config.type, event.sourceId ?? event.id, targetCalendarId);
-        if (existingId != null) {
-          await _tryUpdateEvent(existingId, event, targetCalendarId);
-          updated++;
+        final sourceId = localEvent.sourceId ?? localEvent.id;
+        final nativeEvent = nativeEventMap[sourceId];
+        
+        if (nativeEvent != null) {
+          // Check if local event has changed (compare times, title, description)
+          if (_hasEventChanged(localEvent, nativeEvent)) {
+            await _tryUpdateEvent(nativeEvent.id, localEvent, targetCalendarId);
+            updated++;
+            debugPrint('[CalendarSyncService] Updated event in calendar: ${localEvent.title}');
+          }
         } else {
-          await _tryCreateEvent(event, targetCalendarId);
+          // Create new event in calendar
+          await _tryCreateEvent(localEvent, targetCalendarId);
           created++;
+          debugPrint('[CalendarSyncService] Created event in calendar: ${localEvent.title}');
         }
       } catch (e) {
         error ??= e.toString();
       }
     }
 
-    return SyncResult(created, updated, error);
+    // 2. Pull changes from calendar to local (bidirectional)
+    for (final nativeEvent in nativeEvents) {
+      if (nativeEvent.sourceId == null) continue; // Not our event
+      
+      final localEvent = localEventMap[nativeEvent.sourceId!];
+      
+      if (localEvent != null) {
+        // Event exists in both - check if native was modified by user
+        if (_hasEventChanged(nativeEvent, localEvent)) {
+          await _applyNativeChangesToLocal(nativeEvent, localEvent);
+          syncedFromCalendar++;
+          debugPrint('[CalendarSyncService] Synced from calendar to local: ${nativeEvent.title}');
+        }
+      } else {
+        // Event exists in calendar but not in local data - could be deleted locally
+        // Optionally: recreate in local data or log
+        debugPrint('[CalendarSyncService] Orphan native event (not in local data): ${nativeEvent.title}');
+      }
+    }
+
+    // 3. Detect deleted events (in local but not in calendar)
+    for (final localEvent in localEvents) {
+      final sourceId = localEvent.sourceId ?? localEvent.id;
+      if (!nativeEventMap.containsKey(sourceId)) {
+        // Event was deleted from calendar - optionally recreate or mark
+        debugPrint('[CalendarSyncService] Event deleted from calendar: ${localEvent.title}');
+      }
+    }
+
+    return SyncResult(created, updated, error, syncedFromCalendar: syncedFromCalendar);
+  }
+
+  /// Check if two events have different content (ignoring metadata)
+  bool _hasEventChanged(CalendarSyncEvent a, CalendarSyncEvent b) {
+    return a.title != b.title ||
+           a.description != b.description ||
+           a.startTime != b.startTime ||
+           a.endTime != b.endTime ||
+           a.location != b.location;
+  }
+
+  /// Apply changes from native calendar event to local data
+  Future<void> _applyNativeChangesToLocal(CalendarSyncEvent nativeEvent, CalendarSyncEvent localEvent) async {
+    final sourceId = nativeEvent.sourceId!;
+    final type = nativeEvent.type;
+    
+    try {
+      switch (type) {
+        case CalendarEventType.homework:
+          await _updateHomeworkFromCalendar(sourceId, nativeEvent);
+          break;
+        case CalendarEventType.tests:
+          await _updateTestFromCalendar(sourceId, nativeEvent);
+          break;
+        case CalendarEventType.assignments:
+          await _updateAssignmentFromCalendar(sourceId, nativeEvent);
+          break;
+        case CalendarEventType.conversations:
+        case CalendarEventType.learning:
+          // Not implemented yet
+          break;
+      }
+    } catch (e) {
+      debugPrint('[CalendarSyncService] Failed to apply native changes: $e');
+    }
+  }
+
+  /// Update homework due date from calendar event
+  Future<void> _updateHomeworkFromCalendar(String sourceId, CalendarSyncEvent nativeEvent) async {
+    final homeworks = homeworksNotifier.value;
+    final index = homeworks.indexWhere((hw) {
+      final id = hw['id']?.toString() ?? hw['lessonId']?.toString();
+      return id == sourceId;
+    });
+    
+    if (index >= 0) {
+      final hw = Map<String, dynamic>.from(homeworks[index]);
+      // Update due date to event start date
+      final dueDate = DateTime(nativeEvent.startTime.year, nativeEvent.startTime.month, nativeEvent.startTime.day);
+      hw['dueDate'] = dueDate.toIso8601String().split('T').first;
+      // Update text from description
+      hw['text'] = nativeEvent.description;
+      homeworks[index] = hw;
+      homeworksNotifier.value = List.from(homeworks);
+      debugPrint('[CalendarSyncService] Updated homework due date from calendar: $sourceId -> $dueDate');
+    }
+  }
+
+  /// Update test/lesson from calendar event (limited - timetable comes from server)
+  Future<void> _updateTestFromCalendar(String sourceId, CalendarSyncEvent nativeEvent) async {
+    // Tests come from server timetable, can't easily modify locally
+    // Could store a local override or notification
+    debugPrint('[CalendarSyncService] Test event modified in calendar: $sourceId (server-controlled)');
+  }
+
+  /// Update assignment/substitution from calendar event
+  Future<void> _updateAssignmentFromCalendar(String sourceId, CalendarSyncEvent nativeEvent) async {
+    // Assignments come from server timetable
+    debugPrint('[CalendarSyncService] Assignment event modified in calendar: $sourceId (server-controlled)');
   }
 
   Future<void> _tryCreateEvent(CalendarSyncEvent event, String? calendarId) async {
@@ -109,29 +247,7 @@ class CalendarSyncService {
     await _tryCreateEvent(event, calendarId);
   }
 
-  /// Find existing native event ID for a given event type and source ID
-  Future<String?> _findExistingEvent(CalendarEventType type, String sourceId, String? calendarId) async {
-    // Query events from the last 30 days to 30 days in the future
-    final now = DateTime.now();
-    final startDate = now.subtract(const Duration(days: 30));
-    final endDate = now.add(const Duration(days: 30));
-
-    final events = await CalendarPlatform.getEvents(
-      calendarId: calendarId,
-      start: startDate,
-      end: endDate,
-    );
-
-    for (final nativeEvent in events) {
-      // Check if this event was created by our app (by checking description for sourceId)
-      final description = nativeEvent['description'] as String? ?? '';
-      if (description.contains('[UntisPlus:sourceId:$sourceId]')) {
-        return nativeEvent['id'] as String?;
-      }
-    }
-
-    return null;
-  }
+  
 
   /// Fetch events from native calendar (bidirectional sync - read events from calendar)
   Future<List<CalendarSyncEvent>> fetchNativeEvents({
@@ -326,16 +442,21 @@ class CalendarSyncService {
 class SyncResult {
   final int created;
   final int updated;
+  final int syncedFromCalendar;
   final String? error;
 
-  const SyncResult(this.created, this.updated, this.error);
+  const SyncResult(this.created, this.updated, this.error, {this.syncedFromCalendar = 0});
 
   bool get success => error == null;
-  int get total => created + updated;
+  int get total => created + updated + syncedFromCalendar;
 
   @override
   String toString() {
-    if (error != null) return 'SyncResult(created: $created, updated: $updated, error: $error)';
-    return 'SyncResult(created: $created, updated: $updated)';
+    var result = 'SyncResult(created: $created, updated: $updated';
+    if (syncedFromCalendar > 0) {
+      result += ', fromCalendar: $syncedFromCalendar';
+    }
+    if (error != null) result += ', error: $error';
+    return '$result)';
   }
 }

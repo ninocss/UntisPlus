@@ -164,6 +164,7 @@ class _SettingsCalendarPageState extends State<SettingsCalendarPage> {
                           SnackBar(
                             content: Text(
                               'Sync complete: ${result.created} created, ${result.updated} updated'
+                              '${result.syncedFromCalendar > 0 ? ', ${result.syncedFromCalendar} from calendar' : ''}'
                               '${result.error != null ? ' - Error: ${result.error}' : ''}',
                             ),
                           ),

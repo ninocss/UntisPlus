@@ -259,17 +259,14 @@ final class UntisNotificationProxy: NSObject, UNUserNotificationCenterDelegate {
 
     nonisolated(unsafe) private static var passthroughDelegate: UNUserNotificationCenterDelegate?
     nonisolated(unsafe) private static var _shared: UntisNotificationProxy?
+    private static let sharedLock = NSLock()
     private static var shared: UntisNotificationProxy {
+        sharedLock.lock()
+        defer { sharedLock.unlock() }
         if let existing = _shared { return existing }
-        if Thread.isMainThread {
-            _shared = UntisNotificationProxy()
-            return _shared!
-        }
-        return DispatchQueue.main.sync { 
-            if let existing = _shared { return existing }
-            _shared = UntisNotificationProxy()
-            return _shared!
-        }
+        let newInstance = UntisNotificationProxy()
+        _shared = newInstance
+        return newInstance
     }
 
     private override init() {
