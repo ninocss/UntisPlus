@@ -32,6 +32,10 @@ class _SettingsCalendarPageState extends State<SettingsCalendarPage> {
     setState(() => _loadingCalendars = true);
     final repo = CalendarSyncRepository(await SharedPreferences.getInstance());
     final calendars = await repo.fetchSystemCalendars();
+    debugPrint('[SettingsCalendarPage] _loadCalendars: ${calendars.length} calendars');
+    for (final cal in calendars) {
+      debugPrint('[SettingsCalendarPage]   - ${cal.name} (id: ${cal.id}, default: ${cal.isDefault})');
+    }
     if (mounted) {
       setState(() {
         _availableCalendars = calendars;
@@ -381,6 +385,7 @@ class _EventTypeConfigTileState extends State<_EventTypeConfigTile> {
 
   Future<void> _saveCalendarSelection(String? calendarId, String? name, String? color) async {
     final prefs = await SharedPreferences.getInstance();
+    debugPrint('[SettingsCalendarPage] _saveCalendarSelection: key=${widget.eventKey}, calendarId=$calendarId');
     if (calendarId != null && calendarId.isNotEmpty) {
       await prefs.setString('calendarSyncSubCalendar_${widget.eventKey}', calendarId);
       await prefs.setString('calendarSyncSubCalendarName_${widget.eventKey}', name ?? '');
@@ -408,7 +413,9 @@ class _EventTypeConfigTileState extends State<_EventTypeConfigTile> {
     setState(() => _creatingCalendar = true);
     try {
       final name = 'Untis+ ${widget.title}';
+      debugPrint('[SettingsCalendarPage] _createCalendar: creating $name');
       final calendarId = await widget.onCreateCalendar(name, widget.typeColor);
+      debugPrint('[SettingsCalendarPage] _createCalendar: result=$calendarId');
       if (calendarId != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Created calendar: $name')),

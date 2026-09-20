@@ -59,6 +59,7 @@ class CalendarSyncService {
     if (events.isEmpty) return SyncResult(0, 0, null);
 
     final targetCalendarId = config.subCalendarId;
+    debugPrint('[CalendarSyncService] _syncEventType: type=${config.type.key}, targetCalendarId=$targetCalendarId, events=${events.length}');
     int created = 0;
     int updated = 0;
     String? error;

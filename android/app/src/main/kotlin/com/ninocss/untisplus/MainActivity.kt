@@ -433,7 +433,7 @@ class MainActivity : FlutterActivity() {
                 ))
             }
         }
-
+        android.util.Log.d("UntisPlus", "getCalendars returning: ${calendars.size} calendars")
         return calendars
     }
 
@@ -594,6 +594,7 @@ class MainActivity : FlutterActivity() {
         reminderMinutes: List<Int>,
         allDay: Boolean
     ): Boolean {
+        android.util.Log.d("UntisPlus", "addEvent: title=$title, calendarId=$calendarId, startMs=$startMs, endMs=$endMs")
         val values = ContentValues().apply {
             put(CalendarContract.Events.TITLE, title)
             put(CalendarContract.Events.DESCRIPTION, description)
@@ -623,7 +624,7 @@ class MainActivity : FlutterActivity() {
             contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, reminderValues)
         }
 
-        android.util.Log.d("UntisPlus", "Created event: $title with id: $eventId")
+        android.util.Log.d("UntisPlus", "Created event: $title with id: $eventId in calendar: $calendarId")
         return true
     }
 }

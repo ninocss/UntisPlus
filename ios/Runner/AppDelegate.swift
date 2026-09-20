@@ -505,8 +505,10 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
     private func addEvent(title: String, description: String, startMs: Int64, endMs: Int64, location: String?, calendarId: String?, reminderMinutes: [Int], allDay: Bool) async -> Bool {
         let status = EKEventStore.authorizationStatus(for: .event)
         guard untisHasFullCalendarAccess(status) else {
+            print("Untis+: addEvent - no calendar access")
             return false
         }
+        print("Untis+: addEvent - title=\(title), calendarId=\(calendarId ?? "nil"), startMs=\(startMs)")
         let event = EKEvent(eventStore: eventStore)
         event.title = title
         event.notes = description
@@ -519,6 +521,9 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
         if let calendarId = calendarId, !calendarId.isEmpty,
            let calendar = eventStore.calendar(withIdentifier: calendarId) {
             event.calendar = calendar
+            print("Untis+: addEvent - using calendar: \(calendar.title)")
+        } else {
+            print("Untis+: addEvent - using default calendar")
         }
         // Add alarms
         var alarms: [EKAlarm] = []
@@ -529,7 +534,7 @@ private class UntisCalendarPlugin: NSObject, FlutterPlugin {
         event.alarms = alarms
         do {
             try eventStore.save(event, span: .thisEvent, commit: true)
-            print("Untis+: created event: \(title) with id: \(event.eventIdentifier)")
+            print("Untis+: created event: \(title) with id: \(event.eventIdentifier) in calendar: \(event.calendar.calendarIdentifier)")
             return true
         } catch {
             print("Untis+: failed to create event: \(error)")

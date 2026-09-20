@@ -63,6 +63,7 @@ class CalendarSyncRepository {
     String? name,
     String? color,
   }) async {
+    debugPrint('[CalendarSyncRepository] setSubCalendar: type=${type.key}, calendarId=$calendarId');
     final config = getConfig(type) ?? CalendarSyncConfig(type: type);
     await updateConfig(config.copyWith(
       subCalendarId: calendarId,
@@ -100,11 +101,14 @@ class CalendarSyncRepository {
   /// Create a new calendar on the native platform
   Future<String?> createCalendar(String name, Color color) async {
     final colorHex = '#${color.value.toRadixString(16).padLeft(8, '0').substring(2)}';
-    return await CalendarPlatform.createCalendar(
+    debugPrint('[CalendarSyncRepository] createCalendar: name=$name, color=$colorHex');
+    final result = await CalendarPlatform.createCalendar(
       name: name,
       color: colorHex,
       accountName: 'Untis+',
     );
+    debugPrint('[CalendarSyncRepository] createCalendar result: $result');
+    return result;
   }
 
   /// Get the target calendar ID for a given event type

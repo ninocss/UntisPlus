@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import '../main.dart';
 
 class CalendarPlatform {
   static const MethodChannel _channel = MethodChannel('untisplus/calendar');
@@ -7,8 +9,14 @@ class CalendarPlatform {
   static Future<List<Map<String, dynamic>>> getCalendars() async {
     try {
       final result = await _channel.invokeMethod('getCalendars');
-      return List<Map<String, dynamic>>.from(result as List);
+      final calendars = List<Map<String, dynamic>>.from(result as List);
+      debugPrint('[CalendarPlatform] getCalendars: ${calendars.length} calendars');
+      for (final cal in calendars) {
+        debugPrint('[CalendarPlatform]   - ${cal['name']} (id: ${cal['id']}, default: ${cal['isDefault']})');
+      }
+      return calendars;
     } catch (e) {
+      debugPrint('[CalendarPlatform] getCalendars error: $e');
       return [];
     }
   }
@@ -19,12 +27,15 @@ class CalendarPlatform {
     String accountName = 'Untis+',
   }) async {
     try {
-      return await _channel.invokeMethod('createCalendar', {
+      final result = await _channel.invokeMethod('createCalendar', {
         'name': name,
         'color': color,
         'accountName': accountName,
       });
+      debugPrint('[CalendarPlatform] createCalendar: $name -> $result');
+      return result;
     } catch (e) {
+      debugPrint('[CalendarPlatform] createCalendar error: $e');
       return null;
     }
   }
@@ -73,7 +84,8 @@ class CalendarPlatform {
     bool allDay = false,
   }) async {
     try {
-      return await _channel.invokeMethod('addEvent', {
+      debugPrint('[CalendarPlatform] addEvent: title=$title, calendarId=$calendarId');
+      final result = await _channel.invokeMethod('addEvent', {
         'title': title,
         'description': description,
         'startMs': startMs,
@@ -82,8 +94,11 @@ class CalendarPlatform {
         'calendarId': calendarId,
         'reminderMinutes': reminderMinutes ?? [15, 60],
         'allDay': allDay,
-      }) as bool? ?? false;
+      });
+      debugPrint('[CalendarPlatform] addEvent result: $result');
+      return result as bool? ?? false;
     } catch (e) {
+      debugPrint('[CalendarPlatform] addEvent error: $e');
       return false;
     }
   }
