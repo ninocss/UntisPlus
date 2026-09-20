@@ -30,6 +30,7 @@ class _CustomBackgroundEditorScreenState
   bool _saving = false;
   bool _aiBusy = false;
   bool _isDirty = false;
+  int _backgroundToolIndex = 1;
 
   @override
   void initState() {
@@ -376,6 +377,96 @@ class _CustomBackgroundEditorScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _togglePreviewAnimation() {
+    setState(() => _isPreviewPaused = !_isPreviewPaused);
+    if (_isPreviewPaused) {
+      _previewCtrl.stop(canceled: false);
+    } else {
+      _previewCtrl.repeat();
+    }
+  }
+
+  Widget _backgroundToolSelector(AppL10n l) {
+    final cs = Theme.of(context).colorScheme;
+    final labels = <String>[
+      l.bgEditorLibrary,
+      l.bgEditorMeta,
+      l.bgEditorEffects,
+      l.bgEditorAiTitle,
+    ];
+    const icons = <IconData>[
+      Icons.collections_bookmark_rounded,
+      Icons.palette_rounded,
+      Icons.motion_photos_on_rounded,
+      Icons.auto_awesome_rounded,
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.34),
+        ),
+      ),
+      child: Row(
+        children: List.generate(labels.length, (index) {
+          final selected = _backgroundToolIndex == index;
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _backgroundToolIndex = index);
+                if (_scrollController.hasClients) {
+                  _scrollController.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                  );
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+                decoration: BoxDecoration(
+                  color: selected ? cs.secondaryContainer : Colors.transparent,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icons[index],
+                      size: 19,
+                      color: selected
+                          ? cs.onSecondaryContainer
+                          : cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      labels[index],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        color: selected
+                            ? cs.onSecondaryContainer
+                            : cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -1386,6 +1477,16 @@ class _CustomBackgroundEditorScreenState
                       ],
                     ),
                   ),
+                  IconButton.filledTonal(
+                    tooltip: _isPreviewPaused ? 'Play preview' : 'Pause preview',
+                    onPressed: _togglePreviewAnimation,
+                    icon: Icon(
+                      _isPreviewPaused
+                          ? Icons.play_arrow_rounded
+                          : Icons.pause_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   if (_isDirty)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -1539,7 +1640,8 @@ class _CustomBackgroundEditorScreenState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
-    final inspectorChildren = <Widget>[
+    final libraryTools = <Widget>[
+
 
               const SizedBox(width: 8),
               Text(
@@ -1868,7 +1970,10 @@ class _CustomBackgroundEditorScreenState
                 },
               ),
 
-              // Name
+              
+    ];
+    final designTools = <Widget>[
+// Name
               _sectionCard(
                 key: _editSectionKey,
                 accent: cs.primary,
@@ -2277,7 +2382,10 @@ class _CustomBackgroundEditorScreenState
                 ),
               ),
 
-              // Pattern + effects
+              
+    ];
+    final effectsTools = <Widget>[
+// Pattern + effects
               _sectionCard(
                 accent: cs.secondary,
                 radius: 24,
@@ -2434,7 +2542,10 @@ class _CustomBackgroundEditorScreenState
                 ),
               ),
 
-              // AI
+              
+    ];
+    final aiTools = <Widget>[
+// AI
               _sectionCard(
                 accent: cs.tertiary,
                 radius: 30,
@@ -2500,7 +2611,15 @@ class _CustomBackgroundEditorScreenState
                 ),
               ),
             
+    
     ];
+    final inspectorChildren = switch (_backgroundToolIndex) {
+      0 => libraryTools,
+      1 => designTools,
+      2 => effectsTools,
+      _ => aiTools,
+    };
+
 
     return PopScope(
       canPop: false,
@@ -2615,13 +2734,21 @@ class _CustomBackgroundEditorScreenState
                       const SizedBox(width: 18),
                       Expanded(
                         flex: 6,
-                        child: ListView(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.only(bottom: 28),
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          children: inspectorChildren,
+                        child: Column(
+                          children: [
+                            _backgroundToolSelector(l),
+                            const SizedBox(height: 14),
+                            Expanded(
+                              child: ListView(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.only(bottom: 28),
+                                physics: const AlwaysScrollableScrollPhysics(
+                                  parent: BouncingScrollPhysics(),
+                                ),
+                                children: inspectorChildren,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -2646,6 +2773,8 @@ class _CustomBackgroundEditorScreenState
                     child: _backgroundPreviewStage(context, cs, l),
                   ),
                   const SizedBox(height: 16),
+                  _backgroundToolSelector(l),
+                  const SizedBox(height: 14),
                   ...inspectorChildren,
                 ],
               );
