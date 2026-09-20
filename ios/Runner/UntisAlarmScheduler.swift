@@ -249,19 +249,27 @@ final class UntisNotificationProxy: NSObject, UNUserNotificationCenterDelegate {
     /// instance; capturing it lets us forward non-alarm notifications to it.
     static func activate() {
         let center = UNUserNotificationCenter.current()
-        if center.delegate !== shared {
+        // Ensure shared instance is created on main thread without deadlock
+        let proxy = shared
+        if center.delegate !== proxy {
             passthroughDelegate = center.delegate
         }
-        center.delegate = shared
+        center.delegate = proxy
     }
 
     nonisolated(unsafe) private static var passthroughDelegate: UNUserNotificationCenterDelegate?
     nonisolated(unsafe) private static var _shared: UntisNotificationProxy?
     private static var shared: UntisNotificationProxy {
-        if _shared == nil {
-            DispatchQueue.main.sync { _shared = UntisNotificationProxy() }
+        if let existing = _shared { return existing }
+        if Thread.isMainThread {
+            _shared = UntisNotificationProxy()
+            return _shared!
         }
-        return _shared!
+        return DispatchQueue.main.sync { 
+            if let existing = _shared { return existing }
+            _shared = UntisNotificationProxy()
+            return _shared!
+        }
     }
 
     private override init() {
