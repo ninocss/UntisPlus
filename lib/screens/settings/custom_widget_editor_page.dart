@@ -23,6 +23,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   String? _selectedId;
   bool _loading = true;
   bool _pinning = false;
+  int _toolIndex = 1;
+  double _previewScale = 1.0;
+  final List<WidgetConfiguration> _history = [];
+  int _historyIndex = -1;
 
   @override
   void initState() {
@@ -69,6 +73,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       _configurations = loaded;
       _selectedId = loaded.first.id;
       _loading = false;
+      _history
+        ..clear()
+        ..add(loaded.first);
+      _historyIndex = 0;
     });
     unawaited(_persist());
   }
@@ -88,13 +96,133 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     await WidgetService.publishConfigurations(_configurations);
   }
 
-  void _replace(WidgetConfiguration value) {
+  void _replace(WidgetConfiguration value, {bool recordHistory = true}) {
+    if (recordHistory && _historyIndex >= 0) {
+      if (_historyIndex < _history.length - 1) {
+        _history.removeRange(_historyIndex + 1, _history.length);
+      }
+      final current = _selected;
+      if (jsonEncode(current.toJson()) != jsonEncode(value.toJson())) {
+        _history.add(value);
+        if (_history.length > 40) _history.removeAt(0);
+        _historyIndex = _history.length - 1;
+      }
+    }
     setState(() {
       _configurations = _configurations
           .map((item) => item.id == value.id ? value : item)
           .toList(growable: false);
     });
     unawaited(_persist());
+  }
+
+  void _selectConfiguration(String id) {
+    final selected = _configurations.firstWhere((item) => item.id == id);
+    setState(() {
+      _selectedId = id;
+      _history
+        ..clear()
+        ..add(selected);
+      _historyIndex = 0;
+    });
+  }
+
+  void _undo() {
+    if (_historyIndex <= 0) return;
+    _historyIndex--;
+    _replace(_history[_historyIndex], recordHistory: false);
+  }
+
+  void _redo() {
+    if (_historyIndex >= _history.length - 1) return;
+    _historyIndex++;
+    _replace(_history[_historyIndex], recordHistory: false);
+  }
+
+  void _resetDesign() {
+    final current = _selected;
+    final defaults = WidgetConfiguration(
+      id: current.id,
+      name: current.name,
+      accountId: current.accountId,
+      layout: current.layout,
+      blocks: current.blocks,
+      colorMode: 'system',
+      opacity: 0.94,
+      cornerRadius: 24,
+      textScale: 1,
+      showIcons: true,
+    );
+    _replace(defaults);
+  }
+
+  void _randomizeDesign() {
+    final current = _selected;
+    final presets = <WidgetConfiguration>[
+      current.copyWith(
+        colorMode: 'system',
+        opacity: 0.96,
+        cornerRadius: 28,
+        textScale: 1.0,
+        showIcons: true,
+      ),
+      current.copyWith(
+        colorMode: 'custom',
+        backgroundColor: 0xFF111827,
+        accentColor: 0xFF7DD3FC,
+        textColor: 0xFFF8FAFC,
+        opacity: 0.96,
+        cornerRadius: 30,
+        textScale: 1.05,
+        showIcons: true,
+      ),
+      current.copyWith(
+        colorMode: 'custom',
+        backgroundColor: 0xFFF7F3FF,
+        accentColor: 0xFF6750A4,
+        textColor: 0xFF1D192B,
+        opacity: 0.98,
+        cornerRadius: 22,
+        textScale: 0.95,
+        showIcons: false,
+      ),
+    ];
+    final index = DateTime.now().millisecond % presets.length;
+    _replace(presets[index]);
+  }
+
+  void _applyStylePreset(int index) {
+    final current = _selected;
+    final next = switch (index) {
+      0 => current.copyWith(
+          colorMode: 'system',
+          opacity: 0.96,
+          cornerRadius: 28,
+          textScale: 1,
+          showIcons: true,
+        ),
+      1 => current.copyWith(
+          colorMode: 'custom',
+          backgroundColor: 0xFF101828,
+          accentColor: 0xFF84CAFF,
+          textColor: 0xFFF5F7FA,
+          opacity: 0.97,
+          cornerRadius: 24,
+          textScale: 1,
+          showIcons: true,
+        ),
+      _ => current.copyWith(
+          colorMode: 'custom',
+          backgroundColor: 0xFFFDF8F3,
+          accentColor: 0xFF8D4A3B,
+          textColor: 0xFF2A1914,
+          opacity: 1,
+          cornerRadius: 32,
+          textScale: 1.05,
+          showIcons: false,
+        ),
+    };
+    _replace(next);
   }
 
   void _onAccountsChanged() {
@@ -546,11 +674,31 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       color: cs.outlineVariant.withValues(alpha: 0.4),
                     ),
                   ),
-                  child: Center(child: _preview(config)),
+                  child: Center(
+                    child: Transform.scale(
+                      scale: _previewScale,
+                      child: _preview(config),
+                    ),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(Icons.zoom_out_rounded, size: 18, color: cs.onSurfaceVariant),
+                Expanded(
+                  child: Slider(
+                    value: _previewScale,
+                    min: 0.75,
+                    max: 1.15,
+                    onChanged: (value) => setState(() => _previewScale = value),
+                  ),
+                ),
+                Icon(Icons.zoom_in_rounded, size: 18, color: cs.onSurfaceVariant),
+              ],
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -609,6 +757,109 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     );
   }
 
+  Widget _stylePresetButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.52),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: cs.primary),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _toolSelector(AppL10n l) {
+    final cs = Theme.of(context).colorScheme;
+    const icons = [
+      Icons.dashboard_customize_rounded,
+      Icons.view_quilt_rounded,
+      Icons.palette_rounded,
+    ];
+    final labels = [
+      l.ui('editorYourWidgets'),
+      l.ui('editorContentLayout'),
+      l.ui('editorDesign'),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.34),
+        ),
+      ),
+      child: Row(
+        children: List.generate(3, (index) {
+          final selected = _toolIndex == index;
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _toolIndex = index);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: selected ? cs.secondaryContainer : Colors.transparent,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icons[index],
+                      size: 19,
+                      color: selected
+                          ? cs.onSecondaryContainer
+                          : cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      labels[index],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11.5,
+                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        color: selected
+                            ? cs.onSecondaryContainer
+                            : cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   List<Widget> _editorPanels(
     BuildContext context,
     WidgetConfiguration config,
@@ -617,7 +868,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     final cs = Theme.of(context).colorScheme;
     final accounts = untisAccountsNotifier.value;
 
-    return [
+    final panels = <Widget>[
       _editorPanel(
         context: context,
         title: l.ui('editorYourWidgets'),
@@ -643,7 +894,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                     ),
                     label: Text(item.name),
                     selected: item.id == config.id,
-                    onSelected: (_) => setState(() => _selectedId = item.id),
+                    onSelected: (_) => _selectConfiguration(item.id),
                   );
                 },
               ),
@@ -855,6 +1106,34 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
         accent: cs.secondary,
         child: Column(
           children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _stylePresetButton(
+                    label: 'Material',
+                    icon: Icons.auto_awesome_rounded,
+                    onTap: () => _applyStylePreset(0),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _stylePresetButton(
+                    label: 'Night',
+                    icon: Icons.dark_mode_rounded,
+                    onTap: () => _applyStylePreset(1),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _stylePresetButton(
+                    label: 'Paper',
+                    icon: Icons.article_rounded,
+                    onTap: () => _applyStylePreset(2),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
             SegmentedButton<String>(
               segments: [
                 ButtonSegment(
@@ -985,6 +1264,11 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
           ],
         ),
       ),
+    ];
+    return [
+      _toolSelector(l),
+      const SizedBox(height: 14),
+      panels[_toolIndex.clamp(0, panels.length - 1)],
       if (!kIsWeb && Platform.isAndroid) ...[
         const SizedBox(height: 14),
         FilledButton.icon(
@@ -1015,7 +1299,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             style: GoogleFonts.outfit(color: cs.onSurfaceVariant),
           ),
         ),
-      ],
+      ]
     ];
   }
 
@@ -1047,14 +1331,44 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
         ),
         actions: [
           IconButton(
-            tooltip: l.ui('editorNew'),
-            onPressed: _createConfiguration,
-            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Undo',
+            onPressed: _historyIndex > 0 ? _undo : null,
+            icon: const Icon(Icons.undo_rounded),
           ),
           IconButton(
-            tooltip: l.ui('editorDuplicate'),
-            onPressed: () => _duplicateSelected(l),
-            icon: const Icon(Icons.copy_rounded),
+            tooltip: 'Redo',
+            onPressed: _historyIndex < _history.length - 1 ? _redo : null,
+            icon: const Icon(Icons.redo_rounded),
+          ),
+          IconButton(
+            tooltip: 'Randomize',
+            onPressed: _randomizeDesign,
+            icon: const Icon(Icons.casino_rounded),
+          ),
+          _untisDropdownMenu(
+            context: context,
+            menuChildren: [
+              MenuItemButton(
+                leadingIcon: const Icon(Icons.add_rounded),
+                onPressed: _createConfiguration,
+                child: Text(l.ui('editorNew')),
+              ),
+              MenuItemButton(
+                leadingIcon: const Icon(Icons.copy_rounded),
+                onPressed: () => _duplicateSelected(l),
+                child: Text(l.ui('editorDuplicate')),
+              ),
+              MenuItemButton(
+                leadingIcon: const Icon(Icons.restart_alt_rounded),
+                onPressed: _resetDesign,
+                child: const Text('Reset design'),
+              ),
+            ],
+            builder: (context, controller, child) => IconButton(
+              icon: const Icon(Icons.more_vert_rounded),
+              onPressed: () =>
+                  controller.isOpen ? controller.close() : controller.open(),
+            ),
           ),
         ],
       ),
