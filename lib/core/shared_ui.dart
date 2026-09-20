@@ -954,6 +954,23 @@ class SettingsGroup extends StatelessWidget {
   }
 }
 
+Widget _settingsTooltip({
+  required String? message,
+  required Widget child,
+  bool showInline = false,
+}) {
+  final text = message?.trim() ?? '';
+  if (text.isEmpty || showInline) return child;
+  return Tooltip(
+    message: text,
+    triggerMode: TooltipTriggerMode.longPress,
+    showDuration: const Duration(seconds: 4),
+    preferBelow: false,
+    verticalOffset: 28,
+    child: child,
+  );
+}
+
 class SettingsTile extends StatelessWidget {
   final IconData? icon;
   final Color? iconColor;
@@ -964,6 +981,7 @@ class SettingsTile extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool destructive;
+  final bool showSubtitle;
 
   const SettingsTile({
     super.key,
@@ -976,29 +994,37 @@ class SettingsTile extends StatelessWidget {
     this.trailing = const Icon(Icons.chevron_right_rounded),
     this.onTap,
     this.destructive = false,
+    this.showSubtitle = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
+    final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
     final effectiveLeading =
         leading ??
         (icon != null
             ? Container(
-                width: 38,
-                height: 38,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color:
                       iconBackgroundColor ??
                       (destructive
                           ? cs.errorContainer
-                          : cs.primary.withValues(alpha: 0.15)),
-                  borderRadius: BorderRadius.circular(tokens.controlRadius),
+                          : cs.primary.withValues(alpha: 0.14)),
+                  borderRadius: BorderRadius.circular(
+                    _expressiveRadius(
+                      context,
+                      tokens.controlRadius,
+                      expressiveRadius: 15,
+                    ),
+                  ),
                 ),
                 child: Icon(
                   icon,
-                  size: 20,
+                  size: 21,
                   color:
                       iconColor ??
                       (destructive ? cs.onErrorContainer : cs.primary),
@@ -1006,53 +1032,68 @@ class SettingsTile extends StatelessWidget {
               )
             : null);
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        child: Row(
-          children: [
-            if (effectiveLeading != null) ...[
-              effectiveLeading,
-              const SizedBox(width: 14),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: destructive ? cs.error : cs.onSurface,
-                    ),
-                  ),
-                  if (subtitle != null && subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+    final tile = Semantics(
+      button: onTap != null,
+      label: hasSubtitle ? '$title. $subtitle' : title,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 16, expressiveRadius: 20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Row(
+            children: [
+              if (effectiveLeading != null) ...[
+                effectiveLeading,
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 12.5,
-                        color: cs.onSurfaceVariant,
-                        height: 1.25,
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w650,
+                        fontSize: 15,
+                        color: destructive ? cs.error : cs.onSurface,
                       ),
                     ),
+                    if (showSubtitle && hasSubtitle) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 12.5,
+                          color: cs.onSurfaceVariant,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            if (trailing != null) ...[
-              const SizedBox(width: 8),
-              IconTheme(
-                data: IconThemeData(color: cs.onSurfaceVariant, size: 22),
-                child: trailing!,
-              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                IconTheme(
+                  data: IconThemeData(color: cs.onSurfaceVariant, size: 22),
+                  child: trailing!,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
+    );
+
+    return _settingsTooltip(
+      message: subtitle,
+      showInline: showSubtitle,
+      child: tile,
     );
   }
 }
@@ -1066,6 +1107,7 @@ class SettingsSwitchTile extends StatelessWidget {
   final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final bool showSubtitle;
 
   const SettingsSwitchTile({
     super.key,
@@ -1077,84 +1119,107 @@ class SettingsSwitchTile extends StatelessWidget {
     this.subtitle,
     required this.value,
     required this.onChanged,
+    this.showSubtitle = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
+    final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
     final effectiveLeading =
         leading ??
         (icon != null
             ? Container(
-                width: 38,
-                height: 38,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color:
-                      iconBackgroundColor ?? cs.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(tokens.controlRadius),
+                      iconBackgroundColor ?? cs.primary.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(
+                    _expressiveRadius(
+                      context,
+                      tokens.controlRadius,
+                      expressiveRadius: 15,
+                    ),
+                  ),
                 ),
-                child: Icon(icon, size: 20, color: iconColor ?? cs.primary),
+                child: Icon(icon, size: 21, color: iconColor ?? cs.primary),
               )
             : null);
 
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onChanged(!value);
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        child: Row(
-          children: [
-            if (effectiveLeading != null) ...[
-              effectiveLeading,
-              const SizedBox(width: 14),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: cs.onSurface,
-                    ),
-                  ),
-                  if (subtitle != null && subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+    final tile = Semantics(
+      toggled: value,
+      label: hasSubtitle ? '$title. $subtitle' : title,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onChanged(!value);
+        },
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 16, expressiveRadius: 20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            children: [
+              if (effectiveLeading != null) ...[
+                effectiveLeading,
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 12.5,
-                        color: cs.onSurfaceVariant,
-                        height: 1.25,
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w650,
+                        fontSize: 15,
+                        color: cs.onSurface,
                       ),
                     ),
+                    if (showSubtitle && hasSubtitle) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 12.5,
+                          color: cs.onSurfaceVariant,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Switch(
-              value: value,
-              onChanged: (val) {
-                HapticFeedback.selectionClick();
-                onChanged(val);
-              },
-              thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return const Icon(Icons.check, size: 14);
-                }
-                return const Icon(Icons.close, size: 14);
-              }),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Switch(
+                value: value,
+                onChanged: (val) {
+                  HapticFeedback.selectionClick();
+                  onChanged(val);
+                },
+                thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const Icon(Icons.check, size: 14);
+                  }
+                  return const Icon(Icons.close, size: 14);
+                }),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+
+    return _settingsTooltip(
+      message: subtitle,
+      showInline: showSubtitle,
+      child: tile,
     );
   }
 }
