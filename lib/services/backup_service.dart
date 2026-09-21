@@ -251,7 +251,7 @@ class BackupService {
           normalized = normalized.clamp(0, 10);
         }
         if (key == 'pageTransition') {
-          normalized = normalized.clamp(0, 7);
+          normalized = normalized.clamp(0, 8);
         }
         await prefs.setInt(key, normalized);
       }
