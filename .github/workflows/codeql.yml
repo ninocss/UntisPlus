@@ -1,5 +1,7 @@
 name: CodeQL Advanced
 
+# Uses CodeQL advanced setup with explicit Flutter builds.
+
 on:
   push:
     branches:
