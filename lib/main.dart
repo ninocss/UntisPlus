@@ -50,10 +50,14 @@ import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
 import 'features/ai/data/remote_ai_provider.dart';
+import 'features/accounts/domain/untis_account.dart';
 import 'platform/native_ui_gateway.dart';
 import 'core/sync_state.dart';
+import 'core/school_models.dart';
 
-part 'core/school_models.dart';
+export 'features/accounts/domain/untis_account.dart';
+export 'core/school_models.dart';
+
 part 'core/design_tokens.dart';
 part 'core/app_theme.dart';
 part 'app/untis_plus_app.dart';

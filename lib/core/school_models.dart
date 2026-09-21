@@ -1,19 +1,17 @@
-part of '../main.dart';
-
 class SchoolSearchResult {
-  final int id;
-  final String loginName;
-  final String displayName;
-  final String serverUrl;
-  final String address;
-
-  SchoolSearchResult({
+  const SchoolSearchResult({
     required this.id,
     required this.loginName,
     required this.displayName,
     required this.serverUrl,
     required this.address,
   });
+
+  final int id;
+  final String loginName;
+  final String displayName;
+  final String serverUrl;
+  final String address;
 
   factory SchoolSearchResult.fromJson(Map<String, dynamic> json) {
     return SchoolSearchResult(
