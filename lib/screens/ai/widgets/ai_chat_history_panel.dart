@@ -1,6 +1,6 @@
 part of '../../../main.dart';
 
-class AiChatHistoryPanel extends StatelessWidget {
+class _AiChatHistoryPanel extends StatelessWidget {
   final List<_ChatSession> sessions;
   final String? selectedSessionId;
   final bool showResultActions;
@@ -12,7 +12,7 @@ class AiChatHistoryPanel extends StatelessWidget {
   final VoidCallback onOpenPromptSettings;
   final VoidCallback onOpenAiSettings;
 
-  const AiChatHistoryPanel({
+  const _AiChatHistoryPanel({
     super.key,
     required this.sessions,
     required this.selectedSessionId,
