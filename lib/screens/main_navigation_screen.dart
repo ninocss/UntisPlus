@@ -310,7 +310,6 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   void _resetSearchState() {
-    _typingHintTimer?.cancel();
     _thinking = false;
     _latestQuery = '';
     _latestResult = null;
@@ -1973,56 +1972,6 @@ ${l.ui('aiAssistantRules')}''';
 
     Widget _buildSearchLoadingState(ColorScheme cs) {
     return AiAnalysisLoadingState(query: _latestQuery);
-  }
-
-  ) {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final messages = [
-      l.aiStepAnalyzingTimetable,
-      l.aiStepSortingResults,
-      l.aiStepAlmostDone,
-    ];
-    final text = isChat
-        ? l.aiTyping
-        : messages[_typingHintIndex % messages.length];
-
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Row(
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              _Dot(delay: 0),
-              SizedBox(width: 4),
-              _Dot(delay: 150),
-              SizedBox(width: 4),
-              _Dot(delay: 300),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              child: Text(
-                text,
-                key: ValueKey(text),
-                style: GoogleFonts.outfit(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildSearchBar(ColorScheme cs) {
