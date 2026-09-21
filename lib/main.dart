@@ -9306,14 +9306,11 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          _tabController.index == 0
-              ? l.examsTitle
-              : (_tabController.index == 1 ? l.homeworkTitle : l.gradesTitle),
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
-        ),
-        centerTitle: true,
+      appBar: _mainTabHeaderAppBar(
+        context,
+        _tabController.index == 0
+            ? l.examsTitle
+            : (_tabController.index == 1 ? l.homeworkTitle : l.gradesTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -11009,11 +11006,10 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
       .where((t) => t.isNotEmpty)
       .join('\n');
 
-  showUntisModalBottomSheet(
+  _showUnifiedSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    sheetAnimationStyle: _kBottomSheetAnimationStyle,
+    useSafeArea: false,
     builder: (_) => _LessonDetailSheet(
       subject: subject,
       subjectShort: subjectShort,
@@ -11183,10 +11179,7 @@ class _LessonDetailSheet extends StatelessWidget {
     final cancelledColor = Color(
       cancelledLessonColorNotifier.value,
     ).harmonizeWith(cs.primary);
-    return _sheetSurface(
-      context: context,
-      blur: blurEnabledNotifier.value,
-      child: Padding(
+    return Padding(
         padding: EdgeInsets.fromLTRB(
           24,
           16,
@@ -11197,18 +11190,6 @@ class _LessonDetailSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.onSurface.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
             Row(
               children: [
                 if (isCancelled)
@@ -11382,8 +11363,7 @@ class _LessonDetailSheet extends StatelessWidget {
             const SizedBox(height: 48),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -12636,12 +12616,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.infoTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
-        ),
-        centerTitle: true,
+      appBar: _mainTabHeaderAppBar(
+        context,
+        l.infoTitle,
         actions: [
           if (_showInbox)
             IconButton(
@@ -15644,17 +15621,7 @@ class SubjectColorsPage extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 4),
                 Text(
                   l.settingsColorFor(subject),
                   style: GoogleFonts.outfit(
@@ -15747,15 +15714,7 @@ class SubjectColorsPage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(ctx).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 4),
               Text(
                 l.settingsColorFor(subject),
                 style: GoogleFonts.outfit(
