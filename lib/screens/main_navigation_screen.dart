@@ -1584,19 +1584,8 @@ ${l.ui('aiAssistantRules')}''';
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l.ui('aiApplyChangesTitle')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l.ui('aiApplyChangesDesc')),
-            const SizedBox(height: 12),
-            ...actions.map(
-              (action) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text('• ${action.summary(l)}'),
-              ),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: AiActionConfirmationContent(actions: actions),
         ),
         actions: [
           TextButton(
@@ -1834,288 +1823,30 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   Widget _buildSidebar(ColorScheme cs) {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    return Drawer(
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      child: ThemedSurface(
-        blur: true,
-        respectSurfaceBlurPreference: false,
-        borderRadius: BorderRadius.zero,
-        color: cs.surface.withValues(alpha: 0.88),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: cs.onPrimaryContainer,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l.aiTitle,
-                            style: GoogleFonts.outfit(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              color: cs.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            l.aiAskAnything,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).closeButtonTooltip,
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _BouncyButton(
-                  onTap: _startNewChat,
-                  child: ThemedSurface(
-                    blur: false,
-                    borderRadius: BorderRadius.circular(18),
-                    color: cs.primaryContainer,
-                    border: Border.all(
-                      color: cs.primary.withValues(alpha: 0.22),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_comment_rounded,
-                            color: cs.onPrimaryContainer,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            l.bgEditorNew,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w800,
-                              color: cs.onPrimaryContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: cs.outlineVariant.withValues(alpha: 0.5),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                      child: Text(
-                        l.aiTabChat,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurfaceVariant,
-                          letterSpacing: 0.7,
-                        ),
-                      ),
-                    ),
-                    if (_chatHistory.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          l.aiAskAnything,
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            height: 1.35,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      )
-                    else
-                      ..._chatHistory.map((session) {
-                        final isSelected = session.id == _currentChatId;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () => _loadSession(session),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 160),
-                                padding: const EdgeInsets.fromLTRB(
-                                  12,
-                                  10,
-                                  6,
-                                  10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? cs.primaryContainer.withValues(
-                                          alpha: 0.72,
-                                        )
-                                      : cs.surfaceContainerHigh.withValues(
-                                          alpha: 0.32,
-                                        ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? cs.primary.withValues(alpha: 0.28)
-                                        : cs.outlineVariant.withValues(
-                                            alpha: 0.16,
-                                          ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      isSelected
-                                          ? Icons.chat_bubble_rounded
-                                          : Icons.chat_bubble_outline_rounded,
-                                      size: 18,
-                                      color: isSelected
-                                          ? cs.primary
-                                          : cs.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        session.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 14,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w800
-                                              : FontWeight.w600,
-                                          color: isSelected
-                                              ? cs.onPrimaryContainer
-                                              : cs.onSurface,
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      tooltip: l.aiClearResult,
-                                      visualDensity: VisualDensity.compact,
-                                      icon: Icon(
-                                        Icons.delete_outline_rounded,
-                                        size: 18,
-                                        color: cs.onSurfaceVariant,
-                                      ),
-                                      onPressed: () =>
-                                          _removeChatSession(session),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                  ],
-                ),
-              ),
-              Divider(
-                height: 1,
-                color: cs.outlineVariant.withValues(alpha: 0.5),
-              ),
-              if (!_chatMode ||
-                  _latestQuery.isNotEmpty ||
-                  _latestResult != null) ...[
-                ListTile(
-                  leading: const Icon(Icons.refresh_rounded),
-                  title: Text(
-                    l.aiSearchAgain,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () {
-                    _hapticSelection();
-                    Navigator.pop(context);
-                    _handleMenuAction('refresh');
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.delete_sweep_outlined),
-                  title: Text(
-                    l.aiClearResult,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () {
-                    _hapticAction();
-                    Navigator.pop(context);
-                    _handleMenuAction('clear');
-                  },
-                ),
-              ],
-              ListTile(
-                leading: const Icon(Icons.edit_note_rounded),
-                title: Text(
-                  l.settingsAiPrompt,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-                onTap: () {
-                  _hapticSelection();
-                  Navigator.pop(context);
-                  _openPromptEditor();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings_outlined),
-                title: Text(
-                  l.aiSettingsMenu,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-                onTap: () {
-                  _hapticSelection();
-                  Navigator.pop(context);
-                  _openSettings();
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
+    return AiChatHistoryPanel(
+      sessions: _chatHistory,
+      selectedSessionId: _currentChatId,
+      showResultActions:
+          !_chatMode || _latestQuery.isNotEmpty || _latestResult != null,
+      onNewChat: _startNewChat,
+      onOpenSession: _loadSession,
+      onDeleteSession: _removeChatSession,
+      onSearchAgain: () {
+        Navigator.pop(context);
+        unawaited(_handleMenuAction('refresh'));
+      },
+      onClear: () {
+        Navigator.pop(context);
+        unawaited(_handleMenuAction('clear'));
+      },
+      onOpenPromptSettings: () {
+        Navigator.pop(context);
+        unawaited(_openPromptEditor());
+      },
+      onOpenAiSettings: () {
+        Navigator.pop(context);
+        unawaited(_openSettings());
+      },
     );
   }
 
@@ -2326,77 +2057,7 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   Widget _buildSearchLoadingState(ColorScheme cs) {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest.withValues(alpha: 0.74),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.22),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.manage_search_rounded, color: cs.primary),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _latestQuery.isEmpty ? l.aiSearchRunning : _latestQuery,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  l.aiSearchShapingDesc,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-                if (_latestQuery.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Chip(
-                    label: Text(
-                      _latestQuery,
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                    backgroundColor: cs.primaryContainer.withValues(
-                      alpha: 0.72,
-                    ),
-                    side: BorderSide.none,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          _buildTypingBubble(cs),
-        ],
-      ),
-    );
+    return AiAnalysisLoadingState(query: _latestQuery);
   }
 
   Widget _buildTypingBubble(ColorScheme cs, {bool isChat = false}) {
@@ -2451,310 +2112,41 @@ ${l.ui('aiAssistantRules')}''';
 
   Widget _buildSearchBar(ColorScheme cs) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final mq = MediaQuery.of(context);
-    final keyboardHeight = mq.viewInsets.bottom;
-    final isKeyboardOpen = keyboardHeight > 0;
-    final isFocused = _promptFocusNode.hasFocus;
-
-    return Container(
-      margin: EdgeInsets.fromLTRB(
-        16,
-        8,
-        16,
-        isKeyboardOpen ? (keyboardHeight + 12) : (14 + mq.padding.bottom),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_attachments.isNotEmpty)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: _attachments.indexed
-                    .map(
-                      (entry) => InputChip(
-                        avatar: const Icon(Icons.attach_file_rounded, size: 16),
-                        label: Text(entry.$2.name),
-                        onDeleted: _thinking
-                            ? null
-                            : () => setState(
-                                () => _attachments.removeAt(entry.$1),
-                              ),
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-            ),
-          Row(
-            children: [
-              const SizedBox(width: 8),
-              if (_chatMode)
-                IconButton(
-                  onPressed: _thinking ? null : _pickAssistantAttachment,
-                  icon: const Icon(Icons.attach_file_rounded),
-                  tooltip: AppL10n.of(
-                    appLocaleNotifier.value,
-                  ).ui('aiAttachFile'),
-                ),
-              Expanded(
-                child: TextField(
-                  controller: _inputController,
-                  focusNode: _promptFocusNode,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (_) => setState(() {}),
-                  onSubmitted: (_) => _send(),
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    fontWeight: isFocused ? FontWeight.w700 : FontWeight.w600,
-                    color: cs.onSurface,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: _chatMode
-                        ? l.aiInputHint
-                        : l.aiSearchHintPlaceholder,
-                    hintStyle: GoogleFonts.outfit(color: cs.onSurfaceVariant),
-                    filled: true,
-                    fillColor: Colors.transparent,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-              if (_inputController.text.isNotEmpty) ...[
-                IconButton(
-                  onPressed: _thinking
-                      ? null
-                      : () {
-                          setState(() => _inputController.clear());
-                        },
-                  icon: Icon(Icons.clear_rounded, color: cs.onSurfaceVariant),
-                  tooltip: l.aiClearInput,
-                ),
-              ],
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _thinking ? null : _send,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 14,
-                  ),
-                  shape: _legacyButtonShape(context, 18),
-                ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: _thinking
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: cs.onPrimary,
-                          ),
-                        )
-                      : Icon(
-                          _chatMode ? Icons.send_rounded : Icons.search_rounded,
-                          key: ValueKey<bool>(isFocused ^ _chatMode),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return AiComposer(
+      controller: _inputController,
+      focusNode: _promptFocusNode,
+      mode: _chatMode ? _AiMode.chat : _AiMode.analysis,
+      thinking: _thinking,
+      attachments: _attachments,
+      hintText: _chatMode ? l.aiInputHint : l.aiSearchHintPlaceholder,
+      onAttach: _chatMode && !_thinking
+          ? () => unawaited(_pickAssistantAttachment())
+          : null,
+      onRemoveAttachment: (index) {
+        if (_thinking || index < 0 || index >= _attachments.length) return;
+        setState(() => _attachments.removeAt(index));
+      },
+      onSend: () => unawaited(_send()),
+      onClear: () => setState(_inputController.clear),
     );
   }
 
   Widget _buildResultHeader(ColorScheme cs) {
     final result = _latestResult;
-    final l = AppL10n.of(appLocaleNotifier.value);
     if (result == null) {
-      if (_thinking) {
-        return _buildSearchLoadingState(cs);
-      }
+      if (_thinking) return _buildSearchLoadingState(cs);
       return _buildEmptyState(cs);
     }
 
-    return SingleChildScrollView(
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerHigh.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: cs.outlineVariant.withValues(alpha: 0.2),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: cs.shadow.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: cs.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        size: 20,
-                        color: cs.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        result.headline,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.7,
-                          color: cs.onSurface,
-                          height: 1.1,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  result.summary,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.9),
-                    height: 1.5,
-                  ),
-                ),
-                if (result.tags.isNotEmpty) ...[
-                  const SizedBox(height: 18),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: result.tags.take(4).map((tag) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cs.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: cs.primary.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        child: Text(
-                          tag,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            color: cs.primary,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (result.metrics.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Icon(Icons.bar_chart_rounded, size: 20, color: cs.primary),
-                const SizedBox(width: 10),
-                Text(
-                  l.aiOverview,
-                  style: GoogleFonts.outfit(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth > 500;
-                final columns = isWide ? 3 : 2;
-                return GridView.count(
-                  crossAxisCount: columns,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.6,
-                  children: result.metrics
-                      .map((metric) => _buildSearchMetricCard(cs, metric))
-                      .toList(),
-                );
-              },
-            ),
-          ],
-          if (result.lessons.isNotEmpty) ...[
-            const SizedBox(height: 26),
-            Row(
-              children: [
-                Icon(Icons.school_rounded, size: 20, color: cs.primary),
-                const SizedBox(width: 10),
-                Text(
-                  l.aiLessons,
-                  style: GoogleFonts.outfit(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: cs.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            ...result.lessons.map(
-              (lesson) => LessonCard(
-                subject: lesson.subject,
-                subjectShort: lesson.subjectShort,
-                room: lesson.room,
-                teacher: lesson.teacher,
-                time: lesson.time,
-                isCancelled: lesson.isCancelled,
-              ),
-            ),
-          ],
-          if (_thinking) ...[const SizedBox(height: 8), _buildTypingBubble(cs)],
-        ],
-      ),
+    return AiAnalysisResult(
+      result: result,
+      thinking: _thinking,
+      metricIcon: _metricIcon,
+      onSearchAgain: () {
+        final query = _latestQuery.trim();
+        if (query.isNotEmpty) unawaited(_sendQuickPrompt(query));
+      },
+      onClear: () => unawaited(_clearCurrentResult()),
     );
   }
 
@@ -2811,118 +2203,77 @@ ${l.ui('aiAssistantRules')}''';
           final isThinkingOfLastMessage =
               _chatMessages.isNotEmpty &&
               _chatMessages.last['role'] == 'assistant' &&
-              _chatMessages.last['content']!.isEmpty;
+              (_chatMessages.last['content'] ?? '').isEmpty;
           if (isThinkingOfLastMessage) return const SizedBox.shrink();
-          return _buildTypingBubble(cs, isChat: true);
+          return const AiChatMessage(
+            content: '',
+            isUser: false,
+            streaming: true,
+          );
         }
         final msg = _chatMessages[index];
         final isUser = msg['role'] == 'user';
-        return _buildChatBubble(cs, msg['content']!, isUser);
+        final content = msg['content'] ?? '';
+        return AiChatMessage(
+          content: content,
+          isUser: isUser,
+          streaming: _thinking &&
+              !isUser &&
+              index == _chatMessages.length - 1,
+        );
       },
     );
   }
 
   Widget _buildChatBubble(ColorScheme cs, String content, bool isUser) {
-    if (!isUser && content.isEmpty) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.6),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-              bottomLeft: Radius.circular(4),
-              bottomRight: Radius.circular(20),
-            ),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.15),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              _Dot(delay: 0),
-              SizedBox(width: 4),
-              _Dot(delay: 150),
-              SizedBox(width: 4),
-              _Dot(delay: 300),
-            ],
-          ),
-        ),
-      );
-    }
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.85,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isUser
-              ? cs.primary
-              : cs.surfaceContainerHighest.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isUser ? 20 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 20),
-          ),
-          border: isUser
-              ? null
-              : Border.all(color: cs.outlineVariant.withValues(alpha: 0.1)),
-          boxShadow: isUser && untisThemeTokensOf(context).glowEffectsEnabled
-              ? [
-                  BoxShadow(
-                    color: cs.primary.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: isUser
-            ? Text(
-                content,
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: cs.onPrimary,
-                ),
-              )
-            : MarkdownBody(
-                data: content,
-                selectable: true,
-                styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
-                    .copyWith(
-                      p: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: cs.onSurface,
-                        height: 1.5,
-                      ),
-                      strong: GoogleFonts.outfit(
-                        fontWeight: FontWeight.w800,
-                        color: cs.primary,
-                      ),
-                      listBullet: GoogleFonts.outfit(color: cs.primary),
-                    ),
-              ),
-      ),
+    return AiChatMessage(
+      content: content,
+      isUser: isUser,
+      streaming: _thinking && !isUser,
     );
   }
 
   Widget _buildBody(ColorScheme cs) {
+    final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
+    final reduceMotion = _aiReduceMotion(context);
+
     return Column(
       children: [
-        if (!_chatMode && _latestResult == null && !_thinking)
-          _buildChipRow(cs),
+        AiModeSwitch(
+          selectedMode: mode,
+          onChanged: (nextMode) {
+            _selectAiTab(nextMode == _AiMode.chat ? 1 : 0);
+          },
+        ),
         Expanded(
-          child: _chatMode ? _buildChatView(cs) : _buildResultHeader(cs),
+          child: AnimatedSwitcher(
+            duration: reduceMotion
+                ? _kAiReducedMotion
+                : const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeOutCubic,
+            transitionBuilder: (child, animation) {
+              if (reduceMotion) {
+                return FadeTransition(opacity: animation, child: child);
+              }
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.985, end: 1).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
+                  child: child,
+                ),
+              );
+            },
+            child: KeyedSubtree(
+              key: ValueKey(mode),
+              child: _chatMode ? _buildChatView(cs) : _buildResultHeader(cs),
+            ),
+          ),
         ),
         _buildSearchBar(cs),
       ],
@@ -2931,72 +2282,74 @@ ${l.ui('aiAssistantRules')}''';
 
   Widget _buildEmptyState(ColorScheme cs) {
     final l = AppL10n.of(appLocaleNotifier.value);
+    final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
+    final analysisSuggestions = _buildContextualChips();
+    const suggestionIcons = <IconData>[
+      Icons.trending_up_rounded,
+      Icons.lightbulb_outline_rounded,
+      Icons.edit_note_rounded,
+    ];
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: _glowShadows(context, [
-                BoxShadow(
-                  color: cs.primary.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ]),
-            ),
-            child: Icon(
-              Icons.auto_awesome_rounded,
-              size: 32,
-              color: cs.onPrimaryContainer,
-            ),
+          AiHeroSurface(
+            mode: mode,
+            title: _chatMode ? l.aiChatTitle : l.aiEmptyPromptTitle,
+            subtitle: _chatMode ? l.aiChatSubtitle : l.aiEmptyPromptSubtitle,
           ),
-          const SizedBox(height: 28),
-          Text(
-            _chatMode ? l.aiChatTitle : l.aiEmptyPromptTitle,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w900,
-              fontSize: 28,
-              letterSpacing: -1.0,
-              color: cs.onSurface,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            _chatMode ? l.aiChatSubtitle : l.aiEmptyPromptSubtitle,
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 22),
           if (_chatMode) ...[
             Text(
               l.aiTryIt,
-              style: GoogleFonts.outfit(
-                fontSize: 14,
+              style: untisThemeTextStyle(
+                context,
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: cs.primary,
-                letterSpacing: 0.5,
+                color: cs.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             for (final suggestion in l.aiChatSuggestions.indexed)
-              _buildChatSuggestion(
-                cs,
-                suggestion.$2,
-                const [
-                  Icons.trending_up_rounded,
-                  Icons.lightbulb_outline_rounded,
-                  Icons.edit_note_rounded,
-                ][suggestion.$1],
+              AiSuggestionCard(
+                text: suggestion.$2,
+                icon: suggestionIcons[suggestion.$1 % suggestionIcons.length],
+                onTap: () {
+                  _hapticSelection();
+                  unawaited(_sendQuickPrompt(suggestion.$2));
+                },
               ),
+          ] else if (analysisSuggestions.isNotEmpty) ...[
+            Text(
+              l.aiTryIt,
+              style: untisThemeTextStyle(
+                context,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final suggestion in analysisSuggestions.indexed)
+                  AiSuggestionCard(
+                    compact: true,
+                    text: suggestion.$2,
+                    icon: suggestionIcons[
+                        suggestion.$1 % suggestionIcons.length
+                    ],
+                    onTap: () {
+                      _hapticSelection();
+                      unawaited(_sendQuickPrompt(suggestion.$2));
+                    },
+                  ),
+              ],
+            ),
           ],
         ],
       ),
@@ -3049,12 +2402,63 @@ ${l.ui('aiAssistantRules')}''';
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
+    final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
 
     if (_loading) {
       return Scaffold(
         backgroundColor: Colors.transparent,
         appBar: _mainTabHeaderAppBar(context, l.aiTitle),
-        body: Center(child: CircularProgressIndicator(color: cs.primary)),
+        body: Column(
+          children: [
+            AiModeSwitch(
+              selectedMode: mode,
+              enabled: false,
+              onChanged: (_) {},
+            ),
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: ThemedSurface(
+                      showShadow: false,
+                      borderRadius: BorderRadius.circular(_aiRadius(28)),
+                      color: cs.surfaceContainerHigh.withValues(alpha: 0.72),
+                      child: Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: cs.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                l.aiAskAnything,
+                                style: untisThemeTextStyle(
+                                  context,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -3063,54 +2467,16 @@ ${l.ui('aiAssistantRules')}''';
       resizeToAvoidBottomInset: false,
       appBar: _mainTabHeaderAppBar(
         context,
-        _currentChatTitle,
+        l.aiTitle,
         leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
           icon: const Icon(Icons.menu_rounded),
           onPressed: () {
             _hapticSelection();
             widget.onOpenDrawer?.call(_buildSidebar(cs));
           },
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          onTap: _selectAiTab,
-          indicatorColor: cs.primary,
-          indicatorWeight: 3,
-          dividerColor: Colors.transparent,
-          labelStyle: GoogleFonts.outfit(
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
-          ),
-          unselectedLabelStyle: GoogleFonts.outfit(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-          tabs: [
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.analytics_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Text(l.aiTabAnalysis),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.chat_bubble_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Text(l.aiTabChat),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
-      // MainNavigationScreen already provides the shared themed backdrop.
-      // Adding a second animated scene here doubled paint work for this tab.
       body: LayoutBuilder(
         builder: (context, constraints) {
           final body = _buildBody(cs);
@@ -3118,7 +2484,9 @@ ${l.ui('aiAssistantRules')}''';
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 980),
+              constraints: BoxConstraints(
+                maxWidth: _aiContentMaxWidth(context, mode),
+              ),
               child: SizedBox(height: constraints.maxHeight, child: body),
             ),
           );
