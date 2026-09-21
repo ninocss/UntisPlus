@@ -27,10 +27,10 @@ class _AiComposer extends StatefulWidget {
   });
 
   @override
-  State<_AiComposer> createState() => __AiComposerState();
+  State<_AiComposer> createState() => _AiComposerState();
 }
 
-class __AiComposerState extends State<_AiComposer> {
+class _AiComposerState extends State<_AiComposer> {
   @override
   void initState() {
     super.initState();
