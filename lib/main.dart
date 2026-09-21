@@ -55,11 +55,12 @@ import 'features/accounts/data/untis_account_store.dart';
 import 'platform/native_ui_gateway.dart';
 import 'core/sync_state.dart';
 import 'core/school_models.dart';
+import 'core/design_tokens.dart';
 
 export 'features/accounts/domain/untis_account.dart';
 export 'core/school_models.dart';
+export 'core/design_tokens.dart';
 
-part 'core/design_tokens.dart';
 part 'core/app_theme.dart';
 part 'app/untis_plus_app.dart';
 part 'core/shared_ui.dart';
