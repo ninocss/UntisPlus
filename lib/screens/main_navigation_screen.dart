@@ -3053,12 +3053,7 @@ ${l.ui('aiAssistantRules')}''';
     if (_loading) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: RoundedBlurAppBar(
-          title: Text(
-            l.aiTitle,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-          ),
-        ),
+        appBar: _mainTabHeaderAppBar(context, l.aiTitle),
         body: Center(child: CircularProgressIndicator(color: cs.primary)),
       );
     }
@@ -3066,17 +3061,15 @@ ${l.ui('aiAssistantRules')}''';
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
-      appBar: RoundedBlurAppBar(
+      appBar: _mainTabHeaderAppBar(
+        context,
+        _currentChatTitle,
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded),
           onPressed: () {
             _hapticSelection();
             widget.onOpenDrawer?.call(_buildSidebar(cs));
           },
-        ),
-        title: Text(
-          _currentChatTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
         ),
         bottom: TabBar(
           controller: _tabController,
