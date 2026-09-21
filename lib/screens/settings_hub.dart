@@ -1024,7 +1024,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     }
 
     return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsTitle),
+      appBar: _mainTabHeaderAppBar(context, l.settingsTitle),
       body: _AnimatedBackground(
         child: LayoutBuilder(
           builder: (context, _) {
