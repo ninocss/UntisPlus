@@ -676,7 +676,7 @@ Color _autoLessonColor(String subject, bool isDark) {
 }
 
 Duration _pageMotionDuration(int transitionType) {
-  return switch (transitionType.clamp(0, 7)) {
+  return switch (transitionType.clamp(0, 8)) {
     0 => const Duration(milliseconds: 430),
     1 => const Duration(milliseconds: 260),
     2 => const Duration(milliseconds: 360),
@@ -685,12 +685,13 @@ Duration _pageMotionDuration(int transitionType) {
     5 => const Duration(milliseconds: 340),
     6 => const Duration(milliseconds: 380),
     7 => const Duration(milliseconds: 460),
+    8 => Duration.zero,
     _ => const Duration(milliseconds: 360),
   };
 }
 
 Curve _pageMotionCurve(int transitionType) {
-  return switch (transitionType.clamp(0, 7)) {
+  return switch (transitionType.clamp(0, 8)) {
     0 => const Cubic(0.34, 1.56, 0.64, 1.0),
     1 => Curves.easeOutCubic,
     2 => const Cubic(0.2, 0.0, 0.0, 1.0),
@@ -699,12 +700,13 @@ Curve _pageMotionCurve(int transitionType) {
     5 => const Cubic(0.22, 1.0, 0.36, 1.0),
     6 => const Cubic(0.16, 1.0, 0.3, 1.0),
     7 => const Cubic(0.16, 1.0, 0.3, 1.0),
+    8 => Curves.linear,
     _ => Curves.easeOutCubic,
   };
 }
 
 Offset _pageMotionOffset(int transitionType, {double direction = 1}) {
-  return switch (transitionType.clamp(0, 7)) {
+  return switch (transitionType.clamp(0, 8)) {
     0 => const Offset(0, 0.055),
     1 => const Offset(0, 0.012),
     2 => Offset(0.12 * direction, 0),
@@ -713,12 +715,13 @@ Offset _pageMotionOffset(int transitionType, {double direction = 1}) {
     5 => const Offset(0, 0.08),
     6 => Offset(0.055 * direction, 0.018),
     7 => const Offset(0, 0.10),
+    8 => Offset.zero,
     _ => Offset.zero,
   };
 }
 
 double _pageMotionScale(int transitionType) {
-  return switch (transitionType.clamp(0, 7)) {
+  return switch (transitionType.clamp(0, 8)) {
     0 => 0.94,
     1 => 0.995,
     2 => 0.985,
@@ -727,12 +730,13 @@ double _pageMotionScale(int transitionType) {
     5 => 0.99,
     6 => 0.985,
     7 => 0.955,
+    8 => 1.0,
     _ => 1.0,
   };
 }
 
 double _pageMotionBlur(int transitionType) =>
-    transitionType.clamp(0, 7) == 4 ? 14.0 : 0.0;
+    transitionType.clamp(0, 8) == 4 ? 14.0 : 0.0;
 
 /// Prepares the GPU blur pipeline while the app is idle. Without this tiny
 /// composited layer, Android may compile the ImageFiltered pipeline during the
@@ -778,7 +782,14 @@ Route<T> _buildBouncyRoute<T>(
   int? transitionType,
 }) {
   final selectedTransition =
-      (transitionType ?? pageTransitionNotifier.value).clamp(0, 7);
+      (transitionType ?? pageTransitionNotifier.value).clamp(0, 8);
+
+  // Use Flutter's platform route unchanged for "Default". On Android,
+  // MaterialPageRoute uses the framework's predictive-back transition.
+  if (selectedTransition == 8) {
+    return MaterialPageRoute<T>(builder: (context) => page);
+  }
+
   final forwardDuration = duration ?? _pageMotionDuration(selectedTransition);
   final backwardDuration =
       reverseDuration ??
