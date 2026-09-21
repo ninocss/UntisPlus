@@ -1579,7 +1579,7 @@ ${l.ui('aiAssistantRules')}''';
       builder: (dialogContext) => AlertDialog(
         title: Text(l.ui('aiApplyChangesTitle')),
         content: SingleChildScrollView(
-          child: AiActionConfirmationContent(actions: actions),
+          child: _AiActionConfirmationContent(actions: actions),
         ),
         actions: [
           TextButton(
@@ -1808,7 +1808,7 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   Widget _buildSidebar(ColorScheme cs) {
-    return AiChatHistoryPanel(
+    return _AiChatHistoryPanel(
       sessions: _chatHistory,
       selectedSessionId: _currentChatId,
       showResultActions:
@@ -1971,12 +1971,12 @@ ${l.ui('aiAssistantRules')}''';
   }
 
     Widget _buildSearchLoadingState(ColorScheme cs) {
-    return AiAnalysisLoadingState(query: _latestQuery);
+    return _AiAnalysisLoadingState(query: _latestQuery);
   }
 
   Widget _buildSearchBar(ColorScheme cs) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    return AiComposer(
+    return _AiComposer(
       controller: _inputController,
       focusNode: _promptFocusNode,
       mode: _chatMode ? _AiMode.chat : _AiMode.analysis,
@@ -2002,7 +2002,7 @@ ${l.ui('aiAssistantRules')}''';
       return _buildEmptyState(cs);
     }
 
-    return AiAnalysisResult(
+    return _AiAnalysisResult(
       result: result,
       thinking: _thinking,
       metricIcon: _metricIcon,
@@ -2030,7 +2030,7 @@ ${l.ui('aiAssistantRules')}''';
               _chatMessages.last['role'] == 'assistant' &&
               (_chatMessages.last['content'] ?? '').isEmpty;
           if (isThinkingOfLastMessage) return const SizedBox.shrink();
-          return const AiChatMessage(
+          return const _AiChatMessage(
             content: '',
             isUser: false,
             streaming: true,
@@ -2039,7 +2039,7 @@ ${l.ui('aiAssistantRules')}''';
         final msg = _chatMessages[index];
         final isUser = msg['role'] == 'user';
         final content = msg['content'] ?? '';
-        return AiChatMessage(
+        return _AiChatMessage(
           content: content,
           isUser: isUser,
           streaming: _thinking &&
@@ -2056,7 +2056,7 @@ ${l.ui('aiAssistantRules')}''';
 
     return Column(
       children: [
-        AiModeSwitch(
+        _AiModeSwitch(
           selectedMode: mode,
           onChanged: (nextMode) {
             _selectAiTab(nextMode == _AiMode.chat ? 1 : 0);
@@ -2112,7 +2112,7 @@ ${l.ui('aiAssistantRules')}''';
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AiHeroSurface(
+          _AiHeroSurface(
             mode: mode,
             title: _chatMode ? l.aiChatTitle : l.aiEmptyPromptTitle,
             subtitle: _chatMode ? l.aiChatSubtitle : l.aiEmptyPromptSubtitle,
@@ -2130,7 +2130,7 @@ ${l.ui('aiAssistantRules')}''';
             ),
             const SizedBox(height: 10),
             for (final suggestion in l.aiChatSuggestions.indexed)
-              AiSuggestionCard(
+              _AiSuggestionCard(
                 text: suggestion.$2,
                 icon: suggestionIcons[suggestion.$1 % suggestionIcons.length],
                 onTap: () {
@@ -2154,7 +2154,7 @@ ${l.ui('aiAssistantRules')}''';
               runSpacing: 8,
               children: [
                 for (final suggestion in analysisSuggestions.indexed)
-                  AiSuggestionCard(
+                  _AiSuggestionCard(
                     compact: true,
                     text: suggestion.$2,
                     icon: suggestionIcons[
@@ -2185,7 +2185,7 @@ ${l.ui('aiAssistantRules')}''';
         appBar: _mainTabHeaderAppBar(context, l.aiTitle),
         body: Column(
           children: [
-            AiModeSwitch(
+            _AiModeSwitch(
               selectedMode: mode,
               enabled: false,
               onChanged: (_) {},
