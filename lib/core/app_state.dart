@@ -576,6 +576,7 @@ final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(
 );
 
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
+final ValueNotifier<double> blurStrengthNotifier = ValueNotifier(1.0);
 final ValueNotifier<bool> surfaceBlurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<int> surfaceCornerModeNotifier = ValueNotifier(0);
 final ValueNotifier<int> surfaceCornerRadiusNotifier = ValueNotifier(24);

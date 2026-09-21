@@ -61,6 +61,11 @@ bool _usesModalBackdropBlur(BuildContext context) {
   return tokens.supportsBlur && blurEnabledNotifier.value;
 }
 
+double _resolvedBlurSigma(double sigma) {
+  final strength = blurStrengthNotifier.value.clamp(0.25, 2.0).toDouble();
+  return sigma * strength;
+}
+
 Widget _blurredModalBarrier({
   required Animation<double> animation,
   required double sigma,
@@ -195,7 +200,7 @@ Future<T?> showUntisDialog<T>({
       fullscreenDialog: fullscreenDialog,
       animationStyle: animationStyle,
       useBackdropBlur: useBackdropBlur,
-      blurSigma: tokens.blurSigma,
+      blurSigma: _resolvedBlurSigma(tokens.blurSigma),
     ),
   );
 }
@@ -261,7 +266,7 @@ Future<T?> showUntisModalBottomSheet<T>({
       sheetAnimationStyle: sheetAnimationStyle,
       requestFocus: requestFocus,
       useBackdropBlur: useBackdropBlur,
-      blurSigma: tokens.blurSigma,
+      blurSigma: _resolvedBlurSigma(tokens.blurSigma),
     ),
   );
 }
@@ -364,17 +369,24 @@ Widget _blurEffect({
   double sigma = 30,
   BorderRadiusGeometry borderRadius = BorderRadius.zero,
   bool enabled = true,
+  bool respectBlurStrength = true,
 }) {
-  return ValueListenableBuilder<bool>(
-    valueListenable: blurEnabledNotifier,
-    builder: (context, blurEnabled, _) {
-      if (!enabled || !blurEnabled) return child;
+  return AnimatedBuilder(
+    animation: Listenable.merge([blurEnabledNotifier, blurStrengthNotifier]),
+    builder: (context, _) {
+      if (!enabled || !blurEnabledNotifier.value) return child;
+      final effectiveSigma = respectBlurStrength
+          ? _resolvedBlurSigma(sigma)
+          : sigma;
       return ClipRRect(
         borderRadius: borderRadius is BorderRadius
             ? borderRadius
             : BorderRadius.zero,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+          filter: ImageFilter.blur(
+            sigmaX: effectiveSigma,
+            sigmaY: effectiveSigma,
+          ),
           child: child,
         ),
       );
@@ -457,6 +469,7 @@ class ThemedSurface extends StatelessWidget {
     return AnimatedBuilder(
       animation: Listenable.merge([
         blurEnabledNotifier,
+        blurStrengthNotifier,
         surfaceBlurEnabledNotifier,
         surfaceCornerModeNotifier,
         surfaceCornerRadiusNotifier,
@@ -534,8 +547,8 @@ class ThemedSurface extends StatelessWidget {
           child: blurActive
               ? BackdropFilter(
                   filter: ImageFilter.blur(
-                    sigmaX: sigma ?? tokens.blurSigma,
-                    sigmaY: sigma ?? tokens.blurSigma,
+                    sigmaX: _resolvedBlurSigma(sigma ?? tokens.blurSigma),
+                    sigmaY: _resolvedBlurSigma(sigma ?? tokens.blurSigma),
                   ),
                   child: surface,
                 )

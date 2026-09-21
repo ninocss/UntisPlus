@@ -81,6 +81,13 @@ Future<void> _settingsSetBlurEnabled(bool value) async {
   await prefs.setBool('blurEnabled', value);
 }
 
+Future<void> _settingsSetBlurStrength(double value) async {
+  final normalized = value.clamp(0.25, 2.0).toDouble();
+  blurStrengthNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble('blurStrength', normalized);
+}
+
 Future<void> _settingsSetSurfaceBlurEnabled(bool value) async {
   surfaceBlurEnabledNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
@@ -463,6 +470,9 @@ Future<void> _settingsSyncFromPrefs() async {
   blurEnabledNotifier.value =
       appThemeCapabilities(activeTheme).supportsBlur &&
       (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
+  blurStrengthNotifier.value = (prefs.getDouble('blurStrength') ?? 1.0)
+      .clamp(0.25, 2.0)
+      .toDouble();
   surfaceBlurEnabledNotifier.value =
       prefs.getBool('surfaceBlurEnabled') ?? true;
   surfaceCornerModeNotifier.value =

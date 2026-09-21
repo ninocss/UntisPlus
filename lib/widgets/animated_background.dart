@@ -41,6 +41,7 @@ class _AnimatedBackground extends StatelessWidget {
                             child: _blurEffect(
                               enabled: true,
                               sigma: bgBlurAmount,
+                              respectBlurStrength: false,
                               child: const SizedBox.expand(),
                             ),
                           ),

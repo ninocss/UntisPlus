@@ -800,6 +800,43 @@ class SettingsAppearancePage extends StatelessWidget {
                   ),
                 if (capabilities.supportsBlur)
                   ValueListenableBuilder<bool>(
+                    valueListenable: blurEnabledNotifier,
+                    builder: (context, blurEnabled, _) {
+                      if (!blurEnabled) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                        child: ValueListenableBuilder<double>(
+                          valueListenable: blurStrengthNotifier,
+                          builder: (context, strength, _) {
+                            final percent = (strength * 100).round();
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${l.settingsGlassEffect}: $percent%',
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: cs.onSurface,
+                                  ),
+                                ),
+                                Slider(
+                                  value: strength,
+                                  min: 0.25,
+                                  max: 2.0,
+                                  divisions: 35,
+                                  label: '$percent%',
+                                  onChanged: _settingsSetBlurStrength,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                if (capabilities.supportsBlur)
+                  ValueListenableBuilder<bool>(
                     valueListenable: surfaceBlurEnabledNotifier,
                     builder: (context, value, _) {
                       return SettingsSwitchTile(
