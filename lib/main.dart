@@ -70,7 +70,6 @@ part 'screens/onboarding_flow.dart';
 part 'screens/custom_background_editor_screen.dart';
 part 'screens/main_navigation_screen.dart';
 part 'screens/ai/ai_ui_tokens.dart';
-part 'screens/ai/widgets/ai_hero_surface.dart';
 part 'screens/ai/widgets/ai_suggestion_card.dart';
 part 'screens/ai/widgets/ai_attachment_chip.dart';
 part 'screens/ai/widgets/ai_composer.dart';
