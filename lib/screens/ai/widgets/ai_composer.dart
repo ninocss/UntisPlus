@@ -1,6 +1,6 @@
 part of '../../../main.dart';
 
-class AiComposer extends StatefulWidget {
+class _AiComposer extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final _AiMode mode;
@@ -12,7 +12,7 @@ class AiComposer extends StatefulWidget {
   final VoidCallback onSend;
   final VoidCallback onClear;
 
-  const AiComposer({
+  const _AiComposer({
     super.key,
     required this.controller,
     required this.focusNode,
@@ -27,10 +27,10 @@ class AiComposer extends StatefulWidget {
   });
 
   @override
-  State<AiComposer> createState() => _AiComposerState();
+  State<_AiComposer> createState() => __AiComposerState();
 }
 
-class _AiComposerState extends State<AiComposer> {
+class __AiComposerState extends State<_AiComposer> {
   @override
   void initState() {
     super.initState();
@@ -39,7 +39,7 @@ class _AiComposerState extends State<AiComposer> {
   }
 
   @override
-  void didUpdateWidget(AiComposer oldWidget) {
+  void didUpdateWidget(_AiComposer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_changed);
@@ -114,7 +114,7 @@ class _AiComposerState extends State<AiComposer> {
                             children: [
                               for (final item in widget.attachments.indexed) ...[
                                 if (item.$1 > 0) const SizedBox(width: 6),
-                                AiAttachmentChip(
+                                _AiAttachmentChip(
                                   key: ValueKey(
                                     '${item.$2.name}-${item.$1}',
                                   ),
