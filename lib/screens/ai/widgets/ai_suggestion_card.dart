@@ -15,10 +15,10 @@ class _AiSuggestionCard extends StatefulWidget {
   });
 
   @override
-  State<_AiSuggestionCard> createState() => __AiSuggestionCardState();
+  State<_AiSuggestionCard> createState() => _AiSuggestionCardState();
 }
 
-class __AiSuggestionCardState extends State<_AiSuggestionCard> {
+class _AiSuggestionCardState extends State<_AiSuggestionCard> {
   bool _pressed = false;
 
   void _press(bool value) {
