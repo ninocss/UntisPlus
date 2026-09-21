@@ -52,14 +52,15 @@ void main() {
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: AiAssistantPage()),
     );
-    await pumpUntil(tester, find.text(l.aiEmptyPromptTitle));
+    await pumpUntil(tester, find.byType(TextField));
 
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
     expectCenteredSectionTabs(tabBar, 2);
     expect(find.text(l.aiTabAnalysis), findsOneWidget);
     expect(find.text(l.aiTabChat), findsOneWidget);
     expect(find.text(l.aiTitle), findsWidgets);
-    expect(find.text(l.aiEmptyPromptTitle), findsOneWidget);
+    expect(find.text(l.aiEmptyPromptTitle), findsNothing);
+    expect(find.text(l.aiEmptyPromptSubtitle), findsNothing);
   });
 
   testWidgets('AI tabs keep chat functionality discoverable', (tester) async {
@@ -68,12 +69,13 @@ void main() {
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: AiAssistantPage()),
     );
-    await pumpUntil(tester, find.text(l.aiEmptyPromptTitle));
+    await pumpUntil(tester, find.byType(TextField));
 
     await tester.tap(find.text(l.aiTabChat));
     await tester.pump(const Duration(milliseconds: 450));
 
-    expect(find.text(l.aiChatTitle), findsOneWidget);
+    expect(find.text(l.aiChatTitle), findsNothing);
+    expect(find.text(l.aiChatSubtitle), findsNothing);
     expect(find.text(l.aiTabAnalysis), findsOneWidget);
     expect(find.text(l.aiTabChat), findsOneWidget);
     expect(find.byIcon(Icons.add_rounded), findsWidgets);
@@ -92,12 +94,13 @@ void main() {
         ),
       ),
     );
-    await pumpUntil(tester, find.text(l.aiEmptyPromptTitle));
+    await pumpUntil(tester, find.byType(TextField));
 
     await tester.tap(find.text(l.aiTabChat));
     await tester.pump(const Duration(milliseconds: 150));
 
-    expect(find.text(l.aiChatTitle), findsOneWidget);
+    expect(find.text(l.aiChatTitle), findsNothing);
+    expect(find.text(l.aiChatSubtitle), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
