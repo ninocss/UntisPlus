@@ -204,6 +204,8 @@ class SettingsAppearancePage extends StatelessWidget {
         return l.settingsPageTransitionEaseOut;
       case 7:
         return l.settingsPageTransitionExpo;
+      case 8:
+        return l.settingsPageTransitionDefault;
       default:
         return l.settingsPageTransitionBounce;
     }
@@ -315,6 +317,8 @@ class SettingsAppearancePage extends StatelessWidget {
         return Icons.arrow_back_rounded;
       case 7:
         return Icons.speed_rounded;
+      case 8:
+        return Icons.android_rounded;
       default:
         return Icons.animation_rounded;
     }
@@ -326,7 +330,7 @@ class SettingsAppearancePage extends StatelessWidget {
       context: context,
       title: l.settingsPageTransition,
       subtitle: l.settingsPageTransitionDesc,
-      options: List.generate(8, (index) {
+      options: List.generate(9, (index) {
         return _SheetOption(
           value: index,
           title: _transitionLabel(l, index),
