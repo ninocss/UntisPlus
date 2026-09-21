@@ -1969,7 +1969,7 @@ class _MainTabTransitionLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
-    final type = transitionType.clamp(0, 7);
+    final type = transitionType.clamp(0, 8);
     final duration = reduceMotion ? Duration.zero : _pageMotionDuration(type);
     final direction = relativePosition < 0 ? -1.0 : 1.0;
     final hiddenOffset = _pageMotionOffset(type, direction: direction);
