@@ -60,9 +60,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final effectiveSuffix = suffix ?? l.ui('alarmMinutesSuffix');
     var value = current;
-    await showUntisAdaptiveSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => SafeArea(
           child: Padding(
@@ -117,9 +116,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   Future<void> _chooseLeadOverride(int startOfDayMinutes) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final current = _config.leadMinutesByFirstLessonStart[startOfDayMinutes];
-    await showUntisAdaptiveSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
       builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -250,10 +248,9 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   Future<void> _editManualAlarm(ManualAlarmConfig alarm) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     var edited = alarm;
-    await showUntisAdaptiveSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
           final time = TimeOfDay(
@@ -380,13 +377,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     }
     final readiness = _readiness!;
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.ui('alarmTitle'),
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.ui('alarmTitle')),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
