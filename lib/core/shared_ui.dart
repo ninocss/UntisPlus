@@ -950,6 +950,25 @@ Widget _sheetDragHandle(BuildContext context) {
   );
 }
 
+Widget _sheetActionIcon(
+  BuildContext context,
+  IconData icon, {
+  Color? color,
+  Color? backgroundColor,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  final foreground = color ?? cs.primary;
+  return Container(
+    width: 40,
+    height: 40,
+    decoration: BoxDecoration(
+      color: backgroundColor ?? foreground.withValues(alpha: 0.12),
+      shape: BoxShape.circle,
+    ),
+    child: Icon(icon, size: 20, color: foreground),
+  );
+}
+
 Future<T?> _showUnifiedSheet<T>({
   required BuildContext context,
   Widget? child,
@@ -1035,14 +1054,11 @@ Future<T?> _showUnifiedOptionSheet<T>({
           final leading = opt.leading ??
               (opt.icon == null
                   ? null
-                  : Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: iconBackground,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(opt.icon, size: 20, color: foreground),
+                  : _sheetActionIcon(
+                      ctx,
+                      opt.icon!,
+                      color: foreground,
+                      backgroundColor: iconBackground,
                     ));
 
           return Material(
