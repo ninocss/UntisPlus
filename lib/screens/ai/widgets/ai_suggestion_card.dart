@@ -1,12 +1,12 @@
 part of '../../../main.dart';
 
-class AiSuggestionCard extends StatefulWidget {
+class _AiSuggestionCard extends StatefulWidget {
   final String text;
   final IconData icon;
   final VoidCallback onTap;
   final bool compact;
 
-  const AiSuggestionCard({
+  const _AiSuggestionCard({
     super.key,
     required this.text,
     required this.icon,
@@ -15,10 +15,10 @@ class AiSuggestionCard extends StatefulWidget {
   });
 
   @override
-  State<AiSuggestionCard> createState() => _AiSuggestionCardState();
+  State<_AiSuggestionCard> createState() => __AiSuggestionCardState();
 }
 
-class _AiSuggestionCardState extends State<AiSuggestionCard> {
+class __AiSuggestionCardState extends State<_AiSuggestionCard> {
   bool _pressed = false;
 
   void _press(bool value) {
