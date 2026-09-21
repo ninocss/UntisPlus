@@ -161,14 +161,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     with TickerProviderStateMixin {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
-  final _firstChipKey = GlobalKey();
   final FocusNode _promptFocusNode = FocusNode();
   late TabController _tabController;
-  Timer? _typingHintTimer;
   Timer? _streamRenderTimer;
   final StringBuffer _pendingStreamText = StringBuffer();
   DateTime? _lastStreamingHapticAt;
-  int _typingHintIndex = 0;
   int _searchGeneration = 0;
   String _latestQuery = '';
   _AiSearchResult? _latestResult;
@@ -306,7 +303,6 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     );
     _tabController.dispose();
     _promptFocusNode.dispose();
-    _typingHintTimer?.cancel();
     _streamRenderTimer?.cancel();
     _inputController.dispose();
     _scrollController.dispose();
@@ -315,7 +311,6 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
   void _resetSearchState() {
     _typingHintTimer?.cancel();
-    _typingHintIndex = 0;
     _thinking = false;
     _latestQuery = '';
     _latestResult = null;
@@ -1801,16 +1796,7 @@ ${l.ui('aiAssistantRules')}''';
     }
   }
 
-  String get _currentChatTitle {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    if (!_chatMode || _currentChatId == null) return l.aiTitle;
-    for (final s in _chatHistory) {
-      if (s.id == _currentChatId) return s.title;
-    }
-    return l.aiTitle;
-  }
-
-  void _removeChatSession(_ChatSession session) {
+    void _removeChatSession(_ChatSession session) {
     _hapticAction();
     setState(() {
       _chatHistory.removeWhere((entry) => entry.id == session.id);
@@ -1878,15 +1864,6 @@ ${l.ui('aiAssistantRules')}''';
       _latestQuery = text;
       _latestResult = null;
       _thinking = true;
-      _typingHintIndex = 0;
-    });
-    _typingHintTimer?.cancel();
-    _typingHintTimer = Timer.periodic(const Duration(milliseconds: 2500), (t) {
-      if (!mounted || !_thinking) {
-        t.cancel();
-        return;
-      }
-      setState(() => _typingHintIndex = _typingHintIndex + 1);
     });
 
     try {
@@ -1913,9 +1890,7 @@ ${l.ui('aiAssistantRules')}''';
         _latestResult = _parseSearchResult(query: text, reply: reply);
       });
     } finally {
-      _typingHintTimer?.cancel();
       if (mounted) setState(() => _thinking = false);
-      _typingHintIndex = 0;
     }
   }
 
@@ -1996,71 +1971,11 @@ ${l.ui('aiAssistantRules')}''';
     return Icons.auto_awesome_rounded;
   }
 
-  Widget _buildSearchMetricCard(ColorScheme cs, _AiMetric metric) {
-    final icon = _metricIcon(metric.label);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 14, color: cs.primary),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  metric.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: cs.onSurfaceVariant,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            metric.value,
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: cs.onSurface,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchLoadingState(ColorScheme cs) {
+    Widget _buildSearchLoadingState(ColorScheme cs) {
     return AiAnalysisLoadingState(query: _latestQuery);
   }
 
-  Widget _buildTypingBubble(ColorScheme cs, {bool isChat = false}) {
+  ) {
     final l = AppL10n.of(appLocaleNotifier.value);
     final messages = [
       l.aiStepAnalyzingTimetable,
@@ -2150,46 +2065,7 @@ ${l.ui('aiAssistantRules')}''';
     );
   }
 
-  Widget _buildChipRow(ColorScheme cs) {
-    final chips = _buildContextualChips();
-    if (chips.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (var i = 0; i < chips.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
-              _buildChip(cs, chips[i], i == 0),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChip(ColorScheme cs, String text, bool first) {
-    final chip = ActionChip(
-      key: first ? _firstChipKey : null,
-      label: Text(
-        text,
-        style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 13),
-      ),
-      backgroundColor: cs.primaryContainer.withValues(alpha: 0.72),
-      side: BorderSide.none,
-      onPressed: _thinking
-          ? null
-          : () {
-              _hapticSelection();
-              _sendQuickPrompt(text);
-            },
-    );
-    return first ? chip : chip;
-  }
-
-  Widget _buildChatView(ColorScheme cs) {
+      Widget _buildChatView(ColorScheme cs) {
     if (_chatMessages.isEmpty && !_thinking) {
       return _buildEmptyState(cs);
     }
@@ -2225,15 +2101,7 @@ ${l.ui('aiAssistantRules')}''';
     );
   }
 
-  Widget _buildChatBubble(ColorScheme cs, String content, bool isUser) {
-    return AiChatMessage(
-      content: content,
-      isUser: isUser,
-      streaming: _thinking && !isUser,
-    );
-  }
-
-  Widget _buildBody(ColorScheme cs) {
+    Widget _buildBody(ColorScheme cs) {
     final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
     final reduceMotion = _aiReduceMotion(context);
 
@@ -2356,49 +2224,7 @@ ${l.ui('aiAssistantRules')}''';
     );
   }
 
-  Widget _buildChatSuggestion(ColorScheme cs, String text, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () {
-          _hapticSelection();
-          _sendQuickPrompt(text);
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: cs.primary.withValues(alpha: 0.7)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  text,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 12,
-                color: cs.onSurfaceVariant.withValues(alpha: 0.5),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
+    @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
