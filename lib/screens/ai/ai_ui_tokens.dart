@@ -2,7 +2,6 @@ part of '../../main.dart';
 
 enum _AiMode { analysis, chat }
 
-const Duration _kAiFastMotion = Duration(milliseconds: 200);
 const Duration _kAiStandardMotion = Duration(milliseconds: 280);
 const Duration _kAiExpressiveMotion = Duration(milliseconds: 380);
 const Duration _kAiReducedMotion = Duration(milliseconds: 120);
