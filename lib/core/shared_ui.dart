@@ -1356,6 +1356,52 @@ PreferredSizeWidget _mainTabHeaderAppBar(
   );
 }
 
+PreferredSizeWidget _mainSectionTabBar(
+  BuildContext context, {
+  required TabController controller,
+  required List<({IconData icon, String label})> items,
+  ValueChanged<int>? onTap,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return TabBar(
+    controller: controller,
+    onTap: onTap,
+    indicatorColor: cs.primary,
+    indicatorWeight: 3,
+    dividerColor: Colors.transparent,
+    labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+    labelStyle: GoogleFonts.outfit(
+      fontWeight: FontWeight.w800,
+      fontSize: 14,
+    ),
+    unselectedLabelStyle: GoogleFonts.outfit(
+      fontWeight: FontWeight.w600,
+      fontSize: 14,
+    ),
+    tabs: [
+      for (final item in items)
+        Tab(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Icon(item.icon, size: 18),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+}
+
 PreferredSizeWidget _settingsHeaderAppBar(
   BuildContext context,
   String title, {
