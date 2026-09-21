@@ -1,13 +1,13 @@
 part of '../../../main.dart';
 
-class AiTypingIndicator extends StatefulWidget {
-  const AiTypingIndicator({super.key});
+class _AiTypingIndicator extends StatefulWidget {
+  const _AiTypingIndicator({super.key});
 
   @override
-  State<AiTypingIndicator> createState() => _AiTypingIndicatorState();
+  State<_AiTypingIndicator> createState() => __AiTypingIndicatorState();
 }
 
-class _AiTypingIndicatorState extends State<AiTypingIndicator>
+class __AiTypingIndicatorState extends State<_AiTypingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
