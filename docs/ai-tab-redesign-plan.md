@@ -2,6 +2,8 @@
 
 Branch: design/ai-tab-m3-expressive-redesign
 
+Implementation UI specification: docs/ai-tab-ui-spec.md
+
 ## Goal
 
 Redesign the AI tab so it feels native to the current Untis+ visual system and much more Material 3 Expressive, while keeping all existing AI capabilities and data flows unchanged.
