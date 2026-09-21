@@ -938,11 +938,16 @@ Widget _m3SelectionMenu({
 
 Future<T?> _showUnifiedSheet<T>({
   required BuildContext context,
-  required Widget child,
+  Widget? child,
+  WidgetBuilder? builder,
   bool isScrollControlled = false,
   bool useSafeArea = true,
   EdgeInsetsGeometry? outerPadding,
 }) {
+  assert(
+    (child == null) != (builder == null),
+    'Provide exactly one of child or builder.',
+  );
   return showUntisModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,
@@ -950,7 +955,7 @@ Future<T?> _showUnifiedSheet<T>({
     backgroundColor: Colors.transparent,
     elevation: 0,
     builder: (ctx) {
-      Widget content = child;
+      Widget content = builder?.call(ctx) ?? child!;
       if (outerPadding != null) {
         content = Padding(padding: outerPadding, child: content);
       }
@@ -1269,7 +1274,6 @@ class SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tokens = untisThemeTokensOf(context);
     final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
     final effectiveLeading =
         leading ??
@@ -1388,7 +1392,6 @@ class SettingsSwitchTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tokens = untisThemeTokensOf(context);
     final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
     final effectiveLeading =
         leading ??
