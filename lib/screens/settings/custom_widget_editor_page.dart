@@ -1305,7 +1305,6 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final cs = Theme.of(context).colorScheme;
     if (_loading) {
       return Scaffold(
         appBar: _settingsHeaderAppBar(context, l.ui('editor')),
