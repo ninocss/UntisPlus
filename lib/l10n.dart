@@ -736,6 +736,7 @@ class AppL10n {
   String get settingsUseMaterialYou => _t('settingsUseMaterialYou');
   String get settingsUseMaterialYouDesc => _t('settingsUseMaterialYouDesc');
   String get settingsCustomColorSeed => _t('settingsCustomColorSeed');
+  String get settingsPageTransitionDefault => _t('settingsPageTransitionDefault');
   String get settingsPageTransitionBounce => _t('settingsPageTransitionBounce');
   String get settingsPageTransitionFade => _t('settingsPageTransitionFade');
   String get settingsPageTransitionSlide => _t('settingsPageTransitionSlide');
@@ -1709,6 +1710,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Farbige Leuchthöfe bei Stunden, Aufgaben, Noten und Symbolen',
       'settingsPageTransition': 'Seitenübergang',
       'settingsPageTransitionDesc': 'Wähle den Stil für Seitenwechsel und optionale Main-Tab-Animationen',
+      'settingsPageTransitionDefault': 'Default',
       'settingsPageTransitionBounce': 'Spring',
       'settingsPageTransitionFade': 'Soft Fade',
       'settingsPageTransitionSlide': 'Shared Axis',
@@ -2891,6 +2893,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsIsAmoled': 'Pitch Black (AMOLED)',
       'settingsIsAmoledDesc':
           'Deep black background in dark mode for OLED displays.',
+      'settingsPageTransitionDefault': 'Default',
       'settingsPageTransitionBounce': 'Spring',
       'settingsPageTransitionFade': 'Soft Fade',
       'settingsPageTransitionSlide': 'Shared Axis',
@@ -3806,6 +3809,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsIsAmoled': 'Pitch Black (AMOLED)',
       'settingsIsAmoledDesc':
           'Arrière-plan noir profond en mode sombre pour les écrans OLED.',
+      'settingsPageTransitionDefault': 'Par défaut',
       'settingsPageTransitionBounce': 'Ressort',
       'settingsPageTransitionFade': 'Fondu doux',
       'settingsPageTransitionSlide': 'Axe partagé',
@@ -5009,6 +5013,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsIsAmoled': 'Pitch Black (AMOLED)',
       'settingsIsAmoledDesc':
           'Fondo negro profundo en modo oscuro para pantallas OLED.',
+      'settingsPageTransitionDefault': 'Predeterminado',
       'settingsPageTransitionBounce': 'Resorte',
       'settingsPageTransitionFade': 'Fundido suave',
       'settingsPageTransitionSlide': 'Eje compartido',
