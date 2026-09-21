@@ -18,6 +18,20 @@ void main() {
     expect(finder, findsWidgets);
   }
 
+  void expectCenteredSectionTabs(TabBar tabBar, int count) {
+    expect(tabBar.tabs, hasLength(count));
+    expect(tabBar.indicatorWeight, 3);
+    expect(tabBar.dividerColor, Colors.transparent);
+
+    for (final tabWidget in tabBar.tabs) {
+      final tab = tabWidget as Tab;
+      final row = tab.child! as Row;
+      expect(row.mainAxisAlignment, MainAxisAlignment.center);
+      expect(row.mainAxisSize, MainAxisSize.max);
+      expect(row.children.whereType<Expanded>(), isEmpty);
+    }
+  }
+
   setUp(() {
     SharedPreferences.setMockInitialValues({
       'aiChatHistory': '[]',
@@ -32,9 +46,7 @@ void main() {
     aiProvider = 'gemini';
   });
 
-  testWidgets('AI assistant uses expressive modes instead of a TabBar', (
-    tester,
-  ) async {
+  testWidgets('AI assistant uses the shared app section tabs', (tester) async {
     final l = AppL10n.of('de');
 
     await tester.pumpWidget(
@@ -42,16 +54,15 @@ void main() {
     );
     await pumpUntil(tester, find.text(l.aiEmptyPromptTitle));
 
-    expect(find.byType(TabBar), findsNothing);
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expectCenteredSectionTabs(tabBar, 2);
     expect(find.text(l.aiTabAnalysis), findsOneWidget);
     expect(find.text(l.aiTabChat), findsOneWidget);
     expect(find.text(l.aiTitle), findsWidgets);
     expect(find.text(l.aiEmptyPromptTitle), findsOneWidget);
   });
 
-  testWidgets('AI mode switch keeps chat functionality discoverable', (
-    tester,
-  ) async {
+  testWidgets('AI tabs keep chat functionality discoverable', (tester) async {
     final l = AppL10n.of('de');
 
     await tester.pumpWidget(
@@ -87,6 +98,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 150));
 
     expect(find.text(l.aiChatTitle), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Exams section tabs are centered and use shared styling', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: ExamsPage()),
+    );
+    await tester.pump();
+
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expectCenteredSectionTabs(tabBar, 3);
     expect(tester.takeException(), isNull);
   });
 }
