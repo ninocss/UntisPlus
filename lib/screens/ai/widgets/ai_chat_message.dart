@@ -82,11 +82,14 @@ class _AiChatMessage extends StatelessWidget {
             ),
     );
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: message,
+    return Semantics(
+      liveRegion: streaming && !isUser,
+      child: Align(
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: message,
+        ),
       ),
     );
   }
