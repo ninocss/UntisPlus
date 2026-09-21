@@ -11,8 +11,6 @@ String schoolName = "";
 int personId = 0;
 int personType = 0;
 
-const String _accountsStorageKey = untisAccountsStorageKey;
-const String _activeAccountStorageKey = activeUntisAccountStorageKey;
 String? activeUntisAccountId;
 final ValueNotifier<List<UntisAccount>> untisAccountsNotifier = ValueNotifier(
   const [],
@@ -31,131 +29,43 @@ UntisAccount? get activeUntisAccount {
 /// language deliberately remain shared device preferences.
 String _accountDataKey(String key) {
   final accountId = activeUntisAccountId;
-  return accountId == null ? key : 'account.$accountId.$key';
+  return accountId == null
+      ? key
+      : UntisAccountStore.personalDataKey(accountId, key);
 }
 
-Future<void> _copyLegacyAccountData(
-  SharedPreferences prefs,
-  String accountId,
-) async {
-  for (final key in const [
-    'customHomework',
-    'customExams',
-    'customGrades',
-    'hiddenSubjects',
-  ]) {
-    final scopedKey = 'account.$accountId.$key';
-    if (!prefs.containsKey(scopedKey) && prefs.containsKey(key)) {
-      await prefs.setStringList(
-        scopedKey,
-        prefs.getStringList(key) ?? const [],
-      );
-    }
-  }
-  const colorKey = 'subjectColors';
-  final scopedColorKey = 'account.$accountId.$colorKey';
-  if (!prefs.containsKey(scopedColorKey) && prefs.containsKey(colorKey)) {
-    await prefs.setString(scopedColorKey, prefs.getString(colorKey) ?? '{}');
-  }
-}
+UntisAccountStore _accountStore(SharedPreferences prefs) => UntisAccountStore(
+  preferences: prefs,
+  credentials: SecureAccountCredentialStore(CredentialVault.instance),
+);
+
+Future<void> _copyLegacyAccountData(SharedPreferences prefs, String accountId) =>
+    _accountStore(prefs).copyLegacyPersonalData(accountId);
 
 Future<void> _syncActiveAccountDataForBackground(
   SharedPreferences prefs,
 ) async {
-  for (final key in const ['hiddenSubjects']) {
-    await prefs.setStringList(
-      key,
-      prefs.getStringList(_accountDataKey(key)) ?? const [],
-    );
-  }
+  final accountId = activeUntisAccountId;
+  if (accountId == null) return;
+  await _accountStore(prefs).publishBackgroundPersonalData(accountId);
 }
 
-List<UntisAccount> _readUntisAccounts(SharedPreferences prefs) {
-  try {
-    final decoded = jsonDecode(prefs.getString(_accountsStorageKey) ?? '[]');
-    if (decoded is! List) return const [];
-    return decoded
-        .whereType<Map>()
-        .map((item) => UntisAccount.fromJson(Map<String, dynamic>.from(item)))
-        .where(
-          (account) =>
-              account.id.isNotEmpty &&
-              account.schoolUrl.isNotEmpty &&
-              account.schoolName.isNotEmpty,
-        )
-        .toList(growable: false);
-  } catch (_) {
-    return const [];
-  }
-}
+List<UntisAccount> _readUntisAccounts(SharedPreferences prefs) =>
+    _accountStore(prefs).readPublicAccounts();
 
 Future<List<UntisAccount>> _readHydratedUntisAccounts(
   SharedPreferences prefs,
-) async {
-  final publicAccounts = _readUntisAccounts(prefs);
-  final requestedActiveId = prefs.getString(_activeAccountStorageKey);
-  final hydrated = <UntisAccount>[];
-  for (final account in publicAccounts) {
-    var credentials = await CredentialVault.instance.readAccount(account.id);
-    final isRequestedActive = account.id == requestedActiveId;
-    final legacyPassword = account.password.isNotEmpty
-        ? account.password
-        : isRequestedActive
-        ? prefs.getString('password') ?? ''
-        : '';
-    final legacyMode = account.credentialMode.isNotEmpty
-        ? account.credentialMode
-        : isRequestedActive
-        ? prefs.getString('loginCredentialMode') ?? 'password'
-        : 'password';
-    final legacySession = account.sessionId.isNotEmpty
-        ? account.sessionId
-        : isRequestedActive
-        ? prefs.getString('sessionId') ?? ''
-        : '';
-    if (credentials.isEmpty &&
-        (legacyPassword.isNotEmpty || legacySession.isNotEmpty)) {
-      final legacy = AccountCredentials(
-        password: legacyPassword,
-        credentialMode: legacyMode,
-        sessionId: legacySession,
-      );
-      await CredentialVault.instance.writeAndVerifyAccount(
-        accountId: account.id,
-        credentials: legacy,
-      );
-      // Keep the legacy values in memory even if the native store is
-      // temporarily unavailable. The caller then preserves them in the
-      // legacy JSON instead of destructively stripping them.
-      credentials = legacy;
-    }
-    hydrated.add(
-      account.copyWith(
-        password: credentials.password,
-        credentialMode: credentials.credentialMode,
-        sessionId: credentials.sessionId,
-      ),
-    );
-  }
-  return hydrated;
-}
+) => _accountStore(prefs).readHydratedAccounts();
 
 Future<void> _writeUntisAccounts(
   SharedPreferences prefs,
   List<UntisAccount> accounts, {
   bool includeSecrets = false,
 }) async {
-  final ordered = List<UntisAccount>.from(accounts)
-    ..sort((a, b) => b.lastUsedAt.compareTo(a.lastUsedAt));
-  untisAccountsNotifier.value = List.unmodifiable(ordered);
-  await prefs.setString(
-    _accountsStorageKey,
-    jsonEncode(
-      ordered
-          .map((account) => account.toJson(includeSecrets: includeSecrets))
-          .toList(),
-    ),
-  );
+  final ordered = await _accountStore(
+    prefs,
+  ).writeAccounts(accounts, includeSecrets: includeSecrets);
+  untisAccountsNotifier.value = ordered;
   unawaited(
     WidgetService.publishAccountCatalog(
       ordered.map(
@@ -189,7 +99,7 @@ Future<bool> _writeActiveAccountFields(
     ),
   );
   await Future.wait([
-    prefs.setString(_activeAccountStorageKey, account.id),
+    prefs.setString(activeUntisAccountStorageKey, account.id),
     prefs.setString('schoolUrl', account.schoolUrl),
     prefs.setString('schoolName', account.schoolName),
     prefs.setString('username', account.username),
@@ -265,7 +175,7 @@ Future<void> initializeUntisAccounts(SharedPreferences prefs) async {
     ),
   );
   if (accounts.isEmpty) return;
-  final requestedId = prefs.getString(_activeAccountStorageKey);
+  final requestedId = prefs.getString(activeUntisAccountStorageKey);
   UntisAccount active = accounts.first;
   for (final account in accounts) {
     if (account.id == requestedId) {
@@ -357,7 +267,7 @@ Future<bool> removeUntisAccount(String accountId) async {
   unreadTimetableChangesNotifier.value = 0;
   demoModeNotifier.value = false;
   await Future.wait([
-    prefs.remove(_activeAccountStorageKey),
+    prefs.remove(activeUntisAccountStorageKey),
     prefs.remove('sessionId'),
     prefs.remove('schoolUrl'),
     prefs.remove('schoolName'),

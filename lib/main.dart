@@ -51,6 +51,7 @@ import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
 import 'features/ai/data/remote_ai_provider.dart';
 import 'features/accounts/domain/untis_account.dart';
+import 'features/accounts/data/untis_account_store.dart';
 import 'platform/native_ui_gateway.dart';
 import 'core/sync_state.dart';
 import 'core/school_models.dart';
