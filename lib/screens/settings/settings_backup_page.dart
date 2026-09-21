@@ -184,7 +184,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
 
   Future<bool> _confirmImport() async {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final result = await showDialog<bool>(
+    final result = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -212,7 +212,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final password = TextEditingController();
     final confirmation = TextEditingController();
     String? validationError;
-    final result = await showDialog<String>(
+    final result = await showUntisDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(

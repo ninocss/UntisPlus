@@ -1574,7 +1574,7 @@ ${l.ui('aiAssistantRules')}''';
   Future<void> _confirmActions(List<_AiProposedAction> actions) async {
     if (!mounted || actions.isEmpty) return;
     final l = AppL10n.of(appLocaleNotifier.value);
-    final approved = await showDialog<bool>(
+    final approved = await showUntisDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l.ui('aiApplyChangesTitle')),
@@ -3837,6 +3837,8 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
+    final useBackdropBlur = _usesModalBackdropBlur(context);
     final l = AppL10n.of(appLocaleNotifier.value);
 
     return LayoutBuilder(
@@ -3866,12 +3868,29 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
 
         return Stack(
           children: [
+            if (useBackdropBlur)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ClipPath(
+                    clipper: _TutorialSpotlightClipper(target),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: tokens.blurSigma,
+                        sigmaY: tokens.blurSigma,
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                ),
+              ),
             Positioned.fill(
               child: IgnorePointer(
                 child: CustomPaint(
                   painter: _TutorialSpotlightPainter(
                     target: target,
-                    scrim: Colors.black.withValues(alpha: 0.58),
+                    scrim: useBackdropBlur
+                        ? Colors.transparent
+                        : Colors.black.withValues(alpha: 0.58),
                     accent: cs.primary,
                   ),
                 ),
@@ -3909,6 +3928,24 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
       },
     );
   }
+}
+
+class _TutorialSpotlightClipper extends CustomClipper<Path> {
+  final Rect target;
+
+  const _TutorialSpotlightClipper(this.target);
+
+  @override
+  Path getClip(Size size) => Path()
+    ..fillType = PathFillType.evenOdd
+    ..addRect(Offset.zero & size)
+    ..addRRect(
+      RRect.fromRectAndRadius(target, const Radius.circular(18)),
+    );
+
+  @override
+  bool shouldReclip(_TutorialSpotlightClipper oldClipper) =>
+      oldClipper.target != target;
 }
 
 class _TutorialCallout extends StatelessWidget {

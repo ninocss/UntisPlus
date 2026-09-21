@@ -1921,7 +1921,7 @@ Timer? _progressiveNotificationTimer;
       'EEEE, d. MMMM',
       _icuLocale(appLocaleNotifier.value),
     ).format(date);
-    await showModalBottomSheet<void>(
+    await showUntisModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
@@ -2206,7 +2206,7 @@ Timer? _progressiveNotificationTimer;
     );
     final room = TextEditingController(text: lesson['_room']?.toString() ?? '');
     var cancelled = (lesson['code'] ?? '') == 'cancelled';
-    await showDialog<void>(
+    await showUntisDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
@@ -4048,7 +4048,7 @@ Timer? _progressiveNotificationTimer;
     }
 
     if (!mounted) return;
-    showDialog(
+    showUntisDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -4083,7 +4083,7 @@ Timer? _progressiveNotificationTimer;
     if (!mounted) return;
     if (context.mounted) Navigator.of(context).pop();
 
-    await showModalBottomSheet<void>(
+    await showUntisModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
@@ -6676,7 +6676,7 @@ Timer? _progressiveNotificationTimer;
   }
 
   Future<void> _openClassSearch() async {
-    showDialog(
+    showUntisDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -6749,7 +6749,7 @@ Timer? _progressiveNotificationTimer;
 
     final l = AppL10n.of(appLocaleNotifier.value);
 
-    showModalBottomSheet(
+    showUntisModalBottomSheet(
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
@@ -7526,7 +7526,7 @@ Future<void> _showAddHomeworkDialog(
     return DateTime.now().add(const Duration(days: 1));
   }();
 
-  await showModalBottomSheet<void>(
+  await showUntisModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -7934,7 +7934,7 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
   if (!context.mounted) return;
 
   var loadingVisible = true;
-  showDialog(
+  showUntisDialog(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => const Center(child: CircularProgressIndicator()),
@@ -8817,7 +8817,7 @@ Future<void> _showAddExamDialog(
     return DateTime.now();
   }();
 
-  await showModalBottomSheet<void>(
+  await showUntisModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -9703,7 +9703,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     if (!mounted) return;
 
     var loadingVisible = true;
-    showDialog(
+  showUntisDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => const Center(child: CircularProgressIndicator()),
@@ -11532,7 +11532,7 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
       .where((t) => t.isNotEmpty)
       .join('\n');
 
-  showModalBottomSheet(
+  showUntisModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -14490,7 +14490,7 @@ class _SettingsPageState extends State<SettingsPage> {
     required String current,
     required String latest,
   }) async {
-    final result = await showDialog<bool>(
+    final result = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;

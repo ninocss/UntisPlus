@@ -313,7 +313,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
   }
 
   Future<bool> _confirmInstall(AppL10n l, String latestVersion) async {
-    final result = await showDialog<bool>(
+    final result = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;

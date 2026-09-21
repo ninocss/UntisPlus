@@ -53,6 +53,219 @@ abstract final class UntisLayout {
   );
 }
 
+/// All app modal routes use the same backdrop treatment. Material's stock
+/// routes can only draw a colored scrim, so the app-specific routes add a
+/// backdrop filter when the active theme supports the user's Blur preference.
+bool _usesModalBackdropBlur(BuildContext context) {
+  final tokens = untisThemeTokensOf(context);
+  return tokens.supportsBlur && blurEnabledNotifier.value;
+}
+
+Widget _blurredModalBarrier({
+  required Animation<double> animation,
+  required double sigma,
+  required Widget child,
+}) => AnimatedBuilder(
+  animation: animation,
+  child: child,
+  builder: (context, child) => BackdropFilter(
+    filter: ImageFilter.blur(
+      sigmaX: sigma * animation.value,
+      sigmaY: sigma * animation.value,
+    ),
+    child: child!,
+  ),
+);
+
+class _UntisDialogRoute<T> extends DialogRoute<T> {
+  final bool useBackdropBlur;
+  final double blurSigma;
+
+  _UntisDialogRoute({
+    required super.context,
+    required super.builder,
+    required this.useBackdropBlur,
+    required this.blurSigma,
+    super.themes,
+    super.barrierColor,
+    super.barrierDismissible,
+    super.barrierLabel,
+    super.useSafeArea,
+    super.settings,
+    super.requestFocus,
+    super.anchorPoint,
+    super.traversalEdgeBehavior,
+    super.fullscreenDialog,
+    super.animationStyle,
+  });
+
+  @override
+  Widget buildModalBarrier() {
+    final barrier = super.buildModalBarrier();
+    if (!useBackdropBlur) return barrier;
+    return _blurredModalBarrier(
+      animation: animation!,
+      sigma: blurSigma,
+      child: barrier,
+    );
+  }
+}
+
+class _UntisModalBottomSheetRoute<T> extends ModalBottomSheetRoute<T> {
+  final bool useBackdropBlur;
+  final double blurSigma;
+
+  _UntisModalBottomSheetRoute({
+    required super.builder,
+    required super.isScrollControlled,
+    required this.useBackdropBlur,
+    required this.blurSigma,
+    super.capturedThemes,
+    super.barrierLabel,
+    super.barrierOnTapHint,
+    super.backgroundColor,
+    super.elevation,
+    super.shape,
+    super.clipBehavior,
+    super.constraints,
+    super.modalBarrierColor,
+    super.isDismissible,
+    super.enableDrag,
+    super.showDragHandle,
+    super.scrollControlDisabledMaxHeightRatio,
+    super.settings,
+    super.requestFocus,
+    super.transitionAnimationController,
+    super.anchorPoint,
+    super.useSafeArea,
+    super.sheetAnimationStyle,
+  });
+
+  @override
+  Widget buildModalBarrier() {
+    final barrier = super.buildModalBarrier();
+    if (!useBackdropBlur) return barrier;
+    return _blurredModalBarrier(
+      animation: animation!,
+      sigma: blurSigma,
+      child: barrier,
+    );
+  }
+}
+
+Future<T?> showUntisDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+  Color? barrierColor,
+  String? barrierLabel,
+  bool useSafeArea = true,
+  bool useRootNavigator = true,
+  RouteSettings? routeSettings,
+  Offset? anchorPoint,
+  TraversalEdgeBehavior? traversalEdgeBehavior,
+  bool fullscreenDialog = false,
+  bool? requestFocus,
+  AnimationStyle? animationStyle,
+}) {
+  assert(debugCheckHasMaterialLocalizations(context));
+  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
+  final tokens = untisThemeTokensOf(context);
+  final useBackdropBlur = _usesModalBackdropBlur(context);
+  final resolvedBarrierColor = useBackdropBlur
+      ? Colors.transparent
+      : barrierColor ??
+            DialogTheme.of(context).barrierColor ??
+            Theme.of(context).dialogTheme.barrierColor ??
+            Colors.black54;
+  return navigator.push(
+    _UntisDialogRoute<T>(
+      context: context,
+      builder: builder,
+      themes: InheritedTheme.capture(from: context, to: navigator.context),
+      barrierColor: resolvedBarrierColor,
+      barrierDismissible: barrierDismissible,
+      barrierLabel: barrierLabel,
+      useSafeArea: useSafeArea,
+      settings: routeSettings,
+      requestFocus: requestFocus,
+      anchorPoint: anchorPoint,
+      traversalEdgeBehavior:
+          traversalEdgeBehavior ?? TraversalEdgeBehavior.closedLoop,
+      fullscreenDialog: fullscreenDialog,
+      animationStyle: animationStyle,
+      useBackdropBlur: useBackdropBlur,
+      blurSigma: tokens.blurSigma,
+    ),
+  );
+}
+
+Future<T?> showUntisModalBottomSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  Color? backgroundColor,
+  String? barrierLabel,
+  double? elevation,
+  ShapeBorder? shape,
+  Clip? clipBehavior,
+  BoxConstraints? constraints,
+  Color? barrierColor,
+  bool isScrollControlled = false,
+  double scrollControlDisabledMaxHeightRatio = 9 / 16,
+  bool useRootNavigator = false,
+  bool isDismissible = true,
+  bool enableDrag = true,
+  bool? showDragHandle,
+  bool useSafeArea = false,
+  RouteSettings? routeSettings,
+  AnimationController? transitionAnimationController,
+  Offset? anchorPoint,
+  AnimationStyle? sheetAnimationStyle,
+  bool? requestFocus,
+}) {
+  assert(debugCheckHasMediaQuery(context));
+  assert(debugCheckHasMaterialLocalizations(context));
+  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
+  final localizations = MaterialLocalizations.of(context);
+  final tokens = untisThemeTokensOf(context);
+  final useBackdropBlur = _usesModalBackdropBlur(context);
+  return navigator.push(
+    _UntisModalBottomSheetRoute<T>(
+      builder: builder,
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: navigator.context,
+      ),
+      isScrollControlled: isScrollControlled,
+      scrollControlDisabledMaxHeightRatio:
+          scrollControlDisabledMaxHeightRatio,
+      barrierLabel: barrierLabel ?? localizations.scrimLabel,
+      barrierOnTapHint: localizations.scrimOnTapHint(
+        localizations.bottomSheetLabel,
+      ),
+      backgroundColor: backgroundColor,
+      elevation: elevation,
+      shape: shape,
+      clipBehavior: clipBehavior,
+      constraints: constraints,
+      modalBarrierColor: useBackdropBlur
+          ? Colors.transparent
+          : barrierColor ?? Theme.of(context).bottomSheetTheme.modalBarrierColor,
+      isDismissible: isDismissible,
+      enableDrag: enableDrag,
+      showDragHandle: showDragHandle,
+      settings: routeSettings,
+      transitionAnimationController: transitionAnimationController,
+      anchorPoint: anchorPoint,
+      useSafeArea: useSafeArea,
+      sheetAnimationStyle: sheetAnimationStyle,
+      requestFocus: requestFocus,
+      useBackdropBlur: useBackdropBlur,
+      blurSigma: tokens.blurSigma,
+    ),
+  );
+}
+
 /// Presents short actions as a bottom sheet on a phone and as a focused,
 /// keyboard-safe dialog on a tablet. The content and actions are identical;
 /// only the surrounding surface adapts to the available space.
@@ -63,14 +276,14 @@ Future<T?> showUntisAdaptiveSheet<T>({
   bool showDragHandle = false,
 }) {
   if (!UntisLayout.isTablet(context)) {
-    return showModalBottomSheet<T>(
+    return showUntisModalBottomSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,
       showDragHandle: showDragHandle,
       builder: builder,
     );
   }
-  return showDialog<T>(
+  return showUntisDialog<T>(
     context: context,
     builder: (dialogContext) => Dialog(
       insetPadding: const EdgeInsets.all(24),
@@ -694,7 +907,7 @@ Future<T?> _showUnifiedSheet<T>({
   bool useSafeArea = true,
   EdgeInsetsGeometry? outerPadding,
 }) {
-  return showModalBottomSheet<T>(
+  return showUntisModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
@@ -718,7 +931,7 @@ Future<T?> _showUnifiedOptionSheet<T>({
   bool fitContentHeight = false,
   double bottomMargin = 0,
 }) {
-  return showModalBottomSheet<T>(
+  return showUntisModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,

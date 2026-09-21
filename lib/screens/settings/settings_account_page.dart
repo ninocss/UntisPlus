@@ -45,7 +45,7 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
     final activeId = activeUntisAccountId;
     if (activeId == null) return;
     final l = AppL10n.of(appLocaleNotifier.value);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showUntisDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l.ui('accountRemoveQuestion')),

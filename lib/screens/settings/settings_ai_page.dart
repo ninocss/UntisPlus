@@ -267,7 +267,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     final path = await _getLocalModelPath(model.id);
     if (!mounted) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHigh,
@@ -1645,7 +1645,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   void _clearChatHistory() async {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.aiClearHistoryTitle),

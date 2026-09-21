@@ -247,7 +247,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   }) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     var color = Color(current);
-    await showModalBottomSheet<void>(
+    await showUntisModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (context) => StatefulBuilder(
