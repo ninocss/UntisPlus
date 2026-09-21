@@ -184,7 +184,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
 
   Future<bool> _confirmImport() async {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final result = await showDialog<bool>(
+    final result = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -212,7 +212,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final password = TextEditingController();
     final confirmation = TextEditingController();
     String? validationError;
-    final result = await showDialog<String>(
+    final result = await showUntisDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
@@ -347,13 +347,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     final mq = MediaQuery.of(context);
 
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsHubDataBackup,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsHubDataBackup),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),

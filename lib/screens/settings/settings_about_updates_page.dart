@@ -165,18 +165,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
 
   Future<List<String>> _supportedAbis() async {
     if (!_isAndroid) return const [];
-    try {
-      final raw = await _uiChannel.invokeMethod<List<dynamic>>(
-        'getSupportedAbis',
-      );
-      return raw
-              ?.map((abi) => abi.toString().trim())
-              .where((abi) => abi.isNotEmpty)
-              .toList(growable: false) ??
-          const [];
-    } catch (_) {
-      return const [];
-    }
+    return nativeUiGateway.supportedAbis();
   }
 
   String _formatBytes(int value) {
@@ -202,9 +191,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
 
   Future<void> _promptInstaller(AppL10n l, String apkPath) async {
     final messenger = ScaffoldMessenger.of(context);
-    final installResult = await _uiChannel.invokeMethod<String>('installApk', {
-      'path': apkPath,
-    });
+    final installResult = await nativeUiGateway.installApk(apkPath);
     if (!mounted) return;
     if (installResult == 'permission') {
       _pendingInstallPath = apkPath;
@@ -313,7 +300,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
   }
 
   Future<bool> _confirmInstall(AppL10n l, String latestVersion) async {
-    final result = await showDialog<bool>(
+    final result = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
@@ -471,13 +458,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
     final mq = MediaQuery.of(context);
 
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsHubUpdatesAbout,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsHubUpdatesAbout),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),

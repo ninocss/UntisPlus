@@ -60,9 +60,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     final l = AppL10n.of(appLocaleNotifier.value);
     final effectiveSuffix = suffix ?? l.ui('alarmMinutesSuffix');
     var value = current;
-    await showUntisAdaptiveSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => SafeArea(
           child: Padding(
@@ -117,9 +116,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   Future<void> _chooseLeadOverride(int startOfDayMinutes) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     final current = _config.leadMinutesByFirstLessonStart[startOfDayMinutes];
-    await showUntisAdaptiveSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
       builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -136,7 +134,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ),
               const SizedBox(height: 8),
               ListTile(
-                leading: const Icon(Icons.timer_rounded),
+                leading: _sheetActionIcon(
+                  sheetContext,
+                  Icons.timer_rounded,
+                ),
                 title: Text(l.ui('alarmLead')),
                 subtitle: Text(
                   current == null || current == -1
@@ -169,7 +170,11 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.alarm_off_rounded),
+                leading: _sheetActionIcon(
+                  sheetContext,
+                  Icons.alarm_off_rounded,
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
                 title: Text(l.ui('alarmLeadByStartOff')),
                 onTap: () async {
                   final overrides = Map<int, int>.from(
@@ -184,7 +189,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ),
               if (current != null)
                 ListTile(
-                  leading: const Icon(Icons.restart_alt_rounded),
+                  leading: _sheetActionIcon(
+                    sheetContext,
+                    Icons.restart_alt_rounded,
+                  ),
                   title: Text(l.ui('alarmLeadByStartDefault')),
                   onTap: () async {
                     final overrides = Map<int, int>.from(
@@ -250,10 +258,9 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   Future<void> _editManualAlarm(ManualAlarmConfig alarm) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     var edited = alarm;
-    await showUntisAdaptiveSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
           final time = TimeOfDay(
@@ -279,7 +286,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     ),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.schedule_rounded),
+                    leading: _sheetActionIcon(
+                      context,
+                      Icons.schedule_rounded,
+                    ),
                     title: Text(time.format(context)),
                     subtitle: Text(l.ui('alarmTime')),
                     onTap: () async {
@@ -380,13 +390,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     }
     final readiness = _readiness!;
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.ui('alarmTitle'),
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.ui('alarmTitle')),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),

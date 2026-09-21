@@ -153,7 +153,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     final subjectController = TextEditingController(text: selectedSubject);
     DateTime selectedDate = grade?.date ?? DateTime.now();
 
-    showModalBottomSheet(
+    showUntisModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

@@ -53,6 +53,224 @@ abstract final class UntisLayout {
   );
 }
 
+/// All app modal routes use the same backdrop treatment. Material's stock
+/// routes can only draw a colored scrim, so the app-specific routes add a
+/// backdrop filter when the active theme supports the user's Blur preference.
+bool _usesModalBackdropBlur(BuildContext context) {
+  final tokens = untisThemeTokensOf(context);
+  return tokens.supportsBlur && blurEnabledNotifier.value;
+}
+
+double _resolvedBlurSigma(double sigma) {
+  final strength = blurStrengthNotifier.value.clamp(0.25, 2.0).toDouble();
+  return sigma * strength;
+}
+
+Widget _blurredModalBarrier({
+  required Animation<double> animation,
+  required double sigma,
+  required Widget child,
+}) => AnimatedBuilder(
+  animation: animation,
+  child: child,
+  builder: (context, child) => BackdropFilter(
+    filter: ImageFilter.blur(
+      sigmaX: sigma * animation.value,
+      sigmaY: sigma * animation.value,
+    ),
+    child: child!,
+  ),
+);
+
+class _UntisDialogRoute<T> extends DialogRoute<T> {
+  final bool useBackdropBlur;
+  final double blurSigma;
+
+  _UntisDialogRoute({
+    required super.context,
+    required super.builder,
+    required this.useBackdropBlur,
+    required this.blurSigma,
+    super.themes,
+    super.barrierColor,
+    super.barrierDismissible,
+    super.barrierLabel,
+    super.useSafeArea,
+    super.settings,
+    super.requestFocus,
+    super.anchorPoint,
+    super.traversalEdgeBehavior,
+    super.fullscreenDialog,
+    super.animationStyle,
+  });
+
+  @override
+  Widget buildModalBarrier() {
+    final barrier = super.buildModalBarrier();
+    if (!useBackdropBlur) return barrier;
+    return _blurredModalBarrier(
+      animation: animation!,
+      sigma: blurSigma,
+      child: barrier,
+    );
+  }
+}
+
+class _UntisModalBottomSheetRoute<T> extends ModalBottomSheetRoute<T> {
+  final bool useBackdropBlur;
+  final double blurSigma;
+
+  _UntisModalBottomSheetRoute({
+    required super.builder,
+    required super.isScrollControlled,
+    required this.useBackdropBlur,
+    required this.blurSigma,
+    super.capturedThemes,
+    super.barrierLabel,
+    super.barrierOnTapHint,
+    super.backgroundColor,
+    super.elevation,
+    super.shape,
+    super.clipBehavior,
+    super.constraints,
+    super.modalBarrierColor,
+    super.isDismissible,
+    super.enableDrag,
+    super.showDragHandle,
+    super.scrollControlDisabledMaxHeightRatio,
+    super.settings,
+    super.requestFocus,
+    super.transitionAnimationController,
+    super.anchorPoint,
+    super.useSafeArea,
+    super.sheetAnimationStyle,
+  });
+
+  @override
+  Widget buildModalBarrier() {
+    final barrier = super.buildModalBarrier();
+    if (!useBackdropBlur) return barrier;
+    return _blurredModalBarrier(
+      animation: animation!,
+      sigma: blurSigma,
+      child: barrier,
+    );
+  }
+}
+
+Future<T?> showUntisDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+  Color? barrierColor,
+  String? barrierLabel,
+  bool useSafeArea = true,
+  bool useRootNavigator = true,
+  RouteSettings? routeSettings,
+  Offset? anchorPoint,
+  TraversalEdgeBehavior? traversalEdgeBehavior,
+  bool fullscreenDialog = false,
+  bool? requestFocus,
+  AnimationStyle? animationStyle,
+}) {
+  assert(debugCheckHasMaterialLocalizations(context));
+  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
+  final tokens = untisThemeTokensOf(context);
+  final useBackdropBlur = _usesModalBackdropBlur(context);
+  final resolvedBarrierColor = useBackdropBlur
+      ? Colors.transparent
+      : barrierColor ??
+            DialogTheme.of(context).barrierColor ??
+            Theme.of(context).dialogTheme.barrierColor ??
+            Colors.black54;
+  return navigator.push(
+    _UntisDialogRoute<T>(
+      context: context,
+      builder: builder,
+      themes: InheritedTheme.capture(from: context, to: navigator.context),
+      barrierColor: resolvedBarrierColor,
+      barrierDismissible: barrierDismissible,
+      barrierLabel: barrierLabel,
+      useSafeArea: useSafeArea,
+      settings: routeSettings,
+      requestFocus: requestFocus,
+      anchorPoint: anchorPoint,
+      traversalEdgeBehavior:
+          traversalEdgeBehavior ?? TraversalEdgeBehavior.closedLoop,
+      fullscreenDialog: fullscreenDialog,
+      animationStyle: animationStyle,
+      useBackdropBlur: useBackdropBlur,
+      blurSigma: _resolvedBlurSigma(tokens.blurSigma),
+    ),
+  );
+}
+
+Future<T?> showUntisModalBottomSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  Color? backgroundColor,
+  String? barrierLabel,
+  double? elevation,
+  ShapeBorder? shape,
+  Clip? clipBehavior,
+  BoxConstraints? constraints,
+  Color? barrierColor,
+  bool isScrollControlled = false,
+  double scrollControlDisabledMaxHeightRatio = 9 / 16,
+  bool useRootNavigator = false,
+  bool isDismissible = true,
+  bool enableDrag = true,
+  bool? showDragHandle,
+  bool useSafeArea = false,
+  RouteSettings? routeSettings,
+  AnimationController? transitionAnimationController,
+  Offset? anchorPoint,
+  AnimationStyle? sheetAnimationStyle,
+  bool? requestFocus,
+}) {
+  assert(debugCheckHasMediaQuery(context));
+  assert(debugCheckHasMaterialLocalizations(context));
+  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
+  final localizations = MaterialLocalizations.of(context);
+  final tokens = untisThemeTokensOf(context);
+  final useBackdropBlur = _usesModalBackdropBlur(context);
+  return navigator.push(
+    _UntisModalBottomSheetRoute<T>(
+      builder: builder,
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: navigator.context,
+      ),
+      isScrollControlled: isScrollControlled,
+      scrollControlDisabledMaxHeightRatio:
+          scrollControlDisabledMaxHeightRatio,
+      barrierLabel: barrierLabel ?? localizations.scrimLabel,
+      barrierOnTapHint: localizations.scrimOnTapHint(
+        localizations.bottomSheetLabel,
+      ),
+      backgroundColor: backgroundColor,
+      elevation: elevation,
+      shape: shape,
+      clipBehavior: clipBehavior,
+      constraints: constraints,
+      modalBarrierColor: useBackdropBlur
+          ? Colors.transparent
+          : barrierColor ?? Theme.of(context).bottomSheetTheme.modalBarrierColor,
+      isDismissible: isDismissible,
+      enableDrag: enableDrag,
+      showDragHandle: showDragHandle,
+      settings: routeSettings,
+      transitionAnimationController: transitionAnimationController,
+      anchorPoint: anchorPoint,
+      useSafeArea: useSafeArea,
+      sheetAnimationStyle: sheetAnimationStyle,
+      requestFocus: requestFocus,
+      useBackdropBlur: useBackdropBlur,
+      blurSigma: _resolvedBlurSigma(tokens.blurSigma),
+    ),
+  );
+}
+
 /// Presents short actions as a bottom sheet on a phone and as a focused,
 /// keyboard-safe dialog on a tablet. The content and actions are identical;
 /// only the surrounding surface adapts to the available space.
@@ -63,14 +281,14 @@ Future<T?> showUntisAdaptiveSheet<T>({
   bool showDragHandle = false,
 }) {
   if (!UntisLayout.isTablet(context)) {
-    return showModalBottomSheet<T>(
+    return showUntisModalBottomSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,
       showDragHandle: showDragHandle,
       builder: builder,
     );
   }
-  return showDialog<T>(
+  return showUntisDialog<T>(
     context: context,
     builder: (dialogContext) => Dialog(
       insetPadding: const EdgeInsets.all(24),
@@ -151,17 +369,24 @@ Widget _blurEffect({
   double sigma = 30,
   BorderRadiusGeometry borderRadius = BorderRadius.zero,
   bool enabled = true,
+  bool respectBlurStrength = true,
 }) {
-  return ValueListenableBuilder<bool>(
-    valueListenable: blurEnabledNotifier,
-    builder: (context, blurEnabled, _) {
-      if (!enabled || !blurEnabled) return child;
+  return AnimatedBuilder(
+    animation: Listenable.merge([blurEnabledNotifier, blurStrengthNotifier]),
+    builder: (context, _) {
+      if (!enabled || !blurEnabledNotifier.value) return child;
+      final effectiveSigma = respectBlurStrength
+          ? _resolvedBlurSigma(sigma)
+          : sigma;
       return ClipRRect(
         borderRadius: borderRadius is BorderRadius
             ? borderRadius
             : BorderRadius.zero,
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+          filter: ImageFilter.blur(
+            sigmaX: effectiveSigma,
+            sigmaY: effectiveSigma,
+          ),
           child: child,
         ),
       );
@@ -215,6 +440,25 @@ BorderRadiusGeometry _resolvedSurfaceBorderRadius(
   );
 }
 
+BorderRadius _settingsSegmentRadius(
+  BuildContext context, {
+  required bool isFirst,
+  required bool isLast,
+}) {
+  final tokens = untisThemeTokensOf(context);
+  final outer = _resolvedSurfaceCornerRadius(tokens.surfaceRadius);
+  final inner = math.min(outer, 8.0);
+  final outerRadius = Radius.circular(outer);
+  final innerRadius = Radius.circular(inner);
+
+  return BorderRadius.only(
+    topLeft: isFirst ? outerRadius : innerRadius,
+    topRight: isFirst ? outerRadius : innerRadius,
+    bottomLeft: isLast ? outerRadius : innerRadius,
+    bottomRight: isLast ? outerRadius : innerRadius,
+  );
+}
+
 class ThemedSurface extends StatelessWidget {
   final Widget child;
   final BorderRadiusGeometry? borderRadius;
@@ -225,6 +469,7 @@ class ThemedSurface extends StatelessWidget {
   final bool blur;
   final bool respectSurfaceBlurPreference;
   final bool respectSurfaceCornerPreference;
+  final bool showShadow;
 
   const ThemedSurface({
     super.key,
@@ -237,6 +482,7 @@ class ThemedSurface extends StatelessWidget {
     this.blur = true,
     this.respectSurfaceBlurPreference = true,
     this.respectSurfaceCornerPreference = true,
+    this.showShadow = true,
   });
 
   @override
@@ -244,6 +490,7 @@ class ThemedSurface extends StatelessWidget {
     return AnimatedBuilder(
       animation: Listenable.merge([
         blurEnabledNotifier,
+        blurStrengthNotifier,
         surfaceBlurEnabledNotifier,
         surfaceCornerModeNotifier,
         surfaceCornerRadiusNotifier,
@@ -321,8 +568,8 @@ class ThemedSurface extends StatelessWidget {
           child: blurActive
               ? BackdropFilter(
                   filter: ImageFilter.blur(
-                    sigmaX: sigma ?? tokens.blurSigma,
-                    sigmaY: sigma ?? tokens.blurSigma,
+                    sigmaX: _resolvedBlurSigma(sigma ?? tokens.blurSigma),
+                    sigmaY: _resolvedBlurSigma(sigma ?? tokens.blurSigma),
                   ),
                   child: surface,
                 )
@@ -333,16 +580,18 @@ class ThemedSurface extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: radius,
-              boxShadow: [
-                BoxShadow(
-                  color: !tokens.glowEffectsEnabled &&
-                          tokens.id == AppThemeId.cyber
-                      ? cs.shadow.withValues(alpha: 0.12)
-                      : tokens.shadowColor,
-                  offset: tokens.shadowOffset,
-                  blurRadius: tokens.hardShadow ? 0 : 20,
-                ),
-              ],
+              boxShadow: showShadow
+                  ? [
+                      BoxShadow(
+                        color: !tokens.glowEffectsEnabled &&
+                                tokens.id == AppThemeId.cyber
+                            ? cs.shadow.withValues(alpha: 0.12)
+                            : tokens.shadowColor,
+                        offset: tokens.shadowOffset,
+                        blurRadius: tokens.hardShadow ? 0 : 20,
+                      ),
+                    ]
+                  : null,
             ),
             child: surface,
           ),
@@ -687,23 +936,79 @@ Widget _m3SelectionMenu({
   );
 }
 
+Widget _sheetDragHandle(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  return Center(
+    child: Container(
+      width: 40,
+      height: 4,
+      decoration: BoxDecoration(
+        color: cs.onSurface.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+  );
+}
+
+Widget _sheetActionIcon(
+  BuildContext context,
+  IconData icon, {
+  Color? color,
+  Color? backgroundColor,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  final foreground = color ?? cs.primary;
+  return Container(
+    width: 40,
+    height: 40,
+    decoration: BoxDecoration(
+      color: backgroundColor ?? foreground.withValues(alpha: 0.12),
+      shape: BoxShape.circle,
+    ),
+    child: Icon(icon, size: 20, color: foreground),
+  );
+}
+
 Future<T?> _showUnifiedSheet<T>({
   required BuildContext context,
-  required Widget child,
+  Widget? child,
+  WidgetBuilder? builder,
   bool isScrollControlled = false,
   bool useSafeArea = true,
+  bool showHandle = true,
   EdgeInsetsGeometry? outerPadding,
 }) {
-  return showModalBottomSheet<T>(
+  assert(
+    (child == null) != (builder == null),
+    'Provide exactly one of child or builder.',
+  );
+  return showUntisModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
     backgroundColor: Colors.transparent,
     elevation: 0,
+    sheetAnimationStyle: _kBottomSheetAnimationStyle,
     builder: (ctx) {
-      Widget content = child;
+      Widget content = builder?.call(ctx) ?? child!;
       if (outerPadding != null) {
         content = Padding(padding: outerPadding, child: content);
+      }
+      if (showHandle) {
+        content = Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 28),
+              child: content,
+            ),
+            Positioned(
+              top: 12,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(child: _sheetDragHandle(ctx)),
+            ),
+          ],
+        );
       }
       return _sheetSurface(context: ctx, child: content);
     },
@@ -718,83 +1023,158 @@ Future<T?> _showUnifiedOptionSheet<T>({
   bool fitContentHeight = false,
   double bottomMargin = 0,
 }) {
-  return showModalBottomSheet<T>(
+  return _showUnifiedSheet<T>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    elevation: 0,
     builder: (ctx) {
       final cs = Theme.of(ctx).colorScheme;
-      return _sheetSurface(
-        context: ctx,
-        child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(bottom: bottomMargin),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: Theme.of(
-                    ctx,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+
+      Widget optionList = ListView.separated(
+        shrinkWrap: true,
+        physics: fitContentHeight
+            ? const NeverScrollableScrollPhysics()
+            : const ClampingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+        itemCount: options.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 6),
+        itemBuilder: (context, index) {
+          final opt = options[index];
+          final foreground = opt.destructive
+              ? cs.error
+              : (opt.selected ? cs.primary : cs.onSurface);
+          final iconBackground = opt.destructive
+              ? cs.errorContainer.withValues(alpha: 0.78)
+              : opt.selected
+              ? cs.primaryContainer.withValues(alpha: 0.88)
+              : cs.surfaceContainerHighest.withValues(alpha: 0.72);
+          final rowBackground = opt.selected
+              ? cs.primaryContainer.withValues(alpha: 0.42)
+              : cs.surfaceContainerLow.withValues(alpha: 0.72);
+
+          final leading = opt.leading ??
+              (opt.icon == null
+                  ? null
+                  : _sheetActionIcon(
+                      ctx,
+                      opt.icon!,
+                      color: foreground,
+                      backgroundColor: iconBackground,
+                    ));
+
+          return Material(
+            color: rowBackground,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => Navigator.pop(ctx, opt.value),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-                const SizedBox(height: 16),
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    itemBuilder: (context, index) {
-                      final opt = options[index];
-                      return Material(
-                        color: Colors.transparent,
-                        child: ListTile(
-                          leading:
-                              opt.leading ??
-                              (opt.icon != null
-                                  ? Icon(
-                                      opt.icon,
-                                      color: opt.destructive
-                                          ? cs.error
-                                          : (opt.selected ? cs.primary : null),
-                                    )
-                                  : null),
-                          title: Text(
+                child: Row(
+                  children: [
+                    if (leading != null) ...[
+                      leading,
+                      const SizedBox(width: 14),
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
                             opt.title,
-                            style: TextStyle(
-                              color: opt.destructive
-                                  ? cs.error
-                                  : (opt.selected ? cs.primary : null),
-                              fontWeight: opt.selected ? FontWeight.bold : null,
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: opt.selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w700,
+                              color: foreground,
                             ),
                           ),
-                          subtitle: opt.subtitle != null
-                              ? Text(opt.subtitle!)
-                              : null,
-                          trailing: opt.selected
-                              ? Icon(Icons.check, color: cs.primary)
-                              : null,
-                          onTap: () {
-                            Navigator.pop(ctx, opt.value);
-                          },
+                          if (opt.subtitle != null &&
+                              opt.subtitle!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              opt.subtitle!,
+                              style: GoogleFonts.outfit(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: opt.destructive
+                                    ? cs.error.withValues(alpha: 0.78)
+                                    : cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (opt.selected) ...[
+                      const SizedBox(width: 10),
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          shape: BoxShape.circle,
                         ),
-                      );
-                    },
-                  ),
+                        child: Icon(
+                          Icons.check_rounded,
+                          size: 17,
+                          color: cs.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
             ),
+          );
+        },
+      );
+
+      if (!fitContentHeight) {
+        optionList = Flexible(child: optionList);
+      }
+
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomMargin),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                child: Column(
+                  children: [
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    if (subtitle != null && subtitle.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              optionList,
+            ],
           ),
         ),
       );
@@ -891,7 +1271,7 @@ class SettingsGroup extends StatelessWidget {
         children: [
           if (title != null) ...[
             Padding(
-              padding: const EdgeInsets.only(left: 12, bottom: 6, top: 4),
+              padding: const EdgeInsets.only(left: 12, bottom: 7, top: 4),
               child: Text(
                 title!,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -909,42 +1289,37 @@ class SettingsGroup extends StatelessWidget {
               surfaceCornerRadiusNotifier,
             ]),
             builder: (context, _) {
-              final radius = _resolvedSurfaceBorderRadius(
-                BorderRadius.circular(tokens.surfaceRadius),
-              );
-              return _glassContainer(
-                context: context,
-                borderRadius: radius,
-                color: cs.surfaceContainerLow.withValues(alpha: 0.5),
-                border: Border.all(
-                  color: tokens.id == AppThemeId.manga
-                      ? cs.outline
-                      : cs.primary.withValues(alpha: 0.20),
-                  width: tokens.borderWidth,
-                ),
-                child: Padding(
-                  padding: padding ?? EdgeInsets.zero,
-                  child: Material(
-                    type: MaterialType.transparency,
-                    shape: RoundedRectangleBorder(borderRadius: radius),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (int i = 0; i < validChildren.length; i++) ...[
-                          validChildren[i],
-                          if (i < validChildren.length - 1)
-                            Divider(
-                              height: 1,
-                              indent: 58,
-                              endIndent: 16,
-                              color: cs.outlineVariant.withValues(alpha: 0.35),
-                            ),
-                        ],
-                      ],
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < validChildren.length; i++) ...[
+                    ThemedSurface(
+                      borderRadius: _settingsSegmentRadius(
+                        context,
+                        isFirst: i == 0,
+                        isLast: i == validChildren.length - 1,
+                      ),
+                      color: cs.surfaceContainerLow.withValues(alpha: 0.78),
+                      border: Border.all(
+                        color: tokens.id == AppThemeId.manga
+                            ? cs.outline
+                            : cs.outlineVariant.withValues(alpha: 0.30),
+                        width: tokens.borderWidth,
+                      ),
+                      respectSurfaceCornerPreference: false,
+                      showShadow: false,
+                      child: Padding(
+                        padding: padding ?? EdgeInsets.zero,
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: validChildren[i],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                    if (i < validChildren.length - 1)
+                      const SizedBox(height: 4),
+                  ],
+                ],
               );
             },
           ),
@@ -952,6 +1327,75 @@ class SettingsGroup extends StatelessWidget {
       ),
     );
   }
+}
+
+PreferredSizeWidget _mainTabHeaderAppBar(
+  BuildContext context,
+  String title, {
+  List<Widget>? actions,
+  Widget? leading,
+  PreferredSizeWidget? bottom,
+}) {
+  return RoundedBlurAppBar(
+    height: 64,
+    centerTitle: true,
+    leading: leading,
+    actions: actions,
+    bottom: bottom,
+    title: Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: GoogleFonts.outfit(
+        fontSize: 26,
+        fontWeight: FontWeight.w900,
+        color: Colors.black,
+      ),
+    ),
+  );
+}
+
+PreferredSizeWidget _settingsHeaderAppBar(
+  BuildContext context,
+  String title, {
+  List<Widget>? actions,
+  Widget? leading,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return RoundedBlurAppBar(
+    height: 64,
+    centerTitle: false,
+    leading: leading,
+    actions: actions,
+    title: Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.outfit(
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: cs.onSurface,
+      ),
+    ),
+  );
+}
+
+Widget _settingsTooltip({
+  required String? message,
+  required Widget child,
+  bool showInline = false,
+}) {
+  final text = message?.trim() ?? '';
+  if (text.isEmpty || showInline) return child;
+  return Tooltip(
+    message: text,
+    triggerMode: TooltipTriggerMode.longPress,
+    showDuration: const Duration(seconds: 4),
+    preferBelow: false,
+    verticalOffset: 28,
+    child: child,
+  );
 }
 
 class SettingsTile extends StatelessWidget {
@@ -964,6 +1408,7 @@ class SettingsTile extends StatelessWidget {
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool destructive;
+  final bool showSubtitle;
 
   const SettingsTile({
     super.key,
@@ -976,29 +1421,30 @@ class SettingsTile extends StatelessWidget {
     this.trailing = const Icon(Icons.chevron_right_rounded),
     this.onTap,
     this.destructive = false,
+    this.showSubtitle = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tokens = untisThemeTokensOf(context);
+    final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
     final effectiveLeading =
         leading ??
         (icon != null
             ? Container(
-                width: 38,
-                height: 38,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color:
                       iconBackgroundColor ??
                       (destructive
                           ? cs.errorContainer
-                          : cs.primary.withValues(alpha: 0.15)),
-                  borderRadius: BorderRadius.circular(tokens.controlRadius),
+                          : cs.primary.withValues(alpha: 0.14)),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
-                  size: 20,
+                  size: 21,
                   color:
                       iconColor ??
                       (destructive ? cs.onErrorContainer : cs.primary),
@@ -1006,53 +1452,68 @@ class SettingsTile extends StatelessWidget {
               )
             : null);
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        child: Row(
-          children: [
-            if (effectiveLeading != null) ...[
-              effectiveLeading,
-              const SizedBox(width: 14),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: destructive ? cs.error : cs.onSurface,
-                    ),
-                  ),
-                  if (subtitle != null && subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+    final tile = Semantics(
+      button: onTap != null,
+      label: hasSubtitle ? '$title. $subtitle' : title,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 16, expressiveRadius: 20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Row(
+            children: [
+              if (effectiveLeading != null) ...[
+                effectiveLeading,
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 12.5,
-                        color: cs.onSurfaceVariant,
-                        height: 1.25,
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: destructive ? cs.error : cs.onSurface,
                       ),
                     ),
+                    if (showSubtitle && hasSubtitle) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 12.5,
+                          color: cs.onSurfaceVariant,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            if (trailing != null) ...[
-              const SizedBox(width: 8),
-              IconTheme(
-                data: IconThemeData(color: cs.onSurfaceVariant, size: 22),
-                child: trailing!,
-              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                IconTheme(
+                  data: IconThemeData(color: cs.onSurfaceVariant, size: 22),
+                  child: trailing!,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
+    );
+
+    return _settingsTooltip(
+      message: subtitle,
+      showInline: showSubtitle,
+      child: tile,
     );
   }
 }
@@ -1066,6 +1527,7 @@ class SettingsSwitchTile extends StatelessWidget {
   final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final bool showSubtitle;
 
   const SettingsSwitchTile({
     super.key,
@@ -1077,84 +1539,100 @@ class SettingsSwitchTile extends StatelessWidget {
     this.subtitle,
     required this.value,
     required this.onChanged,
+    this.showSubtitle = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tokens = untisThemeTokensOf(context);
+    final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
     final effectiveLeading =
         leading ??
         (icon != null
             ? Container(
-                width: 38,
-                height: 38,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color:
-                      iconBackgroundColor ?? cs.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(tokens.controlRadius),
+                      iconBackgroundColor ?? cs.primary.withValues(alpha: 0.14),
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 20, color: iconColor ?? cs.primary),
+                child: Icon(icon, size: 21, color: iconColor ?? cs.primary),
               )
             : null);
 
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onChanged(!value);
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        child: Row(
-          children: [
-            if (effectiveLeading != null) ...[
-              effectiveLeading,
-              const SizedBox(width: 14),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: cs.onSurface,
-                    ),
-                  ),
-                  if (subtitle != null && subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+    final tile = Semantics(
+      toggled: value,
+      label: hasSubtitle ? '$title. $subtitle' : title,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onChanged(!value);
+        },
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 16, expressiveRadius: 20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            children: [
+              if (effectiveLeading != null) ...[
+                effectiveLeading,
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 12.5,
-                        color: cs.onSurfaceVariant,
-                        height: 1.25,
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: cs.onSurface,
                       ),
                     ),
+                    if (showSubtitle && hasSubtitle) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 12.5,
+                          color: cs.onSurfaceVariant,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Switch(
-              value: value,
-              onChanged: (val) {
-                HapticFeedback.selectionClick();
-                onChanged(val);
-              },
-              thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return const Icon(Icons.check, size: 14);
-                }
-                return const Icon(Icons.close, size: 14);
-              }),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Switch(
+                value: value,
+                onChanged: (val) {
+                  HapticFeedback.selectionClick();
+                  onChanged(val);
+                },
+                thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const Icon(Icons.check, size: 14);
+                  }
+                  return const Icon(Icons.close, size: 14);
+                }),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+
+    return _settingsTooltip(
+      message: subtitle,
+      showInline: showSubtitle,
+      child: tile,
     );
   }
 }

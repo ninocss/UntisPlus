@@ -101,7 +101,7 @@ class ChangelogService {
 }
 
 Future<void> showChangelogSheet(BuildContext context) {
-  return showModalBottomSheet(
+  return showUntisModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,

@@ -267,7 +267,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     final path = await _getLocalModelPath(model.id);
     if (!mounted) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHigh,
@@ -1645,7 +1645,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   void _clearChatHistory() async {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.aiClearHistoryTitle),
@@ -1687,13 +1687,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     final activeKey = _activeProviderApiKey();
 
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsSectionAI,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsSectionAI),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),

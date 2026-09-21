@@ -72,6 +72,71 @@ void main() {
     };
   });
 
+  testWidgets('modal backdrops blur only for active blur-capable themes', (
+    tester,
+  ) async {
+    Future<void> pumpHost() async {
+      await tester.pumpWidget(
+        const UntisPlusApp(startScreen: _ModalBackdropTestHost()),
+      );
+      await tester.pump();
+    }
+
+    Future<void> closeModal() async {
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    await pumpHost();
+    await tester.tap(find.byKey(const ValueKey('modal-test-sheet')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    await closeModal();
+
+    await tester.tap(find.byKey(const ValueKey('modal-test-dialog')));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    await closeModal();
+
+    blurEnabledNotifier.value = false;
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('modal-test-sheet')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(BackdropFilter), findsNothing);
+    await closeModal();
+
+    blurEnabledNotifier.value = true;
+    visualThemeNotifier.value = AppThemeId.manga;
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('modal-test-dialog')));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byType(BackdropFilter), findsNothing);
+  });
+
+  testWidgets('settings descriptions appear only after long press', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SettingsTile(
+            title: 'Test setting',
+            subtitle: 'Long press description',
+            onTap: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Long press description'), findsNothing);
+
+    await tester.longPress(find.text('Test setting'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Long press description'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('theme picker applies Manga immediately and disables blur', (
     tester,
   ) async {
@@ -634,4 +699,35 @@ void main() {
       );
     }
   });
+}
+
+class _ModalBackdropTestHost extends StatelessWidget {
+  const _ModalBackdropTestHost();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton(
+            key: const ValueKey('modal-test-sheet'),
+            onPressed: () => showUntisModalBottomSheet<void>(
+              context: context,
+              builder: (_) => const SizedBox(height: 120),
+            ),
+            child: const Text('Open sheet'),
+          ),
+          FilledButton(
+            key: const ValueKey('modal-test-dialog'),
+            onPressed: () => showUntisDialog<void>(
+              context: context,
+              builder: (_) => const Dialog(child: SizedBox(height: 120)),
+            ),
+            child: const Text('Open dialog'),
+          ),
+        ],
+      ),
+    ),
+  );
 }

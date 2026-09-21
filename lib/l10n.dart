@@ -1696,7 +1696,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGlassEffectDesc': 'Aktiviert Blur in der Oberfläche',
       'settingsSurfaceBlur': 'Blur auf Oberflächen',
       'settingsSurfaceBlurDesc':
-          'Verwischt normale Karten und Flächen. Bottom Sheets, Stunden und Overlays bleiben unverändert.',
+          'Verwischt normale Karten und Flächen. Bei aktivem Blur-Effekt werden auch Dialoge, Bottom Sheets und Overlays im Hintergrund weichgezeichnet.',
       'settingsSurfaceCorners': 'Oberflächen-Ecken',
       'settingsSurfaceCornersDesc':
           'Legt fest, wie stark normale Karten und Oberflächen abgerundet sind.',
@@ -2870,7 +2870,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGlassEffectDesc': 'Enables blur effects across the interface',
       'settingsSurfaceBlur': 'Surface blur',
       'settingsSurfaceBlurDesc':
-          'Blurs regular cards and surfaces. Bottom sheets, lessons, and overlays stay unchanged.',
+          'Blurs regular cards and surfaces. When Blur Effect is active, dialog, bottom-sheet, and tutorial backgrounds are blurred too.',
       'settingsSurfaceCorners': 'Surface corners',
       'settingsSurfaceCornersDesc':
           'Controls how rounded regular cards and surfaces are.',
@@ -4071,7 +4071,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGlassEffectDesc': 'Active le flou dans l\'interface',
       'settingsSurfaceBlur': 'Flou des surfaces',
       'settingsSurfaceBlurDesc':
-          'Floute les cartes et surfaces normales. Les panneaux, cours et superpositions restent inchangés.',
+          'Floute les cartes et surfaces normales. Quand l’effet de flou est actif, les arrière-plans des dialogues, panneaux et tutoriels sont aussi floutés.',
       'settingsSurfaceCorners': 'Coins des surfaces',
       'settingsSurfaceCornersDesc':
           'Règle l’arrondi des cartes et surfaces normales.',
@@ -5274,7 +5274,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGlassEffectDesc': 'Activa el desenfoque en la interfaz',
       'settingsSurfaceBlur': 'Desenfoque de superficies',
       'settingsSurfaceBlurDesc':
-          'Desenfoca tarjetas y superficies normales. Las hojas inferiores, clases y superposiciones no cambian.',
+          'Desenfoca tarjetas y superficies normales. Cuando el efecto de desenfoque está activo, también se desenfocan los fondos de diálogos, hojas inferiores y tutoriales.',
       'settingsSurfaceCorners': 'Esquinas de superficies',
       'settingsSurfaceCornersDesc':
           'Controla cuánto se redondean las tarjetas y superficies normales.',

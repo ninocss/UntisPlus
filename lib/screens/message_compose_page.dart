@@ -438,6 +438,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
                 SettingsTile(
                   icon: Icons.group_rounded,
                   title: l.messageRecipients,
+                  showSubtitle: true,
                   subtitle: _loading
                       ? l.messageRecipientsLoading
                       : _selectedRecipients.isEmpty

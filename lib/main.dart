@@ -26,7 +26,6 @@ import 'package:otp_auth/otp_auth.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:cryptography/dart.dart';
 import 'package:dio/dio.dart';
-import 'package:fllama/fllama.dart';
 import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
@@ -49,10 +48,19 @@ import 'features/changes/domain/timetable_change.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
+import 'features/ai/data/local_model_provider.dart';
+import 'features/ai/data/remote_ai_provider.dart';
+import 'features/accounts/domain/untis_account.dart';
+import 'features/accounts/data/untis_account_store.dart';
+import 'platform/native_ui_gateway.dart';
 import 'core/sync_state.dart';
+import 'core/school_models.dart';
+import 'core/design_tokens.dart';
 
-part 'core/school_models.dart';
-part 'core/design_tokens.dart';
+export 'features/accounts/domain/untis_account.dart';
+export 'core/school_models.dart';
+export 'core/design_tokens.dart';
+
 part 'core/app_theme.dart';
 part 'app/untis_plus_app.dart';
 part 'core/shared_ui.dart';
@@ -121,18 +129,6 @@ bool _hasMissingTeacher(dynamic lesson) {
   ).hasMatch(info);
 }
 
-const MethodChannel _uiChannel = MethodChannel('untisplus/ui');
-
-void _registerNativeUiActions() {
-  _uiChannel.setMethodCallHandler((call) async {
-    if (call.method == 'openAssistant') {
-      final prompt = call.arguments?.toString().trim() ?? '';
-      pendingAssistantPromptNotifier.value = prompt.isEmpty ? null : prompt;
-      pendingAssistantOpenNotifier.value = true;
-    }
-  });
-}
-
 /// Invoked by the native exact pre-wake alarm. It deliberately reuses the
 /// existing authenticated WebUntis sync, then tells Android the final plan.
 @pragma('vm:entry-point')
@@ -144,548 +140,39 @@ void alarmRefreshDispatcher() async {
   } catch (_) {
     // The native scheduler retains the last confirmed alarm on a failed sync.
   } finally {
-    try {
-      await const MethodChannel(
-        'untisplus/alarm_refresh',
-      ).invokeMethod<void>('completed', {'refreshed': refreshed});
-    } catch (_) {}
+    await alarmRefreshGateway.completed(refreshed: refreshed);
   }
-}
-
-Future<void> _applyAndroidWindowBlur(bool enabled) async {
-  // Android only: blurs the launcher backdrop behind the transparent window.
-  // iOS overlays a full-screen UIVisualEffectView that covers the Flutter UI,
-  // so the whole app would render as a single frosted colour.
-  if (kIsWeb || !Platform.isAndroid) return;
-  try {
-    await _uiChannel.invokeMethod<void>('setWindowBlur', enabled ? 80 : 0);
-  } catch (_) {
-    // Silently ignore on platforms/API levels that don't support it.
-  }
-}
-
-Future<bool> _applyLauncherIcon(String icon) async {
-  if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return false;
-  try {
-    return await _uiChannel.invokeMethod<bool>('setLauncherIcon', icon) ??
-        false;
-  } catch (_) {
-    return false;
-  }
-}
-
-/// Abstract interface for AI providers.
-abstract class AIProvider {
-  Stream<String> streamResponse({
-    required String systemPrompt,
-    required List<Map<String, String>> history,
-    required String model,
-    List<AiChatAttachment> attachments = const [],
-  });
-
-  Future<void> dispose();
-}
-
-/// Decodes server-sent events independently of arbitrary HTTP chunk
-/// boundaries. Providers are free to split an event at any byte, so splitting
-/// every decoded network chunk on `\n` loses tokens in practice.
-Stream<String> _sseDataEvents(Stream<List<int>> bytes) async* {
-  await for (final line
-      in bytes.transform(utf8.decoder).transform(const LineSplitter())) {
-    final data = line.startsWith('data:')
-        ? line.substring(5).trim()
-        // Some OpenAI-compatible endpoints silently ignore `stream: true`
-        // and return one compact JSON response. Feed it through the same
-        // parser instead of leaving the chat bubble empty.
-        : line.trim().startsWith('{')
-        ? line.trim()
-        : '';
-    if (data.isNotEmpty) yield data;
-  }
-}
-
-/// Kept in memory only for the duration of the pending assistant message.
-class AiChatAttachment {
-  const AiChatAttachment({
-    required this.name,
-    required this.mimeType,
-    required this.bytes,
-    this.textExcerpt = '',
-  });
-
-  final String name;
-  final String mimeType;
-  final Uint8List bytes;
-  final String textExcerpt;
-
-  bool get isImage => mimeType.startsWith('image/');
-  bool get isPdf => mimeType == 'application/pdf';
-  bool get isText => textExcerpt.isNotEmpty;
-}
-
-/// Base class for remote API providers (Gemini, OpenAI, Mistral, Custom).
-abstract class RemoteAIProvider implements AIProvider {
-  final String apiKey;
-  final String? baseUrl;
-  final bool useGeminiProtocol;
-
-  RemoteAIProvider({
-    required this.apiKey,
-    this.baseUrl,
-    required this.useGeminiProtocol,
-  });
-
-  @override
-  Future<void> dispose() async {}
-}
-
-/// Gemini / Google Generative AI provider.
-class GeminiProvider extends RemoteAIProvider {
-  GeminiProvider({required super.apiKey, String? endpoint})
-    : _endpoint = endpoint,
-      super(useGeminiProtocol: true);
-
-  final String? _endpoint;
-
-  @override
-  Stream<String> streamResponse({
-    required String systemPrompt,
-    required List<Map<String, String>> history,
-    required String model,
-    List<AiChatAttachment> attachments = const [],
-  }) async* {
-    final lastUserIndex = history.lastIndexWhere(
-      (message) => message['role'] == 'user',
-    );
-    final contents = history.indexed.map((entry) {
-      final index = entry.$1;
-      final m = entry.$2;
-      final role = m['role'] == 'user' ? 'user' : 'model';
-      final parts = <Map<String, dynamic>>[
-        {'text': m['content'] ?? ''},
-      ];
-      if (index == lastUserIndex) {
-        for (final attachment in attachments) {
-          if (attachment.isImage || attachment.isPdf) {
-            parts.add({
-              'inlineData': {
-                'mimeType': attachment.mimeType,
-                'data': base64Encode(attachment.bytes),
-              },
-            });
-          }
-          if (attachment.isText) {
-            parts.add({
-              'text':
-                  AppL10n.of(appLocaleNotifier.value).uiFormat(
-                    'aiAttachmentText',
-                    {'name': attachment.name, 'excerpt': attachment.textExcerpt},
-                  ),
-            });
-          }
-        }
-      }
-      return <String, dynamic>{'role': role, 'parts': parts};
-    }).toList();
-
-    final body = jsonEncode({
-      'systemInstruction': {
-        'parts': [
-          {'text': systemPrompt},
-        ],
-      },
-      'contents': contents,
-      'generationConfig': {
-        'maxOutputTokens': aiMaxTokens,
-        'temperature': aiTemperature,
-        'topP': aiTopP,
-      },
-    });
-
-    final endpoint =
-        _endpoint ??
-        'https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
-
-    final endpointUri = Uri.parse(endpoint);
-    final request = http.Request(
-      'POST',
-      endpointUri.replace(
-        queryParameters: {
-          ...endpointUri.queryParameters,
-          if (!endpointUri.queryParameters.containsKey('alt')) 'alt': 'sse',
-          if (!endpointUri.queryParameters.containsKey('key')) 'key': apiKey,
-        },
-      ),
-    );
-    request.headers.addAll({'Content-Type': 'application/json'});
-    request.body = body;
-
-    final response = await http.Client().send(request);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('API: ${await response.stream.bytesToString()}');
-    }
-
-    await for (final data in _sseDataEvents(response.stream)) {
-      if (data == '[DONE]') return;
-      try {
-        final json = jsonDecode(data);
-        final candidates = json['candidates'];
-        if (candidates is List && candidates.isNotEmpty) {
-          final content = candidates.first['content'];
-          final parts = content is Map ? content['parts'] : null;
-          if (parts is List) {
-            for (final part in parts) {
-              if (part is Map && part['text'] is String) {
-                yield part['text'] as String;
-              }
-            }
-          }
-        }
-      } catch (_) {}
-    }
-  }
-}
-
-/// OpenAI-compatible provider (OpenAI, Mistral, Custom OpenAI-compatible).
-class OpenAICompatibleProvider extends RemoteAIProvider {
-  final String endpoint;
-
-  OpenAICompatibleProvider({
-    required super.apiKey,
-    required this.endpoint,
-    super.baseUrl,
-  }) : super(useGeminiProtocol: false);
-
-  @override
-  Stream<String> streamResponse({
-    required String systemPrompt,
-    required List<Map<String, String>> history,
-    required String model,
-    List<AiChatAttachment> attachments = const [],
-  }) async* {
-    final lastUserIndex = history.lastIndexWhere(
-      (message) => message['role'] == 'user',
-    );
-    final messages = <Map<String, dynamic>>[
-      {'role': 'system', 'content': systemPrompt},
-      for (final entry in history.indexed)
-        if (entry.$1 != lastUserIndex)
-          Map<String, dynamic>.from(entry.$2)
-        else
-          {
-            'role': 'user',
-            'content': <Map<String, dynamic>>[
-              {'type': 'text', 'text': entry.$2['content'] ?? ''},
-              for (final attachment in attachments)
-                if (attachment.isImage)
-                  {
-                    'type': 'image_url',
-                    'image_url': {
-                      'url':
-                          'data:${attachment.mimeType};base64,${base64Encode(attachment.bytes)}',
-                    },
-                  }
-                else if (attachment.isText)
-                  {
-                    'type': 'text',
-                    'text':
-                        AppL10n.of(appLocaleNotifier.value).uiFormat(
-                          'aiAttachmentText',
-                          {
-                            'name': attachment.name,
-                            'excerpt': attachment.textExcerpt,
-                          },
-                        ),
-                  }
-                else
-                  {
-                    'type': 'text',
-                    'text':
-                        AppL10n.of(appLocaleNotifier.value).uiFormat(
-                          'aiAttachmentUnsupported',
-                          {
-                            'name': attachment.name,
-                            'mimeType': attachment.mimeType,
-                          },
-                        ),
-                  },
-            ],
-          },
-    ];
-
-    final body = jsonEncode({
-      'model': model,
-      'messages': messages,
-      'temperature': aiTemperature,
-      'max_tokens': aiMaxTokens,
-      'top_p': aiTopP,
-      'stream': true,
-    });
-
-    final request = http.Request('POST', Uri.parse(endpoint));
-    request.headers.addAll({
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $apiKey',
-    });
-    request.body = body;
-
-    final response = await http.Client().send(request);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('API: ${await response.stream.bytesToString()}');
-    }
-
-    await for (final data in _sseDataEvents(response.stream)) {
-      if (data == '[DONE]') return;
-      try {
-        final json = jsonDecode(data);
-        final choices = json['choices'];
-        if (choices is List && choices.isNotEmpty) {
-          final delta = choices.first['delta'];
-          if (delta is Map && delta['content'] is String) {
-            yield delta['content'] as String;
-          } else {
-            final message = choices.first['message'];
-            final content = message is Map ? message['content'] : null;
-            if (content is String && content.isNotEmpty) {
-              yield content;
-            } else if (choices.first['text'] is String &&
-                choices.first['text'].toString().isNotEmpty) {
-              yield choices.first['text'].toString();
-            }
-          }
-        }
-      } catch (_) {}
-    }
-  }
-}
-
-/// On-device LLM provider using fllama (llama.cpp).
-class LocalModelProvider implements AIProvider {
-  final String modelPath;
-  bool _isLoading = false;
-  final StringBuffer _nativeLogs = StringBuffer();
-
-  LocalModelProvider({required this.modelPath});
-
-  @override
-  Stream<String> streamResponse({
-    required String systemPrompt,
-    required List<Map<String, String>> history,
-    required String model,
-    List<AiChatAttachment> attachments = const [],
-  }) async* {
-    if (_isLoading) return;
-
-    final file = File(modelPath);
-    if (!await _isValidLocalModelFile(
-      modelPath,
-      model: _localModelForPath(modelPath),
-    )) {
-      // Never hand a stale/tampered path to the native GGUF parser. Tiny
-      // files are corrupt partials and are removed; anything else merely
-      // yields the load error and keeps the file for re-download.
-      if (await file.exists() && await file.length() < 1024 * 1024) {
-        try {
-          await file.delete();
-        } catch (_) {}
-      }
-      yield* _streamLocalModelError();
-      return;
-    }
-
-    final attachmentContext = attachments
-        .where((attachment) => attachment.isText)
-        .map(
-          (attachment) =>
-              AppL10n.of(appLocaleNotifier.value).uiFormat(
-                'aiAttachmentText',
-                {'name': attachment.name, 'excerpt': attachment.textExcerpt},
-              ),
-        )
-        .join();
-    final messages = <Message>[
-      Message(Role.system, systemPrompt),
-      for (final entry in history.indexed)
-        Message(
-          entry.$2['role'] == 'user' ? Role.user : Role.assistant,
-          '${entry.$2['content'] ?? ''}${entry.$1 == history.length - 1 ? attachmentContext : ''}',
-        ),
-    ];
-
-    final request = OpenAiRequest(
-      messages: messages,
-      modelPath: modelPath,
-      contextSize: 1024,
-      maxTokens: aiMaxTokens,
-      numGpuLayers: 0,
-      temperature: aiTemperature,
-      topP: aiTopP,
-      frequencyPenalty: 0.5,
-      presencePenalty: 0.5,
-      logger: (String line) {
-        if (_nativeLogs.length < 16000) _nativeLogs.write('$line\n');
-      },
-    );
-
-    _isLoading = true;
-    final controller = StreamController<String>.broadcast();
-    final buffer = StringBuffer();
-
-    fllamaChat(request, (
-      String response,
-      String openaiResponseJsonString,
-      bool done,
-    ) {
-      if (controller.isClosed) return;
-      if (response.isNotEmpty) {
-        buffer.write(response);
-      }
-      if (done) {
-        if (_isFllamaLoadError(buffer.toString())) {
-          final logTail = _nativeLogs.toString().trim();
-          debugPrint('[LocalModel] load failed. Native log tail:\n$logTail');
-          if (!controller.isClosed) {
-            controller.addError(
-              Exception(
-                'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}',
-              ),
-            );
-            controller.close();
-          }
-        } else {
-          controller.close();
-        }
-      } else if (response.isNotEmpty && !_isFllamaLoadError(response)) {
-        controller.add(response);
-      }
-    }).catchError((Object error) {
-      if (!controller.isClosed) {
-        controller.addError(error);
-        controller.close();
-      }
-      return -1;
-    });
-
-    yield* controller.stream;
-  }
-
-  @override
-  Future<void> dispose() async {
-    _isLoading = false;
-  }
-}
-
-/// Returns true if [text] indicates that fllama failed to load the model.
-///
-/// fllama's own [fllamaOutputIndicatesLoadError] misses the
-/// "Failed to create inference context" message emitted by fllama.cpp when
-/// llama.cpp cannot load the GGUF file, so detect it explicitly as well.
-bool _isFllamaLoadError(String text) {
-  return fllamaOutputIndicatesLoadError(text) ||
-      text.contains('Error: Failed to create inference context');
-}
-
-/// Yields a single error to the chat stream when the local model file is
-/// missing or invalid.
-Stream<String> _streamLocalModelError() async* {
-  throw Exception(
-    'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}',
-  );
-}
-
-/// Runs a one-shot inference on the locally downloaded model and returns the
-/// full generated text. Used by non-chat AI features (exam import, search,
-/// background editor) when the local provider is active.
-Future<String> _requestLocalModelText({
-  required String systemPrompt,
-  required String userQuery,
-  required String modelPath,
-}) async {
-  final file = File(modelPath);
-  if (!await _isValidLocalModelFile(
-    modelPath,
-    model: _localModelForPath(modelPath),
-  )) {
-    // Same protection as the streaming path: never parse a stale/tampered
-    // path. Tiny files are corrupt partials and are removed.
-    if (await file.exists() && await file.length() < 1024 * 1024) {
-      try {
-        await file.delete();
-      } catch (_) {}
-    }
-    throw Exception(
-      'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}',
-    );
-  }
-  final nativeLogs = StringBuffer();
-  final request = OpenAiRequest(
-    messages: [
-      Message(Role.system, systemPrompt),
-      Message(Role.user, userQuery),
-    ],
-    modelPath: modelPath,
-    contextSize: 1024,
-    maxTokens: aiMaxTokens,
-    numGpuLayers: 0,
-    temperature: aiTemperature,
-    topP: aiTopP,
-    frequencyPenalty: 0.5,
-    presencePenalty: 0.5,
-    logger: (String line) {
-      if (nativeLogs.length < 16000) nativeLogs.write('$line\n');
-    },
-  );
-
-  final buffer = StringBuffer();
-  final completer = Completer<String>();
-
-  fllamaChat(request, (
-    String response,
-    String openaiResponseJsonString,
-    bool done,
-  ) {
-    if (completer.isCompleted) return;
-    if (response.isNotEmpty) {
-      buffer.write(response);
-    }
-    if (done) {
-      completer.complete(buffer.toString().trim());
-    }
-  }).catchError((Object error) {
-    if (!completer.isCompleted) {
-      completer.completeError(error);
-    }
-    return -1;
-  });
-
-  final result = await completer.future;
-  if (_isFllamaLoadError(result)) {
-    final logTail = nativeLogs.toString().trim();
-    debugPrint('[LocalModel] load failed. Native log tail:\n$logTail');
-    final detail = _lastMeaningfulNativeLine(logTail);
-    throw Exception(
-      detail == null
-          ? 'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}'
-          : 'AI: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelLoadError}\n($detail)',
-    );
-  }
-  if (result.isEmpty) {
-    throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
-  }
-  return result;
-}
-
-/// Extracts the last useful line from the fllama native log to help diagnose
-/// load failures (e.g. the real llama.cpp error).
-String? _lastMeaningfulNativeLine(String log) {
-  final lines = log.split('\n').where((l) => l.trim().isNotEmpty).toList();
-  if (lines.isEmpty) return null;
-  final last = lines.last.trim();
-  if (last.length > 200) return last.substring(last.length - 200);
-  return last;
 }
 
 /// Factory to create AI provider instances.
+AiGenerationSettings _currentAiGenerationSettings() {
+  final l = AppL10n.of(appLocaleNotifier.value);
+  return AiGenerationSettings(
+    temperature: aiTemperature,
+    maxTokens: aiMaxTokens,
+    topP: aiTopP,
+    formatAttachmentText: (attachment) => l.uiFormat('aiAttachmentText', {
+      'name': attachment.name,
+      'excerpt': attachment.textExcerpt,
+    }),
+    formatUnsupportedAttachment: (attachment) => l.uiFormat(
+      'aiAttachmentUnsupported',
+      {'name': attachment.name, 'mimeType': attachment.mimeType},
+    ),
+  );
+}
+
+LocalModelRuntime _currentLocalModelRuntime() {
+  final l = AppL10n.of(appLocaleNotifier.value);
+  return LocalModelRuntime(
+    settings: _currentAiGenerationSettings(),
+    isValidModel: (path) =>
+        _isValidLocalModelFile(path, model: _localModelForPath(path)),
+    loadErrorMessage: l.aiLocalModelLoadError,
+    noReplyMessage: l.aiNoReply,
+  );
+}
+
 AIProvider createAIProvider({
   required String provider,
   required String model,
@@ -694,17 +181,20 @@ AIProvider createAIProvider({
   String? customCompatibility,
   String? localModelPath,
 }) {
+  final settings = _currentAiGenerationSettings();
   switch (provider) {
     case 'gemini':
-      return GeminiProvider(apiKey: apiKey);
+      return GeminiProvider(apiKey: apiKey, settings: settings);
     case 'openai':
       return OpenAICompatibleProvider(
         apiKey: apiKey,
+        settings: settings,
         endpoint: 'https://api.openai.com/v1/chat/completions',
       );
     case 'mistral':
       return OpenAICompatibleProvider(
         apiKey: apiKey,
+        settings: settings,
         endpoint: 'https://api.mistral.ai/v1/chat/completions',
       );
     case 'custom':
@@ -724,10 +214,15 @@ AIProvider createAIProvider({
             : baseUrl.contains('/v1')
             ? '$baseUrl/models/$model:streamGenerateContent?alt=sse&key=$apiKey'
             : '$baseUrl/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
-        return GeminiProvider(apiKey: apiKey, endpoint: endpoint);
+        return GeminiProvider(
+          apiKey: apiKey,
+          settings: settings,
+          endpoint: endpoint,
+        );
       }
       return OpenAICompatibleProvider(
         apiKey: apiKey,
+        settings: settings,
         endpoint: openAiCompatibleEndpoint(customBaseUrl ?? ''),
         baseUrl: customBaseUrl,
       );
@@ -735,39 +230,13 @@ AIProvider createAIProvider({
       if (localModelPath == null || localModelPath.isEmpty) {
         throw Exception('Local model path not configured');
       }
-      return LocalModelProvider(modelPath: localModelPath);
+      return LocalModelProvider(
+        modelPath: localModelPath,
+        runtime: _currentLocalModelRuntime(),
+      );
     default:
-      return GeminiProvider(apiKey: apiKey);
+      return GeminiProvider(apiKey: apiKey, settings: settings);
   }
-}
-
-/// Normalizes a base URL by removing trailing slashes.
-String normalizedBaseUrl(String value) {
-  var out = value.trim();
-  while (out.endsWith('/')) {
-    out = out.substring(0, out.length - 1);
-  }
-  return out;
-}
-
-/// Returns the OpenAI-compatible chat completions endpoint for a given base URL.
-String openAiCompatibleEndpoint(String rawBaseUrl) {
-  final base = normalizedBaseUrl(rawBaseUrl);
-  if (base.isEmpty) return '';
-  if (base.endsWith('/chat/completions')) return base;
-  if (base.endsWith('/v1')) return '$base/chat/completions';
-  if (base.endsWith('/v1/chat')) return '$base/completions';
-  return '$base/v1/chat/completions';
-}
-
-/// Returns the Gemini-compatible endpoint for a given base URL and model.
-String geminiCompatibleEndpoint(String rawBaseUrl, String model) {
-  final base = normalizedBaseUrl(rawBaseUrl);
-  if (base.isEmpty) return '';
-  if (base.contains('/models/')) return base;
-  if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
-  if (base.contains('/v1')) return '$base/models/$model:generateContent';
-  return '$base/v1beta/models/$model:generateContent';
 }
 
 Future<void> _initializeDeferredNativeServices() async {
@@ -799,7 +268,10 @@ Future<void> _initializeDeferredAccountData() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   unawaited(OfflineCacheStore.instance.preWarm());
-  _registerNativeUiActions();
+  nativeUiGateway.registerAssistantOpenHandler((prompt) {
+    pendingAssistantPromptNotifier.value = prompt;
+    pendingAssistantOpenNotifier.value = true;
+  });
 
   final prefs = await SharedPreferences.getInstance();
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
@@ -882,10 +354,7 @@ void main() async {
   final savedVisualTheme = prefs.getString('visualTheme');
   visualThemeNotifier.value = AppThemeIdX.fromStorage(savedVisualTheme);
   if (AppThemeIdX.isRemovedStorageKey(savedVisualTheme)) {
-    await prefs.setString(
-      'visualTheme',
-      AppThemeId.defaultTheme.storageKey,
-    );
+    await prefs.setString('visualTheme', AppThemeId.defaultTheme.storageKey);
   }
   showCancelledNotifier.value = prefs.getBool('showCancelled') ?? true;
   timetableSwitchAnimationNotifier.value =
@@ -903,20 +372,22 @@ void main() async {
       prefs.getBool('backgroundGyroscope') ?? false;
   Map? rawThemeBlurs;
   try {
-    rawThemeBlurs = jsonDecode(
-      prefs.getString('themeBlurPreferences') ?? '{}',
-    );
+    rawThemeBlurs = jsonDecode(prefs.getString('themeBlurPreferences') ?? '{}');
   } catch (_) {}
   final themeBlurPreferences = AppThemeIdX.normalizeBlurPreferences(
     rawThemeBlurs,
     defaultThemeBlur: prefs.getBool('blurEnabled') ?? true,
   );
-  final hadUnsupportedThemeBlur = rawThemeBlurs is Map &&
+  final hadUnsupportedThemeBlur =
+      rawThemeBlurs is Map &&
       rawThemeBlurs.keys.any(
         (key) => key is! String || !AppThemeIdX.isSupportedStorageKey(key),
       );
   if (hadUnsupportedThemeBlur) {
-    await prefs.setString('themeBlurPreferences', jsonEncode(themeBlurPreferences));
+    await prefs.setString(
+      'themeBlurPreferences',
+      jsonEncode(themeBlurPreferences),
+    );
   }
   themeBlurPreferencesNotifier.value = themeBlurPreferences;
   final activeVisualTheme = visualThemeNotifier.value;
@@ -925,13 +396,13 @@ void main() async {
       (themeBlurPreferences[activeVisualTheme.storageKey] ?? true);
   surfaceBlurEnabledNotifier.value =
       prefs.getBool('surfaceBlurEnabled') ?? true;
-  surfaceCornerModeNotifier.value =
-      (prefs.getInt('surfaceCornerMode') ?? 0).clamp(0, 2);
+  surfaceCornerModeNotifier.value = (prefs.getInt('surfaceCornerMode') ?? 0)
+      .clamp(0, 2);
   surfaceCornerRadiusNotifier.value =
       (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
   appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
-  unawaited(_applyAndroidWindowBlur(blurEnabledNotifier.value));
+  unawaited(nativeUiGateway.setWindowBlur(blurEnabledNotifier.value));
   await loadAccountPersonalData();
   pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
     0,
@@ -1412,7 +883,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final GlobalKey _timetableExportKey = GlobalKey();
   final Map<String, Map<dynamic, dynamic>> _temporaryLessonOriginals = {};
   AlarmConfig _alarmConfig = const AlarmConfig();
-Timer? _progressiveNotificationTimer;
+  Timer? _progressiveNotificationTimer;
 
   String? _tempSessionId;
   int? _viewingClassId;
@@ -1921,7 +1392,7 @@ Timer? _progressiveNotificationTimer;
       'EEEE, d. MMMM',
       _icuLocale(appLocaleNotifier.value),
     ).format(date);
-    await showModalBottomSheet<void>(
+    await showUntisModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
@@ -2206,7 +1677,7 @@ Timer? _progressiveNotificationTimer;
     );
     final room = TextEditingController(text: lesson['_room']?.toString() ?? '');
     var cancelled = (lesson['code'] ?? '') == 'cancelled';
-    await showDialog<void>(
+    await showUntisDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
@@ -2633,7 +2104,6 @@ Timer? _progressiveNotificationTimer;
           }
         }
       } catch (_) {}
-
     }
   }
 
@@ -2778,12 +2248,32 @@ Timer? _progressiveNotificationTimer;
     required Widget child,
     required String keyName,
   }) {
-    return KeyedSubtree(key: ValueKey(keyName), child: child);
+    return KeyedSubtree(
+      key: ValueKey(keyName),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 120) return child;
+
+          // CarouselView compresses neighbouring items down to its
+          // shrinkExtent. The timetable still needs a regular viewport for
+          // layout; clip that viewport to create the narrow visual preview.
+          return ClipRect(
+            child: OverflowBox(
+              minWidth: 320,
+              maxWidth: 320,
+              alignment: Alignment.center,
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildMaterialWeekCarousel(double width) {
-    final controller =
-        _materialWeekCarouselController ??= CarouselController(initialItem: 1);
+    final controller = _materialWeekCarouselController ??= CarouselController(
+      initialItem: 1,
+    );
     // Keep a visible neighbour and let edge items collapse substantially.
     // This makes the official Material 3 uncontained carousel feel distinct
     // from a regular page swipe while retaining the timetable's full gesture
@@ -2814,10 +2304,7 @@ Timer? _progressiveNotificationTimer;
         }
         if (notification is ScrollStartNotification) {
           unawaited(
-            _prefetchAdjacentWeeks(
-              allowNetwork: false,
-              refreshFromDisk: true,
-            ),
+            _prefetchAdjacentWeeks(allowNetwork: false, refreshFromDisk: true),
           );
           return false;
         }
@@ -2840,9 +2327,7 @@ Timer? _progressiveNotificationTimer;
         backgroundColor: Colors.transparent,
         elevation: 0,
         itemClipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         onIndexChanged: (index) => _materialWeekIndex = index,
         children: children,
@@ -2852,10 +2337,9 @@ Timer? _progressiveNotificationTimer;
 
   Widget _buildMaterialDayCarousel(double width) {
     final currentDay = _tabController.index.clamp(0, 4).toInt();
-    final controller =
-        _materialDayCarouselController ??= CarouselController(
-          initialItem: currentDay + 1,
-        );
+    final controller = _materialDayCarouselController ??= CarouselController(
+      initialItem: currentDay + 1,
+    );
     if (_materialDayIndex < 0 || _materialDayIndex > 6) {
       _materialDayIndex = currentDay + 1;
     }
@@ -2895,10 +2379,7 @@ Timer? _progressiveNotificationTimer;
         }
         if (notification is ScrollStartNotification) {
           unawaited(
-            _prefetchAdjacentWeeks(
-              allowNetwork: false,
-              refreshFromDisk: true,
-            ),
+            _prefetchAdjacentWeeks(allowNetwork: false, refreshFromDisk: true),
           );
           return false;
         }
@@ -2921,9 +2402,7 @@ Timer? _progressiveNotificationTimer;
         backgroundColor: Colors.transparent,
         elevation: 0,
         itemClipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         onIndexChanged: (index) => _materialDayIndex = index,
         children: List<Widget>.generate(
@@ -3045,9 +2524,7 @@ Timer? _progressiveNotificationTimer;
 
   Widget _buildDepthWeekCarousel(double width) {
     final offset = _carouselOffset.clamp(-width, width).toDouble();
-    final progress = width <= 0
-        ? 0.0
-        : (offset.abs() / width).clamp(0.0, 1.0);
+    final progress = width <= 0 ? 0.0 : (offset.abs() / width).clamp(0.0, 1.0);
 
     final carousel = ClipRect(
       child: Stack(
@@ -3057,20 +2534,14 @@ Timer? _progressiveNotificationTimer;
               x: -width + offset,
               scale: 0.92 + (0.08 * progress),
               opacity: 0.32 + (0.68 * progress),
-              child: SizedBox(
-                width: width,
-                child: _buildAdjacentWeekView(-1),
-              ),
+              child: SizedBox(width: width, child: _buildAdjacentWeekView(-1)),
             ),
           if (offset < 0)
             _depthPage(
               x: width + offset,
               scale: 0.92 + (0.08 * progress),
               opacity: 0.32 + (0.68 * progress),
-              child: SizedBox(
-                width: width,
-                child: _buildAdjacentWeekView(1),
-              ),
+              child: SizedBox(width: width, child: _buildAdjacentWeekView(1)),
             ),
           _depthPage(
             x: offset,
@@ -3110,10 +2581,12 @@ Timer? _progressiveNotificationTimer;
     }
 
     final targetDay = _dayCarouselTargetDay;
-    final previousIndex =
-        targetDay != null && targetDay < dayIndex ? targetDay : dayIndex - 1;
-    final nextIndex =
-        targetDay != null && targetDay > dayIndex ? targetDay : dayIndex + 1;
+    final previousIndex = targetDay != null && targetDay < dayIndex
+        ? targetDay
+        : dayIndex - 1;
+    final nextIndex = targetDay != null && targetDay > dayIndex
+        ? targetDay
+        : dayIndex + 1;
 
     final currentPage = SizedBox(width: width, child: dayAt(dayIndex));
     final previousPage = targetDay == null || targetDay < dayIndex
@@ -3250,10 +2723,12 @@ Timer? _progressiveNotificationTimer;
     }
 
     final targetDay = _dayCarouselTargetDay;
-    final previousIndex =
-        targetDay != null && targetDay < dayIndex ? targetDay : dayIndex - 1;
-    final nextIndex =
-        targetDay != null && targetDay > dayIndex ? targetDay : dayIndex + 1;
+    final previousIndex = targetDay != null && targetDay < dayIndex
+        ? targetDay
+        : dayIndex - 1;
+    final nextIndex = targetDay != null && targetDay > dayIndex
+        ? targetDay
+        : dayIndex + 1;
 
     // Build the expensive timetable grids once. During a programmatic date-tab
     // animation only the cheap Transform widgets below are rebuilt.
@@ -3280,10 +2755,7 @@ Timer? _progressiveNotificationTimer;
                 offset: Offset(width + offset, 0),
                 child: nextPage,
               ),
-            Transform.translate(
-              offset: Offset(offset, 0),
-              child: currentPage,
-            ),
+            Transform.translate(offset: Offset(offset, 0), child: currentPage),
           ],
         ),
       );
@@ -3314,10 +2786,7 @@ Timer? _progressiveNotificationTimer;
       _dayCarouselTargetDay = null;
     });
     unawaited(
-      _prefetchAdjacentWeeks(
-        allowNetwork: false,
-        refreshFromDisk: true,
-      ),
+      _prefetchAdjacentWeeks(allowNetwork: false, refreshFromDisk: true),
     );
   }
 
@@ -3362,10 +2831,9 @@ Timer? _progressiveNotificationTimer;
     }
 
     if (timetableSwitchAnimationNotifier.value == 1) {
-      final controller =
-          _materialDayCarouselController ??= CarouselController(
-            initialItem: currentDay + 1,
-          );
+      final controller = _materialDayCarouselController ??= CarouselController(
+        initialItem: currentDay + 1,
+      );
       _materialDayIndex = currentDay + 1;
       final targetItem = targetDay + 1;
       if (controller.hasClients) {
@@ -3399,8 +2867,7 @@ Timer? _progressiveNotificationTimer;
     if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
     // Tapping the already-selected date must remain a no-op. For a real tab
     // change TabBar has already started animateTo(), so indexIsChanging is true.
-    if (!_tabController.indexIsChanging &&
-        _tabController.index == targetDay) {
+    if (!_tabController.indexIsChanging && _tabController.index == targetDay) {
       return;
     }
 
@@ -3421,11 +2888,7 @@ Timer? _progressiveNotificationTimer;
     _animateDayTabTo(targetDay);
   }
 
-  void _animateDayCarouselTo(
-    int direction,
-    double width, {
-    int? targetDay,
-  }) {
+  void _animateDayCarouselTo(int direction, double width, {int? targetDay}) {
     if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
     final dayBeforeAnimation = _tabController.index;
     final mondayBeforeAnimation = _currentMonday;
@@ -3491,10 +2954,7 @@ Timer? _progressiveNotificationTimer;
     if (_isWeekCarouselAnimating || _isDayCarouselAnimating) return;
     setState(() => _carouselOffset = 0);
     unawaited(
-      _prefetchAdjacentWeeks(
-        allowNetwork: false,
-        refreshFromDisk: true,
-      ),
+      _prefetchAdjacentWeeks(allowNetwork: false, refreshFromDisk: true),
     );
   }
 
@@ -3788,21 +3248,38 @@ Timer? _progressiveNotificationTimer;
     // Substring fallbacks for longer subject names.
     if (key.contains('math')) return Icons.calculate_rounded;
     if (key.contains('deutsch')) return Icons.abc_rounded;
-    if (key.contains('englisch') || key.contains('english')) return Icons.translate_rounded;
+    if (key.contains('englisch') || key.contains('english')) {
+      return Icons.translate_rounded;
+    }
     if (key.contains('franz')) return Icons.translate_rounded;
     if (key.contains('latein')) return Icons.menu_book_rounded;
     if (key.contains('physik')) return Icons.science_rounded;
-    if (key.contains('chemie') || key.contains('chem')) return Icons.science_rounded;
-    if (key.contains('biologie') || key.contains('natur')) return Icons.eco_rounded;
+    if (key.contains('chemie') || key.contains('chem')) {
+      return Icons.science_rounded;
+    }
+    if (key.contains('biologie') || key.contains('natur')) {
+      return Icons.eco_rounded;
+    }
     if (key.contains('geographie')) return Icons.public_rounded;
     if (key.contains('geschichte')) return Icons.history_edu_rounded;
-    if (key.contains('religion') || key.contains('ethik') || key.contains('evangelisch') || key.contains('katholisch')) return Icons.auto_stories_rounded;
-    if (key.contains('informatik') || key.contains('computer')) return Icons.computer_rounded;
+    if (key.contains('religion') ||
+        key.contains('ethik') ||
+        key.contains('evangelisch') ||
+        key.contains('katholisch')) {
+      return Icons.auto_stories_rounded;
+    }
+    if (key.contains('informatik') || key.contains('computer')) {
+      return Icons.computer_rounded;
+    }
     if (key.contains('musik')) return Icons.music_note_rounded;
     if (key.contains('kunst')) return Icons.palette_rounded;
     if (key.contains('sport')) return Icons.sports_soccer_rounded;
-    if (key.contains('politik') || key.contains('sozialkunde')) return Icons.groups_rounded;
-    if (key.contains('psychologie') || key.contains('psycho')) return Icons.psychology_rounded;
+    if (key.contains('politik') || key.contains('sozialkunde')) {
+      return Icons.groups_rounded;
+    }
+    if (key.contains('psychologie') || key.contains('psycho')) {
+      return Icons.psychology_rounded;
+    }
     return null;
   }
 
@@ -4048,7 +3525,7 @@ Timer? _progressiveNotificationTimer;
     }
 
     if (!mounted) return;
-    showDialog(
+    showUntisDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -4083,7 +3560,7 @@ Timer? _progressiveNotificationTimer;
     if (!mounted) return;
     if (context.mounted) Navigator.of(context).pop();
 
-    await showModalBottomSheet<void>(
+    await showUntisModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
@@ -5363,509 +4840,495 @@ Timer? _progressiveNotificationTimer;
             // On small screens five day columns cannot fit alongside the time
             // gutter. Keep their minimum readable width and scroll horizontally.
             return SingleChildScrollView(
-                key: const ValueKey('week-grid-horizontal-scroll'),
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: SizedBox(
-                  width: timeColWidth + 4 + dayGridWidth + trailingDayGridInset,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: timeColWidth + 4,
-                          bottom: 6,
-                        ),
-                        child: Row(
-                          children: List.generate(5, (i) {
-                            final d = m.add(Duration(days: i));
-                            final isToday =
-                                d.year == today.year &&
-                                d.month == today.month &&
-                                d.day == today.day;
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                right: i == 4 ? 0 : dayColGap,
-                              ),
-                              child: SizedBox(
-                                width: dayColWidth,
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        _dayShort[i],
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: isToday
-                                              ? cs.primary
-                                              : cs.onSurfaceVariant.withValues(
-                                                  alpha: 0.8,
-                                                ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Container(
-                                        width: 28,
-                                        height: 28,
-                                        decoration: BoxDecoration(
-                                          color: isToday
-                                              ? cs.primary
-                                              : Colors.transparent,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          '${d.day}',
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w800,
-                                            color: isToday
-                                                ? cs.onPrimary
-                                                : cs.onSurface,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
+              key: const ValueKey('week-grid-horizontal-scroll'),
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: SizedBox(
+                width: timeColWidth + 4 + dayGridWidth + trailingDayGridInset,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: timeColWidth + 4,
+                        bottom: 6,
                       ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: timeColWidth,
-                            height: totalHeight,
-                            child: Stack(
-                              children: timeRanges.isNotEmpty
-                                  ? timeRanges.map((range) {
-                                      final top =
-                                          (range.startMin - globalMin) * _ppm;
-                                      final blockHeight =
-                                          ((range.endMin - range.startMin) *
-                                                  _ppm)
-                                              .clamp(16.0, 9999.0);
-                                      return Positioned(
-                                        top: top,
-                                        left: 0,
-                                        right: 0,
-                                        height: blockHeight,
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            Text(
-                                              _formatMinutes(range.startMin),
-                                              textAlign: TextAlign.right,
-                                              style: GoogleFonts.outfit(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w600,
-                                                color: cs.onSurfaceVariant
-                                                    .withValues(alpha: 0.54),
+                      child: Row(
+                        children: List.generate(5, (i) {
+                          final d = m.add(Duration(days: i));
+                          final isToday =
+                              d.year == today.year &&
+                              d.month == today.month &&
+                              d.day == today.day;
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              right: i == 4 ? 0 : dayColGap,
+                            ),
+                            child: SizedBox(
+                              width: dayColWidth,
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      _dayShort[i],
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: isToday
+                                            ? cs.primary
+                                            : cs.onSurfaceVariant.withValues(
+                                                alpha: 0.8,
                                               ),
-                                            ),
-                                            Text(
-                                              _formatMinutes(range.endMin),
-                                              textAlign: TextAlign.right,
-                                              style: GoogleFonts.outfit(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w500,
-                                                color: cs.onSurfaceVariant
-                                                    .withValues(alpha: 0.45),
-                                              ),
-                                            ),
-                                          ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: isToday
+                                            ? cs.primary
+                                            : Colors.transparent,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        '${d.day}',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          color: isToday
+                                              ? cs.onPrimary
+                                              : cs.onSurface,
                                         ),
-                                      );
-                                    }).toList()
-                                  : ticks.map((tick) {
-                                      final top = (tick - globalMin) * _ppm - 9;
-                                      return Positioned(
-                                        top: top,
-                                        left: 0,
-                                        right: 0,
-                                        child: Text(
-                                          _formatMinutes(tick),
-                                          textAlign: TextAlign.right,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: cs.onSurfaceVariant
-                                                .withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: timeColWidth,
+                          height: totalHeight,
+                          child: Stack(
+                            children: timeRanges.isNotEmpty
+                                ? timeRanges.map((range) {
+                                    final top =
+                                        (range.startMin - globalMin) * _ppm;
+                                    final blockHeight =
+                                        ((range.endMin - range.startMin) * _ppm)
+                                            .clamp(16.0, 9999.0);
+                                    return Positioned(
+                                      top: top,
+                                      left: 0,
+                                      right: 0,
+                                      height: blockHeight,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            _formatMinutes(range.startMin),
+                                            textAlign: TextAlign.right,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: cs.onSurfaceVariant
+                                                  .withValues(alpha: 0.54),
+                                            ),
+                                          ),
+                                          Text(
+                                            _formatMinutes(range.endMin),
+                                            textAlign: TextAlign.right,
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                              color: cs.onSurfaceVariant
+                                                  .withValues(alpha: 0.45),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList()
+                                : ticks.map((tick) {
+                                    final top = (tick - globalMin) * _ppm - 9;
+                                    return Positioned(
+                                      top: top,
+                                      left: 0,
+                                      right: 0,
+                                      child: Text(
+                                        _formatMinutes(tick),
+                                        textAlign: TextAlign.right,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: cs.onSurfaceVariant.withValues(
+                                            alpha: 0.7,
                                           ),
                                         ),
-                                      );
-                                    }).toList(),
-                            ),
+                                      ),
+                                    );
+                                  }).toList(),
                           ),
-                          const SizedBox(width: 4),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: List.generate(5, (dayIndex) {
-                              final lessons = (wd[dayIndex] ?? [])
-                                  .where(
-                                    (l) =>
-                                        !hiddenSubjectsNotifier.value.contains(
-                                          l['_subjectShort']?.toString() ?? '',
-                                        ),
-                                  )
-                                  .toList();
-                              final visibleLessons = lessons
-                                  .where(
-                                    (l) =>
-                                        showCancelledNotifier.value ||
-                                        (l['code'] ?? '') != 'cancelled',
-                                  )
-                                  .toList();
-                              final mergedLessons = _mergeConsecutiveLessons(
-                                visibleLessons,
-                              );
-                              final lessonSlots = _computeLessonSlots(
-                                mergedLessons,
-                              );
-                              return Container(
-                                width: dayColWidth,
-                                height: totalHeight,
-                                margin: EdgeInsets.only(
-                                  right: dayIndex == 4 ? 0 : dayColGap,
-                                ),
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    return Stack(
-                                      children: [
-                                        ...ticks.map((tick) {
-                                          final top = (tick - globalMin) * _ppm;
-                                          return Positioned(
-                                            top: top,
-                                            left: 0,
-                                            right: 0,
-                                            child: Container(
-                                              height: 0.45,
-                                              color: cs.outlineVariant
-                                                  .withValues(alpha: 0.28),
+                        ),
+                        const SizedBox(width: 4),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: List.generate(5, (dayIndex) {
+                            final lessons = (wd[dayIndex] ?? [])
+                                .where(
+                                  (l) => !hiddenSubjectsNotifier.value.contains(
+                                    l['_subjectShort']?.toString() ?? '',
+                                  ),
+                                )
+                                .toList();
+                            final visibleLessons = lessons
+                                .where(
+                                  (l) =>
+                                      showCancelledNotifier.value ||
+                                      (l['code'] ?? '') != 'cancelled',
+                                )
+                                .toList();
+                            final mergedLessons = _mergeConsecutiveLessons(
+                              visibleLessons,
+                            );
+                            final lessonSlots = _computeLessonSlots(
+                              mergedLessons,
+                            );
+                            return Container(
+                              width: dayColWidth,
+                              height: totalHeight,
+                              margin: EdgeInsets.only(
+                                right: dayIndex == 4 ? 0 : dayColGap,
+                              ),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return Stack(
+                                    children: [
+                                      ...ticks.map((tick) {
+                                        final top = (tick - globalMin) * _ppm;
+                                        return Positioned(
+                                          top: top,
+                                          left: 0,
+                                          right: 0,
+                                          child: Container(
+                                            height: 0.45,
+                                            color: cs.outlineVariant.withValues(
+                                              alpha: 0.28,
                                             ),
-                                          );
-                                        }),
-                                        ..._getHolidaysForDay(
-                                          m.add(Duration(days: dayIndex)),
-                                        ).map((holiday) {
-                                          final holidayStartMin = _toMinutes(
-                                            800,
-                                          );
-                                          final holidayEndMin = _toMinutes(
-                                            1800,
-                                          );
-                                          final top2 =
-                                              (holidayStartMin - globalMin) *
-                                              _ppm;
-                                          final height2 =
-                                              ((holidayEndMin -
-                                                          holidayStartMin) *
-                                                      _ppm)
-                                                  .clamp(24.0, 9999.0);
-                                          final holidayName =
-                                              (holiday['longName'] ??
-                                                      holiday['name'] ??
-                                                      '')
-                                                  .toString();
-                                          return Positioned(
-                                            top: top2,
-                                            left: 1,
-                                            right: 1,
-                                            height: height2,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: cs.tertiaryContainer
-                                                    .withValues(alpha: 0.85),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: cs.tertiary.withValues(
-                                                    alpha: 0.4,
-                                                  ),
-                                                  width: 1.5,
+                                          ),
+                                        );
+                                      }),
+                                      ..._getHolidaysForDay(
+                                        m.add(Duration(days: dayIndex)),
+                                      ).map((holiday) {
+                                        final holidayStartMin = _toMinutes(800);
+                                        final holidayEndMin = _toMinutes(1800);
+                                        final top2 =
+                                            (holidayStartMin - globalMin) *
+                                            _ppm;
+                                        final height2 =
+                                            ((holidayEndMin - holidayStartMin) *
+                                                    _ppm)
+                                                .clamp(24.0, 9999.0);
+                                        final holidayName =
+                                            (holiday['longName'] ??
+                                                    holiday['name'] ??
+                                                    '')
+                                                .toString();
+                                        return Positioned(
+                                          top: top2,
+                                          left: 1,
+                                          right: 1,
+                                          height: height2,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: cs.tertiaryContainer
+                                                  .withValues(alpha: 0.85),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: cs.tertiary.withValues(
+                                                  alpha: 0.4,
                                                 ),
-                                              ),
-                                              padding: const EdgeInsets.all(8),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Icon(
-                                                    Icons.celebration_rounded,
-                                                    size: 16,
-                                                    color: cs.tertiary,
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Expanded(
-                                                    child: Text(
-                                                      holidayName,
-                                                      style: GoogleFonts.outfit(
-                                                        fontSize: 10,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        color: cs
-                                                            .onTertiaryContainer,
-                                                      ),
-                                                      maxLines: 3,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                ],
+                                                width: 1.5,
                                               ),
                                             ),
-                                          );
-                                        }),
-                                        ...lessonSlots.map((slot) {
-                                          final l = slot.lesson;
-                                          final startMin = slot.startMin;
-                                          final endMin = slot.endMin;
-                                          final top =
-                                              (startMin - globalMin) * _ppm;
-                                          final height =
-                                              ((endMin - startMin) * _ppm)
-                                                  .clamp(24.0, 9999.0);
-                                          final dim =
-                                              (dayIndex == todayIndex) &&
-                                              endMin <= nowMin;
-                                          const horizontalInset = 1.0;
-                                          const columnGap = 2.0;
-                                          final columns = slot.columnCount;
-                                          final availableWidth =
-                                              constraints.maxWidth -
-                                              (horizontalInset * 2);
-                                          final totalGap =
-                                              (columns - 1) * columnGap;
-                                          final rawCardWidth =
-                                              (availableWidth - totalGap) /
-                                              columns;
-                                          final cardWidth = rawCardWidth > 6
-                                              ? rawCardWidth
-                                              : 6.0;
-                                          final left =
-                                              horizontalInset +
-                                              (slot.column *
-                                                  (cardWidth + columnGap));
+                                            padding: const EdgeInsets.all(8),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Icon(
+                                                  Icons.celebration_rounded,
+                                                  size: 16,
+                                                  color: cs.tertiary,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Expanded(
+                                                  child: Text(
+                                                    holidayName,
+                                                    style: GoogleFonts.outfit(
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: cs
+                                                          .onTertiaryContainer,
+                                                    ),
+                                                    maxLines: 3,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                      ...lessonSlots.map((slot) {
+                                        final l = slot.lesson;
+                                        final startMin = slot.startMin;
+                                        final endMin = slot.endMin;
+                                        final top =
+                                            (startMin - globalMin) * _ppm;
+                                        final height =
+                                            ((endMin - startMin) * _ppm).clamp(
+                                              24.0,
+                                              9999.0,
+                                            );
+                                        final dim =
+                                            (dayIndex == todayIndex) &&
+                                            endMin <= nowMin;
+                                        const horizontalInset = 1.0;
+                                        const columnGap = 2.0;
+                                        final columns = slot.columnCount;
+                                        final availableWidth =
+                                            constraints.maxWidth -
+                                            (horizontalInset * 2);
+                                        final totalGap =
+                                            (columns - 1) * columnGap;
+                                        final rawCardWidth =
+                                            (availableWidth - totalGap) /
+                                            columns;
+                                        final cardWidth = rawCardWidth > 6
+                                            ? rawCardWidth
+                                            : 6.0;
+                                        final left =
+                                            horizontalInset +
+                                            (slot.column *
+                                                (cardWidth + columnGap));
 
-                                          return Positioned(
-                                            top: top,
-                                            left: left,
-                                            width: cardWidth,
-                                            height: height,
-                                            child: Builder(
-                                              builder: (context) {
-                                                final cs = Theme.of(
-                                                  context,
-                                                ).colorScheme;
-                                                final isDark2 =
-                                                    Theme.of(
-                                                      context,
-                                                    ).brightness ==
-                                                    Brightness.dark;
-                                                final isCancelled =
-                                                    (l['code'] ?? '') ==
-                                                    'cancelled';
-                                                final isTeacherMissing =
-                                                    _hasMissingTeacher(l);
-                                                final subject =
-                                                    l['_subjectShort']
-                                                            ?.toString()
-                                                            .isNotEmpty ==
-                                                        true
-                                                    ? l['_subjectShort']
-                                                          .toString()
-                                                    : (l['_subjectLong']
-                                                                  ?.toString()
-                                                                  .isNotEmpty ==
-                                                              true
-                                                          ? l['_subjectLong']
-                                                                .toString()
-                                                          : '?');
-                                                final room =
-                                                    l['_room']?.toString() ??
-                                                    '';
-                                                final teacher =
-                                                    l['_teacher']?.toString() ??
-                                                    '';
-                                                final sk2 =
-                                                    l['_subjectShort']
-                                                        ?.toString() ??
-                                                    '';
-                                                final useMonochrome2 =
-                                                    monochromeLessonsNotifier
-                                                        .value;
-                                                final cancelledColor2 = Color(
-                                                  cancelledLessonColorNotifier
-                                                      .value,
-                                                );
-                                                final cv2 =
-                                                    isCancelled ||
-                                                        useMonochrome2
-                                                    ? null
-                                                    : subjectColorsNotifier
-                                                          .value[sk2];
-                                                final fgColor = isCancelled
-                                                    ? cancelledColor2
-                                                    : useMonochrome2
-                                                    ? Color(
-                                                        monochromeLessonColorNotifier
-                                                            .value,
-                                                      )
-                                                    : cv2 != null
-                                                    ? Color(cv2)
-                                                    : _autoLessonColor(
-                                                        sk2,
-                                                        isDark2,
-                                                      );
-                                                final bgColor = isCancelled
-                                                    ? Color.alphaBlend(
-                                                        cancelledColor2
-                                                            .withValues(
-                                                              alpha: isDark2
-                                                                  ? 0.14
-                                                                  : 0.10,
-                                                            ),
-                                                        cs.surfaceContainerHighest,
-                                                      )
-                                                    : Color.alphaBlend(
-                                                        fgColor.withValues(
-                                                          alpha: isDark2
-                                                              ? 0.14
-                                                              : 0.10,
-                                                        ),
-                                                        cs.surfaceContainerHighest,
-                                                      );
-                                                final isCurrent =
-                                                    (dayIndex == todayIndex) &&
-                                                    (slot.startMin <= nowMin &&
-                                                        nowMin < slot.endMin);
-                                                final isNow = isCurrent;
-
-                                                final lDateInt =
-                                                    int.tryParse(
-                                                      l['date']?.toString() ??
-                                                          '',
-                                                    ) ??
-                                                    0;
-                                                final hasHomework =
-                                                    homeworksNotifier.value.any(
-                                                      (hw) =>
-                                                          hw['dueDate'] ==
-                                                              lDateInt &&
-                                                          (hw['subject'] ==
-                                                                  sk2 ||
-                                                              hw['subject'] ==
-                                                                  subject),
-                                                    ) ||
-                                                    customHomeworkNotifier.value
-                                                        .any(
-                                                          (hw) =>
-                                                              hw['dueDate'] ==
-                                                                  lDateInt &&
-                                                              (hw['subject'] ==
-                                                                      sk2 ||
-                                                                  hw['subject'] ==
-                                                                      subject),
-                                                        );
-                                                final hasExam =
-                                                    apiExamsNotifier.value.any(
-                                                      (ex) =>
-                                                          (ex['date'] ??
-                                                                  ex['examDate'] ??
-                                                                  0) ==
-                                                              lDateInt &&
-                                                          (ex['subject'] ==
-                                                                  sk2 ||
-                                                              ex['subjectName'] ==
-                                                                  sk2 ||
-                                                              ex['subject'] ==
-                                                                  subject),
-                                                    ) ||
-                                                    customExamsNotifier.value.any(
-                                                      (ex) =>
-                                                          (ex['date'] ?? 0) ==
-                                                              lDateInt &&
-                                                          (ex['subject'] ==
-                                                                  sk2 ||
-                                                              ex['subject'] ==
-                                                                  subject),
+                                        return Positioned(
+                                          top: top,
+                                          left: left,
+                                          width: cardWidth,
+                                          height: height,
+                                          child: Builder(
+                                            builder: (context) {
+                                              final cs = Theme.of(
+                                                context,
+                                              ).colorScheme;
+                                              final isDark2 =
+                                                  Theme.of(
+                                                    context,
+                                                  ).brightness ==
+                                                  Brightness.dark;
+                                              final isCancelled =
+                                                  (l['code'] ?? '') ==
+                                                  'cancelled';
+                                              final isTeacherMissing =
+                                                  _hasMissingTeacher(l);
+                                              final subject =
+                                                  l['_subjectShort']
+                                                          ?.toString()
+                                                          .isNotEmpty ==
+                                                      true
+                                                  ? l['_subjectShort']
+                                                        .toString()
+                                                  : (l['_subjectLong']
+                                                                ?.toString()
+                                                                .isNotEmpty ==
+                                                            true
+                                                        ? l['_subjectLong']
+                                                              .toString()
+                                                        : '?');
+                                              final room =
+                                                  l['_room']?.toString() ?? '';
+                                              final teacher =
+                                                  l['_teacher']?.toString() ??
+                                                  '';
+                                              final sk2 =
+                                                  l['_subjectShort']
+                                                      ?.toString() ??
+                                                  '';
+                                              final useMonochrome2 =
+                                                  monochromeLessonsNotifier
+                                                      .value;
+                                              final cancelledColor2 = Color(
+                                                cancelledLessonColorNotifier
+                                                    .value,
+                                              );
+                                              final cv2 =
+                                                  isCancelled || useMonochrome2
+                                                  ? null
+                                                  : subjectColorsNotifier
+                                                        .value[sk2];
+                                              final fgColor = isCancelled
+                                                  ? cancelledColor2
+                                                  : useMonochrome2
+                                                  ? Color(
+                                                      monochromeLessonColorNotifier
+                                                          .value,
+                                                    )
+                                                  : cv2 != null
+                                                  ? Color(cv2)
+                                                  : _autoLessonColor(
+                                                      sk2,
+                                                      isDark2,
                                                     );
-
-                                                return _dimPastLesson(
-                                                  dim: dim,
-                                                  child: GestureDetector(
-                                                    onTap: () => _onLessonTap(
-                                                      context,
-                                                      l,
-                                                    ),
-                                                    onLongPress: () =>
-                                                        _editLessonTemporarily(
-                                                          l,
-                                                        ),
-                                                    child: _buildTimetableLessonCard(
-                                                      context: context,
-                                                      isCancelled: isCancelled,
-                                                      isDark: isDark2,
-                                                      fgColor: fgColor,
-                                                      bgColor: bgColor,
-                                                      subject: subject,
-                                                      subjectIcon: _subjectIconFor(
-                                                        sk2,
-                                                        subject,
-                                                      ),
-                                                      teacher: teacher,
-                                                      room: room,
-                                                      isNow: isNow,
-                                                      isTeacherMissing:
-                                                          isTeacherMissing,
-                                                      hasHomework: hasHomework,
-                                                      hasExam: hasExam,
-                                                      padding:
-                                                          const EdgeInsets.fromLTRB(
-                                                            8,
-                                                            5,
-                                                            6,
-                                                            5,
+                                              final bgColor = isCancelled
+                                                  ? Color.alphaBlend(
+                                                      cancelledColor2
+                                                          .withValues(
+                                                            alpha: isDark2
+                                                                ? 0.14
+                                                                : 0.10,
                                                           ),
-                                                      accentWidth: 3.5,
-                                                      subjectFontSize: 11.5,
-                                                      teacherFontSize: 9.5,
-                                                      roomFontSize: 9.5,
-                                                      useStripes: true,
-                                                      availableWidth: cardWidth,
-                                                      availableHeight: height,
-                                                    ),
+                                                      cs.surfaceContainerHighest,
+                                                    )
+                                                  : Color.alphaBlend(
+                                                      fgColor.withValues(
+                                                        alpha: isDark2
+                                                            ? 0.14
+                                                            : 0.10,
+                                                      ),
+                                                      cs.surfaceContainerHighest,
+                                                    );
+                                              final isCurrent =
+                                                  (dayIndex == todayIndex) &&
+                                                  (slot.startMin <= nowMin &&
+                                                      nowMin < slot.endMin);
+                                              final isNow = isCurrent;
+
+                                              final lDateInt =
+                                                  int.tryParse(
+                                                    l['date']?.toString() ?? '',
+                                                  ) ??
+                                                  0;
+                                              final hasHomework =
+                                                  homeworksNotifier.value.any(
+                                                    (hw) =>
+                                                        hw['dueDate'] ==
+                                                            lDateInt &&
+                                                        (hw['subject'] == sk2 ||
+                                                            hw['subject'] ==
+                                                                subject),
+                                                  ) ||
+                                                  customHomeworkNotifier.value
+                                                      .any(
+                                                        (hw) =>
+                                                            hw['dueDate'] ==
+                                                                lDateInt &&
+                                                            (hw['subject'] ==
+                                                                    sk2 ||
+                                                                hw['subject'] ==
+                                                                    subject),
+                                                      );
+                                              final hasExam =
+                                                  apiExamsNotifier.value.any(
+                                                    (ex) =>
+                                                        (ex['date'] ??
+                                                                ex['examDate'] ??
+                                                                0) ==
+                                                            lDateInt &&
+                                                        (ex['subject'] == sk2 ||
+                                                            ex['subjectName'] ==
+                                                                sk2 ||
+                                                            ex['subject'] ==
+                                                                subject),
+                                                  ) ||
+                                                  customExamsNotifier.value.any(
+                                                    (ex) =>
+                                                        (ex['date'] ?? 0) ==
+                                                            lDateInt &&
+                                                        (ex['subject'] == sk2 ||
+                                                            ex['subject'] ==
+                                                                subject),
+                                                  );
+
+                                              return _dimPastLesson(
+                                                dim: dim,
+                                                child: GestureDetector(
+                                                  onTap: () =>
+                                                      _onLessonTap(context, l),
+                                                  onLongPress: () =>
+                                                      _editLessonTemporarily(l),
+                                                  child: _buildTimetableLessonCard(
+                                                    context: context,
+                                                    isCancelled: isCancelled,
+                                                    isDark: isDark2,
+                                                    fgColor: fgColor,
+                                                    bgColor: bgColor,
+                                                    subject: subject,
+                                                    subjectIcon:
+                                                        _subjectIconFor(
+                                                          sk2,
+                                                          subject,
+                                                        ),
+                                                    teacher: teacher,
+                                                    room: room,
+                                                    isNow: isNow,
+                                                    isTeacherMissing:
+                                                        isTeacherMissing,
+                                                    hasHomework: hasHomework,
+                                                    hasExam: hasExam,
+                                                    padding:
+                                                        const EdgeInsets.fromLTRB(
+                                                          8,
+                                                          5,
+                                                          6,
+                                                          5,
+                                                        ),
+                                                    accentWidth: 3.5,
+                                                    subjectFontSize: 11.5,
+                                                    teacherFontSize: 9.5,
+                                                    roomFontSize: 9.5,
+                                                    useStripes: true,
+                                                    availableWidth: cardWidth,
+                                                    availableHeight: height,
                                                   ),
-                                                );
-                                              },
-                                            ),
-                                          );
-                                        }),
-                                        if (showNowLine &&
-                                            dayIndex == todayIndex)
-                                          Positioned(
-                                            top: nowTop - 1.5,
-                                            left: 0,
-                                            right: 0,
-                                            child: IgnorePointer(
-                                              child: Row(
-                                                children: [
-                                                  Container(
-                                                    width: 5,
-                                                    height: 5,
-                                                    decoration: BoxDecoration(
-                                                      color: cs.error,
-                                                      shape: BoxShape.circle,
-                                                      boxShadow: _glowShadows(
-                                                        context,
-                                                        [
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      }),
+                                      if (showNowLine && dayIndex == todayIndex)
+                                        Positioned(
+                                          top: nowTop - 1.5,
+                                          left: 0,
+                                          right: 0,
+                                          child: IgnorePointer(
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  width: 5,
+                                                  height: 5,
+                                                  decoration: BoxDecoration(
+                                                    color: cs.error,
+                                                    shape: BoxShape.circle,
+                                                    boxShadow:
+                                                        _glowShadows(context, [
                                                           BoxShadow(
                                                             color: cs.error
                                                                 .withValues(
@@ -5874,51 +5337,50 @@ Timer? _progressiveNotificationTimer;
                                                             blurRadius: 3,
                                                             spreadRadius: 0.5,
                                                           ),
+                                                        ]),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Container(
+                                                    height: 2,
+                                                    decoration: BoxDecoration(
+                                                      color: cs.error,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            2,
+                                                          ),
+                                                      boxShadow: _glowShadows(
+                                                        context,
+                                                        [
+                                                          BoxShadow(
+                                                            color: cs.error
+                                                                .withValues(
+                                                                  alpha: 0.25,
+                                                                ),
+                                                            blurRadius: 3,
+                                                          ),
                                                         ],
                                                       ),
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 6),
-                                                  Expanded(
-                                                    child: Container(
-                                                      height: 2,
-                                                      decoration: BoxDecoration(
-                                                        color: cs.error,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              2,
-                                                            ),
-                                                        boxShadow: _glowShadows(
-                                                          context,
-                                                          [
-                                                            BoxShadow(
-                                                              color: cs.error
-                                                                  .withValues(
-                                                                    alpha: 0.25,
-                                                                  ),
-                                                              blurRadius: 3,
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              );
-                            }),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+              ),
             );
           },
         ),
@@ -6676,7 +6138,7 @@ Timer? _progressiveNotificationTimer;
   }
 
   Future<void> _openClassSearch() async {
-    showDialog(
+    showUntisDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
@@ -6749,7 +6211,7 @@ Timer? _progressiveNotificationTimer;
 
     final l = AppL10n.of(appLocaleNotifier.value);
 
-    showModalBottomSheet(
+    showUntisModalBottomSheet(
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
@@ -7140,8 +6602,9 @@ Timer? _progressiveNotificationTimer;
   @override
   Widget build(BuildContext context) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final dayIndicatorIndex =
-        (_dayCarouselTargetDay ?? _tabController.index).clamp(0, 4).toInt();
+    final dayIndicatorIndex = (_dayCarouselTargetDay ?? _tabController.index)
+        .clamp(0, 4)
+        .toInt();
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -7200,9 +6663,10 @@ Timer? _progressiveNotificationTimer;
                 transitionBuilder: (child, animation) => FadeTransition(
                   opacity: animation,
                   child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.72, end: 1).animate(
-                      animation,
-                    ),
+                    scale: Tween<double>(
+                      begin: 0.72,
+                      end: 1,
+                    ).animate(animation),
                     child: child,
                   ),
                 ),
@@ -7257,108 +6721,124 @@ Timer? _progressiveNotificationTimer;
                     fit: StackFit.expand,
                     children: [
                       TabBar(
-                controller: _tabController,
-                onTap: _onDayTabBarTap,
-                indicator: const BoxDecoration(),
-                indicatorWeight: 0,
-                labelStyle: untisThemeTextStyle(
-                  context,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Theme.of(
-                  context,
-                ).colorScheme.onSurfaceVariant,
-                dividerColor: Colors.transparent,
-                tabs: List.generate(5, (i) {
-                  final dayDate = _currentMonday.add(Duration(days: i));
-                  final dayOverride =
-                      _alarmConfig.dateOverrides[alarmDateKey(dayDate)];
-                  final now = DateTime.now();
-                  final isToday =
-                      dayDate.year == now.year &&
-                      dayDate.month == now.month &&
-                      dayDate.day == now.day;
-                  return Tab(
-                    child: GestureDetector(
-                      key: ValueKey('timetable-day-tab-$i'),
-                      behavior: HitTestBehavior.opaque,
-                      onLongPress: () {
-                        HapticFeedback.mediumImpact();
-                        _showDateAlarmActions(dayDate);
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _dayShort[i],
-                            style: const TextStyle(fontSize: 13, height: 1.1),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${dayDate.day}.',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  height: 1.2,
-                                  color: isToday
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              if (dayOverride != null) ...[
-                                const SizedBox(width: 3),
-                                Icon(
-                                  dayOverride.disabled
-                                      ? Icons.alarm_off_rounded
-                                      : dayOverride.customTimeOfDayMinutes !=
-                                            null
-                                      ? Icons.alarm_rounded
-                                      : Icons.fast_forward_rounded,
-                                  size: 12,
-                                  color: dayOverride.disabled
-                                      ? Theme.of(context).colorScheme.error
-                                      : Theme.of(context).colorScheme.primary,
-                                ),
-                                if (dayOverride.customTimeOfDayMinutes != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 2),
-                                    child: Text(
-                                      '${(dayOverride.customTimeOfDayMinutes! ~/ 60).toString().padLeft(2, '0')}:${(dayOverride.customTimeOfDayMinutes! % 60).toString().padLeft(2, '0')}',
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        height: 1,
-                                        fontWeight: FontWeight.w800,
+                        controller: _tabController,
+                        onTap: _onDayTabBarTap,
+                        indicator: const BoxDecoration(),
+                        indicatorWeight: 0,
+                        labelStyle: untisThemeTextStyle(
+                          context,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        labelColor: Theme.of(context).colorScheme.primary,
+                        unselectedLabelColor: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant,
+                        dividerColor: Colors.transparent,
+                        tabs: List.generate(5, (i) {
+                          final dayDate = _currentMonday.add(Duration(days: i));
+                          final dayOverride =
+                              _alarmConfig.dateOverrides[alarmDateKey(dayDate)];
+                          final now = DateTime.now();
+                          final isToday =
+                              dayDate.year == now.year &&
+                              dayDate.month == now.month &&
+                              dayDate.day == now.day;
+                          return Tab(
+                            child: GestureDetector(
+                              key: ValueKey('timetable-day-tab-$i'),
+                              behavior: HitTestBehavior.opaque,
+                              onLongPress: () {
+                                HapticFeedback.mediumImpact();
+                                _showDateAlarmActions(dayDate);
+                              },
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _dayShort[i],
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '${dayDate.day}.',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          height: 1.2,
+                                          color: isToday
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.primary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                      if (dayOverride != null) ...[
+                                        const SizedBox(width: 3),
+                                        Icon(
+                                          dayOverride.disabled
+                                              ? Icons.alarm_off_rounded
+                                              : dayOverride
+                                                        .customTimeOfDayMinutes !=
+                                                    null
+                                              ? Icons.alarm_rounded
+                                              : Icons.fast_forward_rounded,
+                                          size: 12,
+                                          color: dayOverride.disabled
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.error
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                        ),
+                                        if (dayOverride
+                                                .customTimeOfDayMinutes !=
+                                            null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              left: 2,
+                                            ),
+                                            child: Text(
+                                              '${(dayOverride.customTimeOfDayMinutes! ~/ 60).toString().padLeft(2, '0')}:${(dayOverride.customTimeOfDayMinutes! % 60).toString().padLeft(2, '0')}',
+                                              style: TextStyle(
+                                                fontSize: 8,
+                                                height: 1,
+                                                fontWeight: FontWeight.w800,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ],
+                                  ),
+                                  if (isToday)
+                                    Container(
+                                      width: 3,
+                                      height: 3,
+                                      margin: const EdgeInsets.only(top: 1),
+                                      decoration: BoxDecoration(
                                         color: Theme.of(
                                           context,
                                         ).colorScheme.primary,
+                                        shape: BoxShape.circle,
                                       ),
-                                    ),
-                                  ),
-                              ],
-                            ],
-                          ),
-                          if (isToday)
-                            Container(
-                              width: 3,
-                              height: 3,
-                              margin: const EdgeInsets.only(top: 1),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
-                                shape: BoxShape.circle,
+                                    )
+                                  else
+                                    const SizedBox(height: 4),
+                                ],
                               ),
-                            )
-                          else
-                            const SizedBox(height: 4),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
+                            ),
+                          );
+                        }),
                       ),
                       IgnorePointer(
                         child: LayoutBuilder(
@@ -7376,7 +6856,9 @@ Timer? _progressiveNotificationTimer;
                                   width: 38,
                                   height: 3,
                                   child: ColoredBox(
-                                    color: Theme.of(context).colorScheme.primary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                                 ),
                               ],
@@ -7526,7 +7008,7 @@ Future<void> _showAddHomeworkDialog(
     return DateTime.now().add(const Duration(days: 1));
   }();
 
-  await showModalBottomSheet<void>(
+  await showUntisModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -7934,7 +7416,7 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
   if (!context.mounted) return;
 
   var loadingVisible = true;
-  showDialog(
+  showUntisDialog(
     context: context,
     barrierDismissible: false,
     builder: (ctx) => const Center(child: CircularProgressIndicator()),
@@ -8817,7 +8299,7 @@ Future<void> _showAddExamDialog(
     return DateTime.now();
   }();
 
-  await showModalBottomSheet<void>(
+  await showUntisModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -9434,9 +8916,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final body = jsonEncode({
       'systemInstruction': {
         'parts': [
-          {
-            'text': l.ui('aiExamJsonSystemPrompt'),
-          },
+          {'text': l.ui('aiExamJsonSystemPrompt')},
         ],
       },
       'contents': [
@@ -9513,10 +8993,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final body = jsonEncode({
       'model': model,
       'messages': [
-        {
-          'role': 'system',
-          'content': l.ui('aiExamImageSystemPrompt'),
-        },
+        {'role': 'system', 'content': l.ui('aiExamImageSystemPrompt')},
         {
           'role': 'user',
           'content': [
@@ -9703,7 +9180,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     if (!mounted) return;
 
     var loadingVisible = true;
-    showDialog(
+    showUntisDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => const Center(child: CircularProgressIndicator()),
@@ -9829,14 +9306,11 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          _tabController.index == 0
-              ? l.examsTitle
-              : (_tabController.index == 1 ? l.homeworkTitle : l.gradesTitle),
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
-        ),
-        centerTitle: true,
+      appBar: _mainTabHeaderAppBar(
+        context,
+        _tabController.index == 0
+            ? l.examsTitle
+            : (_tabController.index == 1 ? l.homeworkTitle : l.gradesTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -11532,11 +11006,10 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
       .where((t) => t.isNotEmpty)
       .join('\n');
 
-  showModalBottomSheet(
+  _showUnifiedSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    sheetAnimationStyle: _kBottomSheetAnimationStyle,
+    useSafeArea: false,
     builder: (_) => _LessonDetailSheet(
       subject: subject,
       subjectShort: subjectShort,
@@ -11706,10 +11179,7 @@ class _LessonDetailSheet extends StatelessWidget {
     final cancelledColor = Color(
       cancelledLessonColorNotifier.value,
     ).harmonizeWith(cs.primary);
-    return _sheetSurface(
-      context: context,
-      blur: blurEnabledNotifier.value,
-      child: Padding(
+    return Padding(
         padding: EdgeInsets.fromLTRB(
           24,
           16,
@@ -11720,18 +11190,6 @@ class _LessonDetailSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: cs.onSurface.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
             Row(
               children: [
                 if (isCancelled)
@@ -11905,8 +11363,7 @@ class _LessonDetailSheet extends StatelessWidget {
             const SizedBox(height: 48),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -13159,12 +12616,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.infoTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
-        ),
-        centerTitle: true,
+      appBar: _mainTabHeaderAppBar(
+        context,
+        l.infoTitle,
         actions: [
           if (_showInbox)
             IconButton(
@@ -14490,7 +13944,7 @@ class _SettingsPageState extends State<SettingsPage> {
     required String current,
     required String latest,
   }) async {
-    final result = await showDialog<bool>(
+    final result = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
@@ -14691,7 +14145,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setBlurEnabled(bool v) async {
     blurEnabledNotifier.value = v;
-    unawaited(_applyAndroidWindowBlur(v));
+    unawaited(nativeUiGateway.setWindowBlur(v));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('blurEnabled', v);
   }
@@ -16167,17 +15621,7 @@ class SubjectColorsPage extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 4),
                 Text(
                   l.settingsColorFor(subject),
                   style: GoogleFonts.outfit(
@@ -16270,15 +15714,7 @@ class SubjectColorsPage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(ctx).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 4),
               Text(
                 l.settingsColorFor(subject),
                 style: GoogleFonts.outfit(
