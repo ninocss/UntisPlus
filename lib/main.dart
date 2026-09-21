@@ -9382,66 +9382,14 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                   ),
           ),
         ],
-        bottom: TabBar(
+        bottom: _mainSectionTabBar(
+          context,
           controller: _tabController,
-          indicatorColor: cs.primary,
-          indicatorWeight: 3,
-          dividerColor: Colors.transparent,
-          labelStyle: GoogleFonts.outfit(
-            fontWeight: FontWeight.w800,
-            fontSize: 14,
-          ),
-          unselectedLabelStyle: GoogleFonts.outfit(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
           onTap: (index) => setState(() {}),
-          tabs: [
-            Tab(
-              child: Row(
-                children: [
-                  const Icon(Icons.assignment_late_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l.navExams,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                children: [
-                  const Icon(Icons.assignment_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l.navHomework,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                children: [
-                  const Icon(Icons.auto_graph_rounded, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l.navGrades,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          items: [
+            (icon: Icons.assignment_late_rounded, label: l.navExams),
+            (icon: Icons.assignment_rounded, label: l.navHomework),
+            (icon: Icons.auto_graph_rounded, label: l.navGrades),
           ],
         ),
       ),
