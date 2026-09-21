@@ -1,11 +1,11 @@
 part of '../../../main.dart';
 
-class AiModeSwitch extends StatelessWidget {
+class _AiModeSwitch extends StatelessWidget {
   final _AiMode selectedMode;
   final ValueChanged<_AiMode> onChanged;
   final bool enabled;
 
-  const AiModeSwitch({
+  const _AiModeSwitch({
     super.key,
     required this.selectedMode,
     required this.onChanged,
