@@ -121,7 +121,7 @@ Future<void> _settingsSetAppBgBlurAmount(double value) async {
 }
 
 Future<void> _settingsSetPageTransition(int value) async {
-  final normalized = value.clamp(0, 7);
+  final normalized = value.clamp(0, 8);
   pageTransitionNotifier.value = normalized;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setInt('pageTransition', normalized);
@@ -481,7 +481,7 @@ Future<void> _settingsSyncFromPrefs() async {
       (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
     0,
-    7,
+    8,
   );
   mainTabFadeUpEnabledNotifier.value =
       prefs.getBool('mainTabFadeUpEnabled') ?? false;
