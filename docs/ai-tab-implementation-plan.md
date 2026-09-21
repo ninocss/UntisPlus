@@ -5,6 +5,29 @@ Branch: design/ai-tab-m3-expressive-redesign
 Source specification: docs/ai-tab-ui-spec.md
 Scope: UI/UX redesign only; existing AI behavior remains unchanged.
 
+## Implementation status — 2026-09-21
+
+Implemented on this branch:
+
+- WP1 presentation foundation and part registration.
+- WP2 expressive Analysis/Chat mode switch and stable shared header.
+- WP3 redesigned empty states and contextual suggestions.
+- WP4 unified expressive composer and attachment presentation.
+- WP5 redesigned chat messages and streaming/typing presentation.
+- WP6 redesigned analysis loading, summary, metrics, tags and lesson result stack.
+- WP7 redesigned chat history panel and structured AI action confirmation.
+- WP8 reduced-motion handling and consolidated AI-local motion tokens.
+- WP9 responsive width constraints, semantics, large touch targets and theme-aware ColorScheme usage.
+- WP10 initial regression coverage for the assistant shell, mode switching and reduced motion; legacy presentation builders removed.
+
+Behavior intentionally kept in AiAssistantPage: provider calls, prompts, parsing, streaming lifecycle, persistence, attachment validation and action application.
+
+Validation performed in this implementation pass:
+- Part paths and main.dart registrations checked.
+- Delimiter/string-balance checks passed for all new AI part files and main_navigation_screen.dart.
+- Component references checked after making all new presentation widgets library-private.
+- GitHub connector in this environment cannot dispatch a fresh workflow run, so flutter analyze/flutter test still need CI or a local Flutter SDK run before merge.
+
 ## 1. Implementation strategy
 
 The redesign should be implemented incrementally so each commit leaves the AI tab functional.
