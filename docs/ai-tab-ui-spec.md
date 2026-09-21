@@ -2,6 +2,7 @@
 
 Status: implementation-ready UI/UX specification  
 Branch: design/ai-tab-m3-expressive-redesign  
+Implementation plan: docs/ai-tab-implementation-plan.md  
 Scope: visual structure, interaction, component states and motion. Existing AI behavior stays unchanged.
 
 ## 1. Product intent
