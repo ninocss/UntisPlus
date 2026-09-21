@@ -2019,38 +2019,62 @@ ${l.ui('aiAssistantRules')}''';
       return _buildEmptyState(cs);
     }
 
-    return ListView.builder(
+    String? activeTitle;
+    if (_currentChatId != null) {
+      for (final session in _chatHistory) {
+        if (session.id == _currentChatId) {
+          activeTitle = session.title;
+          break;
+        }
+      }
+    }
+
+    final showExtraTyping =
+        _thinking &&
+        !(_chatMessages.isNotEmpty &&
+            _chatMessages.last['role'] == 'assistant' &&
+            (_chatMessages.last['content'] ?? '').isEmpty);
+
+    return ListView(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      itemCount: _chatMessages.length + (_thinking ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == _chatMessages.length) {
-          final isThinkingOfLastMessage =
-              _chatMessages.isNotEmpty &&
-              _chatMessages.last['role'] == 'assistant' &&
-              (_chatMessages.last['content'] ?? '').isEmpty;
-          if (isThinkingOfLastMessage) return const SizedBox.shrink();
-          return const _AiChatMessage(
+      children: [
+        if (activeTitle != null && activeTitle.trim().isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 14),
+            child: Text(
+              activeTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: untisThemeTextStyle(
+                context,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+        for (final entry in _chatMessages.indexed)
+          _AiChatMessage(
+            content: entry.$2['content'] ?? '',
+            isUser: entry.$2['role'] == 'user',
+            streaming:
+                _thinking &&
+                entry.$2['role'] == 'assistant' &&
+                entry.$1 == _chatMessages.length - 1,
+          ),
+        if (showExtraTyping)
+          const _AiChatMessage(
             content: '',
             isUser: false,
             streaming: true,
-          );
-        }
-        final msg = _chatMessages[index];
-        final isUser = msg['role'] == 'user';
-        final content = msg['content'] ?? '';
-        return _AiChatMessage(
-          content: content,
-          isUser: isUser,
-          streaming: _thinking &&
-              !isUser &&
-              index == _chatMessages.length - 1,
-        );
-      },
+          ),
+      ],
     );
   }
 
-    Widget _buildBody(ColorScheme cs) {
+  Widget _buildBody(ColorScheme cs) {
     final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
     final reduceMotion = _aiReduceMotion(context);
 
