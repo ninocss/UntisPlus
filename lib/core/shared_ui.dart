@@ -440,6 +440,25 @@ BorderRadiusGeometry _resolvedSurfaceBorderRadius(
   );
 }
 
+BorderRadius _settingsSegmentRadius(
+  BuildContext context, {
+  required bool isFirst,
+  required bool isLast,
+}) {
+  final tokens = untisThemeTokensOf(context);
+  final outer = _resolvedSurfaceCornerRadius(tokens.surfaceRadius);
+  final inner = math.min(outer, 8.0);
+  final outerRadius = Radius.circular(outer);
+  final innerRadius = Radius.circular(inner);
+
+  return BorderRadius.only(
+    topLeft: isFirst ? outerRadius : innerRadius,
+    topRight: isFirst ? outerRadius : innerRadius,
+    bottomLeft: isLast ? outerRadius : innerRadius,
+    bottomRight: isLast ? outerRadius : innerRadius,
+  );
+}
+
 class ThemedSurface extends StatelessWidget {
   final Widget child;
   final BorderRadiusGeometry? borderRadius;
@@ -450,6 +469,7 @@ class ThemedSurface extends StatelessWidget {
   final bool blur;
   final bool respectSurfaceBlurPreference;
   final bool respectSurfaceCornerPreference;
+  final bool showShadow;
 
   const ThemedSurface({
     super.key,
@@ -462,6 +482,7 @@ class ThemedSurface extends StatelessWidget {
     this.blur = true,
     this.respectSurfaceBlurPreference = true,
     this.respectSurfaceCornerPreference = true,
+    this.showShadow = true,
   });
 
   @override
@@ -559,16 +580,18 @@ class ThemedSurface extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: radius,
-              boxShadow: [
-                BoxShadow(
-                  color: !tokens.glowEffectsEnabled &&
-                          tokens.id == AppThemeId.cyber
-                      ? cs.shadow.withValues(alpha: 0.12)
-                      : tokens.shadowColor,
-                  offset: tokens.shadowOffset,
-                  blurRadius: tokens.hardShadow ? 0 : 20,
-                ),
-              ],
+              boxShadow: showShadow
+                  ? [
+                      BoxShadow(
+                        color: !tokens.glowEffectsEnabled &&
+                                tokens.id == AppThemeId.cyber
+                            ? cs.shadow.withValues(alpha: 0.12)
+                            : tokens.shadowColor,
+                        offset: tokens.shadowOffset,
+                        blurRadius: tokens.hardShadow ? 0 : 20,
+                      ),
+                    ]
+                  : null,
             ),
             child: surface,
           ),
@@ -1117,7 +1140,7 @@ class SettingsGroup extends StatelessWidget {
         children: [
           if (title != null) ...[
             Padding(
-              padding: const EdgeInsets.only(left: 12, bottom: 6, top: 4),
+              padding: const EdgeInsets.only(left: 12, bottom: 7, top: 4),
               child: Text(
                 title!,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -1135,42 +1158,37 @@ class SettingsGroup extends StatelessWidget {
               surfaceCornerRadiusNotifier,
             ]),
             builder: (context, _) {
-              final radius = _resolvedSurfaceBorderRadius(
-                BorderRadius.circular(tokens.surfaceRadius),
-              );
-              return _glassContainer(
-                context: context,
-                borderRadius: radius,
-                color: cs.surfaceContainerLow.withValues(alpha: 0.5),
-                border: Border.all(
-                  color: tokens.id == AppThemeId.manga
-                      ? cs.outline
-                      : cs.primary.withValues(alpha: 0.20),
-                  width: tokens.borderWidth,
-                ),
-                child: Padding(
-                  padding: padding ?? EdgeInsets.zero,
-                  child: Material(
-                    type: MaterialType.transparency,
-                    shape: RoundedRectangleBorder(borderRadius: radius),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (int i = 0; i < validChildren.length; i++) ...[
-                          validChildren[i],
-                          if (i < validChildren.length - 1)
-                            Divider(
-                              height: 1,
-                              indent: 58,
-                              endIndent: 16,
-                              color: cs.outlineVariant.withValues(alpha: 0.35),
-                            ),
-                        ],
-                      ],
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < validChildren.length; i++) ...[
+                    ThemedSurface(
+                      borderRadius: _settingsSegmentRadius(
+                        context,
+                        isFirst: i == 0,
+                        isLast: i == validChildren.length - 1,
+                      ),
+                      color: cs.surfaceContainerLow.withValues(alpha: 0.78),
+                      border: Border.all(
+                        color: tokens.id == AppThemeId.manga
+                            ? cs.outline
+                            : cs.outlineVariant.withValues(alpha: 0.30),
+                        width: tokens.borderWidth,
+                      ),
+                      respectSurfaceCornerPreference: false,
+                      showShadow: false,
+                      child: Padding(
+                        padding: padding ?? EdgeInsets.zero,
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: validChildren[i],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                    if (i < validChildren.length - 1)
+                      const SizedBox(height: 4),
+                  ],
+                ],
               );
             },
           ),
@@ -1240,13 +1258,7 @@ class SettingsTile extends StatelessWidget {
                       (destructive
                           ? cs.errorContainer
                           : cs.primary.withValues(alpha: 0.14)),
-                  borderRadius: BorderRadius.circular(
-                    _expressiveRadius(
-                      context,
-                      tokens.controlRadius,
-                      expressiveRadius: 15,
-                    ),
-                  ),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
@@ -1362,13 +1374,7 @@ class SettingsSwitchTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color:
                       iconBackgroundColor ?? cs.primary.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(
-                    _expressiveRadius(
-                      context,
-                      tokens.controlRadius,
-                      expressiveRadius: 15,
-                    ),
-                  ),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 21, color: iconColor ?? cs.primary),
               )

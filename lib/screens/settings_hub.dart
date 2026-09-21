@@ -622,9 +622,10 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final itemIndex = allItems.indexOf(item);
     final selected =
         expanded && item.pageBuilder != null && itemIndex == _selectedDetail;
-    final radius = BorderRadius.vertical(
-      top: isFirst ? const Radius.circular(28) : Radius.zero,
-      bottom: isLast ? const Radius.circular(28) : Radius.zero,
+    final radius = _settingsSegmentRadius(
+      context,
+      isFirst: isFirst,
+      isLast: isLast,
     );
 
     final tile = Semantics(
@@ -637,8 +638,13 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         decoration: BoxDecoration(
           color: selected
               ? cs.secondaryContainer.withValues(alpha: 0.78)
-              : cs.surfaceContainerLow.withValues(alpha: 0.86),
+              : cs.surfaceContainerLow.withValues(alpha: 0.82),
           borderRadius: radius,
+          border: Border.all(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.42)
+                : cs.outlineVariant.withValues(alpha: 0.30),
+          ),
         ),
         child: Material(
           type: MaterialType.transparency,
@@ -652,13 +658,13 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
               allItems: allItems,
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 15, 14, 15),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               child: Row(
                 children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
-                    width: 50,
-                    height: 50,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: selected
                           ? item.iconColor.withValues(alpha: 0.20)
@@ -668,10 +674,10 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                     child: Icon(
                       item.icon,
                       color: item.iconColor,
-                      size: 25,
+                      size: 21,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,8 +689,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(
                             fontWeight:
-                                selected ? FontWeight.w800 : FontWeight.w700,
-                            fontSize: 17,
+                                selected ? FontWeight.w800 : FontWeight.w600,
+                            fontSize: 15,
                             color: selected
                                 ? cs.onSecondaryContainer
                                 : cs.onSurface,
@@ -697,7 +703,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.w500,
-                            fontSize: 13.2,
+                            fontSize: 12.5,
                             color: selected
                                 ? cs.onSecondaryContainer.withValues(alpha: 0.75)
                                 : cs.onSurfaceVariant,
@@ -747,49 +753,33 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 2, 14, 9),
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 7),
           child: Text(
             title,
             style: GoogleFonts.outfit(
               fontWeight: FontWeight.w800,
-              fontSize: 13.5,
+              fontSize: 13,
               color: cs.primary,
               letterSpacing: 0.15,
             ),
           ),
         ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.30),
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var index = 0; index < items.length; index++) ...[
-                  _buildHubItem(
-                    context,
-                    items[index],
-                    expanded: expanded,
-                    allItems: allItems,
-                    isFirst: index == 0,
-                    isLast: index == items.length - 1,
-                  ),
-                  if (index < items.length - 1)
-                    Divider(
-                      height: 1,
-                      indent: 84,
-                      endIndent: 18,
-                      color: cs.outlineVariant.withValues(alpha: 0.34),
-                    ),
-                ],
-              ],
-            ),
-          ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              _buildHubItem(
+                context,
+                items[index],
+                expanded: expanded,
+                allItems: allItems,
+                isFirst: index == 0,
+                isLast: index == items.length - 1,
+              ),
+              if (index < items.length - 1)
+                const SizedBox(height: 4),
+            ],
+          ],
         ),
       ],
     );
@@ -994,7 +984,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                   expanded: expanded,
                   allItems: items,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'personalize'),
@@ -1002,7 +992,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                   expanded: expanded,
                   allItems: items,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'smart'),
@@ -1010,7 +1000,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                   expanded: expanded,
                   allItems: items,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'data'),
@@ -1018,7 +1008,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                   expanded: expanded,
                   allItems: items,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 _buildSection(
                   context,
                   title: _sectionTitle(l, 'app'),
