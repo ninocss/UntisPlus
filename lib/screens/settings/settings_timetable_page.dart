@@ -67,13 +67,7 @@ class SettingsTimetablePage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsSectionTimetable,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsSectionTimetable),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
@@ -864,15 +858,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
       visualThemeNotifier.value,
     ).supportsAdvancedLessonStyle) {
       return Scaffold(
-        appBar: RoundedBlurAppBar(
-          title: Text(
-            l.settingsLessonDesignTitle,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: cs.primary,
-            ),
-          ),
-        ),
+        appBar: _settingsHeaderAppBar(context, l.settingsLessonDesignTitle),
         body: _AnimatedBackground(
           child: ListView(
             padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 80),
@@ -949,13 +935,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
     }
 
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsLessonDesignTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsLessonDesignTitle),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),

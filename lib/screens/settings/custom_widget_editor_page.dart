@@ -247,9 +247,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   }) async {
     final l = AppL10n.of(appLocaleNotifier.value);
     var color = Color(current);
-    await showUntisModalBottomSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
@@ -1309,26 +1308,16 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     final cs = Theme.of(context).colorScheme;
     if (_loading) {
       return Scaffold(
-        appBar: RoundedBlurAppBar(title: Text(l.ui('editor'))),
+        appBar: _settingsHeaderAppBar(context, l.ui('editor')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     final config = _selected;
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        centerTitle: false,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.widgets_rounded, color: cs.primary, size: 22),
-            const SizedBox(width: 9),
-            Text(
-              l.ui('editor'),
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
+      appBar: _settingsHeaderAppBar(
+        context,
+        l.ui('editor'),
         actions: [
           IconButton(
             tooltip: 'Undo',

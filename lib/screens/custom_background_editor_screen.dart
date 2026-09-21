@@ -2558,19 +2558,9 @@ class _CustomBackgroundEditorScreenState
       },
       child: Scaffold(
         backgroundColor: cs.surface,
-        appBar: RoundedBlurAppBar(
-          centerTitle: false,
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.wallpaper_rounded, color: cs.primary, size: 22),
-              const SizedBox(width: 9),
-              Text(
-                l.bgEditorTitle,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-              ),
-            ],
-          ),
+        appBar: _settingsHeaderAppBar(
+          context,
+          l.bgEditorTitle,
           actions: [
             IconButton(
               tooltip: l.bgEditorUndo,

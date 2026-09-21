@@ -447,8 +447,9 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
     final isIOS = !kIsWeb && Platform.isIOS;
     final selected = _types.firstWhere((type) => type.id == _selectedType);
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(l.ui('widgetPreviewTitle')),
+      appBar: _settingsHeaderAppBar(
+        context,
+        l.ui('widgetPreviewTitle'),
         actions: [
           IconButton(
             tooltip: l.ui('widgetRefresh'),
