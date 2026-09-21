@@ -1,12 +1,12 @@
 part of '../../../main.dart';
 
-class AiHeroSurface extends StatelessWidget {
+class _AiHeroSurface extends StatelessWidget {
   final _AiMode mode;
   final String title;
   final String subtitle;
   final String? status;
 
-  const AiHeroSurface({
+  const _AiHeroSurface({
     super.key,
     required this.mode,
     required this.title,
