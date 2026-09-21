@@ -734,6 +734,43 @@ double _pageMotionScale(int transitionType) {
 double _pageMotionBlur(int transitionType) =>
     transitionType.clamp(0, 7) == 4 ? 14.0 : 0.0;
 
+/// Prepares the GPU blur pipeline while the app is idle. Without this tiny
+/// composited layer, Android may compile the ImageFiltered pipeline during the
+/// first Focus Blur route transition after a cold start.
+class _FocusBlurWarmup extends StatelessWidget {
+  const _FocusBlurWarmup();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: pageTransitionNotifier,
+      builder: (context, transitionType, _) {
+        if (_pageMotionBlur(transitionType) == 0) {
+          return const SizedBox.shrink();
+        }
+        return IgnorePointer(
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: RepaintBoundary(
+              key: const ValueKey('focus-blur-warmup'),
+              child: ClipRect(
+                child: SizedBox(
+                  width: 1,
+                  height: 1,
+                  child: ImageFiltered(
+                    imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                    child: const ColoredBox(color: Color(0x01000000)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 Route<T> _buildBouncyRoute<T>(
   Widget page, {
   Duration? duration,

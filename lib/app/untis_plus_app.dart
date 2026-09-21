@@ -459,7 +459,13 @@ class UntisPlusApp extends StatelessWidget {
                                                   const SizedBox.shrink(),
                                             );
                                           },
-                                          home: startScreen,
+                                          home: Stack(
+                                            fit: StackFit.expand,
+                                            children: [
+                                              startScreen,
+                                              const _FocusBlurWarmup(),
+                                            ],
+                                          ),
                                         );
                                       },
                                     );

@@ -809,7 +809,21 @@ String _formatUntisTime(String time) {
   return formatUntisTime(time);
 }
 
-Future<bool> _reAuthenticate() async {
+Future<bool>? _reAuthenticationInFlight;
+
+/// Shares a refresh across concurrent requests. The Info tab loads Inbox and
+/// school news together, so an expired session must be renewed once before
+/// each request retries with the new cookie.
+Future<bool> _reAuthenticate() {
+  final inFlight = _reAuthenticationInFlight;
+  if (inFlight != null) return inFlight;
+
+  return _reAuthenticationInFlight = _performReAuthentication().whenComplete(
+    () => _reAuthenticationInFlight = null,
+  );
+}
+
+Future<bool> _performReAuthentication() async {
   final prefs = await SharedPreferences.getInstance();
   final activeId = activeUntisAccountId;
   final account = activeId == null

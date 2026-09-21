@@ -11799,7 +11799,11 @@ class _SchoolNotificationItem {
 
 // --- INFO / SCHUL-BENACHRICHTIGUNGEN ---
 class SchoolNotificationsPage extends StatefulWidget {
-  const SchoolNotificationsPage({super.key});
+  const SchoolNotificationsPage({super.key, this.isActive = true});
+
+  /// The main navigation keeps its pages alive. Delay the first network load
+  /// until this tab is actually shown, then refresh when it is revisited.
+  final bool isActive;
 
   @override
   State<SchoolNotificationsPage> createState() =>
@@ -11818,7 +11822,17 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   @override
   void initState() {
     super.initState();
-    _reload(showSpinner: true);
+    if (widget.isActive) {
+      unawaited(_reload(showSpinner: true));
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SchoolNotificationsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isActive && widget.isActive) {
+      unawaited(_reload(showSpinner: true));
+    }
   }
 
   Future<void> _reload({bool showSpinner = false}) async {

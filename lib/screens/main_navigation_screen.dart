@@ -2262,7 +2262,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   List<Widget> get _pages => <Widget>[
     WeeklyTimetablePage(key: ValueKey(activeUntisAccountId ?? 'active')),
     const ExamsPage(),
-    const SchoolNotificationsPage(),
+    SchoolNotificationsPage(isActive: _selectedIndex == 2),
     const SettingsHubPage(),
     AiAssistantPage(
       key: ValueKey(activeUntisAccountId ?? 'active'),

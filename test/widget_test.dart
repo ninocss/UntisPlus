@@ -58,6 +58,7 @@ void main() {
     appLocaleNotifier.value = 'de';
     activeUntisAccountId = null;
     untisAccountsNotifier.value = const [];
+    pageTransitionNotifier.value = 0;
     themeModeNotifier.value = ThemeMode.light;
     visualThemeNotifier.value = AppThemeId.defaultTheme;
     blurEnabledNotifier.value = true;
@@ -673,6 +674,36 @@ void main() {
       find.byKey(const ValueKey('notifications-master-detail')),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('notifications load when the Info tab becomes active', (
+    tester,
+  ) async {
+    demoModeNotifier.value = true;
+    addTearDown(() => demoModeNotifier.value = false);
+
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SchoolNotificationsPage(isActive: false)),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Willkommen bei Untis+'), findsNothing);
+
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SchoolNotificationsPage(isActive: true)),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Willkommen bei Untis+'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Focus Blur prepares its filter at startup', (tester) async {
+    pageTransitionNotifier.value = 4;
+
+    await tester.pumpWidget(const UntisPlusApp(startScreen: SizedBox.expand()));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('focus-blur-warmup')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

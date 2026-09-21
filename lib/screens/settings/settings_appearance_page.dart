@@ -310,7 +310,7 @@ class SettingsAppearancePage extends StatelessWidget {
       case 4:
         return Icons.blur_on_rounded;
       case 5:
-        return Icons.arrow_forward_rounded;
+        return Icons.arrow_upward_rounded;
       case 6:
         return Icons.arrow_back_rounded;
       case 7:
