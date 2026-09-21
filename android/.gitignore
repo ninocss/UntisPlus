@@ -1,7 +1,5 @@
-gradle-wrapper.jar
 /.gradle
 /captures/
-/gradlew
 /local.properties
 GeneratedPluginRegistrant.java
 .cxx/

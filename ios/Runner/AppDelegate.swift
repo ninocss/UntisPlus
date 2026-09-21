@@ -161,36 +161,70 @@ private class UntisAlarmPlugin: NSObject, FlutterPlugin {
             WidgetCenter.shared.reloadAllTimelines()
             result(nil)
         case "getReadiness":
-            UNUserNotificationCenter.current().getNotificationSettings { settings in
-                let allowed: Bool
-                switch settings.authorizationStatus {
-                case .authorized, .provisional, .notDetermined:
-                    allowed = true
-                case .denied:
-                    allowed = false
-                @unknown default:
-                    // e.g. ephemeral on iOS 14+: notifications may be shown.
-                    allowed = true
-                }
-                result([
-                    // iOS schedules exact times through calendar triggers and
-                    // cannot opt out per-alarm; no separate DND gate exists.
-                    "exactAlarms": true,
-                    "fullScreenIntent": true,
-                    "dndAccess": true,
-                    "notifications": allowed,
-                ])
-            }
+            getReadiness(result: result)
         case "openPermissionSettings":
-            if let url = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(url, options: [:], completionHandler: nil)
-            }
+            let args = call.arguments as? [String: Any] ?? [:]
+            let type = args["type"] as? String
+            openPermissionSettings(type: type)
             result(nil)
         case "pickRingtone":
-            // iOS exposes only bundled sounds; the system default is used.
+            // iOS does not expose a system ringtone picker for alarms.
+            // Return nil to indicate no change, matching Android's behavior
+            // when the picker is unavailable or cancelled.
             result(nil)
         default:
             result(FlutterMethodNotImplemented)
+        }
+    }
+
+    private func getReadiness(result: @escaping FlutterResult) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            let notificationsEnabled: Bool
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .notDetermined:
+                notificationsEnabled = true
+            case .denied:
+                notificationsEnabled = false
+            @unknown default:
+                notificationsEnabled = true
+            }
+
+            // iOS cannot schedule "exact" alarms per-app; calendar triggers fire at the
+            // requested time but the OS may coalesce or delay. We report true because
+            // the alarm scheduler uses calendar triggers which are the closest equivalent.
+            // Full-screen intent is not available on iOS; alarm banners appear instead.
+            // DND access is controlled by the user per-app via Focus modes; we assume granted
+            // if notifications are authorized.
+            let dndAccess = (settings.authorizationStatus == .authorized)
+            let exactAlarms = true
+            let fullScreenIntent = false
+
+            result([
+                "exactAlarms": exactAlarms,
+                "fullScreenIntent": fullScreenIntent,
+                "dndAccess": dndAccess,
+                "notifications": notificationsEnabled,
+            ])
+        }
+    }
+
+    private func openPermissionSettings(type: String?) {
+        var url: URL?
+        switch type {
+        case "notifications":
+            // iOS 16+ supports deep link to app's notification settings
+            if #available(iOS 16.0, *) {
+                url = URL(string: UIApplication.openSettingsURLString)
+            } else {
+                url = URL(string: UIApplication.openSettingsURLString)
+            }
+        default:
+            // General app settings covers exact alarms (not applicable), full-screen intent (N/A), DND
+            url = URL(string: UIApplication.openSettingsURLString)
+        }
+        if let url = url {
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
         }
     }
 }
@@ -254,16 +288,57 @@ private class UntisNotificationsPlugin: NSObject, FlutterPlugin {
     }
 
     private func showProgressiveNotification(args: [String: Any]) {
+        let id = (args["id"] as? NSNumber)?.intValue ?? 1
+        let title = args["title"] as? String ?? ""
+        let body = args["body"] as? String ?? ""
+        let subText = args["subText"] as? String
+        let currentLesson = args["currentLesson"] as? String ?? title
+        let nextLesson = args["nextLesson"] as? String ?? ""
+        let progress = (args["progress"] as? NSNumber)?.intValue
+        let maxProgress = (args["maxProgress"] as? NSNumber)?.intValue
+        let endTimeMs = (args["endTimeMs"] as? NSNumber)?.int64Value
+        let locale = args["locale"] as? String ?? "de"
+        let hasProgress = progress != nil && maxProgress != nil
+
         let content = UNMutableNotificationContent()
-        content.title = args["title"] as? String ?? ""
-        content.body = args["body"] as? String ?? ""
+        content.title = title
+        content.body = body
+        if let subText = subText, !subText.isEmpty {
+            content.subtitle = subText
+        }
         content.sound = .default
+        content.categoryIdentifier = "current_lesson"
+        content.threadIdentifier = "current_lesson"
+
+        // Attach payload for action handling
+        content.userInfo = [
+            "currentLesson": currentLesson,
+            "nextLesson": nextLesson,
+            "type": "progressive",
+        ]
+
+        // Add progress information to userInfo so the app can render it
+        if hasProgress {
+            content.userInfo["progress"] = progress!
+            content.userInfo["maxProgress"] = maxProgress!
+        }
+        if let endTimeMs = endTimeMs, endTimeMs > 0 {
+            content.userInfo["endTimeMs"] = endTimeMs
+        }
+
+        let identifier = "progressive_\(id)"
         let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
+            identifier: identifier,
             content: content,
             trigger: nil
         )
-        UNUserNotificationCenter.current().add(request)
+
+        let center = UNUserNotificationCenter.current()
+        center.add(request) { error in
+            if let error = error {
+                print("Untis+: failed to show progressive notification: \(error)")
+            }
+        }
     }
 }
 
