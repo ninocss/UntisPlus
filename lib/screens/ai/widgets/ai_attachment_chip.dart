@@ -1,10 +1,10 @@
 part of '../../../main.dart';
 
-class AiAttachmentChip extends StatelessWidget {
+class _AiAttachmentChip extends StatelessWidget {
   final AiChatAttachment attachment;
   final VoidCallback? onRemove;
 
-  const AiAttachmentChip({
+  const _AiAttachmentChip({
     super.key,
     required this.attachment,
     this.onRemove,
