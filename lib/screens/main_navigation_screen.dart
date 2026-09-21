@@ -115,12 +115,19 @@ class _AiProposedAction {
     (data['value'] ?? data['grade'] ?? '').toString().replaceAll(',', '.'),
   );
   double get gradeWeight =>
-      double.tryParse((data['weight'] ?? '1').toString().replaceAll(',', '.')) ??
+      double.tryParse(
+        (data['weight'] ?? '1').toString().replaceAll(',', '.'),
+      ) ??
       1;
   String get gradeType => data['type']?.toString().trim() ?? '';
 
   String summary(AppL10n l) {
-    final values = {'subject': subject, 'text': text, 'id': id, 'value': gradeValue};
+    final values = {
+      'subject': subject,
+      'text': text,
+      'id': id,
+      'value': gradeValue,
+    };
     return switch (kind) {
       'create_homework' => l.uiFormat('aiActionCreateHomework', values),
       'update_homework' => l.uiFormat('aiActionUpdateHomework', values),
@@ -752,15 +759,13 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(context).push(
-      _buildBouncyRoute(const SettingsAiPage()),
-    );
+    await Navigator.of(context).push(_buildBouncyRoute(const SettingsAiPage()));
   }
 
   Future<void> _openPromptEditor() async {
-    await Navigator.of(context).push(
-      _buildBouncyRoute(const SettingsAiPage(openPromptEditor: true)),
-    );
+    await Navigator.of(
+      context,
+    ).push(_buildBouncyRoute(const SettingsAiPage(openPromptEditor: true)));
   }
 
   Future<void> _clearCurrentResult() async {
@@ -1110,10 +1115,11 @@ ${l.ui('aiAssistantRules')}''';
           userQuery: userQuery,
         );
       case 'local':
-        return _requestLocalModelText(
+        return requestLocalModelText(
           systemPrompt: systemPrompt,
           userQuery: userQuery,
           modelPath: aiLocalModelPath,
+          runtime: _currentLocalModelRuntime(),
         );
       case 'gemini':
       default:
@@ -1132,9 +1138,7 @@ ${l.ui('aiAssistantRules')}''';
     final index = date.difference(_currentMonday).inDays;
     final dateLabel = DateFormat('dd.MM.yyyy').format(date);
     if (index < 0 || index > 4) {
-      return l
-          .ui('aiDayDataUnavailable')
-          .replaceAll('{date}', dateLabel);
+      return l.ui('aiDayDataUnavailable').replaceAll('{date}', dateLabel);
     }
 
     final lessons = _weekData[index] ?? const [];
@@ -1178,9 +1182,9 @@ ${l.ui('aiAssistantRules')}''';
       _icuLocale(appLocaleNotifier.value),
     ).format(date);
     if (index < 0 || index > 4) {
-      return AppL10n.of(appLocaleNotifier.value)
-          .ui('aiWeekDataUnavailable')
-          .replaceAll('{date}', label);
+      return AppL10n.of(
+        appLocaleNotifier.value,
+      ).ui('aiWeekDataUnavailable').replaceAll('{date}', label);
     }
     final lessons = (_weekData[index] ?? const <dynamic>[])
         .whereType<Map>()
@@ -1189,9 +1193,9 @@ ${l.ui('aiAssistantRules')}''';
         )
         .toList(growable: false);
     if (lessons.isEmpty) {
-      return AppL10n.of(appLocaleNotifier.value)
-          .ui('aiNoScheduledLessons')
-          .replaceAll('{date}', label);
+      return AppL10n.of(
+        appLocaleNotifier.value,
+      ).ui('aiNoScheduledLessons').replaceAll('{date}', label);
     }
     final formatted = lessons
         .map((lesson) {
@@ -1382,7 +1386,9 @@ ${l.ui('aiAssistantRules')}''';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppL10n.of(appLocaleNotifier.value).ui('aiAttachmentTooLarge')),
+            content: Text(
+              AppL10n.of(appLocaleNotifier.value).ui('aiAttachmentTooLarge'),
+            ),
           ),
         );
       }
@@ -2494,7 +2500,9 @@ ${l.ui('aiAssistantRules')}''';
                 IconButton(
                   onPressed: _thinking ? null : _pickAssistantAttachment,
                   icon: const Icon(Icons.attach_file_rounded),
-                  tooltip: AppL10n.of(appLocaleNotifier.value).ui('aiAttachFile'),
+                  tooltip: AppL10n.of(
+                    appLocaleNotifier.value,
+                  ).ui('aiAttachFile'),
                 ),
               Expanded(
                 child: TextField(
@@ -3543,16 +3551,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           MediaQuery.of(context).disableAnimations) {
                         return IndexedStack(
                           index: _selectedIndex,
-                          children: pages.asMap().entries.map((entry) {
-                            final active = entry.key == _selectedIndex;
-                            return TickerMode(
-                              enabled: active,
-                              child: _buildPageWithBackground(
-                                context,
-                                entry.value,
-                              ),
-                            );
-                          }).toList(growable: false),
+                          children: pages
+                              .asMap()
+                              .entries
+                              .map((entry) {
+                                final active = entry.key == _selectedIndex;
+                                return TickerMode(
+                                  enabled: active,
+                                  child: _buildPageWithBackground(
+                                    context,
+                                    entry.value,
+                                  ),
+                                );
+                              })
+                              .toList(growable: false),
                         );
                       }
 
@@ -3561,22 +3573,29 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         builder: (context, transitionType, _) {
                           return Stack(
                             fit: StackFit.expand,
-                            children: pages.asMap().entries.map((entry) {
-                              final active = entry.key == _selectedIndex;
-                              return _MainTabTransitionLayer(
-                                key: ValueKey('main-tab-layer-${entry.key}'),
-                                active: active,
-                                relativePosition: entry.key - _selectedIndex,
-                                transitionType: transitionType,
-                                child: TickerMode(
-                                  enabled: active,
-                                  child: _buildPageWithBackground(
-                                    context,
-                                    entry.value,
-                                  ),
-                                ),
-                              );
-                            }).toList(growable: false),
+                            children: pages
+                                .asMap()
+                                .entries
+                                .map((entry) {
+                                  final active = entry.key == _selectedIndex;
+                                  return _MainTabTransitionLayer(
+                                    key: ValueKey(
+                                      'main-tab-layer-${entry.key}',
+                                    ),
+                                    active: active,
+                                    relativePosition:
+                                        entry.key - _selectedIndex,
+                                    transitionType: transitionType,
+                                    child: TickerMode(
+                                      enabled: active,
+                                      child: _buildPageWithBackground(
+                                        context,
+                                        entry.value,
+                                      ),
+                                    ),
+                                  );
+                                })
+                                .toList(growable: false),
                           );
                         },
                       );
@@ -3939,9 +3958,7 @@ class _TutorialSpotlightClipper extends CustomClipper<Path> {
   Path getClip(Size size) => Path()
     ..fillType = PathFillType.evenOdd
     ..addRect(Offset.zero & size)
-    ..addRRect(
-      RRect.fromRectAndRadius(target, const Radius.circular(18)),
-    );
+    ..addRRect(RRect.fromRectAndRadius(target, const Radius.circular(18)));
 
   @override
   bool shouldReclip(_TutorialSpotlightClipper oldClipper) =>

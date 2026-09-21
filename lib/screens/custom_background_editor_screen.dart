@@ -410,9 +410,7 @@ class _CustomBackgroundEditorScreenState
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.34),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.34)),
       ),
       child: Row(
         children: List.generate(labels.length, (index) {
@@ -433,7 +431,10 @@ class _CustomBackgroundEditorScreenState
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 5,
+                ),
                 decoration: BoxDecoration(
                   color: selected ? cs.secondaryContainer : Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
@@ -455,7 +456,9 @@ class _CustomBackgroundEditorScreenState
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.outfit(
                         fontSize: 11,
-                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: selected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
                         color: selected
                             ? cs.onSecondaryContainer
                             : cs.onSurfaceVariant,
@@ -1235,10 +1238,11 @@ class _CustomBackgroundEditorScreenState
           userPrompt: userPrompt,
         );
       case 'local':
-        return _requestLocalModelText(
+        return requestLocalModelText(
           systemPrompt: systemPrompt,
           userQuery: userPrompt,
           modelPath: aiLocalModelPath,
+          runtime: _currentLocalModelRuntime(),
         );
       case 'gemini':
       default:
@@ -1478,7 +1482,9 @@ class _CustomBackgroundEditorScreenState
                     ),
                   ),
                   IconButton.filledTonal(
-                    tooltip: _isPreviewPaused ? 'Play preview' : 'Pause preview',
+                    tooltip: _isPreviewPaused
+                        ? 'Play preview'
+                        : 'Pause preview',
                     onPressed: _togglePreviewAnimation,
                     icon: Icon(
                       _isPreviewPaused
@@ -1513,10 +1519,14 @@ class _CustomBackgroundEditorScreenState
                     onPanUpdate: (details) {
                       setState(() {
                         _previewParallax = Offset(
-                          (_previewParallax.dx + details.delta.dx * 0.01)
-                              .clamp(-1.0, 1.0),
-                          (_previewParallax.dy + details.delta.dy * 0.01)
-                              .clamp(-1.0, 1.0),
+                          (_previewParallax.dx + details.delta.dx * 0.01).clamp(
+                            -1.0,
+                            1.0,
+                          ),
+                          (_previewParallax.dy + details.delta.dy * 0.01).clamp(
+                            -1.0,
+                            1.0,
+                          ),
                         );
                       });
                     },
@@ -1614,9 +1624,7 @@ class _CustomBackgroundEditorScreenState
       decoration: BoxDecoration(
         color: cs.surface.withValues(alpha: 0.74),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.42),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.42)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1641,977 +1649,896 @@ class _CustomBackgroundEditorScreenState
     final cs = Theme.of(context).colorScheme;
     final l = AppL10n.of(appLocaleNotifier.value);
     final libraryTools = <Widget>[
-
-
-              const SizedBox(width: 8),
-              Text(
-                l.bgEditorLibraryTab,
-                style: GoogleFonts.outfit(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: cs.onSurfaceVariant,
-                  letterSpacing: 0.8,
+      const SizedBox(width: 8),
+      Text(
+        l.bgEditorLibraryTab,
+        style: GoogleFonts.outfit(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: cs.onSurfaceVariant,
+          letterSpacing: 0.8,
+        ),
+      ),
+      const SizedBox(height: 10),
+      SizedBox(
+        height: 118,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: kBuiltInBackgroundPresets.length,
+          separatorBuilder: (context, index) => const SizedBox(width: 12),
+          itemBuilder: (context, index) =>
+              _presetCard(context, kBuiltInBackgroundPresets[index]),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        l.bgEditorStartPoints,
+        style: GoogleFonts.outfit(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: cs.onSurfaceVariant,
+          letterSpacing: 0.8,
+        ),
+      ),
+      const SizedBox(height: 16),
+      // Library
+      ValueListenableBuilder(
+        valueListenable: customBackgroundsNotifier,
+        builder: (context, specs, _) {
+          final selectedId = selectedCustomBackgroundIdNotifier.value;
+          return _sectionCard(
+            key: _librarySectionKey,
+            accent: cs.secondary,
+            radius: 26,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _header(
+                  l.bgEditorLibrary,
+                  Icons.collections_bookmark_rounded,
+                  color: cs.secondary,
                 ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 118,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: kBuiltInBackgroundPresets.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(width: 12),
-                  itemBuilder: (context, index) =>
-                      _presetCard(context, kBuiltInBackgroundPresets[index]),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l.bgEditorStartPoints,
-                style: GoogleFonts.outfit(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: cs.onSurfaceVariant,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Library
-              ValueListenableBuilder(
-                valueListenable: customBackgroundsNotifier,
-                builder: (context, specs, _) {
-                  final selectedId = selectedCustomBackgroundIdNotifier.value;
-                  return _sectionCard(
-                    key: _librarySectionKey,
-                    accent: cs.secondary,
-                    radius: 26,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _header(
-                          l.bgEditorLibrary,
-                          Icons.collections_bookmark_rounded,
-                          color: cs.secondary,
-                        ),
-                        const SizedBox(height: 12),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: specs.length + 1,
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 0.86,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 10,
-                              ),
-                          itemBuilder: (ctx, idx) {
-                            if (idx == 0) {
-                              return InkWell(
-                                borderRadius: BorderRadius.circular(18),
-                                onTap: _newBackground,
-                                child: Container(
+                const SizedBox(height: 12),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: specs.length + 1,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.86,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemBuilder: (ctx, idx) {
+                    if (idx == 0) {
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: _newBackground,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: cs.secondary.withValues(alpha: 0.45),
+                              width: 1.2,
+                            ),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                cs.secondary.withValues(alpha: 0.12),
+                                cs.surfaceContainerHighest.withValues(
+                                  alpha: 0.55,
+                                ),
+                              ],
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 54,
+                                  height: 54,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(
-                                      color: cs.secondary.withValues(
-                                        alpha: 0.45,
-                                      ),
-                                      width: 1.2,
-                                    ),
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        cs.secondary.withValues(alpha: 0.12),
-                                        cs.surfaceContainerHighest.withValues(
-                                          alpha: 0.55,
-                                        ),
-                                      ],
-                                    ),
+                                    color: cs.secondary.withValues(alpha: 0.16),
+                                    shape: BoxShape.circle,
                                   ),
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 54,
-                                          height: 54,
-                                          decoration: BoxDecoration(
-                                            color: cs.secondary.withValues(
-                                              alpha: 0.16,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.add_rounded,
-                                            size: 32,
-                                            color: cs.secondary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          l.bgEditorNew,
-                                          style: GoogleFonts.outfit(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          l.bgEditorNewName,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 11.5,
-                                            color: cs.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  child: Icon(
+                                    Icons.add_rounded,
+                                    size: 32,
+                                    color: cs.secondary,
                                   ),
                                 ),
-                              );
-                            }
+                                const SizedBox(height: 10),
+                                Text(
+                                  l.bgEditorNew,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  l.bgEditorNewName,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 11.5,
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }
 
-                            final s = specs[idx - 1];
-                            final selected = s.id == selectedId;
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(18),
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                selectCustomBackground(s.id);
-                              },
-                              onLongPress: () async {
-                                final choice =
-                                    await _showUnifiedOptionSheet<String>(
-                                      context: context,
-                                      title: s.name,
-                                      fitContentHeight: true,
-                                      options: [
-                                        _SheetOption(
-                                          value: 'edit',
-                                          title: l.bgEditorEdit,
-                                          icon: Icons.edit_rounded,
-                                        ),
-                                        _SheetOption(
-                                          value: 'duplicate',
-                                          title: l.bgEditorDuplicate,
-                                          icon: Icons.copy_rounded,
-                                        ),
-                                        _SheetOption(
-                                          value: 'export',
-                                          title: l.bgEditorExportSelected,
-                                          icon: Icons.ios_share_rounded,
-                                        ),
-                                        _SheetOption(
-                                          value: 'delete',
-                                          title: l.bgEditorDelete,
-                                          icon: Icons.delete_rounded,
-                                          destructive: true,
-                                        ),
-                                      ],
-                                    );
-                                if (choice == 'edit') {
-                                  _commitDraft(s);
-                                                                WidgetsBinding.instance.addPostFrameCallback((
-                                    _,
-                                  ) {
-                                    if (mounted) {
-                                      _scrollToSection(_editSectionKey);
-                                    }
-                                  });
-                                } else if (choice == 'duplicate') {
-                                  final duplicated = duplicateCustomBackground(
-                                    s,
-                                  );
-                                  await upsertCustomBackground(duplicated);
-                                  if (!mounted) return;
-                                  _commitDraft(duplicated);
-                                } else if (choice == 'export') {
-                                  await Clipboard.setData(
-                                    ClipboardData(
-                                      text: exportCustomBackgroundSpecPretty(s),
-                                    ),
-                                  );
-                                } else if (choice == 'delete') {
-                                  await deleteCustomBackground(s.id);
-                                }
-                              },
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  color: cs.surfaceContainerHighest.withValues(
-                                    alpha: 0.38,
-                                  ),
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: selected
-                                        ? cs.primary.withValues(alpha: 0.6)
-                                        : cs.outlineVariant.withValues(
-                                            alpha: 0.45,
-                                          ),
-                                    width: selected ? 1.6 : 1,
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                    final s = specs[idx - 1];
+                    final selected = s.id == selectedId;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        selectCustomBackground(s.id);
+                      },
+                      onLongPress: () async {
+                        final choice = await _showUnifiedOptionSheet<String>(
+                          context: context,
+                          title: s.name,
+                          fitContentHeight: true,
+                          options: [
+                            _SheetOption(
+                              value: 'edit',
+                              title: l.bgEditorEdit,
+                              icon: Icons.edit_rounded,
+                            ),
+                            _SheetOption(
+                              value: 'duplicate',
+                              title: l.bgEditorDuplicate,
+                              icon: Icons.copy_rounded,
+                            ),
+                            _SheetOption(
+                              value: 'export',
+                              title: l.bgEditorExportSelected,
+                              icon: Icons.ios_share_rounded,
+                            ),
+                            _SheetOption(
+                              value: 'delete',
+                              title: l.bgEditorDelete,
+                              icon: Icons.delete_rounded,
+                              destructive: true,
+                            ),
+                          ],
+                        );
+                        if (choice == 'edit') {
+                          _commitDraft(s);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              _scrollToSection(_editSectionKey);
+                            }
+                          });
+                        } else if (choice == 'duplicate') {
+                          final duplicated = duplicateCustomBackground(s);
+                          await upsertCustomBackground(duplicated);
+                          if (!mounted) return;
+                          _commitDraft(duplicated);
+                        } else if (choice == 'export') {
+                          await Clipboard.setData(
+                            ClipboardData(
+                              text: exportCustomBackgroundSpecPretty(s),
+                            ),
+                          );
+                        } else if (choice == 'delete') {
+                          await deleteCustomBackground(s.id);
+                        }
+                      },
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest.withValues(
+                            alpha: 0.38,
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: selected
+                                ? cs.primary.withValues(alpha: 0.6)
+                                : cs.outlineVariant.withValues(alpha: 0.45),
+                            width: selected ? 1.6 : 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Stack(
+                                    fit: StackFit.expand,
                                     children: [
-                                      Expanded(
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          child: Stack(
-                                            fit: StackFit.expand,
-                                            children: [
-                                              CustomBackgroundView(
-                                                spec: s,
-                                                t: selected
-                                                    ? _previewCtrl.value
-                                                    : 0.18,
-                                                parallax: const Offset(0, 0),
+                                      CustomBackgroundView(
+                                        spec: s,
+                                        t: selected ? _previewCtrl.value : 0.18,
+                                        parallax: const Offset(0, 0),
+                                      ),
+                                      if (selected)
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                              color: cs.primary.withValues(
+                                                alpha: 0.85,
                                               ),
-                                              if (selected)
-                                                Container(
-                                                  decoration: BoxDecoration(
-                                                    border: Border.all(
-                                                      color: cs.primary
-                                                          .withValues(
-                                                            alpha: 0.85,
-                                                          ),
-                                                      width: 2,
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          14,
-                                                        ),
-                                                  ),
-                                                ),
-                                            ],
+                                              width: 2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        s.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.outfit(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12.5,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        DateFormat('dd.MM').format(
-                                          DateTime.fromMillisecondsSinceEpoch(
-                                            s.updatedAtMs,
-                                          ),
-                                        ),
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 11,
-                                          color: cs.onSurfaceVariant,
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _duplicateBackground,
-                                icon: const Icon(Icons.copy_rounded, size: 18),
-                                label: Text(
-                                  l.bgEditorDuplicate,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size(0, 48),
-                                  shape: _legacyButtonShape(context, 14),
+                              const SizedBox(height: 8),
+                              Text(
+                                s.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12.5,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _deleteBackground,
-                                icon: Icon(
-                                  Icons.delete_rounded,
-                                  size: 18,
-                                  color: cs.error,
-                                ),
-                                label: Text(
-                                  l.bgEditorDelete,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.error,
+                              const SizedBox(height: 2),
+                              Text(
+                                DateFormat('dd.MM').format(
+                                  DateTime.fromMillisecondsSinceEpoch(
+                                    s.updatedAtMs,
                                   ),
                                 ),
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size(0, 48),
-                                  shape: _legacyButtonShape(context, 14),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  color: cs.onSurfaceVariant,
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _duplicateBackground,
+                        icon: const Icon(Icons.copy_rounded, size: 18),
+                        label: Text(
+                          l.bgEditorDuplicate,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 48),
+                          shape: _legacyButtonShape(context, 14),
+                        ),
+                      ),
                     ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _deleteBackground,
+                        icon: Icon(
+                          Icons.delete_rounded,
+                          size: 18,
+                          color: cs.error,
+                        ),
+                        label: Text(
+                          l.bgEditorDelete,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                            color: cs.error,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 48),
+                          shape: _legacyButtonShape(context, 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ];
+    final designTools = <Widget>[
+      // Name
+      _sectionCard(
+        key: _editSectionKey,
+        accent: cs.primary,
+        radius: 26,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(l.bgEditorMeta, Icons.edit_rounded, color: cs.primary),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _nameCtrl,
+              decoration: InputDecoration(
+                labelText: l.bgEditorName,
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              onChanged: (v) => _updateDraft(_draft.copyWith(name: v)),
+            ),
+          ],
+        ),
+      ),
+
+      // Base gradient
+      _sectionCard(
+        accent: cs.primary,
+        radius: 30,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(l.bgEditorBase, Icons.gradient_rounded, color: cs.primary),
+            const SizedBox(height: 12),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                l.bgEditorUseThemeColors,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                l.bgEditorUseThemeColorsDesc,
+                style: GoogleFonts.outfit(
+                  fontSize: 12.5,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              value: _draft.base.useThemeColors,
+              onChanged: (v) {
+                HapticFeedback.selectionClick();
+                _updateDraft(
+                  _draft.copyWith(
+                    base: _draft.base.copyWith(useThemeColors: v),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 6),
+            SegmentedButton<CustomBackgroundGradientType>(
+              segments: [
+                ButtonSegment(
+                  value: CustomBackgroundGradientType.linear,
+                  label: Text(l.bgEditorGradientLinear),
+                  icon: const Icon(Icons.linear_scale_rounded, size: 18),
+                ),
+                ButtonSegment(
+                  value: CustomBackgroundGradientType.radial,
+                  label: Text(l.bgEditorGradientRadial),
+                  icon: const Icon(
+                    Icons.radio_button_unchecked_rounded,
+                    size: 18,
+                  ),
+                ),
+              ],
+              selected: {_draft.base.type},
+              onSelectionChanged: (v) {
+                if (v.isEmpty) return;
+                HapticFeedback.selectionClick();
+                _updateDraft(
+                  _draft.copyWith(base: _draft.base.copyWith(type: v.first)),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            _slider(
+              label: l.bgEditorBaseOpacity,
+              value: _draft.base.opacity,
+              min: 0.0,
+              max: 0.65,
+              onChanged: (v) {
+                _updateDraft(
+                  _draft.copyWith(base: _draft.base.copyWith(opacity: v)),
+                );
+              },
+              valueLabel: (v) => '${(v * 100).round()}%',
+            ),
+            if (_draft.base.type == CustomBackgroundGradientType.linear)
+              _slider(
+                label: l.bgEditorGradientAngle,
+                value: _draft.base.angleDeg,
+                min: 0,
+                max: 360,
+                onChanged: (v) {
+                  _updateDraft(
+                    _draft.copyWith(base: _draft.base.copyWith(angleDeg: v)),
+                  );
+                },
+                valueLabel: (v) => '${v.round()}°',
+              ),
+            if (_draft.base.type == CustomBackgroundGradientType.radial) ...[
+              _slider(
+                label: l.bgEditorRadialCenterX,
+                value: _draft.base.centerX,
+                min: -1,
+                max: 1,
+                onChanged: (v) {
+                  _updateDraft(
+                    _draft.copyWith(base: _draft.base.copyWith(centerX: v)),
                   );
                 },
               ),
-
-              
-    ];
-    final designTools = <Widget>[
-// Name
-              _sectionCard(
-                key: _editSectionKey,
-                accent: cs.primary,
-                radius: 26,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _header(
-                      l.bgEditorMeta,
-                      Icons.edit_rounded,
-                      color: cs.primary,
+              _slider(
+                label: l.bgEditorRadialCenterY,
+                value: _draft.base.centerY,
+                min: -1,
+                max: 1,
+                onChanged: (v) {
+                  _updateDraft(
+                    _draft.copyWith(base: _draft.base.copyWith(centerY: v)),
+                  );
+                },
+              ),
+              _slider(
+                label: l.bgEditorRadialRadius,
+                value: _draft.base.radius,
+                min: 0.4,
+                max: 2.0,
+                onChanged: (v) {
+                  _updateDraft(
+                    _draft.copyWith(base: _draft.base.copyWith(radius: v)),
+                  );
+                },
+              ),
+            ],
+            if (!_draft.base.useThemeColors) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: List.generate(3, (index) {
+                  final baseColors = _ensureAtLeastNColors(
+                    _draft.base.colors,
+                    3,
+                    cs.primaryContainer,
+                  );
+                  final c = Color(baseColors[index]);
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => _editColorInList(
+                      title: l.bgEditorColorN(index + 1),
+                      colors: _draft.base.colors,
+                      index: index,
+                      fallback: cs.primaryContainer,
+                      onChanged: (updated) {
+                        _updateDraft(
+                          _draft.copyWith(
+                            base: _draft.base.copyWith(
+                              colors: updated.take(4).toList(),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _nameCtrl,
-                      decoration: InputDecoration(
-                        labelText: l.bgEditorName,
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
+                    child: Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: c,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: cs.outlineVariant),
                       ),
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                      onChanged: (v) => _updateDraft(_draft.copyWith(name: v)),
                     ),
-                  ],
+                  );
+                }),
+              ),
+            ],
+          ],
+        ),
+      ),
+
+      // Orbs
+      _sectionCard(
+        accent: cs.tertiary,
+        radius: 26,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(
+              l.bgEditorOrbs,
+              Icons.blur_circular_rounded,
+              color: cs.tertiary,
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                l.bgEditorOrbsEnabled,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+              ),
+              value: _draft.orbs.enabled,
+              onChanged: (v) {
+                HapticFeedback.selectionClick();
+                _updateDraft(
+                  _draft.copyWith(orbs: _draft.orbs.copyWith(enabled: v)),
+                );
+              },
+            ),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                l.bgEditorUseThemeColors,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                l.bgEditorOrbsThemeDesc,
+                style: GoogleFonts.outfit(
+                  fontSize: 12.5,
+                  color: cs.onSurfaceVariant,
                 ),
               ),
-
-              // Base gradient
-              _sectionCard(
-                accent: cs.primary,
-                radius: 30,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _header(
-                      l.bgEditorBase,
-                      Icons.gradient_rounded,
-                      color: cs.primary,
+              value: _draft.orbs.useThemeColors,
+              onChanged: (v) {
+                HapticFeedback.selectionClick();
+                _updateDraft(
+                  _draft.copyWith(
+                    orbs: _draft.orbs.copyWith(useThemeColors: v),
+                  ),
+                );
+              },
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      final seed = math.Random().nextInt(1 << 31);
+                      _updateDraft(
+                        _draft.copyWith(orbs: _draft.orbs.copyWith(seed: seed)),
+                      );
+                    },
+                    icon: const Icon(Icons.casino_rounded, size: 18),
+                    label: Text(
+                      l.bgEditorRandomizeSeed,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        l.bgEditorUseThemeColors,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(
-                        l.bgEditorUseThemeColorsDesc,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12.5,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      value: _draft.base.useThemeColors,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        _updateDraft(
-                          _draft.copyWith(
-                            base: _draft.base.copyWith(useThemeColors: v),
-                          ),
-                        );
-                      },
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 46),
+                      shape: _legacyButtonShape(context, 14),
                     ),
-                    const SizedBox(height: 6),
-                    SegmentedButton<CustomBackgroundGradientType>(
-                      segments: [
-                        ButtonSegment(
-                          value: CustomBackgroundGradientType.linear,
-                          label: Text(l.bgEditorGradientLinear),
-                          icon: const Icon(
-                            Icons.linear_scale_rounded,
-                            size: 18,
-                          ),
-                        ),
-                        ButtonSegment(
-                          value: CustomBackgroundGradientType.radial,
-                          label: Text(l.bgEditorGradientRadial),
-                          icon: const Icon(
-                            Icons.radio_button_unchecked_rounded,
-                            size: 18,
-                          ),
-                        ),
-                      ],
-                      selected: {_draft.base.type},
-                      onSelectionChanged: (v) {
-                        if (v.isEmpty) return;
-                        HapticFeedback.selectionClick();
-                        _updateDraft(
-                          _draft.copyWith(
-                            base: _draft.base.copyWith(type: v.first),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _slider(
-                      label: l.bgEditorBaseOpacity,
-                      value: _draft.base.opacity,
-                      min: 0.0,
-                      max: 0.65,
-                      onChanged: (v) {
-                        _updateDraft(
-                          _draft.copyWith(
-                            base: _draft.base.copyWith(opacity: v),
-                          ),
-                        );
-                      },
-                      valueLabel: (v) => '${(v * 100).round()}%',
-                    ),
-                    if (_draft.base.type == CustomBackgroundGradientType.linear)
-                      _slider(
-                        label: l.bgEditorGradientAngle,
-                        value: _draft.base.angleDeg,
-                        min: 0,
-                        max: 360,
-                        onChanged: (v) {
-                          _updateDraft(
-                            _draft.copyWith(
-                              base: _draft.base.copyWith(angleDeg: v),
-                            ),
-                          );
-                        },
-                        valueLabel: (v) => '${v.round()}°',
-                      ),
-                    if (_draft.base.type ==
-                        CustomBackgroundGradientType.radial) ...[
-                      _slider(
-                        label: l.bgEditorRadialCenterX,
-                        value: _draft.base.centerX,
-                        min: -1,
-                        max: 1,
-                        onChanged: (v) {
-                          _updateDraft(
-                            _draft.copyWith(
-                              base: _draft.base.copyWith(centerX: v),
-                            ),
-                          );
-                        },
-                      ),
-                      _slider(
-                        label: l.bgEditorRadialCenterY,
-                        value: _draft.base.centerY,
-                        min: -1,
-                        max: 1,
-                        onChanged: (v) {
-                          _updateDraft(
-                            _draft.copyWith(
-                              base: _draft.base.copyWith(centerY: v),
-                            ),
-                          );
-                        },
-                      ),
-                      _slider(
-                        label: l.bgEditorRadialRadius,
-                        value: _draft.base.radius,
-                        min: 0.4,
-                        max: 2.0,
-                        onChanged: (v) {
-                          _updateDraft(
-                            _draft.copyWith(
-                              base: _draft.base.copyWith(radius: v),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                    if (!_draft.base.useThemeColors) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: List.generate(3, (index) {
-                          final baseColors = _ensureAtLeastNColors(
-                            _draft.base.colors,
-                            3,
-                            cs.primaryContainer,
-                          );
-                          final c = Color(baseColors[index]);
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(14),
-                            onTap: () => _editColorInList(
-                              title: l.bgEditorColorN(index + 1),
-                              colors: _draft.base.colors,
-                              index: index,
-                              fallback: cs.primaryContainer,
-                              onChanged: (updated) {
-                                _updateDraft(
-                                  _draft.copyWith(
-                                    base: _draft.base.copyWith(
-                                      colors: updated.take(4).toList(),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            child: Container(
-                              width: 54,
-                              height: 54,
-                              decoration: BoxDecoration(
-                                color: c,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: cs.outlineVariant),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _slider(
+              label: l.bgEditorOrbsCount,
+              value: _draft.orbs.count.toDouble(),
+              min: 0,
+              max: 14,
+              onChanged: (v) {
+                _updateDraft(
+                  _draft.copyWith(orbs: _draft.orbs.copyWith(count: v.round())),
+                );
+              },
+              valueLabel: (v) => '${v.round()}',
+            ),
+            _slider(
+              label: l.bgEditorOrbsSize,
+              value: _draft.orbs.size,
+              min: 40,
+              max: 420,
+              onChanged: (v) {
+                _updateDraft(
+                  _draft.copyWith(orbs: _draft.orbs.copyWith(size: v)),
+                );
+              },
+              valueLabel: (v) => '${v.round()}px',
+            ),
+            _slider(
+              label: l.bgEditorOrbsVariance,
+              value: _draft.orbs.sizeVariance,
+              min: 0,
+              max: 1,
+              onChanged: (v) {
+                _updateDraft(
+                  _draft.copyWith(orbs: _draft.orbs.copyWith(sizeVariance: v)),
+                );
+              },
+            ),
+            _slider(
+              label: l.bgEditorOrbsOpacity,
+              value: _draft.orbs.opacity,
+              min: 0,
+              max: 0.65,
+              onChanged: (v) {
+                _updateDraft(
+                  _draft.copyWith(orbs: _draft.orbs.copyWith(opacity: v)),
+                );
+              },
+              valueLabel: (v) => '${(v * 100).round()}%',
+            ),
+            _slider(
+              label: l.bgEditorOrbsSoftness,
+              value: _draft.orbs.softness,
+              min: 0,
+              max: 1,
+              onChanged: (v) {
+                _updateDraft(
+                  _draft.copyWith(orbs: _draft.orbs.copyWith(softness: v)),
+                );
+              },
+            ),
+            if (!_draft.orbs.useThemeColors) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: List.generate(3, (index) {
+                  final orbColors = _ensureAtLeastNColors(
+                    _draft.orbs.colors,
+                    3,
+                    cs.tertiaryContainer,
+                  );
+                  final c = Color(orbColors[index]);
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => _editColorInList(
+                      title: l.bgEditorOrbColorN(index + 1),
+                      colors: _draft.orbs.colors,
+                      index: index,
+                      fallback: cs.tertiaryContainer,
+                      onChanged: (updated) {
+                        _updateDraft(
+                          _draft.copyWith(
+                            orbs: _draft.orbs.copyWith(
+                              colors: updated.take(4).toList(),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    child: Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: c,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: cs.outlineVariant),
+                      ),
+                    ),
+                  );
+                }),
               ),
-
-              // Orbs
-              _sectionCard(
-                accent: cs.tertiary,
-                radius: 26,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _header(
-                      l.bgEditorOrbs,
-                      Icons.blur_circular_rounded,
-                      color: cs.tertiary,
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        l.bgEditorOrbsEnabled,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      value: _draft.orbs.enabled,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        _updateDraft(
-                          _draft.copyWith(
-                            orbs: _draft.orbs.copyWith(enabled: v),
-                          ),
-                        );
-                      },
-                    ),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        l.bgEditorUseThemeColors,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(
-                        l.bgEditorOrbsThemeDesc,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12.5,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
-                      value: _draft.orbs.useThemeColors,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        _updateDraft(
-                          _draft.copyWith(
-                            orbs: _draft.orbs.copyWith(useThemeColors: v),
-                          ),
-                        );
-                      },
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              HapticFeedback.selectionClick();
-                              final seed = math.Random().nextInt(1 << 31);
-                              _updateDraft(
-                                _draft.copyWith(
-                                  orbs: _draft.orbs.copyWith(seed: seed),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.casino_rounded, size: 18),
-                            label: Text(
-                              l.bgEditorRandomizeSeed,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 46),
-                              shape: _legacyButtonShape(context, 14),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    _slider(
-                      label: l.bgEditorOrbsCount,
-                      value: _draft.orbs.count.toDouble(),
-                      min: 0,
-                      max: 14,
-                      onChanged: (v) {
-                        _updateDraft(
-                          _draft.copyWith(
-                            orbs: _draft.orbs.copyWith(count: v.round()),
-                          ),
-                        );
-                      },
-                      valueLabel: (v) => '${v.round()}',
-                    ),
-                    _slider(
-                      label: l.bgEditorOrbsSize,
-                      value: _draft.orbs.size,
-                      min: 40,
-                      max: 420,
-                      onChanged: (v) {
-                        _updateDraft(
-                          _draft.copyWith(orbs: _draft.orbs.copyWith(size: v)),
-                        );
-                      },
-                      valueLabel: (v) => '${v.round()}px',
-                    ),
-                    _slider(
-                      label: l.bgEditorOrbsVariance,
-                      value: _draft.orbs.sizeVariance,
-                      min: 0,
-                      max: 1,
-                      onChanged: (v) {
-                        _updateDraft(
-                          _draft.copyWith(
-                            orbs: _draft.orbs.copyWith(sizeVariance: v),
-                          ),
-                        );
-                      },
-                    ),
-                    _slider(
-                      label: l.bgEditorOrbsOpacity,
-                      value: _draft.orbs.opacity,
-                      min: 0,
-                      max: 0.65,
-                      onChanged: (v) {
-                        _updateDraft(
-                          _draft.copyWith(
-                            orbs: _draft.orbs.copyWith(opacity: v),
-                          ),
-                        );
-                      },
-                      valueLabel: (v) => '${(v * 100).round()}%',
-                    ),
-                    _slider(
-                      label: l.bgEditorOrbsSoftness,
-                      value: _draft.orbs.softness,
-                      min: 0,
-                      max: 1,
-                      onChanged: (v) {
-                        _updateDraft(
-                          _draft.copyWith(
-                            orbs: _draft.orbs.copyWith(softness: v),
-                          ),
-                        );
-                      },
-                    ),
-                    if (!_draft.orbs.useThemeColors) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: List.generate(3, (index) {
-                          final orbColors = _ensureAtLeastNColors(
-                            _draft.orbs.colors,
-                            3,
-                            cs.tertiaryContainer,
-                          );
-                          final c = Color(orbColors[index]);
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(14),
-                            onTap: () => _editColorInList(
-                              title: l.bgEditorOrbColorN(index + 1),
-                              colors: _draft.orbs.colors,
-                              index: index,
-                              fallback: cs.tertiaryContainer,
-                              onChanged: (updated) {
-                                _updateDraft(
-                                  _draft.copyWith(
-                                    orbs: _draft.orbs.copyWith(
-                                      colors: updated.take(4).toList(),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            child: Container(
-                              width: 54,
-                              height: 54,
-                              decoration: BoxDecoration(
-                                color: c,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: cs.outlineVariant),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              
+            ],
+          ],
+        ),
+      ),
     ];
     final effectsTools = <Widget>[
-// Pattern + effects
-              _sectionCard(
-                accent: cs.secondary,
-                radius: 24,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _header(
-                      l.bgEditorEffects,
-                      Icons.auto_fix_high_rounded,
-                      color: cs.secondary,
-                    ),
-                    const SizedBox(height: 12),
-                    SegmentedButton<CustomBackgroundPatternType>(
-                      segments: [
-                        ButtonSegment(
-                          value: CustomBackgroundPatternType.none,
-                          label: Text(l.bgEditorPatternNone),
-                          icon: const Icon(Icons.block_rounded, size: 18),
-                        ),
-                        ButtonSegment(
-                          value: CustomBackgroundPatternType.lines,
-                          label: Text(l.bgEditorPatternLines),
-                          icon: const Icon(
-                            Icons.horizontal_rule_rounded,
-                            size: 18,
-                          ),
-                        ),
-                        ButtonSegment(
-                          value: CustomBackgroundPatternType.grid,
-                          label: Text(l.bgEditorPatternGrid),
-                          icon: const Icon(Icons.grid_on_rounded, size: 18),
-                        ),
-                      ],
-                      selected: {_draft.pattern.type},
-                      onSelectionChanged: (v) {
-                        if (v.isEmpty) return;
-                        HapticFeedback.selectionClick();
-                        _updateDraft(
-                          _draft.copyWith(
-                            pattern: _draft.pattern.copyWith(type: v.first),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _slider(
-                      label: l.bgEditorPatternOpacity,
-                      value: _draft.pattern.opacity,
-                      min: 0,
-                      max: 0.45,
-                      onChanged: (v) {
-                        _updateDraft(
-                          _draft.copyWith(
-                            pattern: _draft.pattern.copyWith(opacity: v),
-                          ),
-                        );
-                      },
-                      valueLabel: (v) => '${(v * 100).round()}%',
-                    ),
-                    _slider(
-                      label: l.bgEditorPatternScale,
-                      value: _draft.pattern.scale,
-                      min: 0.5,
-                      max: 3.0,
-                      onChanged: (v) {
-                        _updateDraft(
-                          _draft.copyWith(
-                            pattern: _draft.pattern.copyWith(scale: v),
-                          ),
-                        );
-                      },
-                    ),
-                    if (_draft.pattern.type ==
-                        CustomBackgroundPatternType.lines)
-                      _slider(
-                        label: l.bgEditorPatternAngle,
-                        value: _draft.pattern.angleDeg,
-                        min: 0,
-                        max: 360,
-                        onChanged: (v) {
-                          _updateDraft(
-                            _draft.copyWith(
-                              pattern: _draft.pattern.copyWith(angleDeg: v),
-                            ),
-                          );
-                        },
-                        valueLabel: (v) => '${v.round()}°',
-                      ),
-                    const SizedBox(height: 6),
-                    _slider(
-                      label: l.bgEditorNoise,
-                      value: _draft.noise,
-                      min: 0,
-                      max: 0.30,
-                      onChanged: (v) => _updateDraft(_draft.copyWith(noise: v)),
-                      valueLabel: (v) => '${(v * 100).round()}%',
-                    ),
-                    _slider(
-                      label: l.bgEditorVignette,
-                      value: _draft.vignette,
-                      min: 0,
-                      max: 0.70,
-                      onChanged: (v) =>
-                          _updateDraft(_draft.copyWith(vignette: v)),
-                      valueLabel: (v) => '${(v * 100).round()}%',
-                    ),
-                  ],
+      // Pattern + effects
+      _sectionCard(
+        accent: cs.secondary,
+        radius: 24,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(
+              l.bgEditorEffects,
+              Icons.auto_fix_high_rounded,
+              color: cs.secondary,
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<CustomBackgroundPatternType>(
+              segments: [
+                ButtonSegment(
+                  value: CustomBackgroundPatternType.none,
+                  label: Text(l.bgEditorPatternNone),
+                  icon: const Icon(Icons.block_rounded, size: 18),
                 ),
-              ),
-
-              // Motion
-              _sectionCard(
-                accent: cs.primaryContainer,
-                radius: 24,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _header(
-                      l.bgEditorMotion,
-                      Icons.motion_photos_on_rounded,
-                      color: cs.primary,
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        l.bgEditorAnimate,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                      value: _draft.animate,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        _updateDraft(_draft.copyWith(animate: v));
-                      },
-                    ),
-                    _slider(
-                      label: l.bgEditorSpeed,
-                      value: _draft.animationSpeed,
-                      min: 0,
-                      max: 2.5,
-                      onChanged: (v) =>
-                          _updateDraft(_draft.copyWith(animationSpeed: v)),
-                    ),
-                    _slider(
-                      label: l.bgEditorParallax,
-                      value: _draft.parallaxStrength,
-                      min: 0,
-                      max: 1,
-                      onChanged: (v) =>
-                          _updateDraft(_draft.copyWith(parallaxStrength: v)),
-                      valueLabel: (v) => '${(v * 100).round()}%',
-                    ),
-                  ],
+                ButtonSegment(
+                  value: CustomBackgroundPatternType.lines,
+                  label: Text(l.bgEditorPatternLines),
+                  icon: const Icon(Icons.horizontal_rule_rounded, size: 18),
                 ),
+                ButtonSegment(
+                  value: CustomBackgroundPatternType.grid,
+                  label: Text(l.bgEditorPatternGrid),
+                  icon: const Icon(Icons.grid_on_rounded, size: 18),
+                ),
+              ],
+              selected: {_draft.pattern.type},
+              onSelectionChanged: (v) {
+                if (v.isEmpty) return;
+                HapticFeedback.selectionClick();
+                _updateDraft(
+                  _draft.copyWith(
+                    pattern: _draft.pattern.copyWith(type: v.first),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            _slider(
+              label: l.bgEditorPatternOpacity,
+              value: _draft.pattern.opacity,
+              min: 0,
+              max: 0.45,
+              onChanged: (v) {
+                _updateDraft(
+                  _draft.copyWith(pattern: _draft.pattern.copyWith(opacity: v)),
+                );
+              },
+              valueLabel: (v) => '${(v * 100).round()}%',
+            ),
+            _slider(
+              label: l.bgEditorPatternScale,
+              value: _draft.pattern.scale,
+              min: 0.5,
+              max: 3.0,
+              onChanged: (v) {
+                _updateDraft(
+                  _draft.copyWith(pattern: _draft.pattern.copyWith(scale: v)),
+                );
+              },
+            ),
+            if (_draft.pattern.type == CustomBackgroundPatternType.lines)
+              _slider(
+                label: l.bgEditorPatternAngle,
+                value: _draft.pattern.angleDeg,
+                min: 0,
+                max: 360,
+                onChanged: (v) {
+                  _updateDraft(
+                    _draft.copyWith(
+                      pattern: _draft.pattern.copyWith(angleDeg: v),
+                    ),
+                  );
+                },
+                valueLabel: (v) => '${v.round()}°',
               ),
+            const SizedBox(height: 6),
+            _slider(
+              label: l.bgEditorNoise,
+              value: _draft.noise,
+              min: 0,
+              max: 0.30,
+              onChanged: (v) => _updateDraft(_draft.copyWith(noise: v)),
+              valueLabel: (v) => '${(v * 100).round()}%',
+            ),
+            _slider(
+              label: l.bgEditorVignette,
+              value: _draft.vignette,
+              min: 0,
+              max: 0.70,
+              onChanged: (v) => _updateDraft(_draft.copyWith(vignette: v)),
+              valueLabel: (v) => '${(v * 100).round()}%',
+            ),
+          ],
+        ),
+      ),
 
-              
+      // Motion
+      _sectionCard(
+        accent: cs.primaryContainer,
+        radius: 24,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(
+              l.bgEditorMotion,
+              Icons.motion_photos_on_rounded,
+              color: cs.primary,
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                l.bgEditorAnimate,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+              ),
+              value: _draft.animate,
+              onChanged: (v) {
+                HapticFeedback.selectionClick();
+                _updateDraft(_draft.copyWith(animate: v));
+              },
+            ),
+            _slider(
+              label: l.bgEditorSpeed,
+              value: _draft.animationSpeed,
+              min: 0,
+              max: 2.5,
+              onChanged: (v) =>
+                  _updateDraft(_draft.copyWith(animationSpeed: v)),
+            ),
+            _slider(
+              label: l.bgEditorParallax,
+              value: _draft.parallaxStrength,
+              min: 0,
+              max: 1,
+              onChanged: (v) =>
+                  _updateDraft(_draft.copyWith(parallaxStrength: v)),
+              valueLabel: (v) => '${(v * 100).round()}%',
+            ),
+          ],
+        ),
+      ),
     ];
     final aiTools = <Widget>[
-// AI
-              _sectionCard(
-                accent: cs.tertiary,
-                radius: 30,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _header(
-                      l.bgEditorAiTitle,
-                      Icons.auto_awesome_rounded,
-                      color: cs.tertiary,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      l.bgEditorAiDesc,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12.8,
-                        color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _aiCtrl,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: l.bgEditorAiHint,
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _aiBusy ? null : _generateWithAi,
-                        icon: _aiBusy
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.auto_awesome_rounded),
-                        label: Text(
-                          l.bgEditorAiGenerate,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(0, 54),
-                          shape: _legacyButtonShape(context, 16),
-                        ),
-                      ),
-                    ),
-                  ],
+      // AI
+      _sectionCard(
+        accent: cs.tertiary,
+        radius: 30,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(
+              l.bgEditorAiTitle,
+              Icons.auto_awesome_rounded,
+              color: cs.tertiary,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              l.bgEditorAiDesc,
+              style: GoogleFonts.outfit(
+                fontSize: 12.8,
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _aiCtrl,
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: l.bgEditorAiHint,
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
                 ),
               ),
-            
-    
+              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _aiBusy ? null : _generateWithAi,
+                icon: _aiBusy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded),
+                label: Text(
+                  l.bgEditorAiGenerate,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+                ),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 54),
+                  shape: _legacyButtonShape(context, 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     ];
     final inspectorChildren = switch (_backgroundToolIndex) {
       0 => libraryTools,
@@ -2619,7 +2546,6 @@ class _CustomBackgroundEditorScreenState
       2 => effectsTools,
       _ => aiTools,
     };
-
 
     return PopScope(
       canPop: false,
