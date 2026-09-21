@@ -165,18 +165,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
 
   Future<List<String>> _supportedAbis() async {
     if (!_isAndroid) return const [];
-    try {
-      final raw = await _uiChannel.invokeMethod<List<dynamic>>(
-        'getSupportedAbis',
-      );
-      return raw
-              ?.map((abi) => abi.toString().trim())
-              .where((abi) => abi.isNotEmpty)
-              .toList(growable: false) ??
-          const [];
-    } catch (_) {
-      return const [];
-    }
+    return nativeUiGateway.supportedAbis();
   }
 
   String _formatBytes(int value) {
@@ -202,9 +191,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
 
   Future<void> _promptInstaller(AppL10n l, String apkPath) async {
     final messenger = ScaffoldMessenger.of(context);
-    final installResult = await _uiChannel.invokeMethod<String>('installApk', {
-      'path': apkPath,
-    });
+    final installResult = await nativeUiGateway.installApk(apkPath);
     if (!mounted) return;
     if (installResult == 'permission') {
       _pendingInstallPath = apkPath;

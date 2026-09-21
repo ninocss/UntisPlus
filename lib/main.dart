@@ -50,6 +50,7 @@ import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
 import 'features/ai/data/remote_ai_provider.dart';
+import 'platform/native_ui_gateway.dart';
 import 'core/sync_state.dart';
 
 part 'core/school_models.dart';
@@ -122,18 +123,6 @@ bool _hasMissingTeacher(dynamic lesson) {
   ).hasMatch(info);
 }
 
-const MethodChannel _uiChannel = MethodChannel('untisplus/ui');
-
-void _registerNativeUiActions() {
-  _uiChannel.setMethodCallHandler((call) async {
-    if (call.method == 'openAssistant') {
-      final prompt = call.arguments?.toString().trim() ?? '';
-      pendingAssistantPromptNotifier.value = prompt.isEmpty ? null : prompt;
-      pendingAssistantOpenNotifier.value = true;
-    }
-  });
-}
-
 /// Invoked by the native exact pre-wake alarm. It deliberately reuses the
 /// existing authenticated WebUntis sync, then tells Android the final plan.
 @pragma('vm:entry-point')
@@ -145,33 +134,7 @@ void alarmRefreshDispatcher() async {
   } catch (_) {
     // The native scheduler retains the last confirmed alarm on a failed sync.
   } finally {
-    try {
-      await const MethodChannel(
-        'untisplus/alarm_refresh',
-      ).invokeMethod<void>('completed', {'refreshed': refreshed});
-    } catch (_) {}
-  }
-}
-
-Future<void> _applyAndroidWindowBlur(bool enabled) async {
-  // Android only: blurs the launcher backdrop behind the transparent window.
-  // iOS overlays a full-screen UIVisualEffectView that covers the Flutter UI,
-  // so the whole app would render as a single frosted colour.
-  if (kIsWeb || !Platform.isAndroid) return;
-  try {
-    await _uiChannel.invokeMethod<void>('setWindowBlur', enabled ? 80 : 0);
-  } catch (_) {
-    // Silently ignore on platforms/API levels that don't support it.
-  }
-}
-
-Future<bool> _applyLauncherIcon(String icon) async {
-  if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return false;
-  try {
-    return await _uiChannel.invokeMethod<bool>('setLauncherIcon', icon) ??
-        false;
-  } catch (_) {
-    return false;
+    await alarmRefreshGateway.completed(refreshed: refreshed);
   }
 }
 
@@ -511,7 +474,10 @@ Future<void> _initializeDeferredAccountData() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   unawaited(OfflineCacheStore.instance.preWarm());
-  _registerNativeUiActions();
+  nativeUiGateway.registerAssistantOpenHandler((prompt) {
+    pendingAssistantPromptNotifier.value = prompt;
+    pendingAssistantOpenNotifier.value = true;
+  });
 
   final prefs = await SharedPreferences.getInstance();
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
@@ -643,7 +609,7 @@ void main() async {
       (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
   appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
-  unawaited(_applyAndroidWindowBlur(blurEnabledNotifier.value));
+  unawaited(nativeUiGateway.setWindowBlur(blurEnabledNotifier.value));
   await loadAccountPersonalData();
   pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
     0,
@@ -14422,7 +14388,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _setBlurEnabled(bool v) async {
     blurEnabledNotifier.value = v;
-    unawaited(_applyAndroidWindowBlur(v));
+    unawaited(nativeUiGateway.setWindowBlur(v));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('blurEnabled', v);
   }

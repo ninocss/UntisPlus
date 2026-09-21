@@ -31,7 +31,7 @@ Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
   // dependent blur state in the same update so unsupported themes never show
   // a transient blur while preferences are being written.
   blurEnabledNotifier.value = enabled;
-  unawaited(_applyAndroidWindowBlur(enabled));
+  unawaited(nativeUiGateway.setWindowBlur(enabled));
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('visualTheme', theme.storageKey);
 }
@@ -75,7 +75,7 @@ Future<void> _settingsSetBlurEnabled(bool value) async {
     ..[theme.storageKey] = value;
   themeBlurPreferencesNotifier.value = updated;
   blurEnabledNotifier.value = value;
-  unawaited(_applyAndroidWindowBlur(value));
+  unawaited(nativeUiGateway.setWindowBlur(value));
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString('themeBlurPreferences', jsonEncode(updated));
   await prefs.setBool('blurEnabled', value);
@@ -1112,7 +1112,7 @@ Future<void> _settingsSetAppIcon(String icon) async {
     'paper',
   };
   if (!supported.contains(icon)) return;
-  final applied = await _applyLauncherIcon(icon);
+  final applied = await nativeUiGateway.setLauncherIcon(icon);
   if (!applied && !kIsWeb) return;
   appIconNotifier.value = icon;
   final prefs = await SharedPreferences.getInstance();
