@@ -2117,7 +2117,6 @@ ${l.ui('aiAssistantRules')}''';
 
   Widget _buildEmptyState(ColorScheme cs) {
     final l = AppL10n.of(appLocaleNotifier.value);
-    final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
     final analysisSuggestions = _buildContextualChips();
     const suggestionIcons = <IconData>[
       Icons.trending_up_rounded,
@@ -2126,16 +2125,10 @@ ${l.ui('aiAssistantRules')}''';
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _AiHeroSurface(
-            mode: mode,
-            title: _chatMode ? l.aiChatTitle : l.aiEmptyPromptTitle,
-            subtitle: _chatMode ? l.aiChatSubtitle : l.aiEmptyPromptSubtitle,
-          ),
-          const SizedBox(height: 22),
           if (_chatMode) ...[
             Text(
               l.aiTryIt,
