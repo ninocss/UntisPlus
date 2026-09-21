@@ -936,12 +936,27 @@ Widget _m3SelectionMenu({
   );
 }
 
+Widget _sheetDragHandle(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  return Center(
+    child: Container(
+      width: 40,
+      height: 4,
+      decoration: BoxDecoration(
+        color: cs.onSurface.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+  );
+}
+
 Future<T?> _showUnifiedSheet<T>({
   required BuildContext context,
   Widget? child,
   WidgetBuilder? builder,
   bool isScrollControlled = false,
   bool useSafeArea = true,
+  bool showHandle = true,
   EdgeInsetsGeometry? outerPadding,
 }) {
   assert(
@@ -954,10 +969,27 @@ Future<T?> _showUnifiedSheet<T>({
     useSafeArea: useSafeArea,
     backgroundColor: Colors.transparent,
     elevation: 0,
+    sheetAnimationStyle: _kBottomSheetAnimationStyle,
     builder: (ctx) {
       Widget content = builder?.call(ctx) ?? child!;
       if (outerPadding != null) {
         content = Padding(padding: outerPadding, child: content);
+      }
+      if (showHandle) {
+        content = Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 28),
+              child: content,
+            ),
+            Positioned(
+              top: 12,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(child: _sheetDragHandle(ctx)),
+            ),
+          ],
+        );
       }
       return _sheetSurface(context: ctx, child: content);
     },
@@ -972,83 +1004,161 @@ Future<T?> _showUnifiedOptionSheet<T>({
   bool fitContentHeight = false,
   double bottomMargin = 0,
 }) {
-  return showUntisModalBottomSheet<T>(
+  return _showUnifiedSheet<T>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    elevation: 0,
     builder: (ctx) {
       final cs = Theme.of(ctx).colorScheme;
-      return _sheetSurface(
-        context: ctx,
-        child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(bottom: bottomMargin),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: Theme.of(
-                    ctx,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+
+      Widget optionList = ListView.separated(
+        shrinkWrap: true,
+        physics: fitContentHeight
+            ? const NeverScrollableScrollPhysics()
+            : const ClampingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+        itemCount: options.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 6),
+        itemBuilder: (context, index) {
+          final opt = options[index];
+          final foreground = opt.destructive
+              ? cs.error
+              : (opt.selected ? cs.primary : cs.onSurface);
+          final iconBackground = opt.destructive
+              ? cs.errorContainer.withValues(alpha: 0.78)
+              : opt.selected
+              ? cs.primaryContainer.withValues(alpha: 0.88)
+              : cs.surfaceContainerHighest.withValues(alpha: 0.72);
+          final rowBackground = opt.selected
+              ? cs.primaryContainer.withValues(alpha: 0.42)
+              : cs.surfaceContainerLow.withValues(alpha: 0.72);
+
+          final leading = opt.leading ??
+              (opt.icon == null
+                  ? null
+                  : Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: iconBackground,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(opt.icon, size: 20, color: foreground),
+                    ));
+
+          return Material(
+            color: rowBackground,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => Navigator.pop(ctx, opt.value),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-                const SizedBox(height: 16),
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    itemBuilder: (context, index) {
-                      final opt = options[index];
-                      return Material(
-                        color: Colors.transparent,
-                        child: ListTile(
-                          leading:
-                              opt.leading ??
-                              (opt.icon != null
-                                  ? Icon(
-                                      opt.icon,
-                                      color: opt.destructive
-                                          ? cs.error
-                                          : (opt.selected ? cs.primary : null),
-                                    )
-                                  : null),
-                          title: Text(
+                child: Row(
+                  children: [
+                    if (leading != null) ...[
+                      leading,
+                      const SizedBox(width: 14),
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
                             opt.title,
-                            style: TextStyle(
-                              color: opt.destructive
-                                  ? cs.error
-                                  : (opt.selected ? cs.primary : null),
-                              fontWeight: opt.selected ? FontWeight.bold : null,
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: opt.selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w700,
+                              color: foreground,
                             ),
                           ),
-                          subtitle: opt.subtitle != null
-                              ? Text(opt.subtitle!)
-                              : null,
-                          trailing: opt.selected
-                              ? Icon(Icons.check, color: cs.primary)
-                              : null,
-                          onTap: () {
-                            Navigator.pop(ctx, opt.value);
-                          },
+                          if (opt.subtitle != null &&
+                              opt.subtitle!.trim().isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              opt.subtitle!,
+                              style: GoogleFonts.outfit(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: opt.destructive
+                                    ? cs.error.withValues(alpha: 0.78)
+                                    : cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (opt.selected) ...[
+                      const SizedBox(width: 10),
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          shape: BoxShape.circle,
                         ),
-                      );
-                    },
-                  ),
+                        child: Icon(
+                          Icons.check_rounded,
+                          size: 17,
+                          color: cs.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
             ),
+          );
+        },
+      );
+
+      if (!fitContentHeight) {
+        optionList = Flexible(child: optionList);
+      }
+
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomMargin),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
+                child: Column(
+                  children: [
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    if (subtitle != null && subtitle.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              optionList,
+            ],
           ),
         ),
       );
@@ -1201,6 +1311,33 @@ class SettingsGroup extends StatelessWidget {
       ),
     );
   }
+}
+
+PreferredSizeWidget _mainTabHeaderAppBar(
+  BuildContext context,
+  String title, {
+  List<Widget>? actions,
+  Widget? leading,
+  PreferredSizeWidget? bottom,
+}) {
+  return RoundedBlurAppBar(
+    height: 64,
+    centerTitle: true,
+    leading: leading,
+    actions: actions,
+    bottom: bottom,
+    title: Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: GoogleFonts.outfit(
+        fontSize: 26,
+        fontWeight: FontWeight.w900,
+        color: Colors.black,
+      ),
+    ),
+  );
 }
 
 PreferredSizeWidget _settingsHeaderAppBar(
