@@ -49,6 +49,7 @@ import 'features/changes/domain/timetable_change.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
+import 'features/ai/data/remote_ai_provider.dart';
 import 'core/sync_state.dart';
 
 part 'core/school_models.dart';
@@ -171,291 +172,6 @@ Future<bool> _applyLauncherIcon(String icon) async {
         false;
   } catch (_) {
     return false;
-  }
-}
-
-/// Abstract interface for AI providers.
-abstract class AIProvider {
-  Stream<String> streamResponse({
-    required String systemPrompt,
-    required List<Map<String, String>> history,
-    required String model,
-    List<AiChatAttachment> attachments = const [],
-  });
-
-  Future<void> dispose();
-}
-
-/// Decodes server-sent events independently of arbitrary HTTP chunk
-/// boundaries. Providers are free to split an event at any byte, so splitting
-/// every decoded network chunk on `\n` loses tokens in practice.
-Stream<String> _sseDataEvents(Stream<List<int>> bytes) async* {
-  await for (final line
-      in bytes.transform(utf8.decoder).transform(const LineSplitter())) {
-    final data = line.startsWith('data:')
-        ? line.substring(5).trim()
-        // Some OpenAI-compatible endpoints silently ignore `stream: true`
-        // and return one compact JSON response. Feed it through the same
-        // parser instead of leaving the chat bubble empty.
-        : line.trim().startsWith('{')
-        ? line.trim()
-        : '';
-    if (data.isNotEmpty) yield data;
-  }
-}
-
-/// Kept in memory only for the duration of the pending assistant message.
-class AiChatAttachment {
-  const AiChatAttachment({
-    required this.name,
-    required this.mimeType,
-    required this.bytes,
-    this.textExcerpt = '',
-  });
-
-  final String name;
-  final String mimeType;
-  final Uint8List bytes;
-  final String textExcerpt;
-
-  bool get isImage => mimeType.startsWith('image/');
-  bool get isPdf => mimeType == 'application/pdf';
-  bool get isText => textExcerpt.isNotEmpty;
-}
-
-/// Base class for remote API providers (Gemini, OpenAI, Mistral, Custom).
-abstract class RemoteAIProvider implements AIProvider {
-  final String apiKey;
-  final String? baseUrl;
-  final bool useGeminiProtocol;
-
-  RemoteAIProvider({
-    required this.apiKey,
-    this.baseUrl,
-    required this.useGeminiProtocol,
-  });
-
-  @override
-  Future<void> dispose() async {}
-}
-
-/// Gemini / Google Generative AI provider.
-class GeminiProvider extends RemoteAIProvider {
-  GeminiProvider({required super.apiKey, String? endpoint})
-    : _endpoint = endpoint,
-      super(useGeminiProtocol: true);
-
-  final String? _endpoint;
-
-  @override
-  Stream<String> streamResponse({
-    required String systemPrompt,
-    required List<Map<String, String>> history,
-    required String model,
-    List<AiChatAttachment> attachments = const [],
-  }) async* {
-    final lastUserIndex = history.lastIndexWhere(
-      (message) => message['role'] == 'user',
-    );
-    final contents = history.indexed.map((entry) {
-      final index = entry.$1;
-      final m = entry.$2;
-      final role = m['role'] == 'user' ? 'user' : 'model';
-      final parts = <Map<String, dynamic>>[
-        {'text': m['content'] ?? ''},
-      ];
-      if (index == lastUserIndex) {
-        for (final attachment in attachments) {
-          if (attachment.isImage || attachment.isPdf) {
-            parts.add({
-              'inlineData': {
-                'mimeType': attachment.mimeType,
-                'data': base64Encode(attachment.bytes),
-              },
-            });
-          }
-          if (attachment.isText) {
-            parts.add({
-              'text':
-                  AppL10n.of(appLocaleNotifier.value).uiFormat(
-                    'aiAttachmentText',
-                    {'name': attachment.name, 'excerpt': attachment.textExcerpt},
-                  ),
-            });
-          }
-        }
-      }
-      return <String, dynamic>{'role': role, 'parts': parts};
-    }).toList();
-
-    final body = jsonEncode({
-      'systemInstruction': {
-        'parts': [
-          {'text': systemPrompt},
-        ],
-      },
-      'contents': contents,
-      'generationConfig': {
-        'maxOutputTokens': aiMaxTokens,
-        'temperature': aiTemperature,
-        'topP': aiTopP,
-      },
-    });
-
-    final endpoint =
-        _endpoint ??
-        'https://generativelanguage.googleapis.com/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
-
-    final endpointUri = Uri.parse(endpoint);
-    final request = http.Request(
-      'POST',
-      endpointUri.replace(
-        queryParameters: {
-          ...endpointUri.queryParameters,
-          if (!endpointUri.queryParameters.containsKey('alt')) 'alt': 'sse',
-          if (!endpointUri.queryParameters.containsKey('key')) 'key': apiKey,
-        },
-      ),
-    );
-    request.headers.addAll({'Content-Type': 'application/json'});
-    request.body = body;
-
-    final response = await http.Client().send(request);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('API: ${await response.stream.bytesToString()}');
-    }
-
-    await for (final data in _sseDataEvents(response.stream)) {
-      if (data == '[DONE]') return;
-      try {
-        final json = jsonDecode(data);
-        final candidates = json['candidates'];
-        if (candidates is List && candidates.isNotEmpty) {
-          final content = candidates.first['content'];
-          final parts = content is Map ? content['parts'] : null;
-          if (parts is List) {
-            for (final part in parts) {
-              if (part is Map && part['text'] is String) {
-                yield part['text'] as String;
-              }
-            }
-          }
-        }
-      } catch (_) {}
-    }
-  }
-}
-
-/// OpenAI-compatible provider (OpenAI, Mistral, Custom OpenAI-compatible).
-class OpenAICompatibleProvider extends RemoteAIProvider {
-  final String endpoint;
-
-  OpenAICompatibleProvider({
-    required super.apiKey,
-    required this.endpoint,
-    super.baseUrl,
-  }) : super(useGeminiProtocol: false);
-
-  @override
-  Stream<String> streamResponse({
-    required String systemPrompt,
-    required List<Map<String, String>> history,
-    required String model,
-    List<AiChatAttachment> attachments = const [],
-  }) async* {
-    final lastUserIndex = history.lastIndexWhere(
-      (message) => message['role'] == 'user',
-    );
-    final messages = <Map<String, dynamic>>[
-      {'role': 'system', 'content': systemPrompt},
-      for (final entry in history.indexed)
-        if (entry.$1 != lastUserIndex)
-          Map<String, dynamic>.from(entry.$2)
-        else
-          {
-            'role': 'user',
-            'content': <Map<String, dynamic>>[
-              {'type': 'text', 'text': entry.$2['content'] ?? ''},
-              for (final attachment in attachments)
-                if (attachment.isImage)
-                  {
-                    'type': 'image_url',
-                    'image_url': {
-                      'url':
-                          'data:${attachment.mimeType};base64,${base64Encode(attachment.bytes)}',
-                    },
-                  }
-                else if (attachment.isText)
-                  {
-                    'type': 'text',
-                    'text':
-                        AppL10n.of(appLocaleNotifier.value).uiFormat(
-                          'aiAttachmentText',
-                          {
-                            'name': attachment.name,
-                            'excerpt': attachment.textExcerpt,
-                          },
-                        ),
-                  }
-                else
-                  {
-                    'type': 'text',
-                    'text':
-                        AppL10n.of(appLocaleNotifier.value).uiFormat(
-                          'aiAttachmentUnsupported',
-                          {
-                            'name': attachment.name,
-                            'mimeType': attachment.mimeType,
-                          },
-                        ),
-                  },
-            ],
-          },
-    ];
-
-    final body = jsonEncode({
-      'model': model,
-      'messages': messages,
-      'temperature': aiTemperature,
-      'max_tokens': aiMaxTokens,
-      'top_p': aiTopP,
-      'stream': true,
-    });
-
-    final request = http.Request('POST', Uri.parse(endpoint));
-    request.headers.addAll({
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $apiKey',
-    });
-    request.body = body;
-
-    final response = await http.Client().send(request);
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('API: ${await response.stream.bytesToString()}');
-    }
-
-    await for (final data in _sseDataEvents(response.stream)) {
-      if (data == '[DONE]') return;
-      try {
-        final json = jsonDecode(data);
-        final choices = json['choices'];
-        if (choices is List && choices.isNotEmpty) {
-          final delta = choices.first['delta'];
-          if (delta is Map && delta['content'] is String) {
-            yield delta['content'] as String;
-          } else {
-            final message = choices.first['message'];
-            final content = message is Map ? message['content'] : null;
-            if (content is String && content.isNotEmpty) {
-              yield content;
-            } else if (choices.first['text'] is String &&
-                choices.first['text'].toString().isNotEmpty) {
-              yield choices.first['text'].toString();
-            }
-          }
-        }
-      } catch (_) {}
-    }
   }
 }
 
@@ -686,6 +402,23 @@ String? _lastMeaningfulNativeLine(String log) {
 }
 
 /// Factory to create AI provider instances.
+AiGenerationSettings _currentAiGenerationSettings() {
+  final l = AppL10n.of(appLocaleNotifier.value);
+  return AiGenerationSettings(
+    temperature: aiTemperature,
+    maxTokens: aiMaxTokens,
+    topP: aiTopP,
+    formatAttachmentText: (attachment) => l.uiFormat(
+      'aiAttachmentText',
+      {'name': attachment.name, 'excerpt': attachment.textExcerpt},
+    ),
+    formatUnsupportedAttachment: (attachment) => l.uiFormat(
+      'aiAttachmentUnsupported',
+      {'name': attachment.name, 'mimeType': attachment.mimeType},
+    ),
+  );
+}
+
 AIProvider createAIProvider({
   required String provider,
   required String model,
@@ -694,17 +427,20 @@ AIProvider createAIProvider({
   String? customCompatibility,
   String? localModelPath,
 }) {
+  final settings = _currentAiGenerationSettings();
   switch (provider) {
     case 'gemini':
-      return GeminiProvider(apiKey: apiKey);
+      return GeminiProvider(apiKey: apiKey, settings: settings);
     case 'openai':
       return OpenAICompatibleProvider(
         apiKey: apiKey,
+        settings: settings,
         endpoint: 'https://api.openai.com/v1/chat/completions',
       );
     case 'mistral':
       return OpenAICompatibleProvider(
         apiKey: apiKey,
+        settings: settings,
         endpoint: 'https://api.mistral.ai/v1/chat/completions',
       );
     case 'custom':
@@ -724,10 +460,15 @@ AIProvider createAIProvider({
             : baseUrl.contains('/v1')
             ? '$baseUrl/models/$model:streamGenerateContent?alt=sse&key=$apiKey'
             : '$baseUrl/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
-        return GeminiProvider(apiKey: apiKey, endpoint: endpoint);
+        return GeminiProvider(
+          apiKey: apiKey,
+          settings: settings,
+          endpoint: endpoint,
+        );
       }
       return OpenAICompatibleProvider(
         apiKey: apiKey,
+        settings: settings,
         endpoint: openAiCompatibleEndpoint(customBaseUrl ?? ''),
         baseUrl: customBaseUrl,
       );
@@ -737,37 +478,8 @@ AIProvider createAIProvider({
       }
       return LocalModelProvider(modelPath: localModelPath);
     default:
-      return GeminiProvider(apiKey: apiKey);
+      return GeminiProvider(apiKey: apiKey, settings: settings);
   }
-}
-
-/// Normalizes a base URL by removing trailing slashes.
-String normalizedBaseUrl(String value) {
-  var out = value.trim();
-  while (out.endsWith('/')) {
-    out = out.substring(0, out.length - 1);
-  }
-  return out;
-}
-
-/// Returns the OpenAI-compatible chat completions endpoint for a given base URL.
-String openAiCompatibleEndpoint(String rawBaseUrl) {
-  final base = normalizedBaseUrl(rawBaseUrl);
-  if (base.isEmpty) return '';
-  if (base.endsWith('/chat/completions')) return base;
-  if (base.endsWith('/v1')) return '$base/chat/completions';
-  if (base.endsWith('/v1/chat')) return '$base/completions';
-  return '$base/v1/chat/completions';
-}
-
-/// Returns the Gemini-compatible endpoint for a given base URL and model.
-String geminiCompatibleEndpoint(String rawBaseUrl, String model) {
-  final base = normalizedBaseUrl(rawBaseUrl);
-  if (base.isEmpty) return '';
-  if (base.contains('/models/')) return base;
-  if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
-  if (base.contains('/v1')) return '$base/models/$model:generateContent';
-  return '$base/v1beta/models/$model:generateContent';
 }
 
 Future<void> _initializeDeferredNativeServices() async {
