@@ -1807,7 +1807,7 @@ ${l.ui('aiAssistantRules')}''';
     unawaited(_saveChatHistory());
   }
 
-  Widget _buildSidebar(ColorScheme cs) {
+  Widget _buildSidebar() {
     return _AiChatHistoryPanel(
       sessions: _chatHistory,
       selectedSessionId: _currentChatId,
@@ -1970,11 +1970,11 @@ ${l.ui('aiAssistantRules')}''';
     return Icons.auto_awesome_rounded;
   }
 
-    Widget _buildSearchLoadingState(ColorScheme cs) {
+    Widget _buildSearchLoadingState() {
     return _AiAnalysisLoadingState(query: _latestQuery);
   }
 
-  Widget _buildSearchBar(ColorScheme cs) {
+  Widget _buildSearchBar() {
     final l = AppL10n.of(appLocaleNotifier.value);
     return _AiComposer(
       controller: _inputController,
@@ -1998,7 +1998,7 @@ ${l.ui('aiAssistantRules')}''';
   Widget _buildResultHeader(ColorScheme cs) {
     final result = _latestResult;
     if (result == null) {
-      if (_thinking) return _buildSearchLoadingState(cs);
+      if (_thinking) return _buildSearchLoadingState();
       return _buildEmptyState(cs);
     }
 
@@ -2092,7 +2092,7 @@ ${l.ui('aiAssistantRules')}''';
             ),
           ),
         ),
-        _buildSearchBar(cs),
+        _buildSearchBar(),
       ],
     );
   }
@@ -2248,7 +2248,7 @@ ${l.ui('aiAssistantRules')}''';
           icon: const Icon(Icons.menu_rounded),
           onPressed: () {
             _hapticSelection();
-            widget.onOpenDrawer?.call(_buildSidebar(cs));
+            widget.onOpenDrawer?.call(_buildSidebar());
           },
         ),
       ),
