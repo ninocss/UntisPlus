@@ -3,6 +3,7 @@
 Branch: design/ai-tab-m3-expressive-redesign
 
 Implementation UI specification: docs/ai-tab-ui-spec.md
+Implementation plan: docs/ai-tab-implementation-plan.md
 
 ## Goal
 
