@@ -1,11 +1,11 @@
 part of '../../../main.dart';
 
-class AiChatMessage extends StatelessWidget {
+class _AiChatMessage extends StatelessWidget {
   final String content;
   final bool isUser;
   final bool streaming;
 
-  const AiChatMessage({
+  const _AiChatMessage({
     super.key,
     required this.content,
     required this.isUser,
@@ -44,7 +44,7 @@ class AiChatMessage extends StatelessWidget {
         ),
       ),
       child: !isUser && content.isEmpty
-          ? const AiTypingIndicator()
+          ? const _AiTypingIndicator()
           : isUser
           ? Text(
               content,
