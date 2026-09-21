@@ -2778,7 +2778,26 @@ Timer? _progressiveNotificationTimer;
     required Widget child,
     required String keyName,
   }) {
-    return KeyedSubtree(key: ValueKey(keyName), child: child);
+    return KeyedSubtree(
+      key: ValueKey(keyName),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 120) return child;
+
+          // CarouselView compresses neighbouring items down to its
+          // shrinkExtent. The timetable still needs a regular viewport for
+          // layout; clip that viewport to create the narrow visual preview.
+          return ClipRect(
+            child: OverflowBox(
+              minWidth: 320,
+              maxWidth: 320,
+              alignment: Alignment.center,
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildMaterialWeekCarousel(double width) {
