@@ -1,5 +1,7 @@
 # AI Tab UI Specification — Material 3 Expressive
 
+> Revision 2026-09-21: Analysis/Chat now uses the shared `_mainSectionTabBar(...)` pattern, identical to the other section tabs in Untis+. The earlier custom expressive mode-switch proposal is superseded; Material 3 Expressive styling remains in the AI content, composer, cards and motion.
+
 Status: implementation-ready UI/UX specification  
 Branch: design/ai-tab-m3-expressive-redesign  
 Implementation plan: docs/ai-tab-implementation-plan.md  
