@@ -7,7 +7,6 @@ class _AiSuggestionCard extends StatefulWidget {
   final bool compact;
 
   const _AiSuggestionCard({
-    super.key,
     required this.text,
     required this.icon,
     required this.onTap,

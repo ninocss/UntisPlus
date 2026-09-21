@@ -1,7 +1,7 @@
 part of '../../../main.dart';
 
 class _AiTypingIndicator extends StatefulWidget {
-  const _AiTypingIndicator({super.key});
+  const _AiTypingIndicator();
 
   @override
   State<_AiTypingIndicator> createState() => _AiTypingIndicatorState();

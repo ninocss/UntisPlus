@@ -4,7 +4,6 @@ class _AiAnalysisLoadingState extends StatelessWidget {
   final String query;
 
   const _AiAnalysisLoadingState({
-    super.key,
     required this.query,
   });
 

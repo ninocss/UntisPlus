@@ -1,14 +1,13 @@
 part of '../../../main.dart';
 
 class _AiAnalysisResult extends StatelessWidget {
-  final _AiSearchResult result;
+  final AiSearchResult result;
   final bool thinking;
   final IconData Function(String label) metricIcon;
   final VoidCallback onSearchAgain;
   final VoidCallback onClear;
 
   const _AiAnalysisResult({
-    super.key,
     required this.result,
     required this.thinking,
     required this.metricIcon,
@@ -140,7 +139,7 @@ class _AiAnalysisResult extends StatelessWidget {
                     childAspectRatio: constraints.maxWidth < 390 ? 1.35 : 1.55,
                     children: result.metrics
                         .map(
-                          (metric) => _AiMetricTile(
+                          (metric) => AiMetricTile(
                             metric: metric,
                             icon: metricIcon(metric.label),
                           ),

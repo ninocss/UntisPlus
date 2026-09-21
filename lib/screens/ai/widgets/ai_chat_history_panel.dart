@@ -1,19 +1,18 @@
 part of '../../../main.dart';
 
 class _AiChatHistoryPanel extends StatelessWidget {
-  final List<_ChatSession> sessions;
+  final List<AiChatSession> sessions;
   final String? selectedSessionId;
   final bool showResultActions;
   final VoidCallback onNewChat;
-  final ValueChanged<_ChatSession> onOpenSession;
-  final ValueChanged<_ChatSession> onDeleteSession;
+  final ValueChanged<AiChatSession> onOpenSession;
+  final ValueChanged<AiChatSession> onDeleteSession;
   final VoidCallback onSearchAgain;
   final VoidCallback onClear;
   final VoidCallback onOpenPromptSettings;
   final VoidCallback onOpenAiSettings;
 
   const _AiChatHistoryPanel({
-    super.key,
     required this.sessions,
     required this.selectedSessionId,
     required this.showResultActions,
@@ -203,7 +202,7 @@ class _AiChatHistoryPanel extends StatelessWidget {
 }
 
 class _AiHistoryItem extends StatelessWidget {
-  final _ChatSession session;
+  final AiChatSession session;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onDelete;

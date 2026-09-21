@@ -1,10 +1,9 @@
 part of '../../../main.dart';
 
 class _AiActionConfirmationContent extends StatelessWidget {
-  final List<_AiProposedAction> actions;
+  final List<AiProposedAction> actions;
 
   const _AiActionConfirmationContent({
-    super.key,
     required this.actions,
   });
 

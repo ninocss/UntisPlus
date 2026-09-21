@@ -48,6 +48,7 @@ import 'features/changes/domain/timetable_change.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
+import 'features/ai/domain/ai_models.dart';
 import 'features/ai/data/local_model_provider.dart';
 import 'features/ai/data/remote_ai_provider.dart';
 import 'features/accounts/domain/untis_account.dart';

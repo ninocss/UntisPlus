@@ -6,7 +6,6 @@ class _AiChatMessage extends StatelessWidget {
   final bool streaming;
 
   const _AiChatMessage({
-    super.key,
     required this.content,
     required this.isUser,
     this.streaming = false,

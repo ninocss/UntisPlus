@@ -20,143 +20,6 @@ class AiAssistantPage extends StatefulWidget {
   State<AiAssistantPage> createState() => _AiAssistantPageState();
 }
 
-class _AiMetric {
-  final String label;
-  final String value;
-
-  const _AiMetric({required this.label, required this.value});
-}
-
-class _AiLessonCardData {
-  final String subject;
-  final String subjectShort;
-  final String room;
-  final String teacher;
-  final String time;
-  final bool isCancelled;
-
-  const _AiLessonCardData({
-    required this.subject,
-    required this.subjectShort,
-    required this.room,
-    required this.teacher,
-    required this.time,
-    required this.isCancelled,
-  });
-}
-
-class _AiSearchResult {
-  final String query;
-  final String headline;
-  final String summary;
-  final List<String> tags;
-  final List<_AiMetric> metrics;
-  final List<_AiLessonCardData> lessons;
-  final String rawReply;
-
-  const _AiSearchResult({
-    required this.query,
-    required this.headline,
-    required this.summary,
-    required this.tags,
-    required this.metrics,
-    required this.lessons,
-    required this.rawReply,
-  });
-}
-
-class _ChatSession {
-  final String id;
-  String title;
-  final List<Map<String, String>> messages;
-  final DateTime timestamp;
-
-  _ChatSession({
-    required this.id,
-    required this.title,
-    required this.messages,
-    required this.timestamp,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'messages': messages,
-    'timestamp': timestamp.toIso8601String(),
-  };
-
-  factory _ChatSession.fromJson(Map<String, dynamic> json) => _ChatSession(
-    id: json['id'],
-    title: json['title'] ?? 'Chat',
-    messages: List<Map<String, String>>.from(
-      (json['messages'] as List).map((m) => Map<String, String>.from(m)),
-    ),
-    timestamp: DateTime.parse(json['timestamp']),
-  );
-}
-
-class _AiProposedAction {
-  const _AiProposedAction(this.data);
-
-  final Map<String, dynamic> data;
-  String get kind => data['kind']?.toString() ?? '';
-  String get id => data['id']?.toString() ?? '';
-  String get subject => data['subject']?.toString().trim() ?? '';
-  String get text =>
-      (data['text'] ?? data['description'] ?? data['title'] ?? '')
-          .toString()
-          .trim();
-  int? get date => int.tryParse(
-    (data['date'] ?? data['dueDate'] ?? data['examDate'] ?? '')
-        .toString()
-        .replaceAll('-', ''),
-  );
-  double? get gradeValue => double.tryParse(
-    (data['value'] ?? data['grade'] ?? '').toString().replaceAll(',', '.'),
-  );
-  double get gradeWeight =>
-      double.tryParse(
-        (data['weight'] ?? '1').toString().replaceAll(',', '.'),
-      ) ??
-      1;
-  String get gradeType => data['type']?.toString().trim() ?? '';
-
-  String summary(AppL10n l) {
-    final values = {
-      'subject': subject,
-      'text': text,
-      'id': id,
-      'value': gradeValue,
-    };
-    return switch (kind) {
-      'create_homework' => l.uiFormat('aiActionCreateHomework', values),
-      'update_homework' => l.uiFormat('aiActionUpdateHomework', values),
-      'delete_homework' => l.uiFormat('aiActionDeleteHomework', values),
-      'complete_homework' => l.uiFormat('aiActionCompleteHomework', values),
-      'create_exam' => l.uiFormat('aiActionCreateExam', values),
-      'update_exam' => l.uiFormat('aiActionUpdateExam', values),
-      'delete_exam' => l.uiFormat('aiActionDeleteExam', values),
-      'create_grade' => l.uiFormat('aiActionCreateGrade', values),
-      'update_grade' => l.uiFormat('aiActionUpdateGrade', values),
-      'delete_grade' => l.uiFormat('aiActionDeleteGrade', values),
-      _ => l.ui('aiActionUnknown'),
-    };
-  }
-
-  bool get isSupported => const {
-    'create_homework',
-    'update_homework',
-    'delete_homework',
-    'complete_homework',
-    'create_exam',
-    'update_exam',
-    'delete_exam',
-    'create_grade',
-    'update_grade',
-    'delete_grade',
-  }.contains(kind);
-}
-
 class _AiAssistantPageState extends State<AiAssistantPage>
     with TickerProviderStateMixin {
   final _inputController = TextEditingController();
@@ -168,7 +31,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   DateTime? _lastStreamingHapticAt;
   int _searchGeneration = 0;
   String _latestQuery = '';
-  _AiSearchResult? _latestResult;
+  AiSearchResult? _latestResult;
   List<Map<String, dynamic>> _exams = [];
   Map<int, List<dynamic>> _weekData = {
     0: <dynamic>[],
@@ -183,7 +46,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   bool _chatMode = false;
   final List<Map<String, String>> _chatMessages = [];
   final List<AiChatAttachment> _attachments = [];
-  final List<_ChatSession> _chatHistory = [];
+  final List<AiChatSession> _chatHistory = [];
   String? _currentChatId;
 
   @override
@@ -228,11 +91,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       if (raw != null && raw.isNotEmpty) {
         final decoded = jsonDecode(raw);
         if (decoded is List) {
-          final sessions = <_ChatSession>[];
+          final sessions = <AiChatSession>[];
           for (final item in decoded) {
             if (item is Map<String, dynamic>) {
               try {
-                sessions.add(_ChatSession.fromJson(item));
+                sessions.add(AiChatSession.fromJson(item));
               } catch (_) {
                 // Skip corrupted sessions
               }
@@ -281,7 +144,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     }
   }
 
-  void _loadSession(_ChatSession session) {
+  void _loadSession(AiChatSession session) {
     setState(() {
       _currentChatId = session.id;
       _chatMessages.clear();
@@ -375,7 +238,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     return const [];
   }
 
-  List<_AiLessonCardData> _lessonsFromParsedPayload(Map<String, dynamic> data) {
+  List<AiLessonCardData> _lessonsFromParsedPayload(Map<String, dynamic> data) {
     final rawLessons = data['lessons'] ?? data['stunden'] ?? data['items'];
     if (rawLessons is! List) return const [];
 
@@ -413,7 +276,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
             'status',
             'state',
           ]);
-          return _AiLessonCardData(
+          return AiLessonCardData(
             subject: subject.isEmpty
                 ? (subjectShort.isEmpty ? '?' : subjectShort)
                 : subject,
@@ -435,7 +298,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
         .toList(growable: false);
   }
 
-  _AiSearchResult _parseSearchResult({
+  AiSearchResult _parseSearchResult({
     required String query,
     required String reply,
   }) {
@@ -445,7 +308,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     try {
       final decoded = jsonDecode(_extractJsonCandidate(reply));
       if (decoded is Map<String, dynamic>) {
-        final metrics = <_AiMetric>[];
+        final metrics = <AiMetric>[];
         final metricSource = decoded['metrics'] ?? decoded['stats'];
         if (metricSource is List) {
           for (final entry in metricSource.whereType<Map>()) {
@@ -461,7 +324,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
               'text',
             ]);
             if (label.isNotEmpty && value.isNotEmpty) {
-              metrics.add(_AiMetric(label: label, value: value));
+              metrics.add(AiMetric(label: label, value: value));
             }
           }
         }
@@ -471,7 +334,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
         ).take(6).toList(growable: false);
         final lessons = _lessonsFromParsedPayload(decoded);
 
-        return _AiSearchResult(
+        return AiSearchResult(
           query: query,
           headline:
               _firstNonEmptyString(decoded, const [
@@ -505,7 +368,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       }
     } catch (_) {}
 
-    return _AiSearchResult(
+    return AiSearchResult(
       query: query,
       headline: fallbackHeadline.isEmpty ? l.aiNewSearch : fallbackHeadline,
       summary: fallbackSummary,
@@ -1415,8 +1278,8 @@ ${l.ui('aiAssistantRules')}''';
     });
   }
 
-  List<_AiProposedAction> _actionsFromReply(String reply) {
-    final actions = <_AiProposedAction>[];
+  List<AiProposedAction> _actionsFromReply(String reply) {
+    final actions = <AiProposedAction>[];
     final blocks = RegExp(
       r'```untis-action\s*([\s\S]*?)```',
       multiLine: true,
@@ -1426,7 +1289,7 @@ ${l.ui('aiAssistantRules')}''';
         final decoded = jsonDecode(block.group(1)!.trim());
         final values = decoded is List ? decoded : [decoded];
         for (final value in values.whereType<Map>()) {
-          final action = _AiProposedAction(Map<String, dynamic>.from(value));
+          final action = AiProposedAction(Map<String, dynamic>.from(value));
           if (action.isSupported) actions.add(action);
         }
       } catch (_) {}
@@ -1434,7 +1297,7 @@ ${l.ui('aiAssistantRules')}''';
     return actions;
   }
 
-  Future<void> _applyActions(List<_AiProposedAction> actions) async {
+  Future<void> _applyActions(List<AiProposedAction> actions) async {
     for (final action in actions) {
       final date = action.date;
       switch (action.kind) {
@@ -1571,7 +1434,7 @@ ${l.ui('aiAssistantRules')}''';
     }
   }
 
-  Future<void> _confirmActions(List<_AiProposedAction> actions) async {
+  Future<void> _confirmActions(List<AiProposedAction> actions) async {
     if (!mounted || actions.isEmpty) return;
     final l = AppL10n.of(appLocaleNotifier.value);
     final approved = await showUntisDialog<bool>(
@@ -1686,7 +1549,7 @@ ${l.ui('aiAssistantRules')}''';
       setState(() {
         _chatHistory.insert(
           0,
-          _ChatSession(
+          AiChatSession(
             id: _currentChatId!,
             title: text.length > 30 ? '${text.substring(0, 27)}...' : text,
             messages: List<Map<String, String>>.from(_chatMessages),
@@ -1795,7 +1658,7 @@ ${l.ui('aiAssistantRules')}''';
     }
   }
 
-    void _removeChatSession(_ChatSession session) {
+    void _removeChatSession(AiChatSession session) {
     _hapticAction();
     setState(() {
       _chatHistory.removeWhere((entry) => entry.id == session.id);

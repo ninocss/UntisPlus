@@ -1,10 +1,10 @@
 part of '../../../main.dart';
 
-class _AiMetricTile extends StatelessWidget {
-  final _AiMetric metric;
+class AiMetricTile extends StatelessWidget {
+  final AiMetric metric;
   final IconData icon;
 
-  const _AiMetricTile({
+  const AiMetricTile({
     super.key,
     required this.metric,
     required this.icon,

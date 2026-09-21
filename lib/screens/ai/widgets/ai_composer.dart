@@ -13,7 +13,6 @@ class _AiComposer extends StatefulWidget {
   final VoidCallback onClear;
 
   const _AiComposer({
-    super.key,
     required this.controller,
     required this.focusNode,
     required this.mode,
