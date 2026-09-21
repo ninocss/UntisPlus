@@ -2080,12 +2080,6 @@ ${l.ui('aiAssistantRules')}''';
 
     return Column(
       children: [
-        _AiModeSwitch(
-          selectedMode: mode,
-          onChanged: (nextMode) {
-            _selectAiTab(nextMode == _AiMode.chat ? 1 : 0);
-          },
-        ),
         Expanded(
           child: AnimatedSwitcher(
             duration: reduceMotion
@@ -2206,57 +2200,58 @@ ${l.ui('aiAssistantRules')}''';
     if (_loading) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: _mainTabHeaderAppBar(context, l.aiTitle),
-        body: Column(
-          children: [
-            _AiModeSwitch(
-              selectedMode: mode,
-              enabled: false,
-              onChanged: (_) {},
-            ),
-            Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 460),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: ThemedSurface(
-                      showShadow: false,
-                      borderRadius: BorderRadius.circular(_aiRadius(28)),
-                      color: cs.surfaceContainerHigh.withValues(alpha: 0.72),
-                      child: Padding(
-                        padding: const EdgeInsets.all(22),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: cs.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Text(
-                                l.aiAskAnything,
-                                style: untisThemeTextStyle(
-                                  context,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
+        appBar: _mainTabHeaderAppBar(
+          context,
+          l.aiTitle,
+          bottom: _mainSectionTabBar(
+            context,
+            controller: _tabController,
+            onTap: _selectAiTab,
+            items: [
+              (icon: Icons.analytics_rounded, label: l.aiTabAnalysis),
+              (icon: Icons.chat_bubble_rounded, label: l.aiTabChat),
+            ],
+          ),
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: ThemedSurface(
+                showShadow: false,
+                borderRadius: BorderRadius.circular(_aiRadius(28)),
+                color: cs.surfaceContainerHigh.withValues(alpha: 0.72),
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: cs.primary,
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          l.aiAskAnything,
+                          style: untisThemeTextStyle(
+                            context,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ],
+          ),
         ),
       );
     }
@@ -2274,6 +2269,15 @@ ${l.ui('aiAssistantRules')}''';
             _hapticSelection();
             widget.onOpenDrawer?.call(_buildSidebar());
           },
+        ),
+        bottom: _mainSectionTabBar(
+          context,
+          controller: _tabController,
+          onTap: _selectAiTab,
+          items: [
+            (icon: Icons.analytics_rounded, label: l.aiTabAnalysis),
+            (icon: Icons.chat_bubble_rounded, label: l.aiTabChat),
+          ],
         ),
       ),
       body: LayoutBuilder(
