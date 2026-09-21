@@ -4,10 +4,10 @@ class _AiTypingIndicator extends StatefulWidget {
   const _AiTypingIndicator({super.key});
 
   @override
-  State<_AiTypingIndicator> createState() => __AiTypingIndicatorState();
+  State<_AiTypingIndicator> createState() => _AiTypingIndicatorState();
 }
 
-class __AiTypingIndicatorState extends State<_AiTypingIndicator>
+class _AiTypingIndicatorState extends State<_AiTypingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
