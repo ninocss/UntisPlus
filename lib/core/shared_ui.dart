@@ -1198,6 +1198,31 @@ class SettingsGroup extends StatelessWidget {
   }
 }
 
+PreferredSizeWidget _settingsHeaderAppBar(
+  BuildContext context,
+  String title, {
+  List<Widget>? actions,
+  Widget? leading,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return RoundedBlurAppBar(
+    height: 64,
+    centerTitle: false,
+    leading: leading,
+    actions: actions,
+    title: Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.outfit(
+        fontSize: 22,
+        fontWeight: FontWeight.w800,
+        color: cs.onSurface,
+      ),
+    ),
+  );
+}
+
 Widget _settingsTooltip({
   required String? message,
   required Widget child,

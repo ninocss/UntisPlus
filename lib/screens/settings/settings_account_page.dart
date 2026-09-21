@@ -80,13 +80,7 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
     final mq = MediaQuery.of(context);
 
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsHubAccount,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsHubAccount),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),

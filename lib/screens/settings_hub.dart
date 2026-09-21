@@ -1024,20 +1024,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     }
 
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.tune_rounded, size: 22, color: cs.primary),
-            const SizedBox(width: 9),
-            Text(
-              l.settingsTitle,
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-        centerTitle: false,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsTitle),
       body: _AnimatedBackground(
         child: LayoutBuilder(
           builder: (context, _) {

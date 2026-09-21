@@ -1687,13 +1687,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     final activeKey = _activeProviderApiKey();
 
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsSectionAI,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsSectionAI),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),

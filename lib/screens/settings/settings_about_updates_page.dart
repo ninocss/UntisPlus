@@ -458,13 +458,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
     final mq = MediaQuery.of(context);
 
     return Scaffold(
-      appBar: RoundedBlurAppBar(
-        title: Text(
-          l.settingsHubUpdatesAbout,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
-        ),
-        centerTitle: true,
-      ),
+      appBar: _settingsHeaderAppBar(context, l.settingsHubUpdatesAbout),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
