@@ -1,9 +1,9 @@
 part of '../../../main.dart';
 
-class AiAnalysisLoadingState extends StatelessWidget {
+class _AiAnalysisLoadingState extends StatelessWidget {
   final String query;
 
-  const AiAnalysisLoadingState({
+  const _AiAnalysisLoadingState({
     super.key,
     required this.query,
   });
@@ -69,7 +69,7 @@ class AiAnalysisLoadingState extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const AiTypingIndicator(),
+                  const _AiTypingIndicator(),
                 ],
               ),
             ),
