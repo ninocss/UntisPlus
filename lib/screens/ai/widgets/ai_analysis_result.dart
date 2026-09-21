@@ -1,13 +1,13 @@
 part of '../../../main.dart';
 
-class AiAnalysisResult extends StatelessWidget {
+class _AiAnalysisResult extends StatelessWidget {
   final _AiSearchResult result;
   final bool thinking;
   final IconData Function(String label) metricIcon;
   final VoidCallback onSearchAgain;
   final VoidCallback onClear;
 
-  const AiAnalysisResult({
+  const _AiAnalysisResult({
     super.key,
     required this.result,
     required this.thinking,
@@ -140,7 +140,7 @@ class AiAnalysisResult extends StatelessWidget {
                     childAspectRatio: constraints.maxWidth < 390 ? 1.35 : 1.55,
                     children: result.metrics
                         .map(
-                          (metric) => AiMetricTile(
+                          (metric) => _AiMetricTile(
                             metric: metric,
                             icon: metricIcon(metric.label),
                           ),
@@ -201,7 +201,7 @@ class AiAnalysisResult extends StatelessWidget {
           ),
           if (thinking) ...[
             const SizedBox(height: 14),
-            const AiTypingIndicator(),
+            const _AiTypingIndicator(),
           ],
         ],
       ),
