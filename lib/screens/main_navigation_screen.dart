@@ -87,27 +87,13 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   Future<void> _loadChatHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString('aiChatHistory');
-      if (raw != null && raw.isNotEmpty) {
-        final decoded = jsonDecode(raw);
-        if (decoded is List) {
-          final sessions = <AiChatSession>[];
-          for (final item in decoded) {
-            if (item is Map<String, dynamic>) {
-              try {
-                sessions.add(AiChatSession.fromJson(item));
-              } catch (_) {
-                // Skip corrupted sessions
-              }
-            }
-          }
-          setState(() {
-            _chatHistory.clear();
-            _chatHistory.addAll(sessions);
-            _chatHistory.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-          });
-        }
-      }
+      final sessions = AiChatHistoryStore(prefs).read();
+      if (!mounted) return;
+      setState(() {
+        _chatHistory
+          ..clear()
+          ..addAll(sessions);
+      });
     } catch (_) {}
   }
 
@@ -123,8 +109,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     }
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = jsonEncode(_chatHistory.map((s) => s.toJson()).toList());
-      await prefs.setString('aiChatHistory', raw);
+      await AiChatHistoryStore(prefs).write(_chatHistory);
     } catch (_) {}
   }
 
