@@ -134,7 +134,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ),
               const SizedBox(height: 8),
               ListTile(
-                leading: const Icon(Icons.timer_rounded),
+                leading: _sheetActionIcon(
+                  sheetContext,
+                  Icons.timer_rounded,
+                ),
                 title: Text(l.ui('alarmLead')),
                 subtitle: Text(
                   current == null || current == -1
@@ -167,7 +170,11 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.alarm_off_rounded),
+                leading: _sheetActionIcon(
+                  sheetContext,
+                  Icons.alarm_off_rounded,
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
                 title: Text(l.ui('alarmLeadByStartOff')),
                 onTap: () async {
                   final overrides = Map<int, int>.from(
@@ -182,7 +189,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ),
               if (current != null)
                 ListTile(
-                  leading: const Icon(Icons.restart_alt_rounded),
+                  leading: _sheetActionIcon(
+                    sheetContext,
+                    Icons.restart_alt_rounded,
+                  ),
                   title: Text(l.ui('alarmLeadByStartDefault')),
                   onTap: () async {
                     final overrides = Map<int, int>.from(
@@ -276,7 +286,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     ),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.schedule_rounded),
+                    leading: _sheetActionIcon(
+                      context,
+                      Icons.schedule_rounded,
+                    ),
                     title: Text(time.format(context)),
                     subtitle: Text(l.ui('alarmTime')),
                     onTap: () async {
