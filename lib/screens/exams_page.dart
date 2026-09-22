@@ -100,19 +100,12 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   }
 
   String _formatExamDate(dynamic date) {
-    final s = date.toString();
-    if (s.length == 8) {
-      try {
-        final d = DateTime.parse(
-          '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
-        );
-        return DateFormat(
-          'EEEE, dd. MMMM yyyy',
-          _icuLocale(appLocaleNotifier.value),
-        ).format(d);
-      } catch (_) {}
-    }
-    return s;
+    final parsed = parseUntisDate(date);
+    if (parsed == null) return date.toString();
+    return DateFormat(
+      'EEEE, dd. MMMM yyyy',
+      _icuLocale(appLocaleNotifier.value),
+    ).format(parsed);
   }
 
   String _examSubject(Map<String, dynamic> e) =>
@@ -297,7 +290,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final cs = Theme.of(context).colorScheme;
     final l = appL10nFor(appLocaleNotifier.value);
     final exams = _allExams;
-    final todayInt = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
+    final todayInt = untisDateInt(DateTime.now());
 
     final upcoming = exams
         .where(
@@ -671,24 +664,13 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     }();
     final desc = (exam['description'] ?? '').toString().trim();
 
-    final ds = (exam['date'] ?? exam['examDate'] ?? '').toString();
-    int? daysUntil;
-    if (ds.length == 8) {
-      try {
-        final d = DateTime.parse(
-          '${ds.substring(0, 4)}-${ds.substring(4, 6)}-${ds.substring(6, 8)}',
-        );
-        daysUntil = d
-            .difference(
-              DateTime(
-                DateTime.now().year,
-                DateTime.now().month,
-                DateTime.now().day,
-              ),
-            )
-            .inDays;
-      } catch (_) {}
-    }
+    final examDate = parseUntisDate(exam['date'] ?? exam['examDate']);
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    final daysUntil = examDate?.difference(today).inDays;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = isCustom ? cs.tertiary : _autoLessonColor(subject, isDark);
