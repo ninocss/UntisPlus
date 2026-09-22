@@ -451,6 +451,12 @@ void main() async {
   dailyBriefingPushNotifier.value = prefs.getBool('dailyBriefingPush') ?? true;
   importantChangesPushNotifier.value =
       prefs.getBool('importantChangesPush') ?? true;
+  notifyChangeCancellationsNotifier.value =
+      prefs.getBool('notifyChangeCancellations') ?? true;
+  notifyChangeRoomNotifier.value = prefs.getBool('notifyChangeRoom') ?? true;
+  notifyChangeTeacherNotifier.value =
+      prefs.getBool('notifyChangeTeacher') ?? true;
+  notifyChangeOtherNotifier.value = prefs.getBool('notifyChangeOther') ?? true;
 
   await loadCustomBackgroundsFromPrefs(prefs);
 
@@ -896,6 +902,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   bool _isExportingTimetable = false;
   final GlobalKey _timetableExportKey = GlobalKey();
   final Map<String, Map<dynamic, dynamic>> _temporaryLessonOriginals = {};
+
+  // #138: a tapped change notification deep-links to the changed day and
+  // briefly pulses the affected lesson tile.
+  int? _highlightDate;
+  int? _highlightStartTime;
+  AnimationController? _highlightController;
+  Timer? _highlightTimer;
   AlarmConfig _alarmConfig = const AlarmConfig();
   Timer? _progressiveNotificationTimer;
 
@@ -1366,6 +1379,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
     _loadViewPref();
     _loadAlarmConfig();
+    _highlightController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
 
     // Start foreground timer to keep the progressive notification fresh.
     // It reads from the offline cache (works without network) and updates
@@ -1551,6 +1568,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
+    if (action == 'open_change') {
+      _handlePendingChangeHighlight();
+      return;
+    }
+
     if (current.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1560,6 +1582,84 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
       );
     }
+  }
+
+  /// Deep link from the important-changes notification (#138): jump to the
+  /// changed day (switching the week when necessary) and pulse the tile.
+  void _handlePendingChangeHighlight() {
+    final date = pendingChangeHighlightDateNotifier.value;
+    final startTime = pendingChangeHighlightStartTimeNotifier.value;
+    pendingChangeHighlightDateNotifier.value = null;
+    pendingChangeHighlightStartTimeNotifier.value = null;
+    if (date == null) return;
+
+    final dateStr = date.toString();
+    DateTime? target;
+    if (dateStr.length == 8) {
+      try {
+        target = DateTime(
+          int.parse(dateStr.substring(0, 4)),
+          int.parse(dateStr.substring(4, 6)),
+          int.parse(dateStr.substring(6, 8)),
+        );
+      } catch (_) {}
+    }
+    if (target == null) return;
+
+    final monday = DateTime(
+      _currentMonday.year,
+      _currentMonday.month,
+      _currentMonday.day,
+    );
+    final dayOnly = DateTime(target.year, target.month, target.day);
+    final delta = dayOnly.difference(monday).inDays;
+
+    if (delta < -2 || delta > 6) {
+      final l = AppL10n.of(appLocaleNotifier.value);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.notificationChangeOutsideWeek),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _highlightDate = date;
+      _highlightStartTime = startTime;
+    });
+    _highlightController?.reset();
+    _highlightController?.forward();
+    _highlightTimer?.cancel();
+    _highlightTimer = Timer(const Duration(milliseconds: 3600), () {
+      if (!mounted) return;
+      setState(() {
+        _highlightDate = null;
+        _highlightStartTime = null;
+      });
+    });
+
+    if (delta >= 0 && delta <= 4) {
+      _animateDayTabTo(delta);
+    } else if (delta < 0) {
+      // Previous week, seen as Friday at the carousel's left edge.
+      _commitMaterialDayIndex(0);
+    } else {
+      // Next week's Monday at the right edge.
+      _commitMaterialDayIndex(6);
+    }
+  }
+
+  /// Whether [lesson] is the tile targeted by the last tapped change
+  /// notification.
+  bool _isHighlightMatch(Map<dynamic, dynamic> lesson) {
+    final highlightDate = _highlightDate;
+    if (highlightDate == null) return false;
+    final lessonDate = (lesson['date'] as num?)?.toInt();
+    final lessonStart = (lesson['startTime'] as num?)?.toInt();
+    return lessonDate == highlightDate && lessonStart == _highlightStartTime;
   }
 
   Future<void> _loadViewPref() async {
@@ -3112,6 +3212,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     _dayCarouselAnimController?.dispose();
     _materialDayCarouselController?.dispose();
     _materialWeekCarouselController?.dispose();
+    _highlightTimer?.cancel();
+    _highlightController?.dispose();
     _cacheRefreshController.dispose();
     super.dispose();
   }
@@ -4697,7 +4799,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                 ex['subject'] == subject),
                                       );
 
-                                  return GestureDetector(
+                                  final highlightMatch =
+                                      _isHighlightMatch(l);
+                                  Widget lessonTile = GestureDetector(
                                     onTap: () => _showLessonDetail(context, l),
                                     onLongPress: () =>
                                         _editLessonTemporarily(l),
@@ -4728,6 +4832,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       useStripes: true,
                                     ),
                                   );
+                                  if (highlightMatch) {
+                                    lessonTile = AnimatedBuilder(
+                                      animation: _highlightController!,
+                                      builder: (context, child) {
+                                        final t =
+                                            _highlightController!.value;
+                                        final glow =
+                                            (math.sin(t * math.pi) *
+                                                    (1 - t)) *
+                                                0.75;
+                                        if (glow <= 0.02) return child!;
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(18),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: csG.tertiary.withValues(
+                                                  alpha: glow,
+                                                ),
+                                                blurRadius: 26,
+                                                spreadRadius: 6,
+                                              ),
+                                            ],
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                      child: lessonTile,
+                                    );
+                                  }
+                                  return lessonTile;
                                 },
                               ),
                             ),
@@ -5280,19 +5416,19 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                                 subject),
                                                   );
 
-                                              return _dimPastLesson(
-                                                dim: dim,
-                                                child: GestureDetector(
-                                                  onTap: () =>
-                                                      _onLessonTap(context, l),
-                                                  onLongPress: () =>
-                                                      _editLessonTemporarily(l),
-                                                  child: _buildTimetableLessonCard(
-                                                    context: context,
-                                                    isCancelled: isCancelled,
-                                                    isDark: isDark2,
-                                                    fgColor: fgColor,
-                                                    bgColor: bgColor,
+                                              final highlightMatch =
+                                                  _isHighlightMatch(l);
+                                              Widget lessonTile = GestureDetector(
+                                                onTap: () =>
+                                                    _onLessonTap(context, l),
+                                                onLongPress: () =>
+                                                    _editLessonTemporarily(l),
+                                                child: _buildTimetableLessonCard(
+                                                  context: context,
+                                                  isCancelled: isCancelled,
+                                                  isDark: isDark2,
+                                                  fgColor: fgColor,
+                                                  bgColor: bgColor,
                                                     subject: subject,
                                                     subjectIcon:
                                                         _subjectIconFor(
@@ -5321,7 +5457,52 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                     availableWidth: cardWidth,
                                                     availableHeight: height,
                                                   ),
-                                                ),
+                                                );
+                                              if (highlightMatch) {
+                                                lessonTile = AnimatedBuilder(
+                                                  animation:
+                                                      _highlightController!,
+                                                  builder: (context, child) {
+                                                    final t =
+                                                        _highlightController!
+                                                            .value;
+                                                    final glow =
+                                                        (math
+                                                                    .sin(
+                                                                      t *
+                                                                          math
+                                                                              .pi,
+                                                                    ) *
+                                                                (1 - t)) *
+                                                            0.75;
+                                                    if (glow <= 0.02) {
+                                                      return child!;
+                                                    }
+                                                    return Container(
+                                                      decoration: BoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(18),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: cs.tertiary
+                                                                .withValues(
+                                                                  alpha: glow,
+                                                                ),
+                                                            blurRadius: 26,
+                                                            spreadRadius: 6,
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: child,
+                                                    );
+                                                  },
+                                                  child: lessonTile,
+                                                );
+                                              }
+                                              return _dimPastLesson(
+                                                dim: dim,
+                                                child: lessonTile,
                                               );
                                             },
                                           ),
@@ -13315,6 +13496,10 @@ class _SettingsPageState extends State<SettingsPage> {
     progressivePushNotifier.addListener(_onChanged);
     dailyBriefingPushNotifier.addListener(_onChanged);
     importantChangesPushNotifier.addListener(_onChanged);
+    notifyChangeCancellationsNotifier.addListener(_onChanged);
+    notifyChangeRoomNotifier.addListener(_onChanged);
+    notifyChangeTeacherNotifier.addListener(_onChanged);
+    notifyChangeOtherNotifier.addListener(_onChanged);
     blurEnabledNotifier.addListener(_onChanged);
     demoModeNotifier.addListener(_onChanged);
   }
@@ -13337,6 +13522,10 @@ class _SettingsPageState extends State<SettingsPage> {
     progressivePushNotifier.removeListener(_onChanged);
     dailyBriefingPushNotifier.removeListener(_onChanged);
     importantChangesPushNotifier.removeListener(_onChanged);
+    notifyChangeCancellationsNotifier.removeListener(_onChanged);
+    notifyChangeRoomNotifier.removeListener(_onChanged);
+    notifyChangeTeacherNotifier.removeListener(_onChanged);
+    notifyChangeOtherNotifier.removeListener(_onChanged);
     blurEnabledNotifier.removeListener(_onChanged);
     demoModeNotifier.removeListener(_onChanged);
     super.dispose();

@@ -12,10 +12,11 @@ class ChangeRepository {
     required String accountId,
     required String rangeKey,
     required Iterable<Map<dynamic, dynamic>> lessons,
+    String dataset = 'timetableSnapshot',
   }) async {
     final snapshotKey = _store.scopedKey(
       accountId: accountId,
-      dataset: 'timetableSnapshot',
+      dataset: dataset,
       entityKey: rangeKey,
     );
     final current = lessons.map(TimetableLessonSnapshot.fromJson).toList();

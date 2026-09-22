@@ -2110,6 +2110,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
 
     _onNavTap(0);
+    final payload = event.payload;
+    final changeDate = payload?['date'];
+    final changeStartTime = payload?['startTime'];
+    if ((actionId == 'open_timetable' || actionId == 'open_change') &&
+        changeDate != null) {
+      // Deep link from the important-changes notification: jump to the
+      // changed day and highlight the affected lesson.
+      pendingChangeHighlightDateNotifier.value = changeDate is num
+          ? changeDate.toInt()
+          : int.tryParse('$changeDate');
+      pendingChangeHighlightStartTimeNotifier.value = changeStartTime is num
+          ? changeStartTime.toInt()
+          : (changeStartTime != null ? int.tryParse('$changeStartTime') : null);
+      pendingTimetableActionNotifier.value = 'open_change';
+      return;
+    }
     pendingTimetableActionNotifier.value = 'open_timetable';
   }
 
