@@ -560,6 +560,15 @@ final ValueNotifier<bool> backgroundGyroscopeNotifier = ValueNotifier(false);
 final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> dailyBriefingPushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> importantChangesPushNotifier = ValueNotifier(true);
+
+/// Per-category filters for the important-changes notification (#138).
+final ValueNotifier<bool> notifyChangeCancellationsNotifier = ValueNotifier(
+  true,
+);
+final ValueNotifier<bool> notifyChangeRoomNotifier = ValueNotifier(true);
+final ValueNotifier<bool> notifyChangeTeacherNotifier = ValueNotifier(true);
+final ValueNotifier<bool> notifyChangeOtherNotifier = ValueNotifier(true);
+
 final ValueNotifier<String?> pendingTimetableActionNotifier = ValueNotifier(
   null,
 );
@@ -568,6 +577,15 @@ final ValueNotifier<String?> pendingTimetableCurrentLessonNotifier =
 final ValueNotifier<String?> pendingTimetableNextLessonNotifier = ValueNotifier(
   null,
 );
+
+/// Deep link payload for a change notification tap: the changed lesson's
+/// date (yyyyMMdd) and start time, consumed by the timetable page to jump to
+/// that day and briefly highlight the lesson tile.
+final ValueNotifier<int?> pendingChangeHighlightDateNotifier = ValueNotifier(
+  null,
+);
+final ValueNotifier<int?> pendingChangeHighlightStartTimeNotifier =
+    ValueNotifier(null);
 
 /// A native Assistant or App Action can request opening the in-app AI screen.
 final ValueNotifier<bool> pendingAssistantOpenNotifier = ValueNotifier(false);

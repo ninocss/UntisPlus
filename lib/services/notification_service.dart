@@ -346,12 +346,18 @@ class NotificationService {
   }
 
   /// Notifies about important changes like room swaps or cancellations.
+  ///
+  /// [changeDate] (yyyyMMdd) and [changeStartTime] (minutes since midnight)
+  /// describe the first changed lesson and are shipped in the payload so a
+  /// tap can deep-link to that lesson on the timetable.
   Future<void> showImportantChangeNotification({
     required String title,
     required String body,
     String locale = 'de',
     String? currentLesson,
     String? nextLesson,
+    int? changeDate,
+    int? changeStartTime,
   }) async {
     final androidDetails = AndroidNotificationDetails(
       NotificationChannels.importantChanges,
@@ -382,6 +388,8 @@ class NotificationService {
         'type': 'change',
         'currentLesson': currentLesson ?? '',
         'nextLesson': nextLesson ?? '',
+        'date': ?changeDate,
+        'startTime': ?changeStartTime,
       }),
     );
   }

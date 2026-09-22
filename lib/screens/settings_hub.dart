@@ -288,6 +288,30 @@ Future<void> _settingsSetImportantChangesPush(bool value) async {
   }
 }
 
+Future<void> _settingsSetNotifyChangeCancellations(bool value) async {
+  notifyChangeCancellationsNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('notifyChangeCancellations', value);
+}
+
+Future<void> _settingsSetNotifyChangeRoom(bool value) async {
+  notifyChangeRoomNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('notifyChangeRoom', value);
+}
+
+Future<void> _settingsSetNotifyChangeTeacher(bool value) async {
+  notifyChangeTeacherNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('notifyChangeTeacher', value);
+}
+
+Future<void> _settingsSetNotifyChangeOther(bool value) async {
+  notifyChangeOtherNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('notifyChangeOther', value);
+}
+
 Future<void> _settingsSetDemoMode(BuildContext context, bool enabled) async {
   demoModeNotifier.value = enabled;
   final prefs = await SharedPreferences.getInstance();

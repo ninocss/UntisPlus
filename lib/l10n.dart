@@ -424,6 +424,8 @@ class AppL10n {
       _t('notificationActionNextLesson').replaceAll('{lesson}', lesson);
   String get notificationActionNoNextLesson =>
       _t('notificationActionNoNextLesson');
+  String get notificationChangeOutsideWeek =>
+      _t('notificationChangeOutsideWeek');
 
   // ── AI Chat ─────────────────────────────────────────────────────────────────
   String get aiInputHint => _t('aiInputHint');
@@ -756,6 +758,19 @@ class AppL10n {
   String get settingsImportantChangesPush => _t('settingsImportantChangesPush');
   String get settingsImportantChangesPushDesc =>
       _t('settingsImportantChangesPushDesc');
+  String get settingsNotifyChangeCancellations =>
+      _t('settingsNotifyChangeCancellations');
+  String get settingsNotifyChangeCancellationsDesc =>
+      _t('settingsNotifyChangeCancellationsDesc');
+  String get settingsNotifyChangeRoom => _t('settingsNotifyChangeRoom');
+  String get settingsNotifyChangeRoomDesc =>
+      _t('settingsNotifyChangeRoomDesc');
+  String get settingsNotifyChangeTeacher => _t('settingsNotifyChangeTeacher');
+  String get settingsNotifyChangeTeacherDesc =>
+      _t('settingsNotifyChangeTeacherDesc');
+  String get settingsNotifyChangeOther => _t('settingsNotifyChangeOther');
+  String get settingsNotifyChangeOtherDesc =>
+      _t('settingsNotifyChangeOtherDesc');
   String get settingsRefreshPushWidgetNow => _t('settingsRefreshPushWidgetNow');
   String get settingsRefreshPushWidgetNowDesc =>
       _t('settingsRefreshPushWidgetNowDesc');
@@ -1296,6 +1311,8 @@ class AppL10n {
       'notificationActionNextLessonLabel': 'Nächste Stunde',
       'notificationActionNoNextLesson':
           'Keine nächste Stunde für heute gefunden',
+      'notificationChangeOutsideWeek':
+          'Die Änderung liegt außerhalb der geladenen Woche',
 
       'aiTitle': 'KI-Assistent',
       'aiTabAnalysis': 'Analyse',
@@ -1738,6 +1755,17 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsImportantChangesPush': 'Wichtige Änderungen',
       'settingsImportantChangesPushDesc':
           'Benachrichtigt bei Ausfällen, Raumwechseln und Vertretungen',
+      'settingsNotifyChangeCancellations': 'Ausfälle',
+      'settingsNotifyChangeCancellationsDesc':
+          'Wenn eine Stunde ausfällt oder wieder stattfindet',
+      'settingsNotifyChangeRoom': 'Raumwechsel',
+      'settingsNotifyChangeRoomDesc': 'Wenn sich der Raum einer Stunde ändert',
+      'settingsNotifyChangeTeacher': 'Vertretungen',
+      'settingsNotifyChangeTeacherDesc':
+          'Wenn die Lehrkraft einer Stunde wechselt',
+      'settingsNotifyChangeOther': 'Sonstige Änderungen',
+      'settingsNotifyChangeOtherDesc':
+          'Zeit-, Fach- oder sonstige Änderungen',
       'settingsRefreshPushWidgetNow': 'Push & Widget jetzt aktualisieren',
       'settingsRefreshPushWidgetNowDesc':
           'Lädt sofort die neuesten Daten aus dem API-Cache und aktualisiert Widget und Push',
@@ -2485,6 +2513,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'notificationActionCurrentLesson': 'Current lesson: {lesson}',
       'notificationActionNextLessonLabel': 'Next lesson',
       'notificationActionNoNextLesson': 'No next lesson found for today',
+      'notificationChangeOutsideWeek':
+          'The change is outside the currently loaded week',
 
       'aiTitle': 'AI Assistant',
       'aiTabAnalysis': 'Analysis',
@@ -2914,6 +2944,16 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsImportantChangesPush': 'Important changes',
       'settingsImportantChangesPushDesc':
           'Notifies you about cancellations, room changes, and substitutions',
+      'settingsNotifyChangeCancellations': 'Cancellations',
+      'settingsNotifyChangeCancellationsDesc':
+          'When a lesson is cancelled or restored',
+      'settingsNotifyChangeRoom': 'Room changes',
+      'settingsNotifyChangeRoomDesc': 'When the room of a lesson changes',
+      'settingsNotifyChangeTeacher': 'Teacher changes',
+      'settingsNotifyChangeTeacherDesc':
+          'When the teacher of a lesson changes',
+      'settingsNotifyChangeOther': 'Other changes',
+      'settingsNotifyChangeOtherDesc': 'Time, subject, or other changes',
       'settingsRefreshPushWidgetNow': 'Refresh push & widget now',
       'settingsRefreshPushWidgetNowDesc':
           'Immediately loads the newest data from the API cache and updates widget and push',
@@ -3655,6 +3695,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'notificationActionNextLessonLabel': 'Cours suivant',
       'notificationActionNoNextLesson':
           'Aucun cours suivant trouvé pour aujourd’hui',
+      'notificationChangeOutsideWeek':
+          'Le changement se situe en dehors de la semaine chargée',
 
       'aiTitle': 'Assistant IA',
       'aiTabAnalysis': 'Analyse',
@@ -4096,6 +4138,18 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsImportantChangesPush': 'Changements importants',
       'settingsImportantChangesPushDesc':
           'Alerte en cas d’annulations, de changement de salle ou de remplacements',
+      'settingsNotifyChangeCancellations': 'Annulations',
+      'settingsNotifyChangeCancellationsDesc':
+          'Lorsqu’un cours est annulé ou rétabli',
+      'settingsNotifyChangeRoom': 'Changements de salle',
+      'settingsNotifyChangeRoomDesc':
+          'Lorsque la salle d’un cours change',
+      'settingsNotifyChangeTeacher': 'Changements de professeur',
+      'settingsNotifyChangeTeacherDesc':
+          'Lorsque le professeur d’un cours change',
+      'settingsNotifyChangeOther': 'Autres changements',
+      'settingsNotifyChangeOtherDesc':
+          'Changements d’horaire, de matière ou autres',
       'settingsRefreshPushWidgetNow': 'Actualiser push et widget maintenant',
       'settingsRefreshPushWidgetNowDesc':
           'Charge immédiatement les dernières données du cache API et met à jour widget et push',
@@ -4860,6 +4914,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'notificationActionNextLessonLabel': 'Siguiente clase',
       'notificationActionNoNextLesson':
           'No se encontró una siguiente clase para hoy',
+      'notificationChangeOutsideWeek':
+          'El cambio está fuera de la semana cargada',
 
       'aiTitle': 'Asistente IA',
       'aiTabAnalysis': 'Análisis',
@@ -5300,6 +5356,17 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsImportantChangesPush': 'Cambios importantes',
       'settingsImportantChangesPushDesc':
           'Avisa sobre cancelaciones, cambios de aula y sustituciones',
+      'settingsNotifyChangeCancellations': 'Cancelaciones',
+      'settingsNotifyChangeCancellationsDesc':
+          'Cuando se cancela o restablece una clase',
+      'settingsNotifyChangeRoom': 'Cambios de aula',
+      'settingsNotifyChangeRoomDesc': 'Cuando cambia el aula de una clase',
+      'settingsNotifyChangeTeacher': 'Cambios de profesor',
+      'settingsNotifyChangeTeacherDesc':
+          'Cuando cambia el profesor de una clase',
+      'settingsNotifyChangeOther': 'Otros cambios',
+      'settingsNotifyChangeOtherDesc':
+          'Cambios de hora, de asignatura u otros',
       'settingsRefreshPushWidgetNow': 'Actualizar push y widget ahora',
       'settingsRefreshPushWidgetNowDesc':
           'Carga inmediatamente los datos más recientes de la caché API y actualiza widget y push',

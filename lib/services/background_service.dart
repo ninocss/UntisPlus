@@ -11,6 +11,8 @@ import 'package:workmanager/workmanager.dart';
 import '../core/time_utils.dart';
 import '../data/cache/offline_cache_store.dart';
 import '../data/security/credential_vault.dart';
+import '../features/changes/data/change_repository.dart';
+import '../features/changes/domain/timetable_change.dart';
 import '../l10n.dart';
 
 import 'demo_mode_service.dart';
@@ -355,6 +357,136 @@ String _localizedChangeSummary(String locale, Map<String, int> counts) {
   return parts.join(' · ');
 }
 
+/// Mirrors `TimetableLessonSnapshot.fromJson` identity construction so the
+/// notification payload can look up the changed lesson in the fetched data.
+String _bgLessonIdentityOf(Map<dynamic, dynamic> lesson) {
+  final rawId = lesson['id'] ?? lesson['lsid'];
+  if (rawId != null && rawId.toString().isNotEmpty) return 'id:$rawId';
+  final date = (lesson['date'] as num?)?.toInt() ?? 0;
+  final start = (lesson['startTime'] as num?)?.toInt() ?? 0;
+  final end = (lesson['endTime'] as num?)?.toInt() ?? 0;
+  final subject = (lesson['su'] ?? '').toString().trim();
+  return 'fallback:$date|$start|$end|$subject';
+}
+
+/// Records week-by-week snapshots for the whole fetched horizon (today and
+/// upcoming days), then notifies about newly detected changes – respecting
+/// the per-category notification toggles. Returns true when a notification
+/// was shown so the legacy today-signature diff is not fired additionally.
+Future<bool> _notifyNewlyDetectedChanges({
+  required SharedPreferences prefs,
+  required List<Map<dynamic, dynamic>> fullLessons,
+  required String locale,
+  required String currentLesson,
+  required String nextLesson,
+  required bool isDemoMode,
+  required String activeAccountId,
+}) async {
+  if (isDemoMode || activeAccountId.isEmpty || fullLessons.isEmpty) {
+    return false;
+  }
+  final accountId = activeAccountId;
+
+  final repository = ChangeRepository();
+  final beforeIds = (await repository
+          .loadChanges(accountId))
+      .map((change) => change.id)
+      .toSet();
+
+  final byMonday = <String, List<Map<dynamic, dynamic>>>{};
+  for (final lesson in fullLessons) {
+    final date = (lesson['date'] as num?)?.toInt() ?? 0;
+    if (date <= 0) continue;
+    final dateStr = date.toString();
+    if (dateStr.length != 8) continue;
+    final day = DateTime(
+      int.parse(dateStr.substring(0, 4)),
+      int.parse(dateStr.substring(4, 6)),
+      int.parse(dateStr.substring(6, 8)),
+    );
+    final monday = day.subtract(Duration(days: day.weekday - 1));
+    byMonday.putIfAbsent(
+      DateFormat('yyyyMMdd').format(monday),
+      () => <Map<dynamic, dynamic>>[],
+    ).add(lesson);
+  }
+
+  for (final entry in byMonday.entries) {
+    await repository.recordSnapshot(
+      accountId: accountId,
+      rangeKey: entry.key,
+      lessons: entry.value,
+      dataset: 'backgroundSnapshot',
+    );
+  }
+
+  final afterChanges = await repository.loadChanges(accountId);
+  final newChanges = afterChanges
+      .where((change) => !beforeIds.contains(change.id))
+      .toList(growable: false);
+  if (newChanges.isEmpty) return false;
+
+  final notifyCancellations =
+      prefs.getBool('notifyChangeCancellations') ?? true;
+  final notifyRoom = prefs.getBool('notifyChangeRoom') ?? true;
+  final notifyTeacher = prefs.getBool('notifyChangeTeacher') ?? true;
+  final notifyOther = prefs.getBool('notifyChangeOther') ?? true;
+
+  final allowed = newChanges.where((change) {
+    return switch (change.type) {
+      TimetableChangeType.cancelled ||
+      TimetableChangeType.restored => notifyCancellations,
+      TimetableChangeType.room => notifyRoom,
+      TimetableChangeType.teacher => notifyTeacher,
+      _ => notifyOther,
+    };
+  }).toList(growable: false);
+  if (allowed.isEmpty) return false;
+
+  final identityToLesson = <String, Map<dynamic, dynamic>>{
+    for (final lesson in fullLessons) _bgLessonIdentityOf(lesson): lesson,
+  };
+  final first = allowed.first;
+  final firstLesson = identityToLesson[first.lessonIdentity];
+  final firstDate = (firstLesson?['date'] as num?)?.toInt();
+
+  final dateStr = firstDate == null ? '' : firstDate.toString();
+  String dayLabel = '';
+  if (dateStr.length == 8) {
+    try {
+      dayLabel = DateFormat('dd.MM.').format(
+        DateTime(
+          int.parse(dateStr.substring(0, 4)),
+          int.parse(dateStr.substring(4, 6)),
+          int.parse(dateStr.substring(6, 8)),
+        ),
+      );
+    } catch (_) {}
+  }
+  final firstStart = firstLesson == null
+      ? null
+      : (firstLesson['startTime'] as num?)?.toInt();
+
+  final bodyParts = <String>[
+    _localizedImportantChangesBody(locale),
+    if (dayLabel.isNotEmpty && firstStart != null && first.subject.isNotEmpty)
+      '$dayLabel ${formatUntisTime(firstStart.toString())} · ${first.subject}'
+    else
+      _localizedChangeSummary(locale, const {'other': 1}),
+  ];
+
+  await NotificationService().showImportantChangeNotification(
+    title: _localizedImportantChangesTitle(locale),
+    body: bodyParts.join(' · '),
+    locale: locale,
+    currentLesson: currentLesson,
+    nextLesson: nextLesson,
+    changeDate: firstDate,
+    changeStartTime: firstStart,
+  );
+  return true;
+}
+
 String _localizedUpdateBody(String locale, String latestVersion) {
   return AppL10n.of(locale).uiFormat('bgUpdateBody', {
     'version': latestVersion,
@@ -546,6 +678,10 @@ Future<bool> updateUntisData() async {
   // A malformed or incomplete server response must never silently remove an
   // already confirmed smart alarm. An actual empty timetable remains valid.
   if (!hasValidTimetableResult) return false;
+
+  // #138: keep the whole fetched horizon (today + next 14 school days) so the
+  // notification can report changes on upcoming days, not just today's.
+  final fullLessons = lessons.whereType<Map>().toList(growable: false);
 
   // The alarm must see the raw server plan: hiding a subject is a display
   // preference, not a reason to sleep through a real lesson.
@@ -759,7 +895,30 @@ Future<bool> updateUntisData() async {
     currentSignature: lessonSignature,
   );
 
-  if (isImportantChangesEnabled && hasMeaningfulChange) {
+  // #138: the new pipeline records week-by-week snapshots for the whole
+  // fetched horizon and notifies about newly detected changes (optionally
+  // filtered per category). The classic today-signature diff below stays as
+  // the fallback for the first runs before any snapshot baseline exists.
+  var notifiedBySnapshot = false;
+  if (isImportantChangesEnabled) {
+    try {
+      notifiedBySnapshot = await _notifyNewlyDetectedChanges(
+        prefs: prefs,
+        fullLessons: fullLessons,
+        locale: locale,
+        currentLesson: currentLessonName,
+        nextLesson: nextLessonName,
+        isDemoMode: isDemoMode,
+        activeAccountId: activeAccountId,
+      );
+    } catch (_) {
+      notifiedBySnapshot = false;
+    }
+  }
+
+  if (isImportantChangesEnabled &&
+      !notifiedBySnapshot &&
+      hasMeaningfulChange) {
     await NotificationService().showImportantChangeNotification(
       title: _localizedImportantChangesTitle(locale),
       body:
