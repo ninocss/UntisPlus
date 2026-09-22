@@ -73,7 +73,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     _aiCustomBaseUrlController.text = aiCustomBaseUrl;
     _syncApiKeyControllerForProvider();
-    SharedPreferences.getInstance().then((prefs) {
+    Future.value(SettingsStore.instance.preferences).then((prefs) {
       if (!mounted) return;
       setState(() {
         _useLoginKey =
@@ -110,7 +110,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _schoolSearchFocusNode.requestFocus();
     }
     if (!widget.accountOnly) {
-      SharedPreferences.getInstance().then(
+      Future.value(SettingsStore.instance.preferences).then(
         (prefs) => prefs.setInt('onboardingCheckpoint', page),
       );
     }
@@ -262,7 +262,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       }
       await File(partialPath).rename(path);
       aiLocalModelPath = path;
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       await prefs.setString('aiLocalModelPath', path);
       if (mounted) {
         setState(() {
@@ -765,7 +765,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     mistralApiKey = _onboardingProviderApiKeys['mistral'] ?? '';
     customAiApiKey = _onboardingProviderApiKeys['custom'] ?? '';
 
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await saveAiProviderPreferences(prefs);
   }
 
@@ -853,7 +853,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           personType = 5;
         }
 
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = SettingsStore.instance.preferences;
         await prefs.setString('schoolUrl', schoolUrl);
         await prefs.setString('schoolName', schoolName);
         await prefs.setString('username', _userController.text);
@@ -893,7 +893,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _activateDemoMode() async {
     HapticFeedback.mediumImpact();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     demoModeNotifier.value = true;
     schoolName = 'demo.school';
     schoolUrl = 'demo.school';
@@ -929,7 +929,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _completeOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await _persistOnboardingAiConfiguration();
 
     await prefs.setBool('onboardingCompleted', true);
@@ -1001,7 +1001,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Future<void> _setBackgroundAnimationStyle(int style) async {
     final normalized = style.clamp(0, 10);
     backgroundAnimationStyleNotifier.value = normalized;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setInt('backgroundAnimationStyle', normalized);
   }
 
@@ -1161,7 +1161,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _setBackgroundGyroscopeEnabled(bool enabled) async {
     backgroundGyroscopeNotifier.value = enabled;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setBool('backgroundGyroscope', enabled);
   }
 
@@ -1405,7 +1405,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           await ensureDateFormattingForLocale(code);
           if (!mounted) return;
           appLocaleNotifier.value = code;
-          final prefs = await SharedPreferences.getInstance();
+          final prefs = SettingsStore.instance.preferences;
           await prefs.setString('appLocale', code);
           unawaited(WidgetService.publishNativeCopy(code));
           unawaited(AlarmService.instance.refreshNativeCopy());
@@ -1535,7 +1535,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                               onChanged: (nv) async {
                                 backgroundAnimationsNotifier.value = nv;
                                 final prefs =
-                                    await SharedPreferences.getInstance();
+                                    SettingsStore.instance.preferences;
                                 await prefs.setBool('backgroundAnimations', nv);
                               },
                               colors: colors,
@@ -1851,7 +1851,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 onTap: () async {
                   HapticFeedback.selectionClick();
                   themeModeNotifier.value = mode;
-                  final prefs = await SharedPreferences.getInstance();
+                  final prefs = SettingsStore.instance.preferences;
                   await prefs.setInt('themeMode', mode.index);
                 },
                 borderRadius: BorderRadius.circular(14),
@@ -2516,7 +2516,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       return;
     }
     aiLocalModelPath = path;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setString('aiLocalModelPath', path);
     _nextPage();
   }

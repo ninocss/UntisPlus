@@ -86,7 +86,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
   Future<void> _loadChatHistory() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       final sessions = AiChatHistoryStore(prefs).read();
       if (!mounted) return;
       setState(() {
@@ -108,7 +108,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       }
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       await AiChatHistoryStore(prefs).write(_chatHistory);
     } catch (_) {}
   }
@@ -324,7 +324,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       exams = DemoModeService.demoExams(locale: appLocaleNotifier.value);
     } else {
       try {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = SettingsStore.instance.preferences;
         final raw = prefs.getString(
           [
             'weekCacheV1',
@@ -1820,7 +1820,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         showChangelogOnStartup = false;
-        final p = await SharedPreferences.getInstance();
+        final p = SettingsStore.instance.preferences;
         await p.remove('showChangelogPending');
         if (mounted) showChangelogSheet(context);
       });
@@ -1878,7 +1878,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Future<void> _finishTutorial() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setBool('tutorialCompleted', true);
     await prefs.setInt('tutorialVersionCompleted', kCurrentTutorialVersion);
     if (!mounted) return;

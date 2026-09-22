@@ -29,7 +29,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   Future<void> _reloadFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await loadAiPreferences(prefs);
 
     final validModels = _modelsForProvider(
@@ -307,7 +307,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
       _markDownloadStateChanged();
       // If this was the active model, clear the path and revert provider
       if (aiLocalModelPath == path) {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = SettingsStore.instance.preferences;
         await prefs.setString('aiLocalModelPath', '');
         aiLocalModelPath = '';
         aiProvider = 'gemini';
@@ -800,7 +800,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     }
                     return;
                   }
-                  final prefs = await SharedPreferences.getInstance();
+                  final prefs = SettingsStore.instance.preferences;
                   await prefs.setString('aiLocalModelPath', path);
                   aiLocalModelPath = path;
                   aiProvider = 'local';
@@ -1384,25 +1384,25 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   Future<void> _settingsSetAiTemperature(double value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setDouble('aiTemperature', value);
     aiTemperature = value;
   }
 
   Future<void> _settingsSetAiMaxTokens(int value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setInt('aiMaxTokens', value);
     aiMaxTokens = value;
   }
 
   Future<void> _settingsSetAiTopP(double value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setDouble('aiTopP', value);
     aiTopP = value;
   }
 
   Future<void> _settingsSetAiPersona(String value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setString('aiPersona', value);
     aiPersona = value;
   }
@@ -1652,7 +1652,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     );
 
     if (confirmed == true) {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       await prefs.remove('aiChatHistory');
       if (mounted) {
         ScaffoldMessenger.of(

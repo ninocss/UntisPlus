@@ -99,7 +99,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   }
 
   Future<void> _loadGrades() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     final raw = prefs.getStringList(_accountDataKey('customGrades')) ?? [];
     final loaded = <_Grade>[];
     for (final encoded in raw) {

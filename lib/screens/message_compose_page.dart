@@ -87,7 +87,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
 
   Future<void> _restoreDraft() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       final raw = prefs.getString(_draftKey);
       if (raw == null || raw.isEmpty) return;
       final decoded = jsonDecode(raw);
@@ -124,7 +124,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
         .map((recipient) => recipient.toJson())
         .toList(growable: false);
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       if (subject.trim().isEmpty && body.trim().isEmpty && recipients.isEmpty) {
         await prefs.remove(_draftKey);
         return;
@@ -142,7 +142,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
   }
 
   Future<void> _clearDraft() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.remove(_draftKey);
   }
 
