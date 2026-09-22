@@ -28,6 +28,8 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
+import 'core/settings_store.dart';
+import 'core/defensive_parsers.dart';
 import 'core/timetable_date_utils.dart';
 import 'core/version_utils.dart';
 import 'services/notification_service.dart';
@@ -51,6 +53,7 @@ import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
 import 'features/ai/domain/ai_models.dart';
+import 'features/ai/application/ai_request_coordinator.dart';
 import 'features/ai/data/ai_chat_history_store.dart';
 import 'features/ai/data/ai_response_parser.dart';
 import 'features/ai/data/local_model_provider.dart';
@@ -247,6 +250,28 @@ AIProvider createAIProvider(
   }
 }
 
+final AiRequestCoordinator _aiRequestCoordinator = AiRequestCoordinator();
+
+AiRuntimeConfiguration _currentAiRuntimeConfiguration() =>
+    AiRuntimeConfiguration(
+      provider: aiProvider,
+      apiKey: _activeAiApiKey(),
+      customBaseUrl: aiCustomBaseUrl,
+      customCompatibility: aiCustomCompatibility,
+      model: aiModel,
+      localModelPath: aiLocalModelPath,
+      generationSettings: _currentAiGenerationSettings(),
+      providerFactory: (configuration, settings) => createAIProvider(
+        configuration,
+        generationSettings: settings,
+      ),
+      defaultModelResolver: (provider, compatibility) =>
+          _defaultModelForProvider(
+            provider,
+            customCompatibility: compatibility,
+          ),
+    );
+
 Future<void> _initializeDeferredNativeServices() async {
   if (kIsWeb) return;
   await NotificationService().init();
@@ -281,7 +306,8 @@ void main() async {
     pendingAssistantOpenNotifier.value = true;
   });
 
-  final prefs = await SharedPreferences.getInstance();
+  final settingsStore = await SettingsStore.initialize();
+  final prefs = settingsStore.preferences;
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
   await ensureDateFormattingForLocale(appLocaleNotifier.value);
   unawaited(WidgetService.publishNativeCopy(appLocaleNotifier.value));
