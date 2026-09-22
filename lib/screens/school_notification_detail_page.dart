@@ -55,12 +55,8 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
       mode: url_launcher.LaunchMode.externalApplication,
     );
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            appL10nFor(appLocaleNotifier.value).settingsGithubOpenFailed,
-          ),
-        ),
+      context.showUntisSnackBar(
+        appL10nFor(appLocaleNotifier.value).settingsGithubOpenFailed,
       );
     }
   }
@@ -70,67 +66,33 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
     _MessageAttachment attachment,
   ) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final messenger = ScaffoldMessenger.of(context);
     if (attachment.isDemo) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.attachmentDemoUnavailable)),
-      );
+      context.showUntisSnackBar(l.attachmentDemoUnavailable);
       return;
     }
+
     final name = attachment.name.isEmpty
         ? 'untisplus-attachment'
         : attachment.name;
     try {
-      final uri = Uri.parse(
-        'https://$schoolUrl/WebUntis/messageFileRequest.do?file=${attachment.id}',
+      final bytes = await SchoolInfoRepository().downloadAttachment(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: sessionID,
+        attachmentId: attachment.id,
+        reauthenticate: () async => await _reAuthenticate() ? sessionID : null,
       );
-      final response = await http.get(
-        uri,
-        headers: {
-          'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
-          'Accept': 'application/octet-stream',
-        },
-      );
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        final reAuth = await _reAuthenticate();
-        if (reAuth) {
-          final retry = await http.get(
-            uri,
-            headers: {
-              'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
-              'Accept': 'application/octet-stream',
-            },
-          );
-          if (retry.statusCode != 200) {
-            throw Exception('HTTP ${retry.statusCode}');
-          }
-          final result = await FilePicker.saveFile(
-            dialogTitle: l.attachmentSave,
-            fileName: name,
-            bytes: retry.bodyBytes,
-          );
-          if (result != null && context.mounted) {
-            messenger.showSnackBar(SnackBar(content: Text(l.attachmentSaved)));
-          }
-          return;
-        }
-      }
-      if (response.statusCode != 200) {
-        throw Exception('HTTP ${response.statusCode}');
-      }
       final result = await FilePicker.saveFile(
         dialogTitle: l.attachmentSave,
         fileName: name,
-        bytes: response.bodyBytes,
+        bytes: bytes,
       );
       if (result != null && context.mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(l.attachmentSaved)));
+        context.showUntisSnackBar(l.attachmentSaved);
       }
     } catch (_) {
       if (context.mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l.attachmentDownloadFailed)),
-        );
+        context.showUntisSnackBar(l.attachmentDownloadFailed);
       }
     }
   }
