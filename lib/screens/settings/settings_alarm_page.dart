@@ -98,7 +98,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     onChanged(value);
                     Navigator.pop(context);
                   },
-                  child: Text(l.alarmApply),
+                  child: Text(l.apply),
                 ),
               ],
             ),
@@ -336,7 +336,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     children: [
                       TextButton.icon(
                         icon: const Icon(Icons.delete_outline_rounded),
-                        label: Text(l.alarmDelete),
+                        label: Text(l.delete),
                         onPressed: () async {
                           Navigator.pop(sheetContext);
                           await _save(
@@ -363,7 +363,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                                   _config.copyWith(manualAlarms: alarms),
                                 );
                               },
-                        child: Text(l.alarmSave),
+                        child: Text(l.save),
                       ),
                     ],
                   ),

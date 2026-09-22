@@ -544,7 +544,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             ),
                             child: Text(
                               existing == null
-                                  ? l.examsSave
+                                  ? l.save
                                   : l.commonSaveChanges,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w900,

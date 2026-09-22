@@ -372,7 +372,7 @@ class _CustomBackgroundEditorScreenState
       options: [
         _SheetOption(
           value: 'save',
-          title: l.bgEditorSave,
+          title: l.save,
           icon: Icons.save_rounded,
         ),
         _SheetOption(
@@ -383,7 +383,7 @@ class _CustomBackgroundEditorScreenState
         ),
         _SheetOption(
           value: 'cancel',
-          title: l.settingsApiKeyCancel,
+          title: l.cancel,
           icon: Icons.close_rounded,
         ),
       ],
@@ -496,7 +496,7 @@ class _CustomBackgroundEditorScreenState
       _commitDraft(normalized);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaved),
+          content: Text(appL10nFor(appLocaleNotifier.value).saved),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -504,7 +504,7 @@ class _CustomBackgroundEditorScreenState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaveFailed),
+          content: Text(appL10nFor(appLocaleNotifier.value).saveFailed),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -555,19 +555,19 @@ class _CustomBackgroundEditorScreenState
     final l = appL10nFor(appLocaleNotifier.value);
     final confirm = await _showUnifiedOptionSheet<String>(
       context: context,
-      title: l.bgEditorDeleteTitle,
-      subtitle: l.bgEditorDeleteDesc,
+      title: l.deleteTitle,
+      subtitle: l.deleteDesc,
       fitContentHeight: true,
       options: [
         _SheetOption(
           value: 'delete',
-          title: l.bgEditorDeleteConfirm,
+          title: l.deleteConfirm,
           icon: Icons.delete_rounded,
           destructive: true,
         ),
         _SheetOption(
           value: 'cancel',
-          title: l.settingsApiKeyCancel,
+          title: l.cancel,
           icon: Icons.close_rounded,
         ),
       ],
@@ -818,7 +818,7 @@ class _CustomBackgroundEditorScreenState
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -1253,7 +1253,7 @@ class _CustomBackgroundEditorScreenState
                             )
                           : const Icon(Icons.save_rounded),
                       label: Text(
-                        l.bgEditorSave,
+                        l.save,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
                       ),
                       style: FilledButton.styleFrom(
@@ -1469,7 +1469,7 @@ class _CustomBackgroundEditorScreenState
                             ),
                             _SheetOption(
                               value: 'delete',
-                              title: l.bgEditorDelete,
+                              title: l.delete,
                               icon: Icons.delete_rounded,
                               destructive: true,
                             ),
@@ -1602,7 +1602,7 @@ class _CustomBackgroundEditorScreenState
                           color: cs.error,
                         ),
                         label: Text(
-                          l.bgEditorDelete,
+                          l.delete,
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.w700,
                             color: cs.error,
@@ -2280,7 +2280,7 @@ class _CustomBackgroundEditorScreenState
                   ),
                   onPressed: _deleteBackground,
                   child: Text(
-                    l.bgEditorDelete,
+                    l.delete,
                     style: TextStyle(color: cs.error),
                   ),
                 ),

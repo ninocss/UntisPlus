@@ -272,7 +272,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           ),
         ),
         title: Text(
-          l.settingsAiLocalModelDeleteConfirm,
+          l.deleteConfirm,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 17),
           textAlign: TextAlign.center,
         ),
@@ -280,13 +280,13 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.settingsApiKeyCancel),
+            child: Text(l.cancel),
           ),
           const SizedBox(width: 8),
           FilledButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.delete_rounded, size: 18),
-            label: Text(l.settingsAiLocalModelDelete),
+            label: Text(l.delete),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
               foregroundColor: Theme.of(ctx).colorScheme.onError,
@@ -818,7 +818,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           ],
           OutlinedButton.icon(
             icon: const Icon(Icons.delete_rounded, size: 18),
-            label: Text(l.settingsAiLocalModelDelete),
+            label: Text(l.delete),
             onPressed: () => _deleteLocalModel(model),
             style: OutlinedButton.styleFrom(
               foregroundColor: cs.error,
@@ -935,7 +935,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             const Spacer(),
             IconButton.filledTonal(
               onPressed: () => _cancelDownload(model.id),
-              tooltip: l.settingsApiKeyCancel,
+              tooltip: l.cancel,
               icon: const Icon(Icons.close_rounded, size: 18),
             ),
           ],
@@ -1099,7 +1099,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 _buildAiSheetActions([
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel),
+                    child: Text(l.cancel),
                   ),
                   FilledButton(
                     onPressed: () async {
@@ -1108,7 +1108,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       Navigator.pop(ctx);
                       _reloadFromPrefs();
                     },
-                    child: Text(l.settingsApiKeySave),
+                    child: Text(l.save),
                   ),
                 ]),
               ],
@@ -1172,7 +1172,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 _buildAiSheetActions([
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel),
+                    child: Text(l.cancel),
                   ),
                   TextButton(
                     onPressed: () => ctrl.text = defaultTemplate,
@@ -1187,7 +1187,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       Navigator.pop(ctx);
                       _reloadFromPrefs();
                     },
-                    child: Text(l.settingsApiKeySave),
+                    child: Text(l.save),
                   ),
                 ]),
               ],
@@ -1294,7 +1294,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(
-                      l.settingsApiKeyCancel,
+                      l.cancel,
                       style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -1363,7 +1363,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel),
+                    child: Text(l.cancel),
                   ),
                   FilledButton(
                     onPressed: () async {
@@ -1372,7 +1372,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       Navigator.pop(ctx);
                       _reloadFromPrefs();
                     },
-                    child: Text(l.settingsApiKeySave),
+                    child: Text(l.save),
                   ),
                 ]),
               ],
@@ -1532,7 +1532,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -1556,7 +1556,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                         ),
                       ),
                       child: Text(
-                        l.settingsApiKeySave,
+                        l.save,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -1638,14 +1638,14 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.examsCancel),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: Text(l.examsDelete),
+            child: Text(l.delete),
           ),
         ],
       ),

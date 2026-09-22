@@ -232,7 +232,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                     child: FilledButton(
                       onPressed: () => Navigator.pop(sheetContext, selected),
-                      child: Text(l.messageRecipientsApply),
+                      child: Text(l.apply),
                     ),
                   ),
                 ],

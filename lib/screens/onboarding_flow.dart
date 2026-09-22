@@ -509,7 +509,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: untisThemeTextStyle(
                           context,
                           fontWeight: FontWeight.w700,
@@ -524,7 +524,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         Navigator.pop(ctx);
                       },
                       child: Text(
-                        l.settingsApiKeySave,
+                        l.save,
                         style: untisThemeTextStyle(
                           context,
                           fontWeight: FontWeight.w700,
@@ -619,7 +619,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: untisThemeTextStyle(
                           context,
                           fontWeight: FontWeight.w700,
@@ -644,7 +644,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         Navigator.pop(ctx);
                       },
                       child: Text(
-                        l.settingsApiKeySave,
+                        l.save,
                         style: untisThemeTextStyle(
                           context,
                           fontWeight: FontWeight.w700,
@@ -736,7 +736,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(
-                      l.settingsApiKeyCancel,
+                      l.cancel,
                       style: untisThemeTextStyle(
                         context,
                         fontWeight: FontWeight.w700,
@@ -2632,7 +2632,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     ? OutlinedButton.icon(
                         onPressed: _cancelLocalModelDownload,
                         icon: const Icon(Icons.close_rounded),
-                        label: Text(l.settingsApiKeyCancel),
+                        label: Text(l.cancel),
                       )
                     : FilledButton.tonalIcon(
                         onPressed: downloaded
