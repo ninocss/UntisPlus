@@ -3017,6 +3017,11 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   // Per-item icon wiggle
   final List<AnimationController> _iconWiggle = [];
 
+  // Per-item label reveal controller. The pill width morphs for both the
+  // outgoing and the incoming tab, so the label must animate out as well –
+  // otherwise a deselected tab's label/width snaps back instantly.
+  final List<AnimationController> _labelControllers = [];
+
   static const _itemWidth = 46.0;
   static const _pillBaseWidth = 42.0;
   static const _pillExpandedExtra = 56.0; // extra px when label visible
@@ -3060,6 +3065,17 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       );
     }
 
+    final initialSel = widget.selectedIndex;
+    for (int i = 0; i < widget.items.length; i++) {
+      _labelControllers.add(
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 260),
+          value: i == initialSel ? 1.0 : 0.0,
+        ),
+      );
+    }
+
     final sel = widget.selectedIndex;
     _targetSel = sel;
     _targetFrac = 1.0;
@@ -3085,6 +3101,15 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
 
     final newSel = widget.selectedIndex;
     final wasHidden = _pillAlpha.value < 0.05;
+
+    final oldSel = oldWidget.selectedIndex;
+    if (oldSel >= 0 && oldSel < _labelControllers.length) {
+      // Outgoing tab label slides away while the pill morphs to the new tab.
+      _labelControllers[oldSel].reverse();
+    }
+    if (newSel >= 0 && newSel < _labelControllers.length) {
+      _labelControllers[newSel].forward();
+    }
 
     // Freeze the currently rendered layout as the morph start point.
     _fromLeft = _lastLeft;
@@ -3160,6 +3185,9 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     for (final c in _iconWiggle) {
       c.dispose();
     }
+    for (final c in _labelControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -3198,6 +3226,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
           animation: Listenable.merge([
             _morphController,
             _visibilityController,
+            ..._labelControllers,
           ]),
           builder: (context, _) {
             final t = _morphController.value.clamp(0.0, 1.1);
@@ -3323,9 +3352,9 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
               ClipRect(
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  widthFactor: selected ? labelT.clamp(0.0, 1.0) : 0,
+                  widthFactor: _labelControllers[i].value,
                   child: Opacity(
-                    opacity: (selected ? labelT : 0.0).clamp(0.0, 1.0),
+                    opacity: _labelControllers[i].value,
                     child: Padding(
                       padding: const EdgeInsets.only(left: 6),
                       child: Text(
