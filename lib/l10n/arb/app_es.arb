@@ -1006,5 +1006,11 @@
   "homeworkDueSoonCount": "{count, plural, =1 {1 tarea vence pronto} other {{count} tareas vencen pronto}}",
   "homeworkMarkedDone": "Tarea marcada como completada.",
   "homeworkReopened": "Tarea reabierta.",
-  "commonUndo": "Deshacer"
+  "commonUndo": "Deshacer",
+  "save": "Guardar",
+  "delete": "Eliminar",
+  "reload": "Recargar",
+  "settingsAppBgBlur": "App-Hintergrundunschärfe",
+  "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
+  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
 }

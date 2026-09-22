@@ -1006,5 +1006,11 @@
   "homeworkDueSoonCount": "{count, plural, =1 {1 tâche est bientôt due} other {{count} tâches sont bientôt dues}}",
   "homeworkMarkedDone": "Tâche marquée comme terminée.",
   "homeworkReopened": "Tâche rouverte.",
-  "commonUndo": "Annuler"
+  "commonUndo": "Annuler",
+  "save": "Enregistrer",
+  "delete": "Supprimer",
+  "reload": "Recharger",
+  "settingsAppBgBlur": "App-Hintergrundunschärfe",
+  "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
+  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
 }

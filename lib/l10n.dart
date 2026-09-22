@@ -61,11 +61,6 @@ extension AppL10nCollections on AppL10n {
     return count == 1 ? infoAttachedFile : infoAttachedFiles;
   }
 
-  // These labels historically used the same German fallback in every locale.
-  String get settingsAppBgBlur => 'App-Hintergrundunschärfe';
-  String get settingsAppBgBlurDesc =>
-      'Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.';
-  String get settingsAppBgBlurAmount => 'Stärke der Hintergrundunschärfe';
 
   Map<String, String> get aiPromptVariableDescriptions => <String, String>{
     '[today]': aiVar_today,

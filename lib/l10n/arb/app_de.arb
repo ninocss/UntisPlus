@@ -1366,11 +1366,29 @@
   "editorIosHint": "Füge Untis+ über den iOS-Widget-Picker hinzu und wähle anschließend dieses Profil in „Widget bearbeiten“.",
   "homeworkDueSoonFilter": "Bald fällig",
   "homeworkOpenCount": "{count, plural, =1 {1 offene Aufgabe} other {{count} offene Aufgaben}}",
-  "@homeworkOpenCount": {"placeholders": {"count": {"type": "int"}}},
+  "@homeworkOpenCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeworkNothingDueSoon": "Nichts ist bald fällig",
   "homeworkDueSoonCount": "{count, plural, =1 {1 Aufgabe ist bald fällig} other {{count} Aufgaben sind bald fällig}}",
-  "@homeworkDueSoonCount": {"placeholders": {"count": {"type": "int"}}},
+  "@homeworkDueSoonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "homeworkMarkedDone": "Aufgabe als erledigt markiert.",
   "homeworkReopened": "Aufgabe wieder geöffnet.",
-  "commonUndo": "Rückgängig"
+  "commonUndo": "Rückgängig",
+  "save": "Speichern",
+  "delete": "Löschen",
+  "reload": "Neu laden",
+  "settingsAppBgBlur": "App-Hintergrundunschärfe",
+  "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
+  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
 }
