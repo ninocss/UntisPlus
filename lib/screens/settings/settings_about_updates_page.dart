@@ -433,14 +433,10 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsHubUpdatesAbout),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
-          children: [
+    return SettingsPageShell(
+      title: l.settingsHubUpdatesAbout,
+      children: [
             // ── GROUP 1: UPDATES & RELEASES ──
             SettingsGroup(
               title: l.settingsHubUpdatesAbout,
@@ -631,8 +627,6 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
               ],
             ),
           ],
-        ),
-      ),
     );
   }
 }
