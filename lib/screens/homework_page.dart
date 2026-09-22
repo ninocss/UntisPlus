@@ -420,18 +420,26 @@ Future<void> _showAddHomeworkDialog(
 
 Future<void> _importHomeworkWithAI(BuildContext context) async {
   final l = appL10nFor(appLocaleNotifier.value);
-  final provider = _normalizeAiProvider(aiProvider);
-  final providerUsesGeminiProtocol = AiProviderCapabilities.resolve(
-    provider: provider,
-    customCompatibility: aiCustomCompatibility,
-  ).pdf;
-  final isLocalProvider = provider == 'local';
-  if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_providerAwareMissingApiKeyMessage(l, provider))),
-    );
+  final runtime = _currentAiRuntimeConfiguration();
+  final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+  final capabilities = _aiRequestCoordinator.capabilities(runtime);
+  final preflight = AiRequestSpec(
+    systemPrompt: '',
+    userPrompt: '',
+    noReplyMessage: l.aiNoReply,
+    allowLocal: true,
+    requireLocalModel: false,
+    missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+    customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+  );
+  try {
+    _aiRequestCoordinator.validate(runtime, preflight);
+  } catch (e) {
+    final message = e.toString().replaceFirst('Exception: CONFIG: ', '');
+    if (context.mounted) context.showUntisSnackBar(message);
     return;
   }
+  final providerUsesGeminiProtocol = capabilities.pdf;
 
   final source = await _showUnifiedOptionSheet<String>(
     context: context,
@@ -464,41 +472,25 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
 
   if (!context.mounted) return;
 
-  var loadingVisible = true;
-  showUntisDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (ctx) => const Center(child: CircularProgressIndicator()),
-  );
-
   try {
     final prompt = l.aiHomeworkVisionPrompt(
       providerUsesGeminiProtocol ? l.aiFileKindPdf : '',
     );
 
-    final text = await _requestAiVisionAnalysisGlobal(
-      prompt: prompt,
-      fileBytes: importFile.bytes,
-      mimeType: importFile.mimeType,
+    final text = await runWithUntisBlockingLoader(
+      context,
+      () => _requestAiVisionAnalysisGlobal(
+        prompt: prompt,
+        fileBytes: importFile.bytes,
+        mimeType: importFile.mimeType,
+      ),
     );
-
     if (!context.mounted) return;
-    if (loadingVisible) {
-      Navigator.pop(context);
-      loadingVisible = false;
-    }
 
-    final jsonStart = text.indexOf('[');
-    final jsonEnd = text.lastIndexOf(']');
-    if (jsonStart != -1 && jsonEnd != -1) {
-      final jsonStr = text.substring(jsonStart, jsonEnd + 1);
-      final decoded = jsonDecode(jsonStr);
-      if (decoded is! List) throw Exception(l.examsImportInvalidJson);
-
-      final items = decoded
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+    final items = parseJsonObjectArrayFromModelText(
+      text,
+      invalidMessage: l.examsImportInvalidJson,
+    );
 
       final current = List<Map<String, dynamic>>.from(
         customHomeworkNotifier.value,
@@ -515,21 +507,10 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
       }
       await saveCustomHomework(current);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.homeworkImportSuccess)));
-    } else {
-      throw Exception(l.examsImportInvalidJson);
-    }
+      context.showUntisSnackBar(l.homeworkImportSuccess);
   } catch (e) {
     if (!context.mounted) return;
-    if (loadingVisible) {
-      Navigator.pop(context);
-      loadingVisible = false;
-    }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('${l.homeworkImportError}$e')));
+    context.showUntisSnackBar('${l.homeworkImportError}$e');
   }
 }
 
@@ -537,67 +518,35 @@ Future<String> _requestAiVisionAnalysisGlobal({
   required String prompt,
   required Uint8List fileBytes,
   required String mimeType,
-}) async {
+}) {
   final l = appL10nFor(appLocaleNotifier.value);
-  final provider = _normalizeAiProvider(aiProvider);
-  final capabilities = AiProviderCapabilities.resolve(
-    provider: provider,
-    customCompatibility: aiCustomCompatibility,
-  );
-  if (provider == 'local' || !capabilities.images) {
-    throw Exception('Unsupported provider for vision: $provider');
-  }
-  final apiKey = _activeAiApiKey().trim();
-  if (apiKey.isEmpty) {
-    throw Exception(
-      'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
-    );
-  }
-
-  final model = aiModel.trim().isNotEmpty
-      ? aiModel.trim()
-      : _defaultModelForProvider(
-          provider,
-          customCompatibility: aiCustomCompatibility,
-        );
-
-  if (provider == 'custom' && aiCustomBaseUrl.trim().isEmpty) {
-    throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
-  }
-  if (mimeType == 'application/pdf' && !capabilities.pdf) {
-    throw Exception('API: Unsupported file type for this provider: $mimeType');
-  }
-
-  final currentSettings = _currentAiGenerationSettings();
-  final providerInstance = createAIProvider(
-    AiProviderConfiguration(
-      provider: provider,
-      model: model,
-      apiKey: apiKey,
-      customBaseUrl: aiCustomBaseUrl,
-      customCompatibility: aiCustomCompatibility,
-    ),
-    generationSettings: AiGenerationSettings(
+  final runtime = _currentAiRuntimeConfiguration();
+  final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+  return _aiRequestCoordinator.generate(
+    runtime: runtime,
+    spec: AiRequestSpec(
+      systemPrompt: '',
+      userPrompt: prompt,
       temperature: 0.1,
       maxTokens: 2200,
       topP: 1,
-      formatAttachmentText: currentSettings.formatAttachmentText,
-      formatUnsupportedAttachment: currentSettings.formatUnsupportedAttachment,
+      requiresImages: mimeType.startsWith('image/'),
+      requiresPdf: mimeType == 'application/pdf',
+      allowLocal: false,
+      attachments: [
+        AiChatAttachment(
+          name: 'homework-import',
+          mimeType: mimeType,
+          bytes: fileBytes,
+        ),
+      ],
+      noReplyMessage: l.aiNoReply,
+      missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+      customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+      localProviderUnsupportedMessage: 'Unsupported provider for vision: local',
+      unsupportedAttachmentMessage: (type) =>
+          'Unsupported file type for this provider: $type',
     ),
-  );
-  return const AiTextGenerationService().generate(
-    provider: providerInstance,
-    systemPrompt: '',
-    userPrompt: prompt,
-    model: model,
-    noReplyMessage: l.aiNoReply,
-    attachments: [
-      AiChatAttachment(
-        name: 'homework-import',
-        mimeType: mimeType,
-        bytes: fileBytes,
-      ),
-    ],
   );
 }
 
