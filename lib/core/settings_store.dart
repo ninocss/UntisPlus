@@ -106,8 +106,8 @@ class SettingsStore {
   }) async {
     final normalized = binding.normalized(value);
     final key = binding.resolvedKey(accountId: accountId);
-    await writeRaw(key, binding.encoder(normalized));
     binding.notifier.value = normalized;
+    await writeRaw(key, binding.encoder(normalized));
   }
 
   Future<void> writeRaw(String key, Object? value) async {
