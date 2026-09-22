@@ -380,17 +380,13 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final readiness = _readiness!;
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.alarmTitle),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
-          children: [
+    return SettingsPageShell(
+      title: l.alarmTitle,
+      children: [
             SettingsGroup(
               title: l.alarmSchedule,
               children: [
@@ -620,8 +616,6 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ],
             ),
           ],
-        ),
-      ),
     );
   }
 }
