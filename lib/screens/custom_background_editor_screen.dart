@@ -863,62 +863,24 @@ class _CustomBackgroundEditorScreenState
     onChanged(safe);
   }
 
-  String _providerLabelForError(AppL10n l) {
-    return _providerAwareMissingApiKeyMessage(
-      l,
-      _normalizeAiProvider(aiProvider),
-    );
-  }
-
-  Future<String> _requestAiBackgroundSpec(String prompt) async {
+  Future<String> _requestAiBackgroundSpec(String prompt) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    final isLocalProvider = provider == 'local';
-    final apiKey = _activeAiApiKey().trim();
-    if (!isLocalProvider && apiKey.isEmpty) {
-      throw Exception('CONFIG: ${_providerLabelForError(l)}');
-    }
-
-    final model = aiModel.trim().isNotEmpty
-        ? aiModel.trim()
-        : _defaultModelForProvider(
-            provider,
-            customCompatibility: aiCustomCompatibility,
-          );
-
-    final systemPrompt = l.bgEditorAiSystem;
-    final userPrompt =
-        '${l.bgEditorAiUserPrefix}\n$prompt\n\n${l.bgEditorAiUserSchemaHint}';
-
-    if (provider == 'custom' && aiCustomBaseUrl.trim().isEmpty) {
-      throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
-    }
-
-    final currentSettings = _currentAiGenerationSettings();
-    final providerInstance = createAIProvider(
-      AiProviderConfiguration(
-        provider: provider,
-        model: model,
-        apiKey: apiKey,
-        customBaseUrl: aiCustomBaseUrl,
-        customCompatibility: aiCustomCompatibility,
-        localModelPath: isLocalProvider ? aiLocalModelPath : '',
-      ),
-      generationSettings: AiGenerationSettings(
+    final runtime = _currentAiRuntimeConfiguration();
+    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+    return _aiRequestCoordinator.generate(
+      runtime: runtime,
+      spec: AiRequestSpec(
+        systemPrompt: l.bgEditorAiSystem,
+        userPrompt:
+            '${l.bgEditorAiUserPrefix}\n$prompt\n\n${l.bgEditorAiUserSchemaHint}',
         temperature: 0.25,
         maxTokens: 1300,
         topP: 1,
-        formatAttachmentText: currentSettings.formatAttachmentText,
-        formatUnsupportedAttachment:
-            currentSettings.formatUnsupportedAttachment,
+        noReplyMessage: l.aiNoReply,
+        missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+        customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+        localModelMissingMessage: l.aiLocalModelLoadError,
       ),
-    );
-    return const AiTextGenerationService().generate(
-      provider: providerInstance,
-      systemPrompt: systemPrompt,
-      userPrompt: userPrompt,
-      model: model,
-      noReplyMessage: l.aiNoReply,
     );
   }
 
