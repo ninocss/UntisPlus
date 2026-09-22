@@ -13060,7 +13060,9 @@ class _InfoHtmlBody extends StatelessWidget {
   Widget? _block(BuildContext context, html_dom.Node node) {
     if (node is html_dom.Text) {
       final value = _normalizedText(node.data);
-      if (value.isEmpty) return null;
+      // Whitespace-only nodes (e.g. the "\n\n" the parser keeps between two
+      // <p> blocks) must not render as an empty paragraph.
+      if (value.trim().isEmpty) return null;
       return Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: _richText(context, [node]),
@@ -13198,21 +13200,37 @@ class _InfoHtmlBody extends StatelessWidget {
     );
   }
 
+  /// Tags that start a new line. When such a tag appears *inside* an inline
+  /// context (WebUntis bodies frequently nest <div>/<p> blocks), the spans
+  /// must still break the line instead of gluing the paragraphs together.
+  static const Set<String> _blockTags = {
+    'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote',
+    'section', 'article', 'ul', 'ol', 'table', 'pre',
+  };
+
   List<InlineSpan> _spans(
     BuildContext context,
     List<html_dom.Node> nodes,
     TextStyle? inherited,
   ) {
     final spans = <InlineSpan>[];
+    // Whether the last emitted span already ends on a new line, so that a
+    // block-level element nested in inline content adds exactly one break.
+    var endsWithBreak = false;
+
     for (final node in nodes) {
       if (node is html_dom.Text) {
         final value = _normalizedText(node.data);
-        if (value.isNotEmpty) spans.add(TextSpan(text: value));
+        if (value.isNotEmpty) {
+          spans.add(TextSpan(text: value));
+          endsWithBreak = value.endsWith('\n');
+        }
         continue;
       }
       if (node is! html_dom.Element) continue;
       if (node.localName == 'br') {
         spans.add(const TextSpan(text: '\n'));
+        endsWithBreak = true;
         continue;
       }
 
@@ -13248,6 +13266,22 @@ class _InfoHtmlBody extends StatelessWidget {
             ),
           );
         }
+        continue;
+      }
+      if (_blockTags.contains(node.localName)) {
+        // Nested block: begin a new line and finish it afterwards so the next
+        // sibling starts on its own line.
+        if (!endsWithBreak) {
+          spans.add(const TextSpan(text: '\n'));
+        }
+        spans.add(
+          TextSpan(
+            style: inherited?.merge(style) ?? style,
+            children: _spans(context, node.nodes, style),
+          ),
+        );
+        spans.add(const TextSpan(text: '\n'));
+        endsWithBreak = true;
         continue;
       }
       spans.add(
