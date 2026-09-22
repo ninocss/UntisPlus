@@ -44,30 +44,55 @@ bool _detailIsSafeExternalUrl(String? value) {
 
 String _detailToPlainText(html_dom.Document document) {
   final buffer = StringBuffer();
+  // Adjacent inline nodes (e.g. <b>Name:</b><span>Max</span>) must not be
+  // glued together – insert a space when the output does not already end with
+  // whitespace ("DateName" class of bugs).
+  var lastWasSpace = true;
+  void writeText(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return;
+    if (!lastWasSpace) buffer.write(' ');
+    buffer.write(trimmed);
+    lastWasSpace = false;
+  }
+
   void walk(Iterable<html_dom.Node> nodes) {
     for (final node in nodes) {
       if (node is html_dom.Text) {
-        final value = node.data.trim();
-        if (value.isNotEmpty) buffer.write(value);
+        writeText(node.data);
         continue;
       }
       if (node is! html_dom.Element) continue;
       final tag = node.localName;
       if (tag == 'br') {
         buffer.write('\n');
+        lastWasSpace = true;
         continue;
       }
       const blocks = {
         'p', 'div', 'h1', 'h2', 'h3', 'h4', 'blockquote', 'pre',
         'section', 'article', 'ul', 'ol', 'table',
       };
-      if (tag == 'li') buffer.write('\n• ');
-      if (blocks.contains(tag) && tag != 'li') buffer.write('\n');
-      if (tag == 'td' || tag == 'th') buffer.write(' – ');
+      if (tag == 'li') {
+        buffer.write('\n• ');
+        lastWasSpace = true;
+      }
+      if (blocks.contains(tag) && tag != 'li') {
+        buffer.write('\n');
+        lastWasSpace = true;
+      }
+      if (tag == 'td' || tag == 'th') {
+        buffer.write(' – ');
+        lastWasSpace = true;
+      }
       walk(node.nodes);
-      if (blocks.contains(tag) && tag != 'li') buffer.write('\n');
+      if (blocks.contains(tag) && tag != 'li') {
+        buffer.write('\n');
+        lastWasSpace = true;
+      }
     }
   }
+
   walk(document.body?.nodes ?? const []);
   return _normalizedDetailText(buffer.toString());
 }
@@ -212,7 +237,12 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
       _detailSafeInfoDocument(item.displayBody),
     );
     final dateLabel = _notificationDateLabel(item.date);
-    final buffer = StringBuffer(item.title.trim());
+    // Each header part starts on its own line: StringBuffer.writeln appends
+    // only after its argument, so seeding the buffer with the title and then
+    // calling writeln would glue the title to the author ("DateName").
+    final buffer = StringBuffer()
+      ..write(item.title.trim())
+      ..writeln();
     if ((item.author ?? '').trim().isNotEmpty) {
       buffer.writeln(item.author!.trim());
     }
