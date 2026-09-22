@@ -90,6 +90,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ? _tempSessionId!
       : sessionID;
 
+  WebUntisRequestContext get _timetableRequestContext =>
+      WebUntisRequestContext(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: _currentSessionId,
+      );
+
   static const double _ppm = 1.5;
 
   List<String> get _dayShort =>
@@ -436,64 +443,39 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
     if (_currentSessionId.isEmpty || schoolUrl.isEmpty) return;
-    final url = Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-    );
-    final headers = {
-      "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-      "Content-Type": "application/json",
-    };
 
-    Future<Map<String, dynamic>> rpc(String id, String method) async {
-      try {
-        final r = await http
-            .post(
-              url,
-              headers: headers,
-              body: jsonEncode({
-                "id": id,
-                "method": method,
-                "params": {},
-                "jsonrpc": "2.0",
-              }),
-            )
-            .timeout(const Duration(seconds: 6));
-        final decoded = jsonDecode(r.body);
-        if (decoded is Map<String, dynamic>) return decoded;
-        if (decoded is Map) return Map<String, dynamic>.from(decoded);
-      } catch (_) {}
-      return <String, dynamic>{};
-    }
-
-    final results = await Future.wait([
-      rpc("sub", "getSubjects"),
-      rpc("tea", "getTeachers"),
-      rpc("roo", "getRooms"),
-    ]);
-
-    for (var s in (results[0]['result'] as List? ?? [])) {
-      final id = s['id'] as int?;
-      if (id != null) {
-        _subjectLong[id] = (s['longName'] ?? s['longname'] ?? s['name'] ?? '')
-            .toString();
-        _subjectShortMap[id] = (s['name'] ?? '').toString();
+    try {
+      final data = await _timetableRepository.fetchMasterData(
+        _timetableRequestContext,
+      );
+      for (final subject in data.subjects) {
+        final id = subject['id'] as int?;
+        if (id == null) continue;
+        _subjectLong[id] =
+            (subject['longName'] ??
+                    subject['longname'] ??
+                    subject['name'] ??
+                    '')
+                .toString();
+        _subjectShortMap[id] = (subject['name'] ?? '').toString();
       }
-    }
-    for (var t in (results[1]['result'] as List? ?? [])) {
-      final id = t['id'] as int?;
-      if (id != null) {
-        final fore = (t['foreName'] ?? t['forename'] ?? '').toString().trim();
-        final last = (t['longName'] ?? t['name'] ?? '').toString().trim();
+      for (final teacher in data.teachers) {
+        final id = teacher['id'] as int?;
+        if (id == null) continue;
+        final fore = (teacher['foreName'] ?? teacher['forename'] ?? '')
+            .toString()
+            .trim();
+        final last = (teacher['longName'] ?? teacher['name'] ?? '')
+            .toString()
+            .trim();
         _teacherMap[id] = fore.isNotEmpty ? '$fore $last' : last;
       }
-    }
-    for (var r in (results[2]['result'] as List? ?? [])) {
-      final id = r['id'] as int?;
-      if (id != null) {
-        _roomMap[id] = (r['name'] ?? '').toString();
+      for (final room in data.rooms) {
+        final id = room['id'] as int?;
+        if (id != null) _roomMap[id] = (room['name'] ?? '').toString();
       }
-    }
-    unawaited(_saveMasterDataToCache());
+      unawaited(_saveMasterDataToCache());
+    } catch (_) {}
   }
 
   DateTime _currentMonday = resolveDefaultTimetableMonday(DateTime.now());
@@ -1243,54 +1225,25 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final key = _mondayKey(adjMonday);
       if (_adjacentWeekCache.containsKey(key)) continue;
       try {
-        DateTime friday = adjMonday.add(const Duration(days: 4));
-        int startDate = int.parse(DateFormat('yyyyMMdd').format(adjMonday));
-        int endDate = int.parse(DateFormat('yyyyMMdd').format(friday));
-        final url = Uri.parse(
-          'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+        final friday = adjMonday.add(const Duration(days: 4));
+        final lessons = await _timetableRepository.fetchTimetable(
+          context: _timetableRequestContext,
+          elementId: pid,
+          elementType: pType,
+          startDate: adjMonday,
+          endDate: friday,
+          requestId: 'week_prefetch',
         );
-        final response = await http
-            .post(
-              url,
-              headers: {
-                "Cookie":
-                    "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-              },
-              body: jsonEncode({
-                "id": "week_prefetch",
-                "method": "getTimetable",
-                "params": {
-                  "options": {
-                    "element": {"id": pid, "type": pType},
-                    "startDate": startDate,
-                    "endDate": endDate,
-                    "showLsText": true,
-                    "showSubstText": true,
-                    "showInfo": true,
-                    "showBooking": true,
-                  },
-                },
-                "jsonrpc": "2.0",
-              }),
-            )
-            .timeout(const Duration(seconds: 6));
-        if (response.statusCode == 200) {
-          final decoded = jsonDecode(response.body);
-          if (decoded['error'] == null && decoded['result'] != null) {
-            final tempWeek = _parseWeekResult(decoded['result']);
-            if (tempWeek != null) {
-              _adjacentWeekCache[key] = tempWeek;
-              await _saveWeekToCache(
-                requestPersonId: pid,
-                requestPersonType: pType,
-                weekData: tempWeek,
-                monday: adjMonday,
-              );
-              _notifyAdjacentWeekCacheChanged();
-            }
-          }
+        final tempWeek = _parseWeekResult(lessons);
+        if (tempWeek != null) {
+          _adjacentWeekCache[key] = tempWeek;
+          await _saveWeekToCache(
+            requestPersonId: pid,
+            requestPersonType: pType,
+            weekData: tempWeek,
+            monday: adjMonday,
+          );
+          _notifyAdjacentWeekCacheChanged();
         }
       } catch (_) {}
     }
@@ -2937,82 +2890,26 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<List<Map<String, dynamic>>> _fetchClasses() async {
-    final url = Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+    final catalog = await _timetableRepository.fetchClassCatalog(
+      WebUntisRequestContext(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: sessionID,
+      ),
     );
-
-    Future<List<dynamic>> fetchClassesForSession(String sid) async {
-      final response = await http.post(
-        url,
-        headers: {"Cookie": "JSESSIONID=$sid; schoolname=$schoolName"},
-        body: jsonEncode({
-          "id": "fr_cl",
-          "method": "getKlassen",
-          "params": {},
-          "jsonrpc": "2.0",
-        }),
-      );
-      if (response.statusCode != 200) return const <dynamic>[];
-      final data = jsonDecode(response.body);
-      if (data is Map && data['result'] is List) {
-        return data['result'] as List<dynamic>;
-      }
-      return const <dynamic>[];
-    }
-
-    List<dynamic> classes = [];
-    if (sessionID.isNotEmpty) {
-      try {
-        classes = await fetchClassesForSession(sessionID);
-      } catch (_) {}
-    }
-    if (classes.isEmpty) {
-      try {
-        final anonSid = await _authenticateAnonymous();
-        if (anonSid != null && anonSid.isNotEmpty) {
-          classes = await fetchClassesForSession(anonSid);
-        }
-      } catch (_) {}
-    }
-    return classes.cast<Map<String, dynamic>>();
+    return catalog.classes;
   }
 
   Future<List<dynamic>> _fetchClassTimetable(int classId, DateTime date) async {
-    final dateInt = int.parse(DateFormat('yyyyMMdd').format(date));
-    final url = Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-    );
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "id": "fr_tt_$classId",
-          "method": "getTimetable",
-          "params": {
-            "options": {
-              "element": {"id": classId, "type": 1},
-              "startDate": dateInt,
-              "endDate": dateInt,
-              "showRooms": true,
-              "showSubjects": true,
-              "showTeachers": true,
-              "showClasses": true,
-            },
-          },
-          "jsonrpc": "2.0",
-        }),
+      return await _timetableRepository.fetchClassTimetable(
+        context: _timetableRequestContext,
+        classId: classId,
+        date: date,
       );
-      if (response.statusCode != 200) return [];
-      final data = jsonDecode(response.body);
-      if (data is Map && data['result'] is List) {
-        return data['result'] as List<dynamic>;
-      }
-    } catch (_) {}
-    return [];
+    } catch (_) {
+      return const <dynamic>[];
+    }
   }
 
   static const List<double> _grayscaleMatrix = <double>[
@@ -4579,35 +4476,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   Future<void> _fetchHolidays() async {
     try {
-      final url = Uri.parse(
-        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
+      final holidays = await _timetableRepository.fetchHolidays(
+        _timetableRequestContext,
       );
-      final response = await http.post(
-        url,
-        headers: {
-          "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "id": "holidays",
-          "method": "getHolidays",
-          "params": {},
-          "jsonrpc": "2.0",
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded['result'] is List) {
-          final holidays = (decoded['result'] as List)
-              .whereType<Map>()
-              .map((h) => Map<String, dynamic>.from(h.cast<String, dynamic>()))
-              .toList();
-          if (mounted) {
-            setState(() => _holidays = holidays);
-          }
-        }
-      }
+      if (mounted) setState(() => _holidays = holidays);
     } catch (_) {}
   }
 
