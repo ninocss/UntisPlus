@@ -170,7 +170,6 @@ class _CustomBackgroundEditorScreenState
     });
   }
 
-  // ignore: unused_element
   String _gradientSummary(CustomBackgroundGradient base) {
     final mode = base.type == CustomBackgroundGradientType.radial
         ? 'radial'
@@ -182,7 +181,6 @@ class _CustomBackgroundEditorScreenState
     return '$mode · $opacity · $palette';
   }
 
-  // ignore: unused_element
   String _orbsSummary(CustomBackgroundOrbs orbs) {
     if (!orbs.enabled) return 'off';
     final palette = orbs.useThemeColors
@@ -191,131 +189,9 @@ class _CustomBackgroundEditorScreenState
     return '${orbs.count} orbs · $palette';
   }
 
-  // ignore: unused_element
-  String _patternSummary(CustomBackgroundPattern pattern) {
-    if (pattern.type == CustomBackgroundPatternType.none) return 'none';
-    return '${pattern.type.name} · ${(pattern.opacity * 100).round()}%';
-  }
-
-  // ignore: unused_element
   String _motionSummary() {
     final animate = _draft.animate ? 'anim' : 'static';
     return '$animate · ${_draft.animationSpeed.toStringAsFixed(1)}x';
-  }
-
-  // ignore: unused_element
-  Color _sectionAccentFor(String key, ColorScheme cs) {
-    switch (key) {
-      case 'base':
-        return cs.primary;
-      case 'orbs':
-        return cs.tertiary;
-      case 'pattern':
-        return cs.secondary;
-      case 'effects':
-        return cs.error;
-      case 'motion':
-        return cs.primaryContainer;
-      case 'ai':
-        return cs.tertiaryContainer;
-      default:
-        return cs.primary;
-    }
-  }
-
-  // ignore: unused_element
-  Widget _expressiveSectionCard({
-    required ColorScheme cs,
-    required Color accent,
-    required String title,
-    required String status,
-    required IconData icon,
-    required Widget child,
-    double radius = 24,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            accent.withValues(alpha: 0.15),
-            cs.surfaceContainerHighest.withValues(alpha: 0.78),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: accent.withValues(alpha: 0.24), width: 1),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Icon(icon, size: 18, color: accent),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: GoogleFonts.outfit(
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          status,
-                          style: GoogleFonts.outfit(
-                            fontSize: 12.2,
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '•',
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: accent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              child,
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _presetCard(BuildContext context, CustomBackgroundPreset preset) {

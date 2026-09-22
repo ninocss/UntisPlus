@@ -1,16 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:otp_auth/otp_auth.dart';
 import 'package:workmanager/workmanager.dart';
 import '../core/time_utils.dart';
+import '../core/version_utils.dart';
 import '../data/cache/offline_cache_store.dart';
 import '../data/security/credential_vault.dart';
+import '../data/webuntis/webuntis_auth.dart';
+import '../data/webuntis/webuntis_client.dart';
+import '../data/webuntis/webuntis_session_manager.dart';
 import '../l10n.dart';
 
 import 'demo_mode_service.dart';
@@ -25,7 +27,12 @@ const String kProgressiveCacheRefreshTask = 'refresh_progressive_cache_task';
 
 /// Fixed unique name for the one-off boundary refresh. iOS delivers the unique
 /// name (not the task name) to the handler, so the dispatcher recognizes both.
-const String kProgressiveBoundaryRefreshId = 'untis_progressive_boundary_refresh';
+const String kProgressiveBoundaryRefreshId =
+    'untis_progressive_boundary_refresh';
+
+final WebUntisClient _backgroundWebUntisClient = WebUntisClient();
+final WebUntisSessionManager _backgroundWebUntisSessions =
+    WebUntisSessionManager(client: _backgroundWebUntisClient);
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -70,28 +77,6 @@ class BackgroundService {
   }
 }
 
-List<int> _extractVersionParts(String input) {
-  final cleaned = input.trim().replaceFirst(RegExp(r'^[vV]'), '');
-  final matches = RegExp(r'\d+').allMatches(cleaned);
-  if (matches.isEmpty) return const [0];
-  return matches
-      .map((m) => int.tryParse(m.group(0) ?? '0') ?? 0)
-      .toList(growable: false);
-}
-
-int _compareVersionStrings(String current, String latest) {
-  final currentParts = _extractVersionParts(current);
-  final latestParts = _extractVersionParts(latest);
-  final maxLen = math.max(currentParts.length, latestParts.length);
-  for (var i = 0; i < maxLen; i++) {
-    final a = i < currentParts.length ? currentParts[i] : 0;
-    final b = i < latestParts.length ? latestParts[i] : 0;
-    if (a == b) continue;
-    return a.compareTo(b);
-  }
-  return 0;
-}
-
 String _localizedUpdateTitle(String locale) {
   return AppL10n.of(locale).ui('bgUpdateTitle');
 }
@@ -132,42 +117,6 @@ String _localizedDailyBriefingExpanded(
   });
 }
 
-String _normalizeWebUntisSecret(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) return '';
-
-  if (trimmed.startsWith('otpauth://')) {
-    return OTPUri.extractSecret(
-      trimmed,
-    ).trim().replaceAll(' ', '').toUpperCase();
-  }
-
-  if (trimmed.startsWith('untis://')) {
-    final uri = Uri.tryParse(trimmed);
-    final extracted =
-        uri?.queryParameters['key'] ?? uri?.queryParameters['secret'] ?? '';
-    if (extracted.isNotEmpty) {
-      return extracted.trim().replaceAll(' ', '').toUpperCase();
-    }
-  }
-
-  return trimmed.replaceAll(' ', '').toUpperCase();
-}
-
-String _generateWebUntisOtp(String credential) {
-  final secret = _normalizeWebUntisSecret(credential);
-  if (secret.isEmpty) {
-    throw ArgumentError('WebUntis secret must not be empty.');
-  }
-
-  return TOTP(
-    secret: secret,
-    digits: 6,
-    algorithm: OTPAlgorithm.sha1,
-    period: 30,
-  ).now();
-}
-
 Future<String?> _loginWithWebUntisSecret({
   required String schoolUrl,
   required String schoolName,
@@ -186,7 +135,7 @@ Future<String?> _loginWithWebUntisSecret({
           'auth': {
             'clientTime': DateTime.now().millisecondsSinceEpoch,
             'user': user,
-            'otp': _generateWebUntisOtp(secret),
+            'otp': generateWebUntisOtp(secret),
           },
         },
       ],
@@ -204,9 +153,44 @@ Future<String?> _loginWithWebUntisSecret({
   }
 
   final setCookie = response.headers['set-cookie'] ?? '';
-  final sessionId =
-      RegExp(r'JSESSIONID=([^;]+)').firstMatch(setCookie)?.group(1) ?? '';
+  final sessionId = webUntisSessionIdFromCookie(setCookie);
   return sessionId.isEmpty ? null : sessionId;
+}
+
+Future<List<dynamic>?> _fetchAuthenticatedTimetable({
+  required WebUntisAccountLogin account,
+  required String currentSessionId,
+  required int startDate,
+  required int endDate,
+  required String requestId,
+}) async {
+  final response = await _backgroundWebUntisSessions.runAuthenticated(
+    account: account,
+    currentSessionId: currentSessionId,
+    request: (context) => _backgroundWebUntisClient.rpc(
+      context: context,
+      method: 'getTimetable',
+      requestId: requestId,
+      params: {
+        'options': {
+          'element': {'id': account.personId, 'type': account.personType},
+          'startDate': startDate,
+          'endDate': endDate,
+          'showLsText': true,
+          'showSubstText': true,
+          'showInfo': true,
+          'showBooking': true,
+        },
+      },
+    ),
+  );
+  final result = response['result'];
+  return switch (result) {
+    List<dynamic> value => value,
+    Map value when value['timetable'] is List<dynamic> =>
+      value['timetable'] as List<dynamic>,
+    _ => null,
+  };
 }
 
 String _localizedImportantChangesTitle(String locale) {
@@ -221,27 +205,12 @@ String _localizedStatusCurrentLesson(String locale) {
   return AppL10n.of(locale).ui('bgCurrentLesson');
 }
 
-// ignore: unused_element
-String _localizedStatusNextLesson(String locale) {
-  return AppL10n.of(locale).ui('bgNextLesson');
-}
-
-// ignore: unused_element
-String _localizedStatusNoClasses(String locale) {
-  return AppL10n.of(locale).ui('bgNoClasses');
-}
-
 String _localizedLessonStartsAt(String locale, String start) {
   return AppL10n.of(locale).uiFormat('bgLessonStarts', {'time': start});
 }
 
 String _localizedUntilTime(String locale, String end) {
   return AppL10n.of(locale).uiFormat('bgUntil', {'time': end});
-}
-
-// ignore: unused_element
-String _localizedThen(String locale, String nextLesson) {
-  return AppL10n.of(locale).uiFormat('bgThen', {'lesson': nextLesson});
 }
 
 String _localizedClosedLabel(String locale) {
@@ -253,10 +222,9 @@ String _localizedFreeLabel(String locale) {
 }
 
 String _localizedFallbackLessonName(String locale, String start, String end) {
-  return AppL10n.of(locale).uiFormat('bgFallbackLesson', {
-    'start': start,
-    'end': end,
-  });
+  return AppL10n.of(
+    locale,
+  ).uiFormat('bgFallbackLesson', {'start': start, 'end': end});
 }
 
 Map<String, int> _detectChangeCounts({
@@ -356,9 +324,9 @@ String _localizedChangeSummary(String locale, Map<String, int> counts) {
 }
 
 String _localizedUpdateBody(String locale, String latestVersion) {
-  return AppL10n.of(locale).uiFormat('bgUpdateBody', {
-    'version': latestVersion,
-  });
+  return AppL10n.of(
+    locale,
+  ).uiFormat('bgUpdateBody', {'version': latestVersion});
 }
 
 Future<void> checkGithubUpdateAndNotify() async {
@@ -392,7 +360,7 @@ Future<void> checkGithubUpdateAndNotify() async {
     final hasUpdate =
         latestVersion.isNotEmpty &&
         (hasComparableVersion
-            ? _compareVersionStrings(installedVersion, latestVersion) < 0
+            ? compareVersionStrings(installedVersion, latestVersion) < 0
             : true);
 
     if (!hasUpdate) {
@@ -460,86 +428,95 @@ Future<bool> updateUntisData() async {
       );
     }
   } else {
-    String sessionId = "";
-    final authUrl = Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-    );
-    if (useLoginKey) {
-      sessionId =
-          await _loginWithWebUntisSecret(
-            schoolUrl: schoolUrl,
-            schoolName: schoolName,
-            user: user,
-            secret: pass,
-          ) ??
-          '';
-    } else {
-      final authRes = await http.post(
-        authUrl,
-        body: jsonEncode({
-          "id": "bg_login",
-          "method": "authenticate",
-          "params": {
-            "user": user,
-            "password": pass,
-            "client": "UntisPlusWidget",
-          },
-          "jsonrpc": "2.0",
-        }),
-      );
-
-      if (authRes.statusCode == 200) {
-        final data = jsonDecode(authRes.body);
-        sessionId = data['result']?['sessionId']?.toString() ?? "";
-      }
-    }
-
-    if (sessionId.isEmpty) return false;
-
     final personId = prefs.getInt('personId') ?? 0;
     final personType = prefs.getInt('personType') ?? 5;
-
     if (personId == 0) return false;
-
     final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
     final finalPlanningDate = int.parse(
       DateFormat('yyyyMMdd').format(now.add(const Duration(days: 14))),
     );
 
-    final timetableRes = await http.post(
-      authUrl,
-      headers: {
-        "Cookie": "JSESSIONID=$sessionId; schoolname=$schoolName",
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "id": "bg_req",
-        "method": "getTimetable",
-        "params": {
-          "options": {
-            "element": {"id": personId, "type": personType},
-            "startDate": todayDate,
-            "endDate": finalPlanningDate,
-            "showLsText": true,
-            "showSubstText": true,
-            "showInfo": true,
-            "showBooking": true,
+    try {
+      List<dynamic>? fetched;
+      if (activeAccountId.isNotEmpty && credentials.password.isNotEmpty) {
+        fetched = await _fetchAuthenticatedTimetable(
+          account: WebUntisAccountLogin(
+            accountId: activeAccountId,
+            username: user,
+            schoolUrl: schoolUrl,
+            schoolName: schoolName,
+            personId: personId,
+            personType: personType,
+          ),
+          currentSessionId: credentials.sessionId,
+          startDate: todayDate,
+          endDate: finalPlanningDate,
+          requestId: 'bg_req_$activeAccountId',
+        );
+      } else {
+        String sessionId;
+        if (useLoginKey) {
+          sessionId =
+              await _loginWithWebUntisSecret(
+                schoolUrl: schoolUrl,
+                schoolName: schoolName,
+                user: user,
+                secret: pass,
+              ) ??
+              '';
+        } else {
+          final auth = await _backgroundWebUntisClient.rpc(
+            context: WebUntisRequestContext(
+              schoolUrl: schoolUrl,
+              schoolName: schoolName,
+            ),
+            method: 'authenticate',
+            requestId: 'bg_login',
+            params: {
+              'user': user,
+              'password': pass,
+              'client': 'UntisPlusWidget',
+            },
+          );
+          sessionId = auth['result'] is Map
+              ? (auth['result'] as Map)['sessionId']?.toString() ?? ''
+              : '';
+        }
+        if (sessionId.isEmpty) return false;
+        final response = await _backgroundWebUntisClient.rpc(
+          context: WebUntisRequestContext(
+            schoolUrl: schoolUrl,
+            schoolName: schoolName,
+            sessionId: sessionId,
+          ),
+          method: 'getTimetable',
+          requestId: 'bg_req',
+          params: {
+            'options': {
+              'element': {'id': personId, 'type': personType},
+              'startDate': todayDate,
+              'endDate': finalPlanningDate,
+              'showLsText': true,
+              'showSubstText': true,
+              'showInfo': true,
+              'showBooking': true,
+            },
           },
-        },
-        "jsonrpc": "2.0",
-      }),
-    );
-
-    if (timetableRes.statusCode != 200) return false;
-
-    final decoded = jsonDecode(timetableRes.body);
-    final dynamic result = decoded['result'];
-    if (result is List) {
-      lessons = result;
-      hasValidTimetableResult = true;
-    } else if (result is Map && result['timetable'] is List) {
-      lessons = result['timetable'];
-      hasValidTimetableResult = true;
+        );
+        final result = response['result'];
+        fetched = switch (result) {
+          List<dynamic> value => value,
+          Map value when value['timetable'] is List<dynamic> =>
+            value['timetable'] as List<dynamic>,
+          _ => null,
+        };
+      }
+      if (fetched != null) {
+        lessons = fetched;
+        hasValidTimetableResult = true;
+      }
+    } catch (_) {
+      return false;
     }
   }
 
@@ -869,147 +846,164 @@ Future<void> _refreshInactiveWidgetAccounts(
   }
   if (decoded is! List) return;
   final today = int.parse(DateFormat('yyyyMMdd').format(now));
-  for (final entry in decoded) {
-    if (entry is! Map) continue;
-    final id = entry['id']?.toString() ?? '';
-    final url = entry['schoolUrl']?.toString() ?? '';
-    final school = entry['schoolName']?.toString() ?? '';
-    final user = entry['username']?.toString() ?? '';
-    final credentials = id.isEmpty
-        ? const AccountCredentials(
-            password: '',
-            credentialMode: 'password',
-            sessionId: '',
-          )
-        : await CredentialVault.instance.readAccount(id);
-    final password = credentials.password.isNotEmpty
-        ? credentials.password
-        : entry['password']?.toString() ?? '';
-    final personId = (entry['personId'] as num?)?.toInt() ?? 0;
-    final personType = (entry['personType'] as num?)?.toInt() ?? 5;
-    if (id.isEmpty ||
-        id == activeId ||
-        url.isEmpty ||
-        school.isEmpty ||
-        user.isEmpty ||
-        password.isEmpty ||
-        personId == 0) {
-      continue;
-    }
-    try {
-      final endpoint = Uri.parse(
-        'https://$url/WebUntis/jsonrpc.do?school=$school',
-      );
-      String session = '';
-      if ((credentials.password.isNotEmpty
-              ? credentials.credentialMode
-              : entry['credentialMode']?.toString()) ==
-          'loginKey') {
-        session =
-            await _loginWithWebUntisSecret(
-              schoolUrl: url,
-              schoolName: school,
-              user: user,
-              secret: password,
-            ) ??
-            '';
-      } else {
-        final auth = await http.post(
-          endpoint,
-          body: jsonEncode({
-            'id': 'widget_$id',
-            'method': 'authenticate',
-            'params': {
-              'user': user,
-              'password': password,
-              'client': 'UntisPlusWidget',
-            },
-            'jsonrpc': '2.0',
-          }),
-        );
-        if (auth.statusCode == 200) {
-          session =
-              jsonDecode(auth.body)['result']?['sessionId']?.toString() ?? '';
+  final entries = decoded.whereType<Map>().toList(growable: false);
+  for (var offset = 0; offset < entries.length; offset += 2) {
+    final batch = entries.skip(offset).take(2);
+    await Future.wait<void>(
+      batch.map((entry) async {
+        final id = entry['id']?.toString() ?? '';
+        final url = entry['schoolUrl']?.toString() ?? '';
+        final school = entry['schoolName']?.toString() ?? '';
+        final user = entry['username']?.toString() ?? '';
+        final credentials = id.isEmpty
+            ? const AccountCredentials(
+                password: '',
+                credentialMode: 'password',
+                sessionId: '',
+              )
+            : await CredentialVault.instance.readAccount(id);
+        final password = credentials.password.isNotEmpty
+            ? credentials.password
+            : entry['password']?.toString() ?? '';
+        final personId = (entry['personId'] as num?)?.toInt() ?? 0;
+        final personType = (entry['personType'] as num?)?.toInt() ?? 5;
+        if (id.isEmpty ||
+            id == activeId ||
+            url.isEmpty ||
+            school.isEmpty ||
+            user.isEmpty ||
+            password.isEmpty ||
+            personId == 0) {
+          return;
         }
-      }
-      if (session.isEmpty) continue;
-      final response = await http.post(
-        endpoint,
-        headers: {
-          'Cookie': 'JSESSIONID=$session; schoolname=$school',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'id': 'widget_plan_$id',
-          'method': 'getTimetable',
-          'params': {
-            'options': {
-              'element': {'id': personId, 'type': personType},
-              'startDate': today,
-              'endDate': today,
-              'showLsText': true,
-            },
-          },
-          'jsonrpc': '2.0',
-        }),
-      );
-      if (response.statusCode != 200) continue;
-      final result = jsonDecode(response.body)['result'];
-      final source = result is List
-          ? result
-          : result is Map && result['timetable'] is List
-          ? result['timetable'] as List
-          : const <dynamic>[];
-      final lessons = source.whereType<Map>().toList()
-        ..sort(
-          (a, b) => ((a['startTime'] as num?)?.toInt() ?? 0).compareTo(
-            (b['startTime'] as num?)?.toInt() ?? 0,
-          ),
-        );
-      final nowValue = now.hour * 100 + now.minute;
-      Map? current;
-      Map? next;
-      for (final lesson in lessons) {
-        final start = (lesson['startTime'] as num?)?.toInt() ?? 0;
-        final end = (lesson['endTime'] as num?)?.toInt() ?? 0;
-        if (start <= nowValue && nowValue < end) current = lesson;
-        if (start > nowValue && next == null) next = lesson;
-      }
-      String label(Map? lesson) {
-        if (lesson == null) return '';
-        final subjects = lesson['su'];
-        if (subjects is List && subjects.isNotEmpty && subjects.first is Map) {
-          final subject =
-              (subjects.first as Map)['longName'] ??
-              (subjects.first as Map)['name'];
-          if (subject?.toString().trim().isNotEmpty == true) {
-            return subject.toString().trim();
+        try {
+          List<dynamic>? source;
+          if (credentials.password.isNotEmpty) {
+            source = await _fetchAuthenticatedTimetable(
+              account: WebUntisAccountLogin(
+                accountId: id,
+                username: user,
+                schoolUrl: url,
+                schoolName: school,
+                personId: personId,
+                personType: personType,
+              ),
+              currentSessionId: credentials.sessionId,
+              startDate: today,
+              endDate: today,
+              requestId: 'widget_plan_$id',
+            );
+          } else {
+            final mode = entry['credentialMode']?.toString() ?? 'password';
+            String session;
+            if (mode == 'loginKey') {
+              session =
+                  await _loginWithWebUntisSecret(
+                    schoolUrl: url,
+                    schoolName: school,
+                    user: user,
+                    secret: password,
+                  ) ??
+                  '';
+            } else {
+              final auth = await _backgroundWebUntisClient.rpc(
+                context: WebUntisRequestContext(
+                  schoolUrl: url,
+                  schoolName: school,
+                ),
+                method: 'authenticate',
+                requestId: 'widget_$id',
+                params: {
+                  'user': user,
+                  'password': password,
+                  'client': 'UntisPlusWidget',
+                },
+              );
+              session = auth['result'] is Map
+                  ? (auth['result'] as Map)['sessionId']?.toString() ?? ''
+                  : '';
+            }
+            if (session.isEmpty) return;
+            final response = await _backgroundWebUntisClient.rpc(
+              context: WebUntisRequestContext(
+                schoolUrl: url,
+                schoolName: school,
+                sessionId: session,
+              ),
+              method: 'getTimetable',
+              requestId: 'widget_plan_$id',
+              params: {
+                'options': {
+                  'element': {'id': personId, 'type': personType},
+                  'startDate': today,
+                  'endDate': today,
+                  'showLsText': true,
+                },
+              },
+            );
+            final result = response['result'];
+            source = switch (result) {
+              List<dynamic> value => value,
+              Map value when value['timetable'] is List<dynamic> =>
+                value['timetable'] as List<dynamic>,
+              _ => null,
+            };
           }
-        }
-        return lesson['_subjectShort']?.toString() ?? l.ui('widgetLesson');
-      }
+          if (source == null) return;
+          final lessons = source.whereType<Map>().toList()
+            ..sort(
+              (a, b) => ((a['startTime'] as num?)?.toInt() ?? 0).compareTo(
+                (b['startTime'] as num?)?.toInt() ?? 0,
+              ),
+            );
+          final nowValue = now.hour * 100 + now.minute;
+          Map? current;
+          Map? next;
+          for (final lesson in lessons) {
+            final start = (lesson['startTime'] as num?)?.toInt() ?? 0;
+            final end = (lesson['endTime'] as num?)?.toInt() ?? 0;
+            if (start <= nowValue && nowValue < end) current = lesson;
+            if (start > nowValue && next == null) next = lesson;
+          }
+          String label(Map? lesson) {
+            if (lesson == null) return '';
+            final subjects = lesson['su'];
+            if (subjects is List &&
+                subjects.isNotEmpty &&
+                subjects.first is Map) {
+              final subject =
+                  (subjects.first as Map)['longName'] ??
+                  (subjects.first as Map)['name'];
+              if (subject?.toString().trim().isNotEmpty == true) {
+                return subject.toString().trim();
+              }
+            }
+            return lesson['_subjectShort']?.toString() ?? l.ui('widgetLesson');
+          }
 
-      await WidgetService.updateWidgets(
-        currentLesson: current == null ? '' : label(current),
-        nextLesson: '',
-        timeRemaining: '',
-        dailySchedule: lessons
-            .take(3)
-            .map(
-              (lesson) =>
-                  '${formatUntisTime(lesson['startTime'].toString())} · ${label(lesson)}',
-            )
-            .join('\n'),
-        homeworkSummary: l.ui('widgetNoOpenHomework'),
-        notificationSummary: l.ui('widgetOpenNotifications'),
-        accountId: id,
-        accountLabel: user,
-        status: DateFormat('HH:mm').format(now),
-        locale: locale,
-      );
-    } catch (_) {
-      // Retain the last confirmed widget payload for an unavailable account.
-    }
+          await WidgetService.updateWidgets(
+            currentLesson: current == null ? '' : label(current),
+            nextLesson: '',
+            timeRemaining: '',
+            dailySchedule: lessons
+                .take(3)
+                .map(
+                  (lesson) =>
+                      '${formatUntisTime(lesson['startTime'].toString())} · ${label(lesson)}',
+                )
+                .join('\n'),
+            homeworkSummary: l.ui('widgetNoOpenHomework'),
+            notificationSummary: l.ui('widgetOpenNotifications'),
+            accountId: id,
+            accountLabel: user,
+            status: DateFormat('HH:mm').format(now),
+            locale: locale,
+          );
+        } catch (_) {
+          // Retain the last confirmed widget payload for an unavailable account.
+        }
+      }),
+    );
   }
 }
 
@@ -1025,7 +1019,9 @@ Future<void> syncProgressiveNotification({
   await NotificationService().init();
 
   if (!enabled) {
-    await NotificationService().cancelNotification(NotificationIds.currentLesson);
+    await NotificationService().cancelNotification(
+      NotificationIds.currentLesson,
+    );
     await LiveActivityService.instance.end();
     return;
   }
@@ -1109,8 +1105,12 @@ Future<void> syncProgressiveNotification({
   }
 
   final lastLesson = lessons.isNotEmpty ? lessons.last : null;
-  if (!hasActiveLesson && lastLesson != null && currentTimeInt > (lastLesson['endTime'] as int)) {
-    await NotificationService().cancelNotification(NotificationIds.currentLesson);
+  if (!hasActiveLesson &&
+      lastLesson != null &&
+      currentTimeInt > (lastLesson['endTime'] as int)) {
+    await NotificationService().cancelNotification(
+      NotificationIds.currentLesson,
+    );
     await LiveActivityService.instance.end();
     return;
   }
@@ -1135,7 +1135,9 @@ Future<void> syncProgressiveNotification({
       endTimeMs: endTimeMs,
     );
   } else {
-    await NotificationService().cancelNotification(NotificationIds.currentLesson);
+    await NotificationService().cancelNotification(
+      NotificationIds.currentLesson,
+    );
     await LiveActivityService.instance.end();
   }
 }
@@ -1148,7 +1150,9 @@ Future<List<dynamic>?> _loadTodaysLessonsFromCache(
 ) async {
   final accountPrefix =
       '${(accountId?.trim().isNotEmpty ?? false) ? accountId!.trim() : 'legacy'}|timetableWeek|';
-  final docs = await OfflineCacheStore.instance.readAllWithPrefix(accountPrefix);
+  final docs = await OfflineCacheStore.instance.readAllWithPrefix(
+    accountPrefix,
+  );
   if (docs.isEmpty) return null;
 
   final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
@@ -1163,7 +1167,11 @@ Future<List<dynamic>?> _loadTodaysLessonsFromCache(
       if (dayRaw is! List) continue;
       for (final lesson in dayRaw.whereType<Map>()) {
         if ((lesson['date'] as num?)?.toInt() != todayDate) continue;
-        if (hiddenSubjects.contains(lesson['_subjectShort']?.toString() ?? '')) continue;
+        if (hiddenSubjects.contains(
+          lesson['_subjectShort']?.toString() ?? '',
+        )) {
+          continue;
+        }
         if (!showCancelled && (lesson['code'] ?? '') == 'cancelled') continue;
         lessons.add(lesson);
       }

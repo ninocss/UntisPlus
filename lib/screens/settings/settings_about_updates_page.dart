@@ -141,28 +141,6 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
     unawaited(_promptInstaller(AppL10n.of(appLocaleNotifier.value), path));
   }
 
-  List<int> _extractVersionParts(String input) {
-    final cleaned = input.trim().replaceFirst(RegExp(r'^[vV]'), '');
-    final matches = RegExp(r'\d+').allMatches(cleaned);
-    if (matches.isEmpty) return const [0];
-    return matches
-        .map((m) => int.tryParse(m.group(0) ?? '0') ?? 0)
-        .toList(growable: false);
-  }
-
-  int _compareVersionStrings(String current, String latest) {
-    final currentParts = _extractVersionParts(current);
-    final latestParts = _extractVersionParts(latest);
-    final maxLen = math.max(currentParts.length, latestParts.length);
-    for (var i = 0; i < maxLen; i++) {
-      final a = i < currentParts.length ? currentParts[i] : 0;
-      final b = i < latestParts.length ? latestParts[i] : 0;
-      if (a == b) continue;
-      return a.compareTo(b);
-    }
-    return 0;
-  }
-
   Future<List<String>> _supportedAbis() async {
     if (!_isAndroid) return const [];
     return nativeUiGateway.supportedAbis();
@@ -385,7 +363,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
       final latestVersion = tag.isEmpty ? (data['name'] ?? '').toString() : tag;
       final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersion);
       final hasUpdate = hasComparableVersion
-          ? _compareVersionStrings(appVersion, latestVersion) < 0
+          ? compareVersionStrings(appVersion, latestVersion) < 0
           : true;
 
       if (!hasUpdate) {

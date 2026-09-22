@@ -60,7 +60,6 @@ devtools_options.yaml
 analysis_options.yaml
 .codex-remote-attachments/
 codex/
-test/
 .artifacts/
 windows/
 web/
@@ -68,7 +67,6 @@ linux/
 macos/
 docs/
 changelog.json
-test/
 
 # F-Droid / IzzyOnDroid fastlane metadata – must be tracked for store listings
 !fastlane/**/*.txt

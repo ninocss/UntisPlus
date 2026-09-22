@@ -47,6 +47,17 @@ private fun planCopy(plan: JSONObject, key: String, fallback: String): String =
 private fun planCopyFormat(plan: JSONObject, key: String, fallback: String, name: String, value: Any): String =
     planCopy(plan, key, fallback).replace("{$name}", value.toString())
 
+private fun parseAlarmPlan(raw: String?): JSONObject? {
+    if (raw.isNullOrBlank()) return null
+    return try {
+        JSONObject(raw)
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun parseAlarmPlanOrEmpty(raw: String?): JSONObject = parseAlarmPlan(raw) ?: JSONObject()
+
 /** Native, durable scheduling layer. Dart supplies configuration; Android owns wake-up. */
 object AlarmScheduler {
     const val alarmAction = "com.ninocss.untisplus.ALARM_RING"
@@ -315,8 +326,7 @@ object AlarmScheduler {
 /** Posted only after the smart-plan refresh had a chance to cancel or move it. */
 class AlarmReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val rawPlan = intent.getStringExtra(AlarmScheduler.extraPlan) ?: return
-        val plan = try { JSONObject(rawPlan) } catch (_: Exception) { return }
+        val plan = parseAlarmPlan(intent.getStringExtra(AlarmScheduler.extraPlan)) ?: return
         if (intent.action == AlarmScheduler.reminderDisableAction) {
             if (plan.optString("kind") == "smart") {
                 context.getSharedPreferences("untis_alarm_native", Context.MODE_PRIVATE)
@@ -377,7 +387,7 @@ class AlarmReminderReceiver : BroadcastReceiver() {
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val rawPlan = intent.getStringExtra(AlarmScheduler.extraPlan) ?: return
-        val plan = try { JSONObject(rawPlan) } catch (_: Exception) { return }
+        val plan = parseAlarmPlan(rawPlan) ?: return
         if (plan.optString("kind") == "manual") {
             // Re-arm before alerting so closing the app cannot lose a recurring alarm.
             AlarmScheduler.scheduleStoredPlans(context)
@@ -428,7 +438,7 @@ class AlarmAlertService : Service() {
         when (intent?.action) {
             actionRing -> {
                 val rawPlan = intent.getStringExtra(AlarmScheduler.extraPlan) ?: return START_NOT_STICKY
-                activePlan = try { JSONObject(rawPlan) } catch (_: Exception) { return START_NOT_STICKY }
+                activePlan = parseAlarmPlan(rawPlan) ?: return START_NOT_STICKY
                 stopping = false
                 startForeground(notificationId, buildNotification(activePlan!!))
                 startAlert(activePlan!!)
@@ -573,14 +583,14 @@ class AlarmActivity : android.app.Activity() {
             )
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        plan = try { JSONObject(intent.getStringExtra(AlarmScheduler.extraPlan) ?: "{}") } catch (_: Exception) { JSONObject() }
+        plan = parseAlarmPlanOrEmpty(intent.getStringExtra(AlarmScheduler.extraPlan))
         buildContent()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        plan = try { JSONObject(intent.getStringExtra(AlarmScheduler.extraPlan) ?: "{}") } catch (_: Exception) { JSONObject() }
+        plan = parseAlarmPlanOrEmpty(intent.getStringExtra(AlarmScheduler.extraPlan))
         buildContent()
     }
 
@@ -703,7 +713,7 @@ class AlarmRefreshService : Service() {
     private val timeout = Runnable { complete(allowReminder = false) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val plan = try { JSONObject(intent?.getStringExtra(AlarmScheduler.extraPlan) ?: "{}") } catch (_: Exception) { JSONObject() }
+        val plan = parseAlarmPlanOrEmpty(intent?.getStringExtra(AlarmScheduler.extraPlan))
         startForeground(42003, refreshNotification(plan))
         if (engine != null) return START_NOT_STICKY
         handler.postDelayed(timeout, 120_000)
@@ -712,7 +722,7 @@ class AlarmRefreshService : Service() {
             loader.startInitialization(applicationContext)
             loader.ensureInitializationComplete(applicationContext, null)
             engine = FlutterEngine(applicationContext)
-            MethodChannel(engine!!.dartExecutor.binaryMessenger, "untisplus/alarm_refresh")
+            MethodChannel(engine!!.dartExecutor.binaryMessenger, NativeChannelContract.ALARM_REFRESH)
                 .setMethodCallHandler { call, result ->
                     if (call.method == "completed") {
                         result.success(null)
