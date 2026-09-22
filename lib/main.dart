@@ -11835,6 +11835,60 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     }
   }
 
+  /// Unread inbox ids resolved for the current session (used for the little
+  /// dot on unread list tiles).
+  final Set<String> _unreadMessageIds = {};
+
+  String get _seenAccountId => activeUntisAccountId ?? 'legacy';
+
+  Future<Set<String>> _loadSeenMessageIds() async {
+    final key = OfflineCacheStore.instance.scopedKey(
+      accountId: _seenAccountId,
+      dataset: 'inboxSeen',
+      entityKey: 'ids',
+    );
+    final document = await OfflineCacheStore.instance.read(key);
+    final values = document?.value['ids'];
+    if (values is! List) return const {};
+    return values.map((entry) => '$entry').toSet();
+  }
+
+  Future<void> _persistSeenMessageIds(Set<String> ids) async {
+    final key = OfflineCacheStore.instance.scopedKey(
+      accountId: _seenAccountId,
+      dataset: 'inboxSeen',
+      entityKey: 'ids',
+    );
+    await OfflineCacheStore.instance.write(key, {
+      'ids': ids.take(500).toList(),
+    });
+  }
+
+  /// Counts inbox messages that arrived since the last visit and merges the
+  /// current ids into the seen watermark, so the next visit only counts
+  /// messages arriving in between.
+  Future<void> _refreshInboxUnread(List<_SchoolNotificationItem> inbox) async {
+    if (demoModeNotifier.value) {
+      unreadInboxMessagesNotifier.value = 0;
+      return;
+    }
+    if (inbox.isEmpty) return;
+    final seen = await _loadSeenMessageIds();
+    final unread = inbox.where((item) => !seen.contains(item.id)).toList();
+    _unreadMessageIds
+      ..clear()
+      ..addAll(unread.map((item) => item.id));
+    unreadInboxMessagesNotifier.value = unread.length;
+    await _persistSeenMessageIds({...seen, ...inbox.map((item) => item.id)});
+  }
+
+  /// Called when an inbox message is opened; its unread dot disappears.
+  void _markMessageOpened(_SchoolNotificationItem item) {
+    if (_unreadMessageIds.remove(item.id)) {
+      unreadInboxMessagesNotifier.value = _unreadMessageIds.length;
+    }
+  }
+
   Future<void> _reload({bool showSpinner = false}) async {
     if (demoModeNotifier.value) {
       final locale = appLocaleNotifier.value;
@@ -11886,6 +11940,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         _error = null;
         _lastUpdated = DateTime.now();
       });
+      unawaited(_refreshInboxUnread(fetchedInbox));
       if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
         final summary = fetchedNews
             .take(3)
@@ -11916,6 +11971,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           _error = null;
           _lastUpdated = DateTime.now();
         });
+        unreadInboxMessagesNotifier.value = 0;
         return;
       }
     }
@@ -11945,6 +12001,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         _error = null;
         _lastUpdated = DateTime.now();
       });
+      unawaited(_refreshInboxUnread(fetched.inbox));
       if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
         final summary = fetched.news
             .take(3)
@@ -12768,6 +12825,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(24),
                             onTap: () {
+                              if (_showInbox) _markMessageOpened(item);
                               Navigator.push(
                                 context,
                                 _buildBouncyRoute(
@@ -12792,6 +12850,27 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                                         size: 18,
                                         color: cs.primary,
                                       ),
+                                      if (_showInbox &&
+                                          _unreadMessageIds.contains(item.id)) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          width: 9,
+                                          height: 9,
+                                          decoration: BoxDecoration(
+                                            color: cs.tertiary,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: cs.tertiary.withValues(
+                                                  alpha: 0.45,
+                                                ),
+                                                blurRadius: 4,
+                                                spreadRadius: 0.5,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(

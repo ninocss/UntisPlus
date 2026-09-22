@@ -782,6 +782,11 @@ final ValueNotifier<Map<int, List<dynamic>>> currentWeekDataNotifier =
 /// source of truth lives in ChangeRepository and remains account-scoped.
 final ValueNotifier<int> unreadTimetableChangesNotifier = ValueNotifier(0);
 
+/// Number of unread inbox messages since the user last opened the Info tab.
+/// The source of truth is a per-account seen-id watermark persisted through
+/// OfflineCacheStore and refreshed by `SchoolNotificationsPage`.
+final ValueNotifier<int> unreadInboxMessagesNotifier = ValueNotifier(0);
+
 Future<void> _setSubjectColor(String key, int colorValue) async {
   if (key.isEmpty) return;
   final updated = Map<String, int>.from(subjectColorsNotifier.value)

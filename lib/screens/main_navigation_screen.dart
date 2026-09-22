@@ -2431,9 +2431,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: ValueListenableBuilder<String>(
                 valueListenable: appLocaleNotifier,
                 builder: (context, locale, _) {
-                  return ValueListenableBuilder<int>(
-                    valueListenable: unreadTimetableChangesNotifier,
-                    builder: (context, unreadChanges, _) =>
+                  return ListenableBuilder(
+                    listenable: Listenable.merge([
+                      unreadTimetableChangesNotifier,
+                      unreadInboxMessagesNotifier,
+                    ]),
+                    builder: (context, _) =>
                         _buildFloatingNavBar(context, cs),
                   );
                 },
@@ -2480,6 +2483,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         pageIndex: 2,
         tutorialKey: _tutorialNavKeys[2],
         tutorialHighlight: _isTutorialTarget(2),
+        badgeCount: unreadInboxMessagesNotifier.value,
       ),
       _NavItem(
         icon: Icons.assignment_outlined,
@@ -2974,6 +2978,7 @@ class _NavItem {
   final int pageIndex;
   final GlobalKey? tutorialKey;
   final bool tutorialHighlight;
+  final int badgeCount;
 
   const _NavItem({
     required this.icon,
@@ -2982,6 +2987,7 @@ class _NavItem {
     required this.pageIndex,
     this.tutorialKey,
     this.tutorialHighlight = false,
+    this.badgeCount = 0,
   });
 }
 
@@ -3319,33 +3325,70 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // --- Icon with wiggle ---
-              AnimatedBuilder(
-                animation: wiggle,
-                builder: (context, child) {
-                  // Spring-style wiggle: sin wave decaying
-                  final t = wiggle.value;
-                  final angle = math.sin(t * math.pi * 4) * 0.08 * (1 - t);
-                  return Transform.rotate(angle: angle, child: child);
-                },
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 280),
-                  switchInCurve: _kSmoothBounce,
-                  switchOutCurve: Curves.easeOut,
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                    scale: Tween(begin: 0.7, end: 1.0).animate(anim),
-                    child: FadeTransition(opacity: anim, child: child),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedBuilder(
+                    animation: wiggle,
+                    builder: (context, child) {
+                      // Spring-style wiggle: sin wave decaying
+                      final t = wiggle.value;
+                      final angle = math.sin(t * math.pi * 4) * 0.08 * (1 - t);
+                      return Transform.rotate(angle: angle, child: child);
+                    },
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      switchInCurve: _kSmoothBounce,
+                      switchOutCurve: Curves.easeOut,
+                      transitionBuilder: (child, anim) => ScaleTransition(
+                        scale: Tween(begin: 0.7, end: 1.0).animate(anim),
+                        child: FadeTransition(opacity: anim, child: child),
+                      ),
+                      child: Icon(
+                        selected ? item.selectedIcon : item.icon,
+                        key: ValueKey('${item.pageIndex}_$selected'),
+                        size: selected ? 22 : 24,
+                        color: selected
+                            ? cs.onPrimary
+                            : item.tutorialHighlight
+                            ? cs.tertiary
+                            : cs.onSurfaceVariant.withValues(alpha: 0.8),
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    selected ? item.selectedIcon : item.icon,
-                    key: ValueKey('${item.pageIndex}_$selected'),
-                    size: selected ? 22 : 24,
-                    color: selected
-                        ? cs.onPrimary
-                        : item.tutorialHighlight
-                        ? cs.tertiary
-                        : cs.onSurfaceVariant.withValues(alpha: 0.8),
-                  ),
-                ),
+                  if (item.badgeCount > 0)
+                    Positioned(
+                      right: -6,
+                      top: -5,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 3.5,
+                          vertical: 1,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 13),
+                        decoration: BoxDecoration(
+                          color: cs.error,
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(
+                            color: cs.surfaceContainerHigh,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Text(
+                          item.badgeCount > 99
+                              ? '99+'
+                              : '${item.badgeCount}',
+                          style: TextStyle(
+                            color: cs.onError,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
 
               // --- Label (slides in/out with the morph) ---
