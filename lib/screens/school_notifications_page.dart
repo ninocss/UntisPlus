@@ -230,92 +230,6 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     ({List<_SchoolNotificationItem> inbox, List<_SchoolNotificationItem> news})
   >
   _fetchSchoolNotifications() async {
-    final start = DateTime.now().subtract(const Duration(days: 45));
-    final end = DateTime.now().add(const Duration(days: 90));
-    final startStr = DateFormat('yyyyMMdd').format(start);
-    final endStr = DateFormat('yyyyMMdd').format(end);
-
-    String encodedSchoolName() {
-      try {
-        return '_${base64Encode(utf8.encode(schoolName))}';
-      } catch (_) {
-        return schoolName;
-      }
-    }
-
-    final schoolCookieCandidates = <String>{
-      encodedSchoolName(),
-      schoolName,
-    }.where((e) => e.isNotEmpty).toList(growable: false);
-
-    Map<String, String> buildHeaders(
-      String schoolCookie, {
-      Map<String, String>? extra,
-    }) {
-      return {
-        'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolCookie',
-        'Accept': 'application/json',
-        ...?extra,
-      };
-    }
-
-    Future<http.Response?> requestWithCookieFallback(
-      Future<http.Response> Function(Map<String, String> headers) sender, {
-      bool retry = true,
-    }) async {
-      for (final schoolCookie in schoolCookieCandidates) {
-        try {
-          final response = await sender(buildHeaders(schoolCookie));
-          if (response.statusCode == 200) return response;
-          if ((response.statusCode == 401 || response.statusCode == 403) &&
-              retry &&
-              await _reAuthenticate()) {
-            return await requestWithCookieFallback(sender, retry: false);
-          }
-        } catch (_) {}
-      }
-      return null;
-    }
-
-    List<dynamic> extractList(dynamic decoded) {
-      if (decoded is List) return decoded;
-      if (decoded is Map) {
-        for (final value in decoded.values) {
-          final nested = extractList(value);
-          if (nested.isNotEmpty) return nested;
-        }
-      }
-      return const [];
-    }
-
-    Future<String?> fetchJwtToken() async {
-      final uri = Uri.parse('https://$schoolUrl/WebUntis/api/token/new');
-      final response = await requestWithCookieFallback(
-        (headers) => http.get(uri, headers: headers),
-      );
-      if (response == null || response.body.trim().isEmpty) return null;
-
-      final raw = response.body.trim();
-      if (!raw.startsWith('{')) return raw.replaceAll('"', '').trim();
-      try {
-        final decoded = jsonDecode(raw);
-        if (decoded is String && decoded.trim().isNotEmpty) {
-          return decoded.trim();
-        }
-        if (decoded is Map) {
-          final token =
-              decoded['token'] ??
-              decoded['jwt'] ??
-              decoded['jwt_token'] ??
-              decoded['accessToken'];
-          if (token != null && token.toString().trim().isNotEmpty) {
-            return token.toString().trim();
-          }
-        }
-      } catch (_) {}
-      return null;
-    }
-
     List<_MessageAttachment> parseMessageAttachments(Map<String, dynamic> map) {
       final out = <_MessageAttachment>[];
       dynamic rawAttachments;
@@ -356,197 +270,11 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       return out;
     }
 
-    Future<List<Map<String, dynamic>>> fetchInboxMessages() async {
-      final token = await fetchJwtToken();
-      if (token == null || token.isEmpty) return const [];
-      final uri = Uri.parse(
-        'https://$schoolUrl/WebUntis/api/rest/view/v1/messages',
-      );
-      final response = await requestWithCookieFallback(
-        (headers) => http.get(
-          uri,
-          headers: {...headers, 'Authorization': 'Bearer $token'},
-        ),
-      );
-      if (response == null || response.body.trim().isEmpty) return const [];
-      try {
-        final decoded = jsonDecode(response.body);
-        final incoming = decoded is Map ? decoded['incomingMessages'] : null;
-        if (incoming is! List) return const [];
-        return incoming
-            .whereType<Map>()
-            .map((raw) {
-              final rawMap = Map<String, dynamic>.from(raw);
-              // Some WebUntis deployments wrap the fields in a "message"
-              // object, others expose them directly on the entry.
-              final map = rawMap['message'] is Map
-                  ? Map<String, dynamic>.from(rawMap['message'])
-                  : rawMap;
-              final sender = map['sender'];
-              final preview =
-                  map['contentPreview'] ?? map['message'] ?? map['text'] ?? '';
-              final content = map['content'] ?? preview;
-              return {
-                ...map,
-                'message': preview,
-                'fullBody': content,
-                'author': sender is Map
-                    ? sender['displayName'] ?? sender['name']
-                    : null,
-                'date': map['sentDateTime'] ?? map['date'] ?? map['sendTime'],
-                'attachments': parseMessageAttachments(map),
-              };
-            })
-            .toList(growable: false);
-      } catch (_) {
-        return const [];
-      }
-    }
-
-    Future<List<Map<String, dynamic>>> fetchNewsWidgetMessages() async {
-      final out = <Map<String, dynamic>>[];
-      final days = List.generate(
-        4,
-        (index) => DateTime.now().subtract(Duration(days: index)),
-      );
-
-      for (final day in days) {
-        final untisDate = DateFormat('yyyyMMdd').format(day);
-        final uri = Uri.parse(
-          'https://$schoolUrl/WebUntis/api/public/news/newsWidgetData?date=$untisDate',
-        );
-        final response = await requestWithCookieFallback(
-          (headers) => http.get(uri, headers: headers),
-        );
-        if (response == null || response.body.trim().isEmpty) continue;
-
-        try {
-          final decoded = jsonDecode(response.body);
-          final data = decoded is Map ? decoded['data'] : null;
-          final messagesOfDay = data is Map ? data['messagesOfDay'] : null;
-          if (messagesOfDay is! List) continue;
-
-          for (final entry in messagesOfDay) {
-            if (entry is! Map) continue;
-            final map = Map<String, dynamic>.from(entry);
-            out.add({
-              ...map,
-              'date': map['date'] ?? untisDate,
-              'message': map['text'] ?? map['message'] ?? '',
-            });
-          }
-        } catch (_) {}
-      }
-
-      return out;
-    }
-
-    Future<List<dynamic>> tryGet(String path, {bool retry = true}) async {
-      final uri = Uri.parse('https://$schoolUrl$path');
-      final response = await requestWithCookieFallback(
-        (headers) => http.get(uri, headers: headers),
-        retry: retry,
-      );
-
-      if (response == null || response.body.trim().isEmpty) {
-        return const [];
-      }
-
-      try {
-        return extractList(jsonDecode(response.body));
-      } catch (_) {}
-      return const [];
-    }
-
-    Future<List<dynamic>> tryJsonRpc(
-      String method,
-      Map<String, dynamic> params, {
-      bool retry = true,
-    }) async {
-      final uri = Uri.parse(
-        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-      );
-      final response = await requestWithCookieFallback(
-        (headers) => http.post(
-          uri,
-          headers: {...headers, 'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'id': 'school-info',
-            'method': method,
-            'params': params,
-            'jsonrpc': '2.0',
-          }),
-        ),
-        retry: retry,
-      );
-
-      if (response == null || response.body.trim().isEmpty) {
-        return const [];
-      }
-
-      try {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded['error'] != null) {
-          return const [];
-        }
-        if (decoded is Map) {
-          return extractList(decoded['result'] ?? decoded);
-        }
-        return extractList(decoded);
-      } catch (_) {}
-      return const [];
-    }
-
-    // WebUntis distinguishes personal Mitteilungen from its public Start
-    // feed. Fetch both in parallel and keep them separate in the UI so a
-    // reload cannot silently replace one category with the other.
-    final initialResults = await Future.wait([
-      fetchInboxMessages(),
-      fetchNewsWidgetMessages(),
-    ]);
-    final inboxMessages = initialResults[0];
-    List<dynamic> schoolMessages = initialResults[1];
-
-    if (schoolMessages.isEmpty) {
-      final schoolFallbacks = [
-        () => tryJsonRpc('getMessagesOfDay2017', {
-          'date': DateFormat('yyyyMMdd').format(DateTime.now()),
-        }),
-        () => tryGet(
-          '/WebUntis/api/public/messages?startDate=$startStr&endDate=$endStr',
-        ),
-        () => tryGet(
-          '/WebUntis/api/messages?startDate=$startStr&endDate=$endStr',
-        ),
-        () => tryGet(
-          '/WebUntis/api/public/notifications?startDate=$startStr&endDate=$endStr',
-        ),
-        () => tryGet(
-          '/WebUntis/api/public/notices?startDate=$startStr&endDate=$endStr',
-        ),
-        () => tryJsonRpc('getMessagesOfDay', {
-          'date': DateFormat('yyyyMMdd').format(DateTime.now()),
-        }),
-        () => tryJsonRpc('getMessages', {
-          'startDate': startStr,
-          'endDate': endStr,
-        }),
-      ];
-
-      for (final fallback in schoolFallbacks) {
-        schoolMessages = await fallback();
-        if (schoolMessages.isNotEmpty) break;
-      }
-    }
-
-    List<_SchoolNotificationItem> toItems(List<dynamic> raw) {
+    List<_SchoolNotificationItem> toItems(List<Map<String, dynamic>> raw) {
       final seen = <String>{};
       final items = <_SchoolNotificationItem>[];
 
-      for (final entry in raw) {
-        if (entry is! Map) continue;
-        final map = Map<String, dynamic>.from(entry);
-
+      for (final map in raw) {
         final title =
             (map['title'] ??
                     map['subject'] ??
@@ -568,8 +296,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         final id =
             (map['id'] ?? map['messageId'] ?? map['uuid'] ?? '$title-$body')
                 .toString();
-        if (seen.contains(id)) continue;
-        seen.add(id);
+        if (!seen.add(id)) continue;
 
         final dt = _parseNotificationDate(
           map['date'] ??
@@ -611,7 +338,13 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       return items;
     }
 
-    return (inbox: toItems(inboxMessages), news: toItems(schoolMessages));
+    final fetched = await SchoolInfoRepository().fetch(
+      schoolUrl: schoolUrl,
+      schoolName: schoolName,
+      sessionId: sessionID,
+      reauthenticate: () async => await _reAuthenticate() ? sessionID : null,
+    );
+    return (inbox: toItems(fetched.inbox), news: toItems(fetched.news));
   }
 
   DateTime? _parseNotificationDate(dynamic raw) {
