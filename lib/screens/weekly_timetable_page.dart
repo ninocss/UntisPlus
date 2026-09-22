@@ -154,7 +154,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     DateTime? monday,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       final key = monday != null
           ? _weekCacheKeyFor(
               monday: monday,
@@ -229,7 +229,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     DateTime? monday,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       final key = monday != null
           ? _weekCacheKeyFor(
               monday: monday,
@@ -740,7 +740,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _loadViewPref() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     if (mounted) {
       setState(() => _viewMode = (prefs.getInt('viewMode') ?? 0).clamp(0, 1));
     }
@@ -758,7 +758,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Future<void> _toggleView() async {
     HapticFeedback.selectionClick();
     setState(() => _viewMode = (_viewMode + 1) % 2);
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setInt('viewMode', _viewMode);
   }
 
@@ -1054,7 +1054,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         .join('\n');
     var examSummary = l.widgetNoUpcomingExams;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       final exams = (prefs.getStringList(_accountDataKey('customExams')) ?? [])
           .map((raw) {
             try {
@@ -5535,7 +5535,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             ),
                             onPressed: () async {
                               final prefs =
-                                  await SharedPreferences.getInstance();
+                                  SettingsStore.instance.preferences;
                               setSheetState(() {
                                 defaultClassId = null;
                                 defaultClassName = null;
@@ -5681,7 +5681,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                             ),
                                             onPressed: () async {
                                               final prefs =
-                                                  await SharedPreferences.getInstance();
+                                                  SettingsStore.instance.preferences;
                                               setSheetState(() {
                                                 if (isFavorite) {
                                                   favoriteClassIds.remove(id);
@@ -5713,7 +5713,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                             ),
                                             onPressed: () async {
                                               final prefs =
-                                                  await SharedPreferences.getInstance();
+                                                  SettingsStore.instance.preferences;
                                               setSheetState(() {
                                                 if (isDefault) {
                                                   defaultClassId = null;

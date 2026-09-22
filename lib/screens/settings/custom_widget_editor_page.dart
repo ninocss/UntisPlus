@@ -73,7 +73,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   );
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     final raw = prefs.getString(WidgetService.configurationsKey);
     final loaded = <WidgetConfiguration>[];
     try {
@@ -114,7 +114,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   );
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setString(
       WidgetService.configurationsKey,
       jsonEncode(_configurations.map((item) => item.toJson()).toList()),

@@ -517,7 +517,7 @@ class _CustomBackgroundEditorScreenState
     if (_isDirty) {
       await _saveDraft();
     }
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await selectCustomBackground(_draft.id);
 
     backgroundAnimationsNotifier.value = true;

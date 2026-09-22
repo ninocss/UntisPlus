@@ -20,7 +20,7 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     if (!mounted) return;
     setState(() {
       _username = prefs.getString('username') ?? '';
