@@ -5,6 +5,75 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
+class _AiImportFile {
+  const _AiImportFile({required this.bytes, required this.mimeType});
+
+  final Uint8List bytes;
+  final String mimeType;
+}
+
+Future<_AiImportFile?> _pickAiImportFile(
+  String source, {
+  required bool allowPdf,
+}) async {
+  if (source == 'camera' || source == 'gallery') {
+    final picked = await ImagePicker().pickImage(
+      source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+    );
+    if (picked == null) return null;
+    return _AiImportFile(
+      bytes: await picked.readAsBytes(),
+      mimeType: picked.path.toLowerCase().endsWith('.png')
+          ? 'image/png'
+          : 'image/jpeg',
+    );
+  }
+
+  final picked = await FilePicker.pickFile(
+    type: FileType.custom,
+    allowedExtensions: allowPdf
+        ? const ['pdf', 'png', 'jpg', 'jpeg']
+        : const ['png', 'jpg', 'jpeg'],
+  );
+  if (picked == null) return null;
+  final extension = picked.name.split('.').last.toLowerCase();
+  return _AiImportFile(
+    bytes: await picked.readAsBytes(),
+    mimeType: extension == 'pdf'
+        ? 'application/pdf'
+        : extension == 'png'
+        ? 'image/png'
+        : 'image/jpeg',
+  );
+}
+
+class SettingsPageShell extends StatelessWidget {
+  const SettingsPageShell({
+    required this.title,
+    required this.children,
+    super.key,
+  });
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: _settingsHeaderAppBar(context, title),
+    body: _AnimatedBackground(
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          MediaQuery.paddingOf(context).bottom + 120,
+        ),
+        children: children,
+      ),
+    ),
+  );
+}
+
 /// Shared width vocabulary for layouts that need to work from a phone to a
 /// desktop-sized tablet. Keep breakpoints here instead of letting individual
 /// pages make subtly different tablet decisions.
@@ -242,8 +311,7 @@ Future<T?> showUntisModalBottomSheet<T>({
         to: navigator.context,
       ),
       isScrollControlled: isScrollControlled,
-      scrollControlDisabledMaxHeightRatio:
-          scrollControlDisabledMaxHeightRatio,
+      scrollControlDisabledMaxHeightRatio: scrollControlDisabledMaxHeightRatio,
       barrierLabel: barrierLabel ?? localizations.scrimLabel,
       barrierOnTapHint: localizations.scrimOnTapHint(
         localizations.bottomSheetLabel,
@@ -255,7 +323,8 @@ Future<T?> showUntisModalBottomSheet<T>({
       constraints: constraints,
       modalBarrierColor: useBackdropBlur
           ? Colors.transparent
-          : barrierColor ?? Theme.of(context).bottomSheetTheme.modalBarrierColor,
+          : barrierColor ??
+                Theme.of(context).bottomSheetTheme.modalBarrierColor,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       showDragHandle: showDragHandle,
@@ -520,7 +589,8 @@ class ThemedSurface extends StatelessWidget {
                   ? cs.outline
                   : (tokens.glassHighlights
                         ? Colors.white.withValues(
-                            alpha: Theme.of(context).brightness == Brightness.dark
+                            alpha:
+                                Theme.of(context).brightness == Brightness.dark
                                 ? 0.34
                                 : 0.56,
                           )
@@ -583,7 +653,8 @@ class ThemedSurface extends StatelessWidget {
               boxShadow: showShadow
                   ? [
                       BoxShadow(
-                        color: !tokens.glowEffectsEnabled &&
+                        color:
+                            !tokens.glowEffectsEnabled &&
                                 tokens.id == AppThemeId.cyber
                             ? cs.shadow.withValues(alpha: 0.12)
                             : tokens.shadowColor,
@@ -781,8 +852,8 @@ Route<T> _buildBouncyRoute<T>(
   Duration? reverseDuration,
   int? transitionType,
 }) {
-  final selectedTransition =
-      (transitionType ?? pageTransitionNotifier.value).clamp(0, 8);
+  final selectedTransition = (transitionType ?? pageTransitionNotifier.value)
+      .clamp(0, 8);
 
   // Use Flutter's platform route unchanged for "Default". On Android,
   // MaterialPageRoute uses the framework's predictive-back transition.
@@ -793,9 +864,7 @@ Route<T> _buildBouncyRoute<T>(
   final forwardDuration = duration ?? _pageMotionDuration(selectedTransition);
   final backwardDuration =
       reverseDuration ??
-      Duration(
-        milliseconds: (forwardDuration.inMilliseconds * 0.82).round(),
-      );
+      Duration(milliseconds: (forwardDuration.inMilliseconds * 0.82).round());
 
   return PageRouteBuilder<T>(
     transitionDuration: forwardDuration,
@@ -847,9 +916,10 @@ Route<T> _buildBouncyRoute<T>(
 
       if (offset != Offset.zero) {
         result = SlideTransition(
-          position: Tween<Offset>(begin: offset, end: Offset.zero).animate(
-            motion,
-          ),
+          position: Tween<Offset>(
+            begin: offset,
+            end: Offset.zero,
+          ).animate(motion),
           child: result,
         );
       }
@@ -893,9 +963,7 @@ MenuStyle _untisMenuStyle(BuildContext context) {
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(_resolvedSurfaceCornerRadius(22)),
-        side: BorderSide(
-          color: cs.outlineVariant.withValues(alpha: 0.48),
-        ),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.48)),
       ),
     ),
   );
@@ -1045,10 +1113,7 @@ Future<T?> _showUnifiedSheet<T>({
       if (showHandle) {
         content = Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 28),
-              child: content,
-            ),
+            Padding(padding: const EdgeInsets.only(top: 28), child: content),
             Positioned(
               top: 12,
               left: 0,
@@ -1099,7 +1164,8 @@ Future<T?> _showUnifiedOptionSheet<T>({
               ? cs.primaryContainer.withValues(alpha: 0.42)
               : cs.surfaceContainerLow.withValues(alpha: 0.72);
 
-          final leading = opt.leading ??
+          final leading =
+              opt.leading ??
               (opt.icon == null
                   ? null
                   : _sheetActionIcon(
@@ -1364,8 +1430,7 @@ class SettingsGroup extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (i < validChildren.length - 1)
-                      const SizedBox(height: 4),
+                    if (i < validChildren.length - 1) const SizedBox(height: 4),
                   ],
                 ],
               );
@@ -1418,10 +1483,7 @@ PreferredSizeWidget _mainSectionTabBar(
     indicatorWeight: 3,
     dividerColor: Colors.transparent,
     labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-    labelStyle: GoogleFonts.outfit(
-      fontWeight: FontWeight.w800,
-      fontSize: 14,
-    ),
+    labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 14),
     unselectedLabelStyle: GoogleFonts.outfit(
       fontWeight: FontWeight.w600,
       fontSize: 14,

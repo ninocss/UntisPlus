@@ -116,7 +116,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
   Widget buildEmbedded(BuildContext context) => build(context);
 
   String _copyLabel() {
-    return AppL10n.of(appLocaleNotifier.value).ui('copyMessage');
+    return appL10nFor(appLocaleNotifier.value).copyMessage;
   }
 
   Future<void> _openDetailUrl(BuildContext context, String? url) async {
@@ -129,7 +129,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            AppL10n.of(appLocaleNotifier.value).settingsGithubOpenFailed,
+            appL10nFor(appLocaleNotifier.value).settingsGithubOpenFailed,
           ),
         ),
       );
@@ -140,7 +140,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
     BuildContext context,
     _MessageAttachment attachment,
   ) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final messenger = ScaffoldMessenger.of(context);
     if (attachment.isDemo) {
       messenger.showSnackBar(
@@ -207,7 +207,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
   }
 
   Future<void> _copyMessage(BuildContext context) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final plainBody = _detailToPlainText(
       _detailSafeInfoDocument(item.displayBody),
     );
@@ -228,7 +228,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(

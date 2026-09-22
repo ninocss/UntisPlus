@@ -45,7 +45,19 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   bool _loadingPreview = true;
   bool _pinning = false;
 
-  String _typeText(AppL10n l, String key) => l.ui(key);
+  String _typeText(AppL10n l, String key) => switch (key) {
+    'widgetCurrent' => l.widgetCurrent,
+    'widgetCurrentDesc' => l.widgetCurrentDesc,
+    'widgetSchedule' => l.widgetSchedule,
+    'widgetScheduleDesc' => l.widgetScheduleDesc,
+    'widgetHomework' => l.widgetHomework,
+    'widgetHomeworkDesc' => l.widgetHomeworkDesc,
+    'widgetNotices' => l.widgetNotices,
+    'widgetNoticesDesc' => l.widgetNoticesDesc,
+    'widgetSmallMedium' => l.widgetSmallMedium,
+    'widgetMediumLarge' => l.widgetMediumLarge,
+    _ => key,
+  };
 
   @override
   void initState() {
@@ -120,13 +132,13 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   }
 
   Future<void> _pinSelectedWidget() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (kIsWeb || !Platform.isAndroid || _pinning) return;
     final accountId = _accountId;
     if (accountId == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(l.ui('widgetAddAccountFirst'))));
+      ).showSnackBar(SnackBar(content: Text(l.widgetAddAccountFirst)));
       return;
     }
     final name = switch (_selectedType) {
@@ -146,7 +158,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            supported ? l.ui('widgetPickerSent') : l.ui('widgetPickerHint'),
+            supported ? l.widgetPickerSent : l.widgetPickerHint,
           ),
         ),
       );
@@ -154,7 +166,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(l.ui('widgetPickerFailed'))));
+      ).showSnackBar(SnackBar(content: Text(l.widgetPickerFailed)));
     } finally {
       if (mounted) setState(() => _pinning = false);
     }
@@ -180,7 +192,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   }
 
   Widget _preview(BuildContext context, ColorScheme cs) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final account = _account;
     final data = _previewData;
     final hasData = data.hasPublishedData;
@@ -188,49 +200,49 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
         ? data.accountLabel.trim()
         : account?.label ?? 'Untis+';
     final status = _loadingPreview
-        ? l.ui('widgetLoading')
+        ? l.widgetLoading
         : data.status.trim().isNotEmpty
         ? data.status.trim()
         : hasData
-        ? l.ui('widgetCurrentStatus')
-        : l.ui('widgetPreviewStatus');
+        ? l.widgetCurrentStatus
+        : l.widgetPreviewStatus;
     final isSchedule = _selectedType == 'schedule';
     final title = switch (_selectedType) {
-      'schedule' => l.ui('widgetToday'),
-      'homework' => l.ui('widgetHomework'),
-      'notices' => l.ui('widgetNotices'),
+      'schedule' => l.widgetToday,
+      'homework' => l.widgetHomework,
+      'notices' => l.widgetNotices,
       _ => accountLabel,
     };
     final headline = switch (_selectedType) {
       'schedule' =>
         data.dailySchedule.trim().isNotEmpty
             ? data.dailySchedule.trim()
-            : l.ui('widgetNoScheduleData'),
+            : l.widgetNoScheduleData,
       'homework' =>
         data.homeworkSummary.trim().isNotEmpty
             ? data.homeworkSummary.trim()
-            : l.ui('widgetNoOpenHomework'),
+            : l.widgetNoOpenHomework,
       'notices' =>
         data.notificationSummary.trim().isNotEmpty
             ? data.notificationSummary.trim()
-            : l.ui('widgetNoNotices'),
+            : l.widgetNoNotices,
       _ =>
         data.currentLesson.trim().isNotEmpty
             ? data.currentLesson.trim()
-            : l.ui('widgetNoCurrentLesson'),
+            : l.widgetNoCurrentLesson,
     };
     final detail = data.nextLesson.trim().isNotEmpty
         ? data.nextLesson.trim()
-        : l.ui('widgetTimetableDetail');
+        : l.widgetTimetableDetail;
     final footer = data.timeRemaining.trim().isNotEmpty
         ? data.timeRemaining.trim()
         : hasData
         ? 'Untis+'
-        : l.ui('widgetNotSynced');
+        : l.widgetNotSynced;
 
     return Semantics(
       label:
-          '${l.ui('widgetPreview')}: ${_typeText(l, _types.firstWhere((type) => type.id == _selectedType).label)}',
+          '${l.widgetPreview}: ${_typeText(l, _types.firstWhere((type) => type.id == _selectedType).label)}',
       child: AnimatedContainer(
         key: ValueKey('widget-preview-$_selectedType'),
         duration: const Duration(milliseconds: 280),
@@ -368,10 +380,10 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   }
 
   Widget _platformInstructions(bool isAndroid, bool isIOS) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (isAndroid) {
       return SettingsGroup(
-        title: l.ui('widgetHome'),
+        title: l.widgetHome,
         children: [
           Padding(
             padding: const EdgeInsets.all(14),
@@ -388,50 +400,50 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                       )
                     : const Icon(Icons.add_to_home_screen_rounded),
                 label: Text(
-                  _pinning ? l.ui('widgetPickerOpening') : l.ui('widgetAdd'),
+                  _pinning ? l.widgetPickerOpening : l.widgetAdd,
                 ),
               ),
             ),
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Text(l.ui('widgetAndroidDialogDesc')),
+            child: Text(l.widgetAndroidDialogDesc),
           ),
         ],
       );
     }
     if (isIOS) {
       return SettingsGroup(
-        title: l.ui('widgetHome'),
+        title: l.widgetHome,
         children: [
           SettingsTile(
             icon: Icons.looks_one_rounded,
-            title: l.ui('widgetHoldHome'),
-            subtitle: l.ui('widgetHoldHomeDesc'),
+            title: l.widgetHoldHome,
+            subtitle: l.widgetHoldHomeDesc,
             trailing: null,
           ),
           SettingsTile(
             icon: Icons.looks_two_rounded,
-            title: l.ui('widgetSelectUntis'),
-            subtitle: l.ui('widgetSelectUntisDesc'),
+            title: l.widgetSelectUntis,
+            subtitle: l.widgetSelectUntisDesc,
             trailing: null,
           ),
           SettingsTile(
             icon: Icons.looks_3_rounded,
-            title: l.ui('widgetSetAccount'),
-            subtitle: l.ui('widgetSetAccountDesc'),
+            title: l.widgetSetAccount,
+            subtitle: l.widgetSetAccountDesc,
             trailing: null,
           ),
         ],
       );
     }
     return SettingsGroup(
-      title: l.ui('widgetHome'),
+      title: l.widgetHome,
       children: [
         SettingsTile(
           icon: Icons.devices_other_rounded,
-          title: l.ui('widgetHomeUnavailable'),
-          subtitle: l.ui('widgetHomeSupported'),
+          title: l.widgetHomeUnavailable,
+          subtitle: l.widgetHomeSupported,
           trailing: null,
         ),
       ],
@@ -440,7 +452,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     final isAndroid = !kIsWeb && Platform.isAndroid;
@@ -449,10 +461,10 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
     return Scaffold(
       appBar: _settingsHeaderAppBar(
         context,
-        l.ui('widgetPreviewTitle'),
+        l.widgetPreviewTitle,
         actions: [
           IconButton(
-            tooltip: l.ui('widgetRefresh'),
+            tooltip: l.widgetRefresh,
             onPressed: _loadingPreview ? null : _reloadPreview,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -468,7 +480,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      l.ui('widgetPreview'),
+                      l.widgetPreview,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: cs.primary,
                         fontWeight: FontWeight.w800,
@@ -488,8 +500,8 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
               child: Text(
                 _previewData.hasPublishedData
-                    ? l.ui('widgetSyncedPreview')
-                    : l.ui('widgetOpenTimetable'),
+                    ? l.widgetSyncedPreview
+                    : l.widgetOpenTimetable,
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
@@ -497,12 +509,12 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
               ),
             ),
             SettingsGroup(
-              title: l.ui('widgetOwn'),
+              title: l.widgetOwn,
               children: [
                 SettingsTile(
                   icon: Icons.dashboard_customize_rounded,
-                  title: l.ui('widgetEditorOpen'),
-                  subtitle: l.ui('widgetEditorDesc'),
+                  title: l.widgetEditorOpen,
+                  subtitle: l.widgetEditorDesc,
                   trailing: const Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 16,
@@ -514,7 +526,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
               ],
             ),
             SettingsGroup(
-              title: l.ui('widgetChoose'),
+              title: l.widgetChoose,
               children: [
                 Padding(
                   padding: const EdgeInsets.all(12),
@@ -568,13 +580,13 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
             ValueListenableBuilder<List<UntisAccount>>(
               valueListenable: untisAccountsNotifier,
               builder: (context, accounts, _) => SettingsGroup(
-                title: l.ui('widgetAccount'),
+                title: l.widgetAccount,
                 children: accounts.isEmpty
                     ? [
                         SettingsTile(
                           icon: Icons.person_off_outlined,
-                          title: l.ui('widgetNoAccount'),
-                          subtitle: l.ui('widgetAddAccountFirst'),
+                          title: l.widgetNoAccount,
+                          subtitle: l.widgetAddAccountFirst,
                           trailing: null,
                         ),
                       ]

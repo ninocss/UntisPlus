@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../platform/native_channel_names.dart';
+
 /// Drives the iOS Live Activity that mirrors Android's ongoing "current
 /// lesson" notification (progress bar + countdown).
 ///
@@ -14,7 +16,7 @@ class LiveActivityService {
   static final LiveActivityService instance = LiveActivityService._();
 
   static const MethodChannel _channel = MethodChannel(
-    'untisplus/live_activities',
+    NativeChannelNames.liveActivities,
   );
 
   /// Starts or updates the Live Activity with the current lesson state.

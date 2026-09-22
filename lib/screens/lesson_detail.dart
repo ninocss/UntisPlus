@@ -180,7 +180,7 @@ class _LessonDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cancelledColor = Color(
       cancelledLessonColorNotifier.value,
     ).harmonizeWith(cs.primary);
@@ -423,7 +423,7 @@ class StudentNotesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     return Scaffold(
       appBar: RoundedBlurAppBar(
@@ -749,7 +749,7 @@ class LessonCard extends StatelessWidget {
                 if (isCancelled)
                   Badge(
                     label: Text(
-                      AppL10n.of(appLocaleNotifier.value).detailCancelledBadge,
+                      appL10nFor(appLocaleNotifier.value).detailCancelledBadge,
                     ),
                     backgroundColor: cancelledColor,
                     textColor: cs.onError,

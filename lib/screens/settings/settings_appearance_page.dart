@@ -33,7 +33,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showLanguageDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsLanguage,
@@ -55,7 +55,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showBackgroundStyleDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsBackgroundStyle,
@@ -75,7 +75,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showMonochromeLessonColorDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final current = Color(monochromeLessonColorNotifier.value);
     var red = current.r * 255.0;
     var green = current.g * 255.0;
@@ -224,7 +224,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showSurfaceCornerModeDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsSurfaceCorners,
@@ -268,7 +268,7 @@ class SettingsAppearancePage extends StatelessWidget {
     };
     _showUnifiedOptionSheet<String>(
       context: context,
-      title: AppL10n.of(appLocaleNotifier.value).ui('appearanceAppIcon'),
+      title: appL10nFor(appLocaleNotifier.value).appearanceAppIcon,
       options: labels.entries
           .map(
             (entry) => _SheetOption(
@@ -325,7 +325,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showTransitionDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsPageTransition,
@@ -526,7 +526,7 @@ class SettingsAppearancePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
 
@@ -1140,10 +1140,10 @@ class SettingsAppearancePage extends StatelessWidget {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onSecondaryContainer,
-                  title: l.ui('appearanceAppIcon'),
+                  title: l.appearanceAppIcon,
                   subtitle: !kIsWeb
-                      ? l.ui('appearanceIconChoose')
-                      : l.ui('appearanceIconAndroidOnly'),
+                      ? l.appearanceIconChoose
+                      : l.appearanceIconAndroidOnly,
                   onTap: !kIsWeb
                       ? () => _showAppIconDialog(context)
                       : null,

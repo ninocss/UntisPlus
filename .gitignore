@@ -34,6 +34,7 @@ tooling/
 .pub/
 /build/
 /coverage/
+lib/l10n/generated/
 
 # Symbolication related
 app.*.symbols

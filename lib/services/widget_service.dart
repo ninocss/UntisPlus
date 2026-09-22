@@ -214,7 +214,7 @@ class WidgetService {
     await _ensureConfigured();
     await HomeWidget.saveWidgetData<String>(
       'widget_native_copy',
-      jsonEncode(AppL10n.of(locale).nativeWidgetCopy()),
+      jsonEncode(appL10nFor(locale).nativeWidgetCopy()),
     );
   }
 

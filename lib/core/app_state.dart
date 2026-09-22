@@ -39,8 +39,10 @@ UntisAccountStore _accountStore(SharedPreferences prefs) => UntisAccountStore(
   credentials: SecureAccountCredentialStore(CredentialVault.instance),
 );
 
-Future<void> _copyLegacyAccountData(SharedPreferences prefs, String accountId) =>
-    _accountStore(prefs).copyLegacyPersonalData(accountId);
+Future<void> _copyLegacyAccountData(
+  SharedPreferences prefs,
+  String accountId,
+) => _accountStore(prefs).copyLegacyPersonalData(accountId);
 
 Future<void> _syncActiveAccountDataForBackground(
   SharedPreferences prefs,
@@ -324,6 +326,40 @@ double aiTemperature = 0.2;
 int aiMaxTokens = 2600;
 double aiTopP = 0.95;
 String aiPersona = 'helpful';
+
+Future<void> loadAiPreferences(SharedPreferences prefs) async {
+  aiProvider = _normalizeAiProvider(
+    prefs.getString('aiProvider') ?? aiProvider,
+  );
+  aiCustomCompatibility = _normalizeAiCustomCompatibility(
+    prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
+  );
+  aiModel = prefs.getString('aiModel') ?? aiModel;
+  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
+  aiSystemPromptTemplate =
+      prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
+  aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
+  aiTemperature = prefs.getDouble('aiTemperature') ?? aiTemperature;
+  aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
+  aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
+  aiPersona = prefs.getString('aiPersona') ?? aiPersona;
+  await loadSecureAiApiKeys(prefs);
+}
+
+Future<void> saveAiProviderPreferences(SharedPreferences prefs) async {
+  await Future.wait([
+    prefs.setString('aiProvider', aiProvider),
+    prefs.setString('aiModel', aiModel),
+    prefs.setString('aiCustomCompatibility', aiCustomCompatibility),
+    prefs.setString('aiCustomBaseUrl', aiCustomBaseUrl),
+    prefs.setString('aiSystemPromptTemplate', aiSystemPromptTemplate),
+    prefs.setString('aiLocalModelPath', aiLocalModelPath),
+    CredentialVault.instance.writeAiApiKey('gemini', geminiApiKey),
+    CredentialVault.instance.writeAiApiKey('openai', openAiApiKey),
+    CredentialVault.instance.writeAiApiKey('mistral', mistralApiKey),
+    CredentialVault.instance.writeAiApiKey('custom', customAiApiKey),
+  ]);
+}
 
 const List<String> kSupportedAiProviders = [
   'gemini',
@@ -651,44 +687,32 @@ final ValueNotifier<List<Map<String, dynamic>>> customExamsNotifier =
 final ValueNotifier<List<Map<String, dynamic>>> customGradesNotifier =
     ValueNotifier(const []);
 
+List<Map<String, dynamic>> _decodeStoredMapList(List<String> values) => values
+    .map((value) {
+      try {
+        return Map<String, dynamic>.from(jsonDecode(value) as Map);
+      } catch (_) {
+        return <String, dynamic>{};
+      }
+    })
+    .where((value) => value.isNotEmpty)
+    .toList(growable: false);
+
+void _loadCustomList(
+  SharedPreferences prefs,
+  String field,
+  ValueNotifier<List<Map<String, dynamic>>> notifier,
+) {
+  notifier.value = _decodeStoredMapList(
+    prefs.getStringList(_accountDataKey(field)) ?? const [],
+  );
+}
+
 Future<void> loadCustomData() async {
   final prefs = await SharedPreferences.getInstance();
-
-  final rawHw = prefs.getStringList(_accountDataKey('customHomework')) ?? [];
-  customHomeworkNotifier.value = rawHw
-      .map((e) {
-        try {
-          return Map<String, dynamic>.from(jsonDecode(e) as Map);
-        } catch (_) {
-          return <String, dynamic>{};
-        }
-      })
-      .where((e) => e.isNotEmpty)
-      .toList();
-
-  final rawExams = prefs.getStringList(_accountDataKey('customExams')) ?? [];
-  customExamsNotifier.value = rawExams
-      .map((e) {
-        try {
-          return Map<String, dynamic>.from(jsonDecode(e) as Map);
-        } catch (_) {
-          return <String, dynamic>{};
-        }
-      })
-      .where((e) => e.isNotEmpty)
-      .toList();
-
-  final rawGrades = prefs.getStringList(_accountDataKey('customGrades')) ?? [];
-  customGradesNotifier.value = rawGrades
-      .map((e) {
-        try {
-          return Map<String, dynamic>.from(jsonDecode(e) as Map);
-        } catch (_) {
-          return <String, dynamic>{};
-        }
-      })
-      .where((e) => e.isNotEmpty)
-      .toList();
+  _loadCustomList(prefs, 'customHomework', customHomeworkNotifier);
+  _loadCustomList(prefs, 'customExams', customExamsNotifier);
+  _loadCustomList(prefs, 'customGrades', customGradesNotifier);
 }
 
 Future<void> loadAccountPersonalData() async {
@@ -714,38 +738,35 @@ Future<void> loadAccountPersonalData() async {
   }
 }
 
-Future<void> saveCustomHomework(List<Map<String, dynamic>> list) async {
-  customHomeworkNotifier.value = List.from(list);
+Future<void> _saveCustomList(
+  String field,
+  ValueNotifier<List<Map<String, dynamic>>> notifier,
+  List<Map<String, dynamic>> values,
+) async {
+  notifier.value = List<Map<String, dynamic>>.from(values);
   final prefs = await SharedPreferences.getInstance();
   await prefs.setStringList(
-    _accountDataKey('customHomework'),
-    list.map((e) => jsonEncode(e)).toList(),
+    _accountDataKey(field),
+    values.map(jsonEncode).toList(growable: false),
   );
 }
 
-Future<void> saveCustomExams(List<Map<String, dynamic>> list) async {
-  customExamsNotifier.value = List.from(list);
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList(
-    _accountDataKey('customExams'),
-    list.map((e) => jsonEncode(e)).toList(),
-  );
-}
+Future<void> saveCustomHomework(List<Map<String, dynamic>> list) =>
+    _saveCustomList('customHomework', customHomeworkNotifier, list);
 
-Future<void> saveCustomGrades(List<Map<String, dynamic>> list) async {
-  customGradesNotifier.value = List.from(list);
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList(
-    _accountDataKey('customGrades'),
-    list.map((e) => jsonEncode(e)).toList(),
-  );
-}
+Future<void> saveCustomExams(List<Map<String, dynamic>> list) =>
+    _saveCustomList('customExams', customExamsNotifier, list);
+
+Future<void> saveCustomGrades(List<Map<String, dynamic>> list) =>
+    _saveCustomList('customGrades', customGradesNotifier, list);
 
 final ValueNotifier<Set<String>> hiddenSubjectsNotifier = ValueNotifier({});
 
-Future<void> _hideSubject(String key) async {
-  if (key.isEmpty) return;
-  final updated = Set<String>.from(hiddenSubjectsNotifier.value)..add(key);
+Future<void> _updateHiddenSubjects(
+  void Function(Set<String> values) update,
+) async {
+  final updated = Set<String>.from(hiddenSubjectsNotifier.value);
+  update(updated);
   hiddenSubjectsNotifier.value = updated;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setStringList(
@@ -755,16 +776,12 @@ Future<void> _hideSubject(String key) async {
   await _syncActiveAccountDataForBackground(prefs);
 }
 
-Future<void> _unhideSubject(String key) async {
-  final updated = Set<String>.from(hiddenSubjectsNotifier.value)..remove(key);
-  hiddenSubjectsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList(
-    _accountDataKey('hiddenSubjects'),
-    updated.toList(),
-  );
-  await _syncActiveAccountDataForBackground(prefs);
-}
+Future<void> _hideSubject(String key) => key.isEmpty
+    ? Future.value()
+    : _updateHiddenSubjects((values) => values.add(key));
+
+Future<void> _unhideSubject(String key) =>
+    _updateHiddenSubjects((values) => values.remove(key));
 
 final ValueNotifier<Map<String, int>> subjectColorsNotifier = ValueNotifier({});
 
@@ -782,10 +799,11 @@ final ValueNotifier<Map<int, List<dynamic>>> currentWeekDataNotifier =
 /// source of truth lives in ChangeRepository and remains account-scoped.
 final ValueNotifier<int> unreadTimetableChangesNotifier = ValueNotifier(0);
 
-Future<void> _setSubjectColor(String key, int colorValue) async {
-  if (key.isEmpty) return;
-  final updated = Map<String, int>.from(subjectColorsNotifier.value)
-    ..[key] = colorValue;
+Future<void> _updateSubjectColors(
+  void Function(Map<String, int> values) update,
+) async {
+  final updated = Map<String, int>.from(subjectColorsNotifier.value);
+  update(updated);
   subjectColorsNotifier.value = updated;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(
@@ -794,16 +812,12 @@ Future<void> _setSubjectColor(String key, int colorValue) async {
   );
 }
 
-Future<void> _clearSubjectColor(String key) async {
-  final updated = Map<String, int>.from(subjectColorsNotifier.value)
-    ..remove(key);
-  subjectColorsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(
-    _accountDataKey('subjectColors'),
-    jsonEncode(Map<String, dynamic>.from(updated)),
-  );
-}
+Future<void> _setSubjectColor(String key, int colorValue) => key.isEmpty
+    ? Future.value()
+    : _updateSubjectColors((values) => values[key] = colorValue);
+
+Future<void> _clearSubjectColor(String key) =>
+    _updateSubjectColors((values) => values.remove(key));
 
 String _formatUntisTime(String time) {
   return formatUntisTime(time);

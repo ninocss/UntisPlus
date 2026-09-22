@@ -8,7 +8,7 @@ class SubjectColorsPage extends StatelessWidget {
     String subject,
     Color? current,
   ) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fallback = _autoLessonColor(subject, isDark);
@@ -122,7 +122,7 @@ class SubjectColorsPage extends StatelessWidget {
 
   void _showColorPicker(BuildContext context, String subject, Color? current) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final palette = _subjectColorPalette(cs);
     _showUnifiedSheet<void>(
       context: context,
@@ -234,7 +234,7 @@ class SubjectColorsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
 
@@ -348,7 +348,7 @@ class HiddenSubjectsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
 

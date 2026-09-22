@@ -134,7 +134,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
       grade = subjectOrGrade;
     }
 
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     String selectedSubject =
@@ -600,7 +600,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final grouped = _groupedGrades;
     final subjects = grouped.keys.toList()..sort();
@@ -957,7 +957,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     List<_Grade> grades,
     double average,
   ) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = _autoLessonColor(subject, isDark);
     final gradeColor = _colorForGrade(average);

@@ -3,7 +3,7 @@ part of '../../../main.dart';
 // --- KI-ASSISTENT HILFSFUNKTIONEN ---
 
 String _formatWeekForAi(Map<int, List<dynamic>> weekData, DateTime monday) {
-  final l = AppL10n.of(appLocaleNotifier.value);
+  final l = appL10nFor(appLocaleNotifier.value);
   final days = l.weekDayFull;
   final buf = StringBuffer();
   for (int i = 0; i < 5; i++) {
@@ -67,5 +67,5 @@ ROHDATEN PRUEFUNGEN (JSON):
 
 ${l.aiSystemRules}
 
-${l.ui('aiResponseFormat')}''';
+${l.aiResponseFormat}''';
 }

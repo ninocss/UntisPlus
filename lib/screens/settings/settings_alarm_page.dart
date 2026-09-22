@@ -57,8 +57,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     required ValueChanged<int> onChanged,
     String? suffix,
   }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final effectiveSuffix = suffix ?? l.ui('alarmMinutesSuffix');
+    final l = appL10nFor(appLocaleNotifier.value);
+    final effectiveSuffix = suffix ?? l.alarmMinutesSuffix;
     var value = current;
     await _showUnifiedSheet<void>(
       context: context,
@@ -98,7 +98,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     onChanged(value);
                     Navigator.pop(context);
                   },
-                  child: Text(l.ui('alarmApply')),
+                  child: Text(l.alarmApply),
                 ),
               ],
             ),
@@ -114,7 +114,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   ).format(context);
 
   Future<void> _chooseLeadOverride(int startOfDayMinutes) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final current = _config.leadMinutesByFirstLessonStart[startOfDayMinutes];
     await _showUnifiedSheet<void>(
       context: context,
@@ -138,18 +138,16 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   sheetContext,
                   Icons.timer_rounded,
                 ),
-                title: Text(l.ui('alarmLead')),
+                title: Text(l.alarmLead),
                 subtitle: Text(
                   current == null || current == -1
-                      ? l
-                          .ui('alarmLeadValue')
-                          .replaceAll('{n}', '${_config.leadMinutes}')
-                      : l.ui('alarmLeadValue').replaceAll('{n}', '$current'),
+                      ? l.alarmLeadValue(_config.leadMinutes)
+                      : l.alarmLeadValue(current),
                 ),
                 onTap: () {
                   Navigator.pop(sheetContext);
                   _chooseMinutes(
-                    title: l.ui('alarmLead'),
+                    title: l.alarmLead,
                     current: current == null || current == -1
                         ? _config.leadMinutes
                         : current,
@@ -175,7 +173,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   Icons.alarm_off_rounded,
                   color: Theme.of(sheetContext).colorScheme.error,
                 ),
-                title: Text(l.ui('alarmLeadByStartOff')),
+                title: Text(l.alarmLeadByStartOff),
                 onTap: () async {
                   final overrides = Map<int, int>.from(
                     _config.leadMinutesByFirstLessonStart,
@@ -193,7 +191,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     sheetContext,
                     Icons.restart_alt_rounded,
                   ),
-                  title: Text(l.ui('alarmLeadByStartDefault')),
+                  title: Text(l.alarmLeadByStartDefault),
                   onTap: () async {
                     final overrides = Map<int, int>.from(
                       _config.leadMinutesByFirstLessonStart,
@@ -226,15 +224,13 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   Future<void> _makeNextAlarmEarlier() async {
     final applied = await AlarmService.instance.makeNextSmartAlarmEarlier();
     if (!mounted) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           applied
-              ? l
-                  .ui('alarmEarlierValue')
-                  .replaceAll('{n}', '${_config.nextAlarmEarlierMinutes}')
-              : l.ui('alarmScheduleDesc'),
+              ? l.alarmEarlierValue(_config.nextAlarmEarlierMinutes)
+              : l.alarmScheduleDesc,
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -243,12 +239,12 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   }
 
   Future<void> _addManualAlarm() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final alarm = ManualAlarmConfig(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       timeOfDayMinutes: 7 * 60,
       weekdays: const [1, 2, 3, 4, 5],
-      label: l.ui('alarmOwn'),
+      label: l.alarmOwn,
     );
     await _save(
       _config.copyWith(manualAlarms: [..._config.manualAlarms, alarm]),
@@ -256,7 +252,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   }
 
   Future<void> _editManualAlarm(ManualAlarmConfig alarm) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     var edited = alarm;
     await _showUnifiedSheet<void>(
       context: context,
@@ -279,7 +275,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    l.ui('alarmOwn'),
+                    l.alarmOwn,
                     style: GoogleFonts.outfit(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
@@ -291,7 +287,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                       Icons.schedule_rounded,
                     ),
                     title: Text(time.format(context)),
-                    subtitle: Text(l.ui('alarmTime')),
+                    subtitle: Text(l.alarmTime),
                     onTap: () async {
                       final picked = await showTimePicker(
                         context: context,
@@ -326,7 +322,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     }).toList(),
                   ),
                   SwitchListTile(
-                    title: Text(l.ui('alarmActive')),
+                    title: Text(l.alarmActive),
                     value: edited.enabled,
                     onChanged: (value) => setSheetState(
                       () => edited = edited.copyWith(enabled: value),
@@ -340,7 +336,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     children: [
                       TextButton.icon(
                         icon: const Icon(Icons.delete_outline_rounded),
-                        label: Text(l.ui('alarmDelete')),
+                        label: Text(l.alarmDelete),
                         onPressed: () async {
                           Navigator.pop(sheetContext);
                           await _save(
@@ -367,7 +363,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                                   _config.copyWith(manualAlarms: alarms),
                                 );
                               },
-                        child: Text(l.ui('alarmSave')),
+                        child: Text(l.alarmSave),
                       ),
                     ],
                   ),
@@ -382,7 +378,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     if (_loading) {
@@ -390,13 +386,13 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     }
     final readiness = _readiness!;
     return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.ui('alarmTitle')),
+      appBar: _settingsHeaderAppBar(context, l.alarmTitle),
       body: _AnimatedBackground(
         child: ListView(
           padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
           children: [
             SettingsGroup(
-              title: l.ui('alarmSchedule'),
+              title: l.alarmSchedule,
               children: [
                 SettingsSwitchTile(
                   icon: _config.smartEnabled
@@ -406,8 +402,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onPrimaryContainer,
-                  title: l.ui('alarmSchedule'),
-                  subtitle: l.ui('alarmScheduleDesc'),
+                  title: l.alarmSchedule,
+                  subtitle: l.alarmScheduleDesc,
                   value: _config.smartEnabled,
                   onChanged: (value) => _save(
                     _config.copyWith(smartEnabled: value),
@@ -417,7 +413,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ],
             ),
             SettingsGroup(
-              title: l.ui('alarmReady'),
+              title: l.alarmReady,
               children: [
                 SettingsTile(
                   icon: readiness.isReady
@@ -425,26 +421,26 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                       : Icons.warning_amber_rounded,
                   iconColor: readiness.isReady ? cs.primary : cs.error,
                   title: readiness.isReady
-                      ? l.ui('alarmReadyYes')
-                      : l.ui('alarmReadyNo'),
+                      ? l.alarmReadyYes
+                      : l.alarmReadyNo,
                   subtitle: readiness.isReady
-                      ? l.ui('alarmReadyDescYes')
-                      : l.ui('alarmReadyDescNo'),
+                      ? l.alarmReadyDescYes
+                      : l.alarmReadyDescNo,
                   trailing: const SizedBox.shrink(),
                 ),
                 if (!readiness.exactAlarms)
                   SettingsTile(
                     icon: Icons.alarm_rounded,
-                    title: l.ui('alarmExact'),
-                    subtitle: l.ui('alarmExactDesc'),
+                    title: l.alarmExact,
+                    subtitle: l.alarmExactDesc,
                     onTap: () =>
                         AlarmService.instance.openPermissionSettings('exact'),
                   ),
                 if (!readiness.notifications)
                   SettingsTile(
                     icon: Icons.notifications_off_rounded,
-                    title: l.ui('alarmNotifications'),
-                    subtitle: l.ui('alarmNotificationsDesc'),
+                    title: l.alarmNotifications,
+                    subtitle: l.alarmNotificationsDesc,
                     onTap: () async {
                       await NotificationService().requestPermissions();
                       await _load();
@@ -453,8 +449,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 if (!readiness.fullScreenIntent)
                   SettingsTile(
                     icon: Icons.fullscreen_rounded,
-                    title: l.ui('alarmFullscreen'),
-                    subtitle: l.ui('alarmFullscreenDesc'),
+                    title: l.alarmFullscreen,
+                    subtitle: l.alarmFullscreenDesc,
                     onTap: () => AlarmService.instance.openPermissionSettings(
                       'fullscreen',
                     ),
@@ -462,24 +458,22 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 if (!readiness.dndAccess)
                   SettingsTile(
                     icon: Icons.do_not_disturb_on_rounded,
-                    title: l.ui('alarmDnd'),
-                    subtitle: l.ui('alarmDndDesc'),
+                    title: l.alarmDnd,
+                    subtitle: l.alarmDndDesc,
                     onTap: () =>
                         AlarmService.instance.openPermissionSettings('dnd'),
                   ),
               ],
             ),
             SettingsGroup(
-              title: l.ui('alarmSmart'),
+              title: l.alarmSmart,
               children: [
                 SettingsTile(
                   icon: Icons.directions_walk_rounded,
-                  title: l.ui('alarmLead'),
-                  subtitle: l
-                      .ui('alarmLeadValue')
-                      .replaceAll('{n}', '${_config.leadMinutes}'),
+                  title: l.alarmLead,
+                  subtitle: l.alarmLeadValue(_config.leadMinutes),
                   onTap: () => _chooseMinutes(
-                    title: l.ui('alarmLead'),
+                    title: l.alarmLead,
                     current: _config.leadMinutes,
                     min: 0,
                     max: 180,
@@ -491,14 +485,14 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 ),
                 SettingsTile(
                   icon: Icons.tune_rounded,
-                  title: l.ui('alarmLeadByStart'),
+                  title: l.alarmLeadByStart,
                   subtitle: _config.leadMinutesByFirstLessonStart.isEmpty
-                      ? l.ui('alarmLeadByStartDesc')
+                      ? l.alarmLeadByStartDesc
                       : (_config.leadMinutesByFirstLessonStart.entries.toList()
                             ..sort((a, b) => a.key.compareTo(b.key)))
                           .map(
                             (entry) =>
-                                '${_formatTimeOfDay(context, entry.key)}: ${entry.value == -1 ? l.ui('alarmLeadByStartOff') : l.ui('alarmLeadValue').replaceAll('{n}', '${entry.value}')}',
+                                '${_formatTimeOfDay(context, entry.key)}: ${entry.value == -1 ? l.alarmLeadByStartOff : l.alarmLeadValue(entry.value)}',
                           )
                           .join(' · '),
                   onTap: _addLeadOverride,
@@ -514,19 +508,17 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                         : Icons.timer_rounded,
                     title: _formatTimeOfDay(context, entry.key),
                     subtitle: entry.value == -1
-                        ? l.ui('alarmLeadByStartOff')
-                        : l
-                            .ui('alarmLeadValue')
-                            .replaceAll('{n}', '${entry.value}'),
+                        ? l.alarmLeadByStartOff
+                        : l.alarmLeadValue(entry.value),
                     onTap: () => _chooseLeadOverride(entry.key),
                   ),
                 SettingsTile(
                   icon: Icons.notifications_active_rounded,
-                  title: l.ui('alarmHeadsUp'),
+                  title: l.alarmHeadsUp,
                   subtitle:
-                      '${l.ui('alarmHeadsUpValue').replaceAll('{n}', '${_config.preAlarmNotificationMinutes}')} · ${l.ui('alarmHeadsUpDesc')}',
+                      '${l.alarmHeadsUpValue(_config.preAlarmNotificationMinutes)} · ${l.alarmHeadsUpDesc}',
                   onTap: () => _chooseMinutes(
-                    title: l.ui('alarmHeadsUp'),
+                    title: l.alarmHeadsUp,
                     current: _config.preAlarmNotificationMinutes,
                     min: 0,
                     max: 120,
@@ -537,12 +529,12 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 ),
                 SettingsTile(
                   icon: Icons.fast_forward_rounded,
-                  title: l.ui('alarmEarlier'),
-                  subtitle: l
-                      .ui('alarmEarlierValue')
-                      .replaceAll('{n}', '${_config.nextAlarmEarlierMinutes}'),
+                  title: l.alarmEarlier,
+                  subtitle: l.alarmEarlierValue(
+                    _config.nextAlarmEarlierMinutes,
+                  ),
                   onTap: () => _chooseMinutes(
-                    title: l.ui('alarmEarlier'),
+                    title: l.alarmEarlier,
                     current: _config.nextAlarmEarlierMinutes,
                     min: 1,
                     max: 90,
@@ -559,25 +551,21 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                         : null,
                     icon: const Icon(Icons.alarm_add_rounded),
                     label: Text(
-                      l
-                          .ui('alarmEarlierValue')
-                          .replaceAll('{n}', '${_config.nextAlarmEarlierMinutes}'),
+                      l.alarmEarlierValue(_config.nextAlarmEarlierMinutes),
                     ),
                   ),
                 ),
               ],
             ),
             SettingsGroup(
-              title: l.ui('alarmRing'),
+              title: l.alarmRing,
               children: [
                 SettingsTile(
                   icon: Icons.snooze_rounded,
-                  title: l.ui('alarmSnooze'),
-                  subtitle: l
-                      .ui('alarmSnoozeValue')
-                      .replaceAll('{n}', '${_config.snoozeMinutes}'),
+                  title: l.alarmSnooze,
+                  subtitle: l.alarmSnoozeValue(_config.snoozeMinutes),
                   onTap: () => _chooseMinutes(
-                    title: l.ui('alarmSnoozeDuration'),
+                    title: l.alarmSnoozeDuration,
                     current: _config.snoozeMinutes,
                     min: 1,
                     max: 30,
@@ -587,10 +575,10 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                 ),
                 SettingsTile(
                   icon: Icons.music_note_rounded,
-                  title: l.ui('alarmRingtone'),
+                  title: l.alarmRingtone,
                   subtitle: _config.ringtoneUri == null
-                      ? l.ui('alarmSystemTone')
-                      : l.ui('alarmSelectedTone'),
+                      ? l.alarmSystemTone
+                      : l.alarmSelectedTone,
                   onTap: () async {
                     final uri = await AlarmService.instance.pickRingtone(
                       _config.ringtoneUri,
@@ -603,7 +591,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ],
             ),
             SettingsGroup(
-              title: l.ui('alarmOwnAlarms'),
+              title: l.alarmOwnAlarms,
               children: [
                 for (final alarm in _config.manualAlarms)
                   SettingsTile(
@@ -611,7 +599,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     title:
                         '${(alarm.timeOfDayMinutes ~/ 60).toString().padLeft(2, '0')}:${(alarm.timeOfDayMinutes % 60).toString().padLeft(2, '0')}',
                     subtitle: [
-                      if (!alarm.enabled) l.ui('alarmInactive'),
+                      if (!alarm.enabled) l.alarmInactive,
                       alarm.weekdays
                           .where(
                             (day) =>
@@ -625,8 +613,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                   ),
                 SettingsTile(
                   icon: Icons.add_alarm_rounded,
-                  title: l.ui('alarmAdd'),
-                  subtitle: l.ui('alarmAddDesc'),
+                  title: l.alarmAdd,
+                  subtitle: l.alarmAddDesc,
                   onTap: _addManualAlarm,
                 ),
               ],

@@ -47,7 +47,7 @@ void main() {
   });
 
   testWidgets('AI assistant uses the shared app section tabs', (tester) async {
-    final l = AppL10n.of('de');
+    final l = appL10nFor('de');
 
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: AiAssistantPage()),
@@ -64,7 +64,7 @@ void main() {
   });
 
   testWidgets('AI tabs keep chat functionality discoverable', (tester) async {
-    final l = AppL10n.of('de');
+    final l = appL10nFor('de');
 
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: AiAssistantPage()),
@@ -84,7 +84,7 @@ void main() {
   testWidgets('AI assistant remains usable with animations disabled', (
     tester,
   ) async {
-    final l = AppL10n.of('de');
+    final l = appL10nFor('de');
 
     await tester.pumpWidget(
       UntisPlusApp(

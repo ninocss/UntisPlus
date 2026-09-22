@@ -105,24 +105,18 @@ class AiProposedAction {
   String get gradeType => data['type']?.toString().trim() ?? '';
 
   String summary(AppL10n l) {
-    final values = {
-      'subject': subject,
-      'text': text,
-      'id': id,
-      'value': gradeValue,
-    };
     return switch (kind) {
-      'create_homework' => l.uiFormat('aiActionCreateHomework', values),
-      'update_homework' => l.uiFormat('aiActionUpdateHomework', values),
-      'delete_homework' => l.uiFormat('aiActionDeleteHomework', values),
-      'complete_homework' => l.uiFormat('aiActionCompleteHomework', values),
-      'create_exam' => l.uiFormat('aiActionCreateExam', values),
-      'update_exam' => l.uiFormat('aiActionUpdateExam', values),
-      'delete_exam' => l.uiFormat('aiActionDeleteExam', values),
-      'create_grade' => l.uiFormat('aiActionCreateGrade', values),
-      'update_grade' => l.uiFormat('aiActionUpdateGrade', values),
-      'delete_grade' => l.uiFormat('aiActionDeleteGrade', values),
-      _ => l.ui('aiActionUnknown'),
+      'create_homework' => l.aiActionCreateHomework(subject, text),
+      'update_homework' => l.aiActionUpdateHomework(subject, text),
+      'delete_homework' => l.aiActionDeleteHomework(id),
+      'complete_homework' => l.aiActionCompleteHomework(id),
+      'create_exam' => l.aiActionCreateExam(subject, text),
+      'update_exam' => l.aiActionUpdateExam(subject, text),
+      'delete_exam' => l.aiActionDeleteExam(id),
+      'create_grade' => l.aiActionCreateGrade(subject, gradeValue ?? ''),
+      'update_grade' => l.aiActionUpdateGrade(subject, gradeValue ?? ''),
+      'delete_grade' => l.aiActionDeleteGrade(id),
+      _ => l.aiActionUnknown,
     };
   }
 

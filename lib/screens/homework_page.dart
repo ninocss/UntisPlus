@@ -50,7 +50,7 @@ Future<void> _showAddHomeworkDialog(
   int? editIndex,
   String? initialSubject,
 }) async {
-  final l = AppL10n.of(appLocaleNotifier.value);
+  final l = appL10nFor(appLocaleNotifier.value);
   String selectedSubject =
       (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
       existing?['subject']?.toString() ??
@@ -419,9 +419,12 @@ Future<void> _showAddHomeworkDialog(
 }
 
 Future<void> _importHomeworkWithAI(BuildContext context) async {
-  final l = AppL10n.of(appLocaleNotifier.value);
-  final providerUsesGeminiProtocol = _providerUsesGeminiProtocolGlobal();
+  final l = appL10nFor(appLocaleNotifier.value);
   final provider = _normalizeAiProvider(aiProvider);
+  final providerUsesGeminiProtocol = AiProviderCapabilities.resolve(
+    provider: provider,
+    customCompatibility: aiCustomCompatibility,
+  ).pdf;
   final isLocalProvider = provider == 'local';
   if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -453,34 +456,11 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
   );
 
   if (source == null) return;
-
-  Uint8List? fileBytes;
-  String? mimeType;
-
-  if (source == 'camera' || source == 'gallery') {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
-    );
-    if (picked == null) return;
-    fileBytes = await picked.readAsBytes();
-    mimeType = picked.path.toLowerCase().endsWith('.png')
-        ? 'image/png'
-        : 'image/jpeg';
-  } else {
-    final picked = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: providerUsesGeminiProtocol
-          ? ['pdf', 'png', 'jpg', 'jpeg']
-          : ['png', 'jpg', 'jpeg'],
-    );
-    if (picked == null) return;
-    fileBytes = await picked.readAsBytes();
-    final ext = picked.name.split('.').last.toLowerCase();
-    mimeType = ext == 'pdf'
-        ? 'application/pdf'
-        : (ext == 'png' ? 'image/png' : 'image/jpeg');
-  }
+  final importFile = await _pickAiImportFile(
+    source,
+    allowPdf: providerUsesGeminiProtocol,
+  );
+  if (importFile == null) return;
 
   if (!context.mounted) return;
 
@@ -492,14 +472,14 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
   );
 
   try {
-    final prompt = l.uiFormat('aiHomeworkVisionPrompt', {
-      'fileKind': providerUsesGeminiProtocol ? l.ui('aiFileKindPdf') : '',
-    });
+    final prompt = l.aiHomeworkVisionPrompt(
+      providerUsesGeminiProtocol ? l.aiFileKindPdf : '',
+    );
 
     final text = await _requestAiVisionAnalysisGlobal(
       prompt: prompt,
-      fileBytes: fileBytes,
-      mimeType: mimeType,
+      fileBytes: importFile.bytes,
+      mimeType: importFile.mimeType,
     );
 
     if (!context.mounted) return;
@@ -553,22 +533,20 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
   }
 }
 
-bool _providerUsesGeminiProtocolGlobal() {
-  final provider = _normalizeAiProvider(aiProvider);
-  if (provider == 'gemini') return true;
-  if (provider == 'custom') {
-    return _normalizeAiCustomCompatibility(aiCustomCompatibility) == 'gemini';
-  }
-  return false;
-}
-
 Future<String> _requestAiVisionAnalysisGlobal({
   required String prompt,
   required Uint8List fileBytes,
   required String mimeType,
 }) async {
-  final l = AppL10n.of(appLocaleNotifier.value);
+  final l = appL10nFor(appLocaleNotifier.value);
   final provider = _normalizeAiProvider(aiProvider);
+  final capabilities = AiProviderCapabilities.resolve(
+    provider: provider,
+    customCompatibility: aiCustomCompatibility,
+  );
+  if (provider == 'local' || !capabilities.images) {
+    throw Exception('Unsupported provider for vision: $provider');
+  }
   final apiKey = _activeAiApiKey().trim();
   if (apiKey.isEmpty) {
     throw Exception(
@@ -583,54 +561,44 @@ Future<String> _requestAiVisionAnalysisGlobal({
           customCompatibility: aiCustomCompatibility,
         );
 
-  if (provider == 'gemini') {
-    final endpoint =
-        'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent';
-    final endpointUri = Uri.parse(endpoint);
-    final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
-      ..putIfAbsent('key', () => apiKey);
-    final uri = endpointUri.replace(queryParameters: mergedParams);
-
-    final body = jsonEncode({
-      'contents': [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': prompt},
-            {
-              'inline_data': {
-                'mime_type': mimeType,
-                'data': base64Encode(fileBytes),
-              },
-            },
-          ],
-        },
-      ],
-      'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 2200},
-    });
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
-      body: body,
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('API error: ${response.statusCode}');
-    }
-
-    final decoded = jsonDecode(response.body);
-    final candidates = decoded['candidates'] as List?;
-    if (candidates != null && candidates.isNotEmpty) {
-      final parts = candidates.first['content']?['parts'] as List?;
-      if (parts != null && parts.isNotEmpty) {
-        return parts.map((p) => p['text']?.toString() ?? '').join();
-      }
-    }
-    throw Exception(l.aiNoReply);
+  if (provider == 'custom' && aiCustomBaseUrl.trim().isEmpty) {
+    throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
+  }
+  if (mimeType == 'application/pdf' && !capabilities.pdf) {
+    throw Exception('API: Unsupported file type for this provider: $mimeType');
   }
 
-  throw Exception('Unsupported provider for vision: $provider');
+  final currentSettings = _currentAiGenerationSettings();
+  final providerInstance = createAIProvider(
+    AiProviderConfiguration(
+      provider: provider,
+      model: model,
+      apiKey: apiKey,
+      customBaseUrl: aiCustomBaseUrl,
+      customCompatibility: aiCustomCompatibility,
+    ),
+    generationSettings: AiGenerationSettings(
+      temperature: 0.1,
+      maxTokens: 2200,
+      topP: 1,
+      formatAttachmentText: currentSettings.formatAttachmentText,
+      formatUnsupportedAttachment: currentSettings.formatUnsupportedAttachment,
+    ),
+  );
+  return const AiTextGenerationService().generate(
+    provider: providerInstance,
+    systemPrompt: '',
+    userPrompt: prompt,
+    model: model,
+    noReplyMessage: l.aiNoReply,
+    attachments: [
+      AiChatAttachment(
+        name: 'homework-import',
+        mimeType: mimeType,
+        bytes: fileBytes,
+      ),
+    ],
+  );
 }
 
 class HomeworkPage extends StatelessWidget {
@@ -639,7 +607,7 @@ class HomeworkPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -689,7 +657,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: homeworksNotifier,
@@ -821,7 +789,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
                         _filterChip(
                           context,
                           cs,
-                          '${_studentCopy(de: 'Bald fällig', en: 'Due soon', fr: 'Bientôt dues', es: 'Próximas')} (${dueSoonItems.length})',
+                          '${l.homeworkDueSoonFilter} (${dueSoonItems.length})',
                           Icons.upcoming_rounded,
                           2,
                         ),
@@ -956,33 +924,11 @@ class _HomeworkViewState extends State<_HomeworkView> {
     required int openCount,
     required int dueSoonCount,
   }) {
-    final title = _studentCopy(
-      de: openCount == 1 ? '1 offene Aufgabe' : '$openCount offene Aufgaben',
-      en: openCount == 1 ? '1 open task' : '$openCount open tasks',
-      fr: openCount == 1 ? '1 tâche ouverte' : '$openCount tâches ouvertes',
-      es: openCount == 1 ? '1 tarea pendiente' : '$openCount tareas pendientes',
-    );
+    final l = appL10nFor(appLocaleNotifier.value);
+    final title = l.homeworkOpenCount(openCount);
     final detail = dueSoonCount == 0
-        ? _studentCopy(
-            de: 'Nichts ist bald fällig',
-            en: 'Nothing is due soon',
-            fr: 'Rien n’est bientôt dû',
-            es: 'No hay nada próximo',
-          )
-        : _studentCopy(
-            de: dueSoonCount == 1
-                ? '1 Aufgabe ist bald fällig'
-                : '$dueSoonCount Aufgaben sind bald fällig',
-            en: dueSoonCount == 1
-                ? '1 task is due soon'
-                : '$dueSoonCount tasks are due soon',
-            fr: dueSoonCount == 1
-                ? '1 tâche est bientôt due'
-                : '$dueSoonCount tâches sont bientôt dues',
-            es: dueSoonCount == 1
-                ? '1 tarea vence pronto'
-                : '$dueSoonCount tareas vencen pronto',
-          );
+        ? l.homeworkNothingDueSoon
+        : l.homeworkDueSoonCount(dueSoonCount);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -1131,27 +1077,10 @@ class _HomeworkViewState extends State<_HomeworkView> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            !isDone
-                ? _studentCopy(
-                    de: 'Aufgabe als erledigt markiert.',
-                    en: 'Task marked as done.',
-                    fr: 'Tâche marquée comme terminée.',
-                    es: 'Tarea marcada como completada.',
-                  )
-                : _studentCopy(
-                    de: 'Aufgabe wieder geöffnet.',
-                    en: 'Task reopened.',
-                    fr: 'Tâche rouverte.',
-                    es: 'Tarea reabierta.',
-                  ),
+            !isDone ? l.homeworkMarkedDone : l.homeworkReopened,
           ),
           action: SnackBarAction(
-            label: _studentCopy(
-              de: 'Rückgängig',
-              en: 'Undo',
-              fr: 'Annuler',
-              es: 'Deshacer',
-            ),
+            label: l.commonUndo,
             onPressed: () => unawaited(setDone(isDone)),
           ),
         ),
@@ -1163,7 +1092,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
       if (!isCustom) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(l.ui('homeworkManaged'))));
+        ).showSnackBar(SnackBar(content: Text(l.homeworkManaged)));
         return;
       }
       final list = List<Map<String, dynamic>>.from(
@@ -1377,7 +1306,7 @@ Future<void> _showAddExamDialog(
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDlg) {
         final cs = Theme.of(ctx).colorScheme;
-        final l = AppL10n.of(appLocaleNotifier.value);
+        final l = appL10nFor(appLocaleNotifier.value);
         final subjects = knownSubjectsNotifier.value.toList()..sort();
         if (selectedSubject.isNotEmpty && !subjects.contains(selectedSubject)) {
           subjects.add(selectedSubject);

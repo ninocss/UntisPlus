@@ -80,7 +80,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = AppL10n.of(appLocaleNotifier.value).messageRecipientsFailed;
+        _error = appL10nFor(appLocaleNotifier.value).messageRecipientsFailed;
       });
     }
   }
@@ -157,7 +157,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
 
   Future<void> _chooseRecipients() async {
     if (_loading) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_recipients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.messageNoRecipients)),
@@ -257,16 +257,13 @@ class _MessageComposePageState extends State<_MessageComposePage>
   }
 
   Future<void> _pickAttachments() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final remaining = _permissions.maxFileCount - _attachments.length;
     if (remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            l.messageAttachmentLimit.replaceAll(
-              '{count}',
-              '${_permissions.maxFileCount}',
-            ),
+            l.messageAttachmentLimit(_permissions.maxFileCount),
           ),
         ),
       );
@@ -289,7 +286,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                l.messageAttachmentTooLarge.replaceAll('{name}', file.name),
+                l.messageAttachmentTooLarge(file.name),
               ),
             ),
           );
@@ -306,7 +303,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
   }
 
   Future<void> _send() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_selectedRecipients.isEmpty ||
         _subjectController.text.trim().isEmpty ||
         _bodyController.text.trim().isEmpty) {
@@ -392,7 +389,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(

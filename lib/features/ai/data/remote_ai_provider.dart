@@ -44,6 +44,46 @@ class AiGenerationSettings {
   formatUnsupportedAttachment;
 }
 
+class AiProviderConfiguration {
+  const AiProviderConfiguration({
+    required this.provider,
+    required this.model,
+    required this.apiKey,
+    this.customBaseUrl = '',
+    this.customCompatibility = 'openai',
+    this.localModelPath = '',
+  });
+
+  final String provider;
+  final String model;
+  final String apiKey;
+  final String customBaseUrl;
+  final String customCompatibility;
+  final String localModelPath;
+}
+
+class AiProviderCapabilities {
+  const AiProviderCapabilities({required this.images, required this.pdf});
+
+  final bool images;
+  final bool pdf;
+
+  static AiProviderCapabilities resolve({
+    required String provider,
+    String customCompatibility = 'openai',
+  }) {
+    final normalized = provider.trim().toLowerCase();
+    final usesGemini =
+        normalized == 'gemini' ||
+        (normalized == 'custom' &&
+            customCompatibility.trim().toLowerCase() == 'gemini');
+    return AiProviderCapabilities(
+      images: normalized != 'local',
+      pdf: usesGemini,
+    );
+  }
+}
+
 abstract interface class AIProvider {
   Stream<String> streamResponse({
     required String systemPrompt,
@@ -53,6 +93,38 @@ abstract interface class AIProvider {
   });
 
   Future<void> dispose();
+}
+
+class AiTextGenerationService {
+  const AiTextGenerationService();
+
+  Future<String> generate({
+    required AIProvider provider,
+    required String systemPrompt,
+    required String userPrompt,
+    required String model,
+    required String noReplyMessage,
+    List<AiChatAttachment> attachments = const [],
+  }) async {
+    final buffer = StringBuffer();
+    try {
+      await for (final chunk in provider.streamResponse(
+        systemPrompt: systemPrompt,
+        history: [
+          {'role': 'user', 'content': userPrompt},
+        ],
+        model: model,
+        attachments: attachments,
+      )) {
+        buffer.write(chunk);
+      }
+    } finally {
+      await provider.dispose();
+    }
+    final response = buffer.toString().trim();
+    if (response.isEmpty) throw Exception('API: $noReplyMessage');
+    return response;
+  }
 }
 
 /// Decodes server-sent events across arbitrary HTTP chunk boundaries.
@@ -332,4 +404,13 @@ String geminiCompatibleEndpoint(String rawBaseUrl, String model) {
     return '$base/models/$model:generateContent';
   }
   return '$base/v1beta/models/$model:generateContent';
+}
+
+String geminiStreamingEndpoint(String rawBaseUrl, String model) {
+  final endpoint = geminiCompatibleEndpoint(rawBaseUrl, model);
+  if (endpoint.contains(':streamGenerateContent')) return endpoint;
+  if (endpoint.contains(':generateContent')) {
+    return endpoint.replaceFirst(':generateContent', ':streamGenerateContent');
+  }
+  return '$endpoint:streamGenerateContent';
 }

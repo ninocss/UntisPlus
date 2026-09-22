@@ -30,22 +30,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   Future<void> _reloadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    aiProvider = _normalizeAiProvider(
-      prefs.getString('aiProvider') ?? aiProvider,
-    );
-    aiCustomCompatibility = _normalizeAiCustomCompatibility(
-      prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
-    );
-    aiModel = prefs.getString('aiModel') ?? aiModel;
-    aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
-    aiSystemPromptTemplate =
-        prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
-    aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
-    await loadSecureAiApiKeys(prefs);
-    aiTemperature = prefs.getDouble('aiTemperature') ?? aiTemperature;
-    aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
-    aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
-    aiPersona = prefs.getString('aiPersona') ?? aiPersona;
+    await loadAiPreferences(prefs);
 
     final validModels = _modelsForProvider(
       aiProvider,
@@ -118,7 +103,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   /// Download a local model
   Future<void> _downloadLocalModel(LocalModelInfo model) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final path = await _getLocalModelPath(model.id);
 
     // Check if already downloading
@@ -263,7 +248,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   /// Delete a downloaded model
   Future<void> _deleteLocalModel(LocalModelInfo model) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final path = await _getLocalModelPath(model.id);
     if (!mounted) return;
 
@@ -340,7 +325,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   /// Show local model selection dialog
   void _showLocalModelDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -973,7 +958,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showProviderDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiProvider,
@@ -1004,7 +989,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showModelDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final models = _modelsForProvider(
       aiProvider,
       customCompatibility: aiCustomCompatibility,
@@ -1031,7 +1016,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showCompatibilityDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiCompatibility,
@@ -1072,7 +1057,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showBaseUrlDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final ctrl = TextEditingController(text: aiCustomBaseUrl);
     _showUnifiedSheet<void>(
       context: context,
@@ -1135,7 +1120,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showPromptDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final defaultTemplate = _buildDefaultAiPromptTemplate(l);
     final ctrl = TextEditingController(
       text: aiSystemPromptTemplate.isEmpty
@@ -1214,7 +1199,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showPromptVariablesDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1323,7 +1308,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showApiKeyDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final ctrl = TextEditingController(text: _activeProviderApiKey());
     _showUnifiedSheet<void>(
       context: context,
@@ -1423,7 +1408,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showAiPersonaDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiPersonaTitle,
@@ -1456,7 +1441,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showAdvancedSettingsDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     double temp = aiTemperature;
     int tokens = aiMaxTokens;
     double topP = aiTopP;
@@ -1490,7 +1475,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  l.ui('aiParametersTitle'),
+                  l.aiParametersTitle,
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w900,
                     fontSize: 22,
@@ -1498,7 +1483,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   ),
                 ),
                 Text(
-                  l.ui('aiParametersDesc'),
+                  l.aiParametersDesc,
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     color: cs.onSurfaceVariant,
@@ -1512,7 +1497,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   max: 2,
                   divisions: 20,
                   suffix: temp.toStringAsFixed(1),
-                  desc: l.ui('aiTemperatureDesc'),
+                  desc: l.aiTemperatureDesc,
                   onChanged: (v) => setStateDialog(() => temp = v),
                   cs: cs,
                 ),
@@ -1524,7 +1509,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   max: 8192,
                   divisions: 31,
                   suffix: tokens.toString(),
-                  desc: l.ui('aiTokenDesc'),
+                  desc: l.aiTokenDesc,
                   onChanged: (v) => setStateDialog(() => tokens = v.round()),
                   cs: cs,
                 ),
@@ -1536,7 +1521,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   max: 1,
                   divisions: 20,
                   suffix: topP.toStringAsFixed(2),
-                  desc: l.ui('aiTopPDesc'),
+                  desc: l.aiTopPDesc,
                   onChanged: (v) => setStateDialog(() => topP = v),
                   cs: cs,
                 ),
@@ -1644,7 +1629,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _clearChatHistory() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final confirmed = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1679,7 +1664,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     final isCustom = aiProvider == 'custom';

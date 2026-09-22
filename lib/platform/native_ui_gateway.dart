@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'native_channel_names.dart';
+
 /// Typed access to the native UI channel shared by Android and iOS.
 class NativeUiGateway {
   const NativeUiGateway({
-    MethodChannel channel = const MethodChannel('untisplus/ui'),
+    MethodChannel channel = const MethodChannel(NativeChannelNames.ui),
   }) : _channel = channel;
 
   final MethodChannel _channel;
@@ -68,7 +70,9 @@ class NativeUiGateway {
 
 class AlarmRefreshGateway {
   const AlarmRefreshGateway({
-    MethodChannel channel = const MethodChannel('untisplus/alarm_refresh'),
+    MethodChannel channel = const MethodChannel(
+      NativeChannelNames.alarmRefresh,
+    ),
   }) : _channel = channel;
 
   final MethodChannel _channel;

@@ -29,7 +29,7 @@ class SettingsTimetablePage extends StatelessWidget {
   }
 
   Future<void> _showSwitchAnimationPicker(BuildContext context) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final current = timetableSwitchAnimationNotifier.value;
     final selected = await _showUnifiedOptionSheet<int>(
       context: context,
@@ -63,87 +63,75 @@ class SettingsTimetablePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsSectionTimetable),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+    return SettingsPageShell(
+      title: l.settingsSectionTimetable,
+      children: [
+        SettingsGroup(
+          title: l.settingsSectionTimetable,
           children: [
-            SettingsGroup(
-              title: l.settingsSectionTimetable,
-              children: [
-                SettingsTile(
-                  icon: Icons.dashboard_customize_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsLessonDesignTitle,
-                  subtitle: l.settingsLessonDesignDesc,
-                  onTap: () => Navigator.of(context).push(
-                    _buildBouncyRoute(const SettingsLessonDesignPage()),
-                  ),
-                ),
-                ValueListenableBuilder<int>(
-                  valueListenable: timetableSwitchAnimationNotifier,
-                  builder: (context, style, _) => SettingsTile(
-                    icon: _switchAnimationIcon(style),
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsTimetableSwitchAnimation,
-                    subtitle: _switchAnimationLabel(l, style),
-                    onTap: () => _showSwitchAnimationPicker(context),
-                  ),
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: showCancelledNotifier,
-                  builder: (context, value, _) => SettingsSwitchTile(
-                    icon: Icons.event_busy_rounded,
-                    iconBackgroundColor: cs.errorContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onErrorContainer,
-                    title: l.settingsShowCancelled,
-                    subtitle: l.settingsShowCancelledDesc,
-                    value: value,
-                    onChanged: _settingsSetShowCancelled,
-                  ),
-                ),
-              ],
+            SettingsTile(
+              icon: Icons.dashboard_customize_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsLessonDesignTitle,
+              subtitle: l.settingsLessonDesignDesc,
+              onTap: () => Navigator.of(
+                context,
+              ).push(_buildBouncyRoute(const SettingsLessonDesignPage())),
             ),
-            const SizedBox(height: 16),
-            SettingsGroup(
-              title: l.settingsRefreshPushWidgetNow,
-              children: [
-                SettingsTile(
-                  icon: Icons.sync_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsRefreshPushWidgetNow,
-                  subtitle: l.settingsRefreshPushWidgetNowDesc,
-                  onTap: () async {
-                    await updateUntisData();
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l.settingsBackgroundLoading),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
+            ValueListenableBuilder<int>(
+              valueListenable: timetableSwitchAnimationNotifier,
+              builder: (context, style, _) => SettingsTile(
+                icon: _switchAnimationIcon(style),
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
                 ),
-              ],
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsTimetableSwitchAnimation,
+                subtitle: _switchAnimationLabel(l, style),
+                onTap: () => _showSwitchAnimationPicker(context),
+              ),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: showCancelledNotifier,
+              builder: (context, value, _) => SettingsSwitchTile(
+                icon: Icons.event_busy_rounded,
+                iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
+                iconColor: cs.onErrorContainer,
+                title: l.settingsShowCancelled,
+                subtitle: l.settingsShowCancelledDesc,
+                value: value,
+                onChanged: _settingsSetShowCancelled,
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 16),
+        SettingsGroup(
+          title: l.settingsRefreshPushWidgetNow,
+          children: [
+            SettingsTile(
+              icon: Icons.sync_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsRefreshPushWidgetNow,
+              subtitle: l.settingsRefreshPushWidgetNowDesc,
+              onTap: () async {
+                await updateUntisData();
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l.settingsBackgroundLoading),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -193,7 +181,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
   }
 
   void _showCardStyleDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsLessonStyle,
@@ -266,7 +254,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
   }
 
   void _showAccentStyleDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsLessonAccentStyle,
@@ -304,7 +292,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
   }
 
   void _showCancelledColorPicker(BuildContext context, Color current) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     double red = current.r * 255.0;
@@ -849,7 +837,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mq = MediaQuery.of(context);

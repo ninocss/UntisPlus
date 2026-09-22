@@ -18,8 +18,9 @@ void main() {
       };
 
       for (final locale in AppL10n.supportedLocales) {
-        final l = AppL10n.of(locale);
-        expect(l.aiChatTitle, expectedTitles[locale]);
+        final languageCode = locale.languageCode;
+        final l = appL10nFor(languageCode);
+        expect(l.aiChatTitle, expectedTitles[languageCode]);
         expect(l.aiTyping, isNotEmpty);
         expect(l.aiChatSubtitle, isNotEmpty);
         expect(l.aiTryIt, isNotEmpty);
@@ -30,13 +31,10 @@ void main() {
 
     test('interpolates timetable and alarm labels without leaking tokens', () {
       for (final locale in AppL10n.supportedLocales) {
-        final l = AppL10n.of(locale);
+        final l = appL10nFor(locale.languageCode);
         final timetableError = l.timetableHttpError(503);
         final lesson = l.aiNextLessonSummary('Math', '204', '09:45');
-        final alarm = l
-            .ui('alarmAt')
-            .replaceAll('{label}', l.ui('alarmSchedule'))
-            .replaceAll('{time}', '07:15');
+        final alarm = l.alarmAt(l.alarmSchedule, '07:15');
 
         expect(timetableError, contains('503'));
         expect(lesson, contains('Math'));

@@ -135,9 +135,9 @@ class _AiComposerState extends State<_AiComposer> {
                         if (widget.mode == _AiMode.chat)
                           Semantics(
                             button: true,
-                            label: AppL10n.of(
+                            label: appL10nFor(
                               appLocaleNotifier.value,
-                            ).ui('aiAttachFile'),
+                            ).aiAttachFile,
                             child: IconButton(
                               onPressed: widget.thinking ? null : widget.onAttach,
                               constraints: const BoxConstraints(
@@ -186,7 +186,7 @@ class _AiComposerState extends State<_AiComposer> {
                             !widget.thinking)
                           Semantics(
                             button: true,
-                            label: AppL10n.of(
+                            label: appL10nFor(
                               appLocaleNotifier.value,
                             ).aiClearInput,
                             child: IconButton(
@@ -207,8 +207,8 @@ class _AiComposerState extends State<_AiComposer> {
                           button: true,
                           enabled: canSend,
                           label: widget.mode == _AiMode.chat
-                              ? AppL10n.of(appLocaleNotifier.value).aiTabChat
-                              : AppL10n.of(
+                              ? appL10nFor(appLocaleNotifier.value).aiTabChat
+                              : appL10nFor(
                                   appLocaleNotifier.value,
                                 ).aiTabAnalysis,
                           child: AnimatedContainer(

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../l10n.dart';
+import '../platform/native_channel_names.dart';
 
 /// User-configured recurring alarm. Weekdays use [DateTime.weekday] (1 = Mon).
 class ManualAlarmConfig {
@@ -86,10 +87,13 @@ class AlarmConfig {
   final bool smartEnabled;
   final int leadMinutes;
   final int snoozeMinutes;
+
   /// A heads-up is shown this long before the next alarm. Zero disables it.
   final int preAlarmNotificationMinutes;
+
   /// The amount offered by the "earlier next time" control.
   final int nextAlarmEarlierMinutes;
+
   /// Per-first-lesson lead-time overrides keyed by minutes after midnight.
   /// A value of -1 explicitly disables the timetable alarm for that start time.
   final Map<int, int> leadMinutesByFirstLessonStart;
@@ -113,8 +117,10 @@ class AlarmConfig {
     leadMinutes: (leadMinutes ?? this.leadMinutes).clamp(0, 300),
     snoozeMinutes: (snoozeMinutes ?? this.snoozeMinutes).clamp(1, 60),
     preAlarmNotificationMinutes:
-        (preAlarmNotificationMinutes ?? this.preAlarmNotificationMinutes)
-            .clamp(0, 180),
+        (preAlarmNotificationMinutes ?? this.preAlarmNotificationMinutes).clamp(
+          0,
+          180,
+        ),
     nextAlarmEarlierMinutes:
         (nextAlarmEarlierMinutes ?? this.nextAlarmEarlierMinutes).clamp(1, 120),
     leadMinutesByFirstLessonStart:
@@ -138,7 +144,8 @@ class AlarmConfig {
     'ringtoneUri': ringtoneUri,
     'manualAlarms': manualAlarms.map((alarm) => alarm.toJson()).toList(),
     'dateOverrides': {
-      for (final entry in dateOverrides.entries) entry.key: entry.value.toJson(),
+      for (final entry in dateOverrides.entries)
+        entry.key: entry.value.toJson(),
     },
   };
 
@@ -152,9 +159,13 @@ class AlarmConfig {
           180,
         ),
     nextAlarmEarlierMinutes:
-        ((json['nextAlarmEarlierMinutes'] as num?)?.toInt() ?? 15).clamp(1, 120),
+        ((json['nextAlarmEarlierMinutes'] as num?)?.toInt() ?? 15).clamp(
+          1,
+          120,
+        ),
     leadMinutesByFirstLessonStart:
-        (json['leadMinutesByFirstLessonStart'] as Map? ?? const <dynamic, dynamic>{})
+        (json['leadMinutesByFirstLessonStart'] as Map? ??
+                const <dynamic, dynamic>{})
             .map(
               (key, value) => MapEntry(
                 int.tryParse(key.toString()) ?? -2,
@@ -163,7 +174,9 @@ class AlarmConfig {
             )
           ..removeWhere(
             (start, minutes) =>
-                start < 0 || start >= 24 * 60 || (minutes < -1 || minutes > 300),
+                start < 0 ||
+                start >= 24 * 60 ||
+                (minutes < -1 || minutes > 300),
           ),
     ringtoneUri: json['ringtoneUri']?.toString(),
     manualAlarms: (json['manualAlarms'] as List? ?? const <dynamic>[])
@@ -174,16 +187,15 @@ class AlarmConfig {
         )
         .where((alarm) => alarm.id.isNotEmpty)
         .toList(growable: false),
-    dateOverrides: (json['dateOverrides'] as Map? ?? const <dynamic, dynamic>{})
-        .map(
+    dateOverrides:
+        (json['dateOverrides'] as Map? ?? const <dynamic, dynamic>{}).map(
           (key, value) => MapEntry(
             key.toString(),
             value is Map
                 ? AlarmDateOverride.fromJson(Map<String, dynamic>.from(value))
                 : const AlarmDateOverride(),
           ),
-        )
-      ..removeWhere((key, value) => !_isAlarmDateKey(key) || value.isEmpty),
+        )..removeWhere((key, value) => !_isAlarmDateKey(key) || value.isEmpty),
   );
 }
 
@@ -200,7 +212,8 @@ class AlarmDateOverride {
   final int? customTimeOfDayMinutes;
   final int? earlierMinutes;
 
-  bool get isEmpty => !disabled && customTimeOfDayMinutes == null && earlierMinutes == null;
+  bool get isEmpty =>
+      !disabled && customTimeOfDayMinutes == null && earlierMinutes == null;
 
   AlarmDateOverride copyWith({
     bool? disabled,
@@ -227,7 +240,10 @@ class AlarmDateOverride {
         disabled: json['disabled'] == true,
         customTimeOfDayMinutes:
             ((json['customTimeOfDayMinutes'] as num?)?.toInt())?.clamp(0, 1439),
-        earlierMinutes: ((json['earlierMinutes'] as num?)?.toInt())?.clamp(1, 120),
+        earlierMinutes: ((json['earlierMinutes'] as num?)?.toInt())?.clamp(
+          1,
+          120,
+        ),
       );
 }
 
@@ -334,7 +350,8 @@ class AlarmPlanner {
         time % 100,
       );
       final startOfDayMinutes = start.hour * 60 + start.minute;
-      final matchedLeadMinutes = leadMinutesByFirstLessonStart[startOfDayMinutes];
+      final matchedLeadMinutes =
+          leadMinutesByFirstLessonStart[startOfDayMinutes];
       if (matchedLeadMinutes == -1) continue;
       final baseWakeAt = start.subtract(
         Duration(minutes: (matchedLeadMinutes ?? leadMinutes).clamp(0, 300)),
@@ -355,13 +372,15 @@ class AlarmPlanner {
       }
       // Once the first wake moment has passed, skip that entire school day.
       if (!wakeAt.isAfter(now)) continue;
-      candidates.add(AlarmPlanCandidate(
-        at: wakeAt,
-        baseAt: baseWakeAt,
-        lessonStartsAt: start,
-        dateKey: alarmDateKey(start),
-        label: _lessonLabel(lesson, locale),
-      ));
+      candidates.add(
+        AlarmPlanCandidate(
+          at: wakeAt,
+          baseAt: baseWakeAt,
+          lessonStartsAt: start,
+          dateKey: alarmDateKey(start),
+          label: _lessonLabel(lesson, locale),
+        ),
+      );
     }
     if (candidates.isEmpty) return null;
     candidates.sort((a, b) => a.at.compareTo(b.at));
@@ -381,7 +400,7 @@ class AlarmPlanner {
         return value.toString().trim();
       }
     }
-    return AppL10n.of(locale).ui('alarmSchedule');
+    return appL10nFor(locale).alarmSchedule;
   }
 }
 
@@ -407,9 +426,11 @@ class _SmartAlarmPlan {
   factory _SmartAlarmPlan.fromJson(Map<String, dynamic> json) =>
       _SmartAlarmPlan(
         at: DateTime.parse(json['at'] as String),
-        baseAt: DateTime.tryParse(json['baseAt']?.toString() ?? '') ??
+        baseAt:
+            DateTime.tryParse(json['baseAt']?.toString() ?? '') ??
             DateTime.parse(json['at'] as String),
-        dateKey: json['dateKey']?.toString() ??
+        dateKey:
+            json['dateKey']?.toString() ??
             alarmDateKey(DateTime.parse(json['at'] as String)),
         label: json['label']?.toString() ?? 'Stundenplan-Wecker',
       );
@@ -421,7 +442,7 @@ class AlarmService {
   AlarmService._();
   static final AlarmService instance = AlarmService._();
 
-  static const _channel = MethodChannel('untisplus/alarm');
+  static const _channel = MethodChannel(NativeChannelNames.alarm);
   static const _configKey = 'alarmConfigV1';
   static const _smartPlanKey = 'alarmSmartPlanV1';
 
@@ -479,8 +500,8 @@ class AlarmService {
     final config = await loadConfig();
     final plan = _applyDateOverride(await _loadSmartPlan(), config);
     if (plan == null) return false;
-    final existing = config.dateOverrides[plan.dateKey] ??
-        const AlarmDateOverride();
+    final existing =
+        config.dateOverrides[plan.dateKey] ?? const AlarmDateOverride();
     final next = Map<String, AlarmDateOverride>.from(config.dateOverrides)
       ..[plan.dateKey] = existing.copyWith(
         earlierMinutes: config.nextAlarmEarlierMinutes,
@@ -549,13 +570,9 @@ class AlarmService {
       at: candidate.at,
       baseAt: candidate.baseAt,
       dateKey: candidate.dateKey,
-      label: AppL10n.of(locale)
-          .ui('alarmAt')
-          .replaceAll('{label}', candidate.label)
-          .replaceAll(
-            '{time}',
-            _formatTime(candidate.lessonStartsAt),
-          ),
+      label: appL10nFor(
+        locale,
+      ).alarmAt(candidate.label, _formatTime(candidate.lessonStartsAt)),
     );
   }
 
@@ -597,7 +614,7 @@ class AlarmService {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     final locale = prefs.getString('appLocale') ?? 'de';
-    final nativeCopy = AppL10n.of(locale).nativeAlarmCopy();
+    final nativeCopy = appL10nFor(locale).nativeAlarmCopy();
     final plans = <Map<String, dynamic>>[
       for (final alarm in config.manualAlarms)
         if (alarm.enabled && alarm.weekdays.isNotEmpty)
@@ -624,11 +641,13 @@ class AlarmService {
           // The background refresh runs shortly before the heads-up. It can
           // cancel or move the plan before Android ever posts that message.
           'preRefreshAtMillis': smartPlan.at
-              .subtract(Duration(
-                minutes: config.preAlarmNotificationMinutes > 0
-                    ? config.preAlarmNotificationMinutes + 1
-                    : 15,
-              ))
+              .subtract(
+                Duration(
+                  minutes: config.preAlarmNotificationMinutes > 0
+                      ? config.preAlarmNotificationMinutes + 1
+                      : 15,
+                ),
+              )
               .millisecondsSinceEpoch,
           'snoozeMinutes': config.snoozeMinutes,
           'ringtoneUri': config.ringtoneUri,

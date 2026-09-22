@@ -127,7 +127,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _changelogFuture = _service.fetchChangelog(l);
   }
 
@@ -176,7 +176,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppL10n.of(appLocaleNotifier.value).changelogTitle,
+                          appL10nFor(appLocaleNotifier.value).changelogTitle,
                           style: GoogleFonts.outfit(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -231,7 +231,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              AppL10n.of(
+                              appL10nFor(
                                 appLocaleNotifier.value,
                               ).changelogLoadError,
                               style: GoogleFonts.outfit(
@@ -250,13 +250,13 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                               onPressed: () {
                                 setState(() {
                                   _changelogFuture = _service.fetchChangelog(
-                                    AppL10n.of(appLocaleNotifier.value),
+                                    appL10nFor(appLocaleNotifier.value),
                                   );
                                 });
                               },
                               icon: const Icon(Icons.refresh_rounded),
                               label: Text(
-                                AppL10n.of(
+                                appL10nFor(
                                   appLocaleNotifier.value,
                                 ).changelogRetry,
                               ),
@@ -268,7 +268,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                   }
 
                   final data = snapshot.data!;
-                  final locale = switch (AppL10n.of(
+                  final locale = switch (appL10nFor(
                     appLocaleNotifier.value,
                   ).locale) {
                     'en' => 'en_US',

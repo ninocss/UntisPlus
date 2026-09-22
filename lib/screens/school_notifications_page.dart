@@ -210,7 +210,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         unawaited(
           WidgetService.updateNotificationWidget(
             summary.isEmpty
-                ? AppL10n.of(appLocaleNotifier.value).ui('notificationsNone')
+                ? appL10nFor(appLocaleNotifier.value).notificationsNone
                 : summary,
             accountId: activeUntisAccountId ?? 'active',
           ),
@@ -220,7 +220,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = AppL10n.of(appLocaleNotifier.value).infoFetchError;
+        _error = appL10nFor(appLocaleNotifier.value).infoFetchError;
         _lastUpdated = DateTime.now();
       });
     }
@@ -585,7 +585,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           _SchoolNotificationItem(
             id: id,
             title: title.isEmpty
-                ? AppL10n.of(appLocaleNotifier.value).infoTitle
+                ? appL10nFor(appLocaleNotifier.value).infoTitle
                 : title,
             body: body,
             fullBody: (map['fullBody'] ?? map['content'] ?? '')
@@ -724,7 +724,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            AppL10n.of(appLocaleNotifier.value).settingsGithubOpenFailed,
+            appL10nFor(appLocaleNotifier.value).settingsGithubOpenFailed,
           ),
         ),
       );
@@ -832,7 +832,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     setState(() => _showInbox = true);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(AppL10n.of(appLocaleNotifier.value).messageSent),
+        content: Text(appL10nFor(appLocaleNotifier.value).messageSent),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -841,7 +841,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final activeItems = _showInbox ? _inboxItems : _newsItems;
     final isExpanded = UntisLayout.isExpanded(context);
@@ -888,7 +888,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                     children: [
                       Expanded(
                         child: _infoModeButton(
-                          label: l.ui('start'),
+                          label: l.start,
                           icon: Icons.campaign_rounded,
                           selected: !_showInbox,
                           onTap: () => setState(() {
@@ -902,7 +902,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: _infoModeButton(
-                          label: l.ui('notifications'),
+                          label: l.notifications,
                           icon: Icons.mail_outline_rounded,
                           selected: _showInbox,
                           onTap: () => setState(() {
@@ -1270,7 +1270,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     _SchoolNotificationItem item,
   ) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final ext = item.uniformAttachmentExtension;
     final label = l.infoAttachmentLabel(item.attachments.length, ext);
     return Row(

@@ -56,20 +56,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   }
 
   Future<void> _loadCustomExams() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_accountDataKey('customExams')) ?? [];
-    final list = raw
-        .map((e) {
-          try {
-            return Map<String, dynamic>.from(jsonDecode(e) as Map);
-          } catch (_) {
-            return <String, dynamic>{};
-          }
-        })
-        .where((e) => e.isNotEmpty)
-        .toList();
-    _customExams = list;
-    customExamsNotifier.value = list;
+    await loadCustomData();
+    _customExams = List<Map<String, dynamic>>.from(customExamsNotifier.value);
   }
 
   Future<void> _fetchApiExams() async {
@@ -81,42 +69,16 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final now = DateTime.now();
     final start = now.subtract(const Duration(days: 14));
     final end = now.add(const Duration(days: 90));
-    final startStr = DateFormat('yyyyMMdd').format(start);
-    final endStr = DateFormat('yyyyMMdd').format(end);
-    final headers = {
-      'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
-      'Accept': 'application/json',
-    };
-
-    Future<List<Map<String, dynamic>>> tryEndpoint(String path) async {
-      try {
-        final uri = Uri.parse(
-          'https://$schoolUrl$path?startDate=$startStr&endDate=$endStr',
-        );
-        final res = await http.get(uri, headers: headers);
-        if (res.statusCode == 200) {
-          final decoded = jsonDecode(res.body);
-          List<dynamic> list = [];
-          if (decoded is List) {
-            list = decoded;
-          } else if (decoded is Map) {
-            list =
-                (decoded['data'] ?? decoded['exams'] ?? decoded['result'] ?? [])
-                    as List;
-          }
-          return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        }
-      } catch (_) {}
-      return [];
-    }
-
-    var results = await tryEndpoint('/WebUntis/api/exams');
-    if (results.isEmpty) {
-      results = await tryEndpoint('/WebUntis/api/classreg/exams');
-    }
-    if (results.isEmpty && personId != 0) {
-      results = await tryEndpoint('/WebUntis/api/exams/student/$personId');
-    }
+    final results = await _webUntisExamRepository.fetch(
+      context: WebUntisRequestContext(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: sessionID,
+      ),
+      personId: personId,
+      start: start,
+      end: end,
+    );
     _apiExams = results;
     apiExamsNotifier.value = results;
   }
@@ -159,223 +121,24 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   String _examType(Map<String, dynamic> e) =>
       (e['examType'] ?? e['type'] ?? e['typeName'] ?? '').toString();
 
-  bool _providerUsesGeminiProtocol() {
-    final provider = _normalizeAiProvider(aiProvider);
-    if (provider == 'gemini') return true;
-    if (provider == 'custom') {
-      return _normalizeAiCustomCompatibility(aiCustomCompatibility) == 'gemini';
-    }
-    return false;
-  }
-
-  String _normalizedAiBaseUrl(String value) {
-    var out = value.trim();
-    while (out.endsWith('/')) {
-      out = out.substring(0, out.length - 1);
-    }
-    return out;
-  }
-
-  String _openAiCompatibleEndpointForExamImport(String rawBaseUrl) {
-    final base = _normalizedAiBaseUrl(rawBaseUrl);
-    if (base.isEmpty) return '';
-    if (base.endsWith('/chat/completions')) return base;
-    if (base.endsWith('/v1')) return '$base/chat/completions';
-    if (base.endsWith('/v1/chat')) return '$base/completions';
-    return '$base/v1/chat/completions';
-  }
-
-  String _geminiCompatibleEndpointForExamImport(
-    String rawBaseUrl,
-    String model,
-  ) {
-    final base = _normalizedAiBaseUrl(rawBaseUrl);
-    if (base.isEmpty) return '';
-    if (base.contains('/models/')) return base;
-    if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
-    if (base.contains('/v1')) return '$base/models/$model:generateContent';
-    return '$base/v1beta/models/$model:generateContent';
-  }
-
-  String _extractOpenAiCompatibleText(Map<String, dynamic> payload, AppL10n l) {
-    final choices = payload['choices'];
-    if (choices is! List || choices.isEmpty) {
-      throw Exception('API: ${l.aiNoReply}');
-    }
-
-    final first = choices.first;
-    if (first is! Map<String, dynamic>) {
-      throw Exception('API: ${l.aiNoReply}');
-    }
-
-    final message = first['message'];
-    if (message is Map<String, dynamic>) {
-      final content = message['content'];
-      if (content is String && content.trim().isNotEmpty) {
-        return content.trim();
-      }
-      if (content is List) {
-        final text = content
-            .map((part) {
-              if (part is Map<String, dynamic>) {
-                return part['text']?.toString() ?? '';
-              }
-              return '';
-            })
-            .join()
-            .trim();
-        if (text.isNotEmpty) return text;
-      }
-    }
-
-    final legacyText = first['text']?.toString().trim() ?? '';
-    if (legacyText.isNotEmpty) return legacyText;
-    throw Exception('API: ${l.aiNoReply}');
-  }
-
-  Future<String> _requestExamImportWithGemini({
-    required String endpoint,
-    required String apiKey,
-    required String prompt,
-    required Uint8List fileBytes,
-    required String mimeType,
-  }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final endpointUri = Uri.parse(endpoint);
-    final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
-      ..putIfAbsent('key', () => apiKey);
-    final uri = endpointUri.replace(queryParameters: mergedParams);
-
-    final body = jsonEncode({
-      'systemInstruction': {
-        'parts': [
-          {'text': l.ui('aiExamJsonSystemPrompt')},
-        ],
-      },
-      'contents': [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': prompt},
-            {
-              'inline_data': {
-                'mime_type': mimeType,
-                'data': base64Encode(fileBytes),
-              },
-            },
-          ],
-        },
-      ],
-      'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 2200},
-    });
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
-      body: body,
-    );
-
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) payload = decoded;
-    } catch (_) {}
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = payload?['error']?['message'] ?? response.statusCode;
-      throw Exception('API: $message');
-    }
-
-    var reply = '';
-    final candidates = payload?['candidates'];
-    if (candidates is List && candidates.isNotEmpty) {
-      final content = candidates.first['content'];
-      final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
-      if (parts is List) {
-        reply = parts.map((part) {
-          if (part is Map<String, dynamic>) {
-            return part['text']?.toString() ?? '';
-          }
-          return '';
-        }).join();
-      }
-    }
-
-    reply = reply.trim();
-    if (reply.isEmpty) {
-      throw Exception('API: ${l.aiNoReply}');
-    }
-    return reply;
-  }
-
-  Future<String> _requestExamImportWithOpenAiCompatible({
-    required String endpoint,
-    required String apiKey,
-    required String model,
-    required String prompt,
-    required Uint8List fileBytes,
-    required String mimeType,
-  }) async {
-    if (!mimeType.startsWith('image/')) {
-      throw Exception(
-        'API: Unsupported file type for this provider: $mimeType',
-      );
-    }
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final dataUrl = 'data:$mimeType;base64,${base64Encode(fileBytes)}';
-    final body = jsonEncode({
-      'model': model,
-      'messages': [
-        {'role': 'system', 'content': l.ui('aiExamImageSystemPrompt')},
-        {
-          'role': 'user',
-          'content': [
-            {'type': 'text', 'text': prompt},
-            {
-              'type': 'image_url',
-              'image_url': {'url': dataUrl},
-            },
-          ],
-        },
-      ],
-      'temperature': 0.1,
-    });
-
-    final response = await http.post(
-      Uri.parse(endpoint),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: body,
-    );
-
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) payload = decoded;
-    } catch (_) {}
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = payload?['error']?['message'] ?? response.statusCode;
-      throw Exception('API: $message');
-    }
-
-    return _extractOpenAiCompatibleText(payload ?? const {}, l);
-  }
-
   Future<String> _requestExamImportResponse({
     required String prompt,
     required Uint8List fileBytes,
     required String mimeType,
   }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final provider = _normalizeAiProvider(aiProvider);
+    if (provider == 'local') {
+      throw Exception('CONFIG: ${l.aiLocalModelExamNotSupported}');
+    }
     final apiKey = _activeAiApiKey().trim();
     if (apiKey.isEmpty) {
       throw Exception(
         'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
       );
+    }
+    if (provider == 'custom' && aiCustomBaseUrl.trim().isEmpty) {
+      throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
     }
 
     final model = aiModel.trim().isNotEmpty
@@ -385,69 +148,60 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
             customCompatibility: aiCustomCompatibility,
           );
 
-    switch (provider) {
-      case 'openai':
-        return _requestExamImportWithOpenAiCompatible(
-          endpoint: 'https://api.openai.com/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          prompt: prompt,
-          fileBytes: fileBytes,
-          mimeType: mimeType,
-        );
-      case 'mistral':
-        return _requestExamImportWithOpenAiCompatible(
-          endpoint: 'https://api.mistral.ai/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          prompt: prompt,
-          fileBytes: fileBytes,
-          mimeType: mimeType,
-        );
-      case 'custom':
-        final baseUrl = aiCustomBaseUrl.trim();
-        if (baseUrl.isEmpty) {
-          throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
-        }
-        final compat = _normalizeAiCustomCompatibility(aiCustomCompatibility);
-        if (compat == 'gemini') {
-          return _requestExamImportWithGemini(
-            endpoint: _geminiCompatibleEndpointForExamImport(baseUrl, model),
-            apiKey: apiKey,
-            prompt: prompt,
-            fileBytes: fileBytes,
-            mimeType: mimeType,
-          );
-        }
-        return _requestExamImportWithOpenAiCompatible(
-          endpoint: _openAiCompatibleEndpointForExamImport(baseUrl),
-          apiKey: apiKey,
-          model: model,
-          prompt: prompt,
-          fileBytes: fileBytes,
-          mimeType: mimeType,
-        );
-      case 'local':
-        throw Exception(
-          'CONFIG: ${AppL10n.of(appLocaleNotifier.value).aiLocalModelExamNotSupported}',
-        );
-      case 'gemini':
-      default:
-        return _requestExamImportWithGemini(
-          endpoint:
-              'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
-          apiKey: apiKey,
-          prompt: prompt,
-          fileBytes: fileBytes,
-          mimeType: mimeType,
-        );
+    final capabilities = AiProviderCapabilities.resolve(
+      provider: provider,
+      customCompatibility: aiCustomCompatibility,
+    );
+    if ((!mimeType.startsWith('image/') || !capabilities.images) &&
+        !(mimeType == 'application/pdf' && capabilities.pdf)) {
+      throw Exception(
+        'API: Unsupported file type for this provider: $mimeType',
+      );
     }
+
+    final currentSettings = _currentAiGenerationSettings();
+    final providerInstance = createAIProvider(
+      AiProviderConfiguration(
+        provider: provider,
+        model: model,
+        apiKey: apiKey,
+        customBaseUrl: aiCustomBaseUrl,
+        customCompatibility: aiCustomCompatibility,
+      ),
+      generationSettings: AiGenerationSettings(
+        temperature: 0.1,
+        maxTokens: 2200,
+        topP: 1,
+        formatAttachmentText: currentSettings.formatAttachmentText,
+        formatUnsupportedAttachment:
+            currentSettings.formatUnsupportedAttachment,
+      ),
+    );
+    return const AiTextGenerationService().generate(
+      provider: providerInstance,
+      systemPrompt: capabilities.pdf
+          ? l.aiExamJsonSystemPrompt
+          : l.aiExamImageSystemPrompt,
+      userPrompt: prompt,
+      model: model,
+      noReplyMessage: l.aiNoReply,
+      attachments: [
+        AiChatAttachment(
+          name: 'exam-import',
+          mimeType: mimeType,
+          bytes: fileBytes,
+        ),
+      ],
+    );
   }
 
   Future<void> _importExamsWithAI() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final providerUsesGeminiProtocol = _providerUsesGeminiProtocol();
+    final l = appL10nFor(appLocaleNotifier.value);
     final provider = _normalizeAiProvider(aiProvider);
+    final providerUsesGeminiProtocol = AiProviderCapabilities.resolve(
+      provider: provider,
+      customCompatibility: aiCustomCompatibility,
+    ).pdf;
     final isLocalProvider = provider == 'local';
     if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -481,34 +235,11 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     );
 
     if (source == null) return;
-
-    Uint8List? fileBytes;
-    String? mimeType;
-
-    if (source == 'camera' || source == 'gallery') {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
-      );
-      if (picked == null) return;
-      fileBytes = await picked.readAsBytes();
-      mimeType = picked.path.toLowerCase().endsWith('.png')
-          ? 'image/png'
-          : 'image/jpeg';
-    } else {
-      final picked = await FilePicker.pickFile(
-        type: FileType.custom,
-        allowedExtensions: providerUsesGeminiProtocol
-            ? ['pdf', 'png', 'jpg', 'jpeg']
-            : ['png', 'jpg', 'jpeg'],
-      );
-      if (picked == null) return;
-      fileBytes = await picked.readAsBytes();
-      final ext = picked.name.split('.').last.toLowerCase();
-      mimeType = ext == 'pdf'
-          ? 'application/pdf'
-          : (ext == 'png' ? 'image/png' : 'image/jpeg');
-    }
+    final importFile = await _pickAiImportFile(
+      source,
+      allowPdf: providerUsesGeminiProtocol,
+    );
+    if (importFile == null) return;
 
     if (!mounted) return;
 
@@ -520,15 +251,15 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     );
 
     try {
-      final prompt = l.uiFormat('aiExamVisionPrompt', {
-        'fileKind': providerUsesGeminiProtocol ? l.ui('aiFileKindPdf') : '',
-        'year': DateTime.now().year,
-      });
+      final prompt = l.aiExamVisionPrompt(
+        providerUsesGeminiProtocol ? l.aiFileKindPdf : '',
+        DateTime.now().year,
+      );
 
       final text = await _requestExamImportResponse(
         prompt: prompt,
-        fileBytes: fileBytes,
-        mimeType: mimeType,
+        fileBytes: importFile.bytes,
+        mimeType: importFile.mimeType,
       );
 
       if (!mounted) return;
@@ -591,7 +322,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   }
 
   Future<void> _exportCustomExams() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_customExams.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -622,7 +353,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final exams = _allExams;
     final todayInt = int.parse(DateFormat('yyyyMMdd').format(DateTime.now()));
 
@@ -823,14 +554,10 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
         ? _formatExamDate(next['date'] ?? next['examDate'] ?? '')
         : null;
 
-    final upcomingTitle = l.examsUpcomingCount.replaceAll('{count}', '$count');
+    final upcomingTitle = l.examsUpcomingCount(count);
 
     final nextSubText = nextSubject != null && nextDateStr != null
-        ? l.examsUpcomingNext
-              .replaceAll(r'$subject', nextSubject)
-              .replaceAll(r'$date', nextDateStr)
-              .replaceAll('{subject}', nextSubject)
-              .replaceAll('{date}', nextDateStr)
+        ? l.examsUpcomingNext(nextSubject, nextDateStr)
         : null;
 
     return Padding(
@@ -993,7 +720,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   }
 
   Widget _countdownChip(ColorScheme cs, int? daysUntil) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (daysUntil == null) return const SizedBox.shrink();
     String text;
     Color bg;
@@ -1036,7 +763,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     Map<String, dynamic> exam,
     bool showCountdown,
   ) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final isCustom = exam['_source'] == 'custom';
     final subject = _examSubject(exam);
     final type = _examType(exam);

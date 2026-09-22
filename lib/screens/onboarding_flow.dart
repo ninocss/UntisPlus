@@ -309,7 +309,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _openApiKeyPortal() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final url = _apiKeyPortalUrlForProvider(_onboardingAiProvider);
     if (url.isEmpty) return;
     final ok = await url_launcher.launchUrlString(
@@ -327,7 +327,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiProviderDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_localModelDownloading) {
       _showError(l.settingsAiLocalModelDownloading);
       return;
@@ -373,7 +373,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiModelDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_localModelDownloading) {
       _showError(l.settingsAiLocalModelDownloading);
       return;
@@ -408,7 +408,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiCompatibilityDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiCompatibility,
@@ -442,7 +442,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiCustomBaseUrlDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final ctrl = TextEditingController(text: _aiCustomBaseUrlController.text);
     _showUnifiedSheet<void>(
       context: context,
@@ -542,7 +542,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiPromptDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final defaultTemplate = _buildDefaultAiPromptTemplate(l);
     final ctrl = TextEditingController(
       text: aiSystemPromptTemplate.isEmpty
@@ -662,7 +662,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiVariablesDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedSheet<void>(
       context: context,
       child: Builder(
@@ -766,18 +766,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     customAiApiKey = _onboardingProviderApiKeys['custom'] ?? '';
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('aiProvider', aiProvider);
-    await prefs.setString('aiModel', aiModel);
-    await prefs.setString('aiCustomCompatibility', aiCustomCompatibility);
-    await prefs.setString('aiCustomBaseUrl', aiCustomBaseUrl);
-    await prefs.setString('aiSystemPromptTemplate', aiSystemPromptTemplate);
-    await prefs.setString('aiLocalModelPath', aiLocalModelPath);
-    await Future.wait([
-      CredentialVault.instance.writeAiApiKey('gemini', geminiApiKey),
-      CredentialVault.instance.writeAiApiKey('openai', openAiApiKey),
-      CredentialVault.instance.writeAiApiKey('mistral', mistralApiKey),
-      CredentialVault.instance.writeAiApiKey('custom', customAiApiKey),
-    ]);
+    await saveAiProviderPreferences(prefs);
   }
 
   Future<void> _nextPage() async {
@@ -808,7 +797,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _handleLogin() async {
     HapticFeedback.heavyImpact();
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     if (_serverController.text.trim().isEmpty ||
         _schoolController.text.trim().isEmpty ||
@@ -1017,7 +1006,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<int?> _showBackgroundStylePicker(int currentStyle) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final mq = MediaQuery.of(context);
     final safeViewportHeight =
         mq.size.height -
@@ -1374,7 +1363,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildLanguageStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     const langs = [
       ('de', 'Deutsch', '🇩🇪'),
       ('en', 'English', '🇬🇧'),
@@ -1489,7 +1478,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildThemeStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
 
     return _StepWrapper(
@@ -2065,7 +2054,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildLoginStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
 
     Widget content;
@@ -2519,7 +2508,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _continueWithLocalModel() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final model = _selectedLocalModel;
     final path = await _onboardingLocalModelPath(model);
     if (!await _isValidOnboardingLocalModel(path, model)) {
@@ -2669,7 +2658,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildGeminiStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
     final isCustom = _onboardingAiProvider == 'custom';
     final isLocal = _onboardingAiProvider == 'local';
@@ -2885,7 +2874,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildTutorialStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
 
     final features = [
@@ -3087,7 +3076,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildNextBtn([String? lbl, VoidCallback? onTap]) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     return FilledButton(
       onPressed: onTap ?? _nextPage,
@@ -3110,7 +3099,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _searchSchool(String query) async {
     if (query.length < 3) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     setState(() {
       _isSearching = true;
       _searchResults = [];

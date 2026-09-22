@@ -138,7 +138,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
     }
     final path = _pendingInstallPath!;
     _pendingInstallPath = null;
-    unawaited(_promptInstaller(AppL10n.of(appLocaleNotifier.value), path));
+    unawaited(_promptInstaller(appL10nFor(appLocaleNotifier.value), path));
   }
 
   Future<List<String>> _supportedAbis() async {
@@ -328,7 +328,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
 
   Future<void> _checkGithubUpdate() async {
     if (_checking) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     setState(() => _checking = true);
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -431,7 +431,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
 

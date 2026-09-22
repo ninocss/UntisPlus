@@ -363,7 +363,7 @@ class _CustomBackgroundEditorScreenState
 
   Future<bool> _confirmDiscardIfNeeded() async {
     if (!_isDirty) return true;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final decision = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.bgEditorUnsavedTitle,
@@ -439,7 +439,7 @@ class _CustomBackgroundEditorScreenState
       version: kCustomBackgroundSpecVersion,
       id: _newCustomBackgroundId(),
       name:
-          '${AppL10n.of(appLocaleNotifier.value).bgEditorNewName} ${now % 1000}',
+          '${appL10nFor(appLocaleNotifier.value).bgEditorNewName} ${now % 1000}',
       createdAtMs: now,
       updatedAtMs: now,
       base: CustomBackgroundGradient(
@@ -496,7 +496,7 @@ class _CustomBackgroundEditorScreenState
       _commitDraft(normalized);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppL10n.of(appLocaleNotifier.value).bgEditorSaved),
+          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaved),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -504,7 +504,7 @@ class _CustomBackgroundEditorScreenState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppL10n.of(appLocaleNotifier.value).bgEditorSaveFailed),
+          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaveFailed),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -529,7 +529,7 @@ class _CustomBackgroundEditorScreenState
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(AppL10n.of(appLocaleNotifier.value).bgEditorApplied),
+        content: Text(appL10nFor(appLocaleNotifier.value).bgEditorApplied),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -537,7 +537,7 @@ class _CustomBackgroundEditorScreenState
 
   Future<void> _newBackground() async {
     final spec = CustomBackgroundSpec.defaults(
-      name: AppL10n.of(appLocaleNotifier.value).bgEditorNewName,
+      name: appL10nFor(appLocaleNotifier.value).bgEditorNewName,
     );
     await upsertCustomBackground(spec);
     if (!mounted) return;
@@ -552,7 +552,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _deleteBackground() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final confirm = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.bgEditorDeleteTitle,
@@ -578,7 +578,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _exportSelected() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final jsonText = exportCustomBackgroundSpecPretty(_draft);
     await Clipboard.setData(ClipboardData(text: jsonText));
     if (!mounted) return;
@@ -591,7 +591,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _exportAll() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final jsonText = exportCustomBackgroundLibraryPretty(
       customBackgroundsNotifier.value,
     );
@@ -606,7 +606,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _importFromClipboard() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final data = await Clipboard.getData('text/plain');
     final text = data?.text ?? '';
     if (text.trim().isEmpty) {
@@ -641,7 +641,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _importFromFile() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     try {
       final picked = await FilePicker.pickFile(
         type: FileType.custom,
@@ -675,7 +675,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _showImportSheet() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final selected = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.bgEditorImportTitle,
@@ -702,7 +702,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _showExportSheet() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final selected = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.bgEditorExportTitle,
@@ -732,7 +732,7 @@ class _CustomBackgroundEditorScreenState
     required String title,
     required Color initial,
   }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     double red = (initial.r * 255.0).round().clamp(0, 255).toDouble();
@@ -870,184 +870,8 @@ class _CustomBackgroundEditorScreenState
     );
   }
 
-  bool _providerUsesGeminiProtocol() {
-    final provider = _normalizeAiProvider(aiProvider);
-    if (provider == 'gemini') return true;
-    if (provider == 'custom') {
-      return _normalizeAiCustomCompatibility(aiCustomCompatibility) == 'gemini';
-    }
-    return false;
-  }
-
-  String _normalizedBaseUrl(String value) {
-    var out = value.trim();
-    while (out.endsWith('/')) {
-      out = out.substring(0, out.length - 1);
-    }
-    return out;
-  }
-
-  String _openAiCompatibleEndpoint(String rawBaseUrl) {
-    final base = _normalizedBaseUrl(rawBaseUrl);
-    if (base.isEmpty) return '';
-    if (base.endsWith('/chat/completions')) return base;
-    if (base.endsWith('/v1')) return '$base/chat/completions';
-    if (base.endsWith('/v1/chat')) return '$base/completions';
-    return '$base/v1/chat/completions';
-  }
-
-  String _geminiCompatibleEndpoint(String rawBaseUrl, String model) {
-    final base = _normalizedBaseUrl(rawBaseUrl);
-    if (base.isEmpty) return '';
-    if (base.contains('/models/')) return base;
-    if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
-    if (base.contains('/v1')) return '$base/models/$model:generateContent';
-    return '$base/v1beta/models/$model:generateContent';
-  }
-
-  Future<String> _requestGeminiText({
-    required String endpoint,
-    required String apiKey,
-    required String systemPrompt,
-    required String userPrompt,
-  }) async {
-    final endpointUri = Uri.parse(endpoint);
-    final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
-      ..putIfAbsent('key', () => apiKey);
-    final uri = endpointUri.replace(queryParameters: mergedParams);
-
-    final body = jsonEncode({
-      'systemInstruction': {
-        'parts': [
-          {'text': systemPrompt},
-        ],
-      },
-      'contents': [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': userPrompt},
-          ],
-        },
-      ],
-      'generationConfig': {'maxOutputTokens': 1300, 'temperature': 0.25},
-    });
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
-      body: body,
-    );
-
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) payload = decoded;
-    } catch (_) {}
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = payload?['error']?['message'] ?? response.statusCode;
-      throw Exception('API: $message');
-    }
-
-    var reply = '';
-    final candidates = payload?['candidates'];
-    if (candidates is List && candidates.isNotEmpty) {
-      final content = candidates.first['content'];
-      final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
-      if (parts is List) {
-        reply = parts
-            .map((p) => (p is Map<String, dynamic>) ? p['text'] : null)
-            .whereType<String>()
-            .join();
-      }
-    }
-
-    reply = reply.trim();
-    if (reply.isEmpty) {
-      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
-    }
-    return reply;
-  }
-
-  String _extractOpenAiCompatibleText(Map<String, dynamic> payload, AppL10n l) {
-    final choices = payload['choices'];
-    if (choices is! List || choices.isEmpty) {
-      throw Exception('API: ${l.aiNoReply}');
-    }
-
-    final first = choices.first;
-    if (first is! Map<String, dynamic>) {
-      throw Exception('API: ${l.aiNoReply}');
-    }
-
-    final message = first['message'];
-    if (message is Map<String, dynamic>) {
-      final content = message['content'];
-      if (content is String && content.trim().isNotEmpty) {
-        return content.trim();
-      }
-      if (content is List) {
-        final text = content
-            .map((part) {
-              if (part is Map<String, dynamic>) {
-                return part['text']?.toString() ?? '';
-              }
-              return '';
-            })
-            .join()
-            .trim();
-        if (text.isNotEmpty) return text;
-      }
-    }
-
-    final legacyText = first['text']?.toString().trim() ?? '';
-    if (legacyText.isNotEmpty) return legacyText;
-    throw Exception('API: ${l.aiNoReply}');
-  }
-
-  Future<String> _requestOpenAiCompatibleText({
-    required String endpoint,
-    required String apiKey,
-    required String model,
-    required String systemPrompt,
-    required String userPrompt,
-  }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final body = jsonEncode({
-      'model': model,
-      'messages': [
-        {'role': 'system', 'content': systemPrompt},
-        {'role': 'user', 'content': userPrompt},
-      ],
-      'temperature': 0.25,
-    });
-
-    final response = await http.post(
-      Uri.parse(endpoint),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: body,
-    );
-
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) payload = decoded;
-    } catch (_) {}
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = payload?['error']?['message'] ?? response.statusCode;
-      throw Exception('API: $message');
-    }
-
-    return _extractOpenAiCompatibleText(payload ?? const {}, l);
-  }
-
   Future<String> _requestAiBackgroundSpec(String prompt) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final provider = _normalizeAiProvider(aiProvider);
     final isLocalProvider = provider == 'local';
     final apiKey = _activeAiApiKey().trim();
@@ -1066,65 +890,41 @@ class _CustomBackgroundEditorScreenState
     final userPrompt =
         '${l.bgEditorAiUserPrefix}\n$prompt\n\n${l.bgEditorAiUserSchemaHint}';
 
-    switch (provider) {
-      case 'openai':
-        return _requestOpenAiCompatibleText(
-          endpoint: 'https://api.openai.com/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userPrompt: userPrompt,
-        );
-      case 'mistral':
-        return _requestOpenAiCompatibleText(
-          endpoint: 'https://api.mistral.ai/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userPrompt: userPrompt,
-        );
-      case 'custom':
-        final baseUrl = aiCustomBaseUrl.trim();
-        if (baseUrl.isEmpty) {
-          throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
-        }
-        if (_providerUsesGeminiProtocol()) {
-          return _requestGeminiText(
-            endpoint: _geminiCompatibleEndpoint(baseUrl, model),
-            apiKey: apiKey,
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
-          );
-        }
-        return _requestOpenAiCompatibleText(
-          endpoint: _openAiCompatibleEndpoint(baseUrl),
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userPrompt: userPrompt,
-        );
-      case 'local':
-        return requestLocalModelText(
-          systemPrompt: systemPrompt,
-          userQuery: userPrompt,
-          modelPath: aiLocalModelPath,
-          runtime: _currentLocalModelRuntime(),
-        );
-      case 'gemini':
-      default:
-        return _requestGeminiText(
-          endpoint:
-              'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
-          apiKey: apiKey,
-          systemPrompt: systemPrompt,
-          userPrompt: userPrompt,
-        );
+    if (provider == 'custom' && aiCustomBaseUrl.trim().isEmpty) {
+      throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
     }
+
+    final currentSettings = _currentAiGenerationSettings();
+    final providerInstance = createAIProvider(
+      AiProviderConfiguration(
+        provider: provider,
+        model: model,
+        apiKey: apiKey,
+        customBaseUrl: aiCustomBaseUrl,
+        customCompatibility: aiCustomCompatibility,
+        localModelPath: isLocalProvider ? aiLocalModelPath : '',
+      ),
+      generationSettings: AiGenerationSettings(
+        temperature: 0.25,
+        maxTokens: 1300,
+        topP: 1,
+        formatAttachmentText: currentSettings.formatAttachmentText,
+        formatUnsupportedAttachment:
+            currentSettings.formatUnsupportedAttachment,
+      ),
+    );
+    return const AiTextGenerationService().generate(
+      provider: providerInstance,
+      systemPrompt: systemPrompt,
+      userPrompt: userPrompt,
+      model: model,
+      noReplyMessage: l.aiNoReply,
+    );
   }
 
   Future<void> _generateWithAi() async {
     if (_aiBusy) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final prompt = _aiCtrl.text.trim();
     if (prompt.isEmpty) return;
 
@@ -1513,7 +1313,7 @@ class _CustomBackgroundEditorScreenState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final libraryTools = <Widget>[
       const SizedBox(width: 8),
       Text(

@@ -184,7 +184,7 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
                     },
                     child: Semantics(
                       liveRegion: true,
-                      label: AppL10n.of(appLocaleNotifier.value).ui('refreshing'),
+                      label: appL10nFor(appLocaleNotifier.value).refreshing,
                       child: ValueListenableBuilder<double>(
                         valueListenable: _pullProgressNotifier,
                         builder: (context, pullProgress, _) {

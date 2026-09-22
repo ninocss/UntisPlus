@@ -348,7 +348,7 @@ String _settingsApiKeyPortalUrlForProvider(String provider) {
 }
 
 Future<void> _settingsOpenApiKeyPortal(BuildContext context) async {
-  final l = AppL10n.of(appLocaleNotifier.value);
+  final l = appL10nFor(appLocaleNotifier.value);
   final url = _settingsApiKeyPortalUrlForProvider(aiProvider);
   if (url.isEmpty) return;
   final ok = await url_launcher.launchUrlString(
@@ -475,8 +475,8 @@ Future<void> _settingsSyncFromPrefs() async {
       .toDouble();
   surfaceBlurEnabledNotifier.value =
       prefs.getBool('surfaceBlurEnabled') ?? true;
-  surfaceCornerModeNotifier.value =
-      (prefs.getInt('surfaceCornerMode') ?? 0).clamp(0, 2);
+  surfaceCornerModeNotifier.value = (prefs.getInt('surfaceCornerMode') ?? 0)
+      .clamp(0, 2);
   surfaceCornerRadiusNotifier.value =
       (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
@@ -518,17 +518,7 @@ Future<void> _settingsSyncFromPrefs() async {
       importantChangesPushNotifier.value;
   demoModeNotifier.value = prefs.getBool('demoMode') ?? demoModeNotifier.value;
 
-  aiProvider = _normalizeAiProvider(
-    prefs.getString('aiProvider') ?? aiProvider,
-  );
-  aiModel = prefs.getString('aiModel') ?? aiModel;
-  aiCustomCompatibility = _normalizeAiCustomCompatibility(
-    prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
-  );
-  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
-  aiSystemPromptTemplate =
-      prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
-  await loadSecureAiApiKeys(prefs);
+  await loadAiPreferences(prefs);
 
   await loadAccountPersonalData();
 
@@ -671,11 +661,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           : item.iconBackground,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      item.icon,
-                      color: item.iconColor,
-                      size: 21,
-                    ),
+                    child: Icon(item.icon, color: item.iconColor, size: 21),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -688,8 +674,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(
-                            fontWeight:
-                                selected ? FontWeight.w800 : FontWeight.w600,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
                             fontSize: 15,
                             color: selected
                                 ? cs.onSecondaryContainer
@@ -705,7 +692,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                             fontWeight: FontWeight.w500,
                             fontSize: 12.5,
                             color: selected
-                                ? cs.onSecondaryContainer.withValues(alpha: 0.75)
+                                ? cs.onSecondaryContainer.withValues(
+                                    alpha: 0.75,
+                                  )
                                 : cs.onSurfaceVariant,
                           ),
                         ),
@@ -776,8 +765,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 isFirst: index == 0,
                 isLast: index == items.length - 1,
               ),
-              if (index < items.length - 1)
-                const SizedBox(height: 4),
+              if (index < items.length - 1) const SizedBox(height: 4),
             ],
           ],
         ),
@@ -787,7 +775,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -851,8 +839,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         ? makeItem(
             index: 3,
             icon: Icons.alarm_rounded,
-            title: l.ui('alarmTitle'),
-            subtitle: l.ui('alarmScheduleDesc'),
+            title: l.alarmTitle,
+            subtitle: l.alarmScheduleDesc,
             pageBuilder: () => const SettingsAlarmPage(),
           )
         : null;
@@ -866,8 +854,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final widgetsItem = makeItem(
       index: 5,
       icon: Icons.widgets_rounded,
-      title: l.ui('widgets'),
-      subtitle: l.ui('widgetAccount'),
+      title: l.widgets,
+      subtitle: l.widgetAccount,
       pageBuilder: () => const SettingsWidgetsPage(),
     );
     final aiItem = makeItem(
@@ -934,11 +922,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final personalizeItems = <_SettingsHubItem>[appearanceItem, widgetsItem];
     final smartItems = <_SettingsHubItem>[aiItem];
     final dataItems = <_SettingsHubItem>[accountItem, backupItem];
-    final appItems = <_SettingsHubItem>[
-      ?updatesItem,
-      supportItem,
-      reportItem,
-    ];
+    final appItems = <_SettingsHubItem>[?updatesItem, supportItem, reportItem];
     // Keep the internal detail indices stable for existing tablet navigation
     // and widget tests. Visual grouping is independent from this order.
     final items = <_SettingsHubItem>[
@@ -1037,10 +1021,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             final detail =
                 items[detailIndex].pageBuilder?.call() ??
                 const SettingsTimetablePage();
-            final masterWidth =
-                (MediaQuery.sizeOf(context).width * 0.34)
-                    .clamp(350.0, 420.0)
-                    .toDouble();
+            final masterWidth = (MediaQuery.sizeOf(context).width * 0.34)
+                .clamp(350.0, 420.0)
+                .toDouble();
 
             return Row(
               key: const ValueKey('settings-master-detail'),

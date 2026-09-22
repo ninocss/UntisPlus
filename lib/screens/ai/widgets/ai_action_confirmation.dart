@@ -19,7 +19,7 @@ class _AiActionConfirmationContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     return Column(
@@ -27,7 +27,7 @@ class _AiActionConfirmationContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          l.ui('aiApplyChangesDesc'),
+          l.aiApplyChangesDesc,
           style: untisThemeTextStyle(
             context,
             fontSize: 14,

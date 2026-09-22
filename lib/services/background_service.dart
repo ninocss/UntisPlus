@@ -78,11 +78,11 @@ class BackgroundService {
 }
 
 String _localizedUpdateTitle(String locale) {
-  return AppL10n.of(locale).ui('bgUpdateTitle');
+  return appL10nFor(locale).bgUpdateTitle;
 }
 
 String _localizedDailyBriefingTitle(String locale) {
-  return AppL10n.of(locale).ui('bgDailyBriefingTitle');
+  return appL10nFor(locale).bgDailyBriefingTitle;
 }
 
 String _localizedDailyBriefingBody(
@@ -92,12 +92,9 @@ String _localizedDailyBriefingBody(
   required int lessonCount,
   required int breakCount,
 }) {
-  return AppL10n.of(locale).uiFormat('bgDailyBriefingBody', {
-    'start': firstStart,
-    'end': lastEnd,
-    'lessons': lessonCount,
-    'breaks': breakCount,
-  });
+  return appL10nFor(
+    locale,
+  ).bgDailyBriefingBody(firstStart, lastEnd, lessonCount, breakCount);
 }
 
 String _localizedDailyBriefingExpanded(
@@ -108,13 +105,13 @@ String _localizedDailyBriefingExpanded(
   required int breakCount,
   required String nextLesson,
 }) {
-  return AppL10n.of(locale).uiFormat('bgDailyBriefingExpanded', {
-    'start': firstStart,
-    'end': lastEnd,
-    'lessons': lessonCount,
-    'breaks': breakCount,
-    'next': nextLesson,
-  });
+  return appL10nFor(locale).bgDailyBriefingExpanded(
+    firstStart,
+    lastEnd,
+    lessonCount,
+    breakCount,
+    nextLesson,
+  );
 }
 
 Future<String?> _loginWithWebUntisSecret({
@@ -194,37 +191,35 @@ Future<List<dynamic>?> _fetchAuthenticatedTimetable({
 }
 
 String _localizedImportantChangesTitle(String locale) {
-  return AppL10n.of(locale).ui('bgChangesTitle');
+  return appL10nFor(locale).bgChangesTitle;
 }
 
 String _localizedImportantChangesBody(String locale) {
-  return AppL10n.of(locale).ui('bgChangesBody');
+  return appL10nFor(locale).bgChangesBody;
 }
 
 String _localizedStatusCurrentLesson(String locale) {
-  return AppL10n.of(locale).ui('bgCurrentLesson');
+  return appL10nFor(locale).bgCurrentLesson;
 }
 
 String _localizedLessonStartsAt(String locale, String start) {
-  return AppL10n.of(locale).uiFormat('bgLessonStarts', {'time': start});
+  return appL10nFor(locale).bgLessonStarts(start);
 }
 
 String _localizedUntilTime(String locale, String end) {
-  return AppL10n.of(locale).uiFormat('bgUntil', {'time': end});
+  return appL10nFor(locale).bgUntil(end);
 }
 
 String _localizedClosedLabel(String locale) {
-  return AppL10n.of(locale).ui('bgFinished');
+  return appL10nFor(locale).bgFinished;
 }
 
 String _localizedFreeLabel(String locale) {
-  return AppL10n.of(locale).ui('bgFreePeriod');
+  return appL10nFor(locale).bgFreePeriod;
 }
 
 String _localizedFallbackLessonName(String locale, String start, String end) {
-  return AppL10n.of(
-    locale,
-  ).uiFormat('bgFallbackLesson', {'start': start, 'end': end});
+  return appL10nFor(locale).bgFallbackLesson(start, end);
 }
 
 Map<String, int> _detectChangeCounts({
@@ -304,29 +299,27 @@ Map<String, int> _detectChangeCounts({
 }
 
 String _localizedChangeSummary(String locale, Map<String, int> counts) {
-  final l = AppL10n.of(locale);
+  final l = appL10nFor(locale);
   final cancelled = counts['cancelled'] ?? 0;
   final room = counts['room'] ?? 0;
   final substitution = counts['substitution'] ?? 0;
   final other = counts['other'] ?? 0;
   final parts = <String>[];
   if (cancelled > 0) {
-    parts.add(l.uiFormat('bgChangesCancelled', {'count': cancelled}));
+    parts.add(l.bgChangesCancelled(cancelled));
   }
-  if (room > 0) parts.add(l.uiFormat('bgChangesRoom', {'count': room}));
+  if (room > 0) parts.add(l.bgChangesRoom(room));
   if (substitution > 0) {
-    parts.add(l.uiFormat('bgChangesSubstitution', {'count': substitution}));
+    parts.add(l.bgChangesSubstitution(substitution));
   }
   if (other > 0 || parts.isEmpty) {
-    parts.add(l.uiFormat('bgChangesOther', {'count': other > 0 ? other : 1}));
+    parts.add(l.bgChangesOther(other > 0 ? other : 1));
   }
   return parts.join(' · ');
 }
 
 String _localizedUpdateBody(String locale, String latestVersion) {
-  return AppL10n.of(
-    locale,
-  ).uiFormat('bgUpdateBody', {'version': latestVersion});
+  return appL10nFor(locale).bgUpdateBody(latestVersion);
 }
 
 Future<void> checkGithubUpdateAndNotify() async {
@@ -402,7 +395,7 @@ Future<bool> updateUntisData() async {
       ? credentials.credentialMode == 'loginKey'
       : prefs.getString('loginCredentialMode') == 'loginKey';
   final locale = prefs.getString('appLocale') ?? 'de';
-  final l = AppL10n.of(locale);
+  final l = appL10nFor(locale);
 
   if (!isDemoMode &&
       (schoolUrl.isEmpty ||
@@ -811,8 +804,8 @@ Future<bool> updateUntisData() async {
               '${formatUntisTime(lesson['startTime'].toString())} · ${lessonDisplayName(lesson)}',
         )
         .join('\n'),
-    homeworkSummary: l.ui('widgetNoOpenHomework'),
-    notificationSummary: l.ui('widgetOpenNotifications'),
+    homeworkSummary: l.widgetNoOpenHomework,
+    notificationSummary: l.widgetOpenNotifications,
     accountId: widgetAccountId,
     accountLabel: accountLabel,
     status: DateFormat('HH:mm').format(now),
@@ -835,7 +828,7 @@ Future<void> _refreshInactiveWidgetAccounts(
   required DateTime now,
   required String locale,
 }) async {
-  final l = AppL10n.of(locale);
+  final l = appL10nFor(locale);
   final activeId = prefs.getString('activeUntisAccountId');
   final raw = prefs.getString('untisAccountsV1') ?? '[]';
   dynamic decoded;
@@ -978,7 +971,7 @@ Future<void> _refreshInactiveWidgetAccounts(
                 return subject.toString().trim();
               }
             }
-            return lesson['_subjectShort']?.toString() ?? l.ui('widgetLesson');
+            return lesson['_subjectShort']?.toString() ?? l.widgetLesson;
           }
 
           await WidgetService.updateWidgets(
@@ -992,8 +985,8 @@ Future<void> _refreshInactiveWidgetAccounts(
                       '${formatUntisTime(lesson['startTime'].toString())} · ${label(lesson)}',
                 )
                 .join('\n'),
-            homeworkSummary: l.ui('widgetNoOpenHomework'),
-            notificationSummary: l.ui('widgetOpenNotifications'),
+            homeworkSummary: l.widgetNoOpenHomework,
+            notificationSummary: l.widgetOpenNotifications,
             accountId: id,
             accountLabel: user,
             status: DateFormat('HH:mm').format(now),
@@ -1287,5 +1280,5 @@ List<Map<String, dynamic>> buildLegacyDemoLessons24x7(
 }
 
 String _demoSubjectName(String code, String locale) {
-  return AppL10n.of(locale).uiFormat('bgDemoLesson', {'code': code});
+  return appL10nFor(locale).bgDemoLesson(code);
 }

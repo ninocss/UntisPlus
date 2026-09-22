@@ -93,7 +93,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   static const double _ppm = 1.5;
 
   List<String> get _dayShort =>
-      AppL10n.of(appLocaleNotifier.value).weekDayShort;
+      appL10nFor(appLocaleNotifier.value).weekDayShort;
 
   final Map<int, String> _subjectLong = {};
   final Map<int, String> _subjectShortMap = {};
@@ -580,7 +580,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _showDateAlarmActions(DateTime date) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final key = alarmDateKey(date);
     final current =
         _alarmConfig.dateOverrides[key] ?? const AlarmDateOverride();
@@ -599,7 +599,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                l.ui('alarmDateActions').replaceAll('{date}', dateLabel),
+                l.alarmDateActions(dateLabel),
                 style: GoogleFonts.outfit(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
@@ -607,7 +607,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               ),
               const SizedBox(height: 4),
               Text(
-                l.ui('alarmDateActionsDesc'),
+                l.alarmDateActionsDesc,
                 style: GoogleFonts.outfit(
                   color: Theme.of(sheetContext).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
@@ -621,7 +621,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       ? Icons.alarm_off_rounded
                       : Icons.alarm_rounded,
                 ),
-                title: Text(l.ui('alarmDisableDate')),
+                title: Text(l.alarmDisableDate),
                 onChanged: (disabled) async {
                   await _saveDateAlarmOverride(
                     date,
@@ -632,7 +632,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               ),
               ListTile(
                 leading: const Icon(Icons.schedule_rounded),
-                title: Text(l.ui('alarmCustomTime')),
+                title: Text(l.alarmCustomTime),
                 subtitle: current.customTimeOfDayMinutes == null
                     ? null
                     : Text(
@@ -667,14 +667,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               ),
               ListTile(
                 leading: const Icon(Icons.fast_forward_rounded),
-                title: Text(l.ui('alarmEarlier')),
+                title: Text(l.alarmEarlier),
                 subtitle: Text(
-                  l
-                      .ui('alarmEarlierValue')
-                      .replaceAll(
-                        '{n}',
-                        '${_alarmConfig.nextAlarmEarlierMinutes}',
-                      ),
+                  l.alarmEarlierValue(_alarmConfig.nextAlarmEarlierMinutes),
                 ),
                 onTap: () async {
                   await _saveDateAlarmOverride(
@@ -694,7 +689,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     if (sheetContext.mounted) Navigator.pop(sheetContext);
                   },
                   icon: const Icon(Icons.restart_alt_rounded),
-                  label: Text(l.ui('alarmClearDate')),
+                  label: Text(l.alarmClearDate),
                 ),
             ],
           ),
@@ -708,7 +703,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final action = pendingTimetableActionNotifier.value;
     if (action == null || action.isEmpty) return;
 
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final current = (pendingTimetableCurrentLessonNotifier.value ?? '').trim();
     final next = (pendingTimetableNextLessonNotifier.value ?? '').trim();
 
@@ -721,7 +716,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     if (action == 'open_next_lesson') {
       final text = next.isNotEmpty
-          ? l.notificationActionNextLesson(next)
+          ? l.notificationActionNextLesson
           : l.notificationActionNoNextLesson;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -859,7 +854,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _editLessonTemporarily(Map<dynamic, dynamic> lesson) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final lessonKey = _temporaryLessonKey(lesson);
     _temporaryLessonOriginals.putIfAbsent(
       lessonKey,
@@ -877,28 +872,28 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(l.ui('tempEditTitle')),
+          title: Text(l.tempEditTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(l.ui('tempEditDesc')),
+                Text(l.tempEditDesc),
                 const SizedBox(height: 12),
                 TextField(
                   controller: subject,
-                  decoration: InputDecoration(labelText: l.ui('subject')),
+                  decoration: InputDecoration(labelText: l.subject),
                 ),
                 TextField(
                   controller: teacher,
-                  decoration: InputDecoration(labelText: l.ui('teacher')),
+                  decoration: InputDecoration(labelText: l.teacher),
                 ),
                 TextField(
                   controller: room,
-                  decoration: InputDecoration(labelText: l.ui('room')),
+                  decoration: InputDecoration(labelText: l.room),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(l.ui('absence')),
+                  title: Text(l.absence),
                   value: cancelled,
                   onChanged: (value) => setDialogState(() => cancelled = value),
                 ),
@@ -919,11 +914,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 }
                 Navigator.pop(dialogContext);
               },
-              child: Text(l.ui('reset')),
+              child: Text(l.reset),
             ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: Text(l.ui('cancel')),
+              child: Text(l.cancel),
             ),
             FilledButton(
               onPressed: () {
@@ -943,7 +938,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 });
                 Navigator.pop(dialogContext);
               },
-              child: Text(l.ui('localSave')),
+              child: Text(l.localSave),
             ),
           ],
         ),
@@ -955,7 +950,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _exportTimetableImage() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     try {
       // The on-screen timetable reserves space for the transparent app bar.
       // Temporarily remove that viewport-only padding from the repaint boundary
@@ -972,7 +967,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final data = await image.toByteData(format: ImageByteFormat.png);
       if (data == null) return;
       final result = await FilePicker.saveFile(
-        dialogTitle: l.ui('saveTimetableImage'),
+        dialogTitle: l.saveTimetableImage,
         fileName:
             'untisplus-${DateFormat('yyyy-MM-dd').format(_currentMonday)}.png',
         bytes: data.buffer.asUint8List(),
@@ -980,13 +975,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (result != null && mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(l.ui('timetableImageSaved'))));
+        ).showSnackBar(SnackBar(content: Text(l.timetableImageSaved)));
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(l.ui('imageExportFailed'))));
+        ).showSnackBar(SnackBar(content: Text(l.imageExportFailed)));
       }
     } finally {
       if (mounted && _isExportingTimetable) {
@@ -997,7 +992,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   Future<void> _updateHomeWidgets(Map<int, List<dynamic>> week) async {
     if (kIsWeb) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final now = DateTime.now();
     final todayLessons =
         List<dynamic>.from(week[now.weekday - 1] ?? [])
@@ -1018,7 +1013,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           );
     String label(dynamic lesson) {
       final subject = lesson['_subjectShort']?.toString();
-      return subject?.isNotEmpty == true ? subject! : l.ui('widgetLesson');
+      return subject?.isNotEmpty == true ? subject! : l.widgetLesson;
     }
 
     final nowMinutes = now.hour * 60 + now.minute;
@@ -1039,12 +1034,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         .join('\n');
     final remaining = current == null
         ? ''
-        : l
-              .ui('widgetMinutesRemaining')
-              .replaceAll(
-                '{n}',
-                '${(_toMinutes((current['endTime'] as int?) ?? 0) - nowMinutes).clamp(0, 999)}',
-              );
+        : l.widgetMinutesRemaining(
+            (_toMinutes((current['endTime'] as int?) ?? 0) - nowMinutes)
+                .clamp(0, 999),
+          );
     final homework = homeworksNotifier.value
         .where((item) => item['isDone'] != true)
         .take(3)
@@ -1055,11 +1048,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               item['text'] ??
               item['homework'] ??
               item['description'] ??
-              l.ui('widgetHomeworkItem');
+              l.widgetHomeworkItem;
           return '${subject.toString().isEmpty ? '' : '$subject · '}${text.toString()}';
         })
         .join('\n');
-    var examSummary = l.ui('widgetNoUpcomingExams');
+    var examSummary = l.widgetNoUpcomingExams;
     try {
       final prefs = await SharedPreferences.getInstance();
       final exams = (prefs.getStringList(_accountDataKey('customExams')) ?? [])
@@ -1074,7 +1067,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           .take(2)
           .map((exam) {
             final subject =
-                exam['subject'] ?? exam['subjectName'] ?? l.ui('widgetExam');
+                exam['subject'] ?? exam['subjectName'] ?? l.widgetExam;
             final date = (exam['date'] ?? exam['examDate'] ?? '').toString();
             final formatted = date.length == 8
                 ? '${date.substring(6, 8)}.${date.substring(4, 6)}.'
@@ -1103,9 +1096,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         timeRemaining: remaining,
         dailySchedule: schedule,
         homeworkSummary: homework.isEmpty
-            ? l.ui('widgetNoOpenHomework')
+            ? l.widgetNoOpenHomework
             : homework,
-        notificationSummary: l.ui('widgetOpenNotifications'),
+        notificationSummary: l.widgetOpenNotifications,
         examSummary: examSummary,
         accountId: activeUntisAccountId ?? 'active',
         accountLabel: activeAccount?.label ?? schoolName,
@@ -1394,7 +1387,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         return _buildGridView(dayIndex, monday: adjMonday, weekData: cached);
       }
     }
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     return Center(
       child: Column(
@@ -2689,7 +2682,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _showFreeRoomsDialog() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final dayIndex = _tabController.index.clamp(0, 4);
     final ranges = _collectTimeRangesFromDay(dayIndex);
 
@@ -4627,7 +4620,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _fetchFullWeek({bool silent = false}) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final requestGeneration = ++_weekFetchGeneration;
     final requestedMonday = _currentMonday;
     final requestAccountId = activeUntisAccountId ?? 'legacy';
@@ -5405,7 +5398,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     } catch (_) {}
 
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     showUntisModalBottomSheet(
       context: context,
@@ -5797,7 +5790,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final dayIndicatorIndex = (_dayCarouselTargetDay ?? _tabController.index)
         .clamp(0, 4)
         .toInt();

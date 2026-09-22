@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -708,24 +711,44 @@ void main() {
   });
 
   test('localization catalogs stay complete and format native copy', () {
-    final catalogs = AppL10n.catalogKeys;
-    final placeholders = AppL10n.catalogPlaceholders;
-    final german = catalogs['de'];
-
-    expect(german, isNotNull);
+    final catalogs = <String, Map<String, dynamic>>{};
     for (final locale in AppL10n.supportedLocales) {
-      expect(catalogs[locale], german, reason: 'keys differ for $locale');
-      expect(AppL10n.emptyCatalogValues[locale], isEmpty);
+      final languageCode = locale.languageCode;
+      catalogs[languageCode] = jsonDecode(
+        File('lib/l10n/arb/app_$languageCode.arb').readAsStringSync(),
+      ) as Map<String, dynamic>;
+    }
+    final germanKeys = catalogs['de']!.keys
+        .where((key) => !key.startsWith('@'))
+        .toSet();
+    final placeholderPattern = RegExp(r'\{([A-Za-z][A-Za-z0-9_]*)\}');
+    for (final locale in AppL10n.supportedLocales) {
+      final languageCode = locale.languageCode;
+      final catalog = catalogs[languageCode]!;
       expect(
-        placeholders[locale],
-        placeholders['de'],
-        reason: 'placeholders differ for $locale',
+        catalog.keys.where((key) => !key.startsWith('@')).toSet(),
+        germanKeys,
+        reason: 'keys differ for $languageCode',
       );
+      for (final key in germanKeys) {
+        final value = catalog[key] as String;
+        expect(value.trim(), isNotEmpty, reason: '$languageCode.$key is empty');
+        final placeholders = placeholderPattern
+            .allMatches(value)
+            .map((match) => match.group(1))
+            .toSet();
+        final germanPlaceholders = placeholderPattern
+            .allMatches(catalogs['de']![key] as String)
+            .map((match) => match.group(1))
+            .toSet();
+        expect(
+          placeholders,
+          germanPlaceholders,
+          reason: 'placeholders differ for $languageCode.$key',
+        );
+      }
       expect(
-        AppL10n.of(locale).uiFormat(
-          'nativeAlarmReminderTitle',
-          const {'minutes': 15},
-        ),
+        appL10nFor(languageCode).nativeAlarmReminderTitle(15),
         isNot(contains('{minutes}')),
       );
     }

@@ -46,6 +46,7 @@ import 'data/webuntis/webuntis_auth.dart';
 import 'data/webuntis/webuntis_session_manager.dart';
 import 'features/changes/data/change_repository.dart';
 import 'features/changes/domain/timetable_change.dart';
+import 'features/exams/data/webuntis_exam_repository.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
@@ -116,6 +117,8 @@ part 'services/local_model_download.dart';
 
 int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
+final WebUntisExamRepository _webUntisExamRepository = WebUntisExamRepository();
+
 /// WebUntis installations represent an absent teacher differently. Prefer
 /// explicit flags, but also support the status text used by older servers.
 bool _hasMissingTeacher(dynamic lesson) {
@@ -168,26 +171,22 @@ void alarmRefreshDispatcher() async {
 
 /// Factory to create AI provider instances.
 AiGenerationSettings _currentAiGenerationSettings() {
-  final l = AppL10n.of(appLocaleNotifier.value);
+  final l = appL10nFor(appLocaleNotifier.value);
   return AiGenerationSettings(
     temperature: aiTemperature,
     maxTokens: aiMaxTokens,
     topP: aiTopP,
-    formatAttachmentText: (attachment) => l.uiFormat('aiAttachmentText', {
-      'name': attachment.name,
-      'excerpt': attachment.textExcerpt,
-    }),
-    formatUnsupportedAttachment: (attachment) => l.uiFormat(
-      'aiAttachmentUnsupported',
-      {'name': attachment.name, 'mimeType': attachment.mimeType},
-    ),
+    formatAttachmentText: (attachment) =>
+        l.aiAttachmentText(attachment.name, attachment.textExcerpt),
+    formatUnsupportedAttachment: (attachment) =>
+        l.aiAttachmentUnsupported(attachment.name, attachment.mimeType),
   );
 }
 
-LocalModelRuntime _currentLocalModelRuntime() {
-  final l = AppL10n.of(appLocaleNotifier.value);
+LocalModelRuntime _currentLocalModelRuntime({AiGenerationSettings? settings}) {
+  final l = appL10nFor(appLocaleNotifier.value);
   return LocalModelRuntime(
-    settings: _currentAiGenerationSettings(),
+    settings: settings ?? _currentAiGenerationSettings(),
     isValidModel: (path) =>
         _isValidLocalModelFile(path, model: _localModelForPath(path)),
     loadErrorMessage: l.aiLocalModelLoadError,
@@ -195,69 +194,56 @@ LocalModelRuntime _currentLocalModelRuntime() {
   );
 }
 
-AIProvider createAIProvider({
-  required String provider,
-  required String model,
-  required String apiKey,
-  String? customBaseUrl,
-  String? customCompatibility,
-  String? localModelPath,
+AIProvider createAIProvider(
+  AiProviderConfiguration configuration, {
+  AiGenerationSettings? generationSettings,
 }) {
-  final settings = _currentAiGenerationSettings();
-  switch (provider) {
+  final settings = generationSettings ?? _currentAiGenerationSettings();
+  switch (configuration.provider) {
     case 'gemini':
-      return GeminiProvider(apiKey: apiKey, settings: settings);
+      return GeminiProvider(apiKey: configuration.apiKey, settings: settings);
     case 'openai':
       return OpenAICompatibleProvider(
-        apiKey: apiKey,
+        apiKey: configuration.apiKey,
         settings: settings,
         endpoint: 'https://api.openai.com/v1/chat/completions',
       );
     case 'mistral':
       return OpenAICompatibleProvider(
-        apiKey: apiKey,
+        apiKey: configuration.apiKey,
         settings: settings,
         endpoint: 'https://api.mistral.ai/v1/chat/completions',
       );
     case 'custom':
       final compat = _normalizeAiCustomCompatibility(
-        customCompatibility ?? 'openai',
+        configuration.customCompatibility,
       );
       if (compat == 'gemini') {
-        final baseUrl = customBaseUrl ?? '';
-        final endpoint = baseUrl.contains(':streamGenerateContent')
-            ? baseUrl
-            : baseUrl.contains(':generateContent')
-            ? baseUrl.replaceFirst(':generateContent', ':streamGenerateContent')
-            : baseUrl.contains('/models/')
-            ? '$baseUrl:streamGenerateContent'
-            : baseUrl.contains('/v1beta')
-            ? '$baseUrl/models/$model:streamGenerateContent?alt=sse&key=$apiKey'
-            : baseUrl.contains('/v1')
-            ? '$baseUrl/models/$model:streamGenerateContent?alt=sse&key=$apiKey'
-            : '$baseUrl/v1beta/models/$model:streamGenerateContent?alt=sse&key=$apiKey';
         return GeminiProvider(
-          apiKey: apiKey,
+          apiKey: configuration.apiKey,
           settings: settings,
-          endpoint: endpoint,
+          endpoint: geminiStreamingEndpoint(
+            configuration.customBaseUrl,
+            configuration.model,
+          ),
         );
       }
       return OpenAICompatibleProvider(
-        apiKey: apiKey,
+        apiKey: configuration.apiKey,
         settings: settings,
-        endpoint: openAiCompatibleEndpoint(customBaseUrl ?? ''),
-        baseUrl: customBaseUrl,
+        endpoint: openAiCompatibleEndpoint(configuration.customBaseUrl),
+        baseUrl: configuration.customBaseUrl,
       );
     case 'local':
-      if (localModelPath == null || localModelPath.isEmpty) {
+      if (configuration.localModelPath.isEmpty) {
         throw Exception('Local model path not configured');
       }
       return LocalModelProvider(
-        modelPath: localModelPath,
-        runtime: _currentLocalModelRuntime(),
+        modelPath: configuration.localModelPath,
+        runtime: _currentLocalModelRuntime(settings: settings),
       );
     default:
-      return GeminiProvider(apiKey: apiKey, settings: settings);
+      return GeminiProvider(apiKey: configuration.apiKey, settings: settings);
   }
 }
 
