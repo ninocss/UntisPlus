@@ -107,14 +107,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final Map<int, String> _teacherMap = {};
   final Map<int, String> _roomMap = {};
 
-  String _mondayKey(DateTime monday) => DateFormat('yyyyMMdd').format(monday);
+  String _mondayKey(DateTime monday) => untisDateString(monday);
 
   String _weekCacheKeyFor({
     required DateTime monday,
     required int requestPersonId,
     required int requestPersonType,
   }) {
-    final mondayStr = DateFormat('yyyyMMdd').format(monday);
+    final mondayStr = untisDateString(monday);
     return [
       'weekCacheV1',
       schoolUrl,
@@ -1050,10 +1050,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           .map((exam) {
             final subject =
                 exam['subject'] ?? exam['subjectName'] ?? l.widgetExam;
-            final date = (exam['date'] ?? exam['examDate'] ?? '').toString();
-            final formatted = date.length == 8
-                ? '${date.substring(6, 8)}.${date.substring(4, 6)}.'
-                : '';
+            final date = parseUntisDate(exam['date'] ?? exam['examDate']);
+            final formatted = date == null
+                ? ''
+                : DateFormat('dd.MM.').format(date);
             return formatted.isEmpty
                 ? subject.toString()
                 : '$formatted $subject';
@@ -1256,11 +1256,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (entry is! Map) continue;
       final day = entry['date'];
       if (day is! int) continue;
-      final dayStr = day.toString();
-      if (dayStr.length != 8) continue;
-      final date = DateTime.tryParse(
-        '${dayStr.substring(0, 4)}-${dayStr.substring(4, 6)}-${dayStr.substring(6, 8)}',
-      );
+      final date = parseUntisDateInt(day);
       if (date == null) continue;
       final dayIndex = date.weekday - 1;
       if (dayIndex < 0 || dayIndex > 4) continue;
@@ -1819,7 +1815,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   width: w,
                   child: KeyedSubtree(
                     key: ValueKey(
-                      'carousel-${DateFormat('yyyyMMdd').format(_currentMonday)}',
+                      'carousel-${untisDateString(_currentMonday)}',
                     ),
                     child: _viewMode == 1
                         ? _buildWeekView()
@@ -2620,9 +2616,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   List<Map<String, dynamic>> _getHolidaysForDay(DateTime day) {
-    final dayStr = DateFormat('yyyyMMdd').format(day);
-    final dayInt = int.tryParse(dayStr);
-    if (dayInt == null) return [];
+    final dayInt = untisDateInt(day);
     return _holidays.where((h) {
       final start = h['startDate'];
       final end = h['endDate'];
