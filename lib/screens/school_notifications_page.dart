@@ -356,34 +356,10 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       if (raw > 1000000000) {
         return DateTime.fromMillisecondsSinceEpoch(raw * 1000);
       }
-      final s = raw.toString();
-      if (s.length == 8) {
-        try {
-          return DateTime.parse(
-            '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
-          );
-        } catch (_) {
-          return null;
-        }
-      }
     }
-
-    final value = raw.toString().trim();
-    if (value.isEmpty) return null;
-    if (RegExp(r'^\d{8}$').hasMatch(value)) {
-      try {
-        return DateTime.parse(
-          '${value.substring(0, 4)}-${value.substring(4, 6)}-${value.substring(6, 8)}',
-        );
-      } catch (_) {
-        return null;
-      }
-    }
-    try {
-      return DateTime.parse(value);
-    } catch (_) {
-      return null;
-    }
+    final untisDate = parseUntisDate(raw);
+    if (untisDate != null) return untisDate;
+    return DateTime.tryParse(raw.toString().trim());
   }
 
   String? _pickNotificationUrl(Map<String, dynamic> map) {
@@ -489,11 +465,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                         if (item.body.isNotEmpty) ...[
                           const SizedBox(height: 3),
                           Text(
-                            _normalizedDetailText(
-                              _detailToPlainText(
-                                _detailSafeInfoDocument(item.body),
-                              ),
-                            ),
+                            schoolHtmlToPlainText(sanitizeSchoolHtml(item.body)),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
