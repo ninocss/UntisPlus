@@ -67,14 +67,8 @@ Future<void> _showAddHomeworkDialog(
   DateTime selectedDate = () {
     final s =
         existing?['dueDate']?.toString() ?? existing?['date']?.toString() ?? '';
-    if (s.length == 8) {
-      try {
-        return DateTime.parse(
-          '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
-        );
-      } catch (_) {}
-    }
-    return DateTime.now().add(const Duration(days: 1));
+    return parseUntisDateString(s) ??
+        DateTime.now().add(const Duration(days: 1));
   }();
 
   await showUntisModalBottomSheet<void>(
@@ -91,29 +85,12 @@ Future<void> _showAddHomeworkDialog(
           subjects.sort();
         }
 
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: _sheetSurface(
-            context: ctx,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: cs.onSurface.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+        return UntisSheetScaffold(
+          handleWidth: 42,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                   Row(
                     children: [
                       Expanded(
@@ -368,9 +345,7 @@ Future<void> _showAddHomeworkDialog(
                             final subj = subjectCtrl.text.trim();
                             final text = taskCtrl.text.trim();
                             if (subj.isEmpty || text.isEmpty) return;
-                            final dateInt = int.parse(
-                              DateFormat('yyyyMMdd').format(selectedDate),
-                            );
+                            final dateInt = untisDateInt(selectedDate);
                             final list = List<Map<String, dynamic>>.from(
                               customHomeworkNotifier.value,
                             );
@@ -408,9 +383,7 @@ Future<void> _showAddHomeworkDialog(
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+            ],
           ),
         );
       },
@@ -1273,14 +1246,7 @@ Future<void> _showAddExamDialog(
   );
   DateTime selectedDate = () {
     final s = existing?['date']?.toString() ?? '';
-    if (s.length == 8) {
-      try {
-        return DateTime.parse(
-          '${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}',
-        );
-      } catch (_) {}
-    }
-    return DateTime.now();
+    return parseUntisDateString(s) ?? DateTime.now();
   }();
 
   await showUntisModalBottomSheet<void>(
@@ -1298,29 +1264,12 @@ Future<void> _showAddExamDialog(
           subjects.add(selectedSubject);
           subjects.sort();
         }
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: _sheetSurface(
-            context: ctx,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: cs.onSurface.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+        return UntisSheetScaffold(
+          handleWidth: 42,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                   Row(
                     children: [
                       Expanded(
@@ -1601,9 +1550,7 @@ Future<void> _showAddExamDialog(
                           onPressed: () async {
                             final subj = subjectCtrl.text.trim();
                             if (subj.isEmpty) return;
-                            final dateInt = int.parse(
-                              DateFormat('yyyyMMdd').format(selectedDate),
-                            );
+                            final dateInt = untisDateInt(selectedDate);
                             final newExam = <String, dynamic>{
                               'id':
                                   existing?['id'] ??
@@ -1641,9 +1588,7 @@ Future<void> _showAddExamDialog(
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+            ],
           ),
         );
       },
