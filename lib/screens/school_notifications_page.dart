@@ -862,7 +862,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              tooltip: l.infoReload,
+              tooltip: l.reload,
               onPressed: _reload,
               icon: const Icon(Icons.refresh_rounded),
             ),

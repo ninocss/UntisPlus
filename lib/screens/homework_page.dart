@@ -398,7 +398,7 @@ Future<void> _showAddHomeworkDialog(
                             minimumSize: const Size(0, 60),
                           ),
                           child: Text(
-                            l.homeworkSave,
+                            l.save,
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
@@ -1645,7 +1645,7 @@ Future<void> _showAddExamDialog(
                             minimumSize: const Size(0, 60),
                           ),
                           child: Text(
-                            l.examsSave,
+                            l.save,
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.w800,
                               fontSize: 16,

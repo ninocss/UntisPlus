@@ -6105,7 +6105,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       const SizedBox(height: 18),
                       FilledButton.tonal(
                         onPressed: _fetchFullWeek,
-                        child: Text(l.timetableReload),
+                        child: Text(l.reload),
                       ),
                     ],
                   ),

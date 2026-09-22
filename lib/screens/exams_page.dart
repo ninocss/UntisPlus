@@ -493,7 +493,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                           onPressed: _refreshExams,
                           icon: const Icon(Icons.refresh_rounded, size: 18),
                           label: Text(
-                            l.examsReload,
+                            l.reload,
                             style: GoogleFonts.outfit(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,

@@ -160,7 +160,7 @@ class SettingsAppearancePage extends StatelessWidget {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: Text(l.settingsApiKeyCancel),
+                      child: Text(l.cancel),
                     ),
                     TextButton(
                       onPressed: () {

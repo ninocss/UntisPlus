@@ -196,7 +196,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.settingsApiKeyCancel),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -287,7 +287,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
-                appL10nFor(appLocaleNotifier.value).settingsApiKeyCancel,
+                appL10nFor(appLocaleNotifier.value).cancel,
               ),
             ),
             FilledButton(

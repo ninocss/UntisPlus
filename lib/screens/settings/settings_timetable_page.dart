@@ -400,7 +400,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                       ),
                     ),

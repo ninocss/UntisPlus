@@ -947,7 +947,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
-                  tooltip: l.alarmDelete,
+                  tooltip: l.delete,
                   onPressed: _configurations.length > 1 ? _deleteSelected : null,
                   icon: const Icon(Icons.delete_outline_rounded),
                 ),
