@@ -235,6 +235,7 @@ class AppL10n {
   // ── Lesson Detail ───────────────────────────────────────────────────────────
   String get detailTime => _t('detailTime');
   String get detailTeacher => _t('detailTeacher');
+  String get detailOriginalTeacher => _t('detailOriginalTeacher');
   String get detailRoom => _t('detailRoom');
   String get detailClass => _t('detailClass');
   String get detailLesson => _t('detailLesson');
@@ -1166,6 +1167,7 @@ class AppL10n {
 
       'detailTime': 'Zeit',
       'detailTeacher': 'Lehrkraft',
+      'detailOriginalTeacher': 'Ursprüngliche Lehrkraft',
       'detailRoom': 'Raum',
       'detailClass': 'Klasse',
       'detailLesson': 'Stunde',
@@ -2357,6 +2359,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 
       'detailTime': 'Time',
       'detailTeacher': 'Teacher',
+      'detailOriginalTeacher': 'Original teacher',
       'detailRoom': 'Room',
       'detailClass': 'Class',
       'detailLesson': 'Lesson',
@@ -3543,6 +3546,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 
       'detailTime': 'Heure',
       'detailTeacher': 'Enseignant',
+      'detailOriginalTeacher': 'Enseignant d’origine',
       'detailRoom': 'Salle',
       'detailClass': 'Classe',
       'detailLesson': 'Cours',
@@ -4747,6 +4751,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
 
       'detailTime': 'Hora',
       'detailTeacher': 'Profesor',
+      'detailOriginalTeacher': 'Profesor original',
       'detailRoom': 'Aula',
       'detailClass': 'Clase',
       'detailLesson': 'Clase',
