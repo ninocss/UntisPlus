@@ -74,6 +74,372 @@ class SettingsPageShell extends StatelessWidget {
   );
 }
 
+class FeatureSummaryCard extends StatelessWidget {
+  const FeatureSummaryCard({
+    required this.icon,
+    required this.title,
+    this.secondary,
+    this.trailing,
+    this.iconShadow = true,
+    super.key,
+  });
+
+  final IconData icon;
+  final Widget title;
+  final Widget? secondary;
+  final Widget? trailing;
+  final bool iconShadow;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _glassContainer(
+        context: context,
+        borderRadius: BorderRadius.circular(24),
+        color: cs.primaryContainer.withValues(alpha: 0.25),
+        border: Border.all(
+          color: cs.primary.withValues(alpha: 0.25),
+          width: 1.2,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cs.primary, cs.primary.withValues(alpha: 0.75)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: iconShadow
+                      ? _glowShadows(context, [
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ])
+                      : null,
+                ),
+                child: Icon(icon, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    title,
+                    if (secondary != null) ...[
+                      const SizedBox(height: 4),
+                      secondary!,
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 12),
+                trailing!,
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class UntisSheetScaffold extends StatelessWidget {
+  const UntisSheetScaffold({
+    required this.child,
+    this.title,
+    this.trailing,
+    this.padding = const EdgeInsets.all(28),
+    this.scrollable = true,
+    this.showHandle = true,
+    this.keyboardSafe = true,
+    this.handleWidth = 40,
+    this.handleSpacing = 24,
+    super.key,
+  });
+
+  final Widget child;
+  final Widget? title;
+  final Widget? trailing;
+  final EdgeInsetsGeometry padding;
+  final bool scrollable;
+  final bool showHandle;
+  final bool keyboardSafe;
+  final double handleWidth;
+  final double handleSpacing;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showHandle) ...[
+          _sheetDragHandle(context, width: handleWidth),
+          SizedBox(height: handleSpacing),
+        ],
+        if (title != null) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: title!),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+        child,
+      ],
+    );
+
+    Widget body = scrollable
+        ? SingleChildScrollView(padding: padding, child: content)
+        : Padding(padding: padding, child: content);
+    if (keyboardSafe) {
+      body = Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: body,
+      );
+    }
+    return _sheetSurface(context: context, child: body);
+  }
+}
+
+@immutable
+class LessonCardVisuals {
+  const LessonCardVisuals({
+    required this.radius,
+    required this.cardStyle,
+    required this.blurEnabled,
+    required this.blurSigma,
+    required this.cardOpacity,
+    required this.accentStyle,
+    required this.showPattern,
+    required this.fillColor,
+    required this.gradient,
+    required this.border,
+    required this.textColor,
+    required this.secondaryTextColor,
+    required this.shadows,
+    required this.accentWidth,
+  });
+
+  final double radius;
+  final int cardStyle;
+  final bool blurEnabled;
+  final double blurSigma;
+  final double cardOpacity;
+  final int accentStyle;
+  final bool showPattern;
+  final Color fillColor;
+  final Gradient? gradient;
+  final Border? border;
+  final Color textColor;
+  final Color secondaryTextColor;
+  final List<BoxShadow>? shadows;
+  final double accentWidth;
+
+  BorderRadius get borderRadius => BorderRadius.circular(radius);
+}
+
+abstract final class LessonCardVisualsResolver {
+  static LessonCardVisuals resolve({
+    required BuildContext context,
+    required UntisThemeTokens tokens,
+    required bool isDark,
+    required bool isCancelled,
+    required bool isNow,
+    required Color foregroundColor,
+    required Color backgroundColor,
+    bool isTeacherMissing = false,
+    bool usePattern = true,
+    double? borderRadius,
+    double accentWidth = 3.5,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final themeOwnsStyle = tokens.id != AppThemeId.defaultTheme;
+    final radius = themeOwnsStyle
+        ? tokens.surfaceRadius
+        : (borderRadius ?? lessonBorderRadiusNotifier.value);
+    final cardStyle = themeOwnsStyle ? 3 : lessonCardStyleNotifier.value;
+    final blurEnabled =
+        tokens.supportsBlur &&
+        blurEnabledNotifier.value &&
+        (themeOwnsStyle || lessonBlurEnabledNotifier.value || cardStyle == 1);
+    final blurSigma = themeOwnsStyle
+        ? tokens.blurSigma
+        : lessonBlurAmountNotifier.value;
+    final cardOpacity = themeOwnsStyle
+        ? tokens.lessonSurfaceOpacity
+        : lessonCardOpacityNotifier.value;
+    final accentStyle = themeOwnsStyle ? 0 : lessonAccentStyleNotifier.value;
+    final showPattern =
+        (isCancelled || isTeacherMissing) &&
+        usePattern &&
+        lessonCancelledPatternNotifier.value;
+
+    List<BoxShadow>? shadows;
+    if (tokens.glowEffectsEnabled && isNow) {
+      shadows = [
+        BoxShadow(
+          color: foregroundColor.withValues(alpha: 0.38),
+          blurRadius: 14,
+          spreadRadius: 1.5,
+          offset: const Offset(0, 3),
+        ),
+      ];
+    }
+
+    Color fillColor;
+    Gradient? gradient;
+    Border? border;
+    Color textColor = isCancelled
+        ? foregroundColor.withValues(alpha: 0.6)
+        : foregroundColor;
+    Color secondaryTextColor = isCancelled
+        ? foregroundColor.withValues(alpha: 0.48)
+        : foregroundColor.withValues(alpha: 0.75);
+
+    switch (cardStyle) {
+      case 1:
+        fillColor = isCancelled
+            ? backgroundColor.withValues(
+                alpha: (0.28 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : cs.surfaceContainerLowest.withValues(
+                alpha: (0.52 * cardOpacity).clamp(0.0, 1.0),
+              );
+        border = Border.all(
+          color: isCancelled
+              ? foregroundColor.withValues(alpha: 0.40)
+              : foregroundColor.withValues(alpha: isDark ? 0.42 : 0.28),
+          width: 1.2,
+        );
+        break;
+      case 2:
+        fillColor = Colors.transparent;
+        gradient = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isCancelled
+              ? [
+                  foregroundColor.withValues(
+                    alpha: (0.25 * cardOpacity).clamp(0.0, 1.0),
+                  ),
+                  backgroundColor.withValues(
+                    alpha: (0.45 * cardOpacity).clamp(0.0, 1.0),
+                  ),
+                ]
+              : [
+                  foregroundColor.withValues(
+                    alpha: ((isDark ? 0.35 : 0.25) * cardOpacity).clamp(
+                      0.0,
+                      1.0,
+                    ),
+                  ),
+                  backgroundColor.withValues(
+                    alpha: cardOpacity.clamp(0.0, 1.0),
+                  ),
+                ],
+        );
+        border = Border.all(
+          color: foregroundColor.withValues(alpha: isDark ? 0.30 : 0.18),
+          width: 1.0,
+        );
+        break;
+      case 3:
+        fillColor = isCancelled
+            ? cs.surfaceContainerLowest.withValues(
+                alpha: (0.35 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : cs.surfaceContainerLow.withValues(
+                alpha: (0.60 * cardOpacity).clamp(0.0, 1.0),
+              );
+        border = Border.all(
+          color: isCancelled
+              ? foregroundColor.withValues(alpha: 0.50)
+              : foregroundColor.withValues(alpha: isDark ? 0.85 : 0.70),
+          width: 1.8,
+        );
+        break;
+      case 4:
+        fillColor = isCancelled
+            ? foregroundColor.withValues(alpha: 0.45)
+            : foregroundColor.withValues(alpha: cardOpacity.clamp(0.6, 1.0));
+        final solidText =
+            fillColor.computeLuminance() > 0.45 ? Colors.black87 : Colors.white;
+        textColor = solidText;
+        secondaryTextColor = solidText.withValues(alpha: 0.78);
+        break;
+      case 0:
+      default:
+        fillColor = isCancelled
+            ? backgroundColor.withValues(
+                alpha: (0.40 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : backgroundColor.withValues(
+                alpha: cardOpacity.clamp(0.0, 1.0),
+              );
+        border = Border.all(
+          color: foregroundColor.withValues(alpha: isDark ? 0.25 : 0.15),
+          width: 1.0,
+        );
+        break;
+    }
+
+    if (tokens.id == AppThemeId.manga) {
+      fillColor = cs.surfaceContainerLow;
+      gradient = null;
+      border = Border.all(color: cs.outline, width: tokens.borderWidth);
+      textColor = cs.onSurface;
+      secondaryTextColor = cs.onSurfaceVariant;
+      shadows = [
+        BoxShadow(
+          color: tokens.shadowColor,
+          offset: tokens.shadowOffset,
+          blurRadius: 0,
+        ),
+      ];
+    } else if (tokens.id == AppThemeId.cyber) {
+      border = Border.all(
+        color: isCancelled ? foregroundColor : cs.primary,
+        width: tokens.borderWidth,
+      );
+    }
+
+    return LessonCardVisuals(
+      radius: radius,
+      cardStyle: cardStyle,
+      blurEnabled: blurEnabled,
+      blurSigma: blurSigma,
+      cardOpacity: cardOpacity,
+      accentStyle: accentStyle,
+      showPattern: showPattern,
+      fillColor: fillColor,
+      gradient: gradient,
+      border: border,
+      textColor: textColor,
+      secondaryTextColor: secondaryTextColor,
+      shadows: shadows,
+      accentWidth: accentStyle == 0
+          ? accentWidth
+          : (accentStyle == 1 ? 1.8 : 0.0),
+    );
+  }
+}
+
 /// Shared width vocabulary for layouts that need to work from a phone to a
 /// desktop-sized tablet. Keep breakpoints here instead of letting individual
 /// pages make subtly different tablet decisions.
@@ -1095,11 +1461,11 @@ Widget _m3SelectionMenu({
   );
 }
 
-Widget _sheetDragHandle(BuildContext context) {
+Widget _sheetDragHandle(BuildContext context, {double width = 40}) {
   final cs = Theme.of(context).colorScheme;
   return Center(
     child: Container(
-      width: 40,
+      width: width,
       height: 4,
       decoration: BoxDecoration(
         color: cs.onSurface.withValues(alpha: 0.12),
