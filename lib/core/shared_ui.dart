@@ -142,10 +142,7 @@ class FeatureSummaryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 12),
-                trailing!,
-              ],
+              if (trailing != null) ...[const SizedBox(width: 12), trailing!],
             ],
           ),
         ),
@@ -193,7 +190,7 @@ class UntisSheetScaffold extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: title!),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
           const SizedBox(height: 24),
@@ -378,8 +375,9 @@ abstract final class LessonCardVisualsResolver {
         fillColor = isCancelled
             ? foregroundColor.withValues(alpha: 0.45)
             : foregroundColor.withValues(alpha: cardOpacity.clamp(0.6, 1.0));
-        final solidText =
-            fillColor.computeLuminance() > 0.45 ? Colors.black87 : Colors.white;
+        final solidText = fillColor.computeLuminance() > 0.45
+            ? Colors.black87
+            : Colors.white;
         textColor = solidText;
         secondaryTextColor = solidText.withValues(alpha: 0.78);
         break;
@@ -389,9 +387,7 @@ abstract final class LessonCardVisualsResolver {
             ? backgroundColor.withValues(
                 alpha: (0.40 * cardOpacity).clamp(0.0, 1.0),
               )
-            : backgroundColor.withValues(
-                alpha: cardOpacity.clamp(0.0, 1.0),
-              );
+            : backgroundColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0));
         border = Border.all(
           color: foregroundColor.withValues(alpha: isDark ? 0.25 : 0.15),
           width: 1.0,
@@ -650,7 +646,7 @@ extension UntisSnackBarContext on BuildContext {
       SnackBar(
         content: Text(message),
         behavior: behavior,
-        duration: duration,
+        duration: duration ?? const Duration(seconds: 4),
       ),
     );
   }

@@ -1,5 +1,5 @@
-import '../../core/time_utils.dart';
-import '../../data/webuntis/webuntis_client.dart';
+import '../../../core/time_utils.dart';
+import '../../../data/webuntis/webuntis_client.dart';
 
 class TimetableMasterData {
   const TimetableMasterData({
@@ -14,10 +14,7 @@ class TimetableMasterData {
 }
 
 class TimetableClassCatalog {
-  const TimetableClassCatalog({
-    required this.classes,
-    required this.sessionId,
-  });
+  const TimetableClassCatalog({required this.classes, required this.sessionId});
 
   final List<Map<String, dynamic>> classes;
   final String sessionId;
@@ -25,7 +22,7 @@ class TimetableClassCatalog {
 
 class TimetableRepository {
   TimetableRepository({WebUntisClient? client})
-      : _client = client ?? WebUntisClient();
+    : _client = client ?? WebUntisClient();
 
   final WebUntisClient _client;
 
@@ -141,11 +138,7 @@ class TimetableRepository {
         ),
         method: 'authenticate',
         requestId: 'anon',
-        params: const {
-          'user': '',
-          'password': '',
-          'client': 'UntisPlus',
-        },
+        params: const {'user': '', 'password': '', 'client': 'UntisPlus'},
       );
       final result = response['result'];
       if (result is Map) return result['sessionId']?.toString();
@@ -267,17 +260,13 @@ class TimetableRepository {
     return data.map((key, value) => MapEntry(key.toString(), value));
   }
 
-  static List<Map<String, dynamic>> _resultMaps(
-    Map<String, dynamic> response,
-  ) {
+  static List<Map<String, dynamic>> _resultMaps(Map<String, dynamic> response) {
     final result = response['result'];
     if (result is! List) return const <Map<String, dynamic>>[];
     return result
         .whereType<Map>()
         .map(
-          (item) => item.map(
-            (key, value) => MapEntry(key.toString(), value),
-          ),
+          (item) => item.map((key, value) => MapEntry(key.toString(), value)),
         )
         .toList(growable: false);
   }

@@ -74,6 +74,54 @@ void main() {
     }
   });
 
+  test('UI files do not perform HTTP requests directly', () {
+    for (final root in ['lib/screens', 'lib/widgets']) {
+      for (final file in _dartFiles(root)) {
+        final source = file.readAsStringSync();
+        expect(
+          source,
+          isNot(contains("package:http/http.dart")),
+          reason: '${file.path} imports the HTTP transport directly',
+        );
+        expect(
+          RegExp(r'\bhttp\.(get|post|put|patch|delete)\s*\(').hasMatch(source),
+          isFalse,
+          reason: '${file.path} performs an HTTP request directly',
+        );
+      }
+    }
+  });
+
+  test('application entry point does not own WebUntis login protocol', () {
+    final source = File('lib/main.dart').readAsStringSync();
+    for (final token in [
+      'jsonrpc_intern.do',
+      'getUserData2017',
+      'JSESSIONID=',
+      '_authenticateUntis',
+    ]) {
+      expect(
+        source,
+        isNot(contains(token)),
+        reason: 'lib/main.dart owns login transport token $token',
+      );
+    }
+  });
+
+  test('legacy dynamic localization access stays removed', () {
+    for (final file in _dartFiles('lib')) {
+      if (_normalizedPath(file).contains('/l10n/generated/')) continue;
+      final source = file.readAsStringSync();
+      for (final token in ['AppL10n.of(', '.ui(', 'uiFormat(']) {
+        expect(
+          source,
+          isNot(contains(token)),
+          reason: '${file.path} uses dynamic localization API $token',
+        );
+      }
+    }
+  });
+
   test('screens use time_utils for Untis date encoding and parsing', () {
     const forbidden = [
       "DateFormat('yyyyMMdd')",
@@ -95,8 +143,7 @@ void main() {
   });
 
   test('school HTML sanitization has one implementation boundary', () {
-    const helperPath =
-        'lib/features/school_info/application/school_html.dart';
+    const helperPath = 'lib/features/school_info/application/school_html.dart';
     final helperSource = File(helperPath).readAsStringSync();
     expect(helperSource, contains('sanitizeSchoolHtml'));
     expect(helperSource, contains("querySelectorAll("));

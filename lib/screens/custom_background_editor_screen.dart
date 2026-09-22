@@ -370,11 +370,7 @@ class _CustomBackgroundEditorScreenState
       subtitle: l.bgEditorUnsavedDesc,
       fitContentHeight: true,
       options: [
-        _SheetOption(
-          value: 'save',
-          title: l.save,
-          icon: Icons.save_rounded,
-        ),
+        _SheetOption(value: 'save', title: l.save, icon: Icons.save_rounded),
         _SheetOption(
           value: 'discard',
           title: l.bgEditorDiscard,
@@ -496,7 +492,7 @@ class _CustomBackgroundEditorScreenState
       _commitDraft(normalized);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(appL10nFor(appLocaleNotifier.value).saved),
+          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaved),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -504,7 +500,7 @@ class _CustomBackgroundEditorScreenState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(appL10nFor(appLocaleNotifier.value).saveFailed),
+          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaveFailed),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -555,13 +551,13 @@ class _CustomBackgroundEditorScreenState
     final l = appL10nFor(appLocaleNotifier.value);
     final confirm = await _showUnifiedOptionSheet<String>(
       context: context,
-      title: l.deleteTitle,
-      subtitle: l.deleteDesc,
+      title: l.bgEditorDeleteTitle,
+      subtitle: l.bgEditorDeleteDesc,
       fitContentHeight: true,
       options: [
         _SheetOption(
           value: 'delete',
-          title: l.deleteConfirm,
+          title: l.delete,
           icon: Icons.delete_rounded,
           destructive: true,
         ),
@@ -2241,10 +2237,7 @@ class _CustomBackgroundEditorScreenState
                     color: cs.error,
                   ),
                   onPressed: _deleteBackground,
-                  child: Text(
-                    l.delete,
-                    style: TextStyle(color: cs.error),
-                  ),
+                  child: Text(l.delete, style: TextStyle(color: cs.error)),
                 ),
               ],
               builder: (context, controller, child) => IconButton(

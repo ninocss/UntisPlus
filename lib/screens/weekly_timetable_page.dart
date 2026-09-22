@@ -90,12 +90,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ? _tempSessionId!
       : sessionID;
 
-  WebUntisRequestContext get _timetableRequestContext =>
-      WebUntisRequestContext(
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
-        sessionId: _currentSessionId,
-      );
+  WebUntisRequestContext get _timetableRequestContext => WebUntisRequestContext(
+    schoolUrl: schoolUrl,
+    schoolName: schoolName,
+    sessionId: _currentSessionId,
+  );
 
   static const double _ppm = 1.5;
 
@@ -1017,8 +1016,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final remaining = current == null
         ? ''
         : l.widgetMinutesRemaining(
-            (_toMinutes((current['endTime'] as int?) ?? 0) - nowMinutes)
-                .clamp(0, 999),
+            (_toMinutes((current['endTime'] as int?) ?? 0) - nowMinutes).clamp(
+              0,
+              999,
+            ),
           );
     final homework = homeworksNotifier.value
         .where((item) => item['isDone'] != true)
@@ -1077,9 +1078,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         nextLesson: '',
         timeRemaining: remaining,
         dailySchedule: schedule,
-        homeworkSummary: homework.isEmpty
-            ? l.widgetNoOpenHomework
-            : homework,
+        homeworkSummary: homework.isEmpty ? l.widgetNoOpenHomework : homework,
         notificationSummary: l.widgetOpenNotifications,
         examSummary: examSummary,
         accountId: activeUntisAccountId ?? 'active',
@@ -2964,7 +2963,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     double? availableWidth,
     double? availableHeight,
   }) {
-    final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
     final visuals = LessonCardVisualsResolver.resolve(
       context: context,
@@ -4782,70 +4780,69 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         date: requestedMonday,
       );
       if (data != null) {
-      final elements = (data?['elements'] as List?) ?? const <dynamic>[];
-      final teacherNameById = <int, String>{};
-      for (final e in elements) {
-        if (e is! Map) continue;
-        if ((e['type'] as int?) != 2) continue;
-        final id = e['id'] as int?;
-        if (id == null) continue;
-        final n =
-            (e['longName'] ??
-                    e['longname'] ??
-                    e['displayname'] ??
-                    e['name'] ??
-                    '')
-                .toString()
-                .trim();
-        if (n.isNotEmpty) teacherNameById[id] = n;
-      }
+        final elements = (data['elements'] as List?) ?? const <dynamic>[];
+        final teacherNameById = <int, String>{};
+        for (final e in elements) {
+          if (e is! Map) continue;
+          if ((e['type'] as int?) != 2) continue;
+          final id = e['id'] as int?;
+          if (id == null) continue;
+          final n =
+              (e['longName'] ??
+                      e['longname'] ??
+                      e['displayname'] ??
+                      e['name'] ??
+                      '')
+                  .toString()
+                  .trim();
+          if (n.isNotEmpty) teacherNameById[id] = n;
+        }
 
-      final elementPeriods = (data?['elementPeriods'] as Map?) ?? const {};
-      final periodsForElement = elementPeriods[requestPersonId.toString()];
-      final periods = periodsForElement is List
-          ? periodsForElement
-          : const <dynamic>[];
-      for (final p in periods) {
-        if (p is! Map) continue;
-        final pElements = (p['elements'] as List?) ?? const <dynamic>[];
-        int? subjectId;
-        int? roomId;
-        final teacherNames = <String>[];
-        for (final pe in pElements) {
-          if (pe is! Map) continue;
-          final t = pe['type'] as int?;
-          final id = pe['id'] as int?;
-          if (t == 3 && id != null) subjectId ??= id;
-          if (t == 4 && id != null) roomId ??= id;
-          if (t == 2 && id != null) {
-            final tn = teacherNameById[id];
-            if (tn != null && tn.isNotEmpty && !teacherNames.contains(tn)) {
-              teacherNames.add(tn);
+        final elementPeriods = (data['elementPeriods'] as Map?) ?? const {};
+        final periodsForElement = elementPeriods[requestPersonId.toString()];
+        final periods = periodsForElement is List
+            ? periodsForElement
+            : const <dynamic>[];
+        for (final p in periods) {
+          if (p is! Map) continue;
+          final pElements = (p['elements'] as List?) ?? const <dynamic>[];
+          int? subjectId;
+          int? roomId;
+          final teacherNames = <String>[];
+          for (final pe in pElements) {
+            if (pe is! Map) continue;
+            final t = pe['type'] as int?;
+            final id = pe['id'] as int?;
+            if (t == 3 && id != null) subjectId ??= id;
+            if (t == 4 && id != null) roomId ??= id;
+            if (t == 2 && id != null) {
+              final tn = teacherNameById[id];
+              if (tn != null && tn.isNotEmpty && !teacherNames.contains(tn)) {
+                teacherNames.add(tn);
+              }
             }
           }
+          final teacherJoined = teacherNames.join(', ');
+          if (teacherJoined.isEmpty || subjectId == null) continue;
+
+          final exactKey = _lessonTeacherKeyFromParts(
+            date: p['date'],
+            startTime: p['startTime'],
+            endTime: p['endTime'],
+            subjectId: subjectId,
+            roomId: roomId,
+            withRoom: true,
+          );
+          final looseKey = _lessonTeacherKeyFromParts(
+            date: p['date'],
+            startTime: p['startTime'],
+            endTime: p['endTime'],
+            subjectId: subjectId,
+            withRoom: false,
+          );
+          exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
+          looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
         }
-        final teacherJoined = teacherNames.join(', ');
-        if (teacherJoined.isEmpty || subjectId == null) continue;
-
-        final exactKey = _lessonTeacherKeyFromParts(
-          date: p['date'],
-          startTime: p['startTime'],
-          endTime: p['endTime'],
-          subjectId: subjectId,
-          roomId: roomId,
-          withRoom: true,
-        );
-        final looseKey = _lessonTeacherKeyFromParts(
-          date: p['date'],
-          startTime: p['startTime'],
-          endTime: p['endTime'],
-          subjectId: subjectId,
-          withRoom: false,
-        );
-        exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
-        looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
-      }
-
       }
     } catch (_) {}
 
@@ -4914,32 +4911,25 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _openClassSearch() async {
-    final catalog = await runWithUntisBlockingLoader(
-      context,
-      () async {
-        if (demoModeNotifier.value) {
-          final classes = DemoModeService.demoClasses()
-              .whereType<Map>()
-              .map(
-                (item) => item.map(
-                  (key, value) => MapEntry(key.toString(), value),
-                ),
-              )
-              .toList(growable: false);
-          return TimetableClassCatalog(
-            classes: classes,
-            sessionId: sessionID,
-          );
-        }
-        return _timetableRepository.fetchClassCatalog(
-          WebUntisRequestContext(
-            schoolUrl: schoolUrl,
-            schoolName: schoolName,
-            sessionId: sessionID,
-          ),
-        );
-      },
-    );
+    final catalog = await runWithUntisBlockingLoader(context, () async {
+      if (demoModeNotifier.value) {
+        final classes = DemoModeService.demoClasses()
+            .whereType<Map>()
+            .map(
+              (item) =>
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+            )
+            .toList(growable: false);
+        return TimetableClassCatalog(classes: classes, sessionId: sessionID);
+      }
+      return _timetableRepository.fetchClassCatalog(
+        WebUntisRequestContext(
+          schoolUrl: schoolUrl,
+          schoolName: schoolName,
+          sessionId: sessionID,
+        ),
+      );
+    });
 
     final classes = <dynamic>[...catalog.classes];
     final sid = catalog.sessionId;
@@ -5092,8 +5082,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   : cs.onSurfaceVariant.withValues(alpha: 0.6),
                             ),
                             onPressed: () async {
-                              final prefs =
-                                  SettingsStore.instance.preferences;
+                              final prefs = SettingsStore.instance.preferences;
                               setSheetState(() {
                                 defaultClassId = null;
                                 defaultClassName = null;
@@ -5238,8 +5227,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                         .withValues(alpha: 0.6),
                                             ),
                                             onPressed: () async {
-                                              final prefs =
-                                                  SettingsStore.instance.preferences;
+                                              final prefs = SettingsStore
+                                                  .instance
+                                                  .preferences;
                                               setSheetState(() {
                                                 if (isFavorite) {
                                                   favoriteClassIds.remove(id);
@@ -5270,8 +5260,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                         .withValues(alpha: 0.6),
                                             ),
                                             onPressed: () async {
-                                              final prefs =
-                                                  SettingsStore.instance.preferences;
+                                              final prefs = SettingsStore
+                                                  .instance
+                                                  .preferences;
                                               setSheetState(() {
                                                 if (isDefault) {
                                                   defaultClassId = null;
@@ -5307,8 +5298,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         setState(() {
                                           _viewingClassId = id;
                                           _viewingClassName = name;
-                                          _tempSessionId =
-                                              (sid != null && sid != sessionID)
+                                          _tempSessionId = sid != sessionID
                                               ? sid
                                               : null;
                                         });

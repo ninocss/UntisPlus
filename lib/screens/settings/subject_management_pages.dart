@@ -96,7 +96,7 @@ class SubjectColorsPage extends StatelessWidget {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                       ),
                     ),

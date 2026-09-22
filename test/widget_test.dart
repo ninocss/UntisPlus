@@ -5,10 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:untisplus/core/settings_store.dart';
 import 'package:untisplus/l10n.dart';
 import 'package:untisplus/main.dart';
 
 void main() {
+  Future<void> setMockSettings(Map<String, Object> values) async {
+    SharedPreferences.setMockInitialValues(values);
+    await SettingsStore.initialize(
+      preferences: await SharedPreferences.getInstance(),
+    );
+  }
+
   Future<void> pumpUntilFound(
     WidgetTester tester,
     Finder finder, {
@@ -51,8 +59,8 @@ void main() {
     return dayCarousel;
   }
 
-  setUp(() {
-    SharedPreferences.setMockInitialValues({
+  setUp(() async {
+    await setMockSettings({
       'viewMode': 0,
       'onboardingCheckpoint': 0,
     });
@@ -274,7 +282,7 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
-    SharedPreferences.setMockInitialValues({
+    await setMockSettings({
       'viewMode': 0,
       // This test covers the theme page layout, not the welcome-page transition.
       'onboardingCheckpoint': 1,
@@ -311,7 +319,7 @@ void main() {
       const Size(768, 1024),
       const Size(1024, 768),
     ]) {
-      SharedPreferences.setMockInitialValues({
+      await setMockSettings({
         'viewMode': 0,
         'onboardingCheckpoint': 0,
       });
@@ -383,7 +391,7 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
-    SharedPreferences.setMockInitialValues({
+    await setMockSettings({
       'viewMode': 0,
       'onboardingCheckpoint': 0,
       'aiProvider': 'local',

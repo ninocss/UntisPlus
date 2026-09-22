@@ -86,298 +86,292 @@ Future<void> _showAddHomeworkDialog(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              existing == null
-                                  ? l.homeworkAddTitle
-                                  : l.homeworkEditTitle,
-                              style: GoogleFonts.outfit(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            Text(
-                              l.homeworkAddDesc,
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurfaceVariant.withValues(
-                                  alpha: 0.7,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: cs.primary.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: cs.primary.withValues(alpha: 0.4),
-                            width: 2,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          existing == null
+                              ? l.homeworkAddTitle
+                              : l.homeworkEditTitle,
+                          style: GoogleFonts.outfit(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        child: Center(
-                          child: Icon(
-                            Icons.assignment_rounded,
-                            color: cs.primary,
-                            size: 24,
+                        Text(
+                          l.homeworkAddDesc,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  Text(
-                    l.homeworkSubjectLabel.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: cs.primary,
-                      letterSpacing: 1.2,
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (subjects.isNotEmpty)
-                    _m3SelectionMenu(
-                      context: ctx,
-                      value: selectedSubject,
-                      entries: subjects,
-                      icon: Icons.book_rounded,
-                      onSelected: (value) => setDlg(() {
-                        selectedSubject = value;
-                        subjectCtrl.text = selectedSubject;
-                      }),
-                    )
-                  else
-                    TextField(
-                      controller: subjectCtrl,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.book_rounded),
-                        hintText: l.homeworkSubjectLabel,
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.4,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: cs.primary.withValues(alpha: 0.4),
+                        width: 2,
                       ),
                     ),
-                  const SizedBox(height: 24),
-                  Text(
-                    l.homeworkTaskLabel.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: cs.primary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: taskCtrl,
-                    maxLines: 3,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    decoration: InputDecoration(
-                      prefixIcon: const Padding(
-                        padding: EdgeInsets.only(bottom: 42),
-                        child: Icon(Icons.assignment_rounded),
-                      ),
-                      hintText: l.homeworkTaskLabel,
-                      filled: true,
-                      fillColor: cs.surfaceContainerHighest.withValues(
-                        alpha: 0.4,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
+                    child: Center(
+                      child: Icon(
+                        Icons.assignment_rounded,
+                        color: cs.primary,
+                        size: 24,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    l.homeworkDueDateLabel.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: cs.primary,
-                      letterSpacing: 1.2,
+                ],
+              ),
+              const SizedBox(height: 32),
+              Text(
+                l.homeworkSubjectLabel.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: cs.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (subjects.isNotEmpty)
+                _m3SelectionMenu(
+                  context: ctx,
+                  value: selectedSubject,
+                  entries: subjects,
+                  icon: Icons.book_rounded,
+                  onSelected: (value) => setDlg(() {
+                    selectedSubject = value;
+                    subjectCtrl.text = selectedSubject;
+                  }),
+                )
+              else
+                TextField(
+                  controller: subjectCtrl,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.book_rounded),
+                    hintText: l.homeworkSubjectLabel,
+                    filled: true,
+                    fillColor: cs.surfaceContainerHighest.withValues(
+                      alpha: 0.4,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Builder(
-                    builder: (context) {
-                      final suggested = _findSubjectDates(selectedSubject);
-                      if (suggested.isEmpty) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: suggested.map((d) {
-                              final isSelected =
-                                  d.year == selectedDate.year &&
-                                  d.month == selectedDate.month &&
-                                  d.day == selectedDate.day;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(
-                                    DateFormat(
-                                      'E, dd.MM.',
-                                      appLocaleNotifier.value,
-                                    ).format(d),
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  selected: isSelected,
-                                  onSelected: (val) {
-                                    if (val) setDlg(() => selectedDate = d);
-                                  },
-                                  selectedColor: cs.primaryContainer,
-                                  labelStyle: TextStyle(
-                                    color: isSelected
-                                        ? cs.onPrimaryContainer
-                                        : cs.onSurfaceVariant,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      );
-                    },
+                ),
+              const SizedBox(height: 24),
+              Text(
+                l.homeworkTaskLabel.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: cs.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: taskCtrl,
+                maxLines: 3,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                decoration: InputDecoration(
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(bottom: 42),
+                    child: Icon(Icons.assignment_rounded),
                   ),
-                  InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: ctx,
-                        initialDate: selectedDate,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (picked != null) {
-                        setDlg(() => selectedDate = picked);
-                      }
-                    },
+                  hintText: l.homeworkTaskLabel,
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                  border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.4,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                l.homeworkDueDateLabel.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: cs.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  final suggested = _findSubjectDates(selectedSubject);
+                  if (suggested.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: [
-                          const Icon(Icons.calendar_today_rounded, size: 20),
-                          const SizedBox(width: 12),
-                          Text(
-                            DateFormat(
-                              'dd. MMMM yyyy',
-                              _icuLocale(appLocaleNotifier.value),
-                            ).format(selectedDate),
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
+                        children: suggested.map((d) {
+                          final isSelected =
+                              d.year == selectedDate.year &&
+                              d.month == selectedDate.month &&
+                              d.day == selectedDate.day;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(
+                                DateFormat(
+                                  'E, dd.MM.',
+                                  appLocaleNotifier.value,
+                                ).format(d),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              selected: isSelected,
+                              onSelected: (val) {
+                                if (val) setDlg(() => selectedDate = d);
+                              },
+                              selectedColor: cs.primaryContainer,
+                              labelStyle: TextStyle(
+                                color: isSelected
+                                    ? cs.onPrimaryContainer
+                                    : cs.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                        ],
+                          );
+                        }).toList(),
                       ),
                     ),
+                  );
+                },
+              ),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (picked != null) {
+                    setDlg(() => selectedDate = picked);
+                  }
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
                   ),
-                  const SizedBox(height: 40),
-                  Row(
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
                     children: [
-                      if (existing != null && editIndex != null)
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () async {
-                              Navigator.pop(ctx);
-                              final list = List<Map<String, dynamic>>.from(
-                                customHomeworkNotifier.value,
-                              );
-                              if (editIndex >= 0 && editIndex < list.length) {
-                                list.removeAt(editIndex);
-                                await saveCustomHomework(list);
-                              }
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: cs.error,
-                              side: BorderSide(
-                                color: cs.error.withValues(alpha: 0.5),
-                                width: 1.5,
-                              ),
-                              minimumSize: const Size(0, 60),
-                            ),
-                            child: const Icon(Icons.delete_outline_rounded),
-                          ),
-                        ),
-                      if (existing != null && editIndex != null)
-                        const SizedBox(width: 12),
-                      Expanded(
-                        flex: 3,
-                        child: FilledButton(
-                          onPressed: () async {
-                            final subj = subjectCtrl.text.trim();
-                            final text = taskCtrl.text.trim();
-                            if (subj.isEmpty || text.isEmpty) return;
-                            final dateInt = untisDateInt(selectedDate);
-                            final list = List<Map<String, dynamic>>.from(
-                              customHomeworkNotifier.value,
-                            );
-                            final item = <String, dynamic>{
-                              'id':
-                                  existing?['id'] ??
-                                  'hw_${DateTime.now().millisecondsSinceEpoch}',
-                              'subject': subj,
-                              'text': text,
-                              'dueDate': dateInt,
-                              'isDone': existing?['isDone'] ?? false,
-                              '_custom': true,
-                            };
-                            if (editIndex != null &&
-                                editIndex >= 0 &&
-                                editIndex < list.length) {
-                              list[editIndex] = item;
-                            } else {
-                              list.add(item);
-                            }
-                            await saveCustomHomework(list);
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          },
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(0, 60),
-                          ),
-                          child: Text(
-                            l.save,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                            ),
-                          ),
+                      const Icon(Icons.calendar_today_rounded, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        DateFormat(
+                          'dd. MMMM yyyy',
+                          _icuLocale(appLocaleNotifier.value),
+                        ).format(selectedDate),
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              Row(
+                children: [
+                  if (existing != null && editIndex != null)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          final list = List<Map<String, dynamic>>.from(
+                            customHomeworkNotifier.value,
+                          );
+                          if (editIndex >= 0 && editIndex < list.length) {
+                            list.removeAt(editIndex);
+                            await saveCustomHomework(list);
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: cs.error,
+                          side: BorderSide(
+                            color: cs.error.withValues(alpha: 0.5),
+                            width: 1.5,
+                          ),
+                          minimumSize: const Size(0, 60),
+                        ),
+                        child: const Icon(Icons.delete_outline_rounded),
+                      ),
+                    ),
+                  if (existing != null && editIndex != null)
+                    const SizedBox(width: 12),
+                  Expanded(
+                    flex: 3,
+                    child: FilledButton(
+                      onPressed: () async {
+                        final subj = subjectCtrl.text.trim();
+                        final text = taskCtrl.text.trim();
+                        if (subj.isEmpty || text.isEmpty) return;
+                        final dateInt = untisDateInt(selectedDate);
+                        final list = List<Map<String, dynamic>>.from(
+                          customHomeworkNotifier.value,
+                        );
+                        final item = <String, dynamic>{
+                          'id':
+                              existing?['id'] ??
+                              'hw_${DateTime.now().millisecondsSinceEpoch}',
+                          'subject': subj,
+                          'text': text,
+                          'dueDate': dateInt,
+                          'isDone': existing?['isDone'] ?? false,
+                          '_custom': true,
+                        };
+                        if (editIndex != null &&
+                            editIndex >= 0 &&
+                            editIndex < list.length) {
+                          list[editIndex] = item;
+                        } else {
+                          list.add(item);
+                        }
+                        await saveCustomHomework(list);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 60),
+                      ),
+                      child: Text(
+                        l.save,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         );
@@ -460,22 +454,22 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
       invalidMessage: l.examsImportInvalidJson,
     );
 
-      final current = List<Map<String, dynamic>>.from(
-        customHomeworkNotifier.value,
-      );
-      for (var e in items) {
-        current.add({
-          'id': 'hw_${DateTime.now().millisecondsSinceEpoch}_${current.length}',
-          'subject': e['subject']?.toString() ?? 'Unbekannt',
-          'text': e['text']?.toString() ?? '',
-          'dueDate': (e['dueDate']?.toString() ?? '').replaceAll('-', ''),
-          'isDone': false,
-          '_custom': true,
-        });
-      }
-      await saveCustomHomework(current);
-      if (!context.mounted) return;
-      context.showUntisSnackBar(l.homeworkImportSuccess);
+    final current = List<Map<String, dynamic>>.from(
+      customHomeworkNotifier.value,
+    );
+    for (var e in items) {
+      current.add({
+        'id': 'hw_${DateTime.now().millisecondsSinceEpoch}_${current.length}',
+        'subject': e['subject']?.toString() ?? 'Unbekannt',
+        'text': e['text']?.toString() ?? '',
+        'dueDate': (e['dueDate']?.toString() ?? '').replaceAll('-', ''),
+        'isDone': false,
+        '_custom': true,
+      });
+    }
+    await saveCustomHomework(current);
+    if (!context.mounted) return;
+    context.showUntisSnackBar(l.homeworkImportSuccess);
   } catch (e) {
     if (!context.mounted) return;
     context.showUntisSnackBar('${l.homeworkImportError}$e');
@@ -877,96 +871,6 @@ class _HomeworkViewState extends State<_HomeworkView> {
         ],
       ),
     );
-  }) {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final title = l.homeworkOpenCount(openCount);
-    final detail = dueSoonCount == 0
-        ? l.homeworkNothingDueSoon
-        : l.homeworkDueSoonCount(dueSoonCount);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _glassContainer(
-        context: context,
-        borderRadius: BorderRadius.circular(24),
-        color: cs.primaryContainer.withValues(alpha: 0.25),
-        border: Border.all(
-          color: cs.primary.withValues(alpha: 0.25),
-          width: 1.2,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [cs.primary, cs.primary.withValues(alpha: 0.75)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: _glowShadows(context, [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]),
-                ),
-                child: const Icon(
-                  Icons.assignment_turned_in_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.outfit(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.upcoming_rounded,
-                          size: 13,
-                          color: cs.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            detail,
-                            style: GoogleFonts.outfit(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: cs.onSurfaceVariant,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildHomeworkCard(
@@ -1030,9 +934,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            !isDone ? l.homeworkMarkedDone : l.homeworkReopened,
-          ),
+          content: Text(!isDone ? l.homeworkMarkedDone : l.homeworkReopened),
           action: SnackBarAction(
             label: l.commonUndo,
             onPressed: () => unawaited(setDone(isDone)),
@@ -1265,324 +1167,314 @@ Future<void> _showAddExamDialog(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              existing == null
-                                  ? l.examsAddTitle
-                                  : l.examsEditTitle,
-                              style: GoogleFonts.outfit(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            Text(
-                              l.examsAddDesc,
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurfaceVariant.withValues(
-                                  alpha: 0.7,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: cs.primary.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: cs.primary.withValues(alpha: 0.4),
-                            width: 2,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          existing == null ? l.examsAddTitle : l.examsEditTitle,
+                          style: GoogleFonts.outfit(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        child: Center(
-                          child: Icon(
-                            Icons.edit_calendar_rounded,
-                            color: cs.primary,
-                            size: 24,
+                        Text(
+                          l.examsAddDesc,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  Text(
-                    l.examsSubjectLabel.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: cs.primary,
-                      letterSpacing: 1.2,
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  if (subjects.isNotEmpty)
-                    _m3SelectionMenu(
-                      context: ctx,
-                      value: selectedSubject,
-                      entries: subjects,
-                      icon: Icons.book_rounded,
-                      onSelected: (value) => setDlg(() {
-                        selectedSubject = value;
-                        subjectCtrl.text = selectedSubject;
-                      }),
-                    )
-                  else
-                    TextField(
-                      controller: subjectCtrl,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.book_rounded),
-                        hintText: l.examsSubjectLabel,
-                        filled: true,
-                        fillColor: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.4,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: cs.primary.withValues(alpha: 0.4),
+                        width: 2,
                       ),
                     ),
-                  const SizedBox(height: 24),
-                  Text(
-                    l.examsTypeLabel.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: cs.primary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: typeCtrl,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.label_important_rounded),
-                      hintText: l.examsTypeLabel,
-                      filled: true,
-                      fillColor: cs.surfaceContainerHighest.withValues(
-                        alpha: 0.4,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
+                    child: Center(
+                      child: Icon(
+                        Icons.edit_calendar_rounded,
+                        color: cs.primary,
+                        size: 24,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    l.gradesDateLabel.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: cs.primary,
-                      letterSpacing: 1.2,
+                ],
+              ),
+              const SizedBox(height: 32),
+              Text(
+                l.examsSubjectLabel.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: cs.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (subjects.isNotEmpty)
+                _m3SelectionMenu(
+                  context: ctx,
+                  value: selectedSubject,
+                  entries: subjects,
+                  icon: Icons.book_rounded,
+                  onSelected: (value) => setDlg(() {
+                    selectedSubject = value;
+                    subjectCtrl.text = selectedSubject;
+                  }),
+                )
+              else
+                TextField(
+                  controller: subjectCtrl,
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.book_rounded),
+                    hintText: l.examsSubjectLabel,
+                    filled: true,
+                    fillColor: cs.surfaceContainerHighest.withValues(
+                      alpha: 0.4,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Builder(
-                    builder: (context) {
-                      final suggested = _findSubjectDates(selectedSubject);
-                      if (suggested.isEmpty) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: suggested.map((d) {
-                              final isSelected =
-                                  d.year == selectedDate.year &&
-                                  d.month == selectedDate.month &&
-                                  d.day == selectedDate.day;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(
-                                    DateFormat(
-                                      'E, dd.MM.',
-                                      appLocaleNotifier.value,
-                                    ).format(d),
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  selected: isSelected,
-                                  onSelected: (val) {
-                                    if (val) setDlg(() => selectedDate = d);
-                                  },
-                                  selectedColor: cs.primaryContainer,
-                                  labelStyle: TextStyle(
-                                    color: isSelected
-                                        ? cs.onPrimaryContainer
-                                        : cs.onSurfaceVariant,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: ctx,
-                        initialDate: selectedDate,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (picked != null) {
-                        setDlg(() => selectedDate = picked);
-                      }
-                    },
+                ),
+              const SizedBox(height: 24),
+              Text(
+                l.examsTypeLabel.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: cs.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: typeCtrl,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.label_important_rounded),
+                  hintText: l.examsTypeLabel,
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                  border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest.withValues(
-                          alpha: 0.4,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                l.gradesDateLabel.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: cs.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  final suggested = _findSubjectDates(selectedSubject);
+                  if (suggested.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: [
-                          const Icon(Icons.calendar_today_rounded, size: 20),
-                          const SizedBox(width: 12),
-                          Text(
-                            DateFormat(
-                              'dd. MMMM yyyy',
-                              _icuLocale(appLocaleNotifier.value),
-                            ).format(selectedDate),
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    l.examsNotesLabel.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: cs.primary,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: descCtrl,
-                    maxLines: 3,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                    decoration: InputDecoration(
-                      prefixIcon: const Padding(
-                        padding: EdgeInsets.only(bottom: 42),
-                        child: Icon(Icons.notes_rounded),
-                      ),
-                      hintText: l.examsNotesLabel,
-                      filled: true,
-                      fillColor: cs.surfaceContainerHighest.withValues(
-                        alpha: 0.4,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  Row(
-                    children: [
-                      if (existing != null && editIndex != null)
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () async {
-                              Navigator.pop(ctx);
-                              final list = List<Map<String, dynamic>>.from(
-                                customExamsNotifier.value,
-                              );
-                              if (editIndex >= 0 && editIndex < list.length) {
-                                list.removeAt(editIndex);
-                                await saveCustomExams(list);
-                              }
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: cs.error,
-                              side: BorderSide(
-                                color: cs.error.withValues(alpha: 0.5),
-                                width: 1.5,
+                        children: suggested.map((d) {
+                          final isSelected =
+                              d.year == selectedDate.year &&
+                              d.month == selectedDate.month &&
+                              d.day == selectedDate.day;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(
+                                DateFormat(
+                                  'E, dd.MM.',
+                                  appLocaleNotifier.value,
+                                ).format(d),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                              minimumSize: const Size(0, 60),
+                              selected: isSelected,
+                              onSelected: (val) {
+                                if (val) setDlg(() => selectedDate = d);
+                              },
+                              selectedColor: cs.primaryContainer,
+                              labelStyle: TextStyle(
+                                color: isSelected
+                                    ? cs.onPrimaryContainer
+                                    : cs.onSurfaceVariant,
+                              ),
                             ),
-                            child: const Icon(Icons.delete_outline_rounded),
-                          ),
-                        ),
-                      if (existing != null && editIndex != null)
-                        const SizedBox(width: 12),
-                      Expanded(
-                        flex: 3,
-                        child: FilledButton(
-                          onPressed: () async {
-                            final subj = subjectCtrl.text.trim();
-                            if (subj.isEmpty) return;
-                            final dateInt = untisDateInt(selectedDate);
-                            final newExam = <String, dynamic>{
-                              'id':
-                                  existing?['id'] ??
-                                  'exam_${DateTime.now().millisecondsSinceEpoch}',
-                              'subject': subj,
-                              'examType': typeCtrl.text.trim(),
-                              'date': dateInt,
-                              'description': descCtrl.text.trim(),
-                              '_custom': true,
-                            };
-                            final list = List<Map<String, dynamic>>.from(
-                              customExamsNotifier.value,
-                            );
-                            if (editIndex != null &&
-                                editIndex >= 0 &&
-                                editIndex < list.length) {
-                              list[editIndex] = newExam;
-                            } else {
-                              list.add(newExam);
-                            }
-                            await saveCustomExams(list);
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          },
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(0, 60),
-                          ),
-                          child: Text(
-                            l.save,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                            ),
-                          ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (picked != null) {
+                    setDlg(() => selectedDate = picked);
+                  }
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        DateFormat(
+                          'dd. MMMM yyyy',
+                          _icuLocale(appLocaleNotifier.value),
+                        ).format(selectedDate),
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                l.examsNotesLabel.toUpperCase(),
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: cs.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descCtrl,
+                maxLines: 3,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                decoration: InputDecoration(
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(bottom: 42),
+                    child: Icon(Icons.notes_rounded),
+                  ),
+                  hintText: l.examsNotesLabel,
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+              Row(
+                children: [
+                  if (existing != null && editIndex != null)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          final list = List<Map<String, dynamic>>.from(
+                            customExamsNotifier.value,
+                          );
+                          if (editIndex >= 0 && editIndex < list.length) {
+                            list.removeAt(editIndex);
+                            await saveCustomExams(list);
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: cs.error,
+                          side: BorderSide(
+                            color: cs.error.withValues(alpha: 0.5),
+                            width: 1.5,
+                          ),
+                          minimumSize: const Size(0, 60),
+                        ),
+                        child: const Icon(Icons.delete_outline_rounded),
+                      ),
+                    ),
+                  if (existing != null && editIndex != null)
+                    const SizedBox(width: 12),
+                  Expanded(
+                    flex: 3,
+                    child: FilledButton(
+                      onPressed: () async {
+                        final subj = subjectCtrl.text.trim();
+                        if (subj.isEmpty) return;
+                        final dateInt = untisDateInt(selectedDate);
+                        final newExam = <String, dynamic>{
+                          'id':
+                              existing?['id'] ??
+                              'exam_${DateTime.now().millisecondsSinceEpoch}',
+                          'subject': subj,
+                          'examType': typeCtrl.text.trim(),
+                          'date': dateInt,
+                          'description': descCtrl.text.trim(),
+                          '_custom': true,
+                        };
+                        final list = List<Map<String, dynamic>>.from(
+                          customExamsNotifier.value,
+                        );
+                        if (editIndex != null &&
+                            editIndex >= 0 &&
+                            editIndex < list.length) {
+                          list[editIndex] = newExam;
+                        } else {
+                          list.add(newExam);
+                        }
+                        await saveCustomExams(list);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 60),
+                      ),
+                      child: Text(
+                        l.save,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         );

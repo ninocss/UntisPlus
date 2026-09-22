@@ -13,9 +13,7 @@ import 'package:url_launcher/url_launcher_string.dart' as url_launcher;
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
 import 'package:html/dom.dart' as html_dom;
-import 'package:html/parser.dart' as html_parser;
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,12 +42,13 @@ import 'core/app_providers.dart';
 import 'data/cache/offline_cache_store.dart';
 import 'data/security/credential_vault.dart';
 import 'data/webuntis/webuntis_client.dart';
-import 'data/webuntis/webuntis_auth.dart';
 import 'data/webuntis/webuntis_session_manager.dart';
 import 'features/changes/data/change_repository.dart';
 import 'features/changes/domain/timetable_change.dart';
 import 'features/exams/data/webuntis_exam_repository.dart';
 import 'features/timetable/data/timetable_repository.dart';
+import 'features/updates/data/github_release_repository.dart';
+import 'features/updates/data/changelog_repository.dart';
 import 'features/school_info/data/school_info_repository.dart';
 import 'features/school_info/application/school_html.dart';
 import 'features/absences/data/absence_repository.dart';
@@ -63,6 +62,8 @@ import 'features/ai/data/local_model_provider.dart';
 import 'features/ai/data/remote_ai_provider.dart';
 import 'features/accounts/domain/untis_account.dart';
 import 'features/accounts/data/untis_account_store.dart';
+import 'features/accounts/data/school_directory_repository.dart';
+import 'features/accounts/data/webuntis_login_repository.dart';
 import 'platform/native_ui_gateway.dart';
 import 'core/sync_state.dart';
 import 'core/school_models.dart';
@@ -71,6 +72,7 @@ import 'core/design_tokens.dart';
 export 'features/accounts/domain/untis_account.dart';
 export 'core/school_models.dart';
 export 'core/design_tokens.dart';
+export 'features/updates/data/github_release_repository.dart';
 
 part 'core/app_theme.dart';
 part 'app/untis_plus_app.dart';
@@ -125,7 +127,6 @@ int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
 final WebUntisExamRepository _webUntisExamRepository = WebUntisExamRepository();
 final TimetableRepository _timetableRepository = TimetableRepository();
-final SchoolInfoRepository _schoolInfoRepository = SchoolInfoRepository();
 
 /// WebUntis installations represent an absent teacher differently. Prefer
 /// explicit flags, but also support the status text used by older servers.
@@ -266,10 +267,8 @@ AiRuntimeConfiguration _currentAiRuntimeConfiguration() =>
       model: aiModel,
       localModelPath: aiLocalModelPath,
       generationSettings: _currentAiGenerationSettings(),
-      providerFactory: (configuration, settings) => createAIProvider(
-        configuration,
-        generationSettings: settings,
-      ),
+      providerFactory: (configuration, settings) =>
+          createAIProvider(configuration, generationSettings: settings),
       defaultModelResolver: (provider, compatibility) =>
           _defaultModelForProvider(
             provider,
@@ -566,241 +565,4 @@ void main() async {
   if (!kIsWeb && !Platform.isIOS) {
     unawaited(checkGithubUpdateAndNotify());
   }
-}
-
-Uri _webUntisRpcUri({String? serverUrl, String? school}) {
-  final resolvedServer = serverUrl ?? schoolUrl;
-  final resolvedSchool = school ?? schoolName;
-  return Uri.parse(
-    'https://$resolvedServer/WebUntis/jsonrpc.do?school=$resolvedSchool',
-  );
-}
-
-Uri _webUntisInternRpcUri({String? serverUrl, String? school}) {
-  final resolvedServer = serverUrl ?? schoolUrl;
-  final resolvedSchool = school ?? schoolName;
-  return Uri.parse(
-    'https://$resolvedServer/WebUntis/jsonrpc_intern.do?school=$resolvedSchool',
-  );
-}
-
-Future<Map<String, dynamic>?> _authenticateUntisWithSecret({
-  required String user,
-  required String secret,
-  required String client,
-  String requestId = 'auth',
-  String? serverUrl,
-  String? school,
-}) async {
-  final otp = generateWebUntisOtp(secret);
-  final response = await http
-      .post(
-        _webUntisInternRpcUri(serverUrl: serverUrl, school: school),
-        body: jsonEncode({
-          'id': requestId,
-          'method': 'getUserData2017',
-          'params': [
-            {
-              'auth': {
-                'clientTime': DateTime.now().millisecondsSinceEpoch,
-                'user': user,
-                'otp': otp,
-              },
-            },
-          ],
-          'jsonrpc': '2.0',
-        }),
-      )
-      .timeout(const Duration(seconds: 8));
-
-  if (response.statusCode != 200 || response.body.trim().isEmpty) {
-    return null;
-  }
-
-  final decoded = jsonDecode(response.body);
-  if (decoded is! Map<String, dynamic>) {
-    return null;
-  }
-
-  final error = decoded['error'];
-  if (error is Map) {
-    final err = Map<String, dynamic>.from(error);
-    final message = (err['message'] ?? '').toString();
-    final data = (err['data'] ?? '').toString();
-    final combined = '${message.toLowerCase()} ${data.toLowerCase()}';
-    if (combined.contains('otp') ||
-        combined.contains('secret') ||
-        combined.contains('login')) {
-      return {
-        'otpInvalid': true,
-        'errorCode': err['code'],
-        'errorMessage': message,
-      };
-    }
-  }
-
-  if (!response.headers.containsKey('set-cookie')) {
-    return null;
-  }
-
-  final cookie = response.headers['set-cookie'];
-  if (cookie == null || cookie.isEmpty) {
-    return null;
-  }
-
-  final sessionId = webUntisSessionIdFromCookie(cookie);
-  if (sessionId.isEmpty) {
-    return null;
-  }
-
-  final appConfigResponse = await http
-      .get(
-        Uri.parse('https://${serverUrl ?? schoolUrl}/WebUntis/api/app/config'),
-        headers: {
-          'Cookie': 'JSESSIONID=$sessionId; schoolname=${school ?? schoolName}',
-        },
-      )
-      .timeout(const Duration(seconds: 6));
-
-  if (appConfigResponse.statusCode != 200 ||
-      appConfigResponse.body.trim().isEmpty) {
-    return {'sessionId': sessionId};
-  }
-
-  final appConfigDecoded = jsonDecode(appConfigResponse.body);
-  if (appConfigDecoded is! Map<String, dynamic>) {
-    return {'sessionId': sessionId};
-  }
-
-  final data = appConfigDecoded['data'];
-  final loginConfigUser = data is Map
-      ? data['loginServiceConfig'] is Map
-            ? (data['loginServiceConfig'] as Map)['user']
-            : null
-      : null;
-  if (loginConfigUser is Map) {
-    final personId = loginConfigUser['personId'];
-    final persons = loginConfigUser['persons'];
-    int? personType;
-    if (persons is List) {
-      final person = persons.cast<dynamic>().firstWhere(
-        (entry) => entry is Map && entry['id'] == personId,
-        orElse: () => null,
-      );
-      if (person is Map && person['type'] != null) {
-        personType = int.tryParse(person['type'].toString());
-      }
-    }
-    return {
-      'sessionId': sessionId,
-      'personId': int.tryParse(personId?.toString() ?? '') ?? 0,
-      'personType': personType ?? 5,
-    };
-  }
-
-  return {'sessionId': sessionId};
-}
-
-Future<Map<String, dynamic>?> _authenticateUntis({
-  required String user,
-  required String password,
-  required String client,
-  String requestId = 'auth',
-  String? serverUrl,
-  String? school,
-  String? otp,
-  bool useLoginKey = false,
-}) async {
-  if (useLoginKey) {
-    return _authenticateUntisWithSecret(
-      user: user,
-      secret: password,
-      client: client,
-      requestId: requestId,
-      serverUrl: serverUrl,
-      school: school,
-    );
-  }
-
-  final otpCode = otp?.trim();
-  final params = <String, dynamic>{
-    'user': user,
-    'password': password,
-    'client': client,
-  };
-  if (otpCode != null && otpCode.isNotEmpty) {
-    params['otp'] = otpCode;
-  }
-
-  final response = await http
-      .post(
-        _webUntisRpcUri(serverUrl: serverUrl, school: school),
-        body: jsonEncode({
-          'id': requestId,
-          'method': 'authenticate',
-          'params': params,
-          'jsonrpc': '2.0',
-        }),
-      )
-      .timeout(const Duration(seconds: 8));
-
-  if (response.statusCode != 200 || response.body.trim().isEmpty) {
-    return null;
-  }
-
-  final decoded = jsonDecode(response.body);
-  if (decoded is! Map<String, dynamic>) {
-    return null;
-  }
-
-  final result = decoded['result'];
-  if (result is Map<String, dynamic>) {
-    return result;
-  }
-  if (result is Map) {
-    return Map<String, dynamic>.from(result);
-  }
-
-  final error = decoded['error'];
-  if (error is Map) {
-    final err = Map<String, dynamic>.from(error);
-    final message = (err['message'] ?? '').toString();
-    final data = (err['data'] ?? '').toString();
-    final combined = '${message.toLowerCase()} ${data.toLowerCase()}';
-    final contains2faHint =
-        combined.contains('2fa') ||
-        combined.contains('two factor') ||
-        combined.contains('mfa') ||
-        combined.contains('otp') ||
-        combined.contains('one-time') ||
-        combined.contains('verification code') ||
-        combined.contains('authenticator');
-
-    if (contains2faHint && (otpCode == null || otpCode.isEmpty)) {
-      return {
-        'requires2fa': true,
-        'errorCode': err['code'],
-        'errorMessage': message,
-      };
-    }
-
-    // Treat any server error as an invalid OTP when a code was provided, so
-    // the caller can show the 2FA-specific error instead of the generic
-    // "check your credentials" message.
-    final invalidOtp =
-        combined.contains('invalid otp') ||
-        combined.contains('invalid verification') ||
-        combined.contains('wrong otp') ||
-        combined.contains('otp invalid') ||
-        (otpCode != null && otpCode.isNotEmpty);
-    if (invalidOtp) {
-      return {
-        'otpInvalid': true,
-        'errorCode': err['code'],
-        'errorMessage': message,
-      };
-    }
-  }
-
-  return null;
 }

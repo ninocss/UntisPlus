@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,9 +9,9 @@ import '../core/time_utils.dart';
 import '../core/version_utils.dart';
 import '../data/cache/offline_cache_store.dart';
 import '../data/security/credential_vault.dart';
-import '../data/webuntis/webuntis_auth.dart';
 import '../data/webuntis/webuntis_client.dart';
 import '../data/webuntis/webuntis_session_manager.dart';
+import '../features/updates/data/github_release_repository.dart';
 import '../l10n.dart';
 
 import 'demo_mode_service.dart';
@@ -33,6 +32,8 @@ const String kProgressiveBoundaryRefreshId =
 final WebUntisClient _backgroundWebUntisClient = WebUntisClient();
 final WebUntisSessionManager _backgroundWebUntisSessions =
     WebUntisSessionManager(client: _backgroundWebUntisClient);
+final GithubReleaseRepository _backgroundGithubReleases =
+    GithubReleaseRepository();
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -114,44 +115,22 @@ String _localizedDailyBriefingExpanded(
   );
 }
 
-Future<String?> _loginWithWebUntisSecret({
-  required String schoolUrl,
-  required String schoolName,
-  required String user,
-  required String secret,
+Future<String> _authenticateBackgroundAccount({
+  required WebUntisAccountLogin account,
+  required String password,
+  required String credentialMode,
+  required String clientName,
 }) async {
-  final response = await http.post(
-    Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc_intern.do?school=$schoolName',
+  final session = await _backgroundWebUntisSessions.authenticateWithCredentials(
+    account: account,
+    credentials: AccountCredentials(
+      password: password,
+      credentialMode: credentialMode,
+      sessionId: '',
     ),
-    body: jsonEncode({
-      'id': 'bg_login',
-      'method': 'getUserData2017',
-      'params': [
-        {
-          'auth': {
-            'clientTime': DateTime.now().millisecondsSinceEpoch,
-            'user': user,
-            'otp': generateWebUntisOtp(secret),
-          },
-        },
-      ],
-      'jsonrpc': '2.0',
-    }),
+    passwordClient: clientName,
   );
-
-  if (response.statusCode != 200 || response.body.trim().isEmpty) {
-    return null;
-  }
-
-  final data = jsonDecode(response.body);
-  if (data is Map && data['error'] != null) {
-    return null;
-  }
-
-  final setCookie = response.headers['set-cookie'] ?? '';
-  final sessionId = webUntisSessionIdFromCookie(setCookie);
-  return sessionId.isEmpty ? null : sessionId;
+  return session.sessionId;
 }
 
 Future<List<dynamic>?> _fetchAuthenticatedTimetable({
@@ -328,26 +307,8 @@ Future<void> checkGithubUpdateAndNotify() async {
   final locale = prefs.getString('appLocale') ?? 'de';
 
   try {
-    final resp = await http.get(
-      Uri.parse(
-        'https://api.github.com/repos/ninocss/UntisPlus/releases/latest',
-      ),
-      headers: const {'Accept': 'application/vnd.github+json'},
-    );
-
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      return;
-    }
-
-    final data = jsonDecode(resp.body);
-    if (data is! Map<String, dynamic>) {
-      return;
-    }
-
-    final tag = (data['tag_name'] ?? '').toString().trim();
-    final latestVersion = tag.isEmpty
-        ? (data['name'] ?? '').toString().trim()
-        : tag;
+    final release = await _backgroundGithubReleases.fetchLatest();
+    final latestVersion = release.version;
     final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersion);
 
     final hasUpdate =
@@ -447,34 +408,19 @@ Future<bool> updateUntisData() async {
           requestId: 'bg_req_$activeAccountId',
         );
       } else {
-        String sessionId;
-        if (useLoginKey) {
-          sessionId =
-              await _loginWithWebUntisSecret(
-                schoolUrl: schoolUrl,
-                schoolName: schoolName,
-                user: user,
-                secret: pass,
-              ) ??
-              '';
-        } else {
-          final auth = await _backgroundWebUntisClient.rpc(
-            context: WebUntisRequestContext(
-              schoolUrl: schoolUrl,
-              schoolName: schoolName,
-            ),
-            method: 'authenticate',
-            requestId: 'bg_login',
-            params: {
-              'user': user,
-              'password': pass,
-              'client': 'UntisPlusWidget',
-            },
-          );
-          sessionId = auth['result'] is Map
-              ? (auth['result'] as Map)['sessionId']?.toString() ?? ''
-              : '';
-        }
+        final sessionId = await _authenticateBackgroundAccount(
+          account: WebUntisAccountLogin(
+            accountId: activeAccountId.isEmpty ? 'legacy' : activeAccountId,
+            username: user,
+            schoolUrl: schoolUrl,
+            schoolName: schoolName,
+            personId: personId,
+            personType: personType,
+          ),
+          password: pass,
+          credentialMode: useLoginKey ? 'loginKey' : 'password',
+          clientName: 'UntisPlusWidget',
+        );
         if (sessionId.isEmpty) return false;
         final response = await _backgroundWebUntisClient.rpc(
           context: WebUntisRequestContext(
@@ -888,34 +834,19 @@ Future<void> _refreshInactiveWidgetAccounts(
             );
           } else {
             final mode = entry['credentialMode']?.toString() ?? 'password';
-            String session;
-            if (mode == 'loginKey') {
-              session =
-                  await _loginWithWebUntisSecret(
-                    schoolUrl: url,
-                    schoolName: school,
-                    user: user,
-                    secret: password,
-                  ) ??
-                  '';
-            } else {
-              final auth = await _backgroundWebUntisClient.rpc(
-                context: WebUntisRequestContext(
-                  schoolUrl: url,
-                  schoolName: school,
-                ),
-                method: 'authenticate',
-                requestId: 'widget_$id',
-                params: {
-                  'user': user,
-                  'password': password,
-                  'client': 'UntisPlusWidget',
-                },
-              );
-              session = auth['result'] is Map
-                  ? (auth['result'] as Map)['sessionId']?.toString() ?? ''
-                  : '';
-            }
+            final session = await _authenticateBackgroundAccount(
+              account: WebUntisAccountLogin(
+                accountId: id,
+                username: user,
+                schoolUrl: url,
+                schoolName: school,
+                personId: personId,
+                personType: personType,
+              ),
+              password: password,
+              credentialMode: mode,
+              clientName: 'UntisPlusWidget',
+            );
             if (session.isEmpty) return;
             final response = await _backgroundWebUntisClient.rpc(
               context: WebUntisRequestContext(

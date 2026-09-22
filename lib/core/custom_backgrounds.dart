@@ -1064,7 +1064,7 @@ Future<void> loadCustomBackgroundsFromPrefs(SharedPreferences prefs) async {
 }
 
 Future<void> _persistCustomBackgroundState() async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setStringList(
     _kPrefsCustomBackgrounds,
     customBackgroundsNotifier.value.map((s) => jsonEncode(s.toJson())).toList(),

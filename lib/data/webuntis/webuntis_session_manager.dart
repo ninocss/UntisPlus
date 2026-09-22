@@ -101,9 +101,10 @@ class WebUntisSessionManager {
       );
     }
 
-    final session = credentials.credentialMode == 'loginKey'
-        ? await _authenticateWithLoginKey(account, credentials.password)
-        : await _authenticateWithPassword(account, credentials.password);
+    final session = await authenticateWithCredentials(
+      account: account,
+      credentials: credentials,
+    );
     await _writeCredentials(
       account.accountId,
       AccountCredentials(
@@ -116,10 +117,26 @@ class WebUntisSessionManager {
     return session;
   }
 
+  /// Authenticates explicit credentials without reading or mutating storage.
+  /// This is used by background compatibility paths that still receive legacy
+  /// credentials from their platform payload.
+  Future<WebUntisSession> authenticateWithCredentials({
+    required WebUntisAccountLogin account,
+    required AccountCredentials credentials,
+    String passwordClient = 'UntisPlus',
+  }) => credentials.credentialMode == 'loginKey'
+      ? _authenticateWithLoginKey(account, credentials.password)
+      : _authenticateWithPassword(
+          account,
+          credentials.password,
+          clientName: passwordClient,
+        );
+
   Future<WebUntisSession> _authenticateWithPassword(
     WebUntisAccountLogin account,
-    String password,
-  ) async {
+    String password, {
+    String clientName = 'UntisPlus',
+  }) async {
     final response = await _client.rpc(
       context: _context(account, ''),
       method: 'authenticate',
@@ -127,7 +144,7 @@ class WebUntisSessionManager {
       params: {
         'user': account.username,
         'password': password,
-        'client': 'UntisPlus',
+        'client': clientName,
       },
     );
     final result = response['result'];

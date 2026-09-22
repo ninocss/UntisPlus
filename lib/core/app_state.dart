@@ -193,7 +193,7 @@ Future<void> saveOrUpdateUntisAccount({
   required String password,
   required String credentialMode,
 }) async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
   final matchingIndex = accounts.indexWhere(
     (account) =>
@@ -227,7 +227,7 @@ Future<void> saveOrUpdateUntisAccount({
 }
 
 Future<void> switchUntisAccount(String accountId) async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
   final index = accounts.indexWhere((account) => account.id == accountId);
   if (index < 0) return;
@@ -248,7 +248,7 @@ Future<void> switchUntisAccount(String accountId) async {
 }
 
 Future<bool> removeUntisAccount(String accountId) async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   final accounts = _readUntisAccounts(
     prefs,
   ).where((account) => account.id != accountId).toList();
@@ -709,14 +709,14 @@ void _loadCustomList(
 }
 
 Future<void> loadCustomData() async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   _loadCustomList(prefs, 'customHomework', customHomeworkNotifier);
   _loadCustomList(prefs, 'customExams', customExamsNotifier);
   _loadCustomList(prefs, 'customGrades', customGradesNotifier);
 }
 
 Future<void> loadAccountPersonalData() async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await loadCustomData();
   hiddenSubjectsNotifier.value =
       (prefs.getStringList(_accountDataKey('hiddenSubjects')) ?? const [])
@@ -744,7 +744,7 @@ Future<void> _saveCustomList(
   List<Map<String, dynamic>> values,
 ) async {
   notifier.value = List<Map<String, dynamic>>.from(values);
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setStringList(
     _accountDataKey(field),
     values.map(jsonEncode).toList(growable: false),
@@ -768,7 +768,7 @@ Future<void> _updateHiddenSubjects(
   final updated = Set<String>.from(hiddenSubjectsNotifier.value);
   update(updated);
   hiddenSubjectsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setStringList(
     _accountDataKey('hiddenSubjects'),
     updated.toList(),
@@ -805,7 +805,7 @@ Future<void> _updateSubjectColors(
   final updated = Map<String, int>.from(subjectColorsNotifier.value);
   update(updated);
   subjectColorsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setString(
     _accountDataKey('subjectColors'),
     jsonEncode(Map<String, dynamic>.from(updated)),
@@ -838,7 +838,7 @@ Future<bool> _reAuthenticate() {
 }
 
 Future<bool> _performReAuthentication() async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   final activeId = activeUntisAccountId;
   final account = activeId == null
       ? null
@@ -850,17 +850,19 @@ Future<bool> _performReAuthentication() async {
   final useLoginKey = account?.credentialMode == 'loginKey';
   if (user.isEmpty || pass.isEmpty) return false;
 
+  final loginRepository = WebUntisLoginRepository();
   try {
-    final authResult = await _authenticateUntis(
-      user: user,
-      password: pass,
-      client: 'UntisPlus',
+    final authResult = await loginRepository.authenticate(
+      schoolUrl: account?.schoolUrl ?? schoolUrl,
+      schoolName: account?.schoolName ?? schoolName,
+      username: user,
+      credential: pass,
+      clientName: 'UntisPlus',
       requestId: 'relogin',
       useLoginKey: useLoginKey,
     );
-    final newSession = authResult?['sessionId']?.toString();
-    if (newSession != null && newSession.isNotEmpty) {
-      sessionID = newSession;
+    if (authResult.isSuccess) {
+      sessionID = authResult.sessionId;
       final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
       final index = accounts.indexWhere(
         (account) => account.id == activeUntisAccountId,
@@ -882,7 +884,12 @@ Future<bool> _performReAuthentication() async {
       }
       return true;
     }
-  } catch (_) {}
+  } catch (_) {
+    // A failed background re-authentication is surfaced by the original
+    // request through its existing error state.
+  } finally {
+    loginRepository.close();
+  }
   return false;
 }
 

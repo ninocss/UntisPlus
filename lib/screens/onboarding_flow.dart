@@ -14,6 +14,9 @@ class OnboardingFlow extends StatefulWidget {
 }
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
+  final SchoolDirectoryRepository _schoolDirectoryRepository =
+      SchoolDirectoryRepository();
+  final WebUntisLoginRepository _loginRepository = WebUntisLoginRepository();
   final PageController _pageController = PageController();
   int get _totalOnboardingSteps => widget.accountOnly ? 1 : 5;
   static const String _credentialModePassword = 'password';
@@ -110,14 +113,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _schoolSearchFocusNode.requestFocus();
     }
     if (!widget.accountOnly) {
-      Future.value(SettingsStore.instance.preferences).then(
-        (prefs) => prefs.setInt('onboardingCheckpoint', page),
-      );
+      Future.value(
+        SettingsStore.instance.preferences,
+      ).then((prefs) => prefs.setInt('onboardingCheckpoint', page));
     }
   }
 
   @override
   void dispose() {
+    _schoolDirectoryRepository.close();
+    _loginRepository.close();
     _pageController.dispose();
     _schoolSearchFocusNode.dispose();
     _serverController.dispose();
@@ -815,43 +820,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     schoolName = _schoolController.text;
 
     try {
-      final authResult = await _authenticateUntis(
-        user: _userController.text,
-        password: _passwordController.text,
-        client: 'UntisPlus',
+      final authResult = await _loginRepository.authenticate(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        username: _userController.text,
+        credential: _passwordController.text,
+        clientName: 'UntisPlus',
         requestId: '1',
-        otp: _requiresTwoFactor ? _twoFactorController.text.trim() : null,
+        oneTimeCode: _requiresTwoFactor
+            ? _twoFactorController.text.trim()
+            : null,
         useLoginKey: _useLoginKey,
       );
 
-      if (authResult != null) {
-        if (authResult['requires2fa'] == true) {
-          if (mounted) setState(() => _requiresTwoFactor = true);
-          _showError(l.loginTwoFactorRequired);
-          return;
-        }
-
-        if (authResult['otpInvalid'] == true) {
-          if (mounted) setState(() => _requiresTwoFactor = true);
-          _showError(l.loginTwoFactorInvalid);
-          return;
-        }
-
-        sessionID = authResult['sessionId']?.toString() ?? "";
-
-        var rawId = authResult['personId'];
-        var rawType = authResult['personType'];
-
-        if (rawId != null && rawId.toString() != "0") {
-          personId = int.tryParse(rawId.toString()) ?? 0;
-          personType = int.tryParse(rawType.toString()) ?? 5;
-        } else if (authResult['klasseId'] != null) {
-          personId = int.tryParse(authResult['klasseId'].toString()) ?? 0;
-          personType = 1;
-        } else {
-          personId = 0;
-          personType = 5;
-        }
+      if (authResult.isSuccess) {
+        sessionID = authResult.sessionId;
+        personId = authResult.personId;
+        personType = authResult.personType;
 
         final prefs = SettingsStore.instance.preferences;
         await prefs.setString('schoolUrl', schoolUrl);
@@ -882,7 +867,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           _nextPage();
         }
       } else {
-        _showError(l.loginFailed);
+        switch (authResult.status) {
+          case WebUntisLoginStatus.requiresTwoFactor:
+            if (mounted) setState(() => _requiresTwoFactor = true);
+            _showError(l.loginTwoFactorRequired);
+            break;
+          case WebUntisLoginStatus.invalidOneTimeCode:
+            if (mounted) setState(() => _requiresTwoFactor = true);
+            _showError(l.loginTwoFactorInvalid);
+            break;
+          case WebUntisLoginStatus.failed:
+            _showError(l.loginFailed);
+            break;
+          case WebUntisLoginStatus.success:
+            break;
+        }
       }
     } catch (e) {
       _showError('${l.loginConnectionError}: $e');
@@ -3107,30 +3106,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     });
 
     try {
-      final url = Uri.parse('https://mobile.webuntis.com/ms/schoolquery2');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "id": "1",
-          "method": "searchSchool",
-          "params": [
-            {"search": query},
-          ],
-          "jsonrpc": "2.0",
-        }),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] != null && data['result']['schools'] != null) {
-          final list = (data['result']['schools'] as List)
-              .map((e) => SchoolSearchResult.fromJson(e))
-              .toList();
-          if (mounted) setState(() => _searchResults = list);
-        }
-      } else if (mounted) {
-        _showError('${l.loginConnectionError} (${response.statusCode})');
-      }
+      final schools = await _schoolDirectoryRepository.search(query);
+      if (mounted) setState(() => _searchResults = schools);
     } catch (_) {
       if (mounted) _showError(l.loginConnectionError);
     } finally {

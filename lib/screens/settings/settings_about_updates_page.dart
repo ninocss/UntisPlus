@@ -1,101 +1,6 @@
 // settings_about_updates_page.dart
 part of '../../main.dart';
 
-@immutable
-class GithubReleaseAsset {
-  final String name;
-  final String downloadUrl;
-  final int sizeBytes;
-
-  const GithubReleaseAsset({
-    required this.name,
-    required this.downloadUrl,
-    this.sizeBytes = 0,
-  });
-}
-
-List<GithubReleaseAsset> githubReleaseAssetsFromApi(dynamic rawAssets) {
-  if (rawAssets is! List) return const [];
-  return rawAssets
-      .whereType<Map>()
-      .map((rawAsset) {
-        final name = (rawAsset['name'] ?? '').toString().trim();
-        final url = (rawAsset['browser_download_url'] ?? '').toString().trim();
-        final size = rawAsset['size'];
-        return GithubReleaseAsset(
-          name: name,
-          downloadUrl: url,
-          sizeBytes: size is num ? size.toInt() : 0,
-        );
-      })
-      .where((asset) {
-        final uri = Uri.tryParse(asset.downloadUrl);
-        return asset.name.isNotEmpty &&
-            uri != null &&
-            (uri.scheme == 'https' || uri.scheme == 'http');
-      })
-      .toList(growable: false);
-}
-
-bool _assetNameHasToken(String value, String token) {
-  final escaped = RegExp.escape(token);
-  final pattern =
-      '(^|[^a-z0-9_])$escaped(?=[^a-z0-9_]|'
-      r'$)';
-  return RegExp(pattern).hasMatch(value);
-}
-
-/// Selects the APK matching the device's ABI. A generic APK is considered
-/// only when it is explicitly universal or the release has a single APK.
-GithubReleaseAsset? selectCompatibleAndroidApk(
-  List<GithubReleaseAsset> assets,
-  List<String> supportedAbis,
-) {
-  final apks = assets
-      .where((asset) => asset.name.toLowerCase().endsWith('.apk'))
-      .toList();
-  if (apks.isEmpty) return null;
-
-  const aliasesByAbi = <String, List<String>>{
-    'arm64-v8a': ['arm64-v8a', 'arm64', 'aarch64'],
-    'armeabi-v7a': ['armeabi-v7a', 'armv7', 'arm32'],
-    'x86_64': ['x86_64', 'x86-64', 'x64'],
-    'x86': ['x86'],
-  };
-  final allArchitectureTokens = aliasesByAbi.values
-      .expand((aliases) => aliases)
-      .toSet();
-
-  for (final abi in supportedAbis.map((abi) => abi.toLowerCase().trim())) {
-    final aliases = aliasesByAbi[abi];
-    if (aliases == null) continue;
-    for (final asset in apks) {
-      final name = asset.name.toLowerCase();
-      if (aliases.any((alias) => _assetNameHasToken(name, alias))) {
-        return asset;
-      }
-    }
-  }
-
-  for (final asset in apks) {
-    final name = asset.name.toLowerCase();
-    final declaresArchitecture = allArchitectureTokens.any(
-      (token) => _assetNameHasToken(name, token),
-    );
-    final isUniversal =
-        name.contains('universal') ||
-        name.contains('all-abi') ||
-        name.contains('fat.apk') ||
-        name.contains('-release.apk');
-    if (!declaresArchitecture && isUniversal) return asset;
-  }
-  if (apks.length != 1) return null;
-  final onlyApkDeclaresArchitecture = allArchitectureTokens.any(
-    (token) => _assetNameHasToken(apks.single.name.toLowerCase(), token),
-  );
-  return onlyApkDeclaresArchitecture ? null : apks.single;
-}
-
 class SettingsAboutUpdatesPage extends StatefulWidget {
   const SettingsAboutUpdatesPage({super.key});
 
@@ -106,6 +11,7 @@ class SettingsAboutUpdatesPage extends StatefulWidget {
 
 class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
     with WidgetsBindingObserver {
+  final GithubReleaseRepository _releaseRepository = GithubReleaseRepository();
   bool _checking = false;
   bool _downloading = false;
   CancelToken? _downloadCancelToken;
@@ -128,6 +34,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _downloadCancelToken?.cancel('Update screen was closed.');
+    _releaseRepository.close();
     super.dispose();
   }
 
@@ -340,27 +247,9 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
     );
 
     try {
-      final resp = await http.get(
-        Uri.parse(
-          'https://api.github.com/repos/ninocss/UntisPlus/releases/latest',
-        ),
-        headers: const {'Accept': 'application/vnd.github+json'},
-      );
-      if (resp.statusCode < 200 || resp.statusCode >= 300) {
-        throw Exception('GitHub API error ${resp.statusCode}');
-      }
-
-      final data = jsonDecode(resp.body);
-      if (data is! Map<String, dynamic>) {
-        throw Exception('Invalid GitHub response');
-      }
-
-      final tag = (data['tag_name'] ?? '').toString().trim();
-      final htmlUrl =
-          (data['html_url'] ?? 'https://github.com/ninocss/UntisPlus/releases')
-              .toString();
-      final assets = githubReleaseAssetsFromApi(data['assets']);
-      final latestVersion = tag.isEmpty ? (data['name'] ?? '').toString() : tag;
+      final release = await _releaseRepository.fetchLatest();
+      final assets = release.assets;
+      final latestVersion = release.version;
       final hasComparableVersion = RegExp(r'\d').hasMatch(latestVersion);
       final hasUpdate = hasComparableVersion
           ? compareVersionStrings(appVersion, latestVersion) < 0
@@ -399,7 +288,9 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
         return;
       }
 
-      final targetUrl = assets.isNotEmpty ? assets.first.downloadUrl : htmlUrl;
+      final targetUrl = assets.isNotEmpty
+          ? assets.first.downloadUrl
+          : release.htmlUrl;
       final launched = await url_launcher.launchUrlString(
         targetUrl,
         mode: url_launcher.LaunchMode.externalApplication,
@@ -437,196 +328,186 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
     return SettingsPageShell(
       title: l.settingsHubUpdatesAbout,
       children: [
-            // ── GROUP 1: UPDATES & RELEASES ──
-            SettingsGroup(
-              title: l.settingsHubUpdatesAbout,
-              children: [
-                SettingsTile(
-                  icon: Icons.system_update_alt_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsGithubUpdateCheck,
-                  subtitle: l.settingsGithubUpdateCheckDesc,
-                  trailing: _checking
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2.2),
-                        )
-                      : _downloading
-                      ? IconButton(
-                          tooltip: l.settingsGithubDownloadCancel,
-                          onPressed: _cancelDownload,
-                          icon: const Icon(Icons.close_rounded),
-                        )
-                      : const Icon(Icons.chevron_right_rounded),
-                  onTap: _checking || _downloading ? null : _checkGithubUpdate,
+        // ── GROUP 1: UPDATES & RELEASES ──
+        SettingsGroup(
+          title: l.settingsHubUpdatesAbout,
+          children: [
+            SettingsTile(
+              icon: Icons.system_update_alt_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsGithubUpdateCheck,
+              subtitle: l.settingsGithubUpdateCheckDesc,
+              trailing: _checking
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2.2),
+                    )
+                  : _downloading
+                  ? IconButton(
+                      tooltip: l.settingsGithubDownloadCancel,
+                      onPressed: _cancelDownload,
+                      icon: const Icon(Icons.close_rounded),
+                    )
+                  : const Icon(Icons.chevron_right_rounded),
+              onTap: _checking || _downloading ? null : _checkGithubUpdate,
+            ),
+            if (_downloading)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l.settingsGithubDownloading,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          _downloadProgress == null
+                              ? _formatBytes(_downloadReceived)
+                              : '${(_downloadProgress! * 100).clamp(0, 100).toStringAsFixed(0)} %',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    LinearProgressIndicator(value: _downloadProgress),
+                    const SizedBox(height: 5),
+                    Text(
+                      _downloadTotal > 0
+                          ? '${_formatBytes(_downloadReceived)} / ${_formatBytes(_downloadTotal)} · $_downloadAssetName'
+                          : _downloadAssetName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11.5,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-                if (_downloading)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
+              ),
+            SettingsTile(
+              icon: Icons.open_in_new_rounded,
+              iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onSecondaryContainer,
+              title: l.settingsGithubOpenReleasePage,
+              subtitle: l.settingsGithubRepoLabel,
+              onTap: () {
+                url_launcher.launchUrlString(
+                  'https://github.com/ninocss/UntisPlus/releases',
+                  mode: url_launcher.LaunchMode.externalApplication,
+                );
+              },
+            ),
+            SettingsTile(
+              icon: Icons.new_releases_rounded,
+              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onTertiaryContainer,
+              title: l.settingsChangelogTitle,
+              subtitle: l.settingsChangelogSubtitle,
+              onTap: () => showChangelogSheet(context),
+            ),
+          ],
+        ),
+
+        // ── GROUP 2: APP INFO ──
+        SettingsGroup(
+          title: l.appName,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.rocket_launch_rounded,
+                      size: 24,
+                      color: cs.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                l.settingsGithubDownloading,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              _downloadProgress == null
-                                  ? _formatBytes(_downloadReceived)
-                                  : '${(_downloadProgress! * 100).clamp(0, 100).toStringAsFixed(0)} %',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        LinearProgressIndicator(value: _downloadProgress),
-                        const SizedBox(height: 5),
                         Text(
-                          _downloadTotal > 0
-                              ? '${_formatBytes(_downloadReceived)} / ${_formatBytes(_downloadTotal)} · $_downloadAssetName'
-                              : _downloadAssetName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          l.appName,
                           style: GoogleFonts.outfit(
-                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${l.settingsAppVersion} $appVersion (${l.settingsBuild} ${appBuildNumber.isEmpty ? '-' : appBuildNumber})',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12.5,
                             color: cs.onSurfaceVariant,
                           ),
                         ),
                       ],
                     ),
                   ),
-                SettingsTile(
-                  icon: Icons.open_in_new_rounded,
-                  iconBackgroundColor: cs.secondaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onSecondaryContainer,
-                  title: l.settingsGithubOpenReleasePage,
-                  subtitle: l.settingsGithubRepoLabel,
-                  onTap: () {
-                    url_launcher.launchUrlString(
-                      'https://github.com/ninocss/UntisPlus/releases',
-                      mode: url_launcher.LaunchMode.externalApplication,
-                    );
-                  },
-                ),
-                SettingsTile(
-                  icon: Icons.new_releases_rounded,
-                  iconBackgroundColor: cs.tertiaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onTertiaryContainer,
-                  title: l.settingsChangelogTitle,
-                  subtitle: l.settingsChangelogSubtitle,
-                  onTap: () => showChangelogSheet(context),
-                ),
-              ],
-            ),
-
-            // ── GROUP 2: APP INFO ──
-            SettingsGroup(
-              title: l.appName,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.rocket_launch_rounded,
-                          size: 24,
-                          color: cs.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              l.appName,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${l.settingsAppVersion} $appVersion (${l.settingsBuild} ${appBuildNumber.isEmpty ? '-' : appBuildNumber})',
-                              style: GoogleFonts.outfit(
-                                fontSize: 12.5,
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // ── GROUP 3: CREDITS ──
-            SettingsGroup(
-              title: l.settingsSectionCredits,
-              children: [
-                SettingsTile(
-                  icon: Icons.code_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: 'ninocss',
-                  subtitle: l.settingsCreditsFounderDeveloper,
-                  onTap: () {
-                    url_launcher.launchUrlString(
-                      'https://github.com/ninocss',
-                      mode: url_launcher.LaunchMode.externalApplication,
-                    );
-                  },
-                ),
-                SettingsTile(
-                  icon: Icons.code_rounded,
-                  iconBackgroundColor: cs.secondaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onSecondaryContainer,
-                  title: 'OseMine',
-                  subtitle: l.settingsCreditsDeveloper,
-                  onTap: () {
-                    url_launcher.launchUrlString(
-                      'https://github.com/OseMine',
-                      mode: url_launcher.LaunchMode.externalApplication,
-                    );
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
           ],
+        ),
+
+        // ── GROUP 3: CREDITS ──
+        SettingsGroup(
+          title: l.settingsSectionCredits,
+          children: [
+            SettingsTile(
+              icon: Icons.code_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: 'ninocss',
+              subtitle: l.settingsCreditsFounderDeveloper,
+              onTap: () {
+                url_launcher.launchUrlString(
+                  'https://github.com/ninocss',
+                  mode: url_launcher.LaunchMode.externalApplication,
+                );
+              },
+            ),
+            SettingsTile(
+              icon: Icons.code_rounded,
+              iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onSecondaryContainer,
+              title: 'OseMine',
+              subtitle: l.settingsCreditsDeveloper,
+              onTap: () {
+                url_launcher.launchUrlString(
+                  'https://github.com/OseMine',
+                  mode: url_launcher.LaunchMode.externalApplication,
+                );
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

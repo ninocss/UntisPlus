@@ -22,13 +22,12 @@ class WebUntisRequestContext {
   WebUntisRequestContext copyWith({
     String? sessionId,
     String? cookieSchoolName,
-  }) =>
-      WebUntisRequestContext(
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
-        sessionId: sessionId ?? this.sessionId,
-        cookieSchoolName: cookieSchoolName ?? this.cookieSchoolName,
-      );
+  }) => WebUntisRequestContext(
+    schoolUrl: schoolUrl,
+    schoolName: schoolName,
+    sessionId: sessionId ?? this.sessionId,
+    cookieSchoolName: cookieSchoolName ?? this.cookieSchoolName,
+  );
 }
 
 class WebUntisRpcExchange {
@@ -110,10 +109,11 @@ class WebUntisClient {
       final decoded = _decode(response);
       if (decoded['error'] != null) {
         final error = decoded['error'];
-        final message = error is Map
-            ? (error['message'] ?? error['data'] ?? error).toString()
-            : error.toString();
-        final rpcCode = error is Map ? error['code'] as int? : null;
+        final message = error is Map ? _errorMessage(error) : error.toString();
+        final rawRpcCode = error is Map ? error['code'] : null;
+        final rpcCode = rawRpcCode is int
+            ? rawRpcCode
+            : int.tryParse(rawRpcCode?.toString() ?? '');
         final normalized = message.toLowerCase();
         throw WebUntisFailure(
           method == 'authenticate' || method == 'getUserData2017'
@@ -155,6 +155,27 @@ class WebUntisClient {
           'WebUntis returned invalid JSON.',
         );
       }
+    });
+  }
+
+  Future<Map<String, dynamic>> postJson({
+    required Uri uri,
+    required Object? body,
+    Map<String, String> headers = const {},
+  }) {
+    final encodedBody = jsonEncode(body);
+    final effectiveHeaders = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...headers,
+    };
+    final dedupeKey =
+        'POST-JSON|$uri|$encodedBody|${jsonEncode(effectiveHeaders)}';
+    return _dedupe<Map<String, dynamic>>(dedupeKey, () async {
+      final response = await _send(
+        () => _client.post(uri, headers: effectiveHeaders, body: encodedBody),
+      );
+      return _decode(response);
     });
   }
 
@@ -246,6 +267,14 @@ class WebUntisClient {
       WebUntisFailureKind.invalidData,
       'WebUntis returned an unexpected response.',
     );
+  }
+
+  static String _errorMessage(Map<dynamic, dynamic> error) {
+    final message = (error['message'] ?? '').toString().trim();
+    final data = (error['data'] ?? '').toString().trim();
+    if (message.isEmpty) return data.isEmpty ? error.toString() : data;
+    if (data.isEmpty || message.contains(data)) return message;
+    return '$message: $data';
   }
 
   Future<T> _dedupe<T>(String key, Future<T> Function() request) {

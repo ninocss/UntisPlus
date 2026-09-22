@@ -272,7 +272,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           ),
         ),
         title: Text(
-          l.deleteConfirm,
+          l.settingsAiLocalModelDeleteConfirm,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 17),
           textAlign: TextAlign.center,
         ),
@@ -1673,165 +1673,153 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     return SettingsPageShell(
       title: l.settingsSectionAI,
       children: [
-            // ── GROUP 1: AI MODEL & PROVIDER ──
-            SettingsGroup(
-              title: l.settingsSectionAI,
-              children: [
-                SettingsTile(
-                  icon: Icons.smart_toy_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsAiProvider,
-                  subtitle: _localizedAiProviderLabel(l, aiProvider),
-                  onTap: _showProviderDialog,
-                ),
-                SettingsTile(
-                  icon: Icons.memory_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsAiModel,
-                  subtitle: aiModel,
-                  onTap: _showModelDialog,
-                ),
-                if (isCustom) ...[
-                  SettingsTile(
-                    icon: Icons.merge_type_rounded,
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsAiCompatibility,
-                    subtitle: _settingsAiCompatibilityLabel(
-                      l,
-                      aiCustomCompatibility,
-                    ),
-                    onTap: _showCompatibilityDialog,
-                  ),
-                  SettingsTile(
-                    icon: Icons.link_rounded,
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsAiCustomBaseUrl,
-                    subtitle: aiCustomBaseUrl.isEmpty
-                        ? l.settingsAiCustomBaseUrlHint
-                        : aiCustomBaseUrl,
-                    onTap: _showBaseUrlDialog,
-                  ),
-                ],
-                if (!isLocal)
-                  SettingsTile(
-                    icon: Icons.key_rounded,
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsAiApiKey,
-                    subtitle: activeKey.isEmpty
-                        ? l.settingsAiApiKeyNotSet
-                        : _settingsMaskKey(activeKey),
-                    onTap: _showApiKeyDialog,
-                  ),
-                SettingsTile(
-                  icon: Icons.tune_rounded,
-                  iconBackgroundColor: cs.secondaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onSecondaryContainer,
-                  title: l.settingsAiParametersTitle,
-                  subtitle: l.settingsAiParametersDesc,
-                  onTap: _showAdvancedSettingsDialog,
-                ),
-              ],
+        // ── GROUP 1: AI MODEL & PROVIDER ──
+        SettingsGroup(
+          title: l.settingsSectionAI,
+          children: [
+            SettingsTile(
+              icon: Icons.smart_toy_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsAiProvider,
+              subtitle: _localizedAiProviderLabel(l, aiProvider),
+              onTap: _showProviderDialog,
             ),
-
-            // ── GROUP 2: PERSÖNLICHKEIT ──
-            SettingsGroup(
-              title: l.settingsAiAdjustmentTitle,
-              children: [
-                SettingsTile(
-                  icon: Icons.face_rounded,
-                  iconBackgroundColor: cs.tertiaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onTertiaryContainer,
-                  title: l.settingsAiPersonaTitle,
-                  subtitle: aiPersona == 'helpful'
-                      ? l.settingsAiPersonaHelpful
-                      : aiPersona == 'strict'
-                      ? l.settingsAiPersonaStrict
-                      : l.settingsAiPersonaBuddy,
-                  onTap: _showAiPersonaDialog,
-                ),
-              ],
+            SettingsTile(
+              icon: Icons.memory_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsAiModel,
+              subtitle: aiModel,
+              onTap: _showModelDialog,
             ),
-
-            // ── GROUP: LOCAL MODEL SETTINGS (only for local provider) ──
-            if (isLocal) ...[
-              SettingsGroup(
-                title: l.settingsAiLocalModel,
-                children: [
-                  SettingsTile(
-                    icon: Icons.download_rounded,
-                    iconBackgroundColor: cs.tertiaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onTertiaryContainer,
-                    title: l.settingsAiLocalModel,
-                    subtitle: l.settingsAiLocalModelDesc,
-                    onTap: _showLocalModelDialog,
-                  ),
-                ],
+            if (isCustom) ...[
+              SettingsTile(
+                icon: Icons.merge_type_rounded,
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsAiCompatibility,
+                subtitle: _settingsAiCompatibilityLabel(
+                  l,
+                  aiCustomCompatibility,
+                ),
+                onTap: _showCompatibilityDialog,
+              ),
+              SettingsTile(
+                icon: Icons.link_rounded,
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsAiCustomBaseUrl,
+                subtitle: aiCustomBaseUrl.isEmpty
+                    ? l.settingsAiCustomBaseUrlHint
+                    : aiCustomBaseUrl,
+                onTap: _showBaseUrlDialog,
               ),
             ],
-
-            // ── GROUP 3: PROMPT CONFIGURATION ──
-            SettingsGroup(
-              title: l.settingsAiPrompt,
-              children: [
-                SettingsTile(
-                  icon: Icons.edit_note_rounded,
-                  iconBackgroundColor: cs.tertiaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onTertiaryContainer,
-                  title: l.settingsAiPrompt,
-                  subtitle: l.settingsAiPromptDesc,
-                  onTap: _showPromptDialog,
+            if (!isLocal)
+              SettingsTile(
+                icon: Icons.key_rounded,
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
                 ),
-                SettingsTile(
-                  icon: Icons.data_object_rounded,
-                  iconBackgroundColor: cs.tertiaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onTertiaryContainer,
-                  title: l.settingsAiPromptVariables,
-                  subtitle: l.settingsAiPromptVariablesDesc,
-                  onTap: _showPromptVariablesDialog,
-                ),
-              ],
-            ),
-
-            // ── GROUP 4: DATEN ──
-            SettingsGroup(
-              title: l.settingsAiDataTitle,
-              children: [
-                SettingsTile(
-                  icon: Icons.delete_sweep_rounded,
-                  iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
-                  iconColor: cs.onErrorContainer,
-                  title: l.aiClearHistoryTileTitle,
-                  subtitle: l.aiClearHistoryTileDesc,
-                  onTap: _clearChatHistory,
-                ),
-              ],
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsAiApiKey,
+                subtitle: activeKey.isEmpty
+                    ? l.settingsAiApiKeyNotSet
+                    : _settingsMaskKey(activeKey),
+                onTap: _showApiKeyDialog,
+              ),
+            SettingsTile(
+              icon: Icons.tune_rounded,
+              iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onSecondaryContainer,
+              title: l.settingsAiParametersTitle,
+              subtitle: l.settingsAiParametersDesc,
+              onTap: _showAdvancedSettingsDialog,
             ),
           ],
+        ),
+
+        // ── GROUP 2: PERSÖNLICHKEIT ──
+        SettingsGroup(
+          title: l.settingsAiAdjustmentTitle,
+          children: [
+            SettingsTile(
+              icon: Icons.face_rounded,
+              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onTertiaryContainer,
+              title: l.settingsAiPersonaTitle,
+              subtitle: aiPersona == 'helpful'
+                  ? l.settingsAiPersonaHelpful
+                  : aiPersona == 'strict'
+                  ? l.settingsAiPersonaStrict
+                  : l.settingsAiPersonaBuddy,
+              onTap: _showAiPersonaDialog,
+            ),
+          ],
+        ),
+
+        // ── GROUP: LOCAL MODEL SETTINGS (only for local provider) ──
+        if (isLocal) ...[
+          SettingsGroup(
+            title: l.settingsAiLocalModel,
+            children: [
+              SettingsTile(
+                icon: Icons.download_rounded,
+                iconBackgroundColor: cs.tertiaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onTertiaryContainer,
+                title: l.settingsAiLocalModel,
+                subtitle: l.settingsAiLocalModelDesc,
+                onTap: _showLocalModelDialog,
+              ),
+            ],
+          ),
+        ],
+
+        // ── GROUP 3: PROMPT CONFIGURATION ──
+        SettingsGroup(
+          title: l.settingsAiPrompt,
+          children: [
+            SettingsTile(
+              icon: Icons.edit_note_rounded,
+              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onTertiaryContainer,
+              title: l.settingsAiPrompt,
+              subtitle: l.settingsAiPromptDesc,
+              onTap: _showPromptDialog,
+            ),
+            SettingsTile(
+              icon: Icons.data_object_rounded,
+              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onTertiaryContainer,
+              title: l.settingsAiPromptVariables,
+              subtitle: l.settingsAiPromptVariablesDesc,
+              onTap: _showPromptVariablesDialog,
+            ),
+          ],
+        ),
+
+        // ── GROUP 4: DATEN ──
+        SettingsGroup(
+          title: l.settingsAiDataTitle,
+          children: [
+            SettingsTile(
+              icon: Icons.delete_sweep_rounded,
+              iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
+              iconColor: cs.onErrorContainer,
+              title: l.aiClearHistoryTileTitle,
+              subtitle: l.aiClearHistoryTileDesc,
+              onTap: _clearChatHistory,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

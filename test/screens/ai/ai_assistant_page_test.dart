@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:untisplus/core/settings_store.dart';
 import 'package:untisplus/l10n.dart';
 import 'package:untisplus/main.dart';
 
@@ -32,11 +33,14 @@ void main() {
     }
   }
 
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({
       'aiChatHistory': '[]',
       'viewMode': 0,
     });
+    await SettingsStore.initialize(
+      preferences: await SharedPreferences.getInstance(),
+    );
     appLocaleNotifier.value = 'de';
     demoModeNotifier.value = true;
     themeModeNotifier.value = ThemeMode.light;
@@ -49,9 +53,7 @@ void main() {
   testWidgets('AI assistant uses the shared app section tabs', (tester) async {
     final l = appL10nFor('de');
 
-    await tester.pumpWidget(
-      const UntisPlusApp(startScreen: AiAssistantPage()),
-    );
+    await tester.pumpWidget(const UntisPlusApp(startScreen: AiAssistantPage()));
     await pumpUntil(tester, find.byType(TextField));
 
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
@@ -66,9 +68,7 @@ void main() {
   testWidgets('AI tabs keep chat functionality discoverable', (tester) async {
     final l = appL10nFor('de');
 
-    await tester.pumpWidget(
-      const UntisPlusApp(startScreen: AiAssistantPage()),
-    );
+    await tester.pumpWidget(const UntisPlusApp(startScreen: AiAssistantPage()));
     await pumpUntil(tester, find.byType(TextField));
 
     await tester.tap(find.text(l.aiTabChat));
@@ -107,9 +107,7 @@ void main() {
   testWidgets('Exams section tabs are centered and use shared styling', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      const UntisPlusApp(startScreen: ExamsPage()),
-    );
+    await tester.pumpWidget(const UntisPlusApp(startScreen: ExamsPage()));
     await tester.pump();
 
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));

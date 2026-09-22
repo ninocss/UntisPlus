@@ -79,7 +79,7 @@ void main() {
       normalize: (value) => value.clamp(0.25, 1).toDouble(),
     );
 
-    await store.write(binding, 2);
+    await store.write(binding, 2.0);
 
     expect(notifier.value, 1);
     expect(prefs.getDouble('opacity'), 1);
