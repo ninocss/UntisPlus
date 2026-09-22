@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import '../../../core/sync_state.dart';
 import '../../../core/time_utils.dart';
@@ -47,6 +48,71 @@ class SchoolInfoRepository {
       }
     }
     return const SchoolInfoReadResult(inbox: [], news: []);
+  }
+
+  Future<Uint8List> downloadAttachment({
+    required String schoolUrl,
+    required String schoolName,
+    required String sessionId,
+    required String attachmentId,
+    Future<String?> Function()? reauthenticate,
+  }) async {
+    var activeSession = sessionId;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await _downloadAttachmentOnce(
+          schoolUrl: schoolUrl,
+          schoolName: schoolName,
+          sessionId: activeSession,
+          attachmentId: attachmentId,
+        );
+      } on WebUntisFailure catch (failure) {
+        final canRetry =
+            attempt == 0 &&
+            reauthenticate != null &&
+            (failure.kind == WebUntisFailureKind.authentication ||
+                failure.kind == WebUntisFailureKind.permission);
+        if (!canRetry) rethrow;
+        final refreshed = await reauthenticate();
+        if (refreshed == null || refreshed.isEmpty) rethrow;
+        activeSession = refreshed;
+      }
+    }
+    throw const WebUntisFailure(
+      WebUntisFailureKind.unknown,
+      'WebUntis attachment download failed.',
+    );
+  }
+
+  Future<Uint8List> _downloadAttachmentOnce({
+    required String schoolUrl,
+    required String schoolName,
+    required String sessionId,
+    required String attachmentId,
+  }) async {
+    WebUntisFailure? lastFailure;
+    final uri = Uri.parse(
+      'https://$schoolUrl/WebUntis/messageFileRequest.do'
+      '?file=${Uri.encodeQueryComponent(attachmentId)}',
+    );
+    for (final cookie in _schoolCookies(schoolName)) {
+      try {
+        return await _client.getBytes(
+          uri: uri,
+          headers: {
+            'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
+            'Accept': 'application/octet-stream',
+          },
+        );
+      } on WebUntisFailure catch (failure) {
+        lastFailure = failure;
+      }
+    }
+    if (lastFailure != null) throw lastFailure;
+    throw const WebUntisFailure(
+      WebUntisFailureKind.unknown,
+      'WebUntis attachment download failed.',
+    );
   }
 
   Future<SchoolInfoReadResult> _fetchOnce({
