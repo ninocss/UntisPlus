@@ -1666,17 +1666,13 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
     final isCustom = aiProvider == 'custom';
     final isLocal = aiProvider == 'local';
     final activeKey = _activeProviderApiKey();
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsSectionAI),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
-          children: [
+    return SettingsPageShell(
+      title: l.settingsSectionAI,
+      children: [
             // ── GROUP 1: AI MODEL & PROVIDER ──
             SettingsGroup(
               title: l.settingsSectionAI,
@@ -1836,8 +1832,6 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               ],
             ),
           ],
-        ),
-      ),
     );
   }
 }
