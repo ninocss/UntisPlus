@@ -4908,91 +4908,77 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     // Fallback 1: Public weekly endpoint often contains teacher IDs in
     // period elements (type=2) even when JSON-RPC omits `te`.
     try {
-      final weeklyDate = DateFormat('yyyy-MM-dd').format(requestedMonday);
-      final publicUri =
-          Uri.https(schoolUrl, '/WebUntis/api/public/timetable/weekly/data', {
-            'elementType': requestPersonType.toString(),
-            'elementId': requestPersonId.toString(),
-            'date': weeklyDate,
-            'formatId': '2',
-          });
-      final publicResp = await http
-          .get(
-            publicUri,
-            headers: {
-              "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-              "Accept": "application/json",
-            },
-          )
-          .timeout(const Duration(seconds: 5));
-      if (publicResp.statusCode == 200) {
-        final decoded = jsonDecode(publicResp.body);
-        final data = decoded is Map
-            ? (((decoded['data'] as Map?)?['result'] as Map?)?['data'] as Map?)
-            : null;
-        final elements = (data?['elements'] as List?) ?? const <dynamic>[];
-        final teacherNameById = <int, String>{};
-        for (final e in elements) {
-          if (e is! Map) continue;
-          if ((e['type'] as int?) != 2) continue;
-          final id = e['id'] as int?;
-          if (id == null) continue;
-          final n =
-              (e['longName'] ??
-                      e['longname'] ??
-                      e['displayname'] ??
-                      e['name'] ??
-                      '')
-                  .toString()
-                  .trim();
-          if (n.isNotEmpty) teacherNameById[id] = n;
-        }
+      final data = await _timetableRepository.fetchPublicWeeklyData(
+        context: _timetableRequestContext,
+        elementId: requestPersonId,
+        elementType: requestPersonType,
+        date: requestedMonday,
+      );
+      if (data != null) {
+      final elements = (data?['elements'] as List?) ?? const <dynamic>[];
+      final teacherNameById = <int, String>{};
+      for (final e in elements) {
+        if (e is! Map) continue;
+        if ((e['type'] as int?) != 2) continue;
+        final id = e['id'] as int?;
+        if (id == null) continue;
+        final n =
+            (e['longName'] ??
+                    e['longname'] ??
+                    e['displayname'] ??
+                    e['name'] ??
+                    '')
+                .toString()
+                .trim();
+        if (n.isNotEmpty) teacherNameById[id] = n;
+      }
 
-        final elementPeriods = (data?['elementPeriods'] as Map?) ?? const {};
-        final periodsForElement = elementPeriods[requestPersonId.toString()];
-        final periods = periodsForElement is List
-            ? periodsForElement
-            : const <dynamic>[];
-        for (final p in periods) {
-          if (p is! Map) continue;
-          final pElements = (p['elements'] as List?) ?? const <dynamic>[];
-          int? subjectId;
-          int? roomId;
-          final teacherNames = <String>[];
-          for (final pe in pElements) {
-            if (pe is! Map) continue;
-            final t = pe['type'] as int?;
-            final id = pe['id'] as int?;
-            if (t == 3 && id != null) subjectId ??= id;
-            if (t == 4 && id != null) roomId ??= id;
-            if (t == 2 && id != null) {
-              final tn = teacherNameById[id];
-              if (tn != null && tn.isNotEmpty && !teacherNames.contains(tn)) {
-                teacherNames.add(tn);
-              }
+      final elementPeriods = (data?['elementPeriods'] as Map?) ?? const {};
+      final periodsForElement = elementPeriods[requestPersonId.toString()];
+      final periods = periodsForElement is List
+          ? periodsForElement
+          : const <dynamic>[];
+      for (final p in periods) {
+        if (p is! Map) continue;
+        final pElements = (p['elements'] as List?) ?? const <dynamic>[];
+        int? subjectId;
+        int? roomId;
+        final teacherNames = <String>[];
+        for (final pe in pElements) {
+          if (pe is! Map) continue;
+          final t = pe['type'] as int?;
+          final id = pe['id'] as int?;
+          if (t == 3 && id != null) subjectId ??= id;
+          if (t == 4 && id != null) roomId ??= id;
+          if (t == 2 && id != null) {
+            final tn = teacherNameById[id];
+            if (tn != null && tn.isNotEmpty && !teacherNames.contains(tn)) {
+              teacherNames.add(tn);
             }
           }
-          final teacherJoined = teacherNames.join(', ');
-          if (teacherJoined.isEmpty || subjectId == null) continue;
-
-          final exactKey = _lessonTeacherKeyFromParts(
-            date: p['date'],
-            startTime: p['startTime'],
-            endTime: p['endTime'],
-            subjectId: subjectId,
-            roomId: roomId,
-            withRoom: true,
-          );
-          final looseKey = _lessonTeacherKeyFromParts(
-            date: p['date'],
-            startTime: p['startTime'],
-            endTime: p['endTime'],
-            subjectId: subjectId,
-            withRoom: false,
-          );
-          exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
-          looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
         }
+        final teacherJoined = teacherNames.join(', ');
+        if (teacherJoined.isEmpty || subjectId == null) continue;
+
+        final exactKey = _lessonTeacherKeyFromParts(
+          date: p['date'],
+          startTime: p['startTime'],
+          endTime: p['endTime'],
+          subjectId: subjectId,
+          roomId: roomId,
+          withRoom: true,
+        );
+        final looseKey = _lessonTeacherKeyFromParts(
+          date: p['date'],
+          startTime: p['startTime'],
+          endTime: p['endTime'],
+          subjectId: subjectId,
+          withRoom: false,
+        );
+        exactKeyToTeacher.putIfAbsent(exactKey, () => teacherJoined);
+        looseKeyToTeacher.putIfAbsent(looseKey, () => teacherJoined);
+      }
+
       }
     } catch (_) {}
 
@@ -5008,62 +4994,30 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     });
 
     if (stillMissing && classIdsInWeek.isNotEmpty) {
-      final url = Uri.parse(
-        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-      );
       final classesToQuery = classIdsInWeek.take(6);
       await Future.wait(
         classesToQuery.map((classId) async {
           try {
-            final classResp = await http
-                .post(
-                  url,
-                  headers: {
-                    "Cookie":
-                        "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                  },
-                  body: jsonEncode({
-                    "id": "week_class_$classId",
-                    "method": "getTimetable",
-                    "params": {
-                      "options": {
-                        "element": {"id": classId, "type": 1},
-                        "startDate": startDate,
-                        "endDate": endDate,
-                        "showLsText": true,
-                        "showSubstText": true,
-                        "showInfo": true,
-                        "showBooking": true,
-                      },
-                    },
-                    "jsonrpc": "2.0",
-                  }),
-                )
-                .timeout(const Duration(seconds: 4));
-            if (classResp.statusCode != 200) return;
-            final classJson = jsonDecode(classResp.body);
-            if (classJson is! Map || classJson['error'] != null) return;
-            final classResult = classJson['result'];
-            final List<dynamic> classLessons = switch (classResult) {
-              List<dynamic> r => r,
-              Map r when r['timetable'] is List<dynamic> =>
-                (r['timetable'] as List<dynamic>),
-              _ => <dynamic>[],
-            };
+            final classLessons = await _timetableRepository.fetchTimetable(
+              context: _timetableRequestContext,
+              elementId: classId,
+              elementType: 1,
+              startDate: startDate,
+              endDate: endDate,
+              requestId: 'week_class_$classId',
+            );
             for (final lRaw in classLessons) {
               if (lRaw is! Map) continue;
               final lMap = Map<dynamic, dynamic>.from(lRaw);
-              final t = _extractTeacherNamesFromLesson(lMap);
-              if (t.isEmpty) continue;
+              final teacher = _extractTeacherNamesFromLesson(lMap);
+              if (teacher.isEmpty) continue;
               exactKeyToTeacher.putIfAbsent(
                 _lessonTeacherKey(lMap, withRoom: true),
-                () => t,
+                () => teacher,
               );
               looseKeyToTeacher.putIfAbsent(
                 _lessonTeacherKey(lMap, withRoom: false),
-                () => t,
+                () => teacher,
               );
             }
           } catch (_) {}
@@ -5092,91 +5046,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (updatedAny && !isCurrent()) return;
   }
 
-  Future<String?> _authenticateAnonymous() async {
-    try {
-      final url = Uri.parse(
-        'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-      );
-      final response = await http.post(
-        url,
-        body: jsonEncode({
-          "id": "anon",
-          "method": "authenticate",
-          "params": {"user": "", "password": "", "client": "UntisPlus"},
-          "jsonrpc": "2.0",
-        }),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] != null && data['result']['sessionId'] != null) {
-          return data['result']['sessionId'].toString();
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
   Future<void> _openClassSearch() async {
-    showUntisDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+    final catalog = await runWithUntisBlockingLoader(
+      context,
+      () async {
+        if (demoModeNotifier.value) {
+          final classes = DemoModeService.demoClasses()
+              .whereType<Map>()
+              .map(
+                (item) => item.map(
+                  (key, value) => MapEntry(key.toString(), value),
+                ),
+              )
+              .toList(growable: false);
+          return TimetableClassCatalog(
+            classes: classes,
+            sessionId: sessionID,
+          );
+        }
+        return _timetableRepository.fetchClassCatalog(
+          WebUntisRequestContext(
+            schoolUrl: schoolUrl,
+            schoolName: schoolName,
+            sessionId: sessionID,
+          ),
+        );
+      },
     );
 
-    final url = Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-    );
-
-    Future<List<dynamic>> fetchClassesForSession(String sid) async {
-      final response = await http.post(
-        url,
-        headers: {"Cookie": "JSESSIONID=$sid; schoolname=$schoolName"},
-        body: jsonEncode({
-          "id": "fe_kl",
-          "method": "getKlassen",
-          "params": {},
-          "jsonrpc": "2.0",
-        }),
-      );
-      if (response.statusCode != 200) return const <dynamic>[];
-      final data = jsonDecode(response.body);
-      if (data is Map && data['result'] is List) {
-        return data['result'] as List<dynamic>;
-      }
-      return const <dynamic>[];
-    }
-
-    String? sid;
-    List<dynamic> classes = demoModeNotifier.value
-        ? DemoModeService.demoClasses()
-        : [];
-
-    if (!demoModeNotifier.value && sessionID.isNotEmpty) {
-      try {
-        classes = await fetchClassesForSession(sessionID);
-        if (classes.isNotEmpty) {
-          sid = sessionID;
-        }
-      } catch (_) {}
-    }
-
-    if (!demoModeNotifier.value && classes.isEmpty) {
-      try {
-        final anonSid = await _authenticateAnonymous();
-        if (anonSid != null && anonSid.isNotEmpty) {
-          final anonClasses = await fetchClassesForSession(anonSid);
-          if (anonClasses.isNotEmpty) {
-            classes = anonClasses;
-            sid = anonSid;
-          }
-        }
-      } catch (_) {}
-    }
-
-    sid ??= sessionID;
+    final classes = <dynamic>[...catalog.classes];
+    final sid = catalog.sessionId;
 
     if (!mounted) return;
-    Navigator.of(context).pop();
 
     try {
       if (classes.isNotEmpty) {
