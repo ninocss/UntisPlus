@@ -246,8 +246,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _currentMonday.day,
     );
     final friday = monday.add(const Duration(days: 4));
-    final mondayStamp = int.parse(DateFormat('yyyyMMdd').format(monday));
-    final fridayStamp = int.parse(DateFormat('yyyyMMdd').format(friday));
+    final mondayStamp = untisDateInt(monday);
+    final fridayStamp = untisDateInt(friday);
 
     return _exams.any((ex) {
       final raw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
@@ -332,7 +332,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
             schoolName,
             personType.toString(),
             personId.toString(),
-            DateFormat('yyyyMMdd').format(monday),
+            untisDateString(monday),
           ].join('|'),
         );
         if (raw != null && raw.isNotEmpty) {
@@ -683,13 +683,11 @@ ${l.aiAssistantRules}''';
     for (final ex in relevantExams) {
       final subject = ex['subject'] ?? ex['subjectName'] ?? '?';
       final type = ex['type'] ?? l.aiDefaultExamType;
-      final dateRaw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
-          .toString();
-      String dateStr = dateRaw;
-      if (dateRaw.length == 8) {
-        dateStr =
-            '${dateRaw.substring(6, 8)}.${dateRaw.substring(4, 6)}.${dateRaw.substring(0, 4)}';
-      }
+      final dateRaw = ex['date'] ?? ex['examDate'] ?? ex['startDate'];
+      final parsedDate = parseUntisDate(dateRaw);
+      final dateStr = parsedDate == null
+          ? (dateRaw ?? '').toString()
+          : DateFormat('dd.MM.yyyy').format(parsedDate);
       final name = ex['name'] ?? ex['text'] ?? '';
       buf.write('- $dateStr ($type): $subject');
       if (name.isNotEmpty) buf.write(' "$name"');
@@ -918,11 +916,7 @@ ${l.aiAssistantRules}''';
               action.gradeWeight <= 0) {
             continue;
           }
-          final dateText = date.toString();
-          if (dateText.length != 8) continue;
-          final gradeDate = DateTime.tryParse(
-            '${dateText.substring(0, 4)}-${dateText.substring(4, 6)}-${dateText.substring(6, 8)}',
-          );
+          final gradeDate = parseUntisDate(date);
           if (gradeDate == null) continue;
           final current = List<Map<String, dynamic>>.from(
             customGradesNotifier.value,
