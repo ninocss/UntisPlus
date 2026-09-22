@@ -8,77 +8,6 @@ String _notificationDateLabel(DateTime? date) {
   ).format(date);
 }
 
-html_dom.Document _detailSafeInfoDocument(String source) {
-  final document = html_parser.parse(source);
-
-  for (final element in document.querySelectorAll(
-    'script, style, iframe, object, embed, form, input, button, video, audio, source',
-  )) {
-    element.remove();
-  }
-
-  for (final element in document.querySelectorAll('*')) {
-    final attributes = element.attributes.keys.toList(growable: false);
-    for (final rawAttribute in attributes) {
-      final attribute = rawAttribute.toString();
-      if (attribute.toLowerCase().startsWith('on')) {
-        element.attributes.remove(attribute);
-      }
-    }
-    for (final attribute in const ['href', 'src']) {
-      final value = element.attributes[attribute];
-      if (value != null && !_detailIsSafeExternalUrl(value)) {
-        element.attributes.remove(attribute);
-      }
-    }
-  }
-  return document;
-}
-
-bool _detailIsSafeExternalUrl(String? value) {
-  final uri = Uri.tryParse(value?.trim() ?? '');
-  return uri != null &&
-      uri.hasScheme &&
-      (uri.scheme == 'https' || uri.scheme == 'http');
-}
-
-String _detailToPlainText(html_dom.Document document) {
-  final buffer = StringBuffer();
-  void walk(Iterable<html_dom.Node> nodes) {
-    for (final node in nodes) {
-      if (node is html_dom.Text) {
-        final value = node.data.trim();
-        if (value.isNotEmpty) buffer.write(value);
-        continue;
-      }
-      if (node is! html_dom.Element) continue;
-      final tag = node.localName;
-      if (tag == 'br') {
-        buffer.write('\n');
-        continue;
-      }
-      const blocks = {
-        'p', 'div', 'h1', 'h2', 'h3', 'h4', 'blockquote', 'pre',
-        'section', 'article', 'ul', 'ol', 'table',
-      };
-      if (tag == 'li') buffer.write('\n• ');
-      if (blocks.contains(tag) && tag != 'li') buffer.write('\n');
-      if (tag == 'td' || tag == 'th') buffer.write(' – ');
-      walk(node.nodes);
-      if (blocks.contains(tag) && tag != 'li') buffer.write('\n');
-    }
-  }
-  walk(document.body?.nodes ?? const []);
-  return _normalizedDetailText(buffer.toString());
-}
-
-String _normalizedDetailText(String value) {
-  var result = value.replaceAll(RegExp(r'[ \t]+'), ' ');
-  result = result.replaceAll(RegExp(r' *\n *'), '\n');
-  result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
-  return result.trim();
-}
-
 IconData _attachmentIcon(String ext) {
   switch (ext) {
     case 'PDF':
@@ -120,7 +49,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
   }
 
   Future<void> _openDetailUrl(BuildContext context, String? url) async {
-    if (!_detailIsSafeExternalUrl(url)) return;
+    if (!isSafeSchoolExternalUrl(url)) return;
     final ok = await url_launcher.launchUrlString(
       url!,
       mode: url_launcher.LaunchMode.externalApplication,
@@ -208,8 +137,8 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
 
   Future<void> _copyMessage(BuildContext context) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final plainBody = _detailToPlainText(
-      _detailSafeInfoDocument(item.displayBody),
+    final plainBody = schoolHtmlToPlainText(
+      sanitizeSchoolHtml(item.displayBody),
     );
     final dateLabel = _notificationDateLabel(item.date);
     final buffer = StringBuffer(item.title.trim());
@@ -319,7 +248,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                         const SizedBox(height: 18),
                         SelectionArea(
                           child: _InfoHtmlBody(
-                            document: _detailSafeInfoDocument(item.displayBody),
+                            document: sanitizeSchoolHtml(item.displayBody),
                             onOpenUrl: (url) => _openDetailUrl(context, url),
                           ),
                         ),
