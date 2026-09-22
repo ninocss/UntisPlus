@@ -658,9 +658,10 @@ class _AbsenceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateText = absence.date.toString().padLeft(8, '0');
-    final formattedDate =
-        '${dateText.substring(6, 8)}.${dateText.substring(4, 6)}.${dateText.substring(0, 4)}';
+    final parsedDate = parseUntisDateInt(absence.date);
+    final formattedDate = parsedDate == null
+        ? absence.date.toString()
+        : DateFormat('dd.MM.yyyy').format(parsedDate);
     final status = switch (absence.status) {
       AbsenceStatus.excused => (
         _studentCopy(
