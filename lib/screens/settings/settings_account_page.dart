@@ -77,14 +77,10 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsHubAccount),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
-          children: [
+    return SettingsPageShell(
+      title: l.settingsHubAccount,
+      children: [
             // ── GROUP 1: ACCOUNT ──
             SettingsGroup(
               title: l.settingsHubAccount,
@@ -225,8 +221,6 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
               ],
             ),
           ],
-        ),
-      ),
     );
   }
 }
