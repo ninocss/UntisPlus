@@ -274,6 +274,49 @@ Future<T?> showUntisDialog<T>({
   );
 }
 
+extension UntisSnackBarContext on BuildContext {
+  void showUntisSnackBar(
+    String message, {
+    SnackBarBehavior? behavior,
+    Duration? duration,
+  }) {
+    ScaffoldMessenger.of(this).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: behavior,
+        duration: duration,
+      ),
+    );
+  }
+}
+
+Future<T> runWithUntisBlockingLoader<T>(
+  BuildContext context,
+  Future<T> Function() action,
+) async {
+  final navigator = Navigator.of(context, rootNavigator: true);
+  var loadingOpen = true;
+  final dialogFuture = showUntisDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    useRootNavigator: true,
+    builder: (_) => const Center(child: CircularProgressIndicator()),
+  );
+
+  // Allow the pushed route to become active before an immediately-completing
+  // operation can reach the cleanup path.
+  await Future<void>.delayed(Duration.zero);
+  try {
+    return await action();
+  } finally {
+    if (loadingOpen && navigator.mounted) {
+      loadingOpen = false;
+      navigator.pop();
+    }
+    await dialogFuture;
+  }
+}
+
 Future<T?> showUntisModalBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
