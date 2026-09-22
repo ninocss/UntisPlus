@@ -28,14 +28,9 @@ List<DateTime> _findSubjectDates(String subject) {
       final sShort = l['_subjectShort']?.toString() ?? '';
       final sLong = l['_subjectLong']?.toString() ?? '';
       if (sShort == subject || sLong == subject || l['subject'] == subject) {
-        final dStr = l['date']?.toString() ?? '';
-        if (dStr.length == 8) {
-          final date = DateTime.parse(
-            '${dStr.substring(0, 4)}-${dStr.substring(4, 6)}-${dStr.substring(6, 8)}',
-          );
-          if (!date.isBefore(today)) {
-            dates.add(date);
-          }
+        final date = parseUntisDate(l['date']);
+        if (date != null && !date.isBefore(today)) {
+          dates.add(date);
         }
       }
     }
@@ -989,8 +984,8 @@ class _HomeworkViewState extends State<_HomeworkView> {
     final accent = _autoLessonColor(subject, isDark);
 
     String formatDate(String d) {
-      if (d.length != 8) return d;
-      return '${d.substring(6, 8)}.${d.substring(4, 6)}.${d.substring(0, 4)}';
+      final parsed = parseUntisDateString(d);
+      return parsed == null ? d : DateFormat('dd.MM.yyyy').format(parsed);
     }
 
     Future<void> setDone(bool value) async {
