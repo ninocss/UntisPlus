@@ -51,6 +51,7 @@ import 'features/changes/domain/timetable_change.dart';
 import 'features/exams/data/webuntis_exam_repository.dart';
 import 'features/timetable/data/timetable_repository.dart';
 import 'features/school_info/data/school_info_repository.dart';
+import 'features/school_info/application/school_html.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
