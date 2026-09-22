@@ -396,9 +396,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     ];
     for (final candidate in candidates) {
       final text = candidate?.toString().trim() ?? '';
-      if (text.startsWith('http://') || text.startsWith('https://')) {
-        return text;
-      }
+      if (isSafeSchoolExternalUrl(text)) return text;
     }
     return null;
   }
@@ -411,62 +409,22 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     ).format(date);
   }
 
-  bool _isSafeExternalUrl(String? value) {
-    final uri = Uri.tryParse(value?.trim() ?? '');
-    return uri != null &&
-        uri.hasScheme &&
-        (uri.scheme == 'https' || uri.scheme == 'http');
-  }
-
-  html_dom.Document _safeInfoDocument(String source) {
-    final document = html_parser.parse(source);
-
-    // School notices are remote content. Keep their visual structure but never
-    // render executable or embedded browser content inside the app.
-    for (final element in document.querySelectorAll(
-      'script, style, iframe, object, embed, form, input, button, video, audio, source',
-    )) {
-      element.remove();
-    }
-
-    for (final element in document.querySelectorAll('*')) {
-      final attributes = element.attributes.keys.toList(growable: false);
-      for (final rawAttribute in attributes) {
-        final attribute = rawAttribute.toString();
-        if (attribute.toLowerCase().startsWith('on')) {
-          element.attributes.remove(attribute);
-        }
-      }
-      for (final attribute in const ['href', 'src']) {
-        final value = element.attributes[attribute];
-        if (value != null && !_isSafeExternalUrl(value)) {
-          element.attributes.remove(attribute);
-        }
-      }
-    }
-    return document;
-  }
-
   Future<void> _openInfoUrl(BuildContext context, String? value) async {
-    if (!_isSafeExternalUrl(value)) return;
+    if (!isSafeSchoolExternalUrl(value)) return;
     final ok = await url_launcher.launchUrlString(
       value!,
       mode: url_launcher.LaunchMode.externalApplication,
     );
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            appL10nFor(appLocaleNotifier.value).settingsGithubOpenFailed,
-          ),
-        ),
+      context.showUntisSnackBar(
+        appL10nFor(appLocaleNotifier.value).settingsGithubOpenFailed,
       );
     }
   }
 
   Widget _buildFormattedInfoBody(BuildContext context, String body) {
     return _InfoHtmlBody(
-      document: _safeInfoDocument(body),
+      document: sanitizeSchoolHtml(body),
       onOpenUrl: (url) => _openInfoUrl(context, url),
     );
   }
