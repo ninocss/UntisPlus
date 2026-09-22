@@ -130,6 +130,16 @@ class AiRequestCoordinator {
       provider: provider,
       customCompatibility: compatibility,
     );
+    if (isLocal && spec.attachments.any((item) => !item.isText)) {
+      final mimeType = spec.attachments
+          .where((item) => !item.isText)
+          .map((item) => item.mimeType)
+          .firstOrNull;
+      throw Exception(
+        'API: ${spec.unsupportedAttachmentMessage?.call(mimeType ?? 'application/octet-stream') ?? 'Unsupported local attachment'}',
+      );
+    }
+
     final needsImages =
         spec.requiresImages || spec.attachments.any((item) => item.isImage);
     final needsPdf =

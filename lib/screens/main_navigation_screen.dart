@@ -514,48 +514,23 @@ ${l.aiAssistantRules}''';
   Future<String> _requestProviderResponse(
     String systemPrompt, {
     required String userQuery,
-  }) async {
+  }) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    final isLocalProvider = provider == 'local';
-    final apiKey = _activeAiApiKey().trim();
-    if (!isLocalProvider && apiKey.isEmpty) {
-      throw Exception(
-        'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
-      );
-    }
-
-    final model = aiModel.trim().isNotEmpty
-        ? aiModel.trim()
-        : _defaultModelForProvider(
-            provider,
-            customCompatibility: aiCustomCompatibility,
-          );
-    final currentSettings = _currentAiGenerationSettings();
-    final settings = AiGenerationSettings(
-      temperature: 0.2,
-      maxTokens: 2600,
-      topP: aiTopP,
-      formatAttachmentText: currentSettings.formatAttachmentText,
-      formatUnsupportedAttachment: currentSettings.formatUnsupportedAttachment,
-    );
-    final providerInstance = createAIProvider(
-      AiProviderConfiguration(
-        provider: provider,
-        model: model,
-        apiKey: apiKey,
-        customBaseUrl: aiCustomBaseUrl,
-        customCompatibility: aiCustomCompatibility,
-        localModelPath: isLocalProvider ? aiLocalModelPath : '',
+    final runtime = _currentAiRuntimeConfiguration();
+    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+    return _aiRequestCoordinator.generate(
+      runtime: runtime,
+      spec: AiRequestSpec(
+        systemPrompt: systemPrompt,
+        userPrompt: userQuery,
+        temperature: 0.2,
+        maxTokens: 2600,
+        topP: aiTopP,
+        noReplyMessage: l.aiNoReply,
+        missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+        customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+        localModelMissingMessage: l.aiLocalModelLoadError,
       ),
-      generationSettings: settings,
-    );
-    return const AiTextGenerationService().generate(
-      provider: providerInstance,
-      systemPrompt: systemPrompt,
-      userPrompt: userQuery,
-      model: model,
-      noReplyMessage: l.aiNoReply,
     );
   }
 
@@ -1045,42 +1020,40 @@ ${l.aiAssistantRules}''';
 
   Future<void> _sendChat(String text) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    final isLocalProvider = provider == 'local';
-    final apiKey = _activeAiApiKey().trim();
-
-    if (isLocalProvider && aiLocalModelPath.isEmpty) {
-      setState(() {
-        _chatMessages.add({
-          'role': 'assistant',
-          'content': l.aiLocalModelLoadError,
-        });
-      });
-      return;
-    }
-
-    if (!isLocalProvider && apiKey.isEmpty) {
-      setState(() {
-        _chatMessages.add({
-          'role': 'assistant',
-          'content': _providerAwareMissingApiKeyMessage(l, provider),
-        });
-      });
-      return;
-    }
-
+    final runtime = _currentAiRuntimeConfiguration();
+    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
     final attachments = List<AiChatAttachment>.from(_attachments);
-    if (isLocalProvider &&
-        attachments.any((attachment) => !attachment.isText)) {
+    final spec = AiRequestSpec(
+      systemPrompt: _resolvedChatSystemPrompt(),
+      userPrompt: text,
+      noReplyMessage: l.aiNoReply,
+      attachments: attachments,
+      missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+      customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+      localModelMissingMessage: l.aiLocalModelLoadError,
+      unsupportedAttachmentMessage: (_) =>
+          'Dieses lokale Modell kann nur Textdateien lesen. Nutze für Bilder oder PDFs einen passenden Remote-Anbieter.',
+    );
+
+    try {
+      _aiRequestCoordinator.validate(runtime, spec);
+    } catch (e) {
+      final message = e.toString();
+      final isConfigError = message.contains('CONFIG:');
+      final isApiError = message.contains('API:');
       setState(() {
         _chatMessages.add({
           'role': 'assistant',
-          'content':
-              'Dieses lokale Modell kann nur Textdateien lesen. Nutze für Bilder oder PDFs einen passenden Remote-Anbieter.',
+          'content': isConfigError
+              ? message.replaceFirst('Exception: CONFIG: ', '')
+              : isApiError
+              ? message.replaceFirst('Exception: API: ', '')
+              : '${l.aiConnectionError} $e',
         });
       });
       return;
     }
+
     _inputController.clear();
     setState(() {
       _chatMessages.add({
@@ -1122,37 +1095,15 @@ ${l.aiAssistantRules}''';
       return;
     }
 
-    AIProvider? aiProviderInstance;
     try {
-      final model = aiModel.trim().isNotEmpty
-          ? aiModel.trim()
-          : _defaultModelForProvider(
-              provider,
-              customCompatibility: aiCustomCompatibility,
-            );
-
-      aiProviderInstance = createAIProvider(
-        AiProviderConfiguration(
-          provider: provider,
-          model: model,
-          apiKey: apiKey,
-          customBaseUrl: aiCustomBaseUrl,
-          customCompatibility: aiCustomCompatibility,
-          localModelPath: isLocalProvider ? aiLocalModelPath : '',
-        ),
-      );
-
-      final systemPrompt = _resolvedChatSystemPrompt();
-
       setState(() {
         _chatMessages.add({'role': 'assistant', 'content': ''});
       });
 
-      final stream = aiProviderInstance.streamResponse(
-        systemPrompt: systemPrompt,
+      final stream = _aiRequestCoordinator.stream(
+        runtime: runtime,
+        spec: spec,
         history: _chatMessages.sublist(0, _chatMessages.length - 1),
-        model: model,
-        attachments: attachments,
       );
 
       await for (final chunk in stream) {
@@ -1197,7 +1148,6 @@ ${l.aiAssistantRules}''';
       });
     } finally {
       _flushStreamingText();
-      await aiProviderInstance?.dispose();
       if (mounted) {
         setState(() {
           _thinking = false;
@@ -1259,19 +1209,6 @@ ${l.aiAssistantRules}''';
     }
 
     final generation = ++_searchGeneration;
-    final provider = _normalizeAiProvider(aiProvider);
-    final isLocalProvider = provider == 'local';
-    if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
-      final l = appL10nFor(appLocaleNotifier.value);
-      final reply = _providerAwareMissingApiKeyMessage(l, provider);
-      if (!mounted) return;
-      setState(() {
-        _latestQuery = text;
-        _latestResult = _parseSearchResult(query: text, reply: reply);
-      });
-      return;
-    }
-
     _inputController.clear();
     setState(() {
       _latestQuery = text;
