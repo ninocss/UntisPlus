@@ -10,17 +10,23 @@ class WebUntisRequestContext {
     required this.schoolUrl,
     required this.schoolName,
     this.sessionId = '',
+    this.cookieSchoolName,
   });
 
   final String schoolUrl;
   final String schoolName;
   final String sessionId;
+  final String? cookieSchoolName;
 
-  WebUntisRequestContext copyWith({String? sessionId}) =>
+  WebUntisRequestContext copyWith({
+    String? sessionId,
+    String? cookieSchoolName,
+  }) =>
       WebUntisRequestContext(
         schoolUrl: schoolUrl,
         schoolName: schoolName,
         sessionId: sessionId ?? this.sessionId,
+        cookieSchoolName: cookieSchoolName ?? this.cookieSchoolName,
       );
 }
 
@@ -94,7 +100,8 @@ class WebUntisClient {
             'Accept': 'application/json',
             if (context.sessionId.isNotEmpty)
               'Cookie':
-                  'JSESSIONID=${context.sessionId}; schoolname=${context.schoolName}',
+                  'JSESSIONID=${context.sessionId}; '
+                  'schoolname=${context.cookieSchoolName ?? context.schoolName}',
           },
           body: body,
         ),
@@ -147,6 +154,17 @@ class WebUntisClient {
           'WebUntis returned invalid JSON.',
         );
       }
+    });
+  }
+
+  Future<String> getText({
+    required Uri uri,
+    Map<String, String> headers = const {},
+  }) {
+    final dedupeKey = 'GET-TEXT|$uri|${jsonEncode(headers)}';
+    return _dedupe<String>(dedupeKey, () async {
+      final response = await _send(() => _client.get(uri, headers: headers));
+      return response.body;
     });
   }
 
