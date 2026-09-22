@@ -2972,32 +2972,28 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }) {
     final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
-    final themeOwnsStyle = tokens.id != AppThemeId.defaultTheme;
-    final effectiveRadius = themeOwnsStyle
-        ? tokens.surfaceRadius
-        : (borderRadius ?? lessonBorderRadiusNotifier.value);
-    final cardRadius = BorderRadius.circular(effectiveRadius);
-
-    final glowEnabled = tokens.glowEffectsEnabled;
-    final cardStyle = themeOwnsStyle ? 3 : lessonCardStyleNotifier.value;
-    final blurEnabled =
-        tokens.supportsBlur &&
-        blurEnabledNotifier.value &&
-        (themeOwnsStyle || lessonBlurEnabledNotifier.value || cardStyle == 1);
-    final blurSigma = themeOwnsStyle
-        ? tokens.blurSigma
-        : lessonBlurAmountNotifier.value;
-    final cardOpacity = themeOwnsStyle
-        ? tokens.lessonSurfaceOpacity
-        : lessonCardOpacityNotifier.value;
-    final accentStyle = themeOwnsStyle ? 0 : lessonAccentStyleNotifier.value;
+    final visuals = LessonCardVisualsResolver.resolve(
+      context: context,
+      tokens: tokens,
+      isDark: isDark,
+      isCancelled: isCancelled,
+      isNow: isNow,
+      foregroundColor: fgColor,
+      backgroundColor: bgColor,
+      isTeacherMissing: isTeacherMissing,
+      usePattern: useStripes,
+      borderRadius: borderRadius,
+      accentWidth: accentWidth,
+    );
+    final effectiveRadius = visuals.radius;
+    final cardRadius = visuals.borderRadius;
+    final blurEnabled = visuals.blurEnabled;
+    final blurSigma = visuals.blurSigma;
+    final accentStyle = visuals.accentStyle;
+    final showPattern = visuals.showPattern;
     final showTeacher = lessonShowTeacherNotifier.value;
     final showRoom = lessonShowRoomNotifier.value;
     final compact = lessonCompactModeNotifier.value;
-    final showPattern =
-        (isCancelled || isTeacherMissing) &&
-        useStripes &&
-        lessonCancelledPatternNotifier.value;
 
     final heightCompact = availableHeight != null && availableHeight < 58;
     final heightMinimal = availableHeight != null && availableHeight < 40;
@@ -3029,136 +3025,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ? (roomFontSize * 0.90).clamp(7.5, 12.0)
         : roomFontSize;
 
-    List<BoxShadow>? shadows;
-    if (glowEnabled) {
-      if (isNow) {
-        shadows = [
-          BoxShadow(
-            color: fgColor.withValues(alpha: 0.38),
-            blurRadius: 14,
-            spreadRadius: 1.5,
-            offset: const Offset(0, 3),
-          ),
-        ];
-      }
-    }
-
-    Color effectiveFillColor;
-    Gradient? effectiveGradient;
-    Border? effectiveBorder;
-    Color effectiveTextColor = isCancelled
-        ? fgColor.withValues(alpha: 0.6)
-        : fgColor;
-    Color effectiveSecondaryTextColor = isCancelled
-        ? fgColor.withValues(alpha: 0.48)
-        : fgColor.withValues(alpha: 0.75);
-
-    switch (cardStyle) {
-      case 1:
-        effectiveFillColor = isCancelled
-            ? bgColor.withValues(alpha: (0.28 * cardOpacity).clamp(0.0, 1.0))
-            : cs.surfaceContainerLowest.withValues(
-                alpha: (0.52 * cardOpacity).clamp(0.0, 1.0),
-              );
-        effectiveBorder = Border.all(
-          color: isCancelled
-              ? fgColor.withValues(alpha: 0.40)
-              : fgColor.withValues(alpha: isDark ? 0.42 : 0.28),
-          width: 1.2,
-        );
-        break;
-      case 2:
-        effectiveFillColor = Colors.transparent;
-        effectiveGradient = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isCancelled
-              ? [
-                  fgColor.withValues(
-                    alpha: (0.25 * cardOpacity).clamp(0.0, 1.0),
-                  ),
-                  bgColor.withValues(
-                    alpha: (0.45 * cardOpacity).clamp(0.0, 1.0),
-                  ),
-                ]
-              : [
-                  fgColor.withValues(
-                    alpha: ((isDark ? 0.35 : 0.25) * cardOpacity).clamp(
-                      0.0,
-                      1.0,
-                    ),
-                  ),
-                  bgColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0)),
-                ],
-        );
-        effectiveBorder = Border.all(
-          color: fgColor.withValues(alpha: isDark ? 0.30 : 0.18),
-          width: 1.0,
-        );
-        break;
-      case 3:
-        effectiveFillColor = isCancelled
-            ? cs.surfaceContainerLowest.withValues(
-                alpha: (0.35 * cardOpacity).clamp(0.0, 1.0),
-              )
-            : cs.surfaceContainerLow.withValues(
-                alpha: (0.60 * cardOpacity).clamp(0.0, 1.0),
-              );
-        effectiveBorder = Border.all(
-          color: isCancelled
-              ? fgColor.withValues(alpha: 0.50)
-              : fgColor.withValues(alpha: isDark ? 0.85 : 0.70),
-          width: 1.8,
-        );
-        break;
-      case 4:
-        effectiveFillColor = isCancelled
-            ? fgColor.withValues(alpha: 0.45)
-            : fgColor.withValues(alpha: cardOpacity.clamp(0.6, 1.0));
-        effectiveBorder = null;
-        final lum = effectiveFillColor.computeLuminance();
-        final solidText = lum > 0.45 ? Colors.black87 : Colors.white;
-        effectiveTextColor = solidText;
-        effectiveSecondaryTextColor = solidText.withValues(alpha: 0.78);
-        break;
-      case 0:
-      default:
-        effectiveFillColor = isCancelled
-            ? bgColor.withValues(alpha: (0.40 * cardOpacity).clamp(0.0, 1.0))
-            : bgColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0));
-        effectiveBorder = Border.all(
-          color: fgColor.withValues(alpha: isDark ? 0.25 : 0.15),
-          width: 1.0,
-        );
-        break;
-    }
-
-    if (tokens.id == AppThemeId.manga) {
-      effectiveFillColor = cs.surfaceContainerLow;
-      effectiveGradient = null;
-      effectiveBorder = Border.all(
-        color: cs.outline,
-        width: tokens.borderWidth,
-      );
-      effectiveTextColor = cs.onSurface;
-      effectiveSecondaryTextColor = cs.onSurfaceVariant;
-      shadows = [
-        BoxShadow(
-          color: tokens.shadowColor,
-          offset: tokens.shadowOffset,
-          blurRadius: 0,
-        ),
-      ];
-    } else if (tokens.id == AppThemeId.cyber) {
-      effectiveBorder = Border.all(
-        color: isCancelled ? fgColor : cs.primary,
-        width: tokens.borderWidth,
-      );
-    }
-
-    final double effectiveAccentWidth = accentStyle == 0
-        ? accentWidth
-        : (accentStyle == 1 ? 1.8 : 0.0);
+    final shadows = visuals.shadows;
+    final effectiveFillColor = visuals.fillColor;
+    final effectiveGradient = visuals.gradient;
+    final effectiveBorder = visuals.border;
+    final effectiveTextColor = visuals.textColor;
+    final effectiveSecondaryTextColor = visuals.secondaryTextColor;
+    final effectiveAccentWidth = visuals.accentWidth;
 
     Widget cardContent = Stack(
       children: [
