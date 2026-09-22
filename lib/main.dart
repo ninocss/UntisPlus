@@ -868,6 +868,24 @@ class _TimeRangeLabel {
   final int endMin;
 }
 
+/// Filters time labels to prevent overlapping on the vertical time axis.
+/// Keeps only labels spaced at least [minGapMinutes] apart (default 15).
+List<int> _filterTimeLabels(List<_TimeRangeLabel> ranges, {int minGapMinutes = 15}) {
+  final allTimes = <int>{};
+  for (final r in ranges) {
+    allTimes.add(r.startMin);
+    allTimes.add(r.endMin);
+  }
+  final sorted = allTimes.toList()..sort();
+  final filtered = <int>[];
+  for (final t in sorted) {
+    if (filtered.isEmpty || t - filtered.last >= minGapMinutes) {
+      filtered.add(t);
+    }
+  }
+  return filtered;
+}
+
 class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     with TickerProviderStateMixin {
   late TabController _tabController;
@@ -4589,6 +4607,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final mergedLessons = _mergeConsecutiveLessons(visibleLessons);
     final lessonSlots = _computeLessonSlots(mergedLessons);
 
+    // Filter time labels to prevent overlapping on the vertical axis.
+    final filteredTimeLabels = timeRanges.isNotEmpty
+        ? _filterTimeLabels(timeRanges)
+        : <int>[];
+
     final csG = Theme.of(context).colorScheme;
     return ExpressiveRefreshIndicator(
       onRefresh: _onRefresh,
@@ -4605,46 +4628,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               width: timeColWidth,
               height: totalHeight,
               child: Stack(
-                children: timeRanges.isNotEmpty
-                    ? timeRanges.map((range) {
-                        final top = (range.startMin - globalMin) * _ppm;
-                        final blockHeight =
-                            ((range.endMin - range.startMin) * _ppm).clamp(
-                              18.0,
-                              9999.0,
-                            );
+                children: filteredTimeLabels.isNotEmpty
+                    ? filteredTimeLabels.map((t) {
+                        final top = (t - globalMin) * _ppm - 9;
                         return Positioned(
                           top: top,
                           left: 0,
                           right: 0,
-                          height: blockHeight,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                _formatMinutes(range.startMin),
-                                textAlign: TextAlign.right,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: csG.onSurfaceVariant.withValues(
-                                    alpha: 0.54,
-                                  ),
-                                ),
+                          child: Text(
+                            _formatMinutes(t),
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.outfit(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: csG.onSurfaceVariant.withValues(
+                                alpha: 0.54,
                               ),
-                              Text(
-                                _formatMinutes(range.endMin),
-                                textAlign: TextAlign.right,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: csG.onSurfaceVariant.withValues(
-                                    alpha: 0.45,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         );
                       }).toList()
@@ -5042,6 +5042,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     // card border/shadow can be cut off.
     const double trailingDayGridInset = 12.0;
     final timeRanges = _collectTimeRangesFromData(wd);
+    // Filter time labels to prevent overlapping on the vertical axis.
+    final filteredTimeLabels = timeRanges.isNotEmpty
+        ? _filterTimeLabels(timeRanges)
+        : <int>[];
     final cs = Theme.of(context).colorScheme;
     final today = DateTime.now();
 
@@ -5158,45 +5162,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           width: timeColWidth,
                           height: totalHeight,
                           child: Stack(
-                            children: timeRanges.isNotEmpty
-                                ? timeRanges.map((range) {
-                                    final top =
-                                        (range.startMin - globalMin) * _ppm;
-                                    final blockHeight =
-                                        ((range.endMin - range.startMin) * _ppm)
-                                            .clamp(16.0, 9999.0);
+                            children: filteredTimeLabels.isNotEmpty
+                                ? filteredTimeLabels.map((t) {
+                                    final top = (t - globalMin) * _ppm - 9;
                                     return Positioned(
                                       top: top,
                                       left: 0,
                                       right: 0,
-                                      height: blockHeight,
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            _formatMinutes(range.startMin),
-                                            textAlign: TextAlign.right,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w600,
-                                              color: cs.onSurfaceVariant
-                                                  .withValues(alpha: 0.54),
-                                            ),
+                                      child: Text(
+                                        _formatMinutes(t),
+                                        textAlign: TextAlign.right,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: cs.onSurfaceVariant.withValues(
+                                            alpha: 0.54,
                                           ),
-                                          Text(
-                                            _formatMinutes(range.endMin),
-                                            textAlign: TextAlign.right,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w500,
-                                              color: cs.onSurfaceVariant
-                                                  .withValues(alpha: 0.45),
-                                            ),
-                                          ),
-                                        ],
+                                        ),
                                       ),
                                     );
                                   }).toList()
