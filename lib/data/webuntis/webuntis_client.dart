@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -154,6 +155,17 @@ class WebUntisClient {
           'WebUntis returned invalid JSON.',
         );
       }
+    });
+  }
+
+  Future<Uint8List> getBytes({
+    required Uri uri,
+    Map<String, String> headers = const {},
+  }) {
+    final dedupeKey = 'GET-BYTES|$uri|${jsonEncode(headers)}';
+    return _dedupe<Uint8List>(dedupeKey, () async {
+      final response = await _send(() => _client.get(uri, headers: headers));
+      return response.bodyBytes;
     });
   }
 
