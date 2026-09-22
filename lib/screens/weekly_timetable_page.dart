@@ -4601,178 +4601,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     }
 
-    DateTime friday = requestedMonday.add(const Duration(days: 4));
-    int startDate = int.parse(DateFormat('yyyyMMdd').format(requestedMonday));
-    int endDate = int.parse(DateFormat('yyyyMMdd').format(friday));
-
-    final url = Uri.parse(
-      'https://$schoolUrl/WebUntis/jsonrpc.do?school=$schoolName',
-    );
+    final friday = requestedMonday.add(const Duration(days: 4));
 
     try {
-      final timetableFuture = http
-          .post(
-            url,
-            headers: {
-              "Cookie": "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-              "Content-Type": "application/json",
-              "Accept": "application/json",
-            },
-            body: jsonEncode({
-              "id": "week_req",
-              "method": "getTimetable",
-              "params": {
-                "options": {
-                  "element": {"id": requestPersonId, "type": requestPersonType},
-                  "startDate": startDate,
-                  "endDate": endDate,
-                  "showLsText": true,
-                  "showSubstText": true,
-                  "showInfo": true,
-                  "showBooking": true,
-                },
-              },
-              "jsonrpc": "2.0",
-            }),
-          )
-          .timeout(const Duration(seconds: 8));
+      final timetableFuture = _timetableRepository.fetchTimetable(
+        context: _timetableRequestContext,
+        elementId: requestPersonId,
+        elementType: requestPersonType,
+        startDate: requestedMonday,
+        endDate: friday,
+        requestId: 'week_req',
+      );
 
       unawaited(_fetchMasterData());
       unawaited(_fetchHomeworkAndNotes());
 
-      final response = await timetableFuture;
-
+      final allLessons = await timetableFuture;
       if (!isCurrentRequest()) return;
 
-      if (response.statusCode != 200) {
-        if (hasCachedWeek) {
-          if (!mounted) return;
-          setState(() {
-            _loadError = null;
-            _showingCachedWeek = true;
-            _loading = false;
-          });
-          return;
-        }
-        if (!mounted) return;
-        setState(() {
-          _loadError = l.timetableHttpError(response.statusCode);
-          _weekData = _emptyWeekData();
-          _showingCachedWeek = false;
-          _loading = false;
-        });
-        return;
-      }
-
-      final decodedResponse = jsonDecode(response.body);
-
-      if (decodedResponse['error'] != null) {
-        final errCode = decodedResponse['error']['code'] as int? ?? 0;
-        final apiMsg =
-            decodedResponse['error']['message']?.toString() ??
-            l.timetableUnknownApiError;
-
-        if (apiMsg.toLowerCase().contains('not within a school year') ||
-            apiMsg.toLowerCase().contains('nicht in einem schuljahr')) {
-          try {
-            final syRes = await http
-                .post(
-                  url,
-                  headers: {
-                    "Cookie":
-                        "JSESSIONID=$_currentSessionId; schoolname=$schoolName",
-                    "Content-Type": "application/json",
-                  },
-                  body: jsonEncode({
-                    "id": "sy_req",
-                    "method": "getCurrentSchoolyear",
-                    "params": {},
-                    "jsonrpc": "2.0",
-                  }),
-                )
-                .timeout(const Duration(seconds: 6));
-            if (syRes.statusCode == 200) {
-              final syDecoded = jsonDecode(syRes.body);
-              if (syDecoded['result'] != null) {
-                final sy = syDecoded['result'];
-                final syStart = sy['startDate'].toString();
-                if (syStart.length == 8) {
-                  final syStartDate = DateTime.parse(
-                    "${syStart.substring(0, 4)}-${syStart.substring(4, 6)}-${syStart.substring(6, 8)}",
-                  );
-                  // Adjust current monday to start of school year if we are far away
-                  if (!isCurrentRequest()) return;
-                  if (_currentMonday.isBefore(syStartDate)) {
-                    _currentMonday = syStartDate.subtract(
-                      Duration(days: syStartDate.weekday - 1),
-                    );
-                    await _fetchFullWeek(silent: silent);
-                    return;
-                  }
-                }
-              }
-            }
-          } catch (_) {}
-        }
-
-        if (errCode == -8504 ||
-            apiMsg.toLowerCase().contains('not authenticated')) {
-          final ok = await _reAuthenticate();
-          if (ok) {
-            await _fetchFullWeek(silent: silent);
-            return;
-          }
-        }
-
-        if (!isCurrentRequest()) return;
-        if (hasCachedWeek) {
-          if (!mounted) return;
-          setState(() {
-            _loadError = null;
-            _showingCachedWeek = true;
-            _loading = false;
-          });
-          return;
-        }
-
-        if (_isNoAllowedDateError(apiMsg)) {
-          if (!mounted) return;
-          setState(() {
-            _loadError = null;
-            _weekData = _emptyWeekData();
-            _showingCachedWeek = false;
-            _loading = false;
-          });
-          return;
-        }
-
-        if (!mounted) return;
-        setState(() {
-          _loadError = apiMsg;
-          _weekData = _emptyWeekData();
-          _showingCachedWeek = false;
-          _loading = false;
-        });
-        return;
-      }
-
-      final dynamic result = decodedResponse['result'];
-      final List<dynamic> allLessons = switch (result) {
-        List<dynamic> r => r,
-        Map r when r['timetable'] is List<dynamic> =>
-          (r['timetable'] as List<dynamic>),
-        _ => <dynamic>[],
-      };
       Map<int, List<dynamic>> tempWeek = _emptyWeekData();
       final classIdsInWeek = <int>{};
 
       for (var lesson in allLessons) {
-        String dStr = lesson['date'].toString();
-        if (dStr.length == 8) {
-          DateTime lessonDate = DateTime.parse(
-            "${dStr.substring(0, 4)}-${dStr.substring(4, 6)}-${dStr.substring(6, 8)}",
-          );
-          int dayIndex = lessonDate.weekday - 1;
+        final lessonDate = parseUntisDate(lesson['date']);
+        if (lessonDate != null) {
+          final dayIndex = lessonDate.weekday - 1;
           if (dayIndex >= 0 && dayIndex < 5) {
             final subId = (lesson['su'] as List?)?.firstOrNull?['id'] as int?;
             final roId = (lesson['ro'] as List?)?.firstOrNull?['id'] as int?;
@@ -4878,8 +4731,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           requestAccountId: requestAccountId,
           requestPersonId: requestPersonId,
           requestPersonType: requestPersonType,
-          startDate: startDate,
-          endDate: endDate,
+          startDate: requestedMonday,
+          endDate: friday,
           classIdsInWeek: classIdsInWeek,
         );
       }
@@ -4902,7 +4755,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ChangeRepository()
             .recordSnapshot(
               accountId: requestAccountId,
-              rangeKey: DateFormat('yyyyMMdd').format(requestedMonday),
+              rangeKey: untisDateString(requestedMonday),
               lessons: flattenedLessons,
             )
             .then((changes) {
@@ -4928,6 +4781,71 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         if (isCurrentRequest()) {
           _prefetchAdjacentWeeks();
         }
+      });
+    } on WebUntisFailure catch (e) {
+      debugPrint("Fehler beim Laden: $e");
+      final apiMsg = e.message;
+      final lower = apiMsg.toLowerCase();
+
+      if (lower.contains('not within a school year') ||
+          lower.contains('nicht in einem schuljahr')) {
+        try {
+          final schoolyear = await _timetableRepository.fetchCurrentSchoolyear(
+            _timetableRequestContext,
+          );
+          final schoolyearStart = parseUntisDate(schoolyear?['startDate']);
+          if (schoolyearStart != null && isCurrentRequest()) {
+            if (_currentMonday.isBefore(schoolyearStart)) {
+              _currentMonday = schoolyearStart.subtract(
+                Duration(days: schoolyearStart.weekday - 1),
+              );
+              await _fetchFullWeek(silent: silent);
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (e.rpcCode == -8504 ||
+          e.kind == WebUntisFailureKind.authentication ||
+          lower.contains('not authenticated')) {
+        final ok = await _reAuthenticate();
+        if (ok) {
+          await _fetchFullWeek(silent: silent);
+          return;
+        }
+      }
+
+      if (!isCurrentRequest()) return;
+      if (hasCachedWeek) {
+        if (!mounted) return;
+        setState(() {
+          _loadError = null;
+          _showingCachedWeek = true;
+          _loading = false;
+        });
+        return;
+      }
+
+      if (_isNoAllowedDateError(apiMsg)) {
+        if (!mounted) return;
+        setState(() {
+          _loadError = null;
+          _weekData = _emptyWeekData();
+          _showingCachedWeek = false;
+          _loading = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.statusCode != null
+            ? l.timetableHttpError(e.statusCode!)
+            : apiMsg;
+        _weekData = _emptyWeekData();
+        _showingCachedWeek = false;
+        _loading = false;
       });
     } catch (e) {
       debugPrint("Fehler beim Laden: $e");
@@ -4972,8 +4890,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     required String requestAccountId,
     required int requestPersonId,
     required int requestPersonType,
-    required int startDate,
-    required int endDate,
+    required DateTime startDate,
+    required DateTime endDate,
     required Set<int> classIdsInWeek,
   }) async {
     bool isCurrent() =>
