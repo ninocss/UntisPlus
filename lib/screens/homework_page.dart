@@ -879,6 +879,43 @@ class _HomeworkViewState extends State<_HomeworkView> {
         ? l.homeworkNothingDueSoon
         : l.homeworkDueSoonCount(dueSoonCount);
 
+    return FeatureSummaryCard(
+      icon: Icons.assignment_turned_in_rounded,
+      title: Text(
+        title,
+        style: GoogleFonts.outfit(
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+          color: cs.onSurface,
+          letterSpacing: -0.3,
+        ),
+      ),
+      secondary: Row(
+        children: [
+          Icon(Icons.upcoming_rounded, size: 13, color: cs.primary),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              detail,
+              style: GoogleFonts.outfit(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final title = l.homeworkOpenCount(openCount);
+    final detail = dueSoonCount == 0
+        ? l.homeworkNothingDueSoon
+        : l.homeworkDueSoonCount(dueSoonCount);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: _glassContainer(
