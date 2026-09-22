@@ -30,6 +30,21 @@ void main() {
     },
   );
 
+  test('screens do not initialize SharedPreferences directly', () {
+    final screenFiles = Directory('lib/screens')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.dart'));
+
+    for (final file in screenFiles) {
+      expect(
+        file.readAsStringSync(),
+        isNot(contains('SharedPreferences.getInstance()')),
+        reason: '${file.path} initializes preferences directly',
+      );
+    }
+  });
+
   test('native channel names stay centralized', () {
     final dartFiles = Directory('lib')
         .listSync(recursive: true)
