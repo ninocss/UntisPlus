@@ -49,6 +49,7 @@ import 'data/webuntis/webuntis_session_manager.dart';
 import 'features/changes/data/change_repository.dart';
 import 'features/changes/domain/timetable_change.dart';
 import 'features/exams/data/webuntis_exam_repository.dart';
+import 'features/timetable/data/timetable_repository.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
@@ -121,6 +122,7 @@ part 'services/local_model_download.dart';
 int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
 final WebUntisExamRepository _webUntisExamRepository = WebUntisExamRepository();
+final TimetableRepository _timetableRepository = TimetableRepository();
 
 /// WebUntis installations represent an absent teacher differently. Prefer
 /// explicit flags, but also support the status text used by older servers.

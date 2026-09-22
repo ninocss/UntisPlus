@@ -105,6 +105,7 @@ class WebUntisClient {
         final message = error is Map
             ? (error['message'] ?? error['data'] ?? error).toString()
             : error.toString();
+        final rpcCode = error is Map ? error['code'] as int? : null;
         final normalized = message.toLowerCase();
         throw WebUntisFailure(
           method == 'authenticate' || method == 'getUserData2017'
@@ -120,6 +121,7 @@ class WebUntisClient {
               : WebUntisFailureKind.server,
           message,
           statusCode: response.statusCode,
+          rpcCode: rpcCode,
         );
       }
       return WebUntisRpcExchange(
