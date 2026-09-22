@@ -896,6 +896,52 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   bool _isExportingTimetable = false;
   final GlobalKey _timetableExportKey = GlobalKey();
   final Map<String, Map<dynamic, dynamic>> _temporaryLessonOriginals = {};
+
+  // lessonIdentity -> original teacher (struck-through) when the lesson was
+  // substituted. Filled from the ChangeRepository teacher changes.
+  final Map<String, String> _originalTeachers = {};
+
+  static String _lessonIdentityOf(Map<dynamic, dynamic> lesson) {
+    final rawId = lesson['id'] ?? lesson['lsid'];
+    if (rawId != null && rawId.toString().isNotEmpty) return 'id:$rawId';
+    final date = lesson['date'] ?? 0;
+    final start = lesson['startTime'] ?? 0;
+    final end = lesson['endTime'] ?? 0;
+    final subject =
+        (lesson['_subjectShort'] ?? lesson['subject'] ?? lesson['su'] ?? '')
+            .toString()
+            .trim();
+    return 'fallback:$date|$start|$end|$subject';
+  }
+
+  /// Fills [_originalTeachers] from the stored teacher changes so lesson
+  /// tiles can show "substitute teacher" with the original struck-through.
+  void _applyOriginalTeachers(List<TimetableChange> changes) {
+    final map = <String, String>{};
+    for (final change in changes) {
+      if (change.type == TimetableChangeType.teacher &&
+          change.lessonIdentity.isNotEmpty &&
+          (change.before ?? '').trim().isNotEmpty) {
+        map[change.lessonIdentity] = change.before!.trim();
+      }
+    }
+    final dirty =
+        map.length != _originalTeachers.length ||
+        map.entries.any((entry) => _originalTeachers[entry.key] != entry.value);
+    _originalTeachers
+      ..clear()
+      ..addAll(map);
+    if (dirty && mounted) setState(() {});
+  }
+
+  Future<void> _loadStoredTeacherChanges() async {
+    try {
+      final changes = await ChangeRepository().loadChanges(
+        activeUntisAccountId ?? 'legacy',
+      );
+      _applyOriginalTeachers(changes);
+    } catch (_) {}
+  }
   AlarmConfig _alarmConfig = const AlarmConfig();
   Timer? _progressiveNotificationTimer;
 
@@ -1364,6 +1410,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (hasActiveAccount || demoModeNotifier.value) {
       _fetchFullWeek();
     }
+    unawaited(_loadStoredTeacherChanges());
     _loadViewPref();
     _loadAlarmConfig();
 
@@ -1652,7 +1699,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _onLessonTap(BuildContext context, Map<dynamic, dynamic> lesson) {
-    _showLessonDetail(context, lesson);
+    _showLessonDetail(
+      context,
+      lesson,
+      originalTeacher: _originalTeachers[_lessonIdentityOf(lesson)] ?? '',
+    );
   }
 
   Future<void> _onRefresh() => _fetchFullWeek(silent: true);
@@ -3888,6 +3939,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     bool isTeacherMissing = false,
     bool hasHomework = false,
     bool hasExam = false,
+    String originalTeacher = '',
     double? borderRadius,
     EdgeInsets? padding,
     double accentWidth = 3.5,
@@ -3921,6 +3973,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final accentStyle = themeOwnsStyle ? 0 : lessonAccentStyleNotifier.value;
     final showTeacher = lessonShowTeacherNotifier.value;
     final showRoom = lessonShowRoomNotifier.value;
+    final isSubstituted =
+        showTeacher &&
+        originalTeacher.isNotEmpty &&
+        originalTeacher != teacher;
     final compact = lessonCompactModeNotifier.value;
     final showPattern =
         (isCancelled || isTeacherMissing) &&
@@ -4215,8 +4271,29 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   style: untisThemeTextStyle(
                     context,
                     fontSize: effectiveTeacherFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: effectiveSecondaryTextColor,
+                    fontWeight: isSubstituted
+                        ? FontWeight.w800
+                        : FontWeight.w600,
+                    color: isSubstituted
+                        ? effectiveTextColor
+                        : effectiveSecondaryTextColor,
+                  ),
+                ),
+              // Original teacher of a substituted lesson, struck through.
+              if (isSubstituted &&
+                  (availableHeight == null || availableHeight >= 54))
+                Text(
+                  originalTeacher,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: untisThemeTextStyle(
+                    context,
+                    fontSize: effectiveTeacherFontSize * 0.9,
+                    fontWeight: FontWeight.w500,
+                    color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
+                    decoration: TextDecoration.lineThrough,
+                    decorationColor: fgColor.withValues(alpha: 0.55),
+                    decorationThickness: 1.4,
                   ),
                 ),
               if (!heightCompact &&
@@ -4698,7 +4775,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       );
 
                                   return GestureDetector(
-                                    onTap: () => _showLessonDetail(context, l),
+                                    onTap: () => _showLessonDetail(
+                                      context,
+                                      l,
+                                      originalTeacher:
+                                          _originalTeachers[
+                                                _lessonIdentityOf(l)
+                                              ] ??
+                                          '',
+                                    ),
                                     onLongPress: () =>
                                         _editLessonTemporarily(l),
                                     child: _buildTimetableLessonCard(
@@ -4715,6 +4800,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       isTeacherMissing: isTeacherMissing,
                                       hasHomework: hasHomework,
                                       hasExam: hasExam,
+                                      originalTeacher:
+                                          _originalTeachers[
+                                                _lessonIdentityOf(l)
+                                              ] ??
+                                          '',
                                       padding: const EdgeInsets.fromLTRB(
                                         8,
                                         5,
@@ -5306,6 +5396,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                         isTeacherMissing,
                                                     hasHomework: hasHomework,
                                                     hasExam: hasExam,
+                                                    originalTeacher:
+                                                        _originalTeachers[
+                                                              _lessonIdentityOf(
+                                                                l,
+                                                              )
+                                                            ] ??
+                                                        '',
                                                     padding:
                                                         const EdgeInsets.fromLTRB(
                                                           8,
@@ -5859,6 +5956,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               lessons: flattenedLessons,
             )
             .then((changes) {
+              _applyOriginalTeachers(changes);
               if (isCurrentRequest()) {
                 unreadTimetableChangesNotifier.value = changes
                     .where((change) => !change.isRead)
@@ -10921,7 +11019,11 @@ class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
 }
 
 // --- DETAIL BOTTOM SHEET OPENER ---
-void _showLessonDetail(BuildContext context, dynamic lesson) {
+void _showLessonDetail(
+  BuildContext context,
+  dynamic lesson, {
+  String originalTeacher = '',
+}) {
   HapticFeedback.mediumImpact();
   final subject = lesson['_subjectLong']?.toString().isNotEmpty == true
       ? lesson['_subjectLong'].toString()
@@ -10977,6 +11079,7 @@ void _showLessonDetail(BuildContext context, dynamic lesson) {
       subjectShort: subjectShort,
       room: room,
       teacher: teacher,
+      originalTeacher: originalTeacher,
       time: time,
       isCancelled: isCancelled,
       info: info,
@@ -11034,6 +11137,7 @@ class _AnimatedLessonCard extends StatelessWidget {
 
 class _LessonDetailSheet extends StatelessWidget {
   final String subject, subjectShort, room, teacher, time, info, lessonNr;
+  final String originalTeacher;
   final String eventName, classNames, activityType;
   final String studentNotes, registerNotes, homework;
   final bool isCancelled;
@@ -11048,6 +11152,7 @@ class _LessonDetailSheet extends StatelessWidget {
     required this.isCancelled,
     required this.info,
     required this.lessonNr,
+    this.originalTeacher = '',
     this.eventName = '',
     this.classNames = '',
     this.activityType = '',
@@ -11250,6 +11355,57 @@ class _LessonDetailSheet extends StatelessWidget {
 
             _row(context, Icons.access_time_rounded, l.detailTime, time),
             _row(context, Icons.person_rounded, l.detailTeacher, teacher),
+            if (originalTeacher.isNotEmpty && originalTeacher != teacher)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: cs.tertiary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.swap_horiz_rounded,
+                        size: 20,
+                        color: cs.tertiary,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l.detailOriginalTeacher,
+                            style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurface.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            originalTeacher,
+                            style: GoogleFonts.outfit(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurfaceVariant,
+                              decoration: TextDecoration.lineThrough,
+                              decorationColor: cs.tertiary.withValues(
+                                alpha: 0.7,
+                              ),
+                              decorationThickness: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             _row(context, Icons.room_rounded, l.detailRoom, room),
             if (classNames.isNotEmpty)
               _row(context, Icons.group_rounded, l.detailClass, classNames),
