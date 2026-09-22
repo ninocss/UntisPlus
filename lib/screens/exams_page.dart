@@ -495,99 +495,41 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final nextDateStr = next != null
         ? _formatExamDate(next['date'] ?? next['examDate'] ?? '')
         : null;
-
-    final upcomingTitle = l.examsUpcomingCount(count);
-
     final nextSubText = nextSubject != null && nextDateStr != null
         ? l.examsUpcomingNext(nextSubject, nextDateStr)
         : null;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _glassContainer(
-        context: context,
-        borderRadius: BorderRadius.circular(24),
-        color: cs.primaryContainer.withValues(alpha: 0.25),
-        border: Border.all(
-          color: cs.primary.withValues(alpha: 0.25),
-          width: 1.2,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [cs.primary, cs.primary.withValues(alpha: 0.75)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: _glowShadows(context, [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.assignment_turned_in_rounded,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      upcomingTitle,
-                      style: GoogleFonts.outfit(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: cs.onSurface,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    if (nextSubText != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.near_me_rounded,
-                            size: 13,
-                            color: cs.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              nextSubText,
-                              style: GoogleFonts.outfit(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurfaceVariant,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return FeatureSummaryCard(
+      icon: Icons.assignment_turned_in_rounded,
+      title: Text(
+        l.examsUpcomingCount(count),
+        style: GoogleFonts.outfit(
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+          color: cs.onSurface,
+          letterSpacing: -0.3,
         ),
       ),
+      secondary: nextSubText == null
+          ? null
+          : Row(
+              children: [
+                Icon(Icons.near_me_rounded, size: 13, color: cs.primary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    nextSubText,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
