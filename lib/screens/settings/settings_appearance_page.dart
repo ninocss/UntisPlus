@@ -528,17 +528,13 @@ class SettingsAppearancePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
 
     final selectedTheme = visualThemeNotifier.value;
     final capabilities = appThemeCapabilities(selectedTheme);
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsAppearance),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
-          children: [
+    return SettingsPageShell(
+      title: l.settingsAppearance,
+      children: [
             _buildThemePicker(context, l, selectedTheme),
             // ── GROUP 1: THEME & COLOR SCHEME ──
             SettingsGroup(
@@ -1163,8 +1159,6 @@ class SettingsAppearancePage extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
     );
   }
 }
