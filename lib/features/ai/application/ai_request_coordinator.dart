@@ -43,11 +43,14 @@ class AiRequestSpec {
     this.topP,
     this.requiresImages = false,
     this.requiresPdf = false,
+    this.allowLocal = true,
+    this.requireLocalModel = true,
     this.attachments = const <AiChatAttachment>[],
     this.modelOverride,
     this.missingApiKeyMessage = 'API key missing',
     this.customBaseUrlMissingMessage = 'Custom base URL missing',
     this.localModelMissingMessage = 'Local model is not configured',
+    this.localProviderUnsupportedMessage = 'Local provider is not supported',
     this.unsupportedAttachmentMessage,
   });
 
@@ -58,12 +61,15 @@ class AiRequestSpec {
   final double? topP;
   final bool requiresImages;
   final bool requiresPdf;
+  final bool allowLocal;
+  final bool requireLocalModel;
   final List<AiChatAttachment> attachments;
   final String? modelOverride;
   final String noReplyMessage;
   final String missingApiKeyMessage;
   final String customBaseUrlMissingMessage;
   final String localModelMissingMessage;
+  final String localProviderUnsupportedMessage;
   final String Function(String mimeType)? unsupportedAttachmentMessage;
 }
 
@@ -122,7 +128,12 @@ class AiRequestCoordinator {
     if (provider == 'custom' && runtime.customBaseUrl.trim().isEmpty) {
       throw Exception('CONFIG: ${spec.customBaseUrlMissingMessage}');
     }
-    if (isLocal && runtime.localModelPath.trim().isEmpty) {
+    if (isLocal && !spec.allowLocal) {
+      throw Exception('CONFIG: ${spec.localProviderUnsupportedMessage}');
+    }
+    if (isLocal &&
+        spec.requireLocalModel &&
+        runtime.localModelPath.trim().isEmpty) {
       throw Exception('CONFIG: ${spec.localModelMissingMessage}');
     }
 

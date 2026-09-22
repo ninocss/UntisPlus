@@ -125,92 +125,62 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     required String prompt,
     required Uint8List fileBytes,
     required String mimeType,
-  }) async {
+  }) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    if (provider == 'local') {
-      throw Exception('CONFIG: ${l.aiLocalModelExamNotSupported}');
-    }
-    final apiKey = _activeAiApiKey().trim();
-    if (apiKey.isEmpty) {
-      throw Exception(
-        'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
-      );
-    }
-    if (provider == 'custom' && aiCustomBaseUrl.trim().isEmpty) {
-      throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
-    }
-
-    final model = aiModel.trim().isNotEmpty
-        ? aiModel.trim()
-        : _defaultModelForProvider(
-            provider,
-            customCompatibility: aiCustomCompatibility,
-          );
-
-    final capabilities = AiProviderCapabilities.resolve(
-      provider: provider,
-      customCompatibility: aiCustomCompatibility,
+    final runtime = _currentAiRuntimeConfiguration();
+    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+    final capabilities = _aiRequestCoordinator.capabilities(runtime);
+    final attachment = AiChatAttachment(
+      name: 'exam-import',
+      mimeType: mimeType,
+      bytes: fileBytes,
     );
-    if ((!mimeType.startsWith('image/') || !capabilities.images) &&
-        !(mimeType == 'application/pdf' && capabilities.pdf)) {
-      throw Exception(
-        'API: Unsupported file type for this provider: $mimeType',
-      );
-    }
-
-    final currentSettings = _currentAiGenerationSettings();
-    final providerInstance = createAIProvider(
-      AiProviderConfiguration(
-        provider: provider,
-        model: model,
-        apiKey: apiKey,
-        customBaseUrl: aiCustomBaseUrl,
-        customCompatibility: aiCustomCompatibility,
-      ),
-      generationSettings: AiGenerationSettings(
+    return _aiRequestCoordinator.generate(
+      runtime: runtime,
+      spec: AiRequestSpec(
+        systemPrompt: capabilities.pdf
+            ? l.aiExamJsonSystemPrompt
+            : l.aiExamImageSystemPrompt,
+        userPrompt: prompt,
         temperature: 0.1,
         maxTokens: 2200,
         topP: 1,
-        formatAttachmentText: currentSettings.formatAttachmentText,
-        formatUnsupportedAttachment:
-            currentSettings.formatUnsupportedAttachment,
+        requiresImages: mimeType.startsWith('image/'),
+        requiresPdf: mimeType == 'application/pdf',
+        allowLocal: false,
+        attachments: [attachment],
+        noReplyMessage: l.aiNoReply,
+        missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+        customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+        localProviderUnsupportedMessage: l.aiLocalModelExamNotSupported,
+        unsupportedAttachmentMessage: (type) =>
+            'Unsupported file type for this provider: $type',
       ),
-    );
-    return const AiTextGenerationService().generate(
-      provider: providerInstance,
-      systemPrompt: capabilities.pdf
-          ? l.aiExamJsonSystemPrompt
-          : l.aiExamImageSystemPrompt,
-      userPrompt: prompt,
-      model: model,
-      noReplyMessage: l.aiNoReply,
-      attachments: [
-        AiChatAttachment(
-          name: 'exam-import',
-          mimeType: mimeType,
-          bytes: fileBytes,
-        ),
-      ],
     );
   }
 
   Future<void> _importExamsWithAI() async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    final providerUsesGeminiProtocol = AiProviderCapabilities.resolve(
-      provider: provider,
-      customCompatibility: aiCustomCompatibility,
-    ).pdf;
-    final isLocalProvider = provider == 'local';
-    if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_providerAwareMissingApiKeyMessage(l, provider)),
-        ),
-      );
+    final runtime = _currentAiRuntimeConfiguration();
+    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+    final capabilities = _aiRequestCoordinator.capabilities(runtime);
+    final preflight = AiRequestSpec(
+      systemPrompt: '',
+      userPrompt: '',
+      noReplyMessage: l.aiNoReply,
+      allowLocal: true,
+      requireLocalModel: false,
+      missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+      customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+    );
+    try {
+      _aiRequestCoordinator.validate(runtime, preflight);
+    } catch (e) {
+      final message = e.toString().replaceFirst('Exception: CONFIG: ', '');
+      if (mounted) context.showUntisSnackBar(message);
       return;
     }
+    final providerUsesGeminiProtocol = capabilities.pdf;
 
     final source = await _showUnifiedOptionSheet<String>(
       context: context,
@@ -243,43 +213,26 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
 
     if (!mounted) return;
 
-    var loadingVisible = true;
-    showUntisDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const Center(child: CircularProgressIndicator()),
-    );
-
     try {
       final prompt = l.aiExamVisionPrompt(
         providerUsesGeminiProtocol ? l.aiFileKindPdf : '',
         DateTime.now().year,
       );
 
-      final text = await _requestExamImportResponse(
-        prompt: prompt,
-        fileBytes: importFile.bytes,
-        mimeType: importFile.mimeType,
+      final text = await runWithUntisBlockingLoader(
+        context,
+        () => _requestExamImportResponse(
+          prompt: prompt,
+          fileBytes: importFile.bytes,
+          mimeType: importFile.mimeType,
+        ),
       );
-
       if (!mounted) return;
-      if (loadingVisible) {
-        Navigator.pop(context);
-        loadingVisible = false;
-      }
 
-      final jsonStart = text.indexOf('[');
-      final jsonEnd = text.lastIndexOf(']');
-      if (jsonStart != -1 && jsonEnd != -1) {
-        final jsonStr = text.substring(jsonStart, jsonEnd + 1);
-        final decoded = jsonDecode(jsonStr);
-        if (decoded is! List) {
-          throw Exception('API: ${l.examsImportInvalidJson}');
-        }
-        final exams = decoded
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
+      final exams = parseJsonObjectArrayFromModelText(
+        text,
+        invalidMessage: l.examsImportInvalidJson,
+      );
 
         final current = List<Map<String, dynamic>>.from(
           customExamsNotifier.value,
@@ -295,18 +248,9 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
         }
         await saveCustomExams(current);
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l.examsImportSuccess)));
-      } else {
-        throw Exception(l.examsImportInvalidJson);
-      }
+        context.showUntisSnackBar(l.examsImportSuccess);
     } catch (e) {
       if (!mounted) return;
-      if (loadingVisible) {
-        Navigator.pop(context);
-        loadingVisible = false;
-      }
       final message = e.toString();
       final isApiError = message.contains('API:');
       final isConfigError = message.contains('CONFIG:');
@@ -315,9 +259,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           : isApiError
           ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
           : '${l.aiConnectionError} $e';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${l.examsImportError}$detail')));
+      context.showUntisSnackBar('${l.examsImportError}$detail');
     }
   }
 
