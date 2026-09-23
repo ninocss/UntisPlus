@@ -2,6 +2,7 @@ package com.ninocss.untisplus
 
 import android.app.Activity
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
@@ -13,8 +14,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal class AlarmChannelHandler(
-    private val activity: MainActivity,
+    private val context: Context,
     messenger: BinaryMessenger,
+    private val activity: MainActivity? = context as? MainActivity,
 ) {
     companion object {
         private const val RINGTONE_PICK_REQUEST = 8341
@@ -32,10 +34,9 @@ internal class AlarmChannelHandler(
                     maps?.forEach { value ->
                         if (value is Map<*, *>) plans.put(JSONObject(value))
                     }
-                    AlarmScheduler.replacePlans(activity, plans)
-                    result.success(null)
+                    result.success(AlarmScheduler.replacePlans(context, plans))
                 }
-                "getReadiness" -> result.success(readiness())
+                "getReadiness" -> result.success(readiness(context))
                 "openPermissionSettings" -> {
                     val type = (call.arguments as? Map<*, *>)?.get("type") as? String
                     openPermissionSettings(type)
@@ -60,15 +61,15 @@ internal class AlarmChannelHandler(
         pendingResult.success(uri)
     }
 
-    private fun readiness(): Map<String, Boolean> {
-        val manager = activity.getSystemService(NotificationManager::class.java)
+    private fun readiness(target: Context): Map<String, Boolean> {
+        val manager = target.getSystemService(NotificationManager::class.java)
         val fullScreenAllowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             manager.canUseFullScreenIntent()
         } else {
             true
         }
         return mapOf(
-            "exactAlarms" to AlarmScheduler.canScheduleExact(activity),
+            "exactAlarms" to AlarmScheduler.canScheduleExact(target),
             "fullScreenIntent" to fullScreenAllowed,
             "dndAccess" to manager.isNotificationPolicyAccessGranted,
             "notifications" to (
@@ -78,6 +79,7 @@ internal class AlarmChannelHandler(
     }
 
     private fun openPermissionSettings(type: String?) {
+        val activity = activity ?: return
         val intent = when (type) {
             "exact" -> Intent(
                 Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
@@ -108,6 +110,11 @@ internal class AlarmChannelHandler(
     }
 
     private fun pickRingtone(args: Map<*, *>?, result: MethodChannel.Result) {
+        val activity = activity
+        if (activity == null) {
+            result.error("activity_unavailable", "Ringtone picker requires a foreground activity.", null)
+            return
+        }
         if (ringtoneResult != null) {
             result.error("picker_busy", "The ringtone picker is already open.", null)
             return

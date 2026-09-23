@@ -7,7 +7,8 @@ class SettingsAlarmPage extends StatefulWidget {
   State<SettingsAlarmPage> createState() => _SettingsAlarmPageState();
 }
 
-class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
+class _SettingsAlarmPageState extends State<SettingsAlarmPage>
+    with WidgetsBindingObserver {
   AlarmConfig _config = const AlarmConfig();
   AlarmReadiness? _readiness;
   bool _loading = true;
@@ -15,7 +16,19 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
   }
 
   Future<void> _load() async {
@@ -108,10 +121,29 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
     );
   }
 
-  String _formatTimeOfDay(BuildContext context, int minutes) => TimeOfDay(
-    hour: minutes ~/ 60,
-    minute: minutes % 60,
-  ).format(context);
+  Future<bool> _allowNewActivation() async {
+    final readiness = await AlarmService.instance.readiness();
+    if (mounted) setState(() => _readiness = readiness);
+    if (readiness.activationReady) return true;
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            appL10nFor(appLocaleNotifier.value).alarmActivationBlocked,
+          ),
+        ),
+      );
+    }
+    return false;
+  }
+
+  Future<void> _setSmartEnabled(bool value) async {
+    if (value && !await _allowNewActivation()) return;
+    await _save(_config.copyWith(smartEnabled: value), refreshTimetable: value);
+  }
+
+  String _formatTimeOfDay(BuildContext context, int minutes) =>
+      TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60).format(context);
 
   Future<void> _chooseLeadOverride(int startOfDayMinutes) async {
     final l = appL10nFor(appLocaleNotifier.value);
@@ -134,10 +166,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
               ),
               const SizedBox(height: 8),
               ListTile(
-                leading: _sheetActionIcon(
-                  sheetContext,
-                  Icons.timer_rounded,
-                ),
+                leading: _sheetActionIcon(sheetContext, Icons.timer_rounded),
                 title: Text(l.alarmLead),
                 subtitle: Text(
                   current == null || current == -1
@@ -239,6 +268,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
   }
 
   Future<void> _addManualAlarm() async {
+    if (!await _allowNewActivation()) return;
     final l = appL10nFor(appLocaleNotifier.value);
     final alarm = ManualAlarmConfig(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -282,10 +312,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                     ),
                   ),
                   ListTile(
-                    leading: _sheetActionIcon(
-                      context,
-                      Icons.schedule_rounded,
-                    ),
+                    leading: _sheetActionIcon(context, Icons.schedule_rounded),
                     title: Text(time.format(context)),
                     subtitle: Text(l.alarmTime),
                     onTap: () async {
@@ -352,6 +379,12 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
                         onPressed: edited.weekdays.isEmpty
                             ? null
                             : () async {
+                                if (edited.enabled &&
+                                    !alarm.enabled &&
+                                    !await _allowNewActivation()) {
+                                  return;
+                                }
+                                if (!sheetContext.mounted) return;
                                 Navigator.pop(sheetContext);
                                 final alarms = _config.manualAlarms
                                     .map(
@@ -384,238 +417,230 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final readiness = _readiness!;
+    final hasConfiguredAlarm =
+        _config.smartEnabled ||
+        _config.manualAlarms.any((alarm) => alarm.enabled);
     return SettingsPageShell(
       title: l.alarmTitle,
       children: [
-            SettingsGroup(
+        SettingsGroup(
+          title: l.alarmSchedule,
+          children: [
+            SettingsSwitchTile(
+              icon: _config.smartEnabled
+                  ? Icons.alarm_on_rounded
+                  : Icons.alarm_off_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
               title: l.alarmSchedule,
-              children: [
-                SettingsSwitchTile(
-                  icon: _config.smartEnabled
-                      ? Icons.alarm_on_rounded
-                      : Icons.alarm_off_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.alarmSchedule,
-                  subtitle: l.alarmScheduleDesc,
-                  value: _config.smartEnabled,
-                  onChanged: (value) => _save(
-                    _config.copyWith(smartEnabled: value),
-                    refreshTimetable: value,
-                  ),
-                ),
-              ],
-            ),
-            SettingsGroup(
-              title: l.alarmReady,
-              children: [
-                SettingsTile(
-                  icon: readiness.isReady
-                      ? Icons.verified_rounded
-                      : Icons.warning_amber_rounded,
-                  iconColor: readiness.isReady ? cs.primary : cs.error,
-                  title: readiness.isReady
-                      ? l.alarmReadyYes
-                      : l.alarmReadyNo,
-                  subtitle: readiness.isReady
-                      ? l.alarmReadyDescYes
-                      : l.alarmReadyDescNo,
-                  trailing: const SizedBox.shrink(),
-                ),
-                if (!readiness.exactAlarms)
-                  SettingsTile(
-                    icon: Icons.alarm_rounded,
-                    title: l.alarmExact,
-                    subtitle: l.alarmExactDesc,
-                    onTap: () =>
-                        AlarmService.instance.openPermissionSettings('exact'),
-                  ),
-                if (!readiness.notifications)
-                  SettingsTile(
-                    icon: Icons.notifications_off_rounded,
-                    title: l.alarmNotifications,
-                    subtitle: l.alarmNotificationsDesc,
-                    onTap: () async {
-                      await NotificationService().requestPermissions();
-                      await _load();
-                    },
-                  ),
-                if (!readiness.fullScreenIntent)
-                  SettingsTile(
-                    icon: Icons.fullscreen_rounded,
-                    title: l.alarmFullscreen,
-                    subtitle: l.alarmFullscreenDesc,
-                    onTap: () => AlarmService.instance.openPermissionSettings(
-                      'fullscreen',
-                    ),
-                  ),
-                if (!readiness.dndAccess)
-                  SettingsTile(
-                    icon: Icons.do_not_disturb_on_rounded,
-                    title: l.alarmDnd,
-                    subtitle: l.alarmDndDesc,
-                    onTap: () =>
-                        AlarmService.instance.openPermissionSettings('dnd'),
-                  ),
-              ],
-            ),
-            SettingsGroup(
-              title: l.alarmSmart,
-              children: [
-                SettingsTile(
-                  icon: Icons.directions_walk_rounded,
-                  title: l.alarmLead,
-                  subtitle: l.alarmLeadValue(_config.leadMinutes),
-                  onTap: () => _chooseMinutes(
-                    title: l.alarmLead,
-                    current: _config.leadMinutes,
-                    min: 0,
-                    max: 180,
-                    onChanged: (value) => _save(
-                      _config.copyWith(leadMinutes: value),
-                      refreshTimetable: _config.smartEnabled,
-                    ),
-                  ),
-                ),
-                SettingsTile(
-                  icon: Icons.tune_rounded,
-                  title: l.alarmLeadByStart,
-                  subtitle: _config.leadMinutesByFirstLessonStart.isEmpty
-                      ? l.alarmLeadByStartDesc
-                      : (_config.leadMinutesByFirstLessonStart.entries.toList()
-                            ..sort((a, b) => a.key.compareTo(b.key)))
-                          .map(
-                            (entry) =>
-                                '${_formatTimeOfDay(context, entry.key)}: ${entry.value == -1 ? l.alarmLeadByStartOff : l.alarmLeadValue(entry.value)}',
-                          )
-                          .join(' · '),
-                  onTap: _addLeadOverride,
-                ),
-                for (final entry in (_config
-                          .leadMinutesByFirstLessonStart
-                          .entries
-                          .toList()
-                        ..sort((a, b) => a.key.compareTo(b.key))))
-                  SettingsTile(
-                    icon: entry.value == -1
-                        ? Icons.alarm_off_rounded
-                        : Icons.timer_rounded,
-                    title: _formatTimeOfDay(context, entry.key),
-                    subtitle: entry.value == -1
-                        ? l.alarmLeadByStartOff
-                        : l.alarmLeadValue(entry.value),
-                    onTap: () => _chooseLeadOverride(entry.key),
-                  ),
-                SettingsTile(
-                  icon: Icons.notifications_active_rounded,
-                  title: l.alarmHeadsUp,
-                  subtitle:
-                      '${l.alarmHeadsUpValue(_config.preAlarmNotificationMinutes)} · ${l.alarmHeadsUpDesc}',
-                  onTap: () => _chooseMinutes(
-                    title: l.alarmHeadsUp,
-                    current: _config.preAlarmNotificationMinutes,
-                    min: 0,
-                    max: 120,
-                    onChanged: (value) => _save(
-                      _config.copyWith(preAlarmNotificationMinutes: value),
-                    ),
-                  ),
-                ),
-                SettingsTile(
-                  icon: Icons.fast_forward_rounded,
-                  title: l.alarmEarlier,
-                  subtitle: l.alarmEarlierValue(
-                    _config.nextAlarmEarlierMinutes,
-                  ),
-                  onTap: () => _chooseMinutes(
-                    title: l.alarmEarlier,
-                    current: _config.nextAlarmEarlierMinutes,
-                    min: 1,
-                    max: 90,
-                    onChanged: (value) => _save(
-                      _config.copyWith(nextAlarmEarlierMinutes: value),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-                  child: FilledButton.tonalIcon(
-                    onPressed: _config.smartEnabled
-                        ? _makeNextAlarmEarlier
-                        : null,
-                    icon: const Icon(Icons.alarm_add_rounded),
-                    label: Text(
-                      l.alarmEarlierValue(_config.nextAlarmEarlierMinutes),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SettingsGroup(
-              title: l.alarmRing,
-              children: [
-                SettingsTile(
-                  icon: Icons.snooze_rounded,
-                  title: l.alarmSnooze,
-                  subtitle: l.alarmSnoozeValue(_config.snoozeMinutes),
-                  onTap: () => _chooseMinutes(
-                    title: l.alarmSnoozeDuration,
-                    current: _config.snoozeMinutes,
-                    min: 1,
-                    max: 30,
-                    onChanged: (value) =>
-                        _save(_config.copyWith(snoozeMinutes: value)),
-                  ),
-                ),
-                SettingsTile(
-                  icon: Icons.music_note_rounded,
-                  title: l.alarmRingtone,
-                  subtitle: _config.ringtoneUri == null
-                      ? l.alarmSystemTone
-                      : l.alarmSelectedTone,
-                  onTap: () async {
-                    final uri = await AlarmService.instance.pickRingtone(
-                      _config.ringtoneUri,
-                    );
-                    if (uri != null) {
-                      await _save(_config.copyWith(ringtoneUri: uri));
-                    }
-                  },
-                ),
-              ],
-            ),
-            SettingsGroup(
-              title: l.alarmOwnAlarms,
-              children: [
-                for (final alarm in _config.manualAlarms)
-                  SettingsTile(
-                    icon: Icons.alarm_rounded,
-                    title:
-                        '${(alarm.timeOfDayMinutes ~/ 60).toString().padLeft(2, '0')}:${(alarm.timeOfDayMinutes % 60).toString().padLeft(2, '0')}',
-                    subtitle: [
-                      if (!alarm.enabled) l.alarmInactive,
-                      alarm.weekdays
-                          .where(
-                            (day) =>
-                                day >= DateTime.monday &&
-                                day <= DateTime.sunday,
-                          )
-                          .map((day) => l.weekDayShort[day - 1])
-                          .join(' · '),
-                    ].where((part) => part.isNotEmpty).join(' · '),
-                    onTap: () => _editManualAlarm(alarm),
-                  ),
-                SettingsTile(
-                  icon: Icons.add_alarm_rounded,
-                  title: l.alarmAdd,
-                  subtitle: l.alarmAddDesc,
-                  onTap: _addManualAlarm,
-                ),
-              ],
+              subtitle: l.alarmScheduleDesc,
+              value: _config.smartEnabled,
+              onChanged: _setSmartEnabled,
             ),
           ],
+        ),
+        SettingsGroup(
+          title: l.alarmReady,
+          children: [
+            SettingsTile(
+              icon: readiness.activationReady
+                  ? Icons.verified_rounded
+                  : Icons.warning_amber_rounded,
+              iconColor: readiness.activationReady ? cs.primary : cs.error,
+              title: readiness.activationReady
+                  ? l.alarmReadyYes
+                  : hasConfiguredAlarm
+                  ? l.alarmPausedPermission
+                  : l.alarmReadyNo,
+              subtitle: readiness.activationReady
+                  ? l.alarmReadyDescYes
+                  : hasConfiguredAlarm
+                  ? l.alarmPausedPermissionDesc
+                  : l.alarmReadyDescNo,
+              trailing: const SizedBox.shrink(),
+            ),
+            if (!readiness.exactAlarms)
+              SettingsTile(
+                icon: Icons.alarm_rounded,
+                title: l.alarmExact,
+                subtitle: l.alarmExactDesc,
+                onTap: () =>
+                    AlarmService.instance.openPermissionSettings('exact'),
+              ),
+            if (!readiness.notifications)
+              SettingsTile(
+                icon: Icons.notifications_off_rounded,
+                title: l.alarmNotifications,
+                subtitle: l.alarmNotificationsDesc,
+                onTap: () async {
+                  await NotificationService().requestPermissions();
+                  await _load();
+                },
+              ),
+            if (!readiness.fullScreenIntent)
+              SettingsTile(
+                icon: Icons.fullscreen_rounded,
+                title: l.alarmFullscreen,
+                subtitle: l.alarmFullscreenDesc,
+                onTap: () =>
+                    AlarmService.instance.openPermissionSettings('fullscreen'),
+              ),
+            if (!readiness.dndAccess)
+              SettingsTile(
+                icon: Icons.do_not_disturb_on_rounded,
+                title: l.alarmDnd,
+                subtitle: l.alarmDndDesc,
+                onTap: () =>
+                    AlarmService.instance.openPermissionSettings('dnd'),
+              ),
+          ],
+        ),
+        SettingsGroup(
+          title: l.alarmSmart,
+          children: [
+            SettingsTile(
+              icon: Icons.directions_walk_rounded,
+              title: l.alarmLead,
+              subtitle: l.alarmLeadValue(_config.leadMinutes),
+              onTap: () => _chooseMinutes(
+                title: l.alarmLead,
+                current: _config.leadMinutes,
+                min: 0,
+                max: 180,
+                onChanged: (value) => _save(
+                  _config.copyWith(leadMinutes: value),
+                  refreshTimetable: _config.smartEnabled,
+                ),
+              ),
+            ),
+            SettingsTile(
+              icon: Icons.tune_rounded,
+              title: l.alarmLeadByStart,
+              subtitle: _config.leadMinutesByFirstLessonStart.isEmpty
+                  ? l.alarmLeadByStartDesc
+                  : (_config.leadMinutesByFirstLessonStart.entries.toList()
+                          ..sort((a, b) => a.key.compareTo(b.key)))
+                        .map(
+                          (entry) =>
+                              '${_formatTimeOfDay(context, entry.key)}: ${entry.value == -1 ? l.alarmLeadByStartOff : l.alarmLeadValue(entry.value)}',
+                        )
+                        .join(' · '),
+              onTap: _addLeadOverride,
+            ),
+            for (final entry
+                in (_config.leadMinutesByFirstLessonStart.entries.toList()
+                  ..sort((a, b) => a.key.compareTo(b.key))))
+              SettingsTile(
+                icon: entry.value == -1
+                    ? Icons.alarm_off_rounded
+                    : Icons.timer_rounded,
+                title: _formatTimeOfDay(context, entry.key),
+                subtitle: entry.value == -1
+                    ? l.alarmLeadByStartOff
+                    : l.alarmLeadValue(entry.value),
+                onTap: () => _chooseLeadOverride(entry.key),
+              ),
+            SettingsTile(
+              icon: Icons.notifications_active_rounded,
+              title: l.alarmHeadsUp,
+              subtitle:
+                  '${l.alarmHeadsUpValue(_config.preAlarmNotificationMinutes)} · ${l.alarmHeadsUpDesc}',
+              onTap: () => _chooseMinutes(
+                title: l.alarmHeadsUp,
+                current: _config.preAlarmNotificationMinutes,
+                min: 0,
+                max: 120,
+                onChanged: (value) =>
+                    _save(_config.copyWith(preAlarmNotificationMinutes: value)),
+              ),
+            ),
+            SettingsTile(
+              icon: Icons.fast_forward_rounded,
+              title: l.alarmEarlier,
+              subtitle: l.alarmEarlierValue(_config.nextAlarmEarlierMinutes),
+              onTap: () => _chooseMinutes(
+                title: l.alarmEarlier,
+                current: _config.nextAlarmEarlierMinutes,
+                min: 1,
+                max: 90,
+                onChanged: (value) =>
+                    _save(_config.copyWith(nextAlarmEarlierMinutes: value)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+              child: FilledButton.tonalIcon(
+                onPressed: _config.smartEnabled ? _makeNextAlarmEarlier : null,
+                icon: const Icon(Icons.alarm_add_rounded),
+                label: Text(
+                  l.alarmEarlierValue(_config.nextAlarmEarlierMinutes),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: l.alarmRing,
+          children: [
+            SettingsTile(
+              icon: Icons.snooze_rounded,
+              title: l.alarmSnooze,
+              subtitle: l.alarmSnoozeValue(_config.snoozeMinutes),
+              onTap: () => _chooseMinutes(
+                title: l.alarmSnoozeDuration,
+                current: _config.snoozeMinutes,
+                min: 1,
+                max: 30,
+                onChanged: (value) =>
+                    _save(_config.copyWith(snoozeMinutes: value)),
+              ),
+            ),
+            SettingsTile(
+              icon: Icons.music_note_rounded,
+              title: l.alarmRingtone,
+              subtitle: _config.ringtoneUri == null
+                  ? l.alarmSystemTone
+                  : l.alarmSelectedTone,
+              onTap: () async {
+                final uri = await AlarmService.instance.pickRingtone(
+                  _config.ringtoneUri,
+                );
+                if (uri != null) {
+                  await _save(_config.copyWith(ringtoneUri: uri));
+                }
+              },
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: l.alarmOwnAlarms,
+          children: [
+            for (final alarm in _config.manualAlarms)
+              SettingsTile(
+                icon: Icons.alarm_rounded,
+                title:
+                    '${(alarm.timeOfDayMinutes ~/ 60).toString().padLeft(2, '0')}:${(alarm.timeOfDayMinutes % 60).toString().padLeft(2, '0')}',
+                subtitle: [
+                  if (!alarm.enabled) l.alarmInactive,
+                  alarm.weekdays
+                      .where(
+                        (day) =>
+                            day >= DateTime.monday && day <= DateTime.sunday,
+                      )
+                      .map((day) => l.weekDayShort[day - 1])
+                      .join(' · '),
+                ].where((part) => part.isNotEmpty).join(' · '),
+                onTap: () => _editManualAlarm(alarm),
+              ),
+            SettingsTile(
+              icon: Icons.add_alarm_rounded,
+              title: l.alarmAdd,
+              subtitle: l.alarmAddDesc,
+              onTap: _addManualAlarm,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

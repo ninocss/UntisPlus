@@ -49,6 +49,14 @@ extension AppL10nCollections on AppL10n {
     aiChatSuggestionThree,
   ];
 
+  List<String> get aiGreetings => <String>[
+    aiGreetingOne,
+    aiGreetingTwo,
+    aiGreetingThree,
+    aiGreetingFour,
+    aiGreetingFive,
+  ];
+
   String examsInDays(int days) => examsDaysIn(days);
 
   String infoAttachmentLabel(int count, String? extension) {
@@ -60,7 +68,6 @@ extension AppL10nCollections on AppL10n {
     }
     return count == 1 ? infoAttachedFile : infoAttachedFiles;
   }
-
 
   Map<String, String> get aiPromptVariableDescriptions => <String, String>{
     '[today]': aiVar_today,

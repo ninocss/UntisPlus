@@ -22,7 +22,7 @@ internal class NativeChannelRegistry(
     private val messenger = flutterEngine.dartExecutor.binaryMessenger
     private val notifications = NotificationChannelHandler(activity, messenger)
     private val ui = UiChannelHandler(activity, messenger)
-    private val alarms = AlarmChannelHandler(activity, messenger)
+    private val alarms = AlarmChannelHandler(activity, messenger, activity)
 
     fun register() {
         notifications.register()

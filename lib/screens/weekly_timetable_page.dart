@@ -1130,9 +1130,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             .whereType<Map>()
             .where(
               (lesson) =>
-                  !hiddenSubjectsNotifier.value.contains(
-                    lesson['_subjectShort']?.toString() ?? '',
-                  ) &&
+                  !_isLessonSubjectHidden(lesson) &&
                   (showCancelledNotifier.value ||
                       lesson['code'] != 'cancelled'),
             )
@@ -1172,6 +1170,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             ),
           );
     final homework = homeworksNotifier.value
+        .where((item) => !_isLessonSubjectHidden(item))
         .where((item) => item['isDone'] != true)
         .take(3)
         .map((item) {
@@ -1197,6 +1196,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             }
           })
           .where((exam) => exam.isNotEmpty)
+          .where(
+            (exam) => !_isSubjectHidden(exam['subject'] ?? exam['subjectName']),
+          )
           .take(2)
           .map((exam) {
             final subject =

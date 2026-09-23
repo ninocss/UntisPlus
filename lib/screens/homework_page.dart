@@ -46,12 +46,15 @@ Future<void> _showAddHomeworkDialog(
   String? initialSubject,
 }) async {
   final l = appL10nFor(appLocaleNotifier.value);
-  String selectedSubject =
+  final visibleSubjects = _visibleKnownSubjects();
+  final requestedSubject =
       (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
-      existing?['subject']?.toString() ??
-      (knownSubjectsNotifier.value.isNotEmpty
-          ? knownSubjectsNotifier.value.first
-          : '');
+      existing?['subject']?.toString();
+  String selectedSubject =
+      (requestedSubject != null && !_isSubjectHidden(requestedSubject)
+          ? requestedSubject
+          : null) ??
+      (visibleSubjects.isNotEmpty ? visibleSubjects.first : '');
   final subjectCtrl = TextEditingController(text: selectedSubject);
   final taskCtrl = TextEditingController(
     text:
@@ -74,8 +77,10 @@ Future<void> _showAddHomeworkDialog(
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDlg) {
         final cs = Theme.of(ctx).colorScheme;
-        final subjects = knownSubjectsNotifier.value.toList()..sort();
-        if (selectedSubject.isNotEmpty && !subjects.contains(selectedSubject)) {
+        final subjects = _visibleKnownSubjects();
+        if (selectedSubject.isNotEmpty &&
+            !_isSubjectHidden(selectedSubject) &&
+            !subjects.contains(selectedSubject)) {
           subjects.add(selectedSubject);
           subjects.sort();
         }
@@ -566,6 +571,22 @@ class _HomeworkViewState extends State<_HomeworkView> {
   int _filterIndex = 0; // 0 = Alle, 1 = Offen, 2 = Bald, 3 = Erledigt
 
   @override
+  void initState() {
+    super.initState();
+    hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
+  }
+
+  @override
+  void dispose() {
+    hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
+    super.dispose();
+  }
+
+  void _onHiddenSubjectsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = appL10nFor(appLocaleNotifier.value);
@@ -579,6 +600,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
             final allItems = <Map<String, dynamic>>[];
 
             for (final hw in apiHw) {
+              if (_isLessonSubjectHidden(hw)) continue;
               final id = hw['id']?.toString() ?? '';
               final subject =
                   hw['_lesson']?['su']?.first?['longname'] ??
@@ -596,6 +618,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
             }
 
             for (final hw in customHw) {
+              if (_isLessonSubjectHidden(hw)) continue;
               allItems.add({
                 'id': hw['id']?.toString() ?? '',
                 'subject': hw['subject'] ?? 'Unbekannt',
@@ -1128,12 +1151,15 @@ Future<void> _showAddExamDialog(
   int? editIndex,
   String? initialSubject,
 }) async {
-  String selectedSubject =
+  final visibleSubjects = _visibleKnownSubjects();
+  final requestedSubject =
       (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
-      existing?['subject']?.toString() ??
-      (knownSubjectsNotifier.value.isNotEmpty
-          ? knownSubjectsNotifier.value.first
-          : '');
+      existing?['subject']?.toString();
+  String selectedSubject =
+      (requestedSubject != null && !_isSubjectHidden(requestedSubject)
+          ? requestedSubject
+          : null) ??
+      (visibleSubjects.isNotEmpty ? visibleSubjects.first : '');
   final subjectCtrl = TextEditingController(text: selectedSubject);
   final typeCtrl = TextEditingController(
     text: existing?['examType']?.toString() ?? '',
@@ -1156,8 +1182,10 @@ Future<void> _showAddExamDialog(
       builder: (ctx, setDlg) {
         final cs = Theme.of(ctx).colorScheme;
         final l = appL10nFor(appLocaleNotifier.value);
-        final subjects = knownSubjectsNotifier.value.toList()..sort();
-        if (selectedSubject.isNotEmpty && !subjects.contains(selectedSubject)) {
+        final subjects = _visibleKnownSubjects();
+        if (selectedSubject.isNotEmpty &&
+            !_isSubjectHidden(selectedSubject) &&
+            !subjects.contains(selectedSubject)) {
           subjects.add(selectedSubject);
           subjects.sort();
         }

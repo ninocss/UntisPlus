@@ -240,12 +240,19 @@ class SchoolInfoRepository {
         .whereType<Map>()
         .map((raw) {
           final rawMap = _stringKeyedMap(raw);
-          final map = rawMap['message'] is Map
+          final nestedMessage = rawMap['message'] is Map
               ? _stringKeyedMap(rawMap['message'] as Map)
-              : rawMap;
+              : null;
+          final map = <String, dynamic>{...rawMap};
+          if (nestedMessage != null) {
+            map
+              ..remove('message')
+              ..addAll(nestedMessage);
+          }
           final sender = map['sender'];
           final preview =
               map['contentPreview'] ?? map['message'] ?? map['text'] ?? '';
+          final attachments = _inboxAttachments(rawMap, nestedMessage);
           return <String, dynamic>{
             ...map,
             'message': preview,
@@ -254,9 +261,45 @@ class SchoolInfoRepository {
                 ? sender['displayName'] ?? sender['name']
                 : null,
             'date': map['sentDateTime'] ?? map['date'] ?? map['sendTime'],
+            if (attachments.isNotEmpty) 'attachments': attachments,
           };
         })
         .toList(growable: false);
+  }
+
+  static List<dynamic> _inboxAttachments(
+    Map<String, dynamic> entry,
+    Map<String, dynamic>? message,
+  ) {
+    final attachments = <dynamic>[];
+    final seen = <String>{};
+
+    for (final source in [entry, ?message]) {
+      for (final key in const [
+        'attachments',
+        'fileAttachments',
+        'attachmentList',
+        'files',
+      ]) {
+        final value = source[key];
+        if (value is! List) continue;
+        for (final rawAttachment in value) {
+          if (rawAttachment is! Map) continue;
+          final attachment = _stringKeyedMap(rawAttachment);
+          final id =
+              (attachment['fileId'] ??
+                      attachment['attachmentId'] ??
+                      attachment['fileAttachmentId'] ??
+                      attachment['id'] ??
+                      '')
+                  .toString()
+                  .trim();
+          if (id.isEmpty || seen.add(id)) attachments.add(attachment);
+        }
+      }
+    }
+
+    return attachments;
   }
 
   Future<List<Map<String, dynamic>>> _fetchNewsWidget({

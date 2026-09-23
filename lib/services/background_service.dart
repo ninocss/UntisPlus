@@ -13,6 +13,7 @@ import '../data/webuntis/webuntis_client.dart';
 import '../data/webuntis/webuntis_session_manager.dart';
 import '../features/changes/data/change_repository.dart';
 import '../features/changes/domain/timetable_change.dart';
+import '../features/accounts/data/untis_account_store.dart';
 import '../features/updates/data/github_release_repository.dart';
 import '../l10n.dart';
 
@@ -983,12 +984,40 @@ Future<void> _refreshInactiveWidgetAccounts(
             };
           }
           if (source == null) return;
-          final lessons = source.whereType<Map>().toList()
-            ..sort(
-              (a, b) => ((a['startTime'] as num?)?.toInt() ?? 0).compareTo(
-                (b['startTime'] as num?)?.toInt() ?? 0,
-              ),
-            );
+          final hiddenSubjects =
+              (prefs.getStringList(
+                        UntisAccountStore.personalDataKey(id, 'hiddenSubjects'),
+                      ) ??
+                      const <String>[])
+                  .map((subject) => subject.trim().toLowerCase())
+                  .toSet();
+          String subjectKey(Map lesson) {
+            final direct = lesson['_subjectShort']?.toString().trim();
+            if (direct?.isNotEmpty == true) return direct!.toLowerCase();
+            final subjects = lesson['su'];
+            if (subjects is List &&
+                subjects.isNotEmpty &&
+                subjects.first is Map) {
+              return ((subjects.first as Map)['name'] ?? '')
+                  .toString()
+                  .trim()
+                  .toLowerCase();
+            }
+            return '';
+          }
+
+          final lessons =
+              source
+                  .whereType<Map>()
+                  .where(
+                    (lesson) => !hiddenSubjects.contains(subjectKey(lesson)),
+                  )
+                  .toList()
+                ..sort(
+                  (a, b) => ((a['startTime'] as num?)?.toInt() ?? 0).compareTo(
+                    (b['startTime'] as num?)?.toInt() ?? 0,
+                  ),
+                );
           final nowValue = now.hour * 100 + now.minute;
           Map? current;
           Map? next;

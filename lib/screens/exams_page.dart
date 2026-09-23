@@ -33,14 +33,20 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       if (mounted) setState(() {});
     });
     customExamsNotifier.addListener(_onCustomExamsNotifierChanged);
+    hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
     _load();
   }
 
   @override
   void dispose() {
     customExamsNotifier.removeListener(_onCustomExamsNotifierChanged);
+    hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onHiddenSubjectsChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onCustomExamsNotifierChanged() {
@@ -87,7 +93,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final all = [
       ..._apiExams.map((e) => {...e, '_source': 'api'}),
       ..._customExams.map((e) => {...e, '_source': 'custom'}),
-    ];
+    ].where((exam) => !_isSubjectHidden(_examSubject(exam))).toList();
     all.sort((a, b) => _examSortKey(a).compareTo(_examSortKey(b)));
     return all;
   }
@@ -227,21 +233,21 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
         invalidMessage: l.examsImportInvalidJson,
       );
 
-        final current = List<Map<String, dynamic>>.from(
-          customExamsNotifier.value,
-        );
-        for (var e in exams) {
-          current.add({
-            'subject': e['subject']?.toString() ?? 'Unbekannt',
-            'examType': e['examType']?.toString() ?? 'Klausur',
-            'date': (e['date']?.toString() ?? '').replaceAll('-', ''),
-            'description': e['description']?.toString() ?? '',
-            '_custom': true,
-          });
-        }
-        await saveCustomExams(current);
-        if (!mounted) return;
-        context.showUntisSnackBar(l.examsImportSuccess);
+      final current = List<Map<String, dynamic>>.from(
+        customExamsNotifier.value,
+      );
+      for (var e in exams) {
+        current.add({
+          'subject': e['subject']?.toString() ?? 'Unbekannt',
+          'examType': e['examType']?.toString() ?? 'Klausur',
+          'date': (e['date']?.toString() ?? '').replaceAll('-', ''),
+          'description': e['description']?.toString() ?? '',
+          '_custom': true,
+        });
+      }
+      await saveCustomExams(current);
+      if (!mounted) return;
+      context.showUntisSnackBar(l.examsImportSuccess);
     } catch (e) {
       if (!mounted) return;
       final message = e.toString();

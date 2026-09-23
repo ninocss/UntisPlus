@@ -48,6 +48,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   final List<AiChatAttachment> _attachments = [];
   final List<AiChatSession> _chatHistory = [];
   String? _currentChatId;
+  int _aiGreetingIndex = math.Random().nextInt(5);
 
   @override
   void initState() {
@@ -71,6 +72,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     _loadContext();
     _loadChatHistory();
     pendingAssistantPromptNotifier.addListener(_consumeNativeAssistantPrompt);
+    hiddenSubjectsNotifier.addListener(_reloadContextForHiddenSubjects);
     _promptFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
@@ -82,6 +84,10 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     pendingAssistantPromptNotifier.value = null;
     _inputController.text = prompt;
     _send();
+  }
+
+  void _reloadContextForHiddenSubjects() {
+    unawaited(_loadContext());
   }
 
   Future<void> _loadChatHistory() async {
@@ -120,6 +126,10 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _latestResult = null;
       _latestQuery = '';
       _chatMode = true;
+      final nextGreeting = math.Random().nextInt(5);
+      _aiGreetingIndex = nextGreeting == _aiGreetingIndex
+          ? (nextGreeting + 1) % 5
+          : nextGreeting;
     });
     _selectAiTab(1, haptic: false);
     _hapticAction();
@@ -149,6 +159,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     pendingAssistantPromptNotifier.removeListener(
       _consumeNativeAssistantPrompt,
     );
+    hiddenSubjectsNotifier.removeListener(_reloadContextForHiddenSubjects);
     _tabController.dispose();
     _promptFocusNode.dispose();
     _streamRenderTimer?.cancel();
@@ -369,6 +380,27 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       } catch (_) {}
     }
 
+    final hiddenSubjectAliases = <String>{};
+    for (final lesson in weekData.values.expand((lessons) => lessons)) {
+      if (!_isLessonSubjectHidden(lesson) || lesson is! Map) continue;
+      hiddenSubjectAliases
+        ..add(_normalizedSubjectName(lesson['_subjectShort']))
+        ..add(_normalizedSubjectName(lesson['_subjectLong']));
+    }
+    hiddenSubjectAliases.remove('');
+    final visibleWeekData = <int, List<dynamic>>{
+      for (final entry in weekData.entries)
+        entry.key: entry.value
+            .where((lesson) => !_isLessonSubjectHidden(lesson))
+            .toList(growable: false),
+    };
+    exams = exams
+        .where((exam) {
+          final subject = exam['subject'] ?? exam['name'] ?? '';
+          return !_isSubjectHidden(subject) &&
+              !hiddenSubjectAliases.contains(_normalizedSubjectName(subject));
+        })
+        .toList(growable: true);
     exams.sort((a, b) {
       final da =
           int.tryParse(
@@ -386,7 +418,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     if (!mounted) return;
     setState(() {
       _currentMonday = monday;
-      _weekData = weekData;
+      _weekData = visibleWeekData;
       _exams = exams;
       _loading = false;
     });
@@ -1442,7 +1474,11 @@ ${l.aiAssistantRules}''';
               );
             },
             child: KeyedSubtree(
-              key: ValueKey(mode),
+              key: ValueKey(
+                _chatMode
+                    ? '${mode.name}_${_chatMessages.isEmpty && !_thinking}'
+                    : mode.name,
+              ),
               child: _chatMode ? _buildChatView(cs) : _buildResultHeader(cs),
             ),
           ),
@@ -1467,25 +1503,40 @@ ${l.aiAssistantRules}''';
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_chatMode) ...[
-            Text(
-              l.aiTryIt,
-              style: untisThemeTextStyle(
-                context,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: cs.onSurfaceVariant,
+            SizedBox(
+              width: double.infinity,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 54, 20, 20),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: cs.primaryContainer.withValues(alpha: 0.72),
+                      ),
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: cs.onPrimaryContainer,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      l.aiGreetings[_aiGreetingIndex % l.aiGreetings.length],
+                      textAlign: TextAlign.center,
+                      style: untisThemeTextStyle(
+                        context,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 10),
-            for (final suggestion in l.aiChatSuggestions.indexed)
-              _AiSuggestionCard(
-                text: suggestion.$2,
-                icon: suggestionIcons[suggestion.$1 % suggestionIcons.length],
-                onTap: () {
-                  _hapticSelection();
-                  unawaited(_sendQuickPrompt(suggestion.$2));
-                },
-              ),
           ] else if (analysisSuggestions.isNotEmpty) ...[
             Text(
               l.aiTryIt,

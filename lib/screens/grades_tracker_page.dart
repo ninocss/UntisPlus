@@ -74,12 +74,18 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     super.initState();
     _loadGrades();
     customGradesNotifier.addListener(_onCustomGradesChanged);
+    hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
   }
 
   @override
   void dispose() {
     customGradesNotifier.removeListener(_onCustomGradesChanged);
+    hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
     super.dispose();
+  }
+
+  void _onHiddenSubjectsChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onCustomGradesChanged() {
@@ -136,13 +142,16 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final visibleSubjects = _visibleKnownSubjects();
+    final requestedSubject =
+        (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
+        grade?.subject;
 
     String selectedSubject =
-        (initialSubject?.isNotEmpty == true ? initialSubject! : null) ??
-        grade?.subject ??
-        (knownSubjectsNotifier.value.isNotEmpty
-            ? knownSubjectsNotifier.value.first
-            : '');
+        (requestedSubject != null && !_isSubjectHidden(requestedSubject)
+            ? requestedSubject
+            : null) ??
+        (visibleSubjects.isNotEmpty ? visibleSubjects.first : '');
     final valueController = TextEditingController(
       text: grade?.value.toString() ?? '',
     );
@@ -166,7 +175,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
           final Color previewColor = previewValue != null
               ? _colorForGrade(previewValue)
               : cs.primary;
-          final subjects = knownSubjectsNotifier.value.toList()..sort();
+          final subjects = _visibleKnownSubjects();
 
           return Padding(
             padding: EdgeInsets.only(
@@ -543,9 +552,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                   : Colors.transparent,
                             ),
                             child: Text(
-                              existing == null
-                                  ? l.save
-                                  : l.commonSaveChanges,
+                              existing == null ? l.save : l.commonSaveChanges,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w900,
                                 fontSize: 16,
@@ -569,6 +576,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   Map<String, List<_Grade>> get _groupedGrades {
     final map = <String, List<_Grade>>{};
     for (var g in _grades) {
+      if (_isSubjectHidden(g.subject)) continue;
       (map[g.subject] ??= []).add(g);
     }
     return map;
@@ -586,8 +594,11 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   }
 
   double get _overallAverage {
-    if (_grades.isEmpty) return 0;
-    return _calculateAverage(_grades);
+    final visibleGrades = _grades
+        .where((grade) => !_isSubjectHidden(grade.subject))
+        .toList(growable: false);
+    if (visibleGrades.isEmpty) return 0;
+    return _calculateAverage(visibleGrades);
   }
 
   Color _colorForGrade(double value) {
@@ -604,10 +615,14 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     final cs = Theme.of(context).colorScheme;
     final grouped = _groupedGrades;
     final subjects = grouped.keys.toList()..sort();
+    final visibleGradeCount = grouped.values.fold<int>(
+      0,
+      (total, grades) => total + grades.length,
+    );
 
     return _loading
         ? const Center(child: CircularProgressIndicator())
-        : _grades.isEmpty
+        : visibleGradeCount == 0
         ? _buildEmptyState(cs, l)
         : ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 132),
@@ -630,7 +645,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     _buildStatBadge(
                       cs,
                       l.gradesTotal,
-                      _grades.length.toString(),
+                      visibleGradeCount.toString(),
                       Icons.numbers_rounded,
                       cs.primary,
                     ),

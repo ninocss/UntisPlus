@@ -773,6 +773,83 @@ Future<void> saveCustomGrades(List<Map<String, dynamic>> list) =>
 
 final ValueNotifier<Set<String>> hiddenSubjectsNotifier = ValueNotifier({});
 
+String _normalizedSubjectName(Object? value) =>
+    value?.toString().trim().toLowerCase() ?? '';
+
+/// Returns every known name for a subject (usually its short and long name).
+/// Hidden subjects are persisted by short name, while exams and homework can
+/// contain the long name, so consumers must compare against both forms.
+Set<String> _subjectAliases(Object? subject) {
+  final normalized = _normalizedSubjectName(subject);
+  if (normalized.isEmpty) return const <String>{};
+  final aliases = <String>{normalized};
+  for (final lessons in currentWeekDataNotifier.value.values) {
+    for (final lesson in lessons.whereType<Map>()) {
+      final shortName = _normalizedSubjectName(lesson['_subjectShort']);
+      final longName = _normalizedSubjectName(lesson['_subjectLong']);
+      if (shortName == normalized || longName == normalized) {
+        if (shortName.isNotEmpty) aliases.add(shortName);
+        if (longName.isNotEmpty) aliases.add(longName);
+      }
+    }
+  }
+  return aliases;
+}
+
+bool _isSubjectHidden(Object? subject) {
+  final aliases = _subjectAliases(subject);
+  if (aliases.isEmpty) return false;
+  final hidden = hiddenSubjectsNotifier.value
+      .map(_normalizedSubjectName)
+      .where((value) => value.isNotEmpty)
+      .toSet();
+  return aliases.any(hidden.contains);
+}
+
+bool _isLessonSubjectHidden(Object? lesson) {
+  if (lesson is! Map) return false;
+  final directCandidates = <Object?>[
+    lesson['_subjectShort'],
+    lesson['_subjectLong'],
+    lesson['subject'],
+    lesson['subjectName'],
+    lesson['name'],
+  ];
+  final subjects = lesson['su'];
+  if (subjects is List) {
+    for (final subject in subjects.whereType<Map>()) {
+      directCandidates
+        ..add(subject['name'])
+        ..add(subject['longName'])
+        ..add(subject['longname']);
+    }
+  }
+  final nestedLesson = lesson['_lesson'];
+  if (nestedLesson is Map) {
+    directCandidates
+      ..add(nestedLesson['_subjectShort'])
+      ..add(nestedLesson['_subjectLong']);
+    final nestedSubjects = nestedLesson['su'];
+    if (nestedSubjects is List) {
+      for (final subject in nestedSubjects.whereType<Map>()) {
+        directCandidates
+          ..add(subject['name'])
+          ..add(subject['longName'])
+          ..add(subject['longname']);
+      }
+    }
+  }
+  return directCandidates.any(_isSubjectHidden);
+}
+
+List<String> _visibleKnownSubjects() {
+  final subjects = knownSubjectsNotifier.value
+      .where((subject) => !_isSubjectHidden(subject))
+      .toList();
+  subjects.sort();
+  return subjects;
+}
+
 Future<void> _updateHiddenSubjects(
   void Function(Set<String> values) update,
 ) async {

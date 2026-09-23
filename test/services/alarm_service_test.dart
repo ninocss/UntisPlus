@@ -32,6 +32,58 @@ void main() {
     expect(candidate?.label, 'Englisch');
   });
 
+  test('activation requires exact alarms and notifications only', () {
+    const readyWithoutOptionalEnhancements = AlarmReadiness(
+      exactAlarms: true,
+      notifications: true,
+      fullScreenIntent: false,
+      dndAccess: false,
+    );
+    const missingNotifications = AlarmReadiness(
+      exactAlarms: true,
+      notifications: false,
+      fullScreenIntent: true,
+      dndAccess: true,
+    );
+
+    expect(readyWithoutOptionalEnhancements.activationReady, isTrue);
+    expect(readyWithoutOptionalEnhancements.optionalEnhancementsReady, isFalse);
+    expect(missingNotifications.activationReady, isFalse);
+  });
+
+  test('date overrides do not alter recurring manual alarms', () {
+    const manual = ManualAlarmConfig(
+      id: 'school-days',
+      timeOfDayMinutes: 420,
+      weekdays: [1, 2, 3, 4, 5],
+    );
+    const config = AlarmConfig(
+      manualAlarms: [manual],
+      dateOverrides: {'20260908': AlarmDateOverride(disabled: true)},
+    );
+
+    final restored = AlarmConfig.fromJson(config.toJson());
+    expect(restored.manualAlarms.single.weekdays, [1, 2, 3, 4, 5]);
+    expect(restored.manualAlarms.single.enabled, isTrue);
+    expect(restored.dateOverrides['20260908']?.disabled, isTrue);
+  });
+
+  test('structured scheduling result exposes paused permission state', () {
+    final result = AlarmSchedulingResult.fromMap({
+      'status': 'paused_missing_permission',
+      'exactScheduled': false,
+      'paused': true,
+      'storedCount': 2,
+      'scheduledCount': 0,
+      'missingPermissions': ['exactAlarms'],
+    });
+
+    expect(result.status, AlarmSchedulingStatus.pausedMissingPermission);
+    expect(result.paused, isTrue);
+    expect(result.storedCount, 2);
+    expect(result.missingPermissions, ['exactAlarms']);
+  });
+
   test('skips a free day and picks the next active school day', () {
     final candidate = AlarmPlanner.nextSmartAlarm(
       [
@@ -94,9 +146,7 @@ void main() {
       ],
       leadMinutes: 30,
       now: DateTime(2026, 9, 7, 18),
-      dateOverrides: const {
-        '20260908': AlarmDateOverride(disabled: true),
-      },
+      dateOverrides: const {'20260908': AlarmDateOverride(disabled: true)},
     );
 
     expect(candidate?.at, DateTime(2026, 9, 9, 7, 30));

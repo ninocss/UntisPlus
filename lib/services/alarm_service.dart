@@ -265,8 +265,11 @@ class AlarmReadiness {
   final bool dndAccess;
   final bool notifications;
 
-  bool get isReady =>
-      exactAlarms && fullScreenIntent && dndAccess && notifications;
+  /// Mandatory gate for enabling alarms. Full-screen and DND are optional
+  /// enhancements because notification actions remain usable without them.
+  bool get activationReady => exactAlarms && notifications;
+  bool get optionalEnhancementsReady => fullScreenIntent && dndAccess;
+  bool get isReady => activationReady;
 
   factory AlarmReadiness.fromMap(Map<dynamic, dynamic> map) => AlarmReadiness(
     exactAlarms: map['exactAlarms'] == true,
@@ -274,6 +277,48 @@ class AlarmReadiness {
     dndAccess: map['dndAccess'] == true,
     notifications: map['notifications'] == true,
   );
+}
+
+enum AlarmSchedulingStatus {
+  scheduledExact,
+  pausedMissingPermission,
+  unavailable,
+}
+
+class AlarmSchedulingResult {
+  const AlarmSchedulingResult({
+    required this.status,
+    required this.exactScheduled,
+    required this.paused,
+    required this.storedCount,
+    required this.scheduledCount,
+    required this.missingPermissions,
+  });
+
+  final AlarmSchedulingStatus status;
+  final bool exactScheduled;
+  final bool paused;
+  final int storedCount;
+  final int scheduledCount;
+  final List<String> missingPermissions;
+
+  factory AlarmSchedulingResult.fromMap(Map<dynamic, dynamic> map) {
+    final rawStatus = map['status']?.toString();
+    return AlarmSchedulingResult(
+      status: rawStatus == 'scheduled_exact'
+          ? AlarmSchedulingStatus.scheduledExact
+          : rawStatus == 'paused_missing_permission'
+          ? AlarmSchedulingStatus.pausedMissingPermission
+          : AlarmSchedulingStatus.unavailable,
+      exactScheduled: map['exactScheduled'] == true,
+      paused: map['paused'] == true,
+      storedCount: (map['storedCount'] as num?)?.toInt() ?? 0,
+      scheduledCount: (map['scheduledCount'] as num?)?.toInt() ?? 0,
+      missingPermissions: (map['missingPermissions'] as List? ?? const [])
+          .map((value) => value.toString())
+          .toList(growable: false),
+    );
+  }
 }
 
 /// Pure timetable-to-wake-time calculation. It has no Android dependency and
@@ -467,13 +512,15 @@ class AlarmService {
     if (reschedule) await syncStoredPlans();
   }
 
-  Future<void> restore() => syncStoredPlans();
+  Future<void> restore() async {
+    await syncStoredPlans();
+  }
 
-  Future<void> syncStoredPlans() async {
-    if (!_supported) return;
+  Future<AlarmSchedulingResult?> syncStoredPlans() async {
+    if (!_supported) return null;
     final config = await loadConfig();
     final smartPlan = _applyDateOverride(await _loadSmartPlan(), config);
-    await _pushPlans(config, smartPlan);
+    return _pushPlans(config, smartPlan);
   }
 
   /// Persists a visible day marker immediately. The caller can then refresh
@@ -608,7 +655,7 @@ class AlarmService {
     );
   }
 
-  Future<void> _pushPlans(
+  Future<AlarmSchedulingResult?> _pushPlans(
     AlarmConfig config,
     _SmartAlarmPlan? smartPlan,
   ) async {
@@ -657,14 +704,15 @@ class AlarmService {
     ];
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
-        await _channel.invokeMethod<void>('replacePlans', {'plans': plans});
-        return;
+        final raw = await _channel.invokeMethod<dynamic>('replacePlans', {
+          'plans': plans,
+        });
+        if (raw is Map) return AlarmSchedulingResult.fromMap(raw);
+        return null;
       } on MissingPluginException {
-        // Workmanager runs in a headless Flutter engine. The custom native
-        // alarm channel is registered by the app host, so it is unavailable
-        // in that background isolate. The normalized plan is already persisted
-        // above and will be pushed again from the foreground app isolate.
-        return;
+        // A non-Android background host may not expose the native scheduler.
+        // The normalized plan remains persisted for the next Android restore.
+        return null;
       } on PlatformException catch (error) {
         if (attempt == 0) {
           await Future<void>.delayed(const Duration(milliseconds: 120));
@@ -673,6 +721,7 @@ class AlarmService {
         debugPrint('Alarm scheduling unavailable: ${error.code}');
       }
     }
+    return null;
   }
 
   /// Re-publishes saved alarms after the app language changes. The schedules

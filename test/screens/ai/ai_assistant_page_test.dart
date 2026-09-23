@@ -74,11 +74,40 @@ void main() {
     await tester.tap(find.text(l.aiTabChat));
     await tester.pump(const Duration(milliseconds: 450));
 
+    expect(
+      l.aiGreetings.any(
+        (greeting) => find.text(greeting).evaluate().isNotEmpty,
+      ),
+      isTrue,
+    );
+    expect(find.text(l.aiTryIt), findsNothing);
+    for (final suggestion in l.aiChatSuggestions) {
+      expect(find.text(suggestion), findsNothing);
+    }
     expect(find.text(l.aiChatTitle), findsNothing);
     expect(find.text(l.aiChatSubtitle), findsNothing);
     expect(find.text(l.aiTabAnalysis), findsOneWidget);
     expect(find.text(l.aiTabChat), findsOneWidget);
     expect(find.byIcon(Icons.add_rounded), findsWidgets);
+  });
+
+  testWidgets('AI greeting fades away after the first message', (tester) async {
+    final l = appL10nFor('de');
+
+    await tester.pumpWidget(const UntisPlusApp(startScreen: AiAssistantPage()));
+    await pumpUntil(tester, find.byType(TextField));
+    await tester.tap(find.text(l.aiTabChat));
+    await tester.pump(const Duration(milliseconds: 450));
+
+    final visibleGreeting = l.aiGreetings.singleWhere(
+      (greeting) => find.text(greeting).evaluate().isNotEmpty,
+    );
+    await tester.enterText(find.byType(TextField), 'Hallo');
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text(visibleGreeting), findsNothing);
   });
 
   testWidgets('AI assistant remains usable with animations disabled', (

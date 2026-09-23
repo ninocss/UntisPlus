@@ -9,6 +9,7 @@ import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -22,6 +23,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.Settings
@@ -40,6 +42,7 @@ import io.flutter.plugin.common.MethodChannel
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
+import java.util.UUID
 
 private fun planCopy(plan: JSONObject, key: String, fallback: String): String =
     plan.optJSONObject("nativeCopy")?.optString(key)?.takeIf { it.isNotBlank() } ?: fallback
@@ -66,6 +69,7 @@ object AlarmScheduler {
     const val reminderDisableAction = "com.ninocss.untisplus.ALARM_REMINDER_DISABLE"
     const val extraPlan = "alarm_plan"
     const val extraAlarmId = "alarm_id"
+    const val extraSessionId = "alarm_session_id"
     private const val prefsName = "untis_alarm_native"
     private const val plansKey = "plans"
     private const val suppressedSmartDateKey = "suppressed_smart_date"
@@ -74,25 +78,82 @@ object AlarmScheduler {
     private fun alarmManager(context: Context) = context.getSystemService(AlarmManager::class.java)
     private fun requestCode(id: String, suffix: Int = 0) = 0x55aa0000 xor id.hashCode() xor suffix
 
-    fun replacePlans(context: Context, plans: JSONArray) {
-        cancelAll(context)
-        prefs(context).edit().putString(plansKey, plans.toString()).apply()
-        scheduleStoredPlans(context)
+    fun replacePlans(context: Context, plans: JSONArray): Map<String, Any> {
+        val previous = storedPlans(context)
+        // Desired state is durable before PendingIntents are changed.
+        prefs(context).edit().putString(plansKey, plans.toString()).commit()
+        val missing = missingRequiredPermissions(context)
+        if (missing.isNotEmpty()) {
+            cancelPlans(context, previous)
+            cancelPlans(context, plans)
+            return schedulingResult(plans.length(), 0, missing)
+        }
+
+        var scheduled = 0
+        for (index in 0 until plans.length()) {
+            if (schedulePlan(context, plans.optJSONObject(index) ?: continue)) scheduled++
+        }
+        if (scheduled != plans.length()) {
+            // Preserve the previous safety net when any desired replacement
+            // could not be installed. A later restore retries from saved data.
+            return schedulingResult(plans.length(), scheduled, emptyList())
+        }
+        val currentIds = (0 until plans.length()).mapNotNull {
+            plans.optJSONObject(it)?.optString("id")?.takeIf(String::isNotBlank)
+        }.toSet()
+        val previousIds = (0 until previous.length()).mapNotNull {
+            previous.optJSONObject(it)?.optString("id")?.takeIf(String::isNotBlank)
+        }.toSet()
+        val staleIds = AlarmPolicy.staleIds(previousIds, currentIds)
+        // New and changed alarms are now installed; only stale identities go.
+        for (index in 0 until previous.length()) {
+            val plan = previous.optJSONObject(index) ?: continue
+            if (plan.optString("id") in staleIds) cancelPlan(context, plan.optString("id"))
+        }
+        return schedulingResult(plans.length(), scheduled, emptyList())
     }
 
-    fun scheduleStoredPlans(context: Context) {
+    fun scheduleStoredPlans(context: Context): Map<String, Any> {
         val plans = storedPlans(context)
+        val missing = missingRequiredPermissions(context)
+        if (missing.isNotEmpty()) {
+            cancelPlans(context, plans)
+            return schedulingResult(plans.length(), 0, missing)
+        }
+        var scheduled = 0
         for (index in 0 until plans.length()) {
             val plan = plans.optJSONObject(index) ?: continue
-            schedulePlan(context, plan)
+            if (schedulePlan(context, plan)) scheduled++
+        }
+        return schedulingResult(plans.length(), scheduled, emptyList())
+    }
+
+    private fun schedulingResult(stored: Int, scheduled: Int, missing: List<String>) = mapOf(
+        "status" to when {
+            missing.isNotEmpty() -> "paused_missing_permission"
+            scheduled == stored -> "scheduled_exact"
+            else -> "scheduling_failed"
+        },
+        "exactScheduled" to (missing.isEmpty() && scheduled == stored),
+        "paused" to missing.isNotEmpty(),
+        "storedCount" to stored,
+        "scheduledCount" to scheduled,
+        "missingPermissions" to missing,
+    )
+
+    private fun missingRequiredPermissions(context: Context): List<String> = buildList {
+        if (!canScheduleExact(context)) add("exactAlarms")
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !manager.areNotificationsEnabled()) {
+            add("notifications")
         }
     }
 
-    fun cancelAll(context: Context) {
-        val plans = storedPlans(context)
+    fun canActivate(context: Context): Boolean = missingRequiredPermissions(context).isEmpty()
+
+    private fun cancelPlans(context: Context, plans: JSONArray) {
         for (index in 0 until plans.length()) {
-            val plan = plans.optJSONObject(index) ?: continue
-            cancelPlan(context, plan.optString("id"))
+            cancelPlan(context, plans.optJSONObject(index)?.optString("id") ?: "")
         }
     }
 
@@ -119,27 +180,39 @@ object AlarmScheduler {
         return null
     }
 
+    fun suppressSmartDate(context: Context, dateKey: String) {
+        prefs(context).edit().putString(suppressedSmartDateKey, dateKey).commit()
+        val plans = storedPlans(context)
+        for (index in 0 until plans.length()) {
+            val plan = plans.optJSONObject(index) ?: continue
+            if (plan.optString("kind") == "smart" && plan.optString("dateKey") == dateKey) {
+                cancelPlan(context, plan.optString("id"))
+            }
+        }
+    }
+
     private fun storedPlans(context: Context): JSONArray = try {
         JSONArray(prefs(context).getString(plansKey, "[]"))
     } catch (_: Exception) {
         JSONArray()
     }
 
-    private fun schedulePlan(context: Context, plan: JSONObject) {
+    private fun schedulePlan(context: Context, plan: JSONObject): Boolean {
         val id = plan.optString("id")
-        if (id.isBlank()) return
+        if (id.isBlank()) return false
         if (plan.optString("kind") == "smart" &&
             plan.optString("dateKey") == prefs(context).getString(suppressedSmartDateKey, "")) {
-            return
+            return false
         }
         val triggerAt = if (plan.optString("kind") == "manual") {
             nextRecurringTrigger(plan)
         } else {
             plan.optLong("triggerAtMillis", 0L)
         }
-        if (triggerAt <= System.currentTimeMillis()) return
+        if (triggerAt <= System.currentTimeMillis()) return false
         val intent = Intent(context, AlarmReceiver::class.java)
             .setAction(alarmAction)
+            .setData(pendingIntentUri(id, "ring"))
             .putExtra(extraPlan, plan.toString())
         val operation = PendingIntent.getBroadcast(
             context,
@@ -153,7 +226,7 @@ object AlarmScheduler {
             Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        scheduleWakeup(context, triggerAt, operation, showIntent)
+        if (!scheduleWakeup(context, triggerAt, operation, showIntent)) return false
 
         val reminderMinutes = plan.optInt("preAlarmNotificationMinutes", 30).coerceIn(0, 180)
         val reminderAt = triggerAt - reminderMinutes * 60_000L
@@ -166,6 +239,7 @@ object AlarmScheduler {
                 requestCode(id, 3),
                 Intent(context, AlarmReminderReceiver::class.java)
                     .setAction(reminderAction)
+                    .setData(pendingIntentUri(id, "reminder"))
                     .putExtra(extraPlan, plan.toString()),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
@@ -174,6 +248,8 @@ object AlarmScheduler {
                 reminderAt,
                 reminderOperation,
             )
+        } else {
+            cancelAuxiliary(context, id, 3, AlarmReminderReceiver::class.java, reminderAction, "reminder")
         }
 
         if (plan.optString("kind") == "smart") {
@@ -181,6 +257,7 @@ object AlarmScheduler {
             if (refreshAt > System.currentTimeMillis()) {
                 val refreshIntent = Intent(context, AlarmPreWakeRefreshReceiver::class.java)
                     .setAction(refreshAction)
+                    .setData(pendingIntentUri(id, "refresh"))
                     .putExtra(extraAlarmId, id)
                 val refreshOperation = PendingIntent.getBroadcast(
                     context,
@@ -193,8 +270,13 @@ object AlarmScheduler {
                     refreshAt,
                     refreshOperation,
                 )
+            } else {
+                cancelAuxiliary(context, id, 2, AlarmPreWakeRefreshReceiver::class.java, refreshAction, "refresh")
             }
+        } else {
+            cancelAuxiliary(context, id, 2, AlarmPreWakeRefreshReceiver::class.java, refreshAction, "refresh")
         }
+        return true
     }
 
     private fun nextRecurringTrigger(plan: JSONObject): Long {
@@ -228,28 +310,52 @@ object AlarmScheduler {
         val alarmIntent = PendingIntent.getBroadcast(
             context,
             requestCode(id),
-            Intent(context, AlarmReceiver::class.java).setAction(alarmAction),
+            Intent(context, AlarmReceiver::class.java)
+                .setAction(alarmAction)
+                .setData(pendingIntentUri(id, "ring")),
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
         )
         if (alarmIntent != null) manager.cancel(alarmIntent)
         val refreshIntent = PendingIntent.getBroadcast(
             context,
             requestCode(id, 2),
-            Intent(context, AlarmPreWakeRefreshReceiver::class.java).setAction(refreshAction),
+            Intent(context, AlarmPreWakeRefreshReceiver::class.java)
+                .setAction(refreshAction)
+                .setData(pendingIntentUri(id, "refresh")),
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
         )
         if (refreshIntent != null) manager.cancel(refreshIntent)
         val reminderIntent = PendingIntent.getBroadcast(
             context,
             requestCode(id, 3),
-            Intent(context, AlarmReminderReceiver::class.java).setAction(reminderAction),
+            Intent(context, AlarmReminderReceiver::class.java)
+                .setAction(reminderAction)
+                .setData(pendingIntentUri(id, "reminder")),
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
         )
         if (reminderIntent != null) manager.cancel(reminderIntent)
     }
 
+    private fun cancelAuxiliary(
+        context: Context,
+        id: String,
+        suffix: Int,
+        receiver: Class<out BroadcastReceiver>,
+        action: String,
+        role: String,
+    ) {
+        val operation = PendingIntent.getBroadcast(
+            context,
+            requestCode(id, suffix),
+            Intent(context, receiver).setAction(action).setData(pendingIntentUri(id, role)),
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        )
+        if (operation != null) alarmManager(context).cancel(operation)
+    }
+
     fun scheduleSnooze(context: Context, plan: JSONObject, minutes: Int) {
-        val triggerAt = System.currentTimeMillis() + minutes.coerceIn(1, 60) * 60_000L
+        if (!canActivate(context)) return
+        val triggerAt = AlarmPolicy.snoozeTriggerAt(System.currentTimeMillis(), minutes)
         val snoozePlan = JSONObject(plan.toString()).apply {
             put("id", "${plan.optString("id")}-snooze-$triggerAt")
             put("kind", "snooze")
@@ -260,6 +366,7 @@ object AlarmScheduler {
             requestCode(snoozePlan.getString("id")),
             Intent(context, AlarmReceiver::class.java)
                 .setAction(alarmAction)
+                .setData(pendingIntentUri(snoozePlan.getString("id"), "ring"))
                 .putExtra(extraPlan, snoozePlan.toString()),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -277,34 +384,26 @@ object AlarmScheduler {
         triggerAt: Long,
         operation: PendingIntent,
         showIntent: PendingIntent? = null,
-    ) {
+    ): Boolean {
         val manager = alarmManager(context)
-        if (canScheduleExact(context)) {
-            try {
-                if (showIntent != null) {
-                    manager.setAlarmClock(
-                        AlarmManager.AlarmClockInfo(triggerAt, showIntent),
-                        operation,
-                    )
-                } else {
-                    manager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerAt,
-                        operation,
-                    )
-                }
-                return
-            } catch (_: SecurityException) {
-                // Permission may be revoked between readiness and scheduling.
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, operation)
-        } else {
-            manager.set(AlarmManager.RTC_WAKEUP, triggerAt, operation)
+        if (!canActivate(context)) return false
+        val clockIntent = showIntent ?: PendingIntent.getActivity(
+            context,
+            operation.hashCode(),
+            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return try {
+            manager.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, clockIntent), operation)
+            true
+        } catch (_: SecurityException) {
+            false
         }
     }
+
+    private fun pendingIntentUri(id: String, role: String): Uri = Uri.parse(
+        "untisplus://alarm/${Uri.encode(AlarmPolicy.pendingIdentity(id, role))}",
+    )
 
     fun canScheduleExact(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager(context).canScheduleExactAlarms()
@@ -329,12 +428,7 @@ class AlarmReminderReceiver : BroadcastReceiver() {
         val plan = parseAlarmPlan(intent.getStringExtra(AlarmScheduler.extraPlan)) ?: return
         if (intent.action == AlarmScheduler.reminderDisableAction) {
             if (plan.optString("kind") == "smart") {
-                context.getSharedPreferences("untis_alarm_native", Context.MODE_PRIVATE)
-                    .edit()
-                    .putString("suppressed_smart_date", plan.optString("dateKey"))
-                    .apply()
-                AlarmScheduler.cancelAll(context)
-                AlarmScheduler.scheduleStoredPlans(context)
+                AlarmScheduler.suppressSmartDate(context, plan.optString("dateKey"))
             }
             return
         }
@@ -388,15 +482,23 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val rawPlan = intent.getStringExtra(AlarmScheduler.extraPlan) ?: return
         val plan = parseAlarmPlan(rawPlan) ?: return
+        // Notification actions are the mandatory fallback when full-screen is
+        // unavailable. Never start a ringing session without both permissions.
+        if (!AlarmScheduler.canActivate(context)) return
         if (plan.optString("kind") == "manual") {
             // Re-arm before alerting so closing the app cannot lose a recurring alarm.
             AlarmScheduler.scheduleStoredPlans(context)
         } else if (plan.optString("kind") == "smart") {
             AlarmScheduler.removeOneShotPlan(context, plan.optString("id"))
         }
+        val sessionId = UUID.randomUUID().toString()
+        val sessionPlan = JSONObject(plan.toString()).apply {
+            put(AlarmScheduler.extraSessionId, sessionId)
+        }.toString()
         val serviceIntent = Intent(context, AlarmAlertService::class.java)
             .setAction(AlarmAlertService.actionRing)
-            .putExtra(AlarmScheduler.extraPlan, rawPlan)
+            .putExtra(AlarmScheduler.extraPlan, sessionPlan)
+            .putExtra(AlarmScheduler.extraSessionId, sessionId)
         ContextCompat.startForegroundService(context, serviceIntent)
     }
 }
@@ -423,41 +525,55 @@ class AlarmAlertService : Service() {
         const val actionRing = "com.ninocss.untisplus.ALARM_ALERT_RING"
         const val actionDismiss = "com.ninocss.untisplus.ALARM_ALERT_DISMISS"
         const val actionSnooze = "com.ninocss.untisplus.ALARM_ALERT_SNOOZE"
+        const val actionSessionEnded = "com.ninocss.untisplus.ALARM_SESSION_ENDED"
         private const val channelId = "untis_alarm_channel"
         private const val notificationId = 42001
+        internal const val maxRingDurationMillis = AlarmPolicy.MAX_RING_DURATION_MILLIS
     }
 
     private var player: MediaPlayer? = null
     private var vibrator: Vibrator? = null
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
+    private var wakeLock: PowerManager.WakeLock? = null
     private var activePlan: JSONObject? = null
+    private var activeSessionId: String? = null
     private var stopping = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val autoStop = Runnable { stopAlert(activeSessionId) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             actionRing -> {
                 val rawPlan = intent.getStringExtra(AlarmScheduler.extraPlan) ?: return START_NOT_STICKY
                 activePlan = parseAlarmPlan(rawPlan) ?: return START_NOT_STICKY
+                activeSessionId = intent.getStringExtra(AlarmScheduler.extraSessionId)
+                    ?: activePlan?.optString(AlarmScheduler.extraSessionId)?.takeIf(String::isNotBlank)
+                    ?: UUID.randomUUID().toString()
                 stopping = false
-                startForeground(notificationId, buildNotification(activePlan!!))
+                startForeground(notificationId, buildNotification(activePlan!!, activeSessionId!!))
                 startAlert(activePlan!!)
             }
             actionSnooze -> {
-                activePlan?.let { AlarmScheduler.scheduleSnooze(this, it, it.optInt("snoozeMinutes", 5)) }
-                stopAlert()
+                val sessionId = intent.getStringExtra(AlarmScheduler.extraSessionId)
+                if (!accepts(sessionId)) return START_NOT_STICKY
+                val plan = activePlan ?: parseAlarmPlan(intent.getStringExtra(AlarmScheduler.extraPlan))
+                plan?.let { AlarmScheduler.scheduleSnooze(this, it, it.optInt("snoozeMinutes", 5)) }
+                stopAlert(sessionId)
             }
-            actionDismiss -> stopAlert()
+            actionDismiss -> stopAlert(intent.getStringExtra(AlarmScheduler.extraSessionId))
         }
         return START_NOT_STICKY
     }
 
-    private fun buildNotification(plan: JSONObject): Notification {
+    private fun accepts(sessionId: String?): Boolean =
+        AlarmPolicy.acceptsSession(activeSessionId, sessionId)
+
+    private fun buildNotification(plan: JSONObject, sessionId: String): Notification {
         val manager = getSystemService(NotificationManager::class.java)
         val dndGranted = manager.isNotificationPolicyAccessGranted
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // This dedicated channel is only used by user-configured alarms.
-            manager.deleteNotificationChannel(channelId)
             val channel = NotificationChannel(channelId, planCopy(plan, "channelAlarm", "Untis+ Wecker"), NotificationManager.IMPORTANCE_HIGH).apply {
                 description = planCopy(plan, "channelAlarmDescription", "Klingelnde Untis+ Wecker")
                 setBypassDnd(dndGranted)
@@ -468,12 +584,31 @@ class AlarmAlertService : Service() {
         }
         val activityIntent = Intent(this, AlarmActivity::class.java)
             .putExtra(AlarmScheduler.extraPlan, plan.toString())
+            .putExtra(AlarmScheduler.extraSessionId, sessionId)
+            .setData(Uri.parse("untisplus://alarm-session/$sessionId/view"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val fullScreenIntent = PendingIntent.getActivity(
             this,
-            42002,
+            sessionId.hashCode(),
             activityIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        fun actionIntent(action: String, role: String) = PendingIntent.getService(
+            this,
+            sessionId.hashCode() xor role.hashCode(),
+            Intent(this, AlarmAlertService::class.java)
+                .setAction(action)
+                .setData(Uri.parse("untisplus://alarm-session/$sessionId/$role"))
+                .putExtra(AlarmScheduler.extraPlan, plan.toString())
+                .putExtra(AlarmScheduler.extraSessionId, sessionId),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val snoozeLabel = planCopyFormat(
+            plan,
+            "snooze",
+            "Schlummern · {minutes} Min.",
+            "minutes",
+            plan.optInt("snoozeMinutes", 5),
         )
         return Notification.Builder(this, channelId)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -484,10 +619,17 @@ class AlarmAlertService : Service() {
             .setAutoCancel(false)
             .setPriority(Notification.PRIORITY_MAX)
             .setFullScreenIntent(fullScreenIntent, true)
+            .addAction(Notification.Action.Builder(0, snoozeLabel, actionIntent(actionSnooze, "snooze")).build())
+            .addAction(Notification.Action.Builder(0, planCopy(plan, "dismiss", "Ausschalten"), actionIntent(actionDismiss, "dismiss")).build())
             .build()
     }
 
     private fun startAlert(plan: JSONObject) {
+        handler.removeCallbacks(autoStop)
+        handler.postDelayed(autoStop, maxRingDurationMillis)
+        wakeLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:alarm")
+            .apply { acquire(maxRingDurationMillis) }
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ALARM)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -541,24 +683,36 @@ class AlarmAlertService : Service() {
         }
     }
 
-    private fun stopAlert() {
+    private fun stopAlert(sessionId: String?) {
+        if (!accepts(sessionId)) return
         if (stopping) return
         stopping = true
         releaseAlertResources()
+        sendBroadcast(
+            Intent(actionSessionEnded)
+                .setPackage(packageName)
+                .putExtra(AlarmScheduler.extraSessionId, sessionId),
+        )
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     private fun releaseAlertResources() {
+        handler.removeCallbacks(autoStop)
         player?.run {
             try { stop() } catch (_: Exception) {}
             release()
         }
         player = null
         vibrator?.cancel()
+        vibrator = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             focusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
         }
+        focusRequest = null
+        audioManager = null
+        wakeLock?.let { if (it.isHeld) it.release() }
+        wakeLock = null
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -571,6 +725,12 @@ class AlarmAlertService : Service() {
 class AlarmActivity : android.app.Activity() {
     private var downX = 0f
     private var plan: JSONObject = JSONObject()
+    private var sessionId: String = ""
+    private val sessionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.getStringExtra(AlarmScheduler.extraSessionId) == sessionId) finish()
+        }
+    }
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -584,6 +744,14 @@ class AlarmActivity : android.app.Activity() {
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         plan = parseAlarmPlanOrEmpty(intent.getStringExtra(AlarmScheduler.extraPlan))
+        sessionId = intent.getStringExtra(AlarmScheduler.extraSessionId)
+            ?: plan.optString(AlarmScheduler.extraSessionId)
+        ContextCompat.registerReceiver(
+            this,
+            sessionReceiver,
+            IntentFilter(AlarmAlertService.actionSessionEnded),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         buildContent()
     }
 
@@ -591,6 +759,8 @@ class AlarmActivity : android.app.Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         plan = parseAlarmPlanOrEmpty(intent.getStringExtra(AlarmScheduler.extraPlan))
+        sessionId = intent.getStringExtra(AlarmScheduler.extraSessionId)
+            ?: plan.optString(AlarmScheduler.extraSessionId)
         buildContent()
     }
 
@@ -702,12 +872,24 @@ class AlarmActivity : android.app.Activity() {
     }
 
     private fun sendCommand(action: String) {
-        startService(Intent(this, AlarmAlertService::class.java).setAction(action))
+        startService(
+            Intent(this, AlarmAlertService::class.java)
+                .setAction(action)
+                .setData(Uri.parse("untisplus://alarm-session/$sessionId/activity"))
+                .putExtra(AlarmScheduler.extraPlan, plan.toString())
+                .putExtra(AlarmScheduler.extraSessionId, sessionId),
+        )
+    }
+
+    override fun onDestroy() {
+        try { unregisterReceiver(sessionReceiver) } catch (_: IllegalArgumentException) {}
+        super.onDestroy()
     }
 }
 
 class AlarmRefreshService : Service() {
     private var engine: FlutterEngine? = null
+    private var schedulingChannel: AlarmChannelHandler? = null
     private var completed = false
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { complete(allowReminder = false) }
@@ -722,6 +904,13 @@ class AlarmRefreshService : Service() {
             loader.startInitialization(applicationContext)
             loader.ensureInitializationComplete(applicationContext, null)
             engine = FlutterEngine(applicationContext)
+            // The headless isolate recalculates and replaces the smart plan.
+            // Register the same scheduling channel used by MainActivity so
+            // that replacePlans is not lost as a MissingPluginException.
+            schedulingChannel = AlarmChannelHandler(
+                applicationContext,
+                engine!!.dartExecutor.binaryMessenger,
+            ).also { it.register() }
             MethodChannel(engine!!.dartExecutor.binaryMessenger, NativeChannelContract.ALARM_REFRESH)
                 .setMethodCallHandler { call, result ->
                     if (call.method == "completed") {
@@ -768,6 +957,7 @@ class AlarmRefreshService : Service() {
         }
         engine?.destroy()
         engine = null
+        schedulingChannel = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -776,6 +966,7 @@ class AlarmRefreshService : Service() {
         handler.removeCallbacks(timeout)
         engine?.destroy()
         engine = null
+        schedulingChannel = null
         super.onDestroy()
     }
     override fun onBind(intent: Intent?): IBinder? = null

@@ -24,6 +24,8 @@ void main() {
         expect(l.aiTyping, isNotEmpty);
         expect(l.aiChatSubtitle, isNotEmpty);
         expect(l.aiTryIt, isNotEmpty);
+        expect(l.aiGreetings, hasLength(5));
+        expect(l.aiGreetings.every((value) => value.isNotEmpty), isTrue);
         expect(l.aiChatSuggestions, hasLength(3));
         expect(l.aiChatSuggestions.every((value) => value.isNotEmpty), isTrue);
       }
@@ -115,7 +117,10 @@ void main() {
     expect(theme.sliderTheme.year2023, isFalse);
     // ignore: deprecated_member_use
     expect(theme.progressIndicatorTheme.year2023, isFalse);
-    expect(theme.filledButtonTheme.style!.shape!.resolve({}), isA<StadiumBorder>());
+    expect(
+      theme.filledButtonTheme.style!.shape!.resolve({}),
+      isA<StadiumBorder>(),
+    );
     expect(
       theme.filledButtonTheme.style!.shape!.resolve({WidgetState.pressed}),
       isA<RoundedRectangleBorder>(),
@@ -143,10 +148,7 @@ void main() {
   });
 
   test('redesigned themes keep distinct surface and navigation semantics', () {
-    for (final theme in [
-      AppThemeId.glass,
-      AppThemeId.cyber,
-    ]) {
+    for (final theme in [AppThemeId.glass, AppThemeId.cyber]) {
       final scheme = untisThemeScheme(theme, Brightness.dark, 0xFF0F766E);
       final tokens = UntisThemeTokens.forTheme(theme, Brightness.dark, scheme);
       expect(tokens.surfaceOpacity, inInclusiveRange(0.45, 1.0));
@@ -205,10 +207,11 @@ void main() {
       await service.importAllFromJsonText(exported);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('visualTheme'), 'cyber');
-      expect(
-        jsonDecode(prefs.getString('themeBlurPreferences')!),
-        {'default': true, 'glass': true, 'cyber': false},
-      );
+      expect(jsonDecode(prefs.getString('themeBlurPreferences')!), {
+        'default': true,
+        'glass': true,
+        'cyber': false,
+      });
       expect(prefs.getBool('glowEffectsEnabled'), isTrue);
     },
   );
@@ -224,9 +227,10 @@ void main() {
     await BackupService().importAllFromJsonText(exported);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('visualTheme'), 'default');
-    expect(
-      jsonDecode(prefs.getString('themeBlurPreferences')!),
-      {'default': true, 'glass': false, 'cyber': true},
-    );
+    expect(jsonDecode(prefs.getString('themeBlurPreferences')!), {
+      'default': true,
+      'glass': false,
+      'cyber': true,
+    });
   });
 }
