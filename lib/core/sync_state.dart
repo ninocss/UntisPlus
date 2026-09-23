@@ -14,11 +14,18 @@ enum WebUntisFailureKind {
 }
 
 class WebUntisFailure implements Exception {
-  const WebUntisFailure(this.kind, this.message, {this.statusCode, this.cause});
+  const WebUntisFailure(
+    this.kind,
+    this.message, {
+    this.statusCode,
+    this.rpcCode,
+    this.cause,
+  });
 
   final WebUntisFailureKind kind;
   final String message;
   final int? statusCode;
+  final int? rpcCode;
   final Object? cause;
 
   @override

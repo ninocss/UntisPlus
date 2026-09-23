@@ -170,7 +170,6 @@ class _CustomBackgroundEditorScreenState
     });
   }
 
-  // ignore: unused_element
   String _gradientSummary(CustomBackgroundGradient base) {
     final mode = base.type == CustomBackgroundGradientType.radial
         ? 'radial'
@@ -182,7 +181,6 @@ class _CustomBackgroundEditorScreenState
     return '$mode · $opacity · $palette';
   }
 
-  // ignore: unused_element
   String _orbsSummary(CustomBackgroundOrbs orbs) {
     if (!orbs.enabled) return 'off';
     final palette = orbs.useThemeColors
@@ -191,131 +189,9 @@ class _CustomBackgroundEditorScreenState
     return '${orbs.count} orbs · $palette';
   }
 
-  // ignore: unused_element
-  String _patternSummary(CustomBackgroundPattern pattern) {
-    if (pattern.type == CustomBackgroundPatternType.none) return 'none';
-    return '${pattern.type.name} · ${(pattern.opacity * 100).round()}%';
-  }
-
-  // ignore: unused_element
   String _motionSummary() {
     final animate = _draft.animate ? 'anim' : 'static';
     return '$animate · ${_draft.animationSpeed.toStringAsFixed(1)}x';
-  }
-
-  // ignore: unused_element
-  Color _sectionAccentFor(String key, ColorScheme cs) {
-    switch (key) {
-      case 'base':
-        return cs.primary;
-      case 'orbs':
-        return cs.tertiary;
-      case 'pattern':
-        return cs.secondary;
-      case 'effects':
-        return cs.error;
-      case 'motion':
-        return cs.primaryContainer;
-      case 'ai':
-        return cs.tertiaryContainer;
-      default:
-        return cs.primary;
-    }
-  }
-
-  // ignore: unused_element
-  Widget _expressiveSectionCard({
-    required ColorScheme cs,
-    required Color accent,
-    required String title,
-    required String status,
-    required IconData icon,
-    required Widget child,
-    double radius = 24,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            accent.withValues(alpha: 0.15),
-            cs.surfaceContainerHighest.withValues(alpha: 0.78),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: accent.withValues(alpha: 0.24), width: 1),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: Icon(icon, size: 18, color: accent),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: GoogleFonts.outfit(
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          status,
-                          style: GoogleFonts.outfit(
-                            fontSize: 12.2,
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '•',
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: accent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              child,
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _presetCard(BuildContext context, CustomBackgroundPreset preset) {
@@ -487,18 +363,14 @@ class _CustomBackgroundEditorScreenState
 
   Future<bool> _confirmDiscardIfNeeded() async {
     if (!_isDirty) return true;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final decision = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.bgEditorUnsavedTitle,
       subtitle: l.bgEditorUnsavedDesc,
       fitContentHeight: true,
       options: [
-        _SheetOption(
-          value: 'save',
-          title: l.bgEditorSave,
-          icon: Icons.save_rounded,
-        ),
+        _SheetOption(value: 'save', title: l.save, icon: Icons.save_rounded),
         _SheetOption(
           value: 'discard',
           title: l.bgEditorDiscard,
@@ -507,7 +379,7 @@ class _CustomBackgroundEditorScreenState
         ),
         _SheetOption(
           value: 'cancel',
-          title: l.settingsApiKeyCancel,
+          title: l.cancel,
           icon: Icons.close_rounded,
         ),
       ],
@@ -563,7 +435,7 @@ class _CustomBackgroundEditorScreenState
       version: kCustomBackgroundSpecVersion,
       id: _newCustomBackgroundId(),
       name:
-          '${AppL10n.of(appLocaleNotifier.value).bgEditorNewName} ${now % 1000}',
+          '${appL10nFor(appLocaleNotifier.value).bgEditorNewName} ${now % 1000}',
       createdAtMs: now,
       updatedAtMs: now,
       base: CustomBackgroundGradient(
@@ -620,7 +492,7 @@ class _CustomBackgroundEditorScreenState
       _commitDraft(normalized);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppL10n.of(appLocaleNotifier.value).bgEditorSaved),
+          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaved),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -628,7 +500,7 @@ class _CustomBackgroundEditorScreenState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppL10n.of(appLocaleNotifier.value).bgEditorSaveFailed),
+          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaveFailed),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -641,7 +513,7 @@ class _CustomBackgroundEditorScreenState
     if (_isDirty) {
       await _saveDraft();
     }
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await selectCustomBackground(_draft.id);
 
     backgroundAnimationsNotifier.value = true;
@@ -653,7 +525,7 @@ class _CustomBackgroundEditorScreenState
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(AppL10n.of(appLocaleNotifier.value).bgEditorApplied),
+        content: Text(appL10nFor(appLocaleNotifier.value).bgEditorApplied),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -661,7 +533,7 @@ class _CustomBackgroundEditorScreenState
 
   Future<void> _newBackground() async {
     final spec = CustomBackgroundSpec.defaults(
-      name: AppL10n.of(appLocaleNotifier.value).bgEditorNewName,
+      name: appL10nFor(appLocaleNotifier.value).bgEditorNewName,
     );
     await upsertCustomBackground(spec);
     if (!mounted) return;
@@ -676,7 +548,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _deleteBackground() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final confirm = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.bgEditorDeleteTitle,
@@ -685,13 +557,13 @@ class _CustomBackgroundEditorScreenState
       options: [
         _SheetOption(
           value: 'delete',
-          title: l.bgEditorDeleteConfirm,
+          title: l.delete,
           icon: Icons.delete_rounded,
           destructive: true,
         ),
         _SheetOption(
           value: 'cancel',
-          title: l.settingsApiKeyCancel,
+          title: l.cancel,
           icon: Icons.close_rounded,
         ),
       ],
@@ -702,7 +574,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _exportSelected() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final jsonText = exportCustomBackgroundSpecPretty(_draft);
     await Clipboard.setData(ClipboardData(text: jsonText));
     if (!mounted) return;
@@ -715,7 +587,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _exportAll() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final jsonText = exportCustomBackgroundLibraryPretty(
       customBackgroundsNotifier.value,
     );
@@ -730,7 +602,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _importFromClipboard() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final data = await Clipboard.getData('text/plain');
     final text = data?.text ?? '';
     if (text.trim().isEmpty) {
@@ -765,7 +637,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _importFromFile() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     try {
       final picked = await FilePicker.pickFile(
         type: FileType.custom,
@@ -799,7 +671,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _showImportSheet() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final selected = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.bgEditorImportTitle,
@@ -826,7 +698,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _showExportSheet() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final selected = await _showUnifiedOptionSheet<String>(
       context: context,
       title: l.bgEditorExportTitle,
@@ -856,7 +728,7 @@ class _CustomBackgroundEditorScreenState
     required String title,
     required Color initial,
   }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     double red = (initial.r * 255.0).round().clamp(0, 255).toDouble();
@@ -942,7 +814,7 @@ class _CustomBackgroundEditorScreenState
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -987,268 +859,30 @@ class _CustomBackgroundEditorScreenState
     onChanged(safe);
   }
 
-  String _providerLabelForError(AppL10n l) {
-    return _providerAwareMissingApiKeyMessage(
-      l,
-      _normalizeAiProvider(aiProvider),
+  Future<String> _requestAiBackgroundSpec(String prompt) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final runtime = _currentAiRuntimeConfiguration();
+    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+    return _aiRequestCoordinator.generate(
+      runtime: runtime,
+      spec: AiRequestSpec(
+        systemPrompt: l.bgEditorAiSystem,
+        userPrompt:
+            '${l.bgEditorAiUserPrefix}\n$prompt\n\n${l.bgEditorAiUserSchemaHint}',
+        temperature: 0.25,
+        maxTokens: 1300,
+        topP: 1,
+        noReplyMessage: l.aiNoReply,
+        missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+        customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+        localModelMissingMessage: l.aiLocalModelLoadError,
+      ),
     );
-  }
-
-  bool _providerUsesGeminiProtocol() {
-    final provider = _normalizeAiProvider(aiProvider);
-    if (provider == 'gemini') return true;
-    if (provider == 'custom') {
-      return _normalizeAiCustomCompatibility(aiCustomCompatibility) == 'gemini';
-    }
-    return false;
-  }
-
-  String _normalizedBaseUrl(String value) {
-    var out = value.trim();
-    while (out.endsWith('/')) {
-      out = out.substring(0, out.length - 1);
-    }
-    return out;
-  }
-
-  String _openAiCompatibleEndpoint(String rawBaseUrl) {
-    final base = _normalizedBaseUrl(rawBaseUrl);
-    if (base.isEmpty) return '';
-    if (base.endsWith('/chat/completions')) return base;
-    if (base.endsWith('/v1')) return '$base/chat/completions';
-    if (base.endsWith('/v1/chat')) return '$base/completions';
-    return '$base/v1/chat/completions';
-  }
-
-  String _geminiCompatibleEndpoint(String rawBaseUrl, String model) {
-    final base = _normalizedBaseUrl(rawBaseUrl);
-    if (base.isEmpty) return '';
-    if (base.contains('/models/')) return base;
-    if (base.contains('/v1beta')) return '$base/models/$model:generateContent';
-    if (base.contains('/v1')) return '$base/models/$model:generateContent';
-    return '$base/v1beta/models/$model:generateContent';
-  }
-
-  Future<String> _requestGeminiText({
-    required String endpoint,
-    required String apiKey,
-    required String systemPrompt,
-    required String userPrompt,
-  }) async {
-    final endpointUri = Uri.parse(endpoint);
-    final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
-      ..putIfAbsent('key', () => apiKey);
-    final uri = endpointUri.replace(queryParameters: mergedParams);
-
-    final body = jsonEncode({
-      'systemInstruction': {
-        'parts': [
-          {'text': systemPrompt},
-        ],
-      },
-      'contents': [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': userPrompt},
-          ],
-        },
-      ],
-      'generationConfig': {'maxOutputTokens': 1300, 'temperature': 0.25},
-    });
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
-      body: body,
-    );
-
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) payload = decoded;
-    } catch (_) {}
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = payload?['error']?['message'] ?? response.statusCode;
-      throw Exception('API: $message');
-    }
-
-    var reply = '';
-    final candidates = payload?['candidates'];
-    if (candidates is List && candidates.isNotEmpty) {
-      final content = candidates.first['content'];
-      final parts = (content is Map<String, dynamic>) ? content['parts'] : null;
-      if (parts is List) {
-        reply = parts
-            .map((p) => (p is Map<String, dynamic>) ? p['text'] : null)
-            .whereType<String>()
-            .join();
-      }
-    }
-
-    reply = reply.trim();
-    if (reply.isEmpty) {
-      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
-    }
-    return reply;
-  }
-
-  String _extractOpenAiCompatibleText(Map<String, dynamic> payload, AppL10n l) {
-    final choices = payload['choices'];
-    if (choices is! List || choices.isEmpty) {
-      throw Exception('API: ${l.aiNoReply}');
-    }
-
-    final first = choices.first;
-    if (first is! Map<String, dynamic>) {
-      throw Exception('API: ${l.aiNoReply}');
-    }
-
-    final message = first['message'];
-    if (message is Map<String, dynamic>) {
-      final content = message['content'];
-      if (content is String && content.trim().isNotEmpty) {
-        return content.trim();
-      }
-      if (content is List) {
-        final text = content
-            .map((part) {
-              if (part is Map<String, dynamic>) {
-                return part['text']?.toString() ?? '';
-              }
-              return '';
-            })
-            .join()
-            .trim();
-        if (text.isNotEmpty) return text;
-      }
-    }
-
-    final legacyText = first['text']?.toString().trim() ?? '';
-    if (legacyText.isNotEmpty) return legacyText;
-    throw Exception('API: ${l.aiNoReply}');
-  }
-
-  Future<String> _requestOpenAiCompatibleText({
-    required String endpoint,
-    required String apiKey,
-    required String model,
-    required String systemPrompt,
-    required String userPrompt,
-  }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final body = jsonEncode({
-      'model': model,
-      'messages': [
-        {'role': 'system', 'content': systemPrompt},
-        {'role': 'user', 'content': userPrompt},
-      ],
-      'temperature': 0.25,
-    });
-
-    final response = await http.post(
-      Uri.parse(endpoint),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: body,
-    );
-
-    Map<String, dynamic>? payload;
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) payload = decoded;
-    } catch (_) {}
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = payload?['error']?['message'] ?? response.statusCode;
-      throw Exception('API: $message');
-    }
-
-    return _extractOpenAiCompatibleText(payload ?? const {}, l);
-  }
-
-  Future<String> _requestAiBackgroundSpec(String prompt) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    final isLocalProvider = provider == 'local';
-    final apiKey = _activeAiApiKey().trim();
-    if (!isLocalProvider && apiKey.isEmpty) {
-      throw Exception('CONFIG: ${_providerLabelForError(l)}');
-    }
-
-    final model = aiModel.trim().isNotEmpty
-        ? aiModel.trim()
-        : _defaultModelForProvider(
-            provider,
-            customCompatibility: aiCustomCompatibility,
-          );
-
-    final systemPrompt = l.bgEditorAiSystem;
-    final userPrompt =
-        '${l.bgEditorAiUserPrefix}\n$prompt\n\n${l.bgEditorAiUserSchemaHint}';
-
-    switch (provider) {
-      case 'openai':
-        return _requestOpenAiCompatibleText(
-          endpoint: 'https://api.openai.com/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userPrompt: userPrompt,
-        );
-      case 'mistral':
-        return _requestOpenAiCompatibleText(
-          endpoint: 'https://api.mistral.ai/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userPrompt: userPrompt,
-        );
-      case 'custom':
-        final baseUrl = aiCustomBaseUrl.trim();
-        if (baseUrl.isEmpty) {
-          throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
-        }
-        if (_providerUsesGeminiProtocol()) {
-          return _requestGeminiText(
-            endpoint: _geminiCompatibleEndpoint(baseUrl, model),
-            apiKey: apiKey,
-            systemPrompt: systemPrompt,
-            userPrompt: userPrompt,
-          );
-        }
-        return _requestOpenAiCompatibleText(
-          endpoint: _openAiCompatibleEndpoint(baseUrl),
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userPrompt: userPrompt,
-        );
-      case 'local':
-        return requestLocalModelText(
-          systemPrompt: systemPrompt,
-          userQuery: userPrompt,
-          modelPath: aiLocalModelPath,
-          runtime: _currentLocalModelRuntime(),
-        );
-      case 'gemini':
-      default:
-        return _requestGeminiText(
-          endpoint:
-              'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
-          apiKey: apiKey,
-          systemPrompt: systemPrompt,
-          userPrompt: userPrompt,
-        );
-    }
   }
 
   Future<void> _generateWithAi() async {
     if (_aiBusy) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final prompt = _aiCtrl.text.trim();
     if (prompt.isEmpty) return;
 
@@ -1577,7 +1211,7 @@ class _CustomBackgroundEditorScreenState
                             )
                           : const Icon(Icons.save_rounded),
                       label: Text(
-                        l.bgEditorSave,
+                        l.save,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
                       ),
                       style: FilledButton.styleFrom(
@@ -1637,7 +1271,7 @@ class _CustomBackgroundEditorScreenState
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final libraryTools = <Widget>[
       const SizedBox(width: 8),
       Text(
@@ -1793,7 +1427,7 @@ class _CustomBackgroundEditorScreenState
                             ),
                             _SheetOption(
                               value: 'delete',
-                              title: l.bgEditorDelete,
+                              title: l.delete,
                               icon: Icons.delete_rounded,
                               destructive: true,
                             ),
@@ -1926,7 +1560,7 @@ class _CustomBackgroundEditorScreenState
                           color: cs.error,
                         ),
                         label: Text(
-                          l.bgEditorDelete,
+                          l.delete,
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.w700,
                             color: cs.error,
@@ -2603,10 +2237,7 @@ class _CustomBackgroundEditorScreenState
                     color: cs.error,
                   ),
                   onPressed: _deleteBackground,
-                  child: Text(
-                    l.bgEditorDelete,
-                    style: TextStyle(color: cs.error),
-                  ),
+                  child: Text(l.delete, style: TextStyle(color: cs.error)),
                 ),
               ],
               builder: (context, controller, child) => IconButton(

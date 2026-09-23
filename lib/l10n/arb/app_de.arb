@@ -1,0 +1,1384 @@
+{
+  "@@locale": "de",
+  "navWeek": "Woche",
+  "navHomework": "Hausaufgaben",
+  "navExams": "Prüfungen",
+  "navInfo": "Info",
+  "navMenu": "Menü",
+  "navAi": "KI",
+  "timetableOfflineCache": "Offline-Cache aktiv",
+  "timetableNotSignedIn": "Nicht angemeldet",
+  "timetableHttpError": "HTTP {status}: Der Stundenplan konnte nicht geladen werden.",
+  "@timetableHttpError": {
+    "placeholders": {
+      "status": {}
+    }
+  },
+  "timetableUnknownApiError": "Unbekannter WebUntis-Fehler",
+  "timetableLoadError": "Der Stundenplan konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
+  "aiClearHistoryTitle": "Verlauf löschen?",
+  "aiClearHistoryDesc": "Alle bisherigen Chats werden dauerhaft gelöscht.",
+  "aiClearHistorySuccess": "Chat-Verlauf gelöscht.",
+  "aiLocalModelDescSmall": "Klein, schnell, ideal für Mobilgeräte",
+  "aiLocalModelDescBalanced": "Ausgewogen, gute Qualität",
+  "aiLocalModelDescMultilingual": "Stark bei Mehrsprachigkeit",
+  "aiLocalModelDescHighQuality": "Höhere Qualität, mehr Speicher",
+  "aiLocalModelDescStrong": "Sehr stark, aber größer",
+  "notificationActionNextLesson": "Nächste Stunde",
+  "notificationActionFreeRooms": "Freie Räume",
+  "notificationActionOpenDay": "Tag öffnen",
+  "notificationChannelCurrentLessonName": "Aktuelle Stunde / Pause",
+  "notificationChannelCurrentLessonDesc": "Laufender Status der aktuellen Stunde.",
+  "notificationChannelDailyBriefingName": "Tagesbriefing",
+  "notificationChannelDailyBriefingDesc": "Morgendlicher Überblick über den Schultag.",
+  "notificationChannelImportantChangesName": "Stundenplan-Änderungen",
+  "notificationChannelImportantChangesDesc": "Hinweise zu Ausfall oder Raumwechsel.",
+  "notificationChannelUpdatesName": "App-Updates",
+  "notificationChannelUpdatesDesc": "Hinweise zu App-Verbesserungen.",
+  "settingsLessonBorderRadiusCompact": "Kompakt (6px)",
+  "settingsLessonBorderRadiusStandard": "Standard (12px)",
+  "settingsLessonBorderRadiusRound": "Rund (18px)",
+  "settingsLessonBorderRadiusPill": "Pill (24px)",
+  "loginServer": "Server URL",
+  "loginSchool": "Schule",
+  "loginUsername": "Benutzername",
+  "loginPassword": "Passwort",
+  "loginLoginKey": "Login-Schlüssel",
+  "loginLoginKeyHint": "Nutze den WebUntis-Login-Schlüssel, wenn sich deine Schule über Microsoft 365 oder Office 365 anmeldet.",
+  "loginCredentialModePassword": "Passwort",
+  "loginCredentialModeLoginKey": "Login-Schlüssel",
+  "loginButton": "Loslegen",
+  "loginFailed": "Login fehlgeschlagen. Prüfe deine Daten.",
+  "loginConnectionError": "Verbindungsfehler",
+  "loginSearchSchool": "Schule suchen",
+  "loginSelectSchool": "Schule wählen",
+  "loginSearchHint": "Schulname oder Stadt...",
+  "loginNoSchoolsFound": "Keine Schulen gefunden.",
+  "loginChangeLanguage": "Sprache",
+  "loginManualEntry": "Manuelle Eingabe",
+  "loginSwitchToSearch": "Zurück zur Suche",
+  "loginChangeSchool": "Schule ändern",
+  "loginTwoFactorCode": "2FA-Code",
+  "loginTwoFactorHint": "Gib den 2FA-Code aus deiner Authenticator-App ein.",
+  "loginTwoFactorRequired": "2FA ist aktiviert. Bitte gib deinen Verifizierungscode ein.",
+  "loginTwoFactorInvalid": "Der 2FA-Code ist ungültig oder abgelaufen. Bitte versuche es erneut.",
+  "loginVerifyButton": "Verifizieren",
+  "onboardingWelcomeTitle": "Willkommen bei Untis+",
+  "onboardingChooseLanguageSubtitle": "Wähle deine bevorzugte Sprache",
+  "onboardingAppearanceTitle": "Erscheinungsbild",
+  "onboardingAppearanceSubtitle": "Gestalte Untis+ genau so, wie du es möchtest",
+  "onboardingThemeSystem": "System",
+  "onboardingThemeLight": "Hell",
+  "onboardingThemeDark": "Dunkel",
+  "onboardingAnimationsHint": "Schöne Hintergrundanimationen aktivieren",
+  "onboardingSchoolLoginTitle": "Schul-Login",
+  "onboardingSchoolLoginSubtitle": "Verbinde dein WebUntis-Konto",
+  "onboardingGeminiTitle": "Gemini KI",
+  "onboardingGeminiSubtitle": "Chatte mit deinem Stundenplan und deinen Hausaufgaben",
+  "onboardingGeminiInfo": "Hol dir einen kostenlosen Gemini API-Schlüssel in Google AI Studio, um den leistungsstarken KI-Assistenten in Untis+ freizuschalten.",
+  "onboardingGeminiGetApiKey": "API-Schlüssel holen",
+  "onboardingSkip": "Überspringen",
+  "onboardingNext": "Weiter",
+  "onboardingGeminiEnterKeyOrSkip": "Bitte gib einen Schlüssel ein oder überspringe diesen Schritt",
+  "onboardingReadyTitle": "Bereit zum Start!",
+  "onboardingReadySubtitle": "Das kannst du alles in Untis+ machen",
+  "onboardingFeatureTimetableTitle": "Stundenplan & Kalender",
+  "onboardingFeatureTimetableDesc": "Behalte deinen Stundenplan perfekt im Blick.",
+  "onboardingFeatureExamsTitle": "Prüfungen & Hausaufgaben",
+  "onboardingFeatureExamsDesc": "Verfolge deinen Lernstand, importiere Klausuren und exportiere sie als JSON.",
+  "onboardingFeatureAiTitle": "KI-Assistent",
+  "onboardingFeatureAiDesc": "Frag Gemini nach deinem Tag, Hausaufgaben oder Prüfungen.",
+  "onboardingFeatureNotifyTitle": "Benachrichtigungen & Widgets",
+  "onboardingFeatureNotifyDesc": "Bleib auf dem Laufenden, bevor die Schule startet.",
+  "onboardingFeatureUpdatesTitle": "Direkte Updates",
+  "onboardingFeatureUpdatesDesc": "Lade passende Android-Updates direkt aus den Einstellungen.",
+  "onboardingFeatureBackupTitle": "Backup & Wiederherstellung",
+  "onboardingFeatureBackupDesc": "Sichere deine Einstellungen und bringe sie auf ein neues Gerät.",
+  "onboardingFinishSetup": "Einrichtung abschließen",
+  "onboardingUseDemoMode": "Demo-Modus starten",
+  "onboardingUseDemoModeDesc": "Teste Untis+ ohne Schul-Login mit realistisch gefullten Beispieldaten.",
+  "tutorialTitle": "Geführte App-Tour",
+  "tutorialSkip": "Tour überspringen",
+  "tutorialDone": "Tour beenden",
+  "tutorialStepWeekTitle": "Stundenplan",
+  "tutorialStepWeekDesc": "Dein Schultag beginnt hier. Wechsle Wochen und öffne Stunden für alle Details.",
+  "tutorialStepExamsTitle": "Prüfungen & Aufgaben",
+  "tutorialStepExamsDesc": "Behalte Klausuren und Aufgaben im Blick und verwalte eigene Einträge.",
+  "tutorialStepInfoTitle": "Schul-Info",
+  "tutorialStepInfoDesc": "Mitteilungen deiner Schule landen gesammelt in diesem Bereich.",
+  "tutorialStepAiTitle": "KI-Assistent",
+  "tutorialStepAiDesc": "Frage deinen Assistenten zu Stundenplan, Aufgaben und deinem Schulalltag.",
+  "tutorialStepSettingsTitle": "Einstellungen",
+  "tutorialStepSettingsDesc": "Passe Design, Benachrichtigungen, Konten und Datenschutz jederzeit an.",
+  "tutorialStepFinishTitle": "Fertig!",
+  "tutorialStepFinishDesc": "Du kennst jetzt alle Hauptbereiche der App. Viel Spaß mit Untis+!",
+  "timetableTitle": "Stundenplan",
+  "timetablePrevWeek": "Vorherige Woche",
+  "timetableNextWeek": "Nächste Woche",
+  "timetableWeekView": "Wochenansicht",
+  "timetableDayGrid": "Tagesraster",
+  "timetableNotLoaded": "Stundenplan nicht geladen",
+  "timetableSelectClass": "Klasse wählen",
+  "timetableMyTimetable": "Mein Stundenplan",
+  "timetableSelectAnother": "Andere Klasse",
+  "timetableMoreActions": "Weitere Aktionen",
+  "timetableExportImage": "Stundenplan als Bild exportieren",
+  "timetableNoClassesFound": "Keine Klassen gefunden oder Zugriff verweigert.",
+  "freeRoomsTitle": "Freie Räume",
+  "freeRoomsSelectTime": "Zeitraum wählen",
+  "freeRoomsNoneFound": "Keine freien Räume in diesem Zeitraum gefunden.",
+  "freeRoomsNoRangesHint": "Keine passenden Zeitfenster im aktuellen Tag gefunden.",
+  "freeRoomsCount": "{n} freie Räume",
+  "@freeRoomsCount": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "weekDayShortMonday": "Mo",
+  "weekDayShortTuesday": "Di",
+  "weekDayShortWednesday": "Mi",
+  "weekDayShortThursday": "Do",
+  "weekDayShortFriday": "Fr",
+  "weekDayFullMonday": "Montag",
+  "weekDayFullTuesday": "Dienstag",
+  "weekDayFullWednesday": "Mittwoch",
+  "weekDayFullThursday": "Donnerstag",
+  "weekDayFullFriday": "Freitag",
+  "noLesson": "(kein Unterricht)",
+  "detailTime": "Zeit",
+  "detailTeacher": "Lehrkraft",
+  "detailOriginalTeacher": "Ursprüngliche Lehrkraft",
+  "detailRoom": "Raum",
+  "detailClass": "Klasse",
+  "detailLesson": "Stunde",
+  "detailInfo": "Hinweis",
+  "detailNotesForStudents": "Schülernotizen",
+  "detailLessonNotes": "Unterrichtsnotizen",
+  "detailHomework": "Hausaufgaben",
+  "detailCancelled": "FÄLLT AUS",
+  "detailRegular": "Reguläre Stunde",
+  "detailHideSubject": "Fach dauerhaft ausblenden",
+  "detailCancelledBadge": "FÄLLT AUS",
+  "examsTitle": "Prüfungen",
+  "examsNone": "Keine Prüfungen gefunden",
+  "examsNoneHint": "Tippe auf + um eine Prüfung hinzuzufügen.",
+  "examsUpcoming": "Bevorstehend",
+  "examsPast": "Vergangen",
+  "examsAdd": "Prüfung hinzufügen",
+  "examsAddTitle": "Prüfung hinzufügen",
+  "examsEditTitle": "Prüfung bearbeiten",
+  "examsSubjectLabel": "Fach / Titel *",
+  "examsTypeLabel": "Art (z.B. Klausur, Test)",
+  "examsNotesLabel": "Notizen / Themen",
+  "examsToday": "Heute",
+  "examsTomorrow": "Morgen",
+  "examsDaysIn": "in {n} Tagen",
+  "@examsDaysIn": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "examsOwn": "Eigene",
+  "examsUnknown": "(unbekannt)",
+  "examsNoneEntered": "Keine Prüfungen eingetragen.",
+  "examsImportTitle": "Klausurplan hochladen",
+  "examsImportCamera": "Kamera",
+  "examsImportGallery": "Galerie",
+  "examsImportFile": "PDF / Datei",
+  "examsImportSuccess": "Erfolgreich importiert!",
+  "examsImportError": "Fehler beim Import: ",
+  "examsImportInvalidJson": "Kein gültiges JSON gefunden.",
+  "examsExportSuccess": "Klausuren als JSON in die Zwischenablage kopiert.",
+  "examsExportEmpty": "Keine eigenen Klausuren zum Exportieren.",
+  "examsActionCustom": "Manuell",
+  "examsActionImport": "Importieren (Scan/PDF)",
+  "examsActionExport": "Exportieren (JSON)",
+  "examsActionScan": "Scannen",
+  "homeworkFilterAll": "Alle",
+  "homeworkFilterOpen": "Offen",
+  "homeworkFilterDone": "Erledigt",
+  "examsUpcomingCount": "{count} anstehende Prüfung(en)",
+  "@examsUpcomingCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "examsUpcomingNext": "Nächste: {subject} am {date}",
+  "@examsUpcomingNext": {
+    "placeholders": {
+      "subject": {},
+      "date": {}
+    }
+  },
+  "gradesTypeSingle": "Einzelnote",
+  "gradesDateLabel": "Datum",
+  "gradesCountLabel": "{count} Note(n)",
+  "@gradesCountLabel": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "homeworkTitle": "Hausaufgaben",
+  "homeworkNone": "Keine Hausaufgaben gefunden",
+  "homeworkNoneHint": "Du bist fertig! Genieße deine Freizeit.",
+  "homeworkMarkDone": "Als erledigt markieren",
+  "homeworkMarkUndone": "Als nicht erledigt markieren",
+  "homeworkDue": "Fällig am",
+  "homeworkAddTitle": "Hausaufgabe hinzufügen",
+  "homeworkEditTitle": "Hausaufgabe bearbeiten",
+  "homeworkSubjectLabel": "Fach *",
+  "homeworkTaskLabel": "Aufgabe / Beschreibung *",
+  "homeworkDueDateLabel": "Fällig am",
+  "homeworkActionCustom": "Manuell",
+  "homeworkActionImport": "Importieren (Scan/PDF)",
+  "homeworkImportTitle": "Hausaufgaben scannen / hochladen",
+  "homeworkImportSuccess": "Hausaufgaben erfolgreich importiert!",
+  "homeworkImportError": "Fehler beim Import: ",
+  "subjectOverviewTitle": "Fächer-Übersicht",
+  "addGradeForSubject": "+ Note",
+  "addExamForSubject": "+ Klausur",
+  "addHomeworkForSubject": "+ Hausaufgabe",
+  "noGradesForSubject": "Keine Noten für dieses Fach",
+  "noExamsForSubject": "Keine Prüfungen für dieses Fach",
+  "noHomeworkForSubject": "Keine Hausaufgaben für dieses Fach",
+  "infoTitle": "Schulinfos",
+  "infoUpdated": "Aktualisiert",
+  "infoEmpty": "Keine aktuellen Benachrichtigungen",
+  "infoEmptyHint": "Falls deine Schule derzeit nichts veröffentlicht hat, erscheint hier keine Meldung.",
+  "infoFetchError": "Benachrichtigungen konnten nicht geladen werden. Bitte später erneut versuchen.",
+  "infoOpenLink": "Link öffnen",
+  "infoAttachments": "Anhänge",
+  "infoAttachedExtOne": "Angehängte {ext}",
+  "@infoAttachedExtOne": {
+    "placeholders": {
+      "ext": {}
+    }
+  },
+  "infoAttachedExtMany": "Angehängte {ext}s",
+  "@infoAttachedExtMany": {
+    "placeholders": {
+      "ext": {}
+    }
+  },
+  "infoAttachedFile": "Angehängte Datei",
+  "infoAttachedFiles": "Angehängte Dateien",
+  "attachmentSave": "Anhang speichern",
+  "attachmentSaved": "Anhang gespeichert.",
+  "attachmentDownloadFailed": "Der Anhang konnte nicht heruntergeladen werden.",
+  "attachmentDemoUnavailable": "Im Demo-Modus sind keine echten Dateien verfügbar.",
+  "infoCopyMessage": "Nachricht kopieren",
+  "infoMessageCopied": "Nachricht in Zwischenablage kopiert.",
+  "messageComposeTitle": "Nachricht verfassen",
+  "messageRecipients": "Empfänger",
+  "messageRecipientsLoading": "Empfänger werden geladen…",
+  "messageRecipientSelect": "Lehrkraft auswählen",
+  "messageNoRecipients": "Keine verfügbaren Empfänger gefunden.",
+  "messageRecipientsFailed": "Empfänger konnten nicht geladen werden.",
+  "messageSubject": "Betreff",
+  "messageBody": "Nachricht",
+  "messageAttach": "Anhänge",
+  "messageAttachmentLimit": "Maximal {count} Anhänge sind erlaubt.",
+  "@messageAttachmentLimit": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "messageAttachmentTooLarge": "{name} ist zu groß.",
+  "@messageAttachmentTooLarge": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "messageDraftAutosave": "Entwurf wird automatisch gespeichert",
+  "messageDiscardDraft": "Entwurf verwerfen",
+  "messageRequiredFields": "Empfänger, Betreff und Nachricht sind erforderlich.",
+  "messageSend": "Senden",
+  "messageSending": "Wird gesendet…",
+  "messageSent": "Nachricht gesendet.",
+  "messageSendFailed": "Die Nachricht konnte nicht gesendet werden.",
+  "messageDemoUnavailable": "Im Demo-Modus können keine echten Nachrichten gesendet werden.",
+  "notificationActionCurrentLesson": "Aktuelle Stunde: {lesson}",
+  "@notificationActionCurrentLesson": {
+    "placeholders": {
+      "lesson": {}
+    }
+  },
+  "notificationActionNextLessonLabel": "Nächste Stunde",
+  "notificationActionNoNextLesson": "Keine nächste Stunde für heute gefunden",
+  "notificationChangeOutsideWeek": "Die Änderung liegt außerhalb der geladenen Woche",
+  "aiTitle": "KI-Assistent",
+  "aiTabAnalysis": "Analyse",
+  "aiTabChat": "Chat",
+  "aiInputHint": "Frage stellen…",
+  "aiKnowsSchedule": "Ich kenne deinen Stundenplan!",
+  "aiAskAnything": "Frag mich alles über deine Woche.",
+  "aiNoApiKey": "⚠️ Bitte trage deinen API-Schlüssel unter Einstellungen → KI-Assistent ein.",
+  "aiNoReply": "⚠️ Keine Antwort erhalten.",
+  "aiApiError": "⚠️ API-Fehler:",
+  "aiConnectionError": "⚠️ Verbindungsfehler:",
+  "aiCustomBaseUrlMissing": "⚠️ Bitte setze zuerst die Custom Base URL in den KI-Einstellungen.",
+  "aiClearHistoryTileTitle": "Verlauf löschen",
+  "aiClearHistoryTileDesc": "Alle Chats vom Gerät entfernen",
+  "aiTyping": "KI schreibt …",
+  "aiChatTitle": "Dein KI-Chat",
+  "aiChatSubtitle": "Stelle Fragen zu deinem Schulalltag oder chatte einfach so mit der KI.",
+  "aiTryIt": "Probiere es aus:",
+  "aiSuggestionOne": "Was hab ich morgen?",
+  "aiSuggestionTwo": "Hab ich heute eine Freistunde?",
+  "aiSuggestionThree": "Wann ist morgen Schulschluss?",
+  "aiSuggestionFour": "Fällt heute etwas aus?",
+  "aiChatSuggestionOne": "Wie kann ich meine Noten verbessern?",
+  "aiChatSuggestionTwo": "Erkläre mir die Relativitätstheorie einfach.",
+  "aiChatSuggestionThree": "Schreibe eine Entschuldigung für Sport.",
+  "aiNoSchoolToday": "Keine Schule heute.",
+  "aiCurrentLessonSummary": "Aktuelle Stunde: {subject} in Raum {room} (bis {end})",
+  "@aiCurrentLessonSummary": {
+    "placeholders": {
+      "subject": {},
+      "room": {},
+      "end": {}
+    }
+  },
+  "aiNoCurrentLesson": "Gerade findet kein Unterricht statt.",
+  "aiNoNextLessonSchool": "Nächste Stunde: Keine (heute ist keine Schule).",
+  "aiNextLessonSummary": "Nächste Stunde: {subject} in Raum {room} um {start}",
+  "@aiNextLessonSummary": {
+    "placeholders": {
+      "subject": {},
+      "room": {},
+      "start": {}
+    }
+  },
+  "aiNoMoreLessons": "Keine weiteren Stunden heute.",
+  "aiDefaultExamType": "Klausur",
+  "settingsTitle": "Einstellungen",
+  "commonSaveChanges": "Änderungen speichern",
+  "settingsLoggedInAs": "Angemeldet als",
+  "settingsLogout": "Abmelden",
+  "settingsSectionQuick": "Schnellzugriff",
+  "settingsSectionGeneral": "App",
+  "settingsAppearance": "Erscheinungsbild",
+  "settingsAppearanceDesc": "System (Hell/Dunkel)",
+  "settingsAppearanceSurfaces": "Oberflächen",
+  "settingsAppearanceMotion": "Animationen & Effekte",
+  "settingsAppearanceTimetable": "Stundenplanfarben",
+  "settingsAppearanceApp": "App",
+  "settingsVisualTheme": "App-Theme",
+  "settingsVisualThemeDesc": "Ändert Farben, Formen, Schrift und Bewegung in der gesamten App.",
+  "themeDefault": "Default",
+  "themeDefaultDesc": "Der vertraute Untis+-Look",
+  "themeManga": "Manga",
+  "themeMangaDesc": "Papier, Raster und starke Ink-Konturen",
+  "themeGlass": "Glass",
+  "themeGlassDesc": "Ruhige Aurora-Glasflächen mit klaren Kontrasten",
+  "themeCyber": "Cyber",
+  "themeCyberDesc": "Präzise Technikflächen mit fokussierten Akzenten",
+  "settingsHubNotifications": "Benachrichtigungen & Widgets",
+  "settingsHubDataBackup": "Daten & Backup",
+  "settingsHubDataBackupDesc": "Alle App-Einstellungen sichern",
+  "settingsHubAccount": "Account & Demo",
+  "settingsHubUpdatesAbout": "Updates & Über",
+  "settingsSupport": "Entwicklung unterstützen",
+  "settingsSupportDesc": "Unterstütz uns auf Ko-fi",
+  "settingsReportIssue": "Problem melden oder Idee teilen",
+  "settingsReportIssueDesc": "Öffnet die Untis+ Issues auf GitHub",
+  "settingsLanguage": "Sprache",
+  "settingsSectionAI": "KI-Assistent",
+  "settingsAiProvider": "Anbieter",
+  "settingsAiProviderGemini": "Google Gemini",
+  "settingsAiProviderOpenAi": "OpenAI",
+  "settingsAiProviderMistral": "Mistral AI",
+  "settingsAiProviderCustom": "Custom Anbieter",
+  "settingsAiProviderLocal": "Lokal (On-Device)",
+  "settingsAiModel": "Modell",
+  "settingsAiParametersTitle": "Parameter",
+  "settingsAiParametersDesc": "Temperatur, Token-Limit & Top P",
+  "settingsAiAdjustmentTitle": "Anpassung",
+  "settingsAiPersonaTitle": "Persönlichkeit",
+  "settingsAiPersonaHelpful": "Hilfreicher Assistent",
+  "settingsAiPersonaStrict": "Strenger Lehrer",
+  "settingsAiPersonaBuddy": "Schul-Buddy",
+  "settingsAiDataTitle": "Daten",
+  "settingsAiApiKey": "API-Schlüssel",
+  "settingsAiApiKeyNotSet": "Nicht konfiguriert — Tippen zum Einrichten",
+  "settingsAiApiKeyDialogDesc": "Erforderlich für den KI-Assistenten. Über „API-Key holen“ öffnest du die passende Seite für den ausgewählten Anbieter.",
+  "settingsAiApiKeyGet": "API-Key holen",
+  "settingsAiApiKeyOpenFailed": "Konnte die API-Key-Seite nicht öffnen.",
+  "settingsAiPrompt": "System-Prompt",
+  "settingsAiPromptDesc": "Bearbeite den vorgefertigten Prompt und nutze Variablen wie [timetable].",
+  "settingsAiPromptEditTitle": "System-Prompt bearbeiten",
+  "settingsAiPromptReset": "Standard wiederherstellen",
+  "settingsAiPromptVariables": "Prompt-Variablen",
+  "settingsAiPromptVariablesDesc": "Liste aller Platzhalter, die automatisch mit Daten ersetzt werden.",
+  "settingsAiLocalModel": "Lokales Modell",
+  "settingsAiLocalModelDesc": "Wähle und lade ein Modell für On-Device-Inferenz herunter.",
+  "settingsAiLocalModelDownload": "Herunterladen",
+  "settingsAiLocalModelDownloading": "Wird heruntergeladen…",
+  "settingsAiLocalModelInstalled": "Installiert",
+  "settingsAiLocalModelActive": "Aktiv",
+  "settingsAiLocalModelError": "Download fehlgeschlagen.",
+  "aiLocalModelExamNotSupported": "Lokale Modelle unterstützen das Importieren von Prüfungsbildern nicht. Bitte wähle einen Online-Anbieter.",
+  "aiLocalModelLoadError": "Lokales Modell konnte nicht geladen werden. Bitte lade es erneut herunter.",
+  "settingsAiLocalModelSize": "Größe: {size} GB",
+  "@settingsAiLocalModelSize": {
+    "placeholders": {
+      "size": {}
+    }
+  },
+  "settingsAiLocalModelDeleteConfirm": "Modell wirklich löschen?",
+  "aiVar_today": "Heutiges Datum in lokaler Schreibweise",
+  "aiVar_today_iso": "Heutiges Datum im Format YYYY-MM-DD",
+  "aiVar_locale": "Aktive App-Sprache (z.B. de, en)",
+  "aiVar_school_name": "Name der Schule",
+  "aiVar_school_url": "Server/Domain der Schule",
+  "aiVar_person_type": "WebUntis Personentyp als Zahl",
+  "aiVar_person_id": "WebUntis Personen-ID",
+  "aiVar_demo_mode": "true, wenn Demo-Modus aktiv ist",
+  "aiVar_current_monday": "Montag der geladenen Woche (DD.MM.YYYY)",
+  "aiVar_current_friday": "Freitag der geladenen Woche (DD.MM.YYYY)",
+  "aiVar_day_summary_today": "Kurzübersicht für heute",
+  "aiVar_day_summary_tomorrow": "Kurzübersicht für morgen",
+  "aiVar_timetable": "Formatierter Stundenplan der aktuellen Woche",
+  "aiVar_timetable_json": "Rohdaten des Stundenplans als JSON",
+  "aiVar_exams": "Formatierte Liste geplanter Prüfungen",
+  "aiVar_exams_json": "Prüfungsdaten als JSON",
+  "aiVar_current_lesson": "Informationen zur aktuellen Stunde",
+  "aiVar_next_lesson": "Informationen zur nächsten Stunde",
+  "settingsAiCustomBaseUrl": "Custom Base URL",
+  "settingsAiCustomBaseUrlDesc": "Basis-URL deines eigenen Anbieters (OpenAI- oder Gemini-kompatibel).",
+  "settingsAiCustomBaseUrlHint": "https://api.dein-anbieter.tld/v1",
+  "settingsAiCompatibility": "Custom Kompatibilität",
+  "settingsAiCompatibilityOpenAi": "OpenAI-kompatibel",
+  "settingsAiCompatibilityGemini": "Gemini-kompatibel",
+  "settingsApiKey": "Gemini API-Schlüssel",
+  "settingsApiKeyNotSet": "Nicht konfiguriert — Tippen zum Einrichten",
+  "settingsApiKeyDialogTitle": "Gemini API-Schlüssel",
+  "settingsApiKeyDialogDesc": "Erforderlich für den KI-Assistenten. Den Schlüssel findest du unter aistudio.google.com/app/apikey.",
+  "settingsApiKeyRemove": "Entfernen",
+  "settingsSectionHidden": "Ausgeblendete Fächer",
+  "settingsNoHidden": "Keine Fächer ausgeblendet",
+  "settingsNoHiddenDesc": "Tippe eine Stunde an, um sie auszublenden.",
+  "settingsUnhide": "Einblenden",
+  "settingsHiddenCount": "{n} Fach/Fächer ausgeblendet",
+  "@settingsHiddenCount": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "settingsSectionColors": "Fachfarben",
+  "settingsColorsDesc": "Tippe auf ein Fach um eine Farbe zu wählen.",
+  "settingsNoSubjectsLoaded": "Keine Fächer geladen",
+  "settingsNoSubjectsLoadedDesc": "Öffne zuerst deinen Stundenplan.",
+  "settingsCustomColor": "Benutzerdefiniert",
+  "settingsDefaultColor": "Standardfarbe",
+  "settingsColorFor": "Farbe für „{s}\"",
+  "@settingsColorFor": {
+    "placeholders": {
+      "s": {}
+    }
+  },
+  "settingsColorReset": "Auf Standard zurücksetzen",
+  "settingsColorCustomPicker": "Eigene Farbe wählen",
+  "settingsColorApply": "Farbe übernehmen",
+  "settingsColorRed": "Rot",
+  "settingsColorGreen": "Grün",
+  "settingsColorBlue": "Blau",
+  "settingsThemeMode": "Farbschema",
+  "settingsThemeLight": "Hell",
+  "settingsThemeSystem": "System",
+  "settingsThemeDark": "Dunkel",
+  "settingsSectionTimetable": "Stundenplan",
+  "settingsTimetableSwitchAnimation": "Wechselanimation",
+  "settingsTimetableSwitchAnimationDesc": "Animation beim Wechsel zwischen Tagen und Wochen.",
+  "settingsTimetableSwitchAnimationDefault": "Standard",
+  "settingsTimetableSwitchAnimationMaterial": "Material 3 Carousel",
+  "settingsTimetableSwitchAnimationDepth": "Tiefe & Fade",
+  "settingsShowCancelled": "Ausgefallene Stunden anzeigen",
+  "settingsShowCancelledDesc": "Ausgefallene Stunden werden im Stundenplan angezeigt",
+  "settingsCancelledColor": "Ausgefallene Farbe",
+  "settingsCancelledColorDesc": "Farbe für ausgefallene Stunden anpassen",
+  "settingsLessonDesignTitle": "Stunden- & Kartendesign",
+  "settingsLessonDesignDesc": "Passe Stile, Blur und Details der Stundenkarten an.",
+  "settingsLessonStyle": "Karten-Stil",
+  "settingsLessonStyleDesc": "Wähle das visuelle Grunddesign der Stunden.",
+  "settingsLessonStyleModern": "Modern (Getönt)",
+  "settingsLessonStyleGlass": "Milchglas (Frosted)",
+  "settingsLessonStyleGradient": "Farbverlauf",
+  "settingsLessonStyleOutline": "Kontur / Minimal",
+  "settingsLessonStyleSolid": "Kräftig / Vollton",
+  "settingsLessonBlur": "Milchglas-Unschärfe (Blur)",
+  "settingsLessonBlurDesc": "Hintergrund hinter den Stundenkarten weichzeichnen.",
+  "settingsLessonBlurAmount": "Weichzeichner-Stärke",
+  "settingsLessonCardOpacity": "Karten-Deckkraft",
+  "settingsLessonBorderRadius": "Eckenrundung",
+  "settingsLessonAccentStyle": "Akzentleiste",
+  "settingsLessonAccentBar": "Klassischer Balken",
+  "settingsLessonAccentThin": "Dünne Linie",
+  "settingsLessonAccentDot": "Punkt-Indikator",
+  "settingsLessonAccentNone": "Keine Leiste",
+  "settingsLessonShowTeacher": "Lehrkraft anzeigen",
+  "settingsLessonShowTeacherDesc": "Kürzel bzw. Name der Lehrkraft auf der Karte einblenden.",
+  "settingsLessonShowSubjectIcons": "Fach-Icons anzeigen",
+  "settingsLessonShowSubjectIconsDesc": "Zeigt passende Symbole neben den Fächern im Stundenplan.",
+  "settingsLessonShowRoom": "Raum anzeigen",
+  "settingsLessonShowRoomDesc": "Raumnummer auf der Stundenkarte einblenden.",
+  "settingsLessonCompactMode": "Kompakte Ansicht",
+  "settingsLessonCompactModeDesc": "Reduzierte Abstände für mehr Übersicht bei vielen Stunden.",
+  "settingsLessonDimPast": "Vergangene Stunden dimmen",
+  "settingsLessonDimPastDesc": "Bereits vergangene Stunden am Tag dezent ausgrauen.",
+  "settingsLessonCancelledPattern": "Ausfall-Schraffur",
+  "settingsLessonCancelledPatternDesc": "Zeigt ein diagonales Schraffurmuster bei Entfällen.",
+  "settingsLessonPreviewRegular": "Regulär",
+  "settingsLessonPreviewActive": "Aktive Stunde",
+  "settingsLessonPreviewCancelled": "Ausfall",
+  "settingsLessonPreviewHeader": "Live-Vorschau",
+  "settingsMonochromeLessons": "Monochrome Stunden",
+  "settingsMonochromeLessonsDesc": "Alle Stunden in Material-You-Farben statt Einzelfarben",
+  "settingsDemoMode": "Demo-Modus",
+  "settingsDemoModeDesc": "Verwendet lokale Demo-Daten statt Schulserver (sofort aktiv).",
+  "settingsBackgroundAnimations": "Hintergrundanimationen",
+  "settingsBackgroundAnimationsDesc": "Animierte Farbverläufe im Hintergrund anzeigen",
+  "settingsBackgroundGyroscope": "Gyroskop-Reaktion",
+  "settingsBackgroundGyroscopeDesc": "Lässt den Hintergrund auf die Gerätebewegung reagieren",
+  "settingsBackgroundStyle": "Animationsstil",
+  "settingsBackgroundStyleOrbs": "Orbs",
+  "settingsBackgroundStyleSpace": "Space",
+  "settingsBackgroundStyleBubbles": "Blasen",
+  "settingsBackgroundStyleLines": "Linien",
+  "settingsBackgroundStyleThreeD": "3D-Formen",
+  "settingsBackgroundStyleNebula": "Nebel",
+  "settingsBackgroundStylePrism": "Prisma",
+  "settingsBackgroundStyleWaves": "Wellen",
+  "settingsBackgroundStyleGrid": "Gitter",
+  "settingsBackgroundStyleRings": "Ringe",
+  "settingsBackgroundStyleCustom": "Custom",
+  "settingsCustomBackgrounds": "Eigene Hintergründe",
+  "settingsCustomBackgroundsDesc": "Erstellen, speichern, importieren & exportieren",
+  "settingsCustomBackgroundsSelected": "Ausgewählt: {name}",
+  "@settingsCustomBackgroundsSelected": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "bgEditorTitle": "Hintergrund-Editor",
+  "bgEditorPreviewTab": "Vorschau",
+  "bgEditorDesignTab": "Design",
+  "bgEditorLibraryTab": "Bibliothek",
+  "bgEditorStartPoints": "Startpunkte",
+  "bgEditorUpdatedAt": "Aktualisiert",
+  "bgEditorEdit": "Bearbeiten",
+  "bgEditorUndo": "Rückgängig",
+  "bgEditorRedo": "Wiederholen",
+  "bgEditorRandomize": "Zufall",
+  "bgEditorUnsavedTitle": "Ungespeicherte Änderungen",
+  "bgEditorUnsavedDesc": "Änderungen speichern, verwerfen oder weiter bearbeiten?",
+  "bgEditorDiscard": "Verwerfen",
+  "bgEditorLivePreview": "Live-Vorschau",
+  "bgEditorSaved": "Gespeichert.",
+  "bgEditorSaveFailed": "Speichern fehlgeschlagen.",
+  "bgEditorUseInApp": "In App verwenden",
+  "bgEditorApplied": "Als Hintergrund aktiviert.",
+  "bgEditorLibrary": "Bibliothek",
+  "bgEditorNew": "Neu",
+  "bgEditorNewName": "Neuer Hintergrund",
+  "bgEditorDuplicate": "Duplizieren",
+  "bgEditorDeleteTitle": "Hintergrund löschen?",
+  "bgEditorDeleteDesc": "Dieser Hintergrund wird dauerhaft entfernt.",
+  "bgEditorExportTitle": "Export",
+  "bgEditorExportSelected": "Ausgewählten exportieren",
+  "bgEditorExportAll": "Alle exportieren",
+  "bgEditorExported": "JSON in Zwischenablage kopiert.",
+  "bgEditorExportedAll": "Alle Hintergründe als JSON kopiert.",
+  "bgEditorImportTitle": "Import",
+  "bgEditorImportFromClipboard": "Aus Zwischenablage",
+  "bgEditorImportFromFile": "Aus Datei",
+  "bgEditorImportClipboardEmpty": "Zwischenablage ist leer.",
+  "bgEditorImportedCount": "{n} Hintergrund(e) importiert.",
+  "@bgEditorImportedCount": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "bgEditorImportFailed": "Import fehlgeschlagen.",
+  "bgEditorMeta": "Metadaten",
+  "bgEditorName": "Name",
+  "bgEditorBase": "Basis-Gradient",
+  "bgEditorUseThemeColors": "Theme-Farben verwenden",
+  "bgEditorUseThemeColorsDesc": "Nutzt Farben aus dem aktuellen Farbschema.",
+  "bgEditorGradientLinear": "Linear",
+  "bgEditorGradientRadial": "Radial",
+  "bgEditorBaseOpacity": "Basis-Deckkraft",
+  "bgEditorGradientAngle": "Winkel",
+  "bgEditorRadialCenterX": "Zentrum X",
+  "bgEditorRadialCenterY": "Zentrum Y",
+  "bgEditorRadialRadius": "Radius",
+  "bgEditorColorN": "Farbe {n}",
+  "@bgEditorColorN": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "bgEditorOrbs": "Orbs",
+  "bgEditorOrbsEnabled": "Orbs aktiv",
+  "bgEditorOrbsThemeDesc": "Verwendet Theme-Farben für Orbs.",
+  "bgEditorRandomizeSeed": "Seed randomisieren",
+  "bgEditorOrbsCount": "Anzahl",
+  "bgEditorOrbsSize": "Größe",
+  "bgEditorOrbsVariance": "Varianz",
+  "bgEditorOrbsOpacity": "Deckkraft",
+  "bgEditorOrbsSoftness": "Weichheit",
+  "bgEditorOrbColorN": "Orb-Farbe {n}",
+  "@bgEditorOrbColorN": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "bgEditorEffects": "Muster & Effekte",
+  "bgEditorPatternNone": "Keins",
+  "bgEditorPatternLines": "Linien",
+  "bgEditorPatternGrid": "Gitter",
+  "bgEditorPatternOpacity": "Muster-Deckkraft",
+  "bgEditorPatternScale": "Skalierung",
+  "bgEditorPatternAngle": "Muster-Winkel",
+  "bgEditorNoise": "Rauschen",
+  "bgEditorVignette": "Vignette",
+  "bgEditorMotion": "Bewegung",
+  "bgEditorAnimate": "Animieren",
+  "bgEditorSpeed": "Geschwindigkeit",
+  "bgEditorParallax": "Parallax",
+  "bgEditorAiTitle": "KI-Generator",
+  "bgEditorAiDesc": "Beschreibe einen Look – die KI erstellt einen neuen Hintergrund.",
+  "bgEditorAiHint": "z.B. „Neon-Nebel, weich, dunkel, blau/pink“",
+  "bgEditorAiGenerate": "Mit KI erstellen",
+  "bgEditorAiSystem": "You generate ONE Flutter background preset.\nOutput ONLY valid JSON (no markdown, no commentary).\n\nReturn a single JSON object with this schema:\n{\n    \"version\": 1,\n    \"name\": \"...\",\n    \"base\": {\n        \"type\": \"linear\"|\"radial\",\n        \"useThemeColors\": true|false,\n        \"colors\": [\"#RRGGBB\", ...],\n        \"opacity\": 0.0-1.0,\n        \"angleDeg\": 0-360,\n        \"centerX\": -1..1,\n        \"centerY\": -1..1,\n        \"radius\": 0.3-2.5\n    },\n    \"orbs\": {\n        \"enabled\": true|false,\n        \"useThemeColors\": true|false,\n        \"colors\": [\"#RRGGBB\", ...],\n        \"count\": 0-18,\n        \"seed\": 0-2147483647,\n        \"size\": 40-480,\n        \"sizeVariance\": 0.0-1.0,\n        \"opacity\": 0.0-1.0,\n        \"softness\": 0.0-1.0\n    },\n    \"pattern\": {\n        \"type\": \"none\"|\"lines\"|\"grid\",\n        \"opacity\": 0.0-1.0,\n        \"scale\": 0.4-3.5,\n        \"angleDeg\": 0-360\n    },\n    \"noise\": 0.0-0.5,\n    \"vignette\": 0.0-1.0,\n    \"animate\": true|false,\n    \"animationSpeed\": 0.0-3.0,\n    \"parallaxStrength\": 0.0-1.0\n}\n\nKeep values reasonable and visually pleasing. Prefer 2-3 base colors.\nUse \"useThemeColors\": true unless the prompt asks for specific colors.\n",
+  "bgEditorAiUserPrefix": "Description:",
+  "bgEditorAiUserSchemaHint": "Return JSON only. Do not wrap in code fences.",
+  "bgEditorAiGeneratedName": "KI Hintergrund",
+  "bgEditorAiSuccess": "KI-Hintergrund erstellt.",
+  "bgEditorAiError": "KI: ",
+  "settingsGlassEffect": "Blur-Effekt",
+  "settingsGlassEffectDesc": "Aktiviert Blur in der Oberfläche",
+  "settingsSurfaceBlur": "Blur auf Oberflächen",
+  "settingsSurfaceBlurDesc": "Verwischt normale Karten und Flächen. Bei aktivem Blur-Effekt werden auch Dialoge, Bottom Sheets und Overlays im Hintergrund weichgezeichnet.",
+  "settingsSurfaceCorners": "Oberflächen-Ecken",
+  "settingsSurfaceCornersDesc": "Legt fest, wie stark normale Karten und Oberflächen abgerundet sind.",
+  "settingsSurfaceCornersCurrent": "Wie aktuell",
+  "settingsSurfaceCornersSharper": "Eckiger",
+  "settingsSurfaceCornersCustom": "Benutzerdefiniert",
+  "settingsSurfaceCornerRadius": "Eckenradius",
+  "settingsGlowEffects": "Glow-Effekte",
+  "settingsGlowEffectsDesc": "Farbige Leuchthöfe bei Stunden, Aufgaben, Noten und Symbolen",
+  "settingsPageTransition": "Seitenübergang",
+  "settingsPageTransitionDesc": "Wähle den Stil für Seitenwechsel und optionale Main-Tab-Animationen",
+  "settingsPageTransitionDefault": "Default",
+  "settingsPageTransitionBounce": "Spring",
+  "settingsPageTransitionFade": "Soft Fade",
+  "settingsPageTransitionSlide": "Shared Axis",
+  "settingsPageTransitionZoom": "Focus Zoom",
+  "settingsPageTransitionBlur": "Focus Blur",
+  "settingsPageTransitionEaseIn": "Lift",
+  "settingsPageTransitionEaseOut": "Drift",
+  "settingsPageTransitionExpo": "Expo Rise",
+  "settingsMainTabFadeUp": "Main-Tab-Animationen",
+  "settingsMainTabFadeUpDesc": "Animiert Main-Tab-Wechsel mit dem oben gewählten Übergang. Aus bedeutet sofortiger Wechsel ohne Animation.",
+  "settingsUseMaterialYou": "Material You",
+  "settingsUseMaterialYouDesc": "Farben automatisch an Systemakzentfarbe anpassen",
+  "settingsCustomColorSeed": "Farbe wählen",
+  "settingsIsAmoled": "Pitch Black (AMOLED)",
+  "settingsIsAmoledDesc": "Tiefschwarzer Hintergrund im Darkmode für OLED-Displays.",
+  "settingsProgressivePush": "Progressive Push-Benachrichtigung",
+  "settingsProgressivePushDesc": "Aktuelle Stunde als dauerhafte Benachrichtigung anzeigen",
+  "settingsDailyBriefingPush": "Tagesbriefing-Benachrichtigung",
+  "settingsDailyBriefingPushDesc": "Zeigt morgens eine kompakte Vorschau auf deinen Schultag",
+  "settingsImportantChangesPush": "Wichtige Änderungen",
+  "settingsImportantChangesPushDesc": "Benachrichtigt bei Ausfällen, Raumwechseln und Vertretungen",
+  "settingsNotifyChangeCancellations": "Ausfälle",
+  "settingsNotifyChangeCancellationsDesc": "Wenn eine Stunde ausfällt oder wieder stattfindet",
+  "settingsNotifyChangeRoom": "Raumwechsel",
+  "settingsNotifyChangeRoomDesc": "Wenn sich der Raum einer Stunde ändert",
+  "settingsNotifyChangeTeacher": "Vertretungen",
+  "settingsNotifyChangeTeacherDesc": "Wenn die Lehrkraft einer Stunde wechselt",
+  "settingsNotifyChangeOther": "Sonstige Änderungen",
+  "settingsNotifyChangeOtherDesc": "Zeit-, Fach- oder sonstige Änderungen",
+  "settingsRefreshPushWidgetNow": "Push & Widget jetzt aktualisieren",
+  "settingsRefreshPushWidgetNowDesc": "Lädt sofort die neuesten Daten aus dem API-Cache und aktualisiert Widget und Push",
+  "settingsBackgroundLoading": "Daten werden im Hintergrund geladen...",
+  "settingsSectionUpdates": "Updates",
+  "settingsSectionAbout": "Über die App",
+  "settingsSectionCredits": "Credits",
+  "settingsCreditsDevelopers": "Entwickler",
+  "settingsCreditsDeveloper": "Entwickler",
+  "settingsCreditsFounderDeveloper": "Gründer & Entwickler",
+  "appName": "Untis+",
+  "settingsAppVersion": "Version",
+  "settingsBuild": "Build",
+  "settingsSectionSubjects": "Fächer & Farben",
+  "settingsGithubRepoLabel": "github.com/ninocss/UntisPlus",
+  "settingsGithubUpdateCheck": "Nach Updates im GitHub-Repo suchen",
+  "settingsGithubUpdateCheckDesc": "Prüft das neueste Release von ninocss/UntisPlus.",
+  "settingsGithubDirectDownload": "Neueste Version direkt herunterladen",
+  "settingsGithubDirectDownloadDesc": "Beim Prüfen wird die neueste APK/Release-Datei sofort geöffnet.",
+  "settingsGithubChecking": "Suche nach Updates...",
+  "settingsGithubUpdateFound": "Neues Release gefunden: {v}",
+  "@settingsGithubUpdateFound": {
+    "placeholders": {
+      "v": {}
+    }
+  },
+  "settingsGithubDownloadNow": "Download",
+  "settingsGithubNoDownloadAsset": "Kein direktes Download-Asset gefunden. Öffne Release-Seite...",
+  "settingsGithubDownloadStarted": "Download/Release wurde im Browser geöffnet.",
+  "settingsGithubDownloading": "Update wird heruntergeladen…",
+  "settingsGithubDownloadCancel": "Download abbrechen",
+  "settingsGithubDownloadCancelled": "Update-Download abgebrochen.",
+  "settingsGithubDownloadFailed": "Update konnte nicht heruntergeladen werden.",
+  "settingsGithubNoCompatibleAndroidApk": "Für die Architektur dieses Geräts ist keine Android-APK verfügbar.",
+  "settingsGithubInstallPermissionRequired": "Erlaube Untis+ das Installieren unbekannter Apps und starte die Installation anschließend erneut.",
+  "settingsGithubOpenFailed": "Konnte den Download-Link nicht öffnen.",
+  "settingsGithubCheckFailed": "Update-Prüfung fehlgeschlagen. Bitte später erneut versuchen.",
+  "settingsGithubNoUpdate": "Du hast bereits die neueste Version.",
+  "settingsGithubCurrentVersion": "Installierte Version",
+  "settingsGithubLatestVersion": "Neueste Version",
+  "settingsGithubInstallQuestion": "Möchtest du das Update jetzt herunterladen und installieren?",
+  "settingsGithubInstallNow": "Jetzt installieren",
+  "settingsGithubInstallLater": "Später",
+  "settingsGithubInstallPrompted": "Download gestartet. Nach dem Download erscheint der Installationsdialog.",
+  "settingsGithubInstallerOpened": "System-Installationsdialog geöffnet.",
+  "settingsGithubOpenReleasePage": "GitHub Release-Seite öffnen",
+  "settingsBackupIncludeApiKeys": "API-Keys einschließen",
+  "settingsBackupIncludeApiKeysDesc": "Nur aktivieren, wenn das Backup sicher gespeichert wird.",
+  "settingsBackupExportAllFile": "Alle Einstellungen als Datei exportieren",
+  "settingsBackupExportAllClipboard": "Alle Einstellungen in Zwischenablage kopieren",
+  "settingsBackupImportAllTitle": "Alle Einstellungen importieren",
+  "settingsBackupImportAllFile": "Aus Datei importieren",
+  "settingsBackupImportAllClipboard": "Aus Zwischenablage importieren",
+  "settingsBackupExportDialogTitle": "Einstellungen-Backup speichern",
+  "settingsBackupExportSuccess": "Backup-Datei gespeichert.",
+  "settingsBackupExportClipboardSuccess": "Backup als JSON in Zwischenablage kopiert.",
+  "settingsBackupImportSuccess": "Backup importiert.",
+  "settingsBackupImportFailed": "Import fehlgeschlagen. Bitte JSON und Schema prüfen.",
+  "settingsBackupClipboardEmpty": "Zwischenablage ist leer.",
+  "settingsBackupConfirmTitle": "Import bestätigen",
+  "settingsBackupConfirmDesc": "Import überschreibt aktuelle Einstellungen und aktualisiert die App direkt.",
+  "settingsBackupConfirmAction": "Importieren",
+  "aiSystemPersona": "Du bist \"Plan-Assistent\", ein freundlicher und motivierender KI-Helfer für Schüler*innen.",
+  "aiSystemRules": "REGELN:\n- Antworte basierend auf den obigen Stundenplan- und Klausurendaten.\n- Erfinde KEINE Fächer, Zeiten, Lehrer oder sonstige Informationen.\n- Berücksichtige Prüfungen/Klausuren in deinen Antworten, wenn es thematisch passt.\n- Wenn etwas aus den Daten nicht ableitbar ist, sage es offen.\n- Beachte [FÄLLT AUS]-Markierungen (diese Stunden finden nicht statt).\n- \"Freistunden\" = Lücken zwischen zwei Unterrichtsstunden.\n- Antworte auf Deutsch, sei hilfreich, motivierend und auf den Punkt.\n- Beginne nicht automatisch mit \"Ja,\" – antworte direkt.\n- Du darfst Markdown zur Formatierung verwenden (z.B. Listen, **fett**).",
+  "settingsChangelogTitle": "Neuigkeiten (Changelog)",
+  "settingsChangelogSubtitle": "Was ist neu in Untis+?",
+  "changelogTitle": "Neuigkeiten",
+  "changelogLoadError": "Fehler beim Laden",
+  "changelogNoData": "# Keine Daten verfügbar",
+  "changelogRetry": "Erneut versuchen",
+  "aiNewSearch": "Neue Suche",
+  "aiSearchRunning": "Suche läuft…",
+  "aiSearchShapingDesc": "Die KI formt gerade Karten und Stundenblöcke aus deinem Stundenplan.",
+  "aiStepAnalyzingTimetable": "Analysiert den Stundenplan…",
+  "aiStepSortingResults": "Sortiert Ergebnisse…",
+  "aiStepAlmostDone": "Fast fertig…",
+  "aiSearchHintPlaceholder": "Stunden, Freistunden, Prüfungen …",
+  "aiOverview": "Übersicht",
+  "aiEmptyPromptTitle": "Was möchtest du wissen?",
+  "aiEmptyPromptSubtitle": "Frag nach Stunden, Prüfungen oder freien Räumen.",
+  "aiPromptWhenFinishToday": "Wann ist heute Schluss?",
+  "aiPromptWhatCancelledToday": "Was fällt heute aus?",
+  "aiPromptUpcomingExams": "Welche Prüfungen hab ich bald?",
+  "aiPromptFirstLessonToday": "Was hab ich heute als erstes?",
+  "aiPromptNextLesson": "Wann ist meine nächste Stunde?",
+  "aiPromptTomorrowSchedule": "Was hab ich morgen?",
+  "aiClearResult": "Ergebnis leeren",
+  "aiSearchAgain": "Neu suchen",
+  "aiClearInput": "Leeren",
+  "aiLessons": "Stunden",
+  "aiMore": "Mehr",
+  "aiSettingsMenu": "KI-Einstellungen",
+  "aiResultsCardDesc": "Ergebnisse werden als Karten und Stundenblöcke angezeigt.",
+  "aiDismiss": "Ausblenden",
+  "aiLessonsCountSingle": "1 Stunde",
+  "aiLessonsCountPlural": "{count} Stunden",
+  "@aiLessonsCountPlural": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "aiExamsCountWeekSingle": "1 Prüfung diese Woche",
+  "aiExamsCountWeekPlural": "{count} Prüfungen diese Woche",
+  "@aiExamsCountWeekPlural": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "classPickerHeaderDesc": "Wähle einen Stundenplan aus. Favoriten werden oben angezeigt.",
+  "classPickerDefaultBadge": "Standard",
+  "classPickerSetDefault": "Als Standard festlegen",
+  "classPickerOtherClasses": "Andere Klassen",
+  "classPickerRemoveFavorite": "Favorit entfernen",
+  "classPickerAddFavorite": "Als Favorit speichern",
+  "aiNewChat": "Neuer Chat",
+  "aiParameterTemperature": "Temperatur",
+  "aiParameterMaxTokens": "Max. Tokens",
+  "aiParameterTopP": "Top P",
+  "aiOrbsCount": "{count} Orbs",
+  "@aiOrbsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "aiNoiseLevel": "{pct}% Rauschen",
+  "@aiNoiseLevel": {
+    "placeholders": {
+      "pct": {}
+    }
+  },
+  "aiGradientType": "Farbverlauf",
+  "navGrades": "Noten",
+  "gradesTitle": "Notentracker",
+  "gradesAddTitle": "Note hinzufügen",
+  "gradesEditTitle": "Note bearbeiten",
+  "gradesSubjectLabel": "Fach",
+  "gradesGradeLabel": "Note",
+  "gradesWeightLabel": "Gewichtung",
+  "gradesTypeLabel": "Art",
+  "gradesAverage": "Schnitt",
+  "gradesTotal": "Gesamt",
+  "gradesBestSubject": "Bestes Fach",
+  "gradesAddDesc": "Leistungsübersicht vervollständigen",
+  "homeworkAddDesc": "Aufgaben und Abgaben verwalten",
+  "examsAddDesc": "Anstehende Prüfungen eintragen",
+  "gradesCountPlural": "Noten",
+  "gradesWeightLabelShort": "Gewicht",
+  "gradesNone": "Keine Noten",
+  "gradesNoneHint": "Tippe auf +, um deine erste Note einzutragen.",
+  "tempEditTitle": "Stunde temporär bearbeiten",
+  "absence": "Ausfall",
+  "reset": "Zurücksetzen",
+  "cancel": "Abbrechen",
+  "localSave": "Nur lokal speichern",
+  "timetableImageSaved": "Stundenplan-Bild gespeichert",
+  "imageExportFailed": "Bild konnte nicht exportiert werden",
+  "homeworkManaged": "Diese Hausaufgabe wird von Untis verwaltet.",
+  "start": "Start",
+  "notifications": "Mitteilungen",
+  "accountRemoveQuestion": "Konto entfernen?",
+  "accountRemoveDesc": "Das Konto wird nur von diesem Gerät entfernt. Deine übrigen App-Einstellungen bleiben erhalten.",
+  "accountRemove": "Entfernen",
+  "accountRemoveThis": "Dieses Konto entfernen",
+  "accountSignOut": "Von diesem Gerät abmelden",
+  "accounts": "Konten",
+  "accountAdd": "Konto hinzufügen",
+  "accountConnect": "Weiteres WebUntis-Konto verbinden",
+  "alarmOwn": "Eigener Wecker",
+  "alarmTime": "Weckzeit",
+  "alarmActive": "Aktiv",
+  "alarmInactive": "Deaktiviert",
+  "alarmTitle": "Wecker",
+  "alarmReady": "Weckerbereit",
+  "alarmReadyYes": "Für zuverlässige Wecker bereit",
+  "alarmReadyNo": "Android-Freigaben fehlen",
+  "alarmReadyDescYes": "Exakte Alarme, Vollbild und Nicht stören sind aktiv.",
+  "alarmReadyDescNo": "Öffne die fehlenden Android-Systemeinstellungen.",
+  "alarmExact": "Exakte Alarme erlauben",
+  "alarmExactDesc": "Erforderlich, damit Android den Weckzeitpunkt nicht verschiebt.",
+  "alarmNotifications": "Benachrichtigungen erlauben",
+  "alarmNotificationsDesc": "Erforderlich für den sichtbaren Vollbild-Wecker.",
+  "alarmFullscreen": "Vollbild-Wecker erlauben",
+  "alarmFullscreenDesc": "Zeigt den Wecker auf dem Sperrbildschirm.",
+  "alarmDnd": "Nicht stören umgehen",
+  "alarmDndDesc": "Erlaubt aktivierten Weckern, trotz „Nicht stören“ zu klingeln.",
+  "alarmSmart": "Smart-Wecker",
+  "alarmSchedule": "Stundenplan-Wecker",
+  "alarmAt": "{label} um {time}",
+  "@alarmAt": {
+    "placeholders": {
+      "label": {},
+      "time": {}
+    }
+  },
+  "alarmScheduleDesc": "Weckt vor der ersten nicht ausgefallenen Stunde.",
+  "alarmLead": "Vorlauf",
+  "alarmLeadValue": "{n} Min. vor der ersten Stunde",
+  "@alarmLeadValue": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "alarmLeadByStart": "Vorlauf je Startzeit",
+  "alarmLeadByStartDesc": "Eigene Vorlaufzeit oder kein Wecker für bestimmte erste Stunden.",
+  "alarmLeadByStartAdd": "Startzeit hinzufügen",
+  "alarmLeadByStartOff": "Kein Wecker",
+  "alarmLeadByStartDefault": "Standard-Vorlauf verwenden",
+  "alarmUpdate": "Kurz vor dem Wecker aktualisieren",
+  "alarmUpdateDesc": "WebUntis wird 15 Minuten vorher noch einmal geprüft.",
+  "alarmRing": "Klingeln",
+  "alarmSnooze": "Schlummern",
+  "alarmSnoozeDesc": "Min. · nach links wischen",
+  "alarmSnoozeValue": "{n} Min. · nach links wischen",
+  "@alarmSnoozeValue": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "alarmSnoozeDuration": "Schlummerdauer",
+  "alarmRingtone": "Klingelton",
+  "alarmSystemTone": "Android-Systemweckton",
+  "alarmSelectedTone": "Ausgewählter Android-Weckton",
+  "alarmOwnAlarms": "Eigene Wecker",
+  "alarmAdd": "Wecker hinzufügen",
+  "alarmAddDesc": "Wiederholt sich an ausgewählten Wochentagen.",
+  "alarmHeadsUp": "Vor dem Wecker erinnern",
+  "alarmHeadsUpValue": "{n} Min. vorher",
+  "@alarmHeadsUpValue": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "alarmHeadsUpDesc": "Der aktuelle Tag wird davor noch einmal mit WebUntis abgeglichen.",
+  "alarmEarlier": "Nächsten Wecker früher klingeln lassen",
+  "alarmEarlierValue": "{n} Min. früher",
+  "@alarmEarlierValue": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "alarmEarlierDesc": "Gilt nur für den nächsten Stundenplan-Wecker.",
+  "alarmDateActions": "Wecker für {date}",
+  "@alarmDateActions": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "alarmDateActionsDesc": "Diese Ausnahme gilt nur für diesen Schultag.",
+  "alarmDisableDate": "Wecker an diesem Tag ausschalten",
+  "alarmCustomTime": "Eigene Weckzeit",
+  "alarmClearDate": "Ausnahme zurücksetzen",
+  "alarmDateDisabled": "An diesem Tag ausgeschaltet",
+  "alarmDateCustom": "Eigene Zeit: {time}",
+  "@alarmDateCustom": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "alarmDateEarlier": "{n} Min. früher",
+  "@alarmDateEarlier": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "widgets": "Widgets",
+  "widgetPreview": "Vorschau",
+  "widgetPreviewTitle": "Widgets & Vorschau",
+  "widgetRefresh": "Vorschau aktualisieren",
+  "widgetChoose": "Widget auswählen",
+  "widgetOwn": "Eigene Widgets",
+  "widgetEditorOpen": "Widget-Editor öffnen",
+  "widgetEditorDesc": "Stelle Inhalte, Reihenfolge, Farben, Transparenz und Layout frei zusammen.",
+  "widgetAccount": "Konto für die Vorschau",
+  "widgetNoAccount": "Kein Konto verfügbar",
+  "widgetAddAccountFirst": "Füge zuerst ein WebUntis-Konto hinzu.",
+  "widgetHome": "Zum Homescreen",
+  "widgetHomeUnavailable": "Auf diesem Gerät nicht verfügbar",
+  "widgetHomeSupported": "Homescreen-Widgets werden auf Android und iOS unterstützt.",
+  "widgetHoldHome": "Homescreen gedrückt halten",
+  "widgetHoldHomeDesc": "Tippe danach oben auf „Bearbeiten“ und auf „Widget hinzufügen“.",
+  "widgetSelectUntis": "Untis+ auswählen",
+  "widgetSelectUntisDesc": "Wähle die gewünschte Variante und Größe aus.",
+  "widgetSetAccount": "Konto festlegen",
+  "widgetSetAccountDesc": "Halte das Widget gedrückt und wähle „Widget bearbeiten“.",
+  "widgetAdd": "Widget hinzufügen",
+  "widgetPickerOpening": "Widget-Picker wird geöffnet …",
+  "widgetPickerSent": "Widget-Anfrage wurde an den Homescreen gesendet.",
+  "widgetPickerHint": "Öffne den Widget-Picker über deinen Homescreen.",
+  "widgetPickerFailed": "Das Widget konnte nicht hinzugefügt werden. Öffne den Widget-Picker über den Homescreen.",
+  "widgetSyncedPreview": "Die Vorschau verwendet die zuletzt für dieses Konto synchronisierten Widget-Daten.",
+  "widgetOpenTimetable": "Öffne einmal den Stundenplan, damit echte Widget-Daten synchronisiert werden.",
+  "editor": "Widget-Editor",
+  "editorYourWidgets": "Deine Widgets",
+  "editorNew": "Neu",
+  "editorDuplicate": "Duplizieren",
+  "editorContentLayout": "Inhalt und Layout",
+  "editorName": "Name",
+  "editorCompact": "Kompakt",
+  "editorStacked": "Gestapelt",
+  "editorTimeline": "Zeitachse",
+  "editorDesign": "Design",
+  "editorBackground": "Hintergrund",
+  "editorAccent": "Akzent",
+  "editorText": "Text",
+  "editorShowIcons": "Icons anzeigen",
+  "editorApplyColor": "Farbe übernehmen",
+  "editorTransparency": "Transparenz",
+  "editorRounding": "Rundung",
+  "editorFontSize": "Schriftgröße",
+  "colorRed": "Rot",
+  "colorGreen": "Grün",
+  "colorBlue": "Blau",
+  "blockCurrent": "Aktuelle Stunde",
+  "blockNext": "Nächste Stunde",
+  "blockSchedule": "Tagesplan",
+  "blockHomework": "Aufgaben",
+  "blockExams": "Prüfungen",
+  "blockNotices": "Mitteilungen",
+  "blockAccount": "Konto",
+  "blockStatus": "Status",
+  "previewCurrent": "Jetzt: Mathematik",
+  "previewNext": "Danach: Englisch · Raum 204",
+  "previewSchedule": "08:00 Mathe\n09:45 Englisch\n11:30 Biologie",
+  "previewHomework": "2 offene Aufgaben",
+  "previewExams": "Nächste Prüfung: Freitag",
+  "previewNotices": "Neue Mitteilungen",
+  "previewStatus": "Aktualisiert um 12:30",
+  "appearanceAppIcon": "App-Symbol",
+  "notificationsWidgets": "Widgets & Vorschau",
+  "notificationsWidgetsDesc": "Varianten, Vorschau und Kontozuordnung.",
+  "notificationsAlarms": "Wecker & Smart-Wecker",
+  "tempEditDesc": "Diese Änderung wird nicht an Untis übertragen und beim nächsten Laden verworfen.",
+  "subject": "Fach",
+  "teacher": "Lehrkraft",
+  "room": "Raum",
+  "saveTimetableImage": "Stundenplan-Bild speichern",
+  "widgetAndroidDialogDesc": "Das ausgewählte Konto wird im Android-Dialog vorausgewählt. Dort kannst du es vor dem Hinzufügen noch ändern.",
+  "widgetCurrent": "Jetzt",
+  "widgetCurrentDesc": "Aktuelle Stunde, nächste Stunde und verbleibende Zeit",
+  "widgetSchedule": "Tagesplan",
+  "widgetScheduleDesc": "Die nächsten Einträge deines heutigen Stundenplans",
+  "widgetHomework": "Aufgaben",
+  "widgetHomeworkDesc": "Eine kompakte Übersicht deiner offenen Aufgaben",
+  "widgetNotices": "Mitteilungen",
+  "widgetNoticesDesc": "Die neuesten Mitteilungen auf deinem Homescreen",
+  "widgetSmallMedium": "Klein oder mittel",
+  "widgetMediumLarge": "Mittel oder groß",
+  "widgetToday": "HEUTE",
+  "widgetNoScheduleData": "Noch keine Tagesdaten",
+  "widgetNoOpenHomework": "Keine offenen Aufgaben synchronisiert",
+  "widgetNoNotices": "Keine Mitteilungen synchronisiert",
+  "widgetNoCurrentLesson": "Keine aktuelle Stunde",
+  "widgetNotSynced": "Noch nicht synchronisiert",
+  "widgetLoading": "LÄDT",
+  "widgetCurrentStatus": "AKTUELL",
+  "widgetPreviewStatus": "VORSCHAU",
+  "widgetTimetableDetail": "Stundenplan öffnen, um Daten zu laden",
+  "alarmMinutesSuffix": " Min.",
+  "editorDefaultName": "Mein Widget",
+  "editorNewWidget": "Neues Widget",
+  "editorCopySuffix": "Kopie",
+  "widgetMinutesRemaining": "{n} Min. verbleibend",
+  "@widgetMinutesRemaining": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "widgetNoUpcomingExams": "Keine anstehenden Prüfungen",
+  "widgetExam": "Prüfung",
+  "widgetLesson": "Unterricht",
+  "widgetHomeworkItem": "Aufgabe",
+  "widgetNext": "Als Nächstes: {title}",
+  "@widgetNext": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "widgetNoLessonsToday": "Heute keine Stunden",
+  "widgetOpenNotifications": "Neue Mitteilungen in Untis+ öffnen",
+  "notificationsNone": "Keine neuen Mitteilungen",
+  "appearanceIconChoose": "Symbol für den Startbildschirm auswählen",
+  "appearanceIconAndroidOnly": "Derzeit auf Android verfügbar",
+  "nativeAlarmReminderChannel": "Untis+ Wecker-Erinnerungen",
+  "nativeAlarmReminderChannelDesc": "Hinweise vor einem Untis+ Wecker",
+  "nativeAlarmChannel": "Untis+ Wecker",
+  "nativeAlarmChannelDesc": "Klingelnde Untis+ Wecker",
+  "nativeAlarmRefreshChannel": "Untis+ Wecker-Aktualisierung",
+  "nativeAlarmReminderTitle": "Wecker in {minutes} Minuten",
+  "@nativeAlarmReminderTitle": {
+    "placeholders": {
+      "minutes": {}
+    }
+  },
+  "nativeAlarmDisableToday": "Für diesen Tag ausschalten",
+  "nativeAlarmTitle": "Wecker",
+  "nativeAlarmSwipeHint": "Nach links schlummern, nach rechts ausschalten",
+  "nativeAlarmSnooze": "Schlummern · {minutes} Min.",
+  "@nativeAlarmSnooze": {
+    "placeholders": {
+      "minutes": {}
+    }
+  },
+  "nativeAlarmDismiss": "Ausschalten",
+  "nativeAlarmRefreshing": "Wecker wird aktualisiert",
+  "nativeAlarmStatusActive": "Wecker aktiv",
+  "nativeAlarmStatusSnoozing": "Schlummert",
+  "nativeAlarmTimeAccessibility": "Weckzeit {time}",
+  "@nativeAlarmTimeAccessibility": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "nativeWidgetSetupTitle": "Widget einrichten",
+  "nativeWidgetSetupAccount": "Konto für dieses Widget",
+  "nativeWidgetSetupProfile": "Widget-Profil",
+  "nativeWidgetSetupProfileHint": "Profil aus dem Widget-Editor",
+  "nativeWidgetSetupNoProfile": "Erstelle zuerst ein Profil im Untis+-Widget-Editor.",
+  "nativeWidgetSetupNoAccount": "Öffne Untis+ und füge zuerst ein Konto hinzu.",
+  "nativeWidgetRefreshing": "Wird aktualisiert …",
+  "refreshing": "Wird aktualisiert",
+  "copyMessage": "Nachricht kopieren",
+  "aiAttachmentTooLarge": "Anhänge dürfen höchstens 8 MB groß sein.",
+  "aiAttachFile": "Datei anhängen",
+  "aiAttachmentText": "\\n\\nDatei {name}:\\n{excerpt}",
+  "@aiAttachmentText": {
+    "placeholders": {
+      "name": {},
+      "excerpt": {}
+    }
+  },
+  "aiAttachmentUnsupported": "Anhang {name} ({mimeType}) kann von diesem Anbieter nicht gelesen werden.",
+  "@aiAttachmentUnsupported": {
+    "placeholders": {
+      "name": {},
+      "mimeType": {}
+    }
+  },
+  "aiFileKindPdf": " oder PDF",
+  "aiHomeworkVisionPrompt": "Du bist ein Assistent, der Hausaufgaben von Tafeln, Arbeitsblättern oder Notizen erfasst.\\nExtrahiere alle Aufgaben aus dem angehängten Bild{fileKind}.\\nAntworte AUSSCHLIESSLICH im folgenden JSON-Array-Format (kein Markdown-Block, nur reines JSON):\\n[\\n  {\\n    \"subject\": \"Mathe\",\\n    \"text\": \"Seite 42 Nr. 1–5\",\\n    \"dueDate\": \"20260905\"\\n  }\\n]\\nWICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt Jahr oder Datum, leite es ab. Wenn die Datei keine Hausaufgaben enthält, gib ein leeres Array [] zurück.",
+  "@aiHomeworkVisionPrompt": {
+    "placeholders": {
+      "fileKind": {}
+    }
+  },
+  "aiExamVisionPrompt": "Du bist ein Assistent, der Klausurpläne von Schulen strukturiert erfasst.\\nExtrahiere alle relevanten Klausuren und Prüfungen aus dem angehängten Bild{fileKind}.\\nAntworte AUSSCHLIESSLICH im folgenden JSON-Array-Format (kein Markdown-Block, nur reines JSON, keine Grußformeln):\\n[\\n  {\\n    \"subject\": \"Mathe\",\\n    \"examType\": \"Klausur\",\\n    \"date\": \"20240325\",\\n    \"description\": \"Ergänzende Infos oder leere Zeichenkette\"\\n  }\\n]\\nWICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr, leite es aus dem aktuellen Jahr ({year}) ab. Wenn die Datei keine Klausuren enthält, gib ein leeres Array [] zurück.",
+  "@aiExamVisionPrompt": {
+    "placeholders": {
+      "fileKind": {},
+      "year": {}
+    }
+  },
+  "aiExamJsonSystemPrompt": "Extrahiere strukturierte Prüfungsdaten und antworte nur mit JSON.",
+  "aiExamImageSystemPrompt": "Extrahiere strukturierte Prüfungsdaten aus dem Bild. Antworte ausschließlich als JSON-Array.",
+  "aiResponseFormat": "ANTWORTFORMAT:\\n- Antworte kurz und visuell.\\n- Nutze bevorzugt ein JSON-Objekt mit den Feldern headline, summary, tags, metrics und lessons.\\n- metrics ist eine Liste von Objekten mit label und value.\\n- lessons ist eine Liste von Objekten mit subject, subjectShort, room, teacher, time und status.\\n- Vermeide lange Fließtexte.\\n- WICHTIG: Gib NUR Felder an, die für die Frage relevant sind. Wenn die Frage nach keiner Metrik oder keinen Stunden verlangt, lasse metrics bzw. lessons weg oder gib leere Arrays zurück.",
+  "bgUpdateTitle": "Untis+-Update verfügbar",
+  "bgUpdateBody": "Version {version} ist in den GitHub Releases verfügbar.",
+  "@bgUpdateBody": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "bgDailyBriefingTitle": "Dein Schultag auf einen Blick",
+  "bgDailyBriefingBody": "{start}–{end}, {lessons} Stunden, {breaks} Pausen",
+  "@bgDailyBriefingBody": {
+    "placeholders": {
+      "start": {},
+      "end": {},
+      "lessons": {},
+      "breaks": {}
+    }
+  },
+  "bgDailyBriefingExpanded": "Start: {start}\\nEnde: {end}\\nStunden: {lessons}\\nPausen: {breaks}\\nNächste Stunde: {next}",
+  "@bgDailyBriefingExpanded": {
+    "placeholders": {
+      "start": {},
+      "end": {},
+      "lessons": {},
+      "breaks": {},
+      "next": {}
+    }
+  },
+  "bgChangesTitle": "Stundenplan aktualisiert",
+  "bgChangesBody": "Es gibt neue Änderungen heute. Tippe, um den Stundenplan zu öffnen.",
+  "bgCurrentLesson": "Aktuelle Stunde",
+  "bgNextLesson": "Nächste Stunde",
+  "bgNoClasses": "Kein Unterricht mehr",
+  "bgLessonStarts": "Start um {time}",
+  "@bgLessonStarts": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "bgUntil": "Bis {time} Uhr",
+  "@bgUntil": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "bgThen": "Danach: {lesson}",
+  "@bgThen": {
+    "placeholders": {
+      "lesson": {}
+    }
+  },
+  "bgFinished": "Schluss",
+  "bgFreePeriod": "Frei",
+  "bgFallbackLesson": "Stunde {start}–{end}",
+  "@bgFallbackLesson": {
+    "placeholders": {
+      "start": {},
+      "end": {}
+    }
+  },
+  "bgDemoLesson": "Demo-Stunde {code}",
+  "@bgDemoLesson": {
+    "placeholders": {
+      "code": {}
+    }
+  },
+  "bgChangesCancelled": "{count} Ausfälle",
+  "@bgChangesCancelled": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "bgChangesRoom": "{count} Raumänderungen",
+  "@bgChangesRoom": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "bgChangesSubstitution": "{count} Vertretungen",
+  "@bgChangesSubstitution": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "bgChangesOther": "{count} Änderungen",
+  "@bgChangesOther": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "widgetSystemColors": "Material You",
+  "widgetCustomColors": "Eigene Farben",
+  "aiActionCreateHomework": "Hausaufgabe erstellen: {subject} · {text}",
+  "@aiActionCreateHomework": {
+    "placeholders": {
+      "subject": {},
+      "text": {}
+    }
+  },
+  "aiActionUpdateHomework": "Hausaufgabe bearbeiten: {subject} · {text}",
+  "@aiActionUpdateHomework": {
+    "placeholders": {
+      "subject": {},
+      "text": {}
+    }
+  },
+  "aiActionDeleteHomework": "Hausaufgabe löschen: {id}",
+  "@aiActionDeleteHomework": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "aiActionCompleteHomework": "Hausaufgabe erledigt markieren: {id}",
+  "@aiActionCompleteHomework": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "aiActionCreateExam": "Prüfung erstellen: {subject} · {text}",
+  "@aiActionCreateExam": {
+    "placeholders": {
+      "subject": {},
+      "text": {}
+    }
+  },
+  "aiActionUpdateExam": "Prüfung bearbeiten: {subject} · {text}",
+  "@aiActionUpdateExam": {
+    "placeholders": {
+      "subject": {},
+      "text": {}
+    }
+  },
+  "aiActionDeleteExam": "Prüfung löschen: {id}",
+  "@aiActionDeleteExam": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "aiActionCreateGrade": "Note erstellen: {subject} · {value}",
+  "@aiActionCreateGrade": {
+    "placeholders": {
+      "subject": {},
+      "value": {}
+    }
+  },
+  "aiActionUpdateGrade": "Note bearbeiten: {subject} · {value}",
+  "@aiActionUpdateGrade": {
+    "placeholders": {
+      "subject": {},
+      "value": {}
+    }
+  },
+  "aiActionDeleteGrade": "Note löschen: {id}",
+  "@aiActionDeleteGrade": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+  "aiActionUnknown": "Unbekannte Aktion",
+  "aiParametersTitle": "KI-Parameter",
+  "aiPersonaStrict": "Antworte wie ein strenger, aber gerechter Lehrer. Achte auf Disziplin und Ordnung.",
+  "aiPersonaBuddy": "Antworte wie ein cooler Schulkamerad. Nutze Jugendsprache und sei sehr locker.",
+  "aiPersonaHelpful": "Antworte freundlich, professionell und hilfreich.",
+  "aiAssistantIntro": "Du bist ein hilfreicher Assistent für die Stundenplan-App „Untis+“.",
+  "aiAssistantRules": "Antworte natürlich und freundlich im Chat. Du hast Zugriff auf den Stundenplan und die Prüfungen des Nutzers oben. Verwende Markdown für eine gute Formatierung. Antworte in natürlicher Sprache, niemals als JSON, außer du wirst ausdrücklich darum gebeten. Halte Antworten kurz und präzise und beginne nicht mit einer Selbstvorstellung. Bei einer gewünschten lokalen Änderung schreibe nach deiner normalen Antwort einen separaten Block im exakten Format ```untis-action {\"kind\":\"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade\",\"id\":\"optional id\",\"subject\":\"subject\",\"text\":\"text\",\"dueDate\":\"YYYYMMDD\",\"value\":\"optional grade\",\"weight\":\"optional weight\",\"type\":\"optional type\"} ```. Schlage nur sichere, konkrete Änderungen vor; sie werden erst nach ausdrücklicher Bestätigung ausgeführt. Behaupte niemals, eine Änderung sei erfolgt, wenn du keinen solchen Block vorschlägst oder der Nutzer ihn nicht bestätigt hat.",
+  "aiDayDataUnavailable": "{date}: Stundenplandaten für diesen Tag sind noch nicht geladen.",
+  "@aiDayDataUnavailable": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "aiWeekDataUnavailable": "Für {date} ist die passende Stundenplanwoche noch nicht geladen. Ich rate hier nicht.",
+  "@aiWeekDataUnavailable": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "aiNoScheduledLessons": "Für {date} ist keine nicht abgesagte Stunde eingetragen.",
+  "@aiNoScheduledLessons": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "aiScheduleReply": "Ja. Du hast am {date}: {lessons}.",
+  "@aiScheduleReply": {
+    "placeholders": {
+      "date": {},
+      "lessons": {}
+    }
+  },
+  "aiApplyChangesTitle": "Änderungen bestätigen",
+  "aiApplyChangesDesc": "Der Assistent hat folgende lokale Änderungen vorgeschlagen:",
+  "aiChangesApplied": "Änderungen übernommen.",
+  "apply": "Übernehmen",
+  "aiParametersDesc": "Feineinstellung für die Antworten des Modells.",
+  "aiTemperatureDesc": "Höhere Werte machen Antworten kreativer, niedrigere präziser.",
+  "aiTokenDesc": "Maximale Länge einer einzelnen Antwort.",
+  "aiTopPDesc": "Kern-Sampling zur Begrenzung der Wortauswahl.",
+  "notificationsDenied": "Benachrichtigungen sind in den Systemeinstellungen nicht erlaubt.",
+  "notificationsAlarmsDesc": "Exakte Android-Wecker, die sich an Ausfälle anpassen.",
+  "editorAddWidget": "Dieses Widget hinzufügen",
+  "editorIosHint": "Füge Untis+ über den iOS-Widget-Picker hinzu und wähle anschließend dieses Profil in „Widget bearbeiten“.",
+  "homeworkDueSoonFilter": "Bald fällig",
+  "homeworkOpenCount": "{count, plural, =1 {1 offene Aufgabe} other {{count} offene Aufgaben}}",
+  "@homeworkOpenCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeworkNothingDueSoon": "Nichts ist bald fällig",
+  "homeworkDueSoonCount": "{count, plural, =1 {1 Aufgabe ist bald fällig} other {{count} Aufgaben sind bald fällig}}",
+  "@homeworkDueSoonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeworkMarkedDone": "Aufgabe als erledigt markiert.",
+  "homeworkReopened": "Aufgabe wieder geöffnet.",
+  "commonUndo": "Rückgängig",
+  "save": "Speichern",
+  "delete": "Löschen",
+  "reload": "Neu laden",
+  "settingsAppBgBlur": "App-Hintergrundunschärfe",
+  "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
+  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
+}

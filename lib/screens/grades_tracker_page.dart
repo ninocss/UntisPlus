@@ -99,7 +99,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   }
 
   Future<void> _loadGrades() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     final raw = prefs.getStringList(_accountDataKey('customGrades')) ?? [];
     final loaded = <_Grade>[];
     for (final encoded in raw) {
@@ -134,7 +134,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
       grade = subjectOrGrade;
     }
 
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     String selectedSubject =
@@ -544,7 +544,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             ),
                             child: Text(
                               existing == null
-                                  ? l.examsSave
+                                  ? l.save
                                   : l.commonSaveChanges,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w900,
@@ -600,7 +600,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final grouped = _groupedGrades;
     final subjects = grouped.keys.toList()..sort();
@@ -741,90 +741,44 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
   Widget _buildGradesSummaryCard(ColorScheme cs, AppL10n l) {
     final averageColor = _colorForGrade(_overallAverage);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _glassContainer(
-        context: context,
-        borderRadius: BorderRadius.circular(24),
-        color: cs.primaryContainer.withValues(alpha: 0.25),
-        border: Border.all(
-          color: cs.primary.withValues(alpha: 0.25),
-          width: 1.2,
+    return FeatureSummaryCard(
+      icon: Icons.auto_graph_rounded,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l.gradesAverage,
+            style: GoogleFonts.outfit(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            _overallAverage.toStringAsFixed(2),
+            style: GoogleFonts.outfit(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: averageColor,
+              letterSpacing: -0.4,
+            ),
+          ),
+        ],
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: cs.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [cs.primary, cs.primary.withValues(alpha: 0.75)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: _glowShadows(context, [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]),
-                ),
-                child: const Icon(
-                  Icons.auto_graph_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l.gradesAverage,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _overallAverage.toStringAsFixed(2),
-                      style: GoogleFonts.outfit(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: averageColor,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: cs.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
-                ),
-                child: Text(
-                  '${_grades.length} ${l.gradesTotal}',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: cs.primary,
-                  ),
-                ),
-              ),
-            ],
+        child: Text(
+          '${_grades.length} ${l.gradesTotal}',
+          style: GoogleFonts.outfit(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: cs.primary,
           ),
         ),
       ),
@@ -957,7 +911,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     List<_Grade> grades,
     double average,
   ) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = _autoLessonColor(subject, isDark);
     final gradeColor = _colorForGrade(average);

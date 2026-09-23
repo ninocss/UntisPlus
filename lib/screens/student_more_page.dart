@@ -23,7 +23,7 @@ class StudentMorePage extends StatelessWidget {
     return Scaffold(
       appBar: RoundedBlurAppBar(
         title: Text(
-          AppL10n.of(appLocaleNotifier.value).aiMore,
+          appL10nFor(appLocaleNotifier.value).aiMore,
           style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
@@ -82,7 +82,7 @@ class StudentMorePage extends StatelessWidget {
                 _MoreDestination(
                   icon: Icons.analytics_rounded,
                   color: cs.secondary,
-                  title: AppL10n.of(appLocaleNotifier.value).gradesTitle,
+                  title: appL10nFor(appLocaleNotifier.value).gradesTitle,
                   subtitle: _studentCopy(
                     de: 'Verlauf und transparente Berechnung',
                     en: 'History and transparent calculation',
@@ -100,7 +100,7 @@ class StudentMorePage extends StatelessWidget {
                 _MoreAction(
                   icon: Icons.auto_awesome_rounded,
                   color: cs.primary,
-                  title: AppL10n.of(appLocaleNotifier.value).navAi,
+                  title: appL10nFor(appLocaleNotifier.value).navAi,
                   subtitle: _studentCopy(
                     de: 'Optionaler Assistent für deinen Schulalltag',
                     en: 'Optional assistant for your school day',
@@ -112,7 +112,7 @@ class StudentMorePage extends StatelessWidget {
                 _MoreDestination(
                   icon: Icons.settings_rounded,
                   color: cs.onSurfaceVariant,
-                  title: AppL10n.of(appLocaleNotifier.value).settingsTitle,
+                  title: appL10nFor(appLocaleNotifier.value).settingsTitle,
                   subtitle: _studentCopy(
                     de: 'Darstellung, Konten, Widgets und Backup',
                     en: 'Appearance, accounts, widgets, and backup',
@@ -658,9 +658,10 @@ class _AbsenceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateText = absence.date.toString().padLeft(8, '0');
-    final formattedDate =
-        '${dateText.substring(6, 8)}.${dateText.substring(4, 6)}.${dateText.substring(0, 4)}';
+    final parsedDate = parseUntisDateInt(absence.date);
+    final formattedDate = parsedDate == null
+        ? absence.date.toString()
+        : DateFormat('dd.MM.yyyy').format(parsedDate);
     final status = switch (absence.status) {
       AbsenceStatus.excused => (
         _studentCopy(

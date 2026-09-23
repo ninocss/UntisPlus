@@ -1,0 +1,7 @@
+arb-dir: lib/l10n/arb
+template-arb-file: app_de.arb
+output-dir: lib/l10n/generated
+output-localization-file: app_l10n.dart
+output-class: AppL10n
+nullable-getter: false
+relax-syntax: true

@@ -33,7 +33,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showLanguageDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsLanguage,
@@ -55,7 +55,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showBackgroundStyleDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsBackgroundStyle,
@@ -75,7 +75,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showMonochromeLessonColorDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final current = Color(monochromeLessonColorNotifier.value);
     var red = current.r * 255.0;
     var green = current.g * 255.0;
@@ -160,7 +160,7 @@ class SettingsAppearancePage extends StatelessWidget {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: Text(l.settingsApiKeyCancel),
+                      child: Text(l.cancel),
                     ),
                     TextButton(
                       onPressed: () {
@@ -204,6 +204,8 @@ class SettingsAppearancePage extends StatelessWidget {
         return l.settingsPageTransitionEaseOut;
       case 7:
         return l.settingsPageTransitionExpo;
+      case 8:
+        return l.settingsPageTransitionDefault;
       default:
         return l.settingsPageTransitionBounce;
     }
@@ -222,7 +224,7 @@ class SettingsAppearancePage extends StatelessWidget {
   }
 
   void _showSurfaceCornerModeDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsSurfaceCorners,
@@ -266,7 +268,7 @@ class SettingsAppearancePage extends StatelessWidget {
     };
     _showUnifiedOptionSheet<String>(
       context: context,
-      title: AppL10n.of(appLocaleNotifier.value).ui('appearanceAppIcon'),
+      title: appL10nFor(appLocaleNotifier.value).appearanceAppIcon,
       options: labels.entries
           .map(
             (entry) => _SheetOption(
@@ -315,18 +317,20 @@ class SettingsAppearancePage extends StatelessWidget {
         return Icons.arrow_back_rounded;
       case 7:
         return Icons.speed_rounded;
+      case 8:
+        return Icons.android_rounded;
       default:
         return Icons.animation_rounded;
     }
   }
 
   void _showTransitionDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsPageTransition,
       subtitle: l.settingsPageTransitionDesc,
-      options: List.generate(8, (index) {
+      options: List.generate(9, (index) {
         return _SheetOption(
           value: index,
           title: _transitionLabel(l, index),
@@ -522,19 +526,15 @@ class SettingsAppearancePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
 
     final selectedTheme = visualThemeNotifier.value;
     final capabilities = appThemeCapabilities(selectedTheme);
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsAppearance),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
-          children: [
+    return SettingsPageShell(
+      title: l.settingsAppearance,
+      children: [
             _buildThemePicker(context, l, selectedTheme),
             // ── GROUP 1: THEME & COLOR SCHEME ──
             SettingsGroup(
@@ -1136,10 +1136,10 @@ class SettingsAppearancePage extends StatelessWidget {
                     alpha: 0.7,
                   ),
                   iconColor: cs.onSecondaryContainer,
-                  title: l.ui('appearanceAppIcon'),
+                  title: l.appearanceAppIcon,
                   subtitle: !kIsWeb
-                      ? l.ui('appearanceIconChoose')
-                      : l.ui('appearanceIconAndroidOnly'),
+                      ? l.appearanceIconChoose
+                      : l.appearanceIconAndroidOnly,
                   onTap: !kIsWeb
                       ? () => _showAppIconDialog(context)
                       : null,
@@ -1159,8 +1159,6 @@ class SettingsAppearancePage extends StatelessWidget {
               ],
             ),
           ],
-        ),
-      ),
     );
   }
 }

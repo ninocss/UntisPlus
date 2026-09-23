@@ -20,7 +20,7 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     if (!mounted) return;
     setState(() {
       _username = prefs.getString('username') ?? '';
@@ -44,20 +44,20 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
   Future<void> _removeActiveAccount() async {
     final activeId = activeUntisAccountId;
     if (activeId == null) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final confirmed = await showUntisDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(l.ui('accountRemoveQuestion')),
-        content: Text(l.ui('accountRemoveDesc')),
+        title: Text(l.accountRemoveQuestion),
+        content: Text(l.accountRemoveDesc),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(l.ui('cancel')),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(l.ui('accountRemove')),
+            child: Text(l.accountRemove),
           ),
         ],
       ),
@@ -75,16 +75,12 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsHubAccount),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
-          children: [
+    return SettingsPageShell(
+      title: l.settingsHubAccount,
+      children: [
             // ── GROUP 1: ACCOUNT ──
             SettingsGroup(
               title: l.settingsHubAccount,
@@ -149,8 +145,8 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                   icon: Icons.person_remove_rounded,
                   iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.8),
                   iconColor: cs.onErrorContainer,
-                  title: l.ui('accountRemoveThis'),
-                  subtitle: l.ui('accountSignOut'),
+                  title: l.accountRemoveThis,
+                  subtitle: l.accountSignOut,
                   destructive: true,
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: _removeActiveAccount,
@@ -161,7 +157,7 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
             ValueListenableBuilder<List<UntisAccount>>(
               valueListenable: untisAccountsNotifier,
               builder: (context, accounts, _) => SettingsGroup(
-                title: l.ui('accounts'),
+                title: l.accounts,
                 children: [
                   for (final account in accounts)
                     SettingsTile(
@@ -189,8 +185,8 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                     ),
                   SettingsTile(
                     icon: Icons.person_add_alt_1_rounded,
-                    title: l.ui('accountAdd'),
-                    subtitle: l.ui('accountConnect'),
+                    title: l.accountAdd,
+                    subtitle: l.accountConnect,
                     trailing: const Icon(Icons.add_rounded),
                     onTap: () => Navigator.of(context).push(
                       _buildBouncyRoute(
@@ -225,8 +221,6 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
               ],
             ),
           ],
-        ),
-      ),
     );
   }
 }

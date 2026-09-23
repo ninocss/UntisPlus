@@ -6,62 +6,53 @@ class SettingsSubjectsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsSectionSubjects),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+    return SettingsPageShell(
+      title: l.settingsSectionSubjects,
+      children: [
+        SettingsGroup(
+          title: l.settingsSectionSubjects,
           children: [
-            SettingsGroup(
-              title: l.settingsSectionSubjects,
-              children: [
-                SettingsTile(
-                  icon: Icons.color_lens_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
+            SettingsTile(
+              icon: Icons.color_lens_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsSectionColors,
+              subtitle: l.settingsColorsDesc,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  _buildBouncyRoute(const SubjectColorsPage()),
+                );
+              },
+            ),
+            ValueListenableBuilder<Set<String>>(
+              valueListenable: hiddenSubjectsNotifier,
+              builder: (context, hidden, _) {
+                return SettingsTile(
+                  icon: Icons.visibility_off_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
                     alpha: 0.7,
                   ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsSectionColors,
-                  subtitle: l.settingsColorsDesc,
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsSectionHidden,
+                  subtitle: hidden.isEmpty
+                      ? l.settingsNoHidden
+                      : l.settingsHiddenCount(hidden.length),
                   onTap: () {
                     Navigator.push(
                       context,
-                      _buildBouncyRoute(const SubjectColorsPage()),
+                      _buildBouncyRoute(const HiddenSubjectsPage()),
                     );
                   },
-                ),
-                ValueListenableBuilder<Set<String>>(
-                  valueListenable: hiddenSubjectsNotifier,
-                  builder: (context, hidden, _) {
-                    return SettingsTile(
-                      icon: Icons.visibility_off_rounded,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onSecondaryContainer,
-                      title: l.settingsSectionHidden,
-                      subtitle:
-                          hidden.isEmpty
-                              ? l.settingsNoHidden
-                              : l.settingsHiddenCount(hidden.length),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          _buildBouncyRoute(const HiddenSubjectsPage()),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ],
+                );
+              },
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 }

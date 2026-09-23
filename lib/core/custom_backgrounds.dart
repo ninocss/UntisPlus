@@ -34,7 +34,7 @@ String _newCustomBackgroundId() {
 int _nowMs() => DateTime.now().millisecondsSinceEpoch;
 
 String _localizedMapValue(Map<String, String> values) {
-  final locale = AppL10n.of(appLocaleNotifier.value).locale;
+  final locale = appL10nFor(appLocaleNotifier.value).locale;
   return values[locale] ?? values['en'] ?? values.values.first;
 }
 
@@ -1064,7 +1064,7 @@ Future<void> loadCustomBackgroundsFromPrefs(SharedPreferences prefs) async {
 }
 
 Future<void> _persistCustomBackgroundState() async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setStringList(
     _kPrefsCustomBackgrounds,
     customBackgroundsNotifier.value.map((s) => jsonEncode(s.toJson())).toList(),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -10,18 +11,23 @@ class WebUntisRequestContext {
     required this.schoolUrl,
     required this.schoolName,
     this.sessionId = '',
+    this.cookieSchoolName,
   });
 
   final String schoolUrl;
   final String schoolName;
   final String sessionId;
+  final String? cookieSchoolName;
 
-  WebUntisRequestContext copyWith({String? sessionId}) =>
-      WebUntisRequestContext(
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
-        sessionId: sessionId ?? this.sessionId,
-      );
+  WebUntisRequestContext copyWith({
+    String? sessionId,
+    String? cookieSchoolName,
+  }) => WebUntisRequestContext(
+    schoolUrl: schoolUrl,
+    schoolName: schoolName,
+    sessionId: sessionId ?? this.sessionId,
+    cookieSchoolName: cookieSchoolName ?? this.cookieSchoolName,
+  );
 }
 
 class WebUntisRpcExchange {
@@ -94,7 +100,8 @@ class WebUntisClient {
             'Accept': 'application/json',
             if (context.sessionId.isNotEmpty)
               'Cookie':
-                  'JSESSIONID=${context.sessionId}; schoolname=${context.schoolName}',
+                  'JSESSIONID=${context.sessionId}; '
+                  'schoolname=${context.cookieSchoolName ?? context.schoolName}',
           },
           body: body,
         ),
@@ -102,9 +109,11 @@ class WebUntisClient {
       final decoded = _decode(response);
       if (decoded['error'] != null) {
         final error = decoded['error'];
-        final message = error is Map
-            ? (error['message'] ?? error['data'] ?? error).toString()
-            : error.toString();
+        final message = error is Map ? _errorMessage(error) : error.toString();
+        final rawRpcCode = error is Map ? error['code'] : null;
+        final rpcCode = rawRpcCode is int
+            ? rawRpcCode
+            : int.tryParse(rawRpcCode?.toString() ?? '');
         final normalized = message.toLowerCase();
         throw WebUntisFailure(
           method == 'authenticate' || method == 'getUserData2017'
@@ -120,6 +129,7 @@ class WebUntisClient {
               : WebUntisFailureKind.server,
           message,
           statusCode: response.statusCode,
+          rpcCode: rpcCode,
         );
       }
       return WebUntisRpcExchange(
@@ -145,6 +155,49 @@ class WebUntisClient {
           'WebUntis returned invalid JSON.',
         );
       }
+    });
+  }
+
+  Future<Map<String, dynamic>> postJson({
+    required Uri uri,
+    required Object? body,
+    Map<String, String> headers = const {},
+  }) {
+    final encodedBody = jsonEncode(body);
+    final effectiveHeaders = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...headers,
+    };
+    final dedupeKey =
+        'POST-JSON|$uri|$encodedBody|${jsonEncode(effectiveHeaders)}';
+    return _dedupe<Map<String, dynamic>>(dedupeKey, () async {
+      final response = await _send(
+        () => _client.post(uri, headers: effectiveHeaders, body: encodedBody),
+      );
+      return _decode(response);
+    });
+  }
+
+  Future<Uint8List> getBytes({
+    required Uri uri,
+    Map<String, String> headers = const {},
+  }) {
+    final dedupeKey = 'GET-BYTES|$uri|${jsonEncode(headers)}';
+    return _dedupe<Uint8List>(dedupeKey, () async {
+      final response = await _send(() => _client.get(uri, headers: headers));
+      return response.bodyBytes;
+    });
+  }
+
+  Future<String> getText({
+    required Uri uri,
+    Map<String, String> headers = const {},
+  }) {
+    final dedupeKey = 'GET-TEXT|$uri|${jsonEncode(headers)}';
+    return _dedupe<String>(dedupeKey, () async {
+      final response = await _send(() => _client.get(uri, headers: headers));
+      return response.body;
     });
   }
 
@@ -214,6 +267,14 @@ class WebUntisClient {
       WebUntisFailureKind.invalidData,
       'WebUntis returned an unexpected response.',
     );
+  }
+
+  static String _errorMessage(Map<dynamic, dynamic> error) {
+    final message = (error['message'] ?? '').toString().trim();
+    final data = (error['data'] ?? '').toString().trim();
+    if (message.isEmpty) return data.isEmpty ? error.toString() : data;
+    if (data.isEmpty || message.contains(data)) return message;
+    return '$message: $data';
   }
 
   Future<T> _dedupe<T>(String key, Future<T> Function() request) {

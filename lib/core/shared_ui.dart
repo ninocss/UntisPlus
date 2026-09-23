@@ -5,6 +5,437 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
+class _AiImportFile {
+  const _AiImportFile({required this.bytes, required this.mimeType});
+
+  final Uint8List bytes;
+  final String mimeType;
+}
+
+Future<_AiImportFile?> _pickAiImportFile(
+  String source, {
+  required bool allowPdf,
+}) async {
+  if (source == 'camera' || source == 'gallery') {
+    final picked = await ImagePicker().pickImage(
+      source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+    );
+    if (picked == null) return null;
+    return _AiImportFile(
+      bytes: await picked.readAsBytes(),
+      mimeType: picked.path.toLowerCase().endsWith('.png')
+          ? 'image/png'
+          : 'image/jpeg',
+    );
+  }
+
+  final picked = await FilePicker.pickFile(
+    type: FileType.custom,
+    allowedExtensions: allowPdf
+        ? const ['pdf', 'png', 'jpg', 'jpeg']
+        : const ['png', 'jpg', 'jpeg'],
+  );
+  if (picked == null) return null;
+  final extension = picked.name.split('.').last.toLowerCase();
+  return _AiImportFile(
+    bytes: await picked.readAsBytes(),
+    mimeType: extension == 'pdf'
+        ? 'application/pdf'
+        : extension == 'png'
+        ? 'image/png'
+        : 'image/jpeg',
+  );
+}
+
+class SettingsPageShell extends StatelessWidget {
+  const SettingsPageShell({
+    required this.title,
+    required this.children,
+    super.key,
+  });
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: _settingsHeaderAppBar(context, title),
+    body: _AnimatedBackground(
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          MediaQuery.paddingOf(context).bottom + 120,
+        ),
+        children: children,
+      ),
+    ),
+  );
+}
+
+class FeatureSummaryCard extends StatelessWidget {
+  const FeatureSummaryCard({
+    required this.icon,
+    required this.title,
+    this.secondary,
+    this.trailing,
+    this.iconShadow = true,
+    super.key,
+  });
+
+  final IconData icon;
+  final Widget title;
+  final Widget? secondary;
+  final Widget? trailing;
+  final bool iconShadow;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: _glassContainer(
+        context: context,
+        borderRadius: BorderRadius.circular(24),
+        color: cs.primaryContainer.withValues(alpha: 0.25),
+        border: Border.all(
+          color: cs.primary.withValues(alpha: 0.25),
+          width: 1.2,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cs.primary, cs.primary.withValues(alpha: 0.75)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: iconShadow
+                      ? _glowShadows(context, [
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ])
+                      : null,
+                ),
+                child: Icon(icon, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    title,
+                    if (secondary != null) ...[
+                      const SizedBox(height: 4),
+                      secondary!,
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class UntisSheetScaffold extends StatelessWidget {
+  const UntisSheetScaffold({
+    required this.child,
+    this.title,
+    this.trailing,
+    this.padding = const EdgeInsets.all(28),
+    this.scrollable = true,
+    this.showHandle = true,
+    this.keyboardSafe = true,
+    this.handleWidth = 40,
+    this.handleSpacing = 24,
+    super.key,
+  });
+
+  final Widget child;
+  final Widget? title;
+  final Widget? trailing;
+  final EdgeInsetsGeometry padding;
+  final bool scrollable;
+  final bool showHandle;
+  final bool keyboardSafe;
+  final double handleWidth;
+  final double handleSpacing;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showHandle) ...[
+          _sheetDragHandle(context, width: handleWidth),
+          SizedBox(height: handleSpacing),
+        ],
+        if (title != null) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: title!),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+        child,
+      ],
+    );
+
+    Widget body = scrollable
+        ? SingleChildScrollView(padding: padding, child: content)
+        : Padding(padding: padding, child: content);
+    if (keyboardSafe) {
+      body = Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: body,
+      );
+    }
+    return _sheetSurface(context: context, child: body);
+  }
+}
+
+@immutable
+class LessonCardVisuals {
+  const LessonCardVisuals({
+    required this.radius,
+    required this.cardStyle,
+    required this.blurEnabled,
+    required this.blurSigma,
+    required this.cardOpacity,
+    required this.accentStyle,
+    required this.showPattern,
+    required this.fillColor,
+    required this.gradient,
+    required this.border,
+    required this.textColor,
+    required this.secondaryTextColor,
+    required this.shadows,
+    required this.accentWidth,
+  });
+
+  final double radius;
+  final int cardStyle;
+  final bool blurEnabled;
+  final double blurSigma;
+  final double cardOpacity;
+  final int accentStyle;
+  final bool showPattern;
+  final Color fillColor;
+  final Gradient? gradient;
+  final Border? border;
+  final Color textColor;
+  final Color secondaryTextColor;
+  final List<BoxShadow>? shadows;
+  final double accentWidth;
+
+  BorderRadius get borderRadius => BorderRadius.circular(radius);
+}
+
+abstract final class LessonCardVisualsResolver {
+  static LessonCardVisuals resolve({
+    required BuildContext context,
+    required UntisThemeTokens tokens,
+    required bool isDark,
+    required bool isCancelled,
+    required bool isNow,
+    required Color foregroundColor,
+    required Color backgroundColor,
+    bool isTeacherMissing = false,
+    bool usePattern = true,
+    double? borderRadius,
+    double accentWidth = 3.5,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final themeOwnsStyle = tokens.id != AppThemeId.defaultTheme;
+    final radius = themeOwnsStyle
+        ? tokens.surfaceRadius
+        : (borderRadius ?? lessonBorderRadiusNotifier.value);
+    final cardStyle = themeOwnsStyle ? 3 : lessonCardStyleNotifier.value;
+    final blurEnabled =
+        tokens.supportsBlur &&
+        blurEnabledNotifier.value &&
+        (themeOwnsStyle || lessonBlurEnabledNotifier.value || cardStyle == 1);
+    final blurSigma = themeOwnsStyle
+        ? tokens.blurSigma
+        : lessonBlurAmountNotifier.value;
+    final cardOpacity = themeOwnsStyle
+        ? tokens.lessonSurfaceOpacity
+        : lessonCardOpacityNotifier.value;
+    final accentStyle = themeOwnsStyle ? 0 : lessonAccentStyleNotifier.value;
+    final showPattern =
+        (isCancelled || isTeacherMissing) &&
+        usePattern &&
+        lessonCancelledPatternNotifier.value;
+
+    List<BoxShadow>? shadows;
+    if (tokens.glowEffectsEnabled && isNow) {
+      shadows = [
+        BoxShadow(
+          color: foregroundColor.withValues(alpha: 0.38),
+          blurRadius: 14,
+          spreadRadius: 1.5,
+          offset: const Offset(0, 3),
+        ),
+      ];
+    }
+
+    Color fillColor;
+    Gradient? gradient;
+    Border? border;
+    Color textColor = isCancelled
+        ? foregroundColor.withValues(alpha: 0.6)
+        : foregroundColor;
+    Color secondaryTextColor = isCancelled
+        ? foregroundColor.withValues(alpha: 0.48)
+        : foregroundColor.withValues(alpha: 0.75);
+
+    switch (cardStyle) {
+      case 1:
+        fillColor = isCancelled
+            ? backgroundColor.withValues(
+                alpha: (0.28 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : cs.surfaceContainerLowest.withValues(
+                alpha: (0.52 * cardOpacity).clamp(0.0, 1.0),
+              );
+        border = Border.all(
+          color: isCancelled
+              ? foregroundColor.withValues(alpha: 0.40)
+              : foregroundColor.withValues(alpha: isDark ? 0.42 : 0.28),
+          width: 1.2,
+        );
+        break;
+      case 2:
+        fillColor = Colors.transparent;
+        gradient = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isCancelled
+              ? [
+                  foregroundColor.withValues(
+                    alpha: (0.25 * cardOpacity).clamp(0.0, 1.0),
+                  ),
+                  backgroundColor.withValues(
+                    alpha: (0.45 * cardOpacity).clamp(0.0, 1.0),
+                  ),
+                ]
+              : [
+                  foregroundColor.withValues(
+                    alpha: ((isDark ? 0.35 : 0.25) * cardOpacity).clamp(
+                      0.0,
+                      1.0,
+                    ),
+                  ),
+                  backgroundColor.withValues(
+                    alpha: cardOpacity.clamp(0.0, 1.0),
+                  ),
+                ],
+        );
+        border = Border.all(
+          color: foregroundColor.withValues(alpha: isDark ? 0.30 : 0.18),
+          width: 1.0,
+        );
+        break;
+      case 3:
+        fillColor = isCancelled
+            ? cs.surfaceContainerLowest.withValues(
+                alpha: (0.35 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : cs.surfaceContainerLow.withValues(
+                alpha: (0.60 * cardOpacity).clamp(0.0, 1.0),
+              );
+        border = Border.all(
+          color: isCancelled
+              ? foregroundColor.withValues(alpha: 0.50)
+              : foregroundColor.withValues(alpha: isDark ? 0.85 : 0.70),
+          width: 1.8,
+        );
+        break;
+      case 4:
+        fillColor = isCancelled
+            ? foregroundColor.withValues(alpha: 0.45)
+            : foregroundColor.withValues(alpha: cardOpacity.clamp(0.6, 1.0));
+        final solidText = fillColor.computeLuminance() > 0.45
+            ? Colors.black87
+            : Colors.white;
+        textColor = solidText;
+        secondaryTextColor = solidText.withValues(alpha: 0.78);
+        break;
+      case 0:
+      default:
+        fillColor = isCancelled
+            ? backgroundColor.withValues(
+                alpha: (0.40 * cardOpacity).clamp(0.0, 1.0),
+              )
+            : backgroundColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0));
+        border = Border.all(
+          color: foregroundColor.withValues(alpha: isDark ? 0.25 : 0.15),
+          width: 1.0,
+        );
+        break;
+    }
+
+    if (tokens.id == AppThemeId.manga) {
+      fillColor = cs.surfaceContainerLow;
+      gradient = null;
+      border = Border.all(color: cs.outline, width: tokens.borderWidth);
+      textColor = cs.onSurface;
+      secondaryTextColor = cs.onSurfaceVariant;
+      shadows = [
+        BoxShadow(
+          color: tokens.shadowColor,
+          offset: tokens.shadowOffset,
+          blurRadius: 0,
+        ),
+      ];
+    } else if (tokens.id == AppThemeId.cyber) {
+      border = Border.all(
+        color: isCancelled ? foregroundColor : cs.primary,
+        width: tokens.borderWidth,
+      );
+    }
+
+    return LessonCardVisuals(
+      radius: radius,
+      cardStyle: cardStyle,
+      blurEnabled: blurEnabled,
+      blurSigma: blurSigma,
+      cardOpacity: cardOpacity,
+      accentStyle: accentStyle,
+      showPattern: showPattern,
+      fillColor: fillColor,
+      gradient: gradient,
+      border: border,
+      textColor: textColor,
+      secondaryTextColor: secondaryTextColor,
+      shadows: shadows,
+      accentWidth: accentStyle == 0
+          ? accentWidth
+          : (accentStyle == 1 ? 1.8 : 0.0),
+    );
+  }
+}
+
 /// Shared width vocabulary for layouts that need to work from a phone to a
 /// desktop-sized tablet. Keep breakpoints here instead of letting individual
 /// pages make subtly different tablet decisions.
@@ -205,6 +636,49 @@ Future<T?> showUntisDialog<T>({
   );
 }
 
+extension UntisSnackBarContext on BuildContext {
+  void showUntisSnackBar(
+    String message, {
+    SnackBarBehavior? behavior,
+    Duration? duration,
+  }) {
+    ScaffoldMessenger.of(this).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: behavior,
+        duration: duration ?? const Duration(seconds: 4),
+      ),
+    );
+  }
+}
+
+Future<T> runWithUntisBlockingLoader<T>(
+  BuildContext context,
+  Future<T> Function() action,
+) async {
+  final navigator = Navigator.of(context, rootNavigator: true);
+  var loadingOpen = true;
+  final dialogFuture = showUntisDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    useRootNavigator: true,
+    builder: (_) => const Center(child: CircularProgressIndicator()),
+  );
+
+  // Allow the pushed route to become active before an immediately-completing
+  // operation can reach the cleanup path.
+  await Future<void>.delayed(Duration.zero);
+  try {
+    return await action();
+  } finally {
+    if (loadingOpen && navigator.mounted) {
+      loadingOpen = false;
+      navigator.pop();
+    }
+    await dialogFuture;
+  }
+}
+
 Future<T?> showUntisModalBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -242,8 +716,7 @@ Future<T?> showUntisModalBottomSheet<T>({
         to: navigator.context,
       ),
       isScrollControlled: isScrollControlled,
-      scrollControlDisabledMaxHeightRatio:
-          scrollControlDisabledMaxHeightRatio,
+      scrollControlDisabledMaxHeightRatio: scrollControlDisabledMaxHeightRatio,
       barrierLabel: barrierLabel ?? localizations.scrimLabel,
       barrierOnTapHint: localizations.scrimOnTapHint(
         localizations.bottomSheetLabel,
@@ -255,7 +728,8 @@ Future<T?> showUntisModalBottomSheet<T>({
       constraints: constraints,
       modalBarrierColor: useBackdropBlur
           ? Colors.transparent
-          : barrierColor ?? Theme.of(context).bottomSheetTheme.modalBarrierColor,
+          : barrierColor ??
+                Theme.of(context).bottomSheetTheme.modalBarrierColor,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       showDragHandle: showDragHandle,
@@ -520,7 +994,8 @@ class ThemedSurface extends StatelessWidget {
                   ? cs.outline
                   : (tokens.glassHighlights
                         ? Colors.white.withValues(
-                            alpha: Theme.of(context).brightness == Brightness.dark
+                            alpha:
+                                Theme.of(context).brightness == Brightness.dark
                                 ? 0.34
                                 : 0.56,
                           )
@@ -583,7 +1058,8 @@ class ThemedSurface extends StatelessWidget {
               boxShadow: showShadow
                   ? [
                       BoxShadow(
-                        color: !tokens.glowEffectsEnabled &&
+                        color:
+                            !tokens.glowEffectsEnabled &&
                                 tokens.id == AppThemeId.cyber
                             ? cs.shadow.withValues(alpha: 0.12)
                             : tokens.shadowColor,
@@ -676,7 +1152,7 @@ Color _autoLessonColor(String subject, bool isDark) {
 }
 
 Duration _pageMotionDuration(int transitionType) {
-  return switch (transitionType.clamp(0, 7)) {
+  return switch (transitionType.clamp(0, 8)) {
     0 => const Duration(milliseconds: 430),
     1 => const Duration(milliseconds: 260),
     2 => const Duration(milliseconds: 360),
@@ -685,12 +1161,13 @@ Duration _pageMotionDuration(int transitionType) {
     5 => const Duration(milliseconds: 340),
     6 => const Duration(milliseconds: 380),
     7 => const Duration(milliseconds: 460),
+    8 => Duration.zero,
     _ => const Duration(milliseconds: 360),
   };
 }
 
 Curve _pageMotionCurve(int transitionType) {
-  return switch (transitionType.clamp(0, 7)) {
+  return switch (transitionType.clamp(0, 8)) {
     0 => const Cubic(0.34, 1.56, 0.64, 1.0),
     1 => Curves.easeOutCubic,
     2 => const Cubic(0.2, 0.0, 0.0, 1.0),
@@ -699,12 +1176,13 @@ Curve _pageMotionCurve(int transitionType) {
     5 => const Cubic(0.22, 1.0, 0.36, 1.0),
     6 => const Cubic(0.16, 1.0, 0.3, 1.0),
     7 => const Cubic(0.16, 1.0, 0.3, 1.0),
+    8 => Curves.linear,
     _ => Curves.easeOutCubic,
   };
 }
 
 Offset _pageMotionOffset(int transitionType, {double direction = 1}) {
-  return switch (transitionType.clamp(0, 7)) {
+  return switch (transitionType.clamp(0, 8)) {
     0 => const Offset(0, 0.055),
     1 => const Offset(0, 0.012),
     2 => Offset(0.12 * direction, 0),
@@ -713,12 +1191,13 @@ Offset _pageMotionOffset(int transitionType, {double direction = 1}) {
     5 => const Offset(0, 0.08),
     6 => Offset(0.055 * direction, 0.018),
     7 => const Offset(0, 0.10),
+    8 => Offset.zero,
     _ => Offset.zero,
   };
 }
 
 double _pageMotionScale(int transitionType) {
-  return switch (transitionType.clamp(0, 7)) {
+  return switch (transitionType.clamp(0, 8)) {
     0 => 0.94,
     1 => 0.995,
     2 => 0.985,
@@ -727,12 +1206,13 @@ double _pageMotionScale(int transitionType) {
     5 => 0.99,
     6 => 0.985,
     7 => 0.955,
+    8 => 1.0,
     _ => 1.0,
   };
 }
 
 double _pageMotionBlur(int transitionType) =>
-    transitionType.clamp(0, 7) == 4 ? 14.0 : 0.0;
+    transitionType.clamp(0, 8) == 4 ? 14.0 : 0.0;
 
 /// Prepares the GPU blur pipeline while the app is idle. Without this tiny
 /// composited layer, Android may compile the ImageFiltered pipeline during the
@@ -777,14 +1257,19 @@ Route<T> _buildBouncyRoute<T>(
   Duration? reverseDuration,
   int? transitionType,
 }) {
-  final selectedTransition =
-      (transitionType ?? pageTransitionNotifier.value).clamp(0, 7);
+  final selectedTransition = (transitionType ?? pageTransitionNotifier.value)
+      .clamp(0, 8);
+
+  // Use Flutter's platform route unchanged for "Default". On Android,
+  // MaterialPageRoute uses the framework's predictive-back transition.
+  if (selectedTransition == 8) {
+    return MaterialPageRoute<T>(builder: (context) => page);
+  }
+
   final forwardDuration = duration ?? _pageMotionDuration(selectedTransition);
   final backwardDuration =
       reverseDuration ??
-      Duration(
-        milliseconds: (forwardDuration.inMilliseconds * 0.82).round(),
-      );
+      Duration(milliseconds: (forwardDuration.inMilliseconds * 0.82).round());
 
   return PageRouteBuilder<T>(
     transitionDuration: forwardDuration,
@@ -836,9 +1321,10 @@ Route<T> _buildBouncyRoute<T>(
 
       if (offset != Offset.zero) {
         result = SlideTransition(
-          position: Tween<Offset>(begin: offset, end: Offset.zero).animate(
-            motion,
-          ),
+          position: Tween<Offset>(
+            begin: offset,
+            end: Offset.zero,
+          ).animate(motion),
           child: result,
         );
       }
@@ -882,9 +1368,7 @@ MenuStyle _untisMenuStyle(BuildContext context) {
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(_resolvedSurfaceCornerRadius(22)),
-        side: BorderSide(
-          color: cs.outlineVariant.withValues(alpha: 0.48),
-        ),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.48)),
       ),
     ),
   );
@@ -973,11 +1457,11 @@ Widget _m3SelectionMenu({
   );
 }
 
-Widget _sheetDragHandle(BuildContext context) {
+Widget _sheetDragHandle(BuildContext context, {double width = 40}) {
   final cs = Theme.of(context).colorScheme;
   return Center(
     child: Container(
-      width: 40,
+      width: width,
       height: 4,
       decoration: BoxDecoration(
         color: cs.onSurface.withValues(alpha: 0.12),
@@ -1034,10 +1518,7 @@ Future<T?> _showUnifiedSheet<T>({
       if (showHandle) {
         content = Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 28),
-              child: content,
-            ),
+            Padding(padding: const EdgeInsets.only(top: 28), child: content),
             Positioned(
               top: 12,
               left: 0,
@@ -1088,7 +1569,8 @@ Future<T?> _showUnifiedOptionSheet<T>({
               ? cs.primaryContainer.withValues(alpha: 0.42)
               : cs.surfaceContainerLow.withValues(alpha: 0.72);
 
-          final leading = opt.leading ??
+          final leading =
+              opt.leading ??
               (opt.icon == null
                   ? null
                   : _sheetActionIcon(
@@ -1353,8 +1835,7 @@ class SettingsGroup extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (i < validChildren.length - 1)
-                      const SizedBox(height: 4),
+                    if (i < validChildren.length - 1) const SizedBox(height: 4),
                   ],
                 ],
               );
@@ -1407,10 +1888,7 @@ PreferredSizeWidget _mainSectionTabBar(
     indicatorWeight: 3,
     dividerColor: Colors.transparent,
     labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-    labelStyle: GoogleFonts.outfit(
-      fontWeight: FontWeight.w800,
-      fontSize: 14,
-    ),
+    labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 14),
     unselectedLabelStyle: GoogleFonts.outfit(
       fontWeight: FontWeight.w600,
       fontSize: 14,

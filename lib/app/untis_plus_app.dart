@@ -401,7 +401,7 @@ class UntisPlusApp extends StatelessWidget {
                                       );
                                     }
 
-                                    final l = AppL10n.of(locale);
+                                    final l = appL10nFor(locale);
 
                                     return ValueListenableBuilder<bool>(
                                       valueListenable:
@@ -410,6 +410,11 @@ class UntisPlusApp extends StatelessWidget {
                                         return MaterialApp(
                                           debugShowCheckedModeBanner: false,
                                           title: l.appName,
+                                          locale: Locale(locale),
+                                          localizationsDelegates:
+                                              AppL10n.localizationsDelegates,
+                                          supportedLocales:
+                                              AppL10n.supportedLocales,
                                           scrollBehavior:
                                               const _UntisScrollBehavior(),
                                           theme: _themeFrom(

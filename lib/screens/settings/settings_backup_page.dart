@@ -71,7 +71,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
   }
 
   Future<void> _exportToFile() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     try {
       await _setBusyWhile(() async {
         final content = await _getValidatedExportContent();
@@ -95,7 +95,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
   }
 
   Future<void> _exportToClipboard() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     await _setBusyWhile(() async {
       final content = await _getValidatedExportContent();
       if (content == null) return;
@@ -105,7 +105,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
   }
 
   Future<void> _importFromFile() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     try {
       await _setBusyWhile(() async {
         final file = await FilePicker.pickFile(
@@ -146,7 +146,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
   }
 
   Future<void> _importFromClipboard() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     try {
       await _setBusyWhile(() async {
         final data = await Clipboard.getData(Clipboard.kTextPlain);
@@ -183,7 +183,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
   }
 
   Future<bool> _confirmImport() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final result = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -196,7 +196,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.settingsApiKeyCancel),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -287,7 +287,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
-                AppL10n.of(appLocaleNotifier.value).settingsApiKeyCancel,
+                appL10nFor(appLocaleNotifier.value).cancel,
               ),
             ),
             FilledButton(
@@ -342,16 +342,12 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsHubDataBackup),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
-          children: [
+    return SettingsPageShell(
+      title: l.settingsHubDataBackup,
+      children: [
             // ── GROUP 1: EXPORT ──
             SettingsGroup(
               title: l.settingsHubDataBackup,
@@ -477,8 +473,6 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
               ],
             ),
           ],
-        ),
-      ),
     );
   }
 }

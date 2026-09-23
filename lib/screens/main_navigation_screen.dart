@@ -86,7 +86,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
   Future<void> _loadChatHistory() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       final sessions = AiChatHistoryStore(prefs).read();
       if (!mounted) return;
       setState(() {
@@ -108,7 +108,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       }
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       await AiChatHistoryStore(prefs).write(_chatHistory);
     } catch (_) {}
   }
@@ -191,7 +191,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     return parseAiSearchResult(
       query: query,
       reply: reply,
-      emptyHeadline: AppL10n.of(appLocaleNotifier.value).aiNewSearch,
+      emptyHeadline: appL10nFor(appLocaleNotifier.value).aiNewSearch,
     );
   }
 
@@ -246,8 +246,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _currentMonday.day,
     );
     final friday = monday.add(const Duration(days: 4));
-    final mondayStamp = int.parse(DateFormat('yyyyMMdd').format(monday));
-    final fridayStamp = int.parse(DateFormat('yyyyMMdd').format(friday));
+    final mondayStamp = untisDateInt(monday);
+    final fridayStamp = untisDateInt(friday);
 
     return _exams.any((ex) {
       final raw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
@@ -324,7 +324,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       exams = DemoModeService.demoExams(locale: appLocaleNotifier.value);
     } else {
       try {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = SettingsStore.instance.preferences;
         final raw = prefs.getString(
           [
             'weekCacheV1',
@@ -332,7 +332,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
             schoolName,
             personType.toString(),
             personId.toString(),
-            DateFormat('yyyyMMdd').format(monday),
+            untisDateString(monday),
           ].join('|'),
         );
         if (raw != null && raw.isNotEmpty) {
@@ -345,62 +345,23 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           }
         }
 
-        final rawExams =
-            prefs.getStringList(_accountDataKey('customExams')) ?? [];
-        final customExams = rawExams
-            .map((e) {
-              try {
-                return jsonDecode(e) as Map<String, dynamic>;
-              } catch (_) {
-                return <String, dynamic>{};
-              }
-            })
-            .where((e) => e.isNotEmpty)
-            .toList();
+        final customExams = _decodeStoredMapList(
+          prefs.getStringList(_accountDataKey('customExams')) ?? const [],
+        );
 
         final now = DateTime.now();
         final start = DateTime(now.year, now.month, now.day);
         final end = start.add(const Duration(days: 365));
-        final startStr = DateFormat('yyyyMMdd').format(start);
-        final endStr = DateFormat('yyyyMMdd').format(end);
-
-        Future<List<Map<String, dynamic>>> tryEndpoint(String path) async {
-          try {
-            final uri = Uri.parse(
-              'https://$schoolUrl$path?startDate=$startStr&endDate=$endStr',
-            );
-            final res = await http.get(
-              uri,
-              headers: {'Accept': 'application/json'},
-            );
-            if (res.statusCode == 200) {
-              final decoded = jsonDecode(res.body);
-              List<dynamic> list = [];
-              if (decoded is List) {
-                list = decoded;
-              } else if (decoded is Map) {
-                list =
-                    (decoded['data'] ??
-                            decoded['exams'] ??
-                            decoded['result'] ??
-                            [])
-                        as List;
-              }
-              return list
-                  .map((e) => Map<String, dynamic>.from(e as Map))
-                  .toList();
-            }
-          } catch (_) {}
-          return [];
-        }
-
-        exams = await tryEndpoint('/WebUntis/api/exams');
-        if (exams.isEmpty) {
-          exams = await tryEndpoint('/WebUntis/api/classreg/exams');
-        }
-        if (exams.isEmpty && personId != 0) {
-          exams = await tryEndpoint('/WebUntis/api/exams/student/$personId');
-        }
+        exams = await _webUntisExamRepository.fetch(
+          context: WebUntisRequestContext(
+            schoolUrl: schoolUrl,
+            schoolName: schoolName,
+            sessionId: sessionID,
+          ),
+          personId: personId,
+          start: start,
+          end: end,
+        );
         exams = [
           ...exams.map((e) => {...e, '_source': 'api'}),
           ...customExams.map((e) => {...e, '_source': 'custom'}),
@@ -448,7 +409,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   String _resolvedSystemPrompt() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final template = aiSystemPromptTemplate.trim().isNotEmpty
         ? aiSystemPromptTemplate
         : _buildDefaultAiPromptTemplate(l);
@@ -487,11 +448,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     }
     return '''$resolved
 
-${l.ui('aiResponseFormat')}''';
+${l.aiResponseFormat}''';
   }
 
   String _resolvedChatSystemPrompt() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final template = aiSystemPromptTemplate.trim().isNotEmpty
         ? aiSystemPromptTemplate
         : _buildDefaultAiPromptTemplate(l);
@@ -532,286 +493,53 @@ ${l.ui('aiResponseFormat')}''';
     String personaInstruction = '';
     switch (aiPersona) {
       case 'strict':
-        personaInstruction = l.ui('aiPersonaStrict');
+        personaInstruction = l.aiPersonaStrict;
         break;
       case 'buddy':
-        personaInstruction = l.ui('aiPersonaBuddy');
+        personaInstruction = l.aiPersonaBuddy;
         break;
       case 'helpful':
       default:
-        personaInstruction = l.ui('aiPersonaHelpful');
+        personaInstruction = l.aiPersonaHelpful;
         break;
     }
 
     return '''$resolved
 
-${l.ui('aiAssistantIntro')}
+${l.aiAssistantIntro}
 $personaInstruction
-${l.ui('aiAssistantRules')}''';
+${l.aiAssistantRules}''';
   }
 
   Future<String> _requestProviderResponse(
     String systemPrompt, {
     required String userQuery,
-  }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    final isLocalProvider = provider == 'local';
-    final apiKey = _activeAiApiKey().trim();
-    if (!isLocalProvider && apiKey.isEmpty) {
-      throw Exception(
-        'CONFIG: ${_providerAwareMissingApiKeyMessage(l, provider)}',
-      );
-    }
-
-    final model = aiModel.trim().isNotEmpty
-        ? aiModel.trim()
-        : _defaultModelForProvider(
-            provider,
-            customCompatibility: aiCustomCompatibility,
-          );
-
-    String normalizedBaseUrl(String value) {
-      var out = value.trim();
-      while (out.endsWith('/')) {
-        out = out.substring(0, out.length - 1);
-      }
-      return out;
-    }
-
-    String openAiCompatibleEndpoint(String rawBaseUrl) {
-      final base = normalizedBaseUrl(rawBaseUrl);
-      if (base.isEmpty) return '';
-      if (base.endsWith('/chat/completions')) return base;
-      if (base.endsWith('/v1')) return '$base/chat/completions';
-      if (base.endsWith('/v1/chat')) return '$base/completions';
-      return '$base/v1/chat/completions';
-    }
-
-    String geminiCompatibleEndpoint(String rawBaseUrl, String model) {
-      final base = normalizedBaseUrl(rawBaseUrl);
-      if (base.isEmpty) return '';
-      if (base.contains('/models/')) return base;
-      if (base.contains('/v1beta')) {
-        return '$base/models/$model:generateContent';
-      }
-      if (base.contains('/v1')) {
-        return '$base/models/$model:generateContent';
-      }
-      return '$base/v1beta/models/$model:generateContent';
-    }
-
-    Future<String> requestGeminiResponse({
-      required String endpoint,
-      required String apiKey,
-      required String systemPrompt,
-      required String userQuery,
-    }) async {
-      final contents = [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': userQuery},
-          ],
-        },
-      ];
-
-      final body = jsonEncode({
-        'systemInstruction': {
-          'parts': [
-            {'text': systemPrompt},
-          ],
-        },
-        'contents': contents,
-        'generationConfig': {'maxOutputTokens': 2600, 'temperature': 0.2},
-      });
-
-      final endpointUri = Uri.parse(endpoint);
-      final mergedParams = Map<String, String>.from(endpointUri.queryParameters)
-        ..putIfAbsent('key', () => apiKey);
-      final uri = endpointUri.replace(queryParameters: mergedParams);
-
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json', 'x-goog-api-key': apiKey},
-        body: body,
-      );
-
-      Map<String, dynamic>? payload;
-      try {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) payload = decoded;
-      } catch (_) {}
-
-      if (response.statusCode != 200) {
-        final message = payload?['error']?['message'] ?? response.statusCode;
-        throw Exception('API: $message');
-      }
-
-      var reply = '';
-      final candidates = payload?['candidates'];
-      if (candidates is List && candidates.isNotEmpty) {
-        final content = candidates.first['content'];
-        final parts = (content is Map<String, dynamic>)
-            ? content['parts']
-            : null;
-        if (parts is List) {
-          reply = parts
-              .map((p) => (p is Map<String, dynamic>) ? p['text'] : null)
-              .whereType<String>()
-              .join();
-        }
-      }
-
-      reply = reply.trim();
-      if (reply.isEmpty) {
-        throw Exception(
-          'API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}',
-        );
-      }
-      return reply;
-    }
-
-    Future<String> requestOpenAiCompatibleResponse({
-      required String endpoint,
-      required String apiKey,
-      required String model,
-      required String systemPrompt,
-      required String userQuery,
-    }) async {
-      final messages = [
-        {'role': 'system', 'content': systemPrompt},
-        {'role': 'user', 'content': userQuery},
-      ];
-
-      final body = jsonEncode({
-        'model': model,
-        'messages': messages,
-        'temperature': 0.2,
-      });
-
-      final response = await http.post(
-        Uri.parse(endpoint),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
-        body: body,
-      );
-
-      Map<String, dynamic>? payload;
-      try {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map<String, dynamic>) payload = decoded;
-      } catch (_) {}
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        final message = payload?['error']?['message'] ?? response.statusCode;
-        throw Exception('API: $message');
-      }
-
-      final choices = payload?['choices'];
-      if (choices is! List || choices.isEmpty) {
-        throw Exception(
-          'API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}',
-        );
-      }
-
-      final first = choices.first;
-      if (first is! Map<String, dynamic>) {
-        throw Exception(
-          'API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}',
-        );
-      }
-
-      final message = first['message'];
-      if (message is Map<String, dynamic>) {
-        final content = message['content'];
-        if (content is String && content.trim().isNotEmpty) {
-          return content.trim();
-        }
-        if (content is List) {
-          final text = content
-              .map((part) {
-                if (part is Map<String, dynamic>) {
-                  return part['text']?.toString() ?? '';
-                }
-                return '';
-              })
-              .join()
-              .trim();
-          if (text.isNotEmpty) return text;
-        }
-      }
-
-      final legacyText = first['text']?.toString().trim() ?? '';
-      if (legacyText.isNotEmpty) return legacyText;
-      throw Exception('API: ${AppL10n.of(appLocaleNotifier.value).aiNoReply}');
-    }
-
-    switch (provider) {
-      case 'openai':
-        return requestOpenAiCompatibleResponse(
-          endpoint: 'https://api.openai.com/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userQuery: userQuery,
-        );
-      case 'mistral':
-        return requestOpenAiCompatibleResponse(
-          endpoint: 'https://api.mistral.ai/v1/chat/completions',
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userQuery: userQuery,
-        );
-      case 'custom':
-        final baseUrl = aiCustomBaseUrl.trim();
-        if (baseUrl.isEmpty) {
-          throw Exception('CONFIG: ${l.aiCustomBaseUrlMissing}');
-        }
-        final compat = _normalizeAiCustomCompatibility(aiCustomCompatibility);
-        if (compat == 'gemini') {
-          return requestGeminiResponse(
-            endpoint: geminiCompatibleEndpoint(baseUrl, model),
-            apiKey: apiKey,
-            systemPrompt: systemPrompt,
-            userQuery: userQuery,
-          );
-        }
-        return requestOpenAiCompatibleResponse(
-          endpoint: openAiCompatibleEndpoint(baseUrl),
-          apiKey: apiKey,
-          model: model,
-          systemPrompt: systemPrompt,
-          userQuery: userQuery,
-        );
-      case 'local':
-        return requestLocalModelText(
-          systemPrompt: systemPrompt,
-          userQuery: userQuery,
-          modelPath: aiLocalModelPath,
-          runtime: _currentLocalModelRuntime(),
-        );
-      case 'gemini':
-      default:
-        return requestGeminiResponse(
-          endpoint:
-              'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent',
-          apiKey: apiKey,
-          systemPrompt: systemPrompt,
-          userQuery: userQuery,
-        );
-    }
+  }) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final runtime = _currentAiRuntimeConfiguration();
+    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+    return _aiRequestCoordinator.generate(
+      runtime: runtime,
+      spec: AiRequestSpec(
+        systemPrompt: systemPrompt,
+        userPrompt: userQuery,
+        temperature: 0.2,
+        maxTokens: 2600,
+        topP: aiTopP,
+        noReplyMessage: l.aiNoReply,
+        missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+        customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+        localModelMissingMessage: l.aiLocalModelLoadError,
+      ),
+    );
   }
 
   String _daySummaryForPrompt(DateTime date) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final index = date.difference(_currentMonday).inDays;
     final dateLabel = DateFormat('dd.MM.yyyy').format(date);
     if (index < 0 || index > 4) {
-      return l.ui('aiDayDataUnavailable').replaceAll('{date}', dateLabel);
+      return l.aiDayDataUnavailable(dateLabel);
     }
 
     final lessons = _weekData[index] ?? const [];
@@ -855,9 +583,7 @@ ${l.ui('aiAssistantRules')}''';
       _icuLocale(appLocaleNotifier.value),
     ).format(date);
     if (index < 0 || index > 4) {
-      return AppL10n.of(
-        appLocaleNotifier.value,
-      ).ui('aiWeekDataUnavailable').replaceAll('{date}', label);
+      return appL10nFor(appLocaleNotifier.value).aiWeekDataUnavailable(label);
     }
     final lessons = (_weekData[index] ?? const <dynamic>[])
         .whereType<Map>()
@@ -866,9 +592,7 @@ ${l.ui('aiAssistantRules')}''';
         )
         .toList(growable: false);
     if (lessons.isEmpty) {
-      return AppL10n.of(
-        appLocaleNotifier.value,
-      ).ui('aiNoScheduledLessons').replaceAll('{date}', label);
+      return appL10nFor(appLocaleNotifier.value).aiNoScheduledLessons(label);
     }
     final formatted = lessons
         .map((lesson) {
@@ -877,10 +601,9 @@ ${l.ui('aiAssistantRules')}''';
           return '${_formatUntisTime(lesson['startTime'].toString())} $subject';
         })
         .join(', ');
-    return AppL10n.of(appLocaleNotifier.value)
-        .ui('aiScheduleReply')
-        .replaceAll('{date}', label)
-        .replaceAll('{lessons}', formatted);
+    return appL10nFor(
+      appLocaleNotifier.value,
+    ).aiScheduleReply(label, formatted);
   }
 
   Object? _jsonSafeValue(Object? value) {
@@ -900,7 +623,7 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   String _currentLessonSummary() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final now = DateTime.now();
     final todayIdx = now.weekday - 1;
     if (todayIdx < 0 || todayIdx > 4) return l.aiNoSchoolToday;
@@ -923,7 +646,7 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   String _nextLessonSummary() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final now = DateTime.now();
     final todayIdx = now.weekday - 1;
     if (todayIdx < 0 || todayIdx > 4) {
@@ -947,7 +670,7 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   String _formatExamsForAi() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final relevantExams = _exams
         .where(_examMatchesTimetable)
         .toList(growable: false);
@@ -956,13 +679,11 @@ ${l.ui('aiAssistantRules')}''';
     for (final ex in relevantExams) {
       final subject = ex['subject'] ?? ex['subjectName'] ?? '?';
       final type = ex['type'] ?? l.aiDefaultExamType;
-      final dateRaw = (ex['date'] ?? ex['examDate'] ?? ex['startDate'] ?? '')
-          .toString();
-      String dateStr = dateRaw;
-      if (dateRaw.length == 8) {
-        dateStr =
-            '${dateRaw.substring(6, 8)}.${dateRaw.substring(4, 6)}.${dateRaw.substring(0, 4)}';
-      }
+      final dateRaw = ex['date'] ?? ex['examDate'] ?? ex['startDate'];
+      final parsedDate = parseUntisDate(dateRaw);
+      final dateStr = parsedDate == null
+          ? (dateRaw ?? '').toString()
+          : DateFormat('dd.MM.yyyy').format(parsedDate);
       final name = ex['name'] ?? ex['text'] ?? '';
       buf.write('- $dateStr ($type): $subject');
       if (name.isNotEmpty) buf.write(' "$name"');
@@ -1060,7 +781,7 @@ ${l.ui('aiAssistantRules')}''';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              AppL10n.of(appLocaleNotifier.value).ui('aiAttachmentTooLarge'),
+              appL10nFor(appLocaleNotifier.value).aiAttachmentTooLarge,
             ),
           ),
         );
@@ -1191,11 +912,7 @@ ${l.ui('aiAssistantRules')}''';
               action.gradeWeight <= 0) {
             continue;
           }
-          final dateText = date.toString();
-          if (dateText.length != 8) continue;
-          final gradeDate = DateTime.tryParse(
-            '${dateText.substring(0, 4)}-${dateText.substring(4, 6)}-${dateText.substring(6, 8)}',
-          );
+          final gradeDate = parseUntisDate(date);
           if (gradeDate == null) continue;
           final current = List<Map<String, dynamic>>.from(
             customGradesNotifier.value,
@@ -1233,22 +950,22 @@ ${l.ui('aiAssistantRules')}''';
 
   Future<void> _confirmActions(List<AiProposedAction> actions) async {
     if (!mounted || actions.isEmpty) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final approved = await showUntisDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(l.ui('aiApplyChangesTitle')),
+        title: Text(l.aiApplyChangesTitle),
         content: SingleChildScrollView(
           child: _AiActionConfirmationContent(actions: actions),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(l.ui('cancel')),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(l.ui('apply')),
+            child: Text(l.apply),
           ),
         ],
       ),
@@ -1258,7 +975,7 @@ ${l.ui('aiAssistantRules')}''';
     if (mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(l.ui('aiChangesApplied'))));
+      ).showSnackBar(SnackBar(content: Text(l.aiChangesApplied)));
     }
   }
 
@@ -1292,43 +1009,41 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   Future<void> _sendChat(String text) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final provider = _normalizeAiProvider(aiProvider);
-    final isLocalProvider = provider == 'local';
-    final apiKey = _activeAiApiKey().trim();
-
-    if (isLocalProvider && aiLocalModelPath.isEmpty) {
-      setState(() {
-        _chatMessages.add({
-          'role': 'assistant',
-          'content': l.aiLocalModelLoadError,
-        });
-      });
-      return;
-    }
-
-    if (!isLocalProvider && apiKey.isEmpty) {
-      setState(() {
-        _chatMessages.add({
-          'role': 'assistant',
-          'content': _providerAwareMissingApiKeyMessage(l, provider),
-        });
-      });
-      return;
-    }
-
+    final l = appL10nFor(appLocaleNotifier.value);
+    final runtime = _currentAiRuntimeConfiguration();
+    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
     final attachments = List<AiChatAttachment>.from(_attachments);
-    if (isLocalProvider &&
-        attachments.any((attachment) => !attachment.isText)) {
+    final spec = AiRequestSpec(
+      systemPrompt: _resolvedChatSystemPrompt(),
+      userPrompt: text,
+      noReplyMessage: l.aiNoReply,
+      attachments: attachments,
+      missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+      customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+      localModelMissingMessage: l.aiLocalModelLoadError,
+      unsupportedAttachmentMessage: (_) =>
+          'Dieses lokale Modell kann nur Textdateien lesen. Nutze für Bilder oder PDFs einen passenden Remote-Anbieter.',
+    );
+
+    try {
+      _aiRequestCoordinator.validate(runtime, spec);
+    } catch (e) {
+      final message = e.toString();
+      final isConfigError = message.contains('CONFIG:');
+      final isApiError = message.contains('API:');
       setState(() {
         _chatMessages.add({
           'role': 'assistant',
-          'content':
-              'Dieses lokale Modell kann nur Textdateien lesen. Nutze für Bilder oder PDFs einen passenden Remote-Anbieter.',
+          'content': isConfigError
+              ? message.replaceFirst('Exception: CONFIG: ', '')
+              : isApiError
+              ? message.replaceFirst('Exception: API: ', '')
+              : '${l.aiConnectionError} $e',
         });
       });
       return;
     }
+
     _inputController.clear();
     setState(() {
       _chatMessages.add({
@@ -1370,35 +1085,15 @@ ${l.ui('aiAssistantRules')}''';
       return;
     }
 
-    AIProvider? aiProviderInstance;
     try {
-      final model = aiModel.trim().isNotEmpty
-          ? aiModel.trim()
-          : _defaultModelForProvider(
-              provider,
-              customCompatibility: aiCustomCompatibility,
-            );
-
-      aiProviderInstance = createAIProvider(
-        provider: provider,
-        model: model,
-        apiKey: apiKey,
-        customBaseUrl: aiCustomBaseUrl,
-        customCompatibility: aiCustomCompatibility,
-        localModelPath: isLocalProvider ? aiLocalModelPath : null,
-      );
-
-      final systemPrompt = _resolvedChatSystemPrompt();
-
       setState(() {
         _chatMessages.add({'role': 'assistant', 'content': ''});
       });
 
-      final stream = aiProviderInstance.streamResponse(
-        systemPrompt: systemPrompt,
+      final stream = _aiRequestCoordinator.stream(
+        runtime: runtime,
+        spec: spec,
         history: _chatMessages.sublist(0, _chatMessages.length - 1),
-        model: model,
-        attachments: attachments,
       );
 
       await for (final chunk in stream) {
@@ -1443,7 +1138,6 @@ ${l.ui('aiAssistantRules')}''';
       });
     } finally {
       _flushStreamingText();
-      await aiProviderInstance?.dispose();
       if (mounted) {
         setState(() {
           _thinking = false;
@@ -1455,7 +1149,7 @@ ${l.ui('aiAssistantRules')}''';
     }
   }
 
-    void _removeChatSession(AiChatSession session) {
+  void _removeChatSession(AiChatSession session) {
     _hapticAction();
     setState(() {
       _chatHistory.removeWhere((entry) => entry.id == session.id);
@@ -1505,19 +1199,6 @@ ${l.ui('aiAssistantRules')}''';
     }
 
     final generation = ++_searchGeneration;
-    final provider = _normalizeAiProvider(aiProvider);
-    final isLocalProvider = provider == 'local';
-    if (!isLocalProvider && _activeAiApiKey().trim().isEmpty) {
-      final l = AppL10n.of(appLocaleNotifier.value);
-      final reply = _providerAwareMissingApiKeyMessage(l, provider);
-      if (!mounted) return;
-      setState(() {
-        _latestQuery = text;
-        _latestResult = _parseSearchResult(query: text, reply: reply);
-      });
-      return;
-    }
-
     _inputController.clear();
     setState(() {
       _latestQuery = text;
@@ -1537,7 +1218,7 @@ ${l.ui('aiAssistantRules')}''';
     } catch (e) {
       if (!mounted || generation != _searchGeneration) return;
       final message = e.toString();
-      final l = AppL10n.of(appLocaleNotifier.value);
+      final l = appL10nFor(appLocaleNotifier.value);
       final isApiError = message.contains('API:');
       final isConfigError = message.contains('CONFIG:');
       setState(() {
@@ -1560,7 +1241,7 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   List<String> _buildContextualChips() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final chips = <String>[l.aiSuggestions.first];
     if (_hasTodayLessons) chips.add(l.aiPromptWhenFinishToday);
     if (_hasCancellations) chips.add(l.aiPromptWhatCancelledToday);
@@ -1630,12 +1311,12 @@ ${l.ui('aiAssistantRules')}''';
     return Icons.auto_awesome_rounded;
   }
 
-    Widget _buildSearchLoadingState() {
+  Widget _buildSearchLoadingState() {
     return _AiAnalysisLoadingState(query: _latestQuery);
   }
 
   Widget _buildSearchBar() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     return _AiComposer(
       controller: _inputController,
       focusNode: _promptFocusNode,
@@ -1674,7 +1355,7 @@ ${l.ui('aiAssistantRules')}''';
     );
   }
 
-      Widget _buildChatView(ColorScheme cs) {
+  Widget _buildChatView(ColorScheme cs) {
     if (_chatMessages.isEmpty && !_thinking) {
       return _buildEmptyState(cs);
     }
@@ -1725,11 +1406,7 @@ ${l.ui('aiAssistantRules')}''';
                 entry.$1 == _chatMessages.length - 1,
           ),
         if (showExtraTyping)
-          const _AiChatMessage(
-            content: '',
-            isUser: false,
-            streaming: true,
-          ),
+          const _AiChatMessage(content: '', isUser: false, streaming: true),
       ],
     );
   }
@@ -1776,7 +1453,7 @@ ${l.ui('aiAssistantRules')}''';
   }
 
   Widget _buildEmptyState(ColorScheme cs) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final analysisSuggestions = _buildContextualChips();
     const suggestionIcons = <IconData>[
       Icons.trending_up_rounded,
@@ -1828,9 +1505,8 @@ ${l.ui('aiAssistantRules')}''';
                   _AiSuggestionCard(
                     compact: true,
                     text: suggestion.$2,
-                    icon: suggestionIcons[
-                        suggestion.$1 % suggestionIcons.length
-                    ],
+                    icon:
+                        suggestionIcons[suggestion.$1 % suggestionIcons.length],
                     onTap: () {
                       _hapticSelection();
                       unawaited(_sendQuickPrompt(suggestion.$2));
@@ -1844,10 +1520,10 @@ ${l.ui('aiAssistantRules')}''';
     );
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
 
     if (_loading) {
@@ -1969,7 +1645,7 @@ class _MainTabTransitionLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
-    final type = transitionType.clamp(0, 7);
+    final type = transitionType.clamp(0, 8);
     final duration = reduceMotion ? Duration.zero : _pageMotionDuration(type);
     final direction = relativePosition < 0 ? -1.0 : 1.0;
     final hiddenOffset = _pageMotionOffset(type, direction: direction);
@@ -2071,7 +1747,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
         showChangelogOnStartup = false;
-        final p = await SharedPreferences.getInstance();
+        final p = SettingsStore.instance.preferences;
         await p.remove('showChangelogPending');
         if (mounted) showChangelogSheet(context);
       });
@@ -2145,7 +1821,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Future<void> _finishTutorial() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setBool('tutorialCompleted', true);
     await prefs.setInt('tutorialVersionCompleted', kCurrentTutorialVersion);
     if (!mounted) return;
@@ -2303,7 +1979,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final isTablet = UntisLayout.isTablet(context);
 
     return Scaffold(
@@ -2452,8 +2128,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       unreadTimetableChangesNotifier,
                       unreadInboxMessagesNotifier,
                     ]),
-                    builder: (context, _) =>
-                        _buildFloatingNavBar(context, cs),
+                    builder: (context, _) => _buildFloatingNavBar(context, cs),
                   );
                 },
               ),
@@ -2480,7 +2155,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   Widget _buildFloatingNavBar(BuildContext context, ColorScheme cs) {
     final timetableSelected = _selectedIndex == 0;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     // ---- Secondary items (indices 1-4) shown in the pill bar ----
     final items = [
@@ -2695,7 +2370,7 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
     final useBackdropBlur = _usesModalBackdropBlur(context);
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -2826,7 +2501,7 @@ class _TutorialCallout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -3391,9 +3066,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                           ),
                         ),
                         child: Text(
-                          item.badgeCount > 99
-                              ? '99+'
-                              : '${item.badgeCount}',
+                          item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
                           style: TextStyle(
                             color: cs.onError,
                             fontSize: 8.5,
@@ -3408,24 +3081,26 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
               ),
 
               // --- Label (slides in/out with the morph) ---
-              ClipRect(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: _labelControllers[i].value,
-                  child: Opacity(
-                    opacity: _labelControllers[i].value,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Text(
-                        item.label,
-                        style: untisThemeTextStyle(
-                          context,
-                          color: cs.onPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
+              Flexible(
+                child: ClipRect(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _labelControllers[i].value,
+                    child: Opacity(
+                      opacity: _labelControllers[i].value,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Text(
+                          item.label,
+                          style: untisThemeTextStyle(
+                            context,
+                            color: cs.onPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.clip,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.clip,
                       ),
                     ),
                   ),

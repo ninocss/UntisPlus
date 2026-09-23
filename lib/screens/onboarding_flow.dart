@@ -14,6 +14,9 @@ class OnboardingFlow extends StatefulWidget {
 }
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
+  final SchoolDirectoryRepository _schoolDirectoryRepository =
+      SchoolDirectoryRepository();
+  final WebUntisLoginRepository _loginRepository = WebUntisLoginRepository();
   final PageController _pageController = PageController();
   int get _totalOnboardingSteps => widget.accountOnly ? 1 : 5;
   static const String _credentialModePassword = 'password';
@@ -73,7 +76,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     _aiCustomBaseUrlController.text = aiCustomBaseUrl;
     _syncApiKeyControllerForProvider();
-    SharedPreferences.getInstance().then((prefs) {
+    Future.value(SettingsStore.instance.preferences).then((prefs) {
       if (!mounted) return;
       setState(() {
         _useLoginKey =
@@ -110,14 +113,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _schoolSearchFocusNode.requestFocus();
     }
     if (!widget.accountOnly) {
-      SharedPreferences.getInstance().then(
-        (prefs) => prefs.setInt('onboardingCheckpoint', page),
-      );
+      Future.value(
+        SettingsStore.instance.preferences,
+      ).then((prefs) => prefs.setInt('onboardingCheckpoint', page));
     }
   }
 
   @override
   void dispose() {
+    _schoolDirectoryRepository.close();
+    _loginRepository.close();
     _pageController.dispose();
     _schoolSearchFocusNode.dispose();
     _serverController.dispose();
@@ -262,7 +267,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       }
       await File(partialPath).rename(path);
       aiLocalModelPath = path;
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       await prefs.setString('aiLocalModelPath', path);
       if (mounted) {
         setState(() {
@@ -309,7 +314,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _openApiKeyPortal() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final url = _apiKeyPortalUrlForProvider(_onboardingAiProvider);
     if (url.isEmpty) return;
     final ok = await url_launcher.launchUrlString(
@@ -327,7 +332,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiProviderDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_localModelDownloading) {
       _showError(l.settingsAiLocalModelDownloading);
       return;
@@ -373,7 +378,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiModelDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_localModelDownloading) {
       _showError(l.settingsAiLocalModelDownloading);
       return;
@@ -408,7 +413,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiCompatibilityDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiCompatibility,
@@ -442,7 +447,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiCustomBaseUrlDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final ctrl = TextEditingController(text: _aiCustomBaseUrlController.text);
     _showUnifiedSheet<void>(
       context: context,
@@ -509,7 +514,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: untisThemeTextStyle(
                           context,
                           fontWeight: FontWeight.w700,
@@ -524,7 +529,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         Navigator.pop(ctx);
                       },
                       child: Text(
-                        l.settingsApiKeySave,
+                        l.save,
                         style: untisThemeTextStyle(
                           context,
                           fontWeight: FontWeight.w700,
@@ -542,7 +547,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiPromptDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final defaultTemplate = _buildDefaultAiPromptTemplate(l);
     final ctrl = TextEditingController(
       text: aiSystemPromptTemplate.isEmpty
@@ -619,7 +624,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: untisThemeTextStyle(
                           context,
                           fontWeight: FontWeight.w700,
@@ -644,7 +649,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         Navigator.pop(ctx);
                       },
                       child: Text(
-                        l.settingsApiKeySave,
+                        l.save,
                         style: untisThemeTextStyle(
                           context,
                           fontWeight: FontWeight.w700,
@@ -662,7 +667,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _showOnboardingAiVariablesDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedSheet<void>(
       context: context,
       child: Builder(
@@ -736,7 +741,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(
-                      l.settingsApiKeyCancel,
+                      l.cancel,
                       style: untisThemeTextStyle(
                         context,
                         fontWeight: FontWeight.w700,
@@ -765,19 +770,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     mistralApiKey = _onboardingProviderApiKeys['mistral'] ?? '';
     customAiApiKey = _onboardingProviderApiKeys['custom'] ?? '';
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('aiProvider', aiProvider);
-    await prefs.setString('aiModel', aiModel);
-    await prefs.setString('aiCustomCompatibility', aiCustomCompatibility);
-    await prefs.setString('aiCustomBaseUrl', aiCustomBaseUrl);
-    await prefs.setString('aiSystemPromptTemplate', aiSystemPromptTemplate);
-    await prefs.setString('aiLocalModelPath', aiLocalModelPath);
-    await Future.wait([
-      CredentialVault.instance.writeAiApiKey('gemini', geminiApiKey),
-      CredentialVault.instance.writeAiApiKey('openai', openAiApiKey),
-      CredentialVault.instance.writeAiApiKey('mistral', mistralApiKey),
-      CredentialVault.instance.writeAiApiKey('custom', customAiApiKey),
-    ]);
+    final prefs = SettingsStore.instance.preferences;
+    await saveAiProviderPreferences(prefs);
   }
 
   Future<void> _nextPage() async {
@@ -808,7 +802,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _handleLogin() async {
     HapticFeedback.heavyImpact();
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     if (_serverController.text.trim().isEmpty ||
         _schoolController.text.trim().isEmpty ||
@@ -826,45 +820,25 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     schoolName = _schoolController.text;
 
     try {
-      final authResult = await _authenticateUntis(
-        user: _userController.text,
-        password: _passwordController.text,
-        client: 'UntisPlus',
+      final authResult = await _loginRepository.authenticate(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        username: _userController.text,
+        credential: _passwordController.text,
+        clientName: 'UntisPlus',
         requestId: '1',
-        otp: _requiresTwoFactor ? _twoFactorController.text.trim() : null,
+        oneTimeCode: _requiresTwoFactor
+            ? _twoFactorController.text.trim()
+            : null,
         useLoginKey: _useLoginKey,
       );
 
-      if (authResult != null) {
-        if (authResult['requires2fa'] == true) {
-          if (mounted) setState(() => _requiresTwoFactor = true);
-          _showError(l.loginTwoFactorRequired);
-          return;
-        }
+      if (authResult.isSuccess) {
+        sessionID = authResult.sessionId;
+        personId = authResult.personId;
+        personType = authResult.personType;
 
-        if (authResult['otpInvalid'] == true) {
-          if (mounted) setState(() => _requiresTwoFactor = true);
-          _showError(l.loginTwoFactorInvalid);
-          return;
-        }
-
-        sessionID = authResult['sessionId']?.toString() ?? "";
-
-        var rawId = authResult['personId'];
-        var rawType = authResult['personType'];
-
-        if (rawId != null && rawId.toString() != "0") {
-          personId = int.tryParse(rawId.toString()) ?? 0;
-          personType = int.tryParse(rawType.toString()) ?? 5;
-        } else if (authResult['klasseId'] != null) {
-          personId = int.tryParse(authResult['klasseId'].toString()) ?? 0;
-          personType = 1;
-        } else {
-          personId = 0;
-          personType = 5;
-        }
-
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = SettingsStore.instance.preferences;
         await prefs.setString('schoolUrl', schoolUrl);
         await prefs.setString('schoolName', schoolName);
         await prefs.setString('username', _userController.text);
@@ -893,7 +867,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           _nextPage();
         }
       } else {
-        _showError(l.loginFailed);
+        switch (authResult.status) {
+          case WebUntisLoginStatus.requiresTwoFactor:
+            if (mounted) setState(() => _requiresTwoFactor = true);
+            _showError(l.loginTwoFactorRequired);
+            break;
+          case WebUntisLoginStatus.invalidOneTimeCode:
+            if (mounted) setState(() => _requiresTwoFactor = true);
+            _showError(l.loginTwoFactorInvalid);
+            break;
+          case WebUntisLoginStatus.failed:
+            _showError(l.loginFailed);
+            break;
+          case WebUntisLoginStatus.success:
+            break;
+        }
       }
     } catch (e) {
       _showError('${l.loginConnectionError}: $e');
@@ -904,7 +892,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _activateDemoMode() async {
     HapticFeedback.mediumImpact();
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     demoModeNotifier.value = true;
     schoolName = 'demo.school';
     schoolUrl = 'demo.school';
@@ -940,7 +928,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _completeOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await _persistOnboardingAiConfiguration();
 
     await prefs.setBool('onboardingCompleted', true);
@@ -1012,12 +1000,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Future<void> _setBackgroundAnimationStyle(int style) async {
     final normalized = style.clamp(0, 10);
     backgroundAnimationStyleNotifier.value = normalized;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setInt('backgroundAnimationStyle', normalized);
   }
 
   Future<int?> _showBackgroundStylePicker(int currentStyle) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final mq = MediaQuery.of(context);
     final safeViewportHeight =
         mq.size.height -
@@ -1172,7 +1160,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _setBackgroundGyroscopeEnabled(bool enabled) async {
     backgroundGyroscopeNotifier.value = enabled;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setBool('backgroundGyroscope', enabled);
   }
 
@@ -1374,7 +1362,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildLanguageStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     const langs = [
       ('de', 'Deutsch', '🇩🇪'),
       ('en', 'English', '🇬🇧'),
@@ -1416,7 +1404,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           await ensureDateFormattingForLocale(code);
           if (!mounted) return;
           appLocaleNotifier.value = code;
-          final prefs = await SharedPreferences.getInstance();
+          final prefs = SettingsStore.instance.preferences;
           await prefs.setString('appLocale', code);
           unawaited(WidgetService.publishNativeCopy(code));
           unawaited(AlarmService.instance.refreshNativeCopy());
@@ -1489,7 +1477,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildThemeStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
 
     return _StepWrapper(
@@ -1546,7 +1534,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                               onChanged: (nv) async {
                                 backgroundAnimationsNotifier.value = nv;
                                 final prefs =
-                                    await SharedPreferences.getInstance();
+                                    SettingsStore.instance.preferences;
                                 await prefs.setBool('backgroundAnimations', nv);
                               },
                               colors: colors,
@@ -1862,7 +1850,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 onTap: () async {
                   HapticFeedback.selectionClick();
                   themeModeNotifier.value = mode;
-                  final prefs = await SharedPreferences.getInstance();
+                  final prefs = SettingsStore.instance.preferences;
                   await prefs.setInt('themeMode', mode.index);
                 },
                 borderRadius: BorderRadius.circular(14),
@@ -2065,7 +2053,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildLoginStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
 
     Widget content;
@@ -2519,7 +2507,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _continueWithLocalModel() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final model = _selectedLocalModel;
     final path = await _onboardingLocalModelPath(model);
     if (!await _isValidOnboardingLocalModel(path, model)) {
@@ -2527,7 +2515,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       return;
     }
     aiLocalModelPath = path;
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setString('aiLocalModelPath', path);
     _nextPage();
   }
@@ -2643,7 +2631,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     ? OutlinedButton.icon(
                         onPressed: _cancelLocalModelDownload,
                         icon: const Icon(Icons.close_rounded),
-                        label: Text(l.settingsApiKeyCancel),
+                        label: Text(l.cancel),
                       )
                     : FilledButton.tonalIcon(
                         onPressed: downloaded
@@ -2669,7 +2657,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildGeminiStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
     final isCustom = _onboardingAiProvider == 'custom';
     final isLocal = _onboardingAiProvider == 'local';
@@ -2885,7 +2873,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildTutorialStep() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
 
     final features = [
@@ -3087,7 +3075,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildNextBtn([String? lbl, VoidCallback? onTap]) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
 
     return FilledButton(
       onPressed: onTap ?? _nextPage,
@@ -3110,7 +3098,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _searchSchool(String query) async {
     if (query.length < 3) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     setState(() {
       _isSearching = true;
       _searchResults = [];
@@ -3118,30 +3106,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     });
 
     try {
-      final url = Uri.parse('https://mobile.webuntis.com/ms/schoolquery2');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "id": "1",
-          "method": "searchSchool",
-          "params": [
-            {"search": query},
-          ],
-          "jsonrpc": "2.0",
-        }),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['result'] != null && data['result']['schools'] != null) {
-          final list = (data['result']['schools'] as List)
-              .map((e) => SchoolSearchResult.fromJson(e))
-              .toList();
-          if (mounted) setState(() => _searchResults = list);
-        }
-      } else if (mounted) {
-        _showError('${l.loginConnectionError} (${response.statusCode})');
-      }
+      final schools = await _schoolDirectoryRepository.search(query);
+      if (mounted) setState(() => _searchResults = schools);
     } catch (_) {
       if (mounted) _showError(l.loginConnectionError);
     } finally {

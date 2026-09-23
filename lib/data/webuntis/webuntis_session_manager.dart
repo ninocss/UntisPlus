@@ -1,9 +1,8 @@
 import 'dart:async';
 
-import 'package:otp_auth/otp_auth.dart';
-
 import '../../core/sync_state.dart';
 import '../security/credential_vault.dart';
+import 'webuntis_auth.dart';
 import 'webuntis_client.dart';
 
 class WebUntisAccountLogin {
@@ -102,9 +101,10 @@ class WebUntisSessionManager {
       );
     }
 
-    final session = credentials.credentialMode == 'loginKey'
-        ? await _authenticateWithLoginKey(account, credentials.password)
-        : await _authenticateWithPassword(account, credentials.password);
+    final session = await authenticateWithCredentials(
+      account: account,
+      credentials: credentials,
+    );
     await _writeCredentials(
       account.accountId,
       AccountCredentials(
@@ -117,10 +117,26 @@ class WebUntisSessionManager {
     return session;
   }
 
+  /// Authenticates explicit credentials without reading or mutating storage.
+  /// This is used by background compatibility paths that still receive legacy
+  /// credentials from their platform payload.
+  Future<WebUntisSession> authenticateWithCredentials({
+    required WebUntisAccountLogin account,
+    required AccountCredentials credentials,
+    String passwordClient = 'UntisPlus',
+  }) => credentials.credentialMode == 'loginKey'
+      ? _authenticateWithLoginKey(account, credentials.password)
+      : _authenticateWithPassword(
+          account,
+          credentials.password,
+          clientName: passwordClient,
+        );
+
   Future<WebUntisSession> _authenticateWithPassword(
     WebUntisAccountLogin account,
-    String password,
-  ) async {
+    String password, {
+    String clientName = 'UntisPlus',
+  }) async {
     final response = await _client.rpc(
       context: _context(account, ''),
       method: 'authenticate',
@@ -128,7 +144,7 @@ class WebUntisSessionManager {
       params: {
         'user': account.username,
         'password': password,
-        'client': 'UntisPlus',
+        'client': clientName,
       },
     );
     final result = response['result'];
@@ -152,7 +168,7 @@ class WebUntisSessionManager {
     WebUntisAccountLogin account,
     String loginKey,
   ) async {
-    final secret = _normalizeSecret(loginKey);
+    final secret = normalizeWebUntisSecret(loginKey);
     if (secret.isEmpty) {
       throw const WebUntisFailure(
         WebUntisFailureKind.authentication,
@@ -169,19 +185,13 @@ class WebUntisSessionManager {
           'auth': {
             'clientTime': DateTime.now().millisecondsSinceEpoch,
             'user': account.username,
-            'otp': TOTP(
-              secret: secret,
-              digits: 6,
-              algorithm: OTPAlgorithm.sha1,
-              period: 30,
-            ).now(),
+            'otp': generateWebUntisOtp(secret),
           },
         },
       ],
     );
     final cookie = exchange.headers['set-cookie'] ?? '';
-    final sessionId =
-        RegExp(r'JSESSIONID=([^;]+)').firstMatch(cookie)?.group(1) ?? '';
+    final sessionId = webUntisSessionIdFromCookie(cookie);
     if (sessionId.isEmpty) {
       throw const WebUntisFailure(
         WebUntisFailureKind.authentication,
@@ -206,22 +216,4 @@ class WebUntisSessionManager {
 
   static int _asInt(dynamic value, {required int fallback}) =>
       int.tryParse(value?.toString() ?? '') ?? fallback;
-
-  static String _normalizeSecret(String value) {
-    final trimmed = value.trim();
-    if (trimmed.startsWith('otpauth://')) {
-      return OTPUri.extractSecret(
-        trimmed,
-      ).trim().replaceAll(' ', '').toUpperCase();
-    }
-    if (trimmed.startsWith('untis://')) {
-      final uri = Uri.tryParse(trimmed);
-      final extracted =
-          uri?.queryParameters['key'] ?? uri?.queryParameters['secret'] ?? '';
-      if (extracted.isNotEmpty) {
-        return extracted.trim().replaceAll(' ', '').toUpperCase();
-      }
-    }
-    return trimmed.replaceAll(' ', '').toUpperCase();
-  }
 }

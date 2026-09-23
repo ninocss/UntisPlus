@@ -1,105 +1,5 @@
 part of '../main.dart';
 
-class ChangelogData {
-  final String markdown;
-  final String version;
-  final DateTime? publishedAt;
-  final String? releaseUrl;
-
-  const ChangelogData({
-    required this.markdown,
-    required this.version,
-    this.publishedAt,
-    this.releaseUrl,
-  });
-
-  factory ChangelogData.fromJson(Map<String, dynamic> json, AppL10n l) {
-    return ChangelogData(
-      markdown: (json['markdown'] ?? '').toString().trim().isEmpty
-          ? l.changelogNoData
-          : json['markdown'].toString(),
-      version: (json['version'] ?? appVersion).toString(),
-      publishedAt: DateTime.tryParse(
-        (json['published_at'] ?? json['generated_at'] ?? '').toString(),
-      ),
-      releaseUrl: (json['release_url'] ?? '').toString().trim().isEmpty
-          ? null
-          : json['release_url'].toString(),
-    );
-  }
-
-  factory ChangelogData.fromGithubRelease(
-    Map<String, dynamic> json,
-    AppL10n l,
-  ) {
-    return ChangelogData(
-      markdown: (json['body'] ?? '').toString().trim().isEmpty
-          ? l.changelogNoData
-          : json['body'].toString(),
-      version: (json['tag_name'] ?? json['name'] ?? appVersion).toString(),
-      publishedAt: DateTime.tryParse(
-        (json['published_at'] ?? json['created_at'] ?? '').toString(),
-      ),
-      releaseUrl: (json['html_url'] ?? '').toString().trim().isEmpty
-          ? null
-          : json['html_url'].toString(),
-    );
-  }
-}
-
-class ChangelogService {
-  static const _releaseUrl =
-      'https://api.github.com/repos/ninocss/UntisPlus/releases/latest';
-  static const _legacyUrl =
-      'https://raw.githubusercontent.com/ninocss/UntisPlus/main/changelog.json';
-
-  Future<ChangelogData> fetchChangelog(AppL10n l) async {
-    try {
-      final response = await http.get(
-        Uri.parse(_releaseUrl),
-        headers: const {
-          'Accept': 'application/vnd.github+json',
-          'User-Agent': 'UntisPlus changelog',
-        },
-      );
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        if (decoded is Map<String, dynamic>) {
-          final data = ChangelogData.fromGithubRelease(decoded, l);
-          if (data.markdown != l.changelogNoData) return data;
-        }
-      }
-    } catch (_) {
-      // A bundled changelog keeps this screen useful while offline.
-    }
-    return _loadFallback(l);
-  }
-
-  Future<ChangelogData> _loadFallback(AppL10n l) async {
-    try {
-      final bundled = await rootBundle.loadString('changelog.json');
-      final decoded = jsonDecode(bundled);
-      if (decoded is Map<String, dynamic>) {
-        return ChangelogData.fromJson(decoded, l);
-      }
-    } catch (_) {
-      // Older app packages did not bundle changelog.json.
-    }
-
-    try {
-      final response = await http.get(Uri.parse(_legacyUrl));
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        if (decoded is Map<String, dynamic>) {
-          return ChangelogData.fromJson(decoded, l);
-        }
-      }
-    } catch (_) {}
-
-    return ChangelogData(markdown: l.changelogNoData, version: appVersion);
-  }
-}
-
 Future<void> showChangelogSheet(BuildContext context) {
   return showUntisModalBottomSheet(
     context: context,
@@ -121,14 +21,20 @@ class ChangelogWidget extends StatefulWidget {
 }
 
 class _ChangelogWidgetState extends State<ChangelogWidget> {
-  final ChangelogService _service = ChangelogService();
+  final ChangelogRepository _repository = ChangelogRepository();
   late Future<ChangelogData> _changelogFuture;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final l = AppL10n.of(appLocaleNotifier.value);
-    _changelogFuture = _service.fetchChangelog(l);
+    final l = appL10nFor(appLocaleNotifier.value);
+    _changelogFuture = _repository.fetch(l10n: l, currentVersion: appVersion);
+  }
+
+  @override
+  void dispose() {
+    _repository.close();
+    super.dispose();
   }
 
   @override
@@ -176,7 +82,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          AppL10n.of(appLocaleNotifier.value).changelogTitle,
+                          appL10nFor(appLocaleNotifier.value).changelogTitle,
                           style: GoogleFonts.outfit(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
@@ -231,7 +137,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              AppL10n.of(
+                              appL10nFor(
                                 appLocaleNotifier.value,
                               ).changelogLoadError,
                               style: GoogleFonts.outfit(
@@ -249,14 +155,15 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                             ElevatedButton.icon(
                               onPressed: () {
                                 setState(() {
-                                  _changelogFuture = _service.fetchChangelog(
-                                    AppL10n.of(appLocaleNotifier.value),
+                                  _changelogFuture = _repository.fetch(
+                                    l10n: appL10nFor(appLocaleNotifier.value),
+                                    currentVersion: appVersion,
                                   );
                                 });
                               },
                               icon: const Icon(Icons.refresh_rounded),
                               label: Text(
-                                AppL10n.of(
+                                appL10nFor(
                                   appLocaleNotifier.value,
                                 ).changelogRetry,
                               ),
@@ -268,7 +175,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                   }
 
                   final data = snapshot.data!;
-                  final locale = switch (AppL10n.of(
+                  final locale = switch (appL10nFor(
                     appLocaleNotifier.value,
                   ).locale) {
                     'en' => 'en_US',

@@ -15,11 +15,16 @@ class SchoolSearchResult {
 
   factory SchoolSearchResult.fromJson(Map<String, dynamic> json) {
     return SchoolSearchResult(
-      id: json['schoolId'] ?? 0,
-      loginName: json['loginName'] ?? '',
-      displayName: json['displayName'] ?? '',
-      address: json['address'] ?? '',
-      serverUrl: json['server'] ?? json['serverUrl'] ?? '',
+      id: switch (json['schoolId']) {
+        final int value => value,
+        final num value => value.toInt(),
+        final Object value => int.tryParse(value.toString()) ?? 0,
+        null => 0,
+      },
+      loginName: (json['loginName'] ?? '').toString().trim(),
+      displayName: (json['displayName'] ?? '').toString().trim(),
+      address: (json['address'] ?? '').toString().trim(),
+      serverUrl: (json['server'] ?? json['serverUrl'] ?? '').toString().trim(),
     );
   }
 }

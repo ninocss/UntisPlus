@@ -8,15 +8,41 @@ class CustomWidgetEditorPage extends StatefulWidget {
 }
 
 class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
-  static const _blocks = <String, (String, IconData)>{
-    'current': ('blockCurrent', Icons.play_circle_fill_rounded),
-    'next': ('blockNext', Icons.skip_next_rounded),
-    'schedule': ('blockSchedule', Icons.view_agenda_rounded),
-    'homework': ('blockHomework', Icons.assignment_rounded),
-    'exams': ('blockExams', Icons.event_note_rounded),
-    'notices': ('blockNotices', Icons.markunread_rounded),
-    'account': ('blockAccount', Icons.account_circle_rounded),
-    'status': ('blockStatus', Icons.schedule_rounded),
+  static const _blocks = <String, IconData>{
+    'current': Icons.play_circle_fill_rounded,
+    'next': Icons.skip_next_rounded,
+    'schedule': Icons.view_agenda_rounded,
+    'homework': Icons.assignment_rounded,
+    'exams': Icons.event_note_rounded,
+    'notices': Icons.markunread_rounded,
+    'account': Icons.account_circle_rounded,
+    'status': Icons.schedule_rounded,
+  };
+
+  String _blockLabel(AppL10n l, String block) => switch (block) {
+    'current' => l.blockCurrent,
+    'next' => l.blockNext,
+    'schedule' => l.blockSchedule,
+    'homework' => l.blockHomework,
+    'exams' => l.blockExams,
+    'notices' => l.blockNotices,
+    'account' => l.blockAccount,
+    'status' => l.blockStatus,
+    _ => block,
+  };
+
+  String _colorChannelLabel(AppL10n l, String channel) => switch (channel) {
+    'colorRed' => l.colorRed,
+    'colorGreen' => l.colorGreen,
+    'colorBlue' => l.colorBlue,
+    _ => channel,
+  };
+
+  String _editorColorLabel(AppL10n l, String field) => switch (field) {
+    'editorBackground' => l.editorBackground,
+    'editorAccent' => l.editorAccent,
+    'editorText' => l.editorText,
+    _ => field,
   };
 
   List<WidgetConfiguration> _configurations = const [];
@@ -47,7 +73,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   );
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     final raw = prefs.getString(WidgetService.configurationsKey);
     final loaded = <WidgetConfiguration>[];
     try {
@@ -64,7 +90,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     if (loaded.isEmpty) {
       loaded.add(
         _newConfiguration(
-          name: AppL10n.of(appLocaleNotifier.value).ui('editorDefaultName'),
+          name: appL10nFor(appLocaleNotifier.value).editorDefaultName,
         ),
       );
     }
@@ -83,12 +109,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
 
   WidgetConfiguration _newConfiguration({String? name}) => WidgetConfiguration(
     id: DateTime.now().microsecondsSinceEpoch.toString(),
-    name: name ?? AppL10n.of(appLocaleNotifier.value).ui('editorNewWidget'),
+    name: name ?? appL10nFor(appLocaleNotifier.value).editorNewWidget,
     accountId: activeUntisAccountId ?? '',
   );
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setString(
       WidgetService.configurationsKey,
       jsonEncode(_configurations.map((item) => item.toJson()).toList()),
@@ -245,7 +271,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     required int current,
     required ValueChanged<int> onChanged,
   }) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     var color = Color(current);
     await _showUnifiedSheet<void>(
       context: context,
@@ -269,7 +295,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               ])
                 Row(
                   children: [
-                    SizedBox(width: 42, child: Text(l.ui(channel))),
+                    SizedBox(
+                      width: 42,
+                      child: Text(_colorChannelLabel(l, channel)),
+                    ),
                     Expanded(
                       child: Slider(
                         value: channel == 'colorRed'
@@ -302,7 +331,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   onChanged(color.toARGB32());
                   Navigator.pop(context);
                 },
-                child: Text(l.ui('editorApplyColor')),
+                child: Text(l.editorApplyColor),
               ),
             ],
           ),
@@ -312,20 +341,20 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   }
 
   String _content(WidgetConfiguration config, String block) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     switch (block) {
       case 'current':
-        return l.ui('previewCurrent');
+        return l.previewCurrent;
       case 'next':
-        return l.ui('previewNext');
+        return l.previewNext;
       case 'schedule':
-        return l.ui('previewSchedule');
+        return l.previewSchedule;
       case 'homework':
-        return l.ui('previewHomework');
+        return l.previewHomework;
       case 'exams':
-        return l.ui('previewExams');
+        return l.previewExams;
       case 'notices':
-        return l.ui('previewNotices');
+        return l.previewNotices;
       case 'account':
         return untisAccountsNotifier.value
                 .where((item) => item.id == config.accountId)
@@ -333,7 +362,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 ?.label ??
             'Untis+';
       case 'status':
-        return l.ui('previewStatus');
+        return l.previewStatus;
       default:
         return '';
     }
@@ -372,7 +401,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   children: [
                     if (config.showIcons) ...[
                       Icon(
-                        _blocks[block]?.$2 ?? Icons.widgets_rounded,
+                        _blocks[block] ?? Icons.widgets_rounded,
                         color: Color(config.accentColor),
                         size: 18,
                       ),
@@ -403,7 +432,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   }
 
   Future<void> _pin() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (kIsWeb || !Platform.isAndroid || _pinning) return;
     setState(() => _pinning = true);
     final ok = await WidgetService.requestPinCustomWidget(
@@ -414,7 +443,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            ok ? l.ui('widgetPickerSent') : l.ui('widgetPickerHint'),
+            ok ? l.widgetPickerSent : l.widgetPickerHint,
           ),
         ),
       );
@@ -434,7 +463,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     final config = _selected;
     final copy = WidgetConfiguration(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
-      name: '${config.name} ${l.ui('editorCopySuffix')}',
+      name: '${config.name} ${l.editorCopySuffix}',
       accountId: config.accountId,
       layout: config.layout,
       blocks: config.blocks,
@@ -579,7 +608,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
   }
 
   Widget _previewStage(BuildContext context, WidgetConfiguration config) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final accent = Color(config.accentColor);
     final isSystem = config.colorMode == 'system';
@@ -627,8 +656,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       const SizedBox(height: 2),
                       Text(
                         isSystem
-                            ? l.ui('widgetSystemColors')
-                            : l.ui('widgetCustomColors'),
+                            ? l.widgetSystemColors
+                            : l.widgetCustomColors,
                         style: GoogleFonts.outfit(
                           fontSize: 12.5,
                           color: cs.onSurfaceVariant,
@@ -646,10 +675,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   ),
                   child: Text(
                     config.layout == 'compact'
-                        ? l.ui('editorCompact')
+                        ? l.editorCompact
                         : config.layout == 'timeline'
-                        ? l.ui('editorTimeline')
-                        : l.ui('editorStacked'),
+                        ? l.editorTimeline
+                        : l.editorStacked,
                     style: GoogleFonts.outfit(
                       color: accent,
                       fontWeight: FontWeight.w700,
@@ -796,9 +825,9 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       Icons.palette_rounded,
     ];
     final labels = [
-      l.ui('editorYourWidgets'),
-      l.ui('editorContentLayout'),
-      l.ui('editorDesign'),
+      l.editorYourWidgets,
+      l.editorContentLayout,
+      l.editorDesign,
     ];
     return Container(
       padding: const EdgeInsets.all(4),
@@ -870,7 +899,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     final panels = <Widget>[
       _editorPanel(
         context: context,
-        title: l.ui('editorYourWidgets'),
+        title: l.editorYourWidgets,
         icon: Icons.dashboard_customize_rounded,
         subtitle: config.name,
         child: Column(
@@ -905,7 +934,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   child: OutlinedButton.icon(
                     onPressed: _createConfiguration,
                     icon: const Icon(Icons.add_rounded),
-                    label: Text(l.ui('editorNew')),
+                    label: Text(l.editorNew),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -913,12 +942,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   child: OutlinedButton.icon(
                     onPressed: () => _duplicateSelected(l),
                     icon: const Icon(Icons.copy_rounded),
-                    label: Text(l.ui('editorDuplicate')),
+                    label: Text(l.editorDuplicate),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
-                  tooltip: l.ui('alarmDelete'),
+                  tooltip: l.delete,
                   onPressed: _configurations.length > 1 ? _deleteSelected : null,
                   icon: const Icon(Icons.delete_outline_rounded),
                 ),
@@ -930,7 +959,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       const SizedBox(height: 14),
       _editorPanel(
         context: context,
-        title: l.ui('editorContentLayout'),
+        title: l.editorContentLayout,
         icon: Icons.view_quilt_rounded,
         accent: cs.tertiary,
         child: Column(
@@ -940,7 +969,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               key: ValueKey('widget-name-${config.id}'),
               initialValue: config.name,
               decoration: InputDecoration(
-                labelText: l.ui('editorName'),
+                labelText: l.editorName,
                 prefixIcon: const Icon(Icons.edit_rounded),
                 filled: true,
               ),
@@ -956,7 +985,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                     ? config.accountId
                     : null,
                 decoration: InputDecoration(
-                  labelText: l.ui('widgetAccount'),
+                  labelText: l.widgetAccount,
                   prefixIcon: const Icon(Icons.account_circle_rounded),
                   filled: true,
                 ),
@@ -984,17 +1013,17 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 ButtonSegment(
                   value: 'compact',
                   icon: const Icon(Icons.view_agenda_outlined),
-                  label: Text(l.ui('editorCompact')),
+                  label: Text(l.editorCompact),
                 ),
                 ButtonSegment(
                   value: 'stacked',
                   icon: const Icon(Icons.view_stream_rounded),
-                  label: Text(l.ui('editorStacked')),
+                  label: Text(l.editorStacked),
                 ),
                 ButtonSegment(
                   value: 'timeline',
                   icon: const Icon(Icons.timeline_rounded),
-                  label: Text(l.ui('editorTimeline')),
+                  label: Text(l.editorTimeline),
                 ),
               ],
               selected: {config.layout},
@@ -1006,7 +1035,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             ),
             const SizedBox(height: 14),
             Text(
-              l.ui('editorContentLayout'),
+              l.editorContentLayout,
               style: GoogleFonts.outfit(
                 fontWeight: FontWeight.w800,
                 color: cs.onSurfaceVariant,
@@ -1020,8 +1049,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               children: _blocks.entries.map((entry) {
                 final active = config.blocks.contains(entry.key);
                 return FilterChip(
-                  avatar: Icon(entry.value.$2, size: 16),
-                  label: Text(l.ui(entry.value.$1)),
+                  avatar: Icon(entry.value, size: 16),
+                  label: Text(_blockLabel(l, entry.key)),
                   selected: active,
                   onSelected: (selected) {
                     final blocks = [...config.blocks];
@@ -1054,13 +1083,13 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: Icon(
-                      _blocks[entry.value]?.$2,
+                      _blocks[entry.value],
                       size: 18,
                       color: cs.tertiary,
                     ),
                   ),
                   title: Text(
-                    l.ui(_blocks[entry.value]?.$1 ?? entry.value),
+                    _blockLabel(l, entry.value),
                     style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                   ),
                   trailing: Row(
@@ -1100,7 +1129,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       const SizedBox(height: 14),
       _editorPanel(
         context: context,
-        title: l.ui('editorDesign'),
+        title: l.editorDesign,
         icon: Icons.palette_rounded,
         accent: cs.secondary,
         child: Column(
@@ -1138,12 +1167,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 ButtonSegment(
                   value: 'system',
                   icon: const Icon(Icons.auto_awesome_rounded),
-                  label: Text(l.ui('widgetSystemColors')),
+                  label: Text(l.widgetSystemColors),
                 ),
                 ButtonSegment(
                   value: 'custom',
                   icon: const Icon(Icons.color_lens_rounded),
-                  label: Text(l.ui('widgetCustomColors')),
+                  label: Text(l.widgetCustomColors),
                 ),
               ],
               selected: {config.colorMode},
@@ -1204,7 +1233,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                                 ),
                                 const SizedBox(height: 7),
                                 Text(
-                                  l.ui(item.$1),
+                                  _editorColorLabel(l, item.$1),
                                   textAlign: TextAlign.center,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -1227,14 +1256,14 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               contentPadding: EdgeInsets.zero,
               value: config.showIcons,
               title: Text(
-                l.ui('editorShowIcons'),
+                l.editorShowIcons,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
               ),
               onChanged: (value) =>
                   _replace(config.copyWith(showIcons: value)),
             ),
             _valueSlider(
-              label: l.ui('editorTransparency'),
+              label: l.editorTransparency,
               value: config.opacity,
               min: .35,
               max: 1,
@@ -1243,7 +1272,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   _replace(config.copyWith(opacity: value)),
             ),
             _valueSlider(
-              label: l.ui('editorRounding'),
+              label: l.editorRounding,
               value: config.cornerRadius,
               min: 0,
               max: 40,
@@ -1252,7 +1281,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   _replace(config.copyWith(cornerRadius: value)),
             ),
             _valueSlider(
-              label: l.ui('editorFontSize'),
+              label: l.editorFontSize,
               value: config.textScale,
               min: .75,
               max: 1.35,
@@ -1282,7 +1311,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 )
               : const Icon(Icons.add_to_home_screen_rounded),
           label: Text(
-            l.ui('editorAddWidget'),
+            l.editorAddWidget,
             style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
           ),
         ),
@@ -1291,10 +1320,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
         const SizedBox(height: 14),
         _editorPanel(
           context: context,
-          title: l.ui('editorAddWidget'),
+          title: l.editorAddWidget,
           icon: Icons.ios_share_rounded,
           child: Text(
-            l.ui('editorIosHint'),
+            l.editorIosHint,
             style: GoogleFonts.outfit(color: cs.onSurfaceVariant),
           ),
         ),
@@ -1304,10 +1333,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_loading) {
       return Scaffold(
-        appBar: _settingsHeaderAppBar(context, l.ui('editor')),
+        appBar: _settingsHeaderAppBar(context, l.editor),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -1316,7 +1345,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     return Scaffold(
       appBar: _settingsHeaderAppBar(
         context,
-        l.ui('editor'),
+        l.editor,
         actions: [
           IconButton(
             tooltip: 'Undo',
@@ -1339,12 +1368,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               MenuItemButton(
                 leadingIcon: const Icon(Icons.add_rounded),
                 onPressed: _createConfiguration,
-                child: Text(l.ui('editorNew')),
+                child: Text(l.editorNew),
               ),
               MenuItemButton(
                 leadingIcon: const Icon(Icons.copy_rounded),
                 onPressed: () => _duplicateSelected(l),
-                child: Text(l.ui('editorDuplicate')),
+                child: Text(l.editorDuplicate),
               ),
               MenuItemButton(
                 leadingIcon: const Icon(Icons.restart_alt_rounded),

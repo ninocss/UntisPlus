@@ -39,8 +39,10 @@ UntisAccountStore _accountStore(SharedPreferences prefs) => UntisAccountStore(
   credentials: SecureAccountCredentialStore(CredentialVault.instance),
 );
 
-Future<void> _copyLegacyAccountData(SharedPreferences prefs, String accountId) =>
-    _accountStore(prefs).copyLegacyPersonalData(accountId);
+Future<void> _copyLegacyAccountData(
+  SharedPreferences prefs,
+  String accountId,
+) => _accountStore(prefs).copyLegacyPersonalData(accountId);
 
 Future<void> _syncActiveAccountDataForBackground(
   SharedPreferences prefs,
@@ -191,7 +193,7 @@ Future<void> saveOrUpdateUntisAccount({
   required String password,
   required String credentialMode,
 }) async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
   final matchingIndex = accounts.indexWhere(
     (account) =>
@@ -225,7 +227,7 @@ Future<void> saveOrUpdateUntisAccount({
 }
 
 Future<void> switchUntisAccount(String accountId) async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
   final index = accounts.indexWhere((account) => account.id == accountId);
   if (index < 0) return;
@@ -246,7 +248,7 @@ Future<void> switchUntisAccount(String accountId) async {
 }
 
 Future<bool> removeUntisAccount(String accountId) async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   final accounts = _readUntisAccounts(
     prefs,
   ).where((account) => account.id != accountId).toList();
@@ -324,6 +326,40 @@ double aiTemperature = 0.2;
 int aiMaxTokens = 2600;
 double aiTopP = 0.95;
 String aiPersona = 'helpful';
+
+Future<void> loadAiPreferences(SharedPreferences prefs) async {
+  aiProvider = _normalizeAiProvider(
+    prefs.getString('aiProvider') ?? aiProvider,
+  );
+  aiCustomCompatibility = _normalizeAiCustomCompatibility(
+    prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
+  );
+  aiModel = prefs.getString('aiModel') ?? aiModel;
+  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
+  aiSystemPromptTemplate =
+      prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
+  aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
+  aiTemperature = prefs.getDouble('aiTemperature') ?? aiTemperature;
+  aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
+  aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
+  aiPersona = prefs.getString('aiPersona') ?? aiPersona;
+  await loadSecureAiApiKeys(prefs);
+}
+
+Future<void> saveAiProviderPreferences(SharedPreferences prefs) async {
+  await Future.wait([
+    prefs.setString('aiProvider', aiProvider),
+    prefs.setString('aiModel', aiModel),
+    prefs.setString('aiCustomCompatibility', aiCustomCompatibility),
+    prefs.setString('aiCustomBaseUrl', aiCustomBaseUrl),
+    prefs.setString('aiSystemPromptTemplate', aiSystemPromptTemplate),
+    prefs.setString('aiLocalModelPath', aiLocalModelPath),
+    CredentialVault.instance.writeAiApiKey('gemini', geminiApiKey),
+    CredentialVault.instance.writeAiApiKey('openai', openAiApiKey),
+    CredentialVault.instance.writeAiApiKey('mistral', mistralApiKey),
+    CredentialVault.instance.writeAiApiKey('custom', customAiApiKey),
+  ]);
+}
 
 const List<String> kSupportedAiProviders = [
   'gemini',
@@ -560,15 +596,12 @@ final ValueNotifier<bool> backgroundGyroscopeNotifier = ValueNotifier(false);
 final ValueNotifier<bool> progressivePushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> dailyBriefingPushNotifier = ValueNotifier(true);
 final ValueNotifier<bool> importantChangesPushNotifier = ValueNotifier(true);
-
-/// Per-category filters for the important-changes notification (#138).
 final ValueNotifier<bool> notifyChangeCancellationsNotifier = ValueNotifier(
   true,
 );
 final ValueNotifier<bool> notifyChangeRoomNotifier = ValueNotifier(true);
 final ValueNotifier<bool> notifyChangeTeacherNotifier = ValueNotifier(true);
 final ValueNotifier<bool> notifyChangeOtherNotifier = ValueNotifier(true);
-
 final ValueNotifier<String?> pendingTimetableActionNotifier = ValueNotifier(
   null,
 );
@@ -577,10 +610,6 @@ final ValueNotifier<String?> pendingTimetableCurrentLessonNotifier =
 final ValueNotifier<String?> pendingTimetableNextLessonNotifier = ValueNotifier(
   null,
 );
-
-/// Deep link payload for a change notification tap: the changed lesson's
-/// date (yyyyMMdd) and start time, consumed by the timetable page to jump to
-/// that day and briefly highlight the lesson tile.
 final ValueNotifier<int?> pendingChangeHighlightDateNotifier = ValueNotifier(
   null,
 );
@@ -669,48 +698,36 @@ final ValueNotifier<List<Map<String, dynamic>>> customExamsNotifier =
 final ValueNotifier<List<Map<String, dynamic>>> customGradesNotifier =
     ValueNotifier(const []);
 
+List<Map<String, dynamic>> _decodeStoredMapList(List<String> values) => values
+    .map((value) {
+      try {
+        return Map<String, dynamic>.from(jsonDecode(value) as Map);
+      } catch (_) {
+        return <String, dynamic>{};
+      }
+    })
+    .where((value) => value.isNotEmpty)
+    .toList(growable: false);
+
+void _loadCustomList(
+  SharedPreferences prefs,
+  String field,
+  ValueNotifier<List<Map<String, dynamic>>> notifier,
+) {
+  notifier.value = _decodeStoredMapList(
+    prefs.getStringList(_accountDataKey(field)) ?? const [],
+  );
+}
+
 Future<void> loadCustomData() async {
-  final prefs = await SharedPreferences.getInstance();
-
-  final rawHw = prefs.getStringList(_accountDataKey('customHomework')) ?? [];
-  customHomeworkNotifier.value = rawHw
-      .map((e) {
-        try {
-          return Map<String, dynamic>.from(jsonDecode(e) as Map);
-        } catch (_) {
-          return <String, dynamic>{};
-        }
-      })
-      .where((e) => e.isNotEmpty)
-      .toList();
-
-  final rawExams = prefs.getStringList(_accountDataKey('customExams')) ?? [];
-  customExamsNotifier.value = rawExams
-      .map((e) {
-        try {
-          return Map<String, dynamic>.from(jsonDecode(e) as Map);
-        } catch (_) {
-          return <String, dynamic>{};
-        }
-      })
-      .where((e) => e.isNotEmpty)
-      .toList();
-
-  final rawGrades = prefs.getStringList(_accountDataKey('customGrades')) ?? [];
-  customGradesNotifier.value = rawGrades
-      .map((e) {
-        try {
-          return Map<String, dynamic>.from(jsonDecode(e) as Map);
-        } catch (_) {
-          return <String, dynamic>{};
-        }
-      })
-      .where((e) => e.isNotEmpty)
-      .toList();
+  final prefs = SettingsStore.instance.preferences;
+  _loadCustomList(prefs, 'customHomework', customHomeworkNotifier);
+  _loadCustomList(prefs, 'customExams', customExamsNotifier);
+  _loadCustomList(prefs, 'customGrades', customGradesNotifier);
 }
 
 Future<void> loadAccountPersonalData() async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await loadCustomData();
   hiddenSubjectsNotifier.value =
       (prefs.getStringList(_accountDataKey('hiddenSubjects')) ?? const [])
@@ -732,40 +749,37 @@ Future<void> loadAccountPersonalData() async {
   }
 }
 
-Future<void> saveCustomHomework(List<Map<String, dynamic>> list) async {
-  customHomeworkNotifier.value = List.from(list);
-  final prefs = await SharedPreferences.getInstance();
+Future<void> _saveCustomList(
+  String field,
+  ValueNotifier<List<Map<String, dynamic>>> notifier,
+  List<Map<String, dynamic>> values,
+) async {
+  notifier.value = List<Map<String, dynamic>>.from(values);
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setStringList(
-    _accountDataKey('customHomework'),
-    list.map((e) => jsonEncode(e)).toList(),
+    _accountDataKey(field),
+    values.map(jsonEncode).toList(growable: false),
   );
 }
 
-Future<void> saveCustomExams(List<Map<String, dynamic>> list) async {
-  customExamsNotifier.value = List.from(list);
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList(
-    _accountDataKey('customExams'),
-    list.map((e) => jsonEncode(e)).toList(),
-  );
-}
+Future<void> saveCustomHomework(List<Map<String, dynamic>> list) =>
+    _saveCustomList('customHomework', customHomeworkNotifier, list);
 
-Future<void> saveCustomGrades(List<Map<String, dynamic>> list) async {
-  customGradesNotifier.value = List.from(list);
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList(
-    _accountDataKey('customGrades'),
-    list.map((e) => jsonEncode(e)).toList(),
-  );
-}
+Future<void> saveCustomExams(List<Map<String, dynamic>> list) =>
+    _saveCustomList('customExams', customExamsNotifier, list);
+
+Future<void> saveCustomGrades(List<Map<String, dynamic>> list) =>
+    _saveCustomList('customGrades', customGradesNotifier, list);
 
 final ValueNotifier<Set<String>> hiddenSubjectsNotifier = ValueNotifier({});
 
-Future<void> _hideSubject(String key) async {
-  if (key.isEmpty) return;
-  final updated = Set<String>.from(hiddenSubjectsNotifier.value)..add(key);
+Future<void> _updateHiddenSubjects(
+  void Function(Set<String> values) update,
+) async {
+  final updated = Set<String>.from(hiddenSubjectsNotifier.value);
+  update(updated);
   hiddenSubjectsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setStringList(
     _accountDataKey('hiddenSubjects'),
     updated.toList(),
@@ -773,16 +787,12 @@ Future<void> _hideSubject(String key) async {
   await _syncActiveAccountDataForBackground(prefs);
 }
 
-Future<void> _unhideSubject(String key) async {
-  final updated = Set<String>.from(hiddenSubjectsNotifier.value)..remove(key);
-  hiddenSubjectsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setStringList(
-    _accountDataKey('hiddenSubjects'),
-    updated.toList(),
-  );
-  await _syncActiveAccountDataForBackground(prefs);
-}
+Future<void> _hideSubject(String key) => key.isEmpty
+    ? Future.value()
+    : _updateHiddenSubjects((values) => values.add(key));
+
+Future<void> _unhideSubject(String key) =>
+    _updateHiddenSubjects((values) => values.remove(key));
 
 final ValueNotifier<Map<String, int>> subjectColorsNotifier = ValueNotifier({});
 
@@ -801,32 +811,27 @@ final ValueNotifier<Map<int, List<dynamic>>> currentWeekDataNotifier =
 final ValueNotifier<int> unreadTimetableChangesNotifier = ValueNotifier(0);
 
 /// Number of unread inbox messages since the user last opened the Info tab.
-/// The source of truth is a per-account seen-id watermark persisted through
-/// OfflineCacheStore and refreshed by `SchoolNotificationsPage`.
 final ValueNotifier<int> unreadInboxMessagesNotifier = ValueNotifier(0);
 
-Future<void> _setSubjectColor(String key, int colorValue) async {
-  if (key.isEmpty) return;
-  final updated = Map<String, int>.from(subjectColorsNotifier.value)
-    ..[key] = colorValue;
+Future<void> _updateSubjectColors(
+  void Function(Map<String, int> values) update,
+) async {
+  final updated = Map<String, int>.from(subjectColorsNotifier.value);
+  update(updated);
   subjectColorsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setString(
     _accountDataKey('subjectColors'),
     jsonEncode(Map<String, dynamic>.from(updated)),
   );
 }
 
-Future<void> _clearSubjectColor(String key) async {
-  final updated = Map<String, int>.from(subjectColorsNotifier.value)
-    ..remove(key);
-  subjectColorsNotifier.value = updated;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(
-    _accountDataKey('subjectColors'),
-    jsonEncode(Map<String, dynamic>.from(updated)),
-  );
-}
+Future<void> _setSubjectColor(String key, int colorValue) => key.isEmpty
+    ? Future.value()
+    : _updateSubjectColors((values) => values[key] = colorValue);
+
+Future<void> _clearSubjectColor(String key) =>
+    _updateSubjectColors((values) => values.remove(key));
 
 String _formatUntisTime(String time) {
   return formatUntisTime(time);
@@ -847,7 +852,7 @@ Future<bool> _reAuthenticate() {
 }
 
 Future<bool> _performReAuthentication() async {
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   final activeId = activeUntisAccountId;
   final account = activeId == null
       ? null
@@ -859,17 +864,19 @@ Future<bool> _performReAuthentication() async {
   final useLoginKey = account?.credentialMode == 'loginKey';
   if (user.isEmpty || pass.isEmpty) return false;
 
+  final loginRepository = WebUntisLoginRepository();
   try {
-    final authResult = await _authenticateUntis(
-      user: user,
-      password: pass,
-      client: 'UntisPlus',
+    final authResult = await loginRepository.authenticate(
+      schoolUrl: account?.schoolUrl ?? schoolUrl,
+      schoolName: account?.schoolName ?? schoolName,
+      username: user,
+      credential: pass,
+      clientName: 'UntisPlus',
       requestId: 'relogin',
       useLoginKey: useLoginKey,
     );
-    final newSession = authResult?['sessionId']?.toString();
-    if (newSession != null && newSession.isNotEmpty) {
-      sessionID = newSession;
+    if (authResult.isSuccess) {
+      sessionID = authResult.sessionId;
       final accounts = (await _readHydratedUntisAccounts(prefs)).toList();
       final index = accounts.indexWhere(
         (account) => account.id == activeUntisAccountId,
@@ -891,7 +898,12 @@ Future<bool> _performReAuthentication() async {
       }
       return true;
     }
-  } catch (_) {}
+  } catch (_) {
+    // A failed background re-authentication is surfaced by the original
+    // request through its existing error state.
+  } finally {
+    loginRepository.close();
+  }
   return false;
 }
 

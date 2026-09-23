@@ -29,23 +29,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   Future<void> _reloadFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    aiProvider = _normalizeAiProvider(
-      prefs.getString('aiProvider') ?? aiProvider,
-    );
-    aiCustomCompatibility = _normalizeAiCustomCompatibility(
-      prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
-    );
-    aiModel = prefs.getString('aiModel') ?? aiModel;
-    aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
-    aiSystemPromptTemplate =
-        prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
-    aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
-    await loadSecureAiApiKeys(prefs);
-    aiTemperature = prefs.getDouble('aiTemperature') ?? aiTemperature;
-    aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
-    aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
-    aiPersona = prefs.getString('aiPersona') ?? aiPersona;
+    final prefs = SettingsStore.instance.preferences;
+    await loadAiPreferences(prefs);
 
     final validModels = _modelsForProvider(
       aiProvider,
@@ -118,7 +103,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   /// Download a local model
   Future<void> _downloadLocalModel(LocalModelInfo model) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final path = await _getLocalModelPath(model.id);
 
     // Check if already downloading
@@ -263,7 +248,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   /// Delete a downloaded model
   Future<void> _deleteLocalModel(LocalModelInfo model) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final path = await _getLocalModelPath(model.id);
     if (!mounted) return;
 
@@ -295,13 +280,13 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.settingsApiKeyCancel),
+            child: Text(l.cancel),
           ),
           const SizedBox(width: 8),
           FilledButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.delete_rounded, size: 18),
-            label: Text(l.settingsAiLocalModelDelete),
+            label: Text(l.delete),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
               foregroundColor: Theme.of(ctx).colorScheme.onError,
@@ -322,7 +307,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
       _markDownloadStateChanged();
       // If this was the active model, clear the path and revert provider
       if (aiLocalModelPath == path) {
-        final prefs = await SharedPreferences.getInstance();
+        final prefs = SettingsStore.instance.preferences;
         await prefs.setString('aiLocalModelPath', '');
         aiLocalModelPath = '';
         aiProvider = 'gemini';
@@ -340,7 +325,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   /// Show local model selection dialog
   void _showLocalModelDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -815,7 +800,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     }
                     return;
                   }
-                  final prefs = await SharedPreferences.getInstance();
+                  final prefs = SettingsStore.instance.preferences;
                   await prefs.setString('aiLocalModelPath', path);
                   aiLocalModelPath = path;
                   aiProvider = 'local';
@@ -833,7 +818,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           ],
           OutlinedButton.icon(
             icon: const Icon(Icons.delete_rounded, size: 18),
-            label: Text(l.settingsAiLocalModelDelete),
+            label: Text(l.delete),
             onPressed: () => _deleteLocalModel(model),
             style: OutlinedButton.styleFrom(
               foregroundColor: cs.error,
@@ -950,7 +935,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             const Spacer(),
             IconButton.filledTonal(
               onPressed: () => _cancelDownload(model.id),
-              tooltip: l.settingsApiKeyCancel,
+              tooltip: l.cancel,
               icon: const Icon(Icons.close_rounded, size: 18),
             ),
           ],
@@ -973,7 +958,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showProviderDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiProvider,
@@ -1004,7 +989,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showModelDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final models = _modelsForProvider(
       aiProvider,
       customCompatibility: aiCustomCompatibility,
@@ -1031,7 +1016,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showCompatibilityDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiCompatibility,
@@ -1072,7 +1057,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showBaseUrlDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final ctrl = TextEditingController(text: aiCustomBaseUrl);
     _showUnifiedSheet<void>(
       context: context,
@@ -1114,7 +1099,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 _buildAiSheetActions([
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel),
+                    child: Text(l.cancel),
                   ),
                   FilledButton(
                     onPressed: () async {
@@ -1123,7 +1108,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       Navigator.pop(ctx);
                       _reloadFromPrefs();
                     },
-                    child: Text(l.settingsApiKeySave),
+                    child: Text(l.save),
                   ),
                 ]),
               ],
@@ -1135,7 +1120,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showPromptDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final defaultTemplate = _buildDefaultAiPromptTemplate(l);
     final ctrl = TextEditingController(
       text: aiSystemPromptTemplate.isEmpty
@@ -1187,7 +1172,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 _buildAiSheetActions([
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel),
+                    child: Text(l.cancel),
                   ),
                   TextButton(
                     onPressed: () => ctrl.text = defaultTemplate,
@@ -1202,7 +1187,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       Navigator.pop(ctx);
                       _reloadFromPrefs();
                     },
-                    child: Text(l.settingsApiKeySave),
+                    child: Text(l.save),
                   ),
                 ]),
               ],
@@ -1214,7 +1199,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showPromptVariablesDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1309,7 +1294,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(
-                      l.settingsApiKeyCancel,
+                      l.cancel,
                       style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -1323,7 +1308,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showApiKeyDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final ctrl = TextEditingController(text: _activeProviderApiKey());
     _showUnifiedSheet<void>(
       context: context,
@@ -1378,7 +1363,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text(l.settingsApiKeyCancel),
+                    child: Text(l.cancel),
                   ),
                   FilledButton(
                     onPressed: () async {
@@ -1387,7 +1372,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       Navigator.pop(ctx);
                       _reloadFromPrefs();
                     },
-                    child: Text(l.settingsApiKeySave),
+                    child: Text(l.save),
                   ),
                 ]),
               ],
@@ -1399,31 +1384,31 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   Future<void> _settingsSetAiTemperature(double value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setDouble('aiTemperature', value);
     aiTemperature = value;
   }
 
   Future<void> _settingsSetAiMaxTokens(int value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setInt('aiMaxTokens', value);
     aiMaxTokens = value;
   }
 
   Future<void> _settingsSetAiTopP(double value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setDouble('aiTopP', value);
     aiTopP = value;
   }
 
   Future<void> _settingsSetAiPersona(String value) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.setString('aiPersona', value);
     aiPersona = value;
   }
 
   void _showAiPersonaDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<String>(
       context: context,
       title: l.settingsAiPersonaTitle,
@@ -1456,7 +1441,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _showAdvancedSettingsDialog() {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     double temp = aiTemperature;
     int tokens = aiMaxTokens;
     double topP = aiTopP;
@@ -1490,7 +1475,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  l.ui('aiParametersTitle'),
+                  l.aiParametersTitle,
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w900,
                     fontSize: 22,
@@ -1498,7 +1483,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   ),
                 ),
                 Text(
-                  l.ui('aiParametersDesc'),
+                  l.aiParametersDesc,
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     color: cs.onSurfaceVariant,
@@ -1512,7 +1497,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   max: 2,
                   divisions: 20,
                   suffix: temp.toStringAsFixed(1),
-                  desc: l.ui('aiTemperatureDesc'),
+                  desc: l.aiTemperatureDesc,
                   onChanged: (v) => setStateDialog(() => temp = v),
                   cs: cs,
                 ),
@@ -1524,7 +1509,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   max: 8192,
                   divisions: 31,
                   suffix: tokens.toString(),
-                  desc: l.ui('aiTokenDesc'),
+                  desc: l.aiTokenDesc,
                   onChanged: (v) => setStateDialog(() => tokens = v.round()),
                   cs: cs,
                 ),
@@ -1536,7 +1521,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   max: 1,
                   divisions: 20,
                   suffix: topP.toStringAsFixed(2),
-                  desc: l.ui('aiTopPDesc'),
+                  desc: l.aiTopPDesc,
                   onChanged: (v) => setStateDialog(() => topP = v),
                   cs: cs,
                 ),
@@ -1547,7 +1532,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -1571,7 +1556,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                         ),
                       ),
                       child: Text(
-                        l.settingsApiKeySave,
+                        l.save,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -1644,7 +1629,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   void _clearChatHistory() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final confirmed = await showUntisDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1653,21 +1638,21 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.examsCancel),
+            child: Text(l.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: Text(l.examsDelete),
+            child: Text(l.delete),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       await prefs.remove('aiChatHistory');
       if (mounted) {
         ScaffoldMessenger.of(
@@ -1679,180 +1664,162 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
     final isCustom = aiProvider == 'custom';
     final isLocal = aiProvider == 'local';
     final activeKey = _activeProviderApiKey();
 
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsSectionAI),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+    return SettingsPageShell(
+      title: l.settingsSectionAI,
+      children: [
+        // ── GROUP 1: AI MODEL & PROVIDER ──
+        SettingsGroup(
+          title: l.settingsSectionAI,
           children: [
-            // ── GROUP 1: AI MODEL & PROVIDER ──
-            SettingsGroup(
-              title: l.settingsSectionAI,
-              children: [
-                SettingsTile(
-                  icon: Icons.smart_toy_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsAiProvider,
-                  subtitle: _localizedAiProviderLabel(l, aiProvider),
-                  onTap: _showProviderDialog,
-                ),
-                SettingsTile(
-                  icon: Icons.memory_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsAiModel,
-                  subtitle: aiModel,
-                  onTap: _showModelDialog,
-                ),
-                if (isCustom) ...[
-                  SettingsTile(
-                    icon: Icons.merge_type_rounded,
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsAiCompatibility,
-                    subtitle: _settingsAiCompatibilityLabel(
-                      l,
-                      aiCustomCompatibility,
-                    ),
-                    onTap: _showCompatibilityDialog,
-                  ),
-                  SettingsTile(
-                    icon: Icons.link_rounded,
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsAiCustomBaseUrl,
-                    subtitle: aiCustomBaseUrl.isEmpty
-                        ? l.settingsAiCustomBaseUrlHint
-                        : aiCustomBaseUrl,
-                    onTap: _showBaseUrlDialog,
-                  ),
-                ],
-                if (!isLocal)
-                  SettingsTile(
-                    icon: Icons.key_rounded,
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsAiApiKey,
-                    subtitle: activeKey.isEmpty
-                        ? l.settingsAiApiKeyNotSet
-                        : _settingsMaskKey(activeKey),
-                    onTap: _showApiKeyDialog,
-                  ),
-                SettingsTile(
-                  icon: Icons.tune_rounded,
-                  iconBackgroundColor: cs.secondaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onSecondaryContainer,
-                  title: l.settingsAiParametersTitle,
-                  subtitle: l.settingsAiParametersDesc,
-                  onTap: _showAdvancedSettingsDialog,
-                ),
-              ],
+            SettingsTile(
+              icon: Icons.smart_toy_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsAiProvider,
+              subtitle: _localizedAiProviderLabel(l, aiProvider),
+              onTap: _showProviderDialog,
             ),
-
-            // ── GROUP 2: PERSÖNLICHKEIT ──
-            SettingsGroup(
-              title: l.settingsAiAdjustmentTitle,
-              children: [
-                SettingsTile(
-                  icon: Icons.face_rounded,
-                  iconBackgroundColor: cs.tertiaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onTertiaryContainer,
-                  title: l.settingsAiPersonaTitle,
-                  subtitle: aiPersona == 'helpful'
-                      ? l.settingsAiPersonaHelpful
-                      : aiPersona == 'strict'
-                      ? l.settingsAiPersonaStrict
-                      : l.settingsAiPersonaBuddy,
-                  onTap: _showAiPersonaDialog,
-                ),
-              ],
+            SettingsTile(
+              icon: Icons.memory_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsAiModel,
+              subtitle: aiModel,
+              onTap: _showModelDialog,
             ),
-
-            // ── GROUP: LOCAL MODEL SETTINGS (only for local provider) ──
-            if (isLocal) ...[
-              SettingsGroup(
-                title: l.settingsAiLocalModel,
-                children: [
-                  SettingsTile(
-                    icon: Icons.download_rounded,
-                    iconBackgroundColor: cs.tertiaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onTertiaryContainer,
-                    title: l.settingsAiLocalModel,
-                    subtitle: l.settingsAiLocalModelDesc,
-                    onTap: _showLocalModelDialog,
-                  ),
-                ],
+            if (isCustom) ...[
+              SettingsTile(
+                icon: Icons.merge_type_rounded,
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsAiCompatibility,
+                subtitle: _settingsAiCompatibilityLabel(
+                  l,
+                  aiCustomCompatibility,
+                ),
+                onTap: _showCompatibilityDialog,
+              ),
+              SettingsTile(
+                icon: Icons.link_rounded,
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsAiCustomBaseUrl,
+                subtitle: aiCustomBaseUrl.isEmpty
+                    ? l.settingsAiCustomBaseUrlHint
+                    : aiCustomBaseUrl,
+                onTap: _showBaseUrlDialog,
               ),
             ],
-
-            // ── GROUP 3: PROMPT CONFIGURATION ──
-            SettingsGroup(
-              title: l.settingsAiPrompt,
-              children: [
-                SettingsTile(
-                  icon: Icons.edit_note_rounded,
-                  iconBackgroundColor: cs.tertiaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onTertiaryContainer,
-                  title: l.settingsAiPrompt,
-                  subtitle: l.settingsAiPromptDesc,
-                  onTap: _showPromptDialog,
+            if (!isLocal)
+              SettingsTile(
+                icon: Icons.key_rounded,
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
                 ),
-                SettingsTile(
-                  icon: Icons.data_object_rounded,
-                  iconBackgroundColor: cs.tertiaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onTertiaryContainer,
-                  title: l.settingsAiPromptVariables,
-                  subtitle: l.settingsAiPromptVariablesDesc,
-                  onTap: _showPromptVariablesDialog,
-                ),
-              ],
-            ),
-
-            // ── GROUP 4: DATEN ──
-            SettingsGroup(
-              title: l.settingsAiDataTitle,
-              children: [
-                SettingsTile(
-                  icon: Icons.delete_sweep_rounded,
-                  iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
-                  iconColor: cs.onErrorContainer,
-                  title: l.aiClearHistoryTileTitle,
-                  subtitle: l.aiClearHistoryTileDesc,
-                  onTap: _clearChatHistory,
-                ),
-              ],
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsAiApiKey,
+                subtitle: activeKey.isEmpty
+                    ? l.settingsAiApiKeyNotSet
+                    : _settingsMaskKey(activeKey),
+                onTap: _showApiKeyDialog,
+              ),
+            SettingsTile(
+              icon: Icons.tune_rounded,
+              iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onSecondaryContainer,
+              title: l.settingsAiParametersTitle,
+              subtitle: l.settingsAiParametersDesc,
+              onTap: _showAdvancedSettingsDialog,
             ),
           ],
         ),
-      ),
+
+        // ── GROUP 2: PERSÖNLICHKEIT ──
+        SettingsGroup(
+          title: l.settingsAiAdjustmentTitle,
+          children: [
+            SettingsTile(
+              icon: Icons.face_rounded,
+              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onTertiaryContainer,
+              title: l.settingsAiPersonaTitle,
+              subtitle: aiPersona == 'helpful'
+                  ? l.settingsAiPersonaHelpful
+                  : aiPersona == 'strict'
+                  ? l.settingsAiPersonaStrict
+                  : l.settingsAiPersonaBuddy,
+              onTap: _showAiPersonaDialog,
+            ),
+          ],
+        ),
+
+        // ── GROUP: LOCAL MODEL SETTINGS (only for local provider) ──
+        if (isLocal) ...[
+          SettingsGroup(
+            title: l.settingsAiLocalModel,
+            children: [
+              SettingsTile(
+                icon: Icons.download_rounded,
+                iconBackgroundColor: cs.tertiaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onTertiaryContainer,
+                title: l.settingsAiLocalModel,
+                subtitle: l.settingsAiLocalModelDesc,
+                onTap: _showLocalModelDialog,
+              ),
+            ],
+          ),
+        ],
+
+        // ── GROUP 3: PROMPT CONFIGURATION ──
+        SettingsGroup(
+          title: l.settingsAiPrompt,
+          children: [
+            SettingsTile(
+              icon: Icons.edit_note_rounded,
+              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onTertiaryContainer,
+              title: l.settingsAiPrompt,
+              subtitle: l.settingsAiPromptDesc,
+              onTap: _showPromptDialog,
+            ),
+            SettingsTile(
+              icon: Icons.data_object_rounded,
+              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onTertiaryContainer,
+              title: l.settingsAiPromptVariables,
+              subtitle: l.settingsAiPromptVariablesDesc,
+              onTap: _showPromptVariablesDialog,
+            ),
+          ],
+        ),
+
+        // ── GROUP 4: DATEN ──
+        SettingsGroup(
+          title: l.settingsAiDataTitle,
+          children: [
+            SettingsTile(
+              icon: Icons.delete_sweep_rounded,
+              iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
+              iconColor: cs.onErrorContainer,
+              title: l.aiClearHistoryTileTitle,
+              subtitle: l.aiClearHistoryTileDesc,
+              onTap: _clearChatHistory,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

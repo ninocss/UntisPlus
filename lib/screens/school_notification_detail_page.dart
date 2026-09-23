@@ -8,102 +8,6 @@ String _notificationDateLabel(DateTime? date) {
   ).format(date);
 }
 
-html_dom.Document _detailSafeInfoDocument(String source) {
-  final document = html_parser.parse(source);
-
-  for (final element in document.querySelectorAll(
-    'script, style, iframe, object, embed, form, input, button, video, audio, source',
-  )) {
-    element.remove();
-  }
-
-  for (final element in document.querySelectorAll('*')) {
-    final attributes = element.attributes.keys.toList(growable: false);
-    for (final rawAttribute in attributes) {
-      final attribute = rawAttribute.toString();
-      if (attribute.toLowerCase().startsWith('on')) {
-        element.attributes.remove(attribute);
-      }
-    }
-    for (final attribute in const ['href', 'src']) {
-      final value = element.attributes[attribute];
-      if (value != null && !_detailIsSafeExternalUrl(value)) {
-        element.attributes.remove(attribute);
-      }
-    }
-  }
-  return document;
-}
-
-bool _detailIsSafeExternalUrl(String? value) {
-  final uri = Uri.tryParse(value?.trim() ?? '');
-  return uri != null &&
-      uri.hasScheme &&
-      (uri.scheme == 'https' || uri.scheme == 'http');
-}
-
-String _detailToPlainText(html_dom.Document document) {
-  final buffer = StringBuffer();
-  // Adjacent inline nodes (e.g. <b>Name:</b><span>Max</span>) must not be
-  // glued together – insert a space when the output does not already end with
-  // whitespace ("DateName" class of bugs).
-  var lastWasSpace = true;
-  void writeText(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return;
-    if (!lastWasSpace) buffer.write(' ');
-    buffer.write(trimmed);
-    lastWasSpace = false;
-  }
-
-  void walk(Iterable<html_dom.Node> nodes) {
-    for (final node in nodes) {
-      if (node is html_dom.Text) {
-        writeText(node.data);
-        continue;
-      }
-      if (node is! html_dom.Element) continue;
-      final tag = node.localName;
-      if (tag == 'br') {
-        buffer.write('\n');
-        lastWasSpace = true;
-        continue;
-      }
-      const blocks = {
-        'p', 'div', 'h1', 'h2', 'h3', 'h4', 'blockquote', 'pre',
-        'section', 'article', 'ul', 'ol', 'table',
-      };
-      if (tag == 'li') {
-        buffer.write('\n• ');
-        lastWasSpace = true;
-      }
-      if (blocks.contains(tag) && tag != 'li') {
-        buffer.write('\n');
-        lastWasSpace = true;
-      }
-      if (tag == 'td' || tag == 'th') {
-        buffer.write(' – ');
-        lastWasSpace = true;
-      }
-      walk(node.nodes);
-      if (blocks.contains(tag) && tag != 'li') {
-        buffer.write('\n');
-        lastWasSpace = true;
-      }
-    }
-  }
-
-  walk(document.body?.nodes ?? const []);
-  return _normalizedDetailText(buffer.toString());
-}
-
-String _normalizedDetailText(String value) {
-  var result = value.replaceAll(RegExp(r'[ \t]+'), ' ');
-  result = result.replaceAll(RegExp(r' *\n *'), '\n');
-  result = result.replaceAll(RegExp(r'\n{3,}'), '\n\n');
-  return result.trim();
-}
-
 IconData _attachmentIcon(String ext) {
   switch (ext) {
     case 'PDF':
@@ -141,22 +45,18 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
   Widget buildEmbedded(BuildContext context) => build(context);
 
   String _copyLabel() {
-    return AppL10n.of(appLocaleNotifier.value).ui('copyMessage');
+    return appL10nFor(appLocaleNotifier.value).copyMessage;
   }
 
   Future<void> _openDetailUrl(BuildContext context, String? url) async {
-    if (!_detailIsSafeExternalUrl(url)) return;
+    if (!isSafeSchoolExternalUrl(url)) return;
     final ok = await url_launcher.launchUrlString(
       url!,
       mode: url_launcher.LaunchMode.externalApplication,
     );
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppL10n.of(appLocaleNotifier.value).settingsGithubOpenFailed,
-          ),
-        ),
+      context.showUntisSnackBar(
+        appL10nFor(appLocaleNotifier.value).settingsGithubOpenFailed,
       );
     }
   }
@@ -165,81 +65,44 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
     BuildContext context,
     _MessageAttachment attachment,
   ) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final messenger = ScaffoldMessenger.of(context);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (attachment.isDemo) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.attachmentDemoUnavailable)),
-      );
+      context.showUntisSnackBar(l.attachmentDemoUnavailable);
       return;
     }
+
     final name = attachment.name.isEmpty
         ? 'untisplus-attachment'
         : attachment.name;
     try {
-      final uri = Uri.parse(
-        'https://$schoolUrl/WebUntis/messageFileRequest.do?file=${attachment.id}',
+      final bytes = await SchoolInfoRepository().downloadAttachment(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: sessionID,
+        attachmentId: attachment.id,
+        reauthenticate: () async => await _reAuthenticate() ? sessionID : null,
       );
-      final response = await http.get(
-        uri,
-        headers: {
-          'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
-          'Accept': 'application/octet-stream',
-        },
-      );
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        final reAuth = await _reAuthenticate();
-        if (reAuth) {
-          final retry = await http.get(
-            uri,
-            headers: {
-              'Cookie': 'JSESSIONID=$sessionID; schoolname=$schoolName',
-              'Accept': 'application/octet-stream',
-            },
-          );
-          if (retry.statusCode != 200) {
-            throw Exception('HTTP ${retry.statusCode}');
-          }
-          final result = await FilePicker.saveFile(
-            dialogTitle: l.attachmentSave,
-            fileName: name,
-            bytes: retry.bodyBytes,
-          );
-          if (result != null && context.mounted) {
-            messenger.showSnackBar(SnackBar(content: Text(l.attachmentSaved)));
-          }
-          return;
-        }
-      }
-      if (response.statusCode != 200) {
-        throw Exception('HTTP ${response.statusCode}');
-      }
       final result = await FilePicker.saveFile(
         dialogTitle: l.attachmentSave,
         fileName: name,
-        bytes: response.bodyBytes,
+        bytes: bytes,
       );
       if (result != null && context.mounted) {
-        messenger.showSnackBar(SnackBar(content: Text(l.attachmentSaved)));
+        context.showUntisSnackBar(l.attachmentSaved);
       }
     } catch (_) {
       if (context.mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l.attachmentDownloadFailed)),
-        );
+        context.showUntisSnackBar(l.attachmentDownloadFailed);
       }
     }
   }
 
   Future<void> _copyMessage(BuildContext context) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
-    final plainBody = _detailToPlainText(
-      _detailSafeInfoDocument(item.displayBody),
+    final l = appL10nFor(appLocaleNotifier.value);
+    final plainBody = schoolHtmlToPlainText(
+      sanitizeSchoolHtml(item.displayBody),
     );
     final dateLabel = _notificationDateLabel(item.date);
-    // Each header part starts on its own line: StringBuffer.writeln appends
-    // only after its argument, so seeding the buffer with the title and then
-    // calling writeln would glue the title to the author ("DateName").
     final buffer = StringBuffer()
       ..write(item.title.trim())
       ..writeln();
@@ -250,15 +113,15 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
     if (plainBody.isNotEmpty) buffer.write('\n\n$plainBody');
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.infoMessageCopied)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.infoMessageCopied)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -349,7 +212,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                         const SizedBox(height: 18),
                         SelectionArea(
                           child: _InfoHtmlBody(
-                            document: _detailSafeInfoDocument(item.displayBody),
+                            document: sanitizeSchoolHtml(item.displayBody),
                             onOpenUrl: (url) => _openDetailUrl(context, url),
                           ),
                         ),

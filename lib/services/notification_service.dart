@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import '../l10n.dart';
+import '../platform/native_channel_names.dart';
 import 'widget_service.dart';
 
 /// Identifiers for different notification types.
@@ -56,7 +57,7 @@ class NotificationService {
   NotificationService._internal();
 
   static const MethodChannel _nativeChannel = MethodChannel(
-    'untisplus/notifications',
+    NativeChannelNames.notifications,
   );
 
   final FlutterLocalNotificationsPlugin _plugin =
@@ -121,7 +122,9 @@ class NotificationService {
     // during cold start.
     if (Platform.isIOS) {
       try {
-        await _nativeChannel.invokeMethod<void>('activateNotificationDelegation');
+        await _nativeChannel.invokeMethod<void>(
+          'activateNotificationDelegation',
+        );
       } catch (_) {
         // Older native builds simply skip the handover.
       }
@@ -436,7 +439,11 @@ class NotificationService {
 
   String get _deviceLocale {
     final code = PlatformDispatcher.instance.locale.languageCode;
-    return AppL10n.supportedLocales.contains(code) ? code : 'de';
+    return AppL10n.supportedLocales.any(
+          (locale) => locale.languageCode == code,
+        )
+        ? code
+        : 'de';
   }
 
   /// Registers the notification categories (and their action buttons) used on
@@ -465,7 +472,7 @@ class NotificationService {
   }
 
   String _getActionLabel(String locale, String actionId) {
-    final l = AppL10n.of(locale);
+    final l = appL10nFor(locale);
     if (actionId == 'open_next_lesson') {
       return l.notificationActionNextLessonLabel;
     }
@@ -479,7 +486,7 @@ class NotificationService {
   }
 
   String _getChannelName(String locale, String channelId) {
-    final l = AppL10n.of(locale);
+    final l = appL10nFor(locale);
     if (channelId == NotificationChannels.currentLesson) {
       return l.notificationChannelCurrentLessonName;
     }
@@ -493,7 +500,7 @@ class NotificationService {
   }
 
   String _getChannelDesc(String locale, String channelId) {
-    final l = AppL10n.of(locale);
+    final l = appL10nFor(locale);
     if (channelId == NotificationChannels.currentLesson) {
       return l.notificationChannelCurrentLessonDesc;
     }

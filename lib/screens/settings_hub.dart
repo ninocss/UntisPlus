@@ -7,66 +7,290 @@ const Map<String, String> _settingsLocaleLabels = {
   'es': 'Español',
 };
 
+final _appLocalePreference = stringPreference(
+  key: 'appLocale',
+  defaultValue: 'de',
+  notifier: appLocaleNotifier,
+);
+
+final _themeModePreference = PreferenceBinding<ThemeMode>(
+  key: 'themeMode',
+  defaultValue: ThemeMode.system,
+  notifier: themeModeNotifier,
+  decoder: (raw) =>
+      ThemeMode.values[((raw is int ? raw : 0).clamp(
+        0,
+        ThemeMode.values.length - 1,
+      )).toInt()],
+  encoder: (value) => ThemeMode.values.indexOf(value),
+);
+
+final _visualThemePreference = PreferenceBinding<AppThemeId>(
+  key: 'visualTheme',
+  defaultValue: AppThemeId.defaultTheme,
+  notifier: visualThemeNotifier,
+  decoder: (raw) => AppThemeIdX.fromStorage(raw?.toString()),
+  encoder: (value) => value.storageKey,
+);
+
+final _showCancelledPreference = boolPreference(
+  key: 'showCancelled',
+  defaultValue: true,
+  notifier: showCancelledNotifier,
+);
+final _timetableSwitchAnimationPreference = intPreference(
+  key: 'timetableSwitchAnimation',
+  defaultValue: 0,
+  notifier: timetableSwitchAnimationNotifier,
+  normalize: (value) => value.clamp(0, 2).toInt(),
+);
+final _backgroundAnimationsPreference = boolPreference(
+  key: 'backgroundAnimations',
+  defaultValue: true,
+  notifier: backgroundAnimationsNotifier,
+);
+final _backgroundAnimationStylePreference = intPreference(
+  key: 'backgroundAnimationStyle',
+  defaultValue: 0,
+  notifier: backgroundAnimationStyleNotifier,
+  normalize: (value) => value.clamp(0, 10).toInt(),
+);
+final _backgroundGyroscopePreference = boolPreference(
+  key: 'backgroundGyroscope',
+  defaultValue: false,
+  notifier: backgroundGyroscopeNotifier,
+);
+final _themeBlurPreferencesPreference = PreferenceBinding<Map<String, bool>>(
+  key: 'themeBlurPreferences',
+  defaultValue: Map<String, bool>.from(themeBlurPreferencesNotifier.value),
+  notifier: themeBlurPreferencesNotifier,
+  decoder: (raw) => AppThemeIdX.normalizeBlurPreferences(
+    raw is String
+        ? decodeJsonMap(raw)
+        : raw is Map
+        ? raw
+        : null,
+    defaultThemeBlur:
+        SettingsStore.instance.preferences.getBool('blurEnabled') ?? true,
+  ),
+  encoder: (value) => jsonEncode(value),
+);
+final _blurStrengthPreference = doublePreference(
+  key: 'blurStrength',
+  defaultValue: 1.0,
+  notifier: blurStrengthNotifier,
+  normalize: (value) => value.clamp(0.25, 2.0).toDouble(),
+);
+final _surfaceBlurEnabledPreference = boolPreference(
+  key: 'surfaceBlurEnabled',
+  defaultValue: true,
+  notifier: surfaceBlurEnabledNotifier,
+);
+final _surfaceCornerModePreference = intPreference(
+  key: 'surfaceCornerMode',
+  defaultValue: 0,
+  notifier: surfaceCornerModeNotifier,
+  normalize: (value) => value.clamp(0, 2).toInt(),
+);
+final _surfaceCornerRadiusPreference = intPreference(
+  key: 'surfaceCornerRadius',
+  defaultValue: 24,
+  notifier: surfaceCornerRadiusNotifier,
+  normalize: (value) => value.clamp(0, 48).toInt(),
+);
+final _appBgBlurEnabledPreference = boolPreference(
+  key: 'appBgBlurEnabled',
+  defaultValue: false,
+  notifier: appBgBlurEnabledNotifier,
+);
+final _appBgBlurAmountPreference = doublePreference(
+  key: 'appBgBlurAmount',
+  defaultValue: 10.0,
+  notifier: appBgBlurAmountNotifier,
+);
+final _pageTransitionPreference = intPreference(
+  key: 'pageTransition',
+  defaultValue: 0,
+  notifier: pageTransitionNotifier,
+  normalize: (value) => value.clamp(0, 8).toInt(),
+);
+final _mainTabFadeUpPreference = boolPreference(
+  key: 'mainTabFadeUpEnabled',
+  defaultValue: false,
+  notifier: mainTabFadeUpEnabledNotifier,
+);
+final _useMaterialYouPreference = boolPreference(
+  key: 'useMaterialYou',
+  defaultValue: true,
+  notifier: useMaterialYouNotifier,
+);
+final _amoledPreference = boolPreference(
+  key: 'isAmoled',
+  defaultValue: false,
+  notifier: isAmoledNotifier,
+);
+final _customColorSeedPreference = intPreference(
+  key: 'customColorSeed',
+  defaultValue: 0xFF0F766E,
+  notifier: customColorSeedNotifier,
+);
+final _cancelledLessonColorPreference = intPreference(
+  key: 'cancelledLessonColor',
+  defaultValue: 0xFFFF1744,
+  notifier: cancelledLessonColorNotifier,
+);
+final _monochromeLessonsPreference = boolPreference(
+  key: 'monochromeLessons',
+  defaultValue: false,
+  notifier: monochromeLessonsNotifier,
+);
+final _monochromeLessonColorPreference = intPreference(
+  key: 'monochromeLessonColor',
+  defaultValue: 0xFF757575,
+  notifier: monochromeLessonColorNotifier,
+);
+final _lessonCardStylePreference = intPreference(
+  key: 'lessonCardStyle',
+  defaultValue: 0,
+  notifier: lessonCardStyleNotifier,
+  normalize: (value) => value.clamp(0, 4).toInt(),
+);
+final _glowEffectsPreference = boolPreference(
+  key: 'glowEffectsEnabled',
+  defaultValue: false,
+  notifier: glowEffectsEnabledNotifier,
+);
+final _lessonBlurEnabledPreference = boolPreference(
+  key: 'lessonBlurEnabled',
+  defaultValue: false,
+  notifier: lessonBlurEnabledNotifier,
+);
+final _lessonBlurAmountPreference = doublePreference(
+  key: 'lessonBlurAmount',
+  defaultValue: 12.0,
+  notifier: lessonBlurAmountNotifier,
+);
+final _lessonCardOpacityPreference = doublePreference(
+  key: 'lessonCardOpacity',
+  defaultValue: 0.9,
+  notifier: lessonCardOpacityNotifier,
+);
+final _lessonBorderRadiusPreference = doublePreference(
+  key: 'lessonBorderRadius',
+  defaultValue: 12.0,
+  notifier: lessonBorderRadiusNotifier,
+);
+final _lessonAccentStylePreference = intPreference(
+  key: 'lessonAccentStyle',
+  defaultValue: 0,
+  notifier: lessonAccentStyleNotifier,
+  normalize: (value) => value.clamp(0, 3).toInt(),
+);
+final _lessonShowTeacherPreference = boolPreference(
+  key: 'lessonShowTeacher',
+  defaultValue: true,
+  notifier: lessonShowTeacherNotifier,
+);
+final _lessonShowSubjectIconsPreference = boolPreference(
+  key: 'lessonShowSubjectIcons',
+  defaultValue: false,
+  notifier: lessonShowSubjectIconsNotifier,
+);
+final _lessonShowRoomPreference = boolPreference(
+  key: 'lessonShowRoom',
+  defaultValue: true,
+  notifier: lessonShowRoomNotifier,
+);
+final _lessonCompactModePreference = boolPreference(
+  key: 'lessonCompactMode',
+  defaultValue: false,
+  notifier: lessonCompactModeNotifier,
+);
+final _lessonDimPastPreference = boolPreference(
+  key: 'lessonDimPast',
+  defaultValue: true,
+  notifier: lessonDimPastNotifier,
+);
+final _lessonCancelledPatternPreference = boolPreference(
+  key: 'lessonCancelledPattern',
+  defaultValue: true,
+  notifier: lessonCancelledPatternNotifier,
+);
+final _progressivePushPreference = boolPreference(
+  key: 'progressivePush',
+  defaultValue: true,
+  notifier: progressivePushNotifier,
+);
+final _dailyBriefingPushPreference = boolPreference(
+  key: 'dailyBriefingPush',
+  defaultValue: true,
+  notifier: dailyBriefingPushNotifier,
+);
+final _importantChangesPushPreference = boolPreference(
+  key: 'importantChangesPush',
+  defaultValue: true,
+  notifier: importantChangesPushNotifier,
+);
+final _notifyChangeCancellationsPreference = boolPreference(
+  key: 'notifyChangeCancellations',
+  defaultValue: true,
+  notifier: notifyChangeCancellationsNotifier,
+);
+final _notifyChangeRoomPreference = boolPreference(
+  key: 'notifyChangeRoom',
+  defaultValue: true,
+  notifier: notifyChangeRoomNotifier,
+);
+final _notifyChangeTeacherPreference = boolPreference(
+  key: 'notifyChangeTeacher',
+  defaultValue: true,
+  notifier: notifyChangeTeacherNotifier,
+);
+final _notifyChangeOtherPreference = boolPreference(
+  key: 'notifyChangeOther',
+  defaultValue: true,
+  notifier: notifyChangeOtherNotifier,
+);
+final _demoModePreference = boolPreference(
+  key: 'demoMode',
+  defaultValue: false,
+  notifier: demoModeNotifier,
+);
+
 Future<void> _settingsSetLocale(String code) async {
   await ensureDateFormattingForLocale(code);
-  appLocaleNotifier.value = code;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('appLocale', code);
+  await SettingsStore.instance.write(_appLocalePreference, code);
   unawaited(WidgetService.publishNativeCopy(code));
   unawaited(AlarmService.instance.refreshNativeCopy());
 }
 
-Future<void> _settingsSetThemeMode(ThemeMode mode) async {
-  themeModeNotifier.value = mode;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('themeMode', ThemeMode.values.indexOf(mode));
-}
+Future<void> _settingsSetThemeMode(ThemeMode mode) =>
+    SettingsStore.instance.write(_themeModePreference, mode);
 
 Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
   final enabled =
       appThemeCapabilities(theme).supportsBlur &&
       (themeBlurPreferencesNotifier.value[theme.storageKey] ?? true);
   visualThemeNotifier.value = theme;
-  // Theme selection is reflected by ValueListenables synchronously. Keep the
-  // dependent blur state in the same update so unsupported themes never show
-  // a transient blur while preferences are being written.
   blurEnabledNotifier.value = enabled;
   unawaited(nativeUiGateway.setWindowBlur(enabled));
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('visualTheme', theme.storageKey);
+  await SettingsStore.instance.write(_visualThemePreference, theme);
 }
 
-Future<void> _settingsSetShowCancelled(bool value) async {
-  showCancelledNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('showCancelled', value);
-}
+Future<void> _settingsSetShowCancelled(bool value) =>
+    SettingsStore.instance.write(_showCancelledPreference, value);
 
-Future<void> _settingsSetTimetableSwitchAnimation(int value) async {
-  final normalized = value.clamp(0, 2);
-  timetableSwitchAnimationNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('timetableSwitchAnimation', normalized);
-}
+Future<void> _settingsSetTimetableSwitchAnimation(int value) =>
+    SettingsStore.instance.write(_timetableSwitchAnimationPreference, value);
 
-Future<void> _settingsSetBackgroundAnimations(bool value) async {
-  backgroundAnimationsNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('backgroundAnimations', value);
-}
+Future<void> _settingsSetBackgroundAnimations(bool value) =>
+    SettingsStore.instance.write(_backgroundAnimationsPreference, value);
 
-Future<void> _settingsSetBackgroundAnimationStyle(int style) async {
-  final normalized = style.clamp(0, 10);
-  backgroundAnimationStyleNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('backgroundAnimationStyle', normalized);
-}
+Future<void> _settingsSetBackgroundAnimationStyle(int value) =>
+    SettingsStore.instance.write(_backgroundAnimationStylePreference, value);
 
-Future<void> _settingsSetBackgroundGyroscope(bool value) async {
-  backgroundGyroscopeNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('backgroundGyroscope', value);
-}
+Future<void> _settingsSetBackgroundGyroscope(bool value) =>
+    SettingsStore.instance.write(_backgroundGyroscopePreference, value);
 
 Future<void> _settingsSetBlurEnabled(bool value) async {
   final theme = visualThemeNotifier.value;
@@ -76,183 +300,93 @@ Future<void> _settingsSetBlurEnabled(bool value) async {
   themeBlurPreferencesNotifier.value = updated;
   blurEnabledNotifier.value = value;
   unawaited(nativeUiGateway.setWindowBlur(value));
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('themeBlurPreferences', jsonEncode(updated));
-  await prefs.setBool('blurEnabled', value);
+  await SettingsStore.instance.write(_themeBlurPreferencesPreference, updated);
+  await SettingsStore.instance.writeRaw('blurEnabled', value);
 }
 
-Future<void> _settingsSetBlurStrength(double value) async {
-  final normalized = value.clamp(0.25, 2.0).toDouble();
-  blurStrengthNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setDouble('blurStrength', normalized);
-}
+Future<void> _settingsSetBlurStrength(double value) =>
+    SettingsStore.instance.write(_blurStrengthPreference, value);
 
-Future<void> _settingsSetSurfaceBlurEnabled(bool value) async {
-  surfaceBlurEnabledNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('surfaceBlurEnabled', value);
-}
+Future<void> _settingsSetSurfaceBlurEnabled(bool value) =>
+    SettingsStore.instance.write(_surfaceBlurEnabledPreference, value);
 
-Future<void> _settingsSetSurfaceCornerMode(int value) async {
-  final normalized = value.clamp(0, 2);
-  surfaceCornerModeNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('surfaceCornerMode', normalized);
-}
+Future<void> _settingsSetSurfaceCornerMode(int value) =>
+    SettingsStore.instance.write(_surfaceCornerModePreference, value);
 
-Future<void> _settingsSetSurfaceCornerRadius(double value) async {
-  final normalized = value.round().clamp(0, 48);
-  surfaceCornerRadiusNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('surfaceCornerRadius', normalized);
-}
+Future<void> _settingsSetSurfaceCornerRadius(double value) =>
+    SettingsStore.instance.write(_surfaceCornerRadiusPreference, value.round());
 
-Future<void> _settingsSetAppBgBlurEnabled(bool value) async {
-  appBgBlurEnabledNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('appBgBlurEnabled', value);
-}
+Future<void> _settingsSetAppBgBlurEnabled(bool value) =>
+    SettingsStore.instance.write(_appBgBlurEnabledPreference, value);
 
-Future<void> _settingsSetAppBgBlurAmount(double value) async {
-  appBgBlurAmountNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setDouble('appBgBlurAmount', value);
-}
+Future<void> _settingsSetAppBgBlurAmount(double value) =>
+    SettingsStore.instance.write(_appBgBlurAmountPreference, value);
 
-Future<void> _settingsSetPageTransition(int value) async {
-  final normalized = value.clamp(0, 7);
-  pageTransitionNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('pageTransition', normalized);
-}
+Future<void> _settingsSetPageTransition(int value) =>
+    SettingsStore.instance.write(_pageTransitionPreference, value);
 
-Future<void> _settingsSetMainTabFadeUpEnabled(bool value) async {
-  mainTabFadeUpEnabledNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('mainTabFadeUpEnabled', value);
-}
+Future<void> _settingsSetMainTabFadeUpEnabled(bool value) =>
+    SettingsStore.instance.write(_mainTabFadeUpPreference, value);
 
-Future<void> _settingsSetUseMaterialYou(bool value) async {
-  useMaterialYouNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('useMaterialYou', value);
-}
+Future<void> _settingsSetUseMaterialYou(bool value) =>
+    SettingsStore.instance.write(_useMaterialYouPreference, value);
 
-Future<void> _settingsSetIsAmoled(bool value) async {
-  isAmoledNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('isAmoled', value);
-}
+Future<void> _settingsSetIsAmoled(bool value) =>
+    SettingsStore.instance.write(_amoledPreference, value);
 
-Future<void> _settingsSetCustomColorSeed(int value) async {
-  customColorSeedNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('customColorSeed', value);
-}
+Future<void> _settingsSetCustomColorSeed(int value) =>
+    SettingsStore.instance.write(_customColorSeedPreference, value);
 
-Future<void> _settingsSetCancelledLessonColor(int colorValue) async {
-  cancelledLessonColorNotifier.value = colorValue;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('cancelledLessonColor', colorValue);
-}
+Future<void> _settingsSetCancelledLessonColor(int value) =>
+    SettingsStore.instance.write(_cancelledLessonColorPreference, value);
 
-Future<void> _settingsSetMonochromeLessons(bool value) async {
-  monochromeLessonsNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('monochromeLessons', value);
-}
+Future<void> _settingsSetMonochromeLessons(bool value) =>
+    SettingsStore.instance.write(_monochromeLessonsPreference, value);
 
-Future<void> _settingsSetMonochromeLessonColor(int colorValue) async {
-  monochromeLessonColorNotifier.value = colorValue;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('monochromeLessonColor', colorValue);
-}
+Future<void> _settingsSetMonochromeLessonColor(int value) =>
+    SettingsStore.instance.write(_monochromeLessonColorPreference, value);
 
-Future<void> _settingsSetLessonCardStyle(int style) async {
-  final normalized = style.clamp(0, 4);
-  lessonCardStyleNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('lessonCardStyle', normalized);
-}
+Future<void> _settingsSetLessonCardStyle(int value) =>
+    SettingsStore.instance.write(_lessonCardStylePreference, value);
 
-Future<void> _settingsSetGlowEffectsEnabled(bool value) async {
-  glowEffectsEnabledNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('glowEffectsEnabled', value);
-}
+Future<void> _settingsSetGlowEffectsEnabled(bool value) =>
+    SettingsStore.instance.write(_glowEffectsPreference, value);
 
-Future<void> _settingsSetLessonBlurEnabled(bool value) async {
-  lessonBlurEnabledNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonBlurEnabled', value);
-}
+Future<void> _settingsSetLessonBlurEnabled(bool value) =>
+    SettingsStore.instance.write(_lessonBlurEnabledPreference, value);
 
-Future<void> _settingsSetLessonBlurAmount(double value) async {
-  lessonBlurAmountNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setDouble('lessonBlurAmount', value);
-}
+Future<void> _settingsSetLessonBlurAmount(double value) =>
+    SettingsStore.instance.write(_lessonBlurAmountPreference, value);
 
-Future<void> _settingsSetLessonCardOpacity(double value) async {
-  lessonCardOpacityNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setDouble('lessonCardOpacity', value);
-}
+Future<void> _settingsSetLessonCardOpacity(double value) =>
+    SettingsStore.instance.write(_lessonCardOpacityPreference, value);
 
-Future<void> _settingsSetLessonBorderRadius(double value) async {
-  lessonBorderRadiusNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setDouble('lessonBorderRadius', value);
-}
+Future<void> _settingsSetLessonBorderRadius(double value) =>
+    SettingsStore.instance.write(_lessonBorderRadiusPreference, value);
 
-Future<void> _settingsSetLessonAccentStyle(int style) async {
-  final normalized = style.clamp(0, 3);
-  lessonAccentStyleNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('lessonAccentStyle', normalized);
-}
+Future<void> _settingsSetLessonAccentStyle(int value) =>
+    SettingsStore.instance.write(_lessonAccentStylePreference, value);
 
-Future<void> _settingsSetLessonShowTeacher(bool value) async {
-  lessonShowTeacherNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonShowTeacher', value);
-}
+Future<void> _settingsSetLessonShowTeacher(bool value) =>
+    SettingsStore.instance.write(_lessonShowTeacherPreference, value);
 
-Future<void> _settingsSetLessonShowSubjectIcons(bool value) async {
-  lessonShowSubjectIconsNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonShowSubjectIcons', value);
-}
+Future<void> _settingsSetLessonShowSubjectIcons(bool value) =>
+    SettingsStore.instance.write(_lessonShowSubjectIconsPreference, value);
 
-Future<void> _settingsSetLessonShowRoom(bool value) async {
-  lessonShowRoomNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonShowRoom', value);
-}
+Future<void> _settingsSetLessonShowRoom(bool value) =>
+    SettingsStore.instance.write(_lessonShowRoomPreference, value);
 
-Future<void> _settingsSetLessonCompactMode(bool value) async {
-  lessonCompactModeNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonCompactMode', value);
-}
+Future<void> _settingsSetLessonCompactMode(bool value) =>
+    SettingsStore.instance.write(_lessonCompactModePreference, value);
 
-Future<void> _settingsSetLessonDimPast(bool value) async {
-  lessonDimPastNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonDimPast', value);
-}
+Future<void> _settingsSetLessonDimPast(bool value) =>
+    SettingsStore.instance.write(_lessonDimPastPreference, value);
 
-Future<void> _settingsSetLessonCancelledPattern(bool value) async {
-  lessonCancelledPatternNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('lessonCancelledPattern', value);
-}
+Future<void> _settingsSetLessonCancelledPattern(bool value) =>
+    SettingsStore.instance.write(_lessonCancelledPatternPreference, value);
 
 Future<void> _settingsSetProgressivePush(bool value) async {
-  progressivePushNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('progressivePush', value);
+  await SettingsStore.instance.write(_progressivePushPreference, value);
   if (!value) {
     await NotificationService().cancelNotification(
       NotificationIds.currentLesson,
@@ -263,9 +397,7 @@ Future<void> _settingsSetProgressivePush(bool value) async {
 }
 
 Future<void> _settingsSetDailyBriefingPush(bool value) async {
-  dailyBriefingPushNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('dailyBriefingPush', value);
+  await SettingsStore.instance.write(_dailyBriefingPushPreference, value);
   if (!value) {
     await NotificationService().cancelNotification(
       NotificationIds.dailyBriefing,
@@ -276,9 +408,7 @@ Future<void> _settingsSetDailyBriefingPush(bool value) async {
 }
 
 Future<void> _settingsSetImportantChangesPush(bool value) async {
-  importantChangesPushNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('importantChangesPush', value);
+  await SettingsStore.instance.write(_importantChangesPushPreference, value);
   if (value) {
     updateUntisData().catchError((_) => false);
   } else {
@@ -288,44 +418,29 @@ Future<void> _settingsSetImportantChangesPush(bool value) async {
   }
 }
 
-Future<void> _settingsSetNotifyChangeCancellations(bool value) async {
-  notifyChangeCancellationsNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('notifyChangeCancellations', value);
-}
+Future<void> _settingsSetNotifyChangeCancellations(bool value) =>
+    SettingsStore.instance.write(_notifyChangeCancellationsPreference, value);
 
-Future<void> _settingsSetNotifyChangeRoom(bool value) async {
-  notifyChangeRoomNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('notifyChangeRoom', value);
-}
+Future<void> _settingsSetNotifyChangeRoom(bool value) =>
+    SettingsStore.instance.write(_notifyChangeRoomPreference, value);
 
-Future<void> _settingsSetNotifyChangeTeacher(bool value) async {
-  notifyChangeTeacherNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('notifyChangeTeacher', value);
-}
+Future<void> _settingsSetNotifyChangeTeacher(bool value) =>
+    SettingsStore.instance.write(_notifyChangeTeacherPreference, value);
 
-Future<void> _settingsSetNotifyChangeOther(bool value) async {
-  notifyChangeOtherNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('notifyChangeOther', value);
-}
+Future<void> _settingsSetNotifyChangeOther(bool value) =>
+    SettingsStore.instance.write(_notifyChangeOtherPreference, value);
 
 Future<void> _settingsSetDemoMode(BuildContext context, bool enabled) async {
-  demoModeNotifier.value = enabled;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('demoMode', enabled);
-
+  await SettingsStore.instance.write(_demoModePreference, enabled);
   if (enabled) {
     if (schoolName.isEmpty) schoolName = 'demo.school';
     if (schoolUrl.isEmpty) schoolUrl = 'demo.school';
     if (personType == 0) personType = DemoModeService.demoPersonType;
     if (personId == 0) personId = DemoModeService.demoPersonId;
-    await prefs.setString('schoolName', schoolName);
-    await prefs.setString('schoolUrl', schoolUrl);
-    await prefs.setInt('personType', personType);
-    await prefs.setInt('personId', personId);
+    await SettingsStore.instance.writeRaw('schoolName', schoolName);
+    await SettingsStore.instance.writeRaw('schoolUrl', schoolUrl);
+    await SettingsStore.instance.writeRaw('personType', personType);
+    await SettingsStore.instance.writeRaw('personId', personId);
     return;
   }
 
@@ -372,7 +487,7 @@ String _settingsApiKeyPortalUrlForProvider(String provider) {
 }
 
 Future<void> _settingsOpenApiKeyPortal(BuildContext context) async {
-  final l = AppL10n.of(appLocaleNotifier.value);
+  final l = appL10nFor(appLocaleNotifier.value);
   final url = _settingsApiKeyPortalUrlForProvider(aiProvider);
   if (url.isEmpty) return;
   final ok = await url_launcher.launchUrlString(
@@ -391,8 +506,7 @@ Future<void> _settingsOpenApiKeyPortal(BuildContext context) async {
 
 Future<void> _settingsSetAiProvider(String provider) async {
   aiProvider = _normalizeAiProvider(provider);
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('aiProvider', aiProvider);
+  await SettingsStore.instance.writeRaw('aiProvider', aiProvider);
 
   final models = _modelsForProvider(
     aiProvider,
@@ -400,20 +514,21 @@ Future<void> _settingsSetAiProvider(String provider) async {
   );
   if (!models.contains(aiModel)) {
     aiModel = models.first;
-    await prefs.setString('aiModel', aiModel);
+    await SettingsStore.instance.writeRaw('aiModel', aiModel);
   }
 }
 
 Future<void> _settingsSetAiModel(String model) async {
   aiModel = model;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('aiModel', aiModel);
+  await SettingsStore.instance.writeRaw('aiModel', aiModel);
 }
 
 Future<void> _settingsSetAiCustomCompatibility(String compatibility) async {
   aiCustomCompatibility = _normalizeAiCustomCompatibility(compatibility);
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('aiCustomCompatibility', aiCustomCompatibility);
+  await SettingsStore.instance.writeRaw(
+    'aiCustomCompatibility',
+    aiCustomCompatibility,
+  );
 
   final models = _modelsForProvider(
     aiProvider,
@@ -421,20 +536,18 @@ Future<void> _settingsSetAiCustomCompatibility(String compatibility) async {
   );
   if (!models.contains(aiModel)) {
     aiModel = models.first;
-    await prefs.setString('aiModel', aiModel);
+    await SettingsStore.instance.writeRaw('aiModel', aiModel);
   }
 }
 
 Future<void> _settingsSetAiCustomBaseUrl(String value) async {
   aiCustomBaseUrl = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('aiCustomBaseUrl', value);
+  await SettingsStore.instance.writeRaw('aiCustomBaseUrl', value);
 }
 
 Future<void> _settingsSetAiSystemPromptTemplate(String value) async {
   aiSystemPromptTemplate = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('aiSystemPromptTemplate', value);
+  await SettingsStore.instance.writeRaw('aiSystemPromptTemplate', value);
 }
 
 Future<void> _settingsSetProviderApiKey(String key) async {
@@ -449,111 +562,77 @@ String _settingsMaskKey(String key) {
 }
 
 Future<void> _settingsSyncFromPrefs() async {
-  final prefs = await SharedPreferences.getInstance();
+  final store = SettingsStore.instance;
+  final prefs = store.preferences;
 
-  appLocaleNotifier.value =
-      prefs.getString('appLocale') ?? appLocaleNotifier.value;
-  themeModeNotifier.value =
-      ThemeMode.values[(prefs.getInt('themeMode') ?? 0).clamp(0, 2)];
+  await store.load(_appLocalePreference);
+  await store.load(_themeModePreference);
   final savedVisualTheme = prefs.getString('visualTheme');
-  visualThemeNotifier.value = AppThemeIdX.fromStorage(savedVisualTheme);
+  await store.load(_visualThemePreference);
   if (AppThemeIdX.isRemovedStorageKey(savedVisualTheme)) {
-    await prefs.setString('visualTheme', AppThemeId.defaultTheme.storageKey);
+    await store.write(_visualThemePreference, AppThemeId.defaultTheme);
   }
-  showCancelledNotifier.value =
-      prefs.getBool('showCancelled') ?? showCancelledNotifier.value;
-  timetableSwitchAnimationNotifier.value =
-      (prefs.getInt('timetableSwitchAnimation') ??
-              timetableSwitchAnimationNotifier.value)
-          .clamp(0, 2);
-  backgroundAnimationsNotifier.value =
-      prefs.getBool('backgroundAnimations') ??
-      backgroundAnimationsNotifier.value;
-  backgroundAnimationStyleNotifier.value =
-      (prefs.getInt('backgroundAnimationStyle') ?? 0).clamp(0, 10);
-  backgroundGyroscopeNotifier.value =
-      prefs.getBool('backgroundGyroscope') ?? backgroundGyroscopeNotifier.value;
-  Map? rawThemeBlurs;
-  try {
-    rawThemeBlurs = jsonDecode(prefs.getString('themeBlurPreferences') ?? '{}');
-  } catch (_) {}
-  final savedThemeBlurs = AppThemeIdX.normalizeBlurPreferences(
-    rawThemeBlurs,
-    defaultThemeBlur: prefs.getBool('blurEnabled') ?? true,
+  await store.load(_showCancelledPreference);
+  await store.load(_timetableSwitchAnimationPreference);
+  await store.load(_backgroundAnimationsPreference);
+  await store.load(_backgroundAnimationStylePreference);
+  await store.load(_backgroundGyroscopePreference);
+
+  final rawThemeBlurs = decodeJsonMap(
+    prefs.getString('themeBlurPreferences') ?? '{}',
   );
-  themeBlurPreferencesNotifier.value = savedThemeBlurs;
-  final hadUnsupportedThemeBlur =
-      rawThemeBlurs is Map &&
-      rawThemeBlurs.keys.any(
-        (key) => key is! String || !AppThemeIdX.isSupportedStorageKey(key),
-      );
+  await store.load(_themeBlurPreferencesPreference);
+  final hadUnsupportedThemeBlur = rawThemeBlurs.keys.any(
+    (key) => !AppThemeIdX.isSupportedStorageKey(key),
+  );
   if (hadUnsupportedThemeBlur) {
-    await prefs.setString('themeBlurPreferences', jsonEncode(savedThemeBlurs));
+    await store.write(
+      _themeBlurPreferencesPreference,
+      themeBlurPreferencesNotifier.value,
+    );
   }
   final activeTheme = visualThemeNotifier.value;
   blurEnabledNotifier.value =
       appThemeCapabilities(activeTheme).supportsBlur &&
       (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
-  blurStrengthNotifier.value = (prefs.getDouble('blurStrength') ?? 1.0)
-      .clamp(0.25, 2.0)
-      .toDouble();
-  surfaceBlurEnabledNotifier.value =
-      prefs.getBool('surfaceBlurEnabled') ?? true;
-  surfaceCornerModeNotifier.value =
-      (prefs.getInt('surfaceCornerMode') ?? 0).clamp(0, 2);
-  surfaceCornerRadiusNotifier.value =
-      (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
-  pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
-    0,
-    7,
-  );
-  mainTabFadeUpEnabledNotifier.value =
-      prefs.getBool('mainTabFadeUpEnabled') ?? false;
-  useMaterialYouNotifier.value = prefs.getBool('useMaterialYou') ?? true;
-  isAmoledNotifier.value = prefs.getBool('isAmoled') ?? false;
-  customColorSeedNotifier.value = prefs.getInt('customColorSeed') ?? 0xFF0F766E;
-  lessonCardStyleNotifier.value = (prefs.getInt('lessonCardStyle') ?? 0).clamp(
-    0,
-    4,
-  );
-  glowEffectsEnabledNotifier.value =
-      prefs.getBool('glowEffectsEnabled') ?? false;
-  lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;
-  lessonBlurAmountNotifier.value = prefs.getDouble('lessonBlurAmount') ?? 12.0;
-  lessonCardOpacityNotifier.value = prefs.getDouble('lessonCardOpacity') ?? 0.9;
-  lessonBorderRadiusNotifier.value =
-      prefs.getDouble('lessonBorderRadius') ?? 12.0;
-  lessonAccentStyleNotifier.value = (prefs.getInt('lessonAccentStyle') ?? 0)
-      .clamp(0, 3);
-  lessonShowTeacherNotifier.value = prefs.getBool('lessonShowTeacher') ?? true;
-  lessonShowSubjectIconsNotifier.value =
-      prefs.getBool('lessonShowSubjectIcons') ?? false;
-  lessonShowRoomNotifier.value = prefs.getBool('lessonShowRoom') ?? true;
-  lessonCompactModeNotifier.value = prefs.getBool('lessonCompactMode') ?? false;
-  lessonDimPastNotifier.value = prefs.getBool('lessonDimPast') ?? true;
-  lessonCancelledPatternNotifier.value =
-      prefs.getBool('lessonCancelledPattern') ?? true;
-  progressivePushNotifier.value =
-      prefs.getBool('progressivePush') ?? progressivePushNotifier.value;
-  dailyBriefingPushNotifier.value =
-      prefs.getBool('dailyBriefingPush') ?? dailyBriefingPushNotifier.value;
-  importantChangesPushNotifier.value =
-      prefs.getBool('importantChangesPush') ??
-      importantChangesPushNotifier.value;
-  demoModeNotifier.value = prefs.getBool('demoMode') ?? demoModeNotifier.value;
 
-  aiProvider = _normalizeAiProvider(
-    prefs.getString('aiProvider') ?? aiProvider,
-  );
-  aiModel = prefs.getString('aiModel') ?? aiModel;
-  aiCustomCompatibility = _normalizeAiCustomCompatibility(
-    prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
-  );
-  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
-  aiSystemPromptTemplate =
-      prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
-  await loadSecureAiApiKeys(prefs);
+  await store.load(_blurStrengthPreference);
+  await store.load(_surfaceBlurEnabledPreference);
+  await store.load(_surfaceCornerModePreference);
+  await store.load(_surfaceCornerRadiusPreference);
+  await store.load(_appBgBlurEnabledPreference);
+  await store.load(_appBgBlurAmountPreference);
+  await store.load(_pageTransitionPreference);
+  await store.load(_mainTabFadeUpPreference);
+  await store.load(_useMaterialYouPreference);
+  await store.load(_amoledPreference);
+  await store.load(_customColorSeedPreference);
+  await store.load(_cancelledLessonColorPreference);
+  await store.load(_monochromeLessonsPreference);
+  await store.load(_monochromeLessonColorPreference);
+  await store.load(_lessonCardStylePreference);
+  await store.load(_glowEffectsPreference);
+  await store.load(_lessonBlurEnabledPreference);
+  await store.load(_lessonBlurAmountPreference);
+  await store.load(_lessonCardOpacityPreference);
+  await store.load(_lessonBorderRadiusPreference);
+  await store.load(_lessonAccentStylePreference);
+  await store.load(_lessonShowTeacherPreference);
+  await store.load(_lessonShowSubjectIconsPreference);
+  await store.load(_lessonShowRoomPreference);
+  await store.load(_lessonCompactModePreference);
+  await store.load(_lessonDimPastPreference);
+  await store.load(_lessonCancelledPatternPreference);
+  await store.load(_progressivePushPreference);
+  await store.load(_dailyBriefingPushPreference);
+  await store.load(_importantChangesPushPreference);
+  await store.load(_notifyChangeCancellationsPreference);
+  await store.load(_notifyChangeRoomPreference);
+  await store.load(_notifyChangeTeacherPreference);
+  await store.load(_notifyChangeOtherPreference);
+  await store.load(_demoModePreference);
 
+  await loadAiPreferences(prefs);
   await loadAccountPersonalData();
 
   defaultClassId = prefs.getInt('defaultClassId');
@@ -695,11 +774,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           : item.iconBackground,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      item.icon,
-                      color: item.iconColor,
-                      size: 21,
-                    ),
+                    child: Icon(item.icon, color: item.iconColor, size: 21),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -712,8 +787,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(
-                            fontWeight:
-                                selected ? FontWeight.w800 : FontWeight.w600,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
                             fontSize: 15,
                             color: selected
                                 ? cs.onSecondaryContainer
@@ -729,7 +805,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                             fontWeight: FontWeight.w500,
                             fontSize: 12.5,
                             color: selected
-                                ? cs.onSecondaryContainer.withValues(alpha: 0.75)
+                                ? cs.onSecondaryContainer.withValues(
+                                    alpha: 0.75,
+                                  )
                                 : cs.onSurfaceVariant,
                           ),
                         ),
@@ -800,8 +878,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 isFirst: index == 0,
                 isLast: index == items.length - 1,
               ),
-              if (index < items.length - 1)
-                const SizedBox(height: 4),
+              if (index < items.length - 1) const SizedBox(height: 4),
             ],
           ],
         ),
@@ -811,7 +888,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -875,8 +952,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         ? makeItem(
             index: 3,
             icon: Icons.alarm_rounded,
-            title: l.ui('alarmTitle'),
-            subtitle: l.ui('alarmScheduleDesc'),
+            title: l.alarmTitle,
+            subtitle: l.alarmScheduleDesc,
             pageBuilder: () => const SettingsAlarmPage(),
           )
         : null;
@@ -890,8 +967,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final widgetsItem = makeItem(
       index: 5,
       icon: Icons.widgets_rounded,
-      title: l.ui('widgets'),
-      subtitle: l.ui('widgetAccount'),
+      title: l.widgets,
+      subtitle: l.widgetAccount,
       pageBuilder: () => const SettingsWidgetsPage(),
     );
     final aiItem = makeItem(
@@ -958,11 +1035,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final personalizeItems = <_SettingsHubItem>[appearanceItem, widgetsItem];
     final smartItems = <_SettingsHubItem>[aiItem];
     final dataItems = <_SettingsHubItem>[accountItem, backupItem];
-    final appItems = <_SettingsHubItem>[
-      ?updatesItem,
-      supportItem,
-      reportItem,
-    ];
+    final appItems = <_SettingsHubItem>[?updatesItem, supportItem, reportItem];
     // Keep the internal detail indices stable for existing tablet navigation
     // and widget tests. Visual grouping is independent from this order.
     final items = <_SettingsHubItem>[
@@ -1061,10 +1134,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             final detail =
                 items[detailIndex].pageBuilder?.call() ??
                 const SettingsTimetablePage();
-            final masterWidth =
-                (MediaQuery.sizeOf(context).width * 0.34)
-                    .clamp(350.0, 420.0)
-                    .toDouble();
+            final masterWidth = (MediaQuery.sizeOf(context).width * 0.34)
+                .clamp(350.0, 420.0)
+                .toDouble();
 
             return Row(
               key: const ValueKey('settings-master-detail'),
@@ -1126,6 +1198,6 @@ Future<void> _settingsSetAppIcon(String icon) async {
   final applied = await nativeUiGateway.setLauncherIcon(icon);
   if (!applied && !kIsWeb) return;
   appIconNotifier.value = icon;
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = SettingsStore.instance.preferences;
   await prefs.setString('appIcon', icon);
 }

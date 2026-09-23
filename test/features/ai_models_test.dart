@@ -35,13 +35,13 @@ void main() {
     expect(action.gradeValue, 1.7);
     expect(action.gradeWeight, 0.5);
     expect(action.date, 20260922);
-    expect(action.summary(AppL10n.of('en')), isNotEmpty);
+    expect(action.summary(appL10nFor('en')), isNotEmpty);
   });
 
   test('unknown actions are never applied silently', () {
     const action = AiProposedAction({'kind': 'change_timetable'});
 
     expect(action.isSupported, isFalse);
-    expect(action.summary(AppL10n.of('de')), isNotEmpty);
+    expect(action.summary(appL10nFor('de')), isNotEmpty);
   });
 }

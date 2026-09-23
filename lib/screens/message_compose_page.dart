@@ -80,14 +80,14 @@ class _MessageComposePageState extends State<_MessageComposePage>
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = AppL10n.of(appLocaleNotifier.value).messageRecipientsFailed;
+        _error = appL10nFor(appLocaleNotifier.value).messageRecipientsFailed;
       });
     }
   }
 
   Future<void> _restoreDraft() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       final raw = prefs.getString(_draftKey);
       if (raw == null || raw.isEmpty) return;
       final decoded = jsonDecode(raw);
@@ -124,7 +124,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
         .map((recipient) => recipient.toJson())
         .toList(growable: false);
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = SettingsStore.instance.preferences;
       if (subject.trim().isEmpty && body.trim().isEmpty && recipients.isEmpty) {
         await prefs.remove(_draftKey);
         return;
@@ -142,7 +142,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
   }
 
   Future<void> _clearDraft() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = SettingsStore.instance.preferences;
     await prefs.remove(_draftKey);
   }
 
@@ -157,7 +157,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
 
   Future<void> _chooseRecipients() async {
     if (_loading) return;
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_recipients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(l.messageNoRecipients)),
@@ -232,7 +232,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                     child: FilledButton(
                       onPressed: () => Navigator.pop(sheetContext, selected),
-                      child: Text(l.messageRecipientsApply),
+                      child: Text(l.apply),
                     ),
                   ),
                 ],
@@ -257,16 +257,13 @@ class _MessageComposePageState extends State<_MessageComposePage>
   }
 
   Future<void> _pickAttachments() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final remaining = _permissions.maxFileCount - _attachments.length;
     if (remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            l.messageAttachmentLimit.replaceAll(
-              '{count}',
-              '${_permissions.maxFileCount}',
-            ),
+            l.messageAttachmentLimit(_permissions.maxFileCount),
           ),
         ),
       );
@@ -289,7 +286,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                l.messageAttachmentTooLarge.replaceAll('{name}', file.name),
+                l.messageAttachmentTooLarge(file.name),
               ),
             ),
           );
@@ -306,7 +303,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
   }
 
   Future<void> _send() async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     if (_selectedRecipients.isEmpty ||
         _subjectController.text.trim().isEmpty ||
         _bodyController.text.trim().isEmpty) {
@@ -392,7 +389,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(

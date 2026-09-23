@@ -29,7 +29,7 @@ class SettingsTimetablePage extends StatelessWidget {
   }
 
   Future<void> _showSwitchAnimationPicker(BuildContext context) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final current = timetableSwitchAnimationNotifier.value;
     final selected = await _showUnifiedOptionSheet<int>(
       context: context,
@@ -63,87 +63,75 @@ class SettingsTimetablePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(context, l.settingsSectionTimetable),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+    return SettingsPageShell(
+      title: l.settingsSectionTimetable,
+      children: [
+        SettingsGroup(
+          title: l.settingsSectionTimetable,
           children: [
-            SettingsGroup(
-              title: l.settingsSectionTimetable,
-              children: [
-                SettingsTile(
-                  icon: Icons.dashboard_customize_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsLessonDesignTitle,
-                  subtitle: l.settingsLessonDesignDesc,
-                  onTap: () => Navigator.of(context).push(
-                    _buildBouncyRoute(const SettingsLessonDesignPage()),
-                  ),
-                ),
-                ValueListenableBuilder<int>(
-                  valueListenable: timetableSwitchAnimationNotifier,
-                  builder: (context, style, _) => SettingsTile(
-                    icon: _switchAnimationIcon(style),
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsTimetableSwitchAnimation,
-                    subtitle: _switchAnimationLabel(l, style),
-                    onTap: () => _showSwitchAnimationPicker(context),
-                  ),
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: showCancelledNotifier,
-                  builder: (context, value, _) => SettingsSwitchTile(
-                    icon: Icons.event_busy_rounded,
-                    iconBackgroundColor: cs.errorContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onErrorContainer,
-                    title: l.settingsShowCancelled,
-                    subtitle: l.settingsShowCancelledDesc,
-                    value: value,
-                    onChanged: _settingsSetShowCancelled,
-                  ),
-                ),
-              ],
+            SettingsTile(
+              icon: Icons.dashboard_customize_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsLessonDesignTitle,
+              subtitle: l.settingsLessonDesignDesc,
+              onTap: () => Navigator.of(
+                context,
+              ).push(_buildBouncyRoute(const SettingsLessonDesignPage())),
             ),
-            const SizedBox(height: 16),
-            SettingsGroup(
-              title: l.settingsRefreshPushWidgetNow,
-              children: [
-                SettingsTile(
-                  icon: Icons.sync_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsRefreshPushWidgetNow,
-                  subtitle: l.settingsRefreshPushWidgetNowDesc,
-                  onTap: () async {
-                    await updateUntisData();
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(l.settingsBackgroundLoading),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
+            ValueListenableBuilder<int>(
+              valueListenable: timetableSwitchAnimationNotifier,
+              builder: (context, style, _) => SettingsTile(
+                icon: _switchAnimationIcon(style),
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
                 ),
-              ],
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsTimetableSwitchAnimation,
+                subtitle: _switchAnimationLabel(l, style),
+                onTap: () => _showSwitchAnimationPicker(context),
+              ),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: showCancelledNotifier,
+              builder: (context, value, _) => SettingsSwitchTile(
+                icon: Icons.event_busy_rounded,
+                iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
+                iconColor: cs.onErrorContainer,
+                title: l.settingsShowCancelled,
+                subtitle: l.settingsShowCancelledDesc,
+                value: value,
+                onChanged: _settingsSetShowCancelled,
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 16),
+        SettingsGroup(
+          title: l.settingsRefreshPushWidgetNow,
+          children: [
+            SettingsTile(
+              icon: Icons.sync_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsRefreshPushWidgetNow,
+              subtitle: l.settingsRefreshPushWidgetNowDesc,
+              onTap: () async {
+                await updateUntisData();
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l.settingsBackgroundLoading),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -193,7 +181,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
   }
 
   void _showCardStyleDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsLessonStyle,
@@ -266,7 +254,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
   }
 
   void _showAccentStyleDialog(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     _showUnifiedOptionSheet<int>(
       context: context,
       title: l.settingsLessonAccentStyle,
@@ -304,7 +292,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
   }
 
   void _showCancelledColorPicker(BuildContext context, Color current) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
 
     double red = current.r * 255.0;
@@ -412,7 +400,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        l.settingsApiKeyCancel,
+                        l.cancel,
                         style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -579,22 +567,26 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
     required String room,
     required bool isNow,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    final effectiveRadius = lessonBorderRadiusNotifier.value;
-    final cardRadius = BorderRadius.circular(effectiveRadius);
-
-    final glowEnabled = glowEffectsEnabledNotifier.value;
-    final cardStyle = lessonCardStyleNotifier.value;
-    final blurEnabled =
-        (lessonBlurEnabledNotifier.value || cardStyle == 1) &&
-        blurEnabledNotifier.value;
-    final blurSigma = lessonBlurAmountNotifier.value;
-    final cardOpacity = lessonCardOpacityNotifier.value;
-    final accentStyle = lessonAccentStyleNotifier.value;
+    final tokens = untisThemeTokensOf(context);
+    final visuals = LessonCardVisualsResolver.resolve(
+      context: context,
+      tokens: tokens,
+      isDark: isDark,
+      isCancelled: isCancelled,
+      isNow: isNow,
+      foregroundColor: fgColor,
+      backgroundColor: bgColor,
+      accentWidth: 4.0,
+    );
+    final effectiveRadius = visuals.radius;
+    final cardRadius = visuals.borderRadius;
+    final blurEnabled = visuals.blurEnabled;
+    final blurSigma = visuals.blurSigma;
+    final accentStyle = visuals.accentStyle;
+    final showPattern = visuals.showPattern;
     final showTeacher = lessonShowTeacherNotifier.value;
     final showRoom = lessonShowRoomNotifier.value;
     final compact = lessonCompactModeNotifier.value;
-    final showPattern = isCancelled && lessonCancelledPatternNotifier.value;
 
     final effectivePadding = compact
         ? const EdgeInsets.fromLTRB(10, 6, 8, 6)
@@ -604,113 +596,13 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
     final teacherFontSize = compact ? 10.5 : 12.0;
     final roomFontSize = compact ? 10.5 : 12.0;
 
-    List<BoxShadow>? shadows;
-    if (glowEnabled) {
-      if (isNow) {
-        shadows = [
-          BoxShadow(
-            color: fgColor.withValues(alpha: 0.38),
-            blurRadius: 14,
-            spreadRadius: 1.5,
-            offset: const Offset(0, 3),
-          ),
-        ];
-      }
-    }
-
-    Color effectiveFillColor;
-    Gradient? effectiveGradient;
-    Border? effectiveBorder;
-    Color effectiveTextColor = isCancelled
-        ? fgColor.withValues(alpha: 0.6)
-        : fgColor;
-    Color effectiveSecondaryTextColor = isCancelled
-        ? fgColor.withValues(alpha: 0.48)
-        : fgColor.withValues(alpha: 0.75);
-
-    switch (cardStyle) {
-      case 1:
-        effectiveFillColor = isCancelled
-            ? bgColor.withValues(alpha: (0.28 * cardOpacity).clamp(0.0, 1.0))
-            : cs.surfaceContainerLowest.withValues(
-                alpha: (0.52 * cardOpacity).clamp(0.0, 1.0),
-              );
-        effectiveBorder = Border.all(
-          color: isCancelled
-              ? fgColor.withValues(alpha: 0.40)
-              : fgColor.withValues(alpha: isDark ? 0.42 : 0.28),
-          width: 1.2,
-        );
-        break;
-      case 2:
-        effectiveFillColor = Colors.transparent;
-        effectiveGradient = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isCancelled
-              ? [
-                  fgColor.withValues(
-                    alpha: (0.25 * cardOpacity).clamp(0.0, 1.0),
-                  ),
-                  bgColor.withValues(
-                    alpha: (0.45 * cardOpacity).clamp(0.0, 1.0),
-                  ),
-                ]
-              : [
-                  fgColor.withValues(
-                    alpha: ((isDark ? 0.35 : 0.25) * cardOpacity).clamp(
-                      0.0,
-                      1.0,
-                    ),
-                  ),
-                  bgColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0)),
-                ],
-        );
-        effectiveBorder = Border.all(
-          color: fgColor.withValues(alpha: isDark ? 0.30 : 0.18),
-          width: 1.0,
-        );
-        break;
-      case 3:
-        effectiveFillColor = isCancelled
-            ? cs.surfaceContainerLowest.withValues(
-                alpha: (0.35 * cardOpacity).clamp(0.0, 1.0),
-              )
-            : cs.surfaceContainerLow.withValues(
-                alpha: (0.60 * cardOpacity).clamp(0.0, 1.0),
-              );
-        effectiveBorder = Border.all(
-          color: isCancelled
-              ? fgColor.withValues(alpha: 0.50)
-              : fgColor.withValues(alpha: isDark ? 0.85 : 0.70),
-          width: 1.8,
-        );
-        break;
-      case 4:
-        effectiveFillColor = isCancelled
-            ? fgColor.withValues(alpha: 0.45)
-            : fgColor.withValues(alpha: cardOpacity.clamp(0.6, 1.0));
-        effectiveBorder = null;
-        final lum = effectiveFillColor.computeLuminance();
-        final solidText = lum > 0.45 ? Colors.black87 : Colors.white;
-        effectiveTextColor = solidText;
-        effectiveSecondaryTextColor = solidText.withValues(alpha: 0.78);
-        break;
-      case 0:
-      default:
-        effectiveFillColor = isCancelled
-            ? bgColor.withValues(alpha: (0.40 * cardOpacity).clamp(0.0, 1.0))
-            : bgColor.withValues(alpha: cardOpacity.clamp(0.0, 1.0));
-        effectiveBorder = Border.all(
-          color: fgColor.withValues(alpha: isDark ? 0.25 : 0.15),
-          width: 1.0,
-        );
-        break;
-    }
-
-    final double effectiveAccentWidth = accentStyle == 0
-        ? 4.0
-        : (accentStyle == 1 ? 1.8 : 0.0);
+    final shadows = visuals.shadows;
+    final effectiveFillColor = visuals.fillColor;
+    final effectiveGradient = visuals.gradient;
+    final effectiveBorder = visuals.border;
+    final effectiveTextColor = visuals.textColor;
+    final effectiveSecondaryTextColor = visuals.secondaryTextColor;
+    final effectiveAccentWidth = visuals.accentWidth;
 
     Widget cardContent = Stack(
       children: [
@@ -849,7 +741,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final mq = MediaQuery.of(context);

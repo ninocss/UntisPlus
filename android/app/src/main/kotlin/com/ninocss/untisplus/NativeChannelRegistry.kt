@@ -7,6 +7,7 @@ internal object NativeChannelContract {
     const val NOTIFICATIONS = "untisplus/notifications"
     const val UI = "untisplus/ui"
     const val ALARM = "untisplus/alarm"
+    const val ALARM_REFRESH = "untisplus/alarm_refresh"
 
     const val ACTION_ID = "notification_action_id"
     const val CURRENT_LESSON = "notification_current_lesson"
@@ -33,8 +34,8 @@ internal class NativeChannelRegistry(
         if (intent?.action == "com.ninocss.untisplus.OPEN_ASSISTANT" ||
             intent?.data?.host == "assistant"
         ) {
-            ui.openAssistant(intent?.data?.getQueryParameter("query"))
-            intent?.action = null
+            ui.openAssistant(intent.data?.getQueryParameter("query"))
+            intent.action = null
             return
         }
 
