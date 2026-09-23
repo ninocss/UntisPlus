@@ -1,4 +1,4 @@
-name: Generate Changelog
+name: AI Release Notes
 
 on:
   workflow_dispatch:
@@ -37,8 +37,8 @@ jobs:
         id: changelog
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: 	gemini-3.5-flash
-          GEMINI_FALLBACK_MODEL: 	gemini-3.5-flash-lite
+          GEMINI_MODEL: gemini-3.5-flash
+          GEMINI_FALLBACK_MODEL: gemini-3.5-flash-lite
           COMMIT_COUNT: ${{ github.event.inputs.commit_count }}
           RELEASE_VERSION: ${{ github.event.inputs.release_version }}
           INCLUDE_REFACTOR: ${{ github.event.inputs.include_refactor }}
@@ -85,8 +85,8 @@ jobs:
           fi
 
           PROMPT=$(cat <<'EOF'
-          You are writing a changelog for a Flutter app called "Untis+".
-          Your job: produce a detailed, honest changelog in Markdown.
+          You are writing GitHub release notes for a Flutter app called "Untis+".
+          Your job: produce concise, high-signal, honest Markdown for end users.
 
           Hard rules:
           - Output in English.
@@ -101,25 +101,30 @@ jobs:
           Output format:
           # Version <tag>
 
-          One short summary paragraph (2-3 sentences).
+          One short summary paragraph (2-3 sentences) that says who benefits.
+
+          ## Highlights
+          Up to five user-facing changes, ordered by impact. Omit when there is no evidence.
 
           ## What's New
-          Bullets for new features/capabilities (user-facing).
+          Bullets for new features/capabilities (user-facing). Omit when empty.
 
           ## Improvements
-          Bullets for UX polish, clarity, behavioral improvements.
+          Bullets for UX polish, clarity, behavioral improvements. State where it matters.
 
           ## Fixes
-          Bullets for bugs (include symptom and area if inferable).
+          Bullets for bugs (include symptom and area if inferable). Omit when empty.
 
           ## Technical Notes
-          Bullets for internal changes, refactors, dependency updates, config changes.
+          Bullets for internal changes, refactors, dependency updates, config changes. Prefix purely internal bullets with "Internal:".
 
           Bullet guidelines:
           - Start each bullet with a verb.
           - Include context (screen/feature/module) when possible.
           - Rewrite commit messages; do not copy verbatim.
           - No raw commit hashes.
+          - Do not invent a user-facing benefit for an internal commit.
+          - Do not emit a section with no evidence.
 
           If there are NO user-visible changes, say so and focus on Technical Notes.
           EOF
