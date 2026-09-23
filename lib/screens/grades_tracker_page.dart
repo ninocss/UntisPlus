@@ -1073,87 +1073,90 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                       _saveGrades();
                       HapticFeedback.mediumImpact();
                     },
-                    child: ListTile(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        showAddGradeDialog(g);
-                      },
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 6,
-                      ),
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: gColor.withValues(alpha: 0.14),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: gColor.withValues(alpha: 0.35),
-                            width: 1.5,
-                          ),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: ListTile(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          showAddGradeDialog(g);
+                        },
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 6,
                         ),
-                        child: Center(
-                          child: Text(
-                            g.value.toString().replaceAll('.0', ''),
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 17,
-                              color: gColor,
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: gColor.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: gColor.withValues(alpha: 0.35),
+                              width: 1.5,
                             ),
                           ),
-                        ),
-                      ),
-                      title: Row(
-                        children: [
-                          Expanded(
+                          child: Center(
                             child: Text(
-                              g.type.isNotEmpty ? g.type : l.gradesTypeSingle,
+                              g.value.toString().replaceAll('.0', ''),
                               style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14.5,
-                                color: cs.onSurface,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 17,
+                                color: gColor,
                               ),
                             ),
                           ),
-                          if (g.weight != 1.0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: cs.primaryContainer.withValues(
-                                  alpha: 0.5,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(
                               child: Text(
-                                "${l.gradesWeightLabelShort}: ${g.weight}",
+                                g.type.isNotEmpty ? g.type : l.gradesTypeSingle,
                                 style: GoogleFonts.outfit(
-                                  fontSize: 11,
                                   fontWeight: FontWeight.w800,
-                                  color: cs.primary,
+                                  fontSize: 14.5,
+                                  color: cs.onSurface,
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        DateFormat(
-                          'dd. MMMM yyyy',
-                          _icuLocale(appLocaleNotifier.value),
-                        ).format(g.date),
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurfaceVariant,
+                            if (g.weight != 1.0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: cs.primaryContainer.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  "${l.gradesWeightLabelShort}: ${g.weight}",
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: cs.primary,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
-                      trailing: Icon(
-                        Icons.edit_note_rounded,
-                        size: 20,
-                        color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                        subtitle: Text(
+                          DateFormat(
+                            'dd. MMMM yyyy',
+                            _icuLocale(appLocaleNotifier.value),
+                          ).format(g.date),
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: Icon(
+                          Icons.edit_note_rounded,
+                          size: 20,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                        ),
                       ),
                     ),
                   );

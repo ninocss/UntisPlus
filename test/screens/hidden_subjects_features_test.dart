@@ -103,7 +103,7 @@ void main() {
     expect(find.text('Versteckte Hausaufgabe'), findsNothing);
     expect(find.text('Sichtbare Hausaufgabe'), findsOneWidget);
 
-    await tester.tap(find.text(l.gradesTitle));
+    await tester.tap(find.text(l.navGrades));
     await pumpUntilSettled(tester);
     expect(find.text('Mathematik'), findsNothing);
     expect(find.text('D'), findsWidgets);

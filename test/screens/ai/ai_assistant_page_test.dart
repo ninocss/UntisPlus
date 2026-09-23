@@ -72,6 +72,7 @@ void main() {
     await pumpUntil(tester, find.byType(TextField));
 
     await tester.tap(find.text(l.aiTabChat));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 450));
 
     expect(
@@ -97,15 +98,20 @@ void main() {
     await tester.pumpWidget(const UntisPlusApp(startScreen: AiAssistantPage()));
     await pumpUntil(tester, find.byType(TextField));
     await tester.tap(find.text(l.aiTabChat));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 450));
 
     final visibleGreeting = l.aiGreetings.singleWhere(
       (greeting) => find.text(greeting).evaluate().isNotEmpty,
     );
     await tester.enterText(find.byType(TextField), 'Hallo');
-    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded).hitTestable());
+    await tester.pump();
+    for (var i = 0; i < 10; i++) {
+      if (find.text(visibleGreeting).evaluate().isEmpty) break;
+      await tester.pump(const Duration(milliseconds: 50));
+    }
 
     expect(find.text(visibleGreeting), findsNothing);
   });
