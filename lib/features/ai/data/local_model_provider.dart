@@ -61,23 +61,28 @@ class LocalModelProvider implements AIProvider {
     final request = _request(messages);
     _isLoading = true;
     final controller = StreamController<String>.broadcast();
-    final buffer = StringBuffer();
 
+    var previousResponse = '';
     fllamaChat(request, (
       String response,
       String openaiResponseJsonString,
       bool done,
     ) {
       if (controller.isClosed) return;
-      if (response.isNotEmpty) buffer.write(response);
+      final pending = response.startsWith(previousResponse)
+          ? response.substring(previousResponse.length)
+          : response;
+      previousResponse = response;
       if (done) {
-        if (isFllamaLoadError(buffer.toString())) {
+        if (isFllamaLoadError(response)) {
           _reportLoadError();
           controller.addError(Exception('AI: ${runtime.loadErrorMessage}'));
+        } else if (pending.isNotEmpty) {
+          controller.add(pending);
         }
         controller.close();
-      } else if (response.isNotEmpty && !isFllamaLoadError(response)) {
-        controller.add(response);
+      } else if (pending.isNotEmpty && !isFllamaLoadError(response)) {
+        controller.add(pending);
       }
     }).catchError((Object error) {
       if (!controller.isClosed) {
@@ -156,6 +161,7 @@ Future<String> requestLocalModelText({
   ]);
   final buffer = StringBuffer();
   final completer = Completer<String>();
+  var previousResponse = '';
 
   fllamaChat(request, (
     String response,
@@ -163,7 +169,11 @@ Future<String> requestLocalModelText({
     bool done,
   ) {
     if (completer.isCompleted) return;
-    if (response.isNotEmpty) buffer.write(response);
+    final pending = response.startsWith(previousResponse)
+        ? response.substring(previousResponse.length)
+        : response;
+    previousResponse = response;
+    if (pending.isNotEmpty) buffer.write(pending);
     if (done) completer.complete(buffer.toString().trim());
   }).catchError((Object error) {
     if (!completer.isCompleted) completer.completeError(error);

@@ -41,7 +41,9 @@ class ChangeRepository {
     final existing = await loadChanges(accountId);
     final byId = {for (final change in existing) change.id: change};
     for (final change in detected) {
-      byId.update(change.id, (_) => change, ifAbsent: () => change);
+      // A re-detected persistence change (same id) must not reset a change the
+      // student already read, nor refresh its original detection timestamp.
+      byId.putIfAbsent(change.id, () => change);
     }
     final cutoff = DateTime.now().subtract(const Duration(days: 30));
     final retained =

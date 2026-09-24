@@ -440,11 +440,13 @@ void main() async {
       (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
   appBgBlurEnabledNotifier.value = prefs.getBool('appBgBlurEnabled') ?? false;
   appBgBlurAmountNotifier.value = prefs.getDouble('appBgBlurAmount') ?? 10.0;
+  blurStrengthNotifier.value =
+      (prefs.getDouble('blurStrength') ?? 1.0).clamp(0.25, 2.0).toDouble();
   unawaited(nativeUiGateway.setWindowBlur(blurEnabledNotifier.value));
   await loadAccountPersonalData();
   pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
     0,
-    7,
+    8,
   );
   mainTabFadeUpEnabledNotifier.value =
       prefs.getBool('mainTabFadeUpEnabled') ?? false;
@@ -475,6 +477,7 @@ void main() async {
   dailyBriefingPushNotifier.value = prefs.getBool('dailyBriefingPush') ?? true;
   importantChangesPushNotifier.value =
       prefs.getBool('importantChangesPush') ?? true;
+  progressivePushNotifier.value = prefs.getBool('progressivePush') ?? true;
   notifyChangeCancellationsNotifier.value =
       prefs.getBool('notifyChangeCancellations') ?? true;
   notifyChangeRoomNotifier.value = prefs.getBool('notifyChangeRoom') ?? true;

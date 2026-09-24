@@ -671,12 +671,17 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final desc = (exam['description'] ?? '').toString().trim();
 
     final examDate = parseUntisDate(exam['date'] ?? exam['examDate']);
-    final today = DateTime(
-      DateTime.now().year,
-      DateTime.now().month,
-      DateTime.now().day,
-    );
-    final daysUntil = examDate?.difference(today).inDays;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    // UTC calendar dates sidestep the 23/25-hour DST days, which would
+    // otherwise truncate the elapsed-days countdown by one.
+    final daysUntil = examDate == null
+        ? null
+        : DateTime.utc(
+            examDate.year,
+            examDate.month,
+            examDate.day,
+          ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = isCustom ? cs.tertiary : _autoLessonColor(subject, isDark);

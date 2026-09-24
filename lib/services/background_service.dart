@@ -18,6 +18,7 @@ import '../features/updates/data/github_release_repository.dart';
 import '../l10n.dart';
 
 import 'demo_mode_service.dart';
+import 'homework_service.dart';
 import 'live_activity_service.dart';
 import 'notification_service.dart';
 import 'alarm_service.dart';
@@ -392,6 +393,108 @@ String _localizedUpdateBody(String locale, String latestVersion) {
   return appL10nFor(locale).bgUpdateBody(latestVersion);
 }
 
+/// Rebuilds the widget's homework and exam summaries from the offline cache
+/// instead of overwriting them with the neutral "no open homework" copy shared
+/// by the foreground timetable page.
+Future<({String homeworkSummary, String examSummary})>
+_widgetHomeworkAndExamSummaries({
+  required SharedPreferences prefs,
+  required String locale,
+  required String accountId,
+  Set<String> hiddenSubjects = const {},
+}) async {
+  final l = appL10nFor(locale);
+  var homeworkSummary = l.widgetNoOpenHomework;
+  var examSummary = l.widgetNoUpcomingExams;
+  final scopedAccountId = accountId.trim();
+  bool hidden(Object? subject) {
+    final normalized = subject?.toString().trim().toLowerCase() ?? '';
+    return normalized.isNotEmpty && hiddenSubjects.contains(normalized);
+  }
+
+  try {
+    if (scopedAccountId.isNotEmpty) {
+      final now = DateTime.now();
+      final cached = await HomeworkService.loadCachedHomeworkAndNotes(
+        accountId: scopedAccountId,
+        startDate: now.subtract(const Duration(days: 30)),
+        endDate: now.add(const Duration(days: 30)),
+      );
+      final homeworks =
+          cached?['homeworks'] ?? const <Map<String, dynamic>>[];
+      if (homeworks.isNotEmpty) {
+        final doneIds = await HomeworkService.getDoneIds(
+          accountId: scopedAccountId,
+        );
+        final preview = homeworks
+            .whereType<Map>()
+            .where((item) {
+              final subject =
+                  item['subject'] ??
+                  (item['_lesson'] is Map
+                      ? (item['_lesson'] as Map)['_subjectShort']
+                      : null);
+              return !hidden(subject) &&
+                  item['isDone'] != true &&
+                  item['_done'] != true &&
+                  !doneIds.contains(item['id']?.toString() ?? '');
+            })
+            .take(3)
+            .map((item) {
+              final subject =
+                  item['subject'] ??
+                  (item['_lesson'] is Map
+                      ? (item['_lesson'] as Map)['_subjectShort']
+                      : null) ??
+                  '';
+              final text =
+                  item['text'] ??
+                  item['homework'] ??
+                  item['description'] ??
+                  l.widgetHomeworkItem;
+              return '${subject.toString().isEmpty ? '' : '$subject · '}${text.toString()}';
+            })
+            .join('\n');
+        if (preview.isNotEmpty) homeworkSummary = preview;
+      }
+    }
+  } catch (_) {
+    // A cache miss keeps the neutral "no open homework" widget copy.
+  }
+
+  try {
+    final examKey = scopedAccountId.isEmpty
+        ? 'customExams'
+        : UntisAccountStore.personalDataKey(scopedAccountId, 'customExams');
+    final exams = (prefs.getStringList(examKey) ?? const <String>[])
+        .map((raw) {
+          try {
+            return jsonDecode(raw);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Map>()
+        .where(
+          (exam) => !hidden(exam['subject'] ?? exam['subjectName']),
+        )
+        .take(2)
+        .map((exam) {
+          final subject = exam['subject'] ?? exam['subjectName'] ?? l.widgetExam;
+          final date = parseUntisDate(exam['date'] ?? exam['examDate']);
+          final formatted = date == null
+              ? ''
+              : DateFormat('dd.MM.').format(date);
+          return formatted.isEmpty
+              ? subject.toString()
+              : '$formatted $subject';
+        })
+        .toList(growable: false);
+    if (exams.isNotEmpty) examSummary = exams.join('\n');
+  } catch (_) {}
+  return (homeworkSummary: homeworkSummary, examSummary: examSummary);
+}
+
 Future<void> checkGithubUpdateAndNotify() async {
   final prefs = await SharedPreferences.getInstance();
   final installedVersion = (await PackageInfo.fromPlatform()).version;
@@ -675,7 +778,7 @@ Future<bool> updateUntisData() async {
     String startStr = formatUntisTime(start.toString());
     String endStr = formatUntisTime(end.toString());
 
-    if (currentTimeInt >= start && currentTimeInt <= end) {
+    if (currentTimeInt >= start && currentTimeInt < end) {
       hasActiveLesson = true;
       currentLessonName = name;
       timeRemaining = _localizedUntilTime(locale, endStr);
@@ -849,6 +952,16 @@ Future<bool> updateUntisData() async {
       }
     }
   } catch (_) {}
+  final activeHiddenSubjects = hiddenSubjects
+      .map((subject) => subject.trim().toLowerCase())
+      .where((subject) => subject.isNotEmpty)
+      .toSet();
+  final widgetSummaries = await _widgetHomeworkAndExamSummaries(
+    prefs: prefs,
+    locale: locale,
+    accountId: activeAccountId,
+    hiddenSubjects: activeHiddenSubjects,
+  );
   await WidgetService.updateWidgets(
     currentLesson: hasActiveLesson ? currentLessonName : '',
     nextLesson: '',
@@ -860,8 +973,9 @@ Future<bool> updateUntisData() async {
               '${formatUntisTime(lesson['startTime'].toString())} · ${lessonDisplayName(lesson)}',
         )
         .join('\n'),
-    homeworkSummary: l.widgetNoOpenHomework,
+    homeworkSummary: widgetSummaries.homeworkSummary,
     notificationSummary: l.widgetOpenNotifications,
+    examSummary: widgetSummaries.examSummary,
     accountId: widgetAccountId,
     accountLabel: accountLabel,
     status: DateFormat('HH:mm').format(now),
@@ -1043,6 +1157,13 @@ Future<void> _refreshInactiveWidgetAccounts(
             return lesson['_subjectShort']?.toString() ?? l.widgetLesson;
           }
 
+          final widgetSummaries = await _widgetHomeworkAndExamSummaries(
+            prefs: prefs,
+            locale: locale,
+            accountId: id,
+            hiddenSubjects: hiddenSubjects,
+          );
+
           await WidgetService.updateWidgets(
             currentLesson: current == null ? '' : label(current),
             nextLesson: '',
@@ -1054,8 +1175,9 @@ Future<void> _refreshInactiveWidgetAccounts(
                       '${formatUntisTime(lesson['startTime'].toString())} · ${label(lesson)}',
                 )
                 .join('\n'),
-            homeworkSummary: l.widgetNoOpenHomework,
+            homeworkSummary: widgetSummaries.homeworkSummary,
             notificationSummary: l.widgetOpenNotifications,
+            examSummary: widgetSummaries.examSummary,
             accountId: id,
             accountLabel: user,
             status: DateFormat('HH:mm').format(now),
@@ -1136,7 +1258,7 @@ Future<void> syncProgressiveNotification({
     String startStr = formatUntisTime(start.toString());
     String endStr = formatUntisTime(end.toString());
 
-    if (currentTimeInt >= start && currentTimeInt <= end) {
+    if (currentTimeInt >= start && currentTimeInt < end) {
       hasActiveLesson = true;
       currentLessonName = name;
       timeRemaining = _localizedUntilTime(locale, endStr);
