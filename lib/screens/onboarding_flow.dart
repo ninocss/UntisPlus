@@ -853,16 +853,31 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         var rawId = authResult['personId'];
         var rawType = authResult['personType'];
 
+        int resolvedPersonId;
+        int resolvedPersonType;
         if (rawId != null && rawId.toString() != "0") {
-          personId = int.tryParse(rawId.toString()) ?? 0;
-          personType = int.tryParse(rawType.toString()) ?? 5;
+          resolvedPersonId = int.tryParse(rawId.toString()) ?? 0;
+          resolvedPersonType = int.tryParse(rawType.toString()) ?? 5;
         } else if (authResult['klasseId'] != null) {
-          personId = int.tryParse(authResult['klasseId'].toString()) ?? 0;
-          personType = 1;
+          resolvedPersonId =
+              int.tryParse(authResult['klasseId'].toString()) ?? 0;
+          resolvedPersonType = 1;
         } else {
-          personId = 0;
-          personType = 5;
+          resolvedPersonId = 0;
+          resolvedPersonType = 5;
         }
+
+        // Guardian/parent accounts have no timetable of their own; redirect
+        // them to their first linked student so the account never stores an
+        // element that cannot be fetched.
+        final resolvedElement = _resolveTimetableElementFromAuth(
+          authResult,
+          resolvedPersonId,
+          resolvedPersonType,
+        );
+        personId = (resolvedElement['personId'] as int?) ?? resolvedPersonId;
+        personType =
+            (resolvedElement['personType'] as int?) ?? resolvedPersonType;
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('schoolUrl', schoolUrl);

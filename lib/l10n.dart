@@ -620,6 +620,15 @@ class AppL10n {
       _t('settingsTimetableSwitchAnimationDepth');
   String get settingsShowCancelled => _t('settingsShowCancelled');
   String get settingsShowCancelledDesc => _t('settingsShowCancelledDesc');
+  String get settingsTimetableDaySpan => _t('settingsTimetableDaySpan');
+  String get settingsTimetableDaySpanDesc => _t('settingsTimetableDaySpanDesc');
+  String get settingsTimetableDaySpanOne => _t('settingsTimetableDaySpanOne');
+  String get settingsTimetableDaySpanTwo => _t('settingsTimetableDaySpanTwo');
+  String get settingsTimetableDaySpanThree =>
+      _t('settingsTimetableDaySpanThree');
+  String get settingsShowFullTeacherNames => _t('settingsShowFullTeacherNames');
+  String get settingsShowFullTeacherNamesDesc =>
+      _t('settingsShowFullTeacherNamesDesc');
   String get settingsCancelledColor => _t('settingsCancelledColor');
   String get settingsCancelledColorDesc => _t('settingsCancelledColorDesc');
   String get settingsLessonDesignTitle => _t('settingsLessonDesignTitle');
@@ -1498,6 +1507,14 @@ class AppL10n {
       'settingsShowCancelled': 'Ausgefallene Stunden anzeigen',
       'settingsShowCancelledDesc':
           'Ausgefallene Stunden werden im Stundenplan angezeigt',
+      'settingsTimetableDaySpan': 'Tage pro Ansicht',
+      'settingsTimetableDaySpanDesc': 'Zeige 1, 2 oder 3 Tage nebeneinander.',
+      'settingsTimetableDaySpanOne': '1 Tag',
+      'settingsTimetableDaySpanTwo': '2 Tage',
+      'settingsTimetableDaySpanThree': '3 Tage',
+      'settingsShowFullTeacherNames': 'Vollständige Lehrernamen anzeigen',
+      'settingsShowFullTeacherNamesDesc':
+          'Zeigt Vor- und Nachnamen statt des Kürzels.',
       'settingsCancelledColor': 'Ausgefallene Farbe',
       'settingsCancelledColorDesc': 'Farbe für ausgefallene Stunden anpassen',
       'settingsLessonDesignTitle': 'Stunden- & Kartendesign',
@@ -2690,6 +2707,15 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelled': 'Show cancelled lessons',
       'settingsShowCancelledDesc':
           'Cancelled lessons are shown in the timetable',
+      'settingsTimetableDaySpan': 'Days per view',
+      'settingsTimetableDaySpanDesc':
+          'Show 1, 2 or 3 days of the week side by side.',
+      'settingsTimetableDaySpanOne': '1 day',
+      'settingsTimetableDaySpanTwo': '2 days',
+      'settingsTimetableDaySpanThree': '3 days',
+      'settingsShowFullTeacherNames': 'Show full teacher names',
+      'settingsShowFullTeacherNamesDesc':
+          'Show first and last names instead of abbreviations.',
       'settingsCancelledColor': 'Cancelled color',
       'settingsCancelledColorDesc': 'Customize the color for cancelled lessons',
       'settingsLessonDesignTitle': 'Lesson & Card Design',
@@ -3906,6 +3932,15 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelled': 'Afficher les cours annulés',
       'settingsShowCancelledDesc':
           'Les cours annulés sont visibles dans l\'emploi du temps',
+      'settingsTimetableDaySpan': 'Jours par vue',
+      'settingsTimetableDaySpanDesc': 'Afficher 1, 2 ou 3 jours côte à côte.',
+      'settingsTimetableDaySpanOne': '1 jour',
+      'settingsTimetableDaySpanTwo': '2 jours',
+      'settingsTimetableDaySpanThree': '3 jours',
+      'settingsShowFullTeacherNames':
+          'Afficher les noms complets des enseignants',
+      'settingsShowFullTeacherNamesDesc':
+          'Afficher le prénom et le nom au lieu des abréviations.',
       'settingsCancelledColor': 'Couleur annulée',
       'settingsCancelledColorDesc':
           'Personnaliser la couleur des cours annulés',
@@ -5124,6 +5159,16 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowCancelled': 'Mostrar clases canceladas',
       'settingsShowCancelledDesc':
           'Las clases canceladas se muestran en el horario',
+      'settingsTimetableDaySpan': 'Días por vista',
+      'settingsTimetableDaySpanDesc':
+          'Muestra 1, 2 o 3 días uno al lado del otro.',
+      'settingsTimetableDaySpanOne': '1 día',
+      'settingsTimetableDaySpanTwo': '2 días',
+      'settingsTimetableDaySpanThree': '3 días',
+      'settingsShowFullTeacherNames':
+          'Mostrar nombres completos de los profesores',
+      'settingsShowFullTeacherNamesDesc':
+          'Muestra nombre y apellido en lugar de abreviaturas.',
       'settingsCancelledColor': 'Color cancelado',
       'settingsCancelledColorDesc':
           'Personalizar el color de las clases canceladas',

@@ -622,6 +622,15 @@ final ValueNotifier<bool> lessonCompactModeNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonDimPastNotifier = ValueNotifier(true);
 final ValueNotifier<bool> lessonCancelledPatternNotifier = ValueNotifier(true);
 
+/// When true, the timetable shows teachers as "First Last" (full names when the
+/// school exposes them). When false, the WebUntis short name/Kürzel is shown.
+final ValueNotifier<bool> showFullTeacherNamesNotifier = ValueNotifier(true);
+
+/// How many consecutive weekdays the day-grid timetable view shows at once
+/// (1 = single day, 2 = two days, 3 = three days). The dedicated week view
+/// always shows all five days.
+final ValueNotifier<int> timetableDaySpanNotifier = ValueNotifier(1);
+
 String _icuLocale(String locale) {
   switch (locale) {
     case 'en':
@@ -875,7 +884,29 @@ Future<bool> _performReAuthentication() async {
         (account) => account.id == activeUntisAccountId,
       );
       if (index >= 0) {
-        accounts[index] = accounts[index].copyWith(
+        var corrected = accounts[index];
+        // Guardian accounts target a parent element that has no timetable.
+        // Every re-authentication is another chance to redirect the stored
+        // element to the first linked student.
+        if (corrected.personType == 3 && authResult != null) {
+          final element = _resolveTimetableElementFromAuth(
+            authResult,
+            corrected.personId,
+            corrected.personType,
+          );
+          final childId = element['personId'] as int?;
+          final childType = element['personType'] as int?;
+          if (childId != null &&
+              childType != null &&
+              (childId != corrected.personId ||
+                  childType != corrected.personType)) {
+            corrected = corrected.copyWith(
+              personId: childId,
+              personType: childType,
+            );
+          }
+        }
+        accounts[index] = corrected.copyWith(
           sessionId: sessionID,
           lastUsedAt: DateTime.now(),
         );

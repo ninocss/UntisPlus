@@ -42,6 +42,19 @@ Future<void> _settingsSetShowCancelled(bool value) async {
   await prefs.setBool('showCancelled', value);
 }
 
+Future<void> _settingsSetTimetableDaySpan(int value) async {
+  final normalized = value.clamp(1, 3);
+  timetableDaySpanNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('timetableDaySpan', normalized);
+}
+
+Future<void> _settingsSetShowFullTeacherNames(bool value) async {
+  showFullTeacherNamesNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('showFullTeacherNames', value);
+}
+
 Future<void> _settingsSetTimetableSwitchAnimation(int value) async {
   final normalized = value.clamp(0, 2);
   timetableSwitchAnimationNotifier.value = normalized;
@@ -533,6 +546,10 @@ Future<void> _settingsSyncFromPrefs() async {
   lessonDimPastNotifier.value = prefs.getBool('lessonDimPast') ?? true;
   lessonCancelledPatternNotifier.value =
       prefs.getBool('lessonCancelledPattern') ?? true;
+  showFullTeacherNamesNotifier.value =
+      prefs.getBool('showFullTeacherNames') ?? true;
+  timetableDaySpanNotifier.value = (prefs.getInt('timetableDaySpan') ?? 1)
+      .clamp(1, 3);
   progressivePushNotifier.value =
       prefs.getBool('progressivePush') ?? progressivePushNotifier.value;
   dailyBriefingPushNotifier.value =

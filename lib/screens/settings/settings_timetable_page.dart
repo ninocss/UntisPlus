@@ -16,6 +16,63 @@ class SettingsTimetablePage extends StatelessWidget {
     }
   }
 
+  String _daySpanLabel(AppL10n l, int span) {
+    switch (span) {
+      case 2:
+        return l.settingsTimetableDaySpanTwo;
+      case 3:
+        return l.settingsTimetableDaySpanThree;
+      case 1:
+      default:
+        return l.settingsTimetableDaySpanOne;
+    }
+  }
+
+  IconData _daySpanIcon(int span) {
+    switch (span) {
+      case 3:
+        return Icons.view_week_rounded;
+      case 2:
+        return Icons.calendar_view_day_rounded;
+      case 1:
+      default:
+        return Icons.today_rounded;
+    }
+  }
+
+  Future<void> _showDaySpanPicker(BuildContext context) async {
+    final l = AppL10n.of(appLocaleNotifier.value);
+    final current = timetableDaySpanNotifier.value;
+    final selected = await _showUnifiedOptionSheet<int>(
+      context: context,
+      title: l.settingsTimetableDaySpan,
+      subtitle: l.settingsTimetableDaySpanDesc,
+      options: [
+        _SheetOption(
+          value: 1,
+          title: l.settingsTimetableDaySpanOne,
+          icon: _daySpanIcon(1),
+          selected: current == 1,
+        ),
+        _SheetOption(
+          value: 2,
+          title: l.settingsTimetableDaySpanTwo,
+          icon: _daySpanIcon(2),
+          selected: current == 2,
+        ),
+        _SheetOption(
+          value: 3,
+          title: l.settingsTimetableDaySpanThree,
+          icon: _daySpanIcon(3),
+          selected: current == 3,
+        ),
+      ],
+    );
+    if (selected != null) {
+      await _settingsSetTimetableDaySpan(selected);
+    }
+  }
+
   IconData _switchAnimationIcon(int style) {
     switch (style) {
       case 1:
@@ -98,6 +155,33 @@ class SettingsTimetablePage extends StatelessWidget {
                     title: l.settingsTimetableSwitchAnimation,
                     subtitle: _switchAnimationLabel(l, style),
                     onTap: () => _showSwitchAnimationPicker(context),
+                  ),
+                ),
+                ValueListenableBuilder<int>(
+                  valueListenable: timetableDaySpanNotifier,
+                  builder: (context, span, _) => SettingsTile(
+                    icon: _daySpanIcon(span),
+                    iconBackgroundColor: cs.primaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onPrimaryContainer,
+                    title: l.settingsTimetableDaySpan,
+                    subtitle: _daySpanLabel(l, span),
+                    onTap: () => _showDaySpanPicker(context),
+                  ),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: showFullTeacherNamesNotifier,
+                  builder: (context, value, _) => SettingsSwitchTile(
+                    icon: Icons.badge_outlined,
+                    iconBackgroundColor: cs.secondaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onSecondaryContainer,
+                    title: l.settingsShowFullTeacherNames,
+                    subtitle: l.settingsShowFullTeacherNamesDesc,
+                    value: value,
+                    onChanged: _settingsSetShowFullTeacherNames,
                   ),
                 ),
                 ValueListenableBuilder<bool>(
@@ -887,6 +971,16 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     ),
                   ),
                   ValueListenableBuilder<bool>(
+                    valueListenable: showFullTeacherNamesNotifier,
+                    builder: (context, value, _) => SettingsSwitchTile(
+                      icon: Icons.badge_outlined,
+                      title: l.settingsShowFullTeacherNames,
+                      subtitle: l.settingsShowFullTeacherNamesDesc,
+                      value: value,
+                      onChanged: _settingsSetShowFullTeacherNames,
+                    ),
+                  ),
+                  ValueListenableBuilder<bool>(
                     valueListenable: lessonShowSubjectIconsNotifier,
                     builder: (context, value, _) => SettingsSwitchTile(
                       icon: Icons.category_outlined,
@@ -1196,6 +1290,22 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       subtitle: l.settingsLessonShowTeacherDesc,
                       value: showTeacher,
                       onChanged: _settingsSetLessonShowTeacher,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: showFullTeacherNamesNotifier,
+                  builder: (context, showFull, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.badge_outlined,
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onPrimaryContainer,
+                      title: l.settingsShowFullTeacherNames,
+                      subtitle: l.settingsShowFullTeacherNamesDesc,
+                      value: showFull,
+                      onChanged: _settingsSetShowFullTeacherNames,
                     );
                   },
                 ),

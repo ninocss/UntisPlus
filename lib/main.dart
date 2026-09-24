@@ -602,6 +602,68 @@ String _generateWebUntisOtp(String credential) {
   return totp.now();
 }
 
+/// Resolves the WebUntis element (person id + type) that timetable requests
+/// should target after a successful authentication.
+///
+/// Guardian/Parent logins (person type 3) have no timetable of their own:
+/// WebUntis returns an empty/invalid result for the guardian element. When the
+/// authentication response lists linked persons (authenticate -> `people`,
+/// app config -> `persons`), the first student (type 5) is used instead so a
+/// parent account shows a child's timetable.
+Map<String, dynamic> _resolveTimetableElementFromAuth(
+  Map<String, dynamic> authResult,
+  int fallbackPersonId,
+  int fallbackPersonType,
+) {
+  var personId = fallbackPersonId;
+  var personType = fallbackPersonType;
+
+  final linked = <Map<dynamic, dynamic>>[];
+  final rawPeople = authResult['people'];
+  if (rawPeople is List) {
+    for (final p in rawPeople) {
+      if (p is Map) linked.add(Map<dynamic, dynamic>.from(p));
+    }
+  }
+  final rawPersons = authResult['persons'];
+  if (rawPersons is List) {
+    for (final p in rawPersons) {
+      if (p is Map) linked.add(Map<dynamic, dynamic>.from(p));
+    }
+  }
+
+  Map<dynamic, dynamic>? self;
+  for (final p in linked) {
+    if ((p['id']?.toString()) == personId.toString()) {
+      self = p;
+      break;
+    }
+  }
+  if (self != null) {
+    final selfType = int.tryParse(self['type']?.toString() ?? '');
+    if (selfType != null) personType = selfType;
+  }
+
+  if (personType == 3) {
+    Map<dynamic, dynamic>? child;
+    for (final p in linked) {
+      if (int.tryParse(p['type']?.toString() ?? '-1') == 5) {
+        child = p;
+        break;
+      }
+    }
+    if (child != null) {
+      final childId = int.tryParse(child['id']?.toString() ?? '');
+      if (childId != null && childId > 0) {
+        personId = childId;
+        personType = 5;
+      }
+    }
+  }
+
+  return {'personId': personId, 'personType': personType};
+}
+
 Future<Map<String, dynamic>?> _authenticateUntisWithSecret({
   required String user,
   required String secret,
@@ -710,10 +772,22 @@ Future<Map<String, dynamic>?> _authenticateUntisWithSecret({
         personType = int.tryParse(person['type'].toString());
       }
     }
+    final parsedId = int.tryParse(personId?.toString() ?? '') ?? 0;
+    // Guardian logins are redirected to their first linked student so the
+    // stored element always points at a valid timetable target.
+    final element = _resolveTimetableElementFromAuth(
+      {
+        if (persons is List) 'persons': persons,
+        'personId': parsedId,
+        'personType': personType ?? 5,
+      },
+      parsedId,
+      personType ?? 5,
+    );
     return {
       'sessionId': sessionId,
-      'personId': int.tryParse(personId?.toString() ?? '') ?? 0,
-      'personType': personType ?? 5,
+      'personId': element['personId'] ?? parsedId,
+      'personType': element['personType'] ?? 5,
     };
   }
 
@@ -993,6 +1067,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   final Map<int, String> _subjectLong = {};
   final Map<int, String> _subjectShortMap = {};
   final Map<int, String> _teacherMap = {};
+  // WebUntis short name/Kürzel per teacher id (e.g. "MUE"). Used when the
+  // "full teacher names" display setting is turned off.
+  final Map<int, String> _teacherShortMap = {};
   final Map<int, String> _roomMap = {};
 
   String _mondayKey(DateTime monday) => DateFormat('yyyyMMdd').format(monday);
@@ -1102,6 +1179,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           return aStart.compareTo(bStart);
         });
       });
+      // The cached week already carries enriched display values, but the
+      // teacher name may have been stored under a different display setting.
+      // Re-enrich so the current setting applies (falls back to stored values
+      // while the master data maps are not loaded yet).
+      _reEnrichWeek(tempWeek);
 
       final cachedHolidays = decoded['holidays'];
       if (cachedHolidays is List) {
@@ -1284,6 +1366,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           if (id != null) _teacherMap[id] = v.toString();
         });
       }
+      if (val['teacherShorts'] is Map) {
+        (val['teacherShorts'] as Map).forEach((k, v) {
+          final id = int.tryParse(k.toString());
+          if (id != null) _teacherShortMap[id] = v.toString();
+        });
+      }
       if (val['rooms'] is Map) {
         (val['rooms'] as Map).forEach((k, v) {
           final id = int.tryParse(k.toString());
@@ -1309,6 +1397,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         },
         'teachers': {
           for (final e in _teacherMap.entries) e.key.toString(): e.value,
+        },
+        'teacherShorts': {
+          for (final e in _teacherShortMap.entries) e.key.toString(): e.value,
         },
         'rooms': {for (final e in _roomMap.entries) e.key.toString(): e.value},
       };
@@ -1380,6 +1471,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final fore = (t['foreName'] ?? t['forename'] ?? '').toString().trim();
         final last = (t['longName'] ?? t['name'] ?? '').toString().trim();
         _teacherMap[id] = fore.isNotEmpty ? '$fore $last' : last;
+        _teacherShortMap[id] = (t['name'] ?? '').toString();
       }
     }
     for (var r in (results[2]['result'] as List? ?? [])) {
@@ -1389,6 +1481,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
     }
     unawaited(_saveMasterDataToCache());
+    // A week may have been parsed while the teacher/subject maps were still
+    // empty, leaving short-name fallbacks in the enriched fields. Re-enrich so
+    // every lesson respects the current teacher-name display setting.
+    if (_teacherMap.isNotEmpty || _teacherShortMap.isNotEmpty) {
+      _reEnrichWeek(_weekData);
+      for (final week in _adjacentWeekCache.values) {
+        _reEnrichWeek(week);
+      }
+      _republishWeekDataAfterEnrichment();
+    }
   }
 
   DateTime _currentMonday = resolveDefaultTimetableMonday(DateTime.now());
@@ -1430,6 +1532,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonShowRoomNotifier.addListener(_onHiddenSubjectsChanged);
     lessonCompactModeNotifier.addListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.addListener(_onHiddenSubjectsChanged);
+    showFullTeacherNamesNotifier.addListener(_onTeacherNameModeChanged);
+    timetableDaySpanNotifier.addListener(_onDaySpanChanged);
     final hasActiveAccount =
         (activeUntisAccountId != null &&
             untisAccountsNotifier.value.any(
@@ -2327,9 +2431,35 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final firstTeacher = teList.first as Map?;
       if (firstTeacher != null) {
         final tId = firstTeacher['id'] as int?;
-        lesson['_teacher'] = tId != null
-            ? (_teacherMap[tId] ?? (firstTeacher['name']?.toString() ?? '?'))
-            : '?';
+        final rawShort = (firstTeacher['name']?.toString() ?? '').trim();
+        final rawFull =
+            (firstTeacher['longName']?.toString() ??
+                    firstTeacher['name']?.toString() ??
+                    '')
+                .trim();
+        final fromShortMap = tId != null ? _teacherShortMap[tId] : null;
+        final fromFullMap = tId != null ? _teacherMap[tId] : null;
+        // Keep previously computed values when the master data is not loaded
+        // yet (e.g. right after reading a cached week from disk), and fall
+        // back to the raw WebUntis fields otherwise.
+        final prevShort = (lesson['_teacherShort']?.toString() ?? '').trim();
+        final prevFull = (lesson['_teacherFull']?.toString() ?? '').trim();
+        final short =
+            (fromShortMap ??
+                (rawShort.isNotEmpty ? rawShort : null) ??
+                (prevShort.isNotEmpty ? prevShort : null)) ??
+            '?';
+        final full =
+            (fromFullMap ??
+                (rawFull.isNotEmpty ? rawFull : null) ??
+                (prevFull.isNotEmpty ? prevFull : null) ??
+                (lesson['_teacher']?.toString().trim().isNotEmpty == true
+                    ? lesson['_teacher'].toString().trim()
+                    : null)) ??
+            '?';
+        lesson['_teacherShort'] = short;
+        lesson['_teacherFull'] = full;
+        lesson['_teacher'] = showFullTeacherNamesNotifier.value ? full : short;
       }
     }
     final suList = (lesson['su'] as List?) ?? [];
@@ -2370,6 +2500,37 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
   }
 
+  /// Re-runs [_enrichLesson] over every lesson of a week map so the displayed
+  /// teacher name follows the current [showFullTeacherNamesNotifier] setting.
+  /// Lessons that are not plain string-keyed maps (e.g. locally edited ones)
+  /// are left untouched.
+  void _reEnrichWeek(Map<int, List<dynamic>> week) {
+    for (final list in week.values) {
+      for (final l in list) {
+        if (l is Map<String, dynamic>) _enrichLesson(l);
+      }
+    }
+  }
+
+  void _onTeacherNameModeChanged() {
+    _reEnrichWeek(_weekData);
+    for (final week in _adjacentWeekCache.values) {
+      _reEnrichWeek(week);
+    }
+    _republishWeekDataAfterEnrichment();
+  }
+
+  void _onDaySpanChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Pushes the (possibly re-enriched) [_weekData] to the notifier and rebuilds
+  /// the timetable so the teacher-name display setting is reflected.
+  void _republishWeekDataAfterEnrichment() {
+    currentWeekDataNotifier.value = Map<int, List<dynamic>>.from(_weekData);
+    if (mounted) setState(() {});
+  }
+
   Widget _buildAdjacentWeekView(int direction) {
     final adjMonday = _weekMondayFromDelta(direction);
     final cached = _getAdjacentWeekData(adjMonday);
@@ -2378,7 +2539,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         return _buildWeekView(monday: adjMonday, weekData: cached);
       } else {
         final dayIndex = direction > 0 ? 0 : 4;
-        return _buildGridView(dayIndex, monday: adjMonday, weekData: cached);
+        return _buildDayContentView(
+          dayIndex,
+          monday: adjMonday,
+          weekData: cached,
+        );
       }
     }
     final l = AppL10n.of(appLocaleNotifier.value);
@@ -2532,7 +2697,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final monday = _weekMondayFromDelta(-1);
         final cached = _getAdjacentWeekData(monday);
         if (cached != null) {
-          return _buildGridView(4, monday: monday, weekData: cached);
+          return _buildDayContentView(4, monday: monday, weekData: cached);
         }
         return _buildAdjacentWeekView(-1);
       }
@@ -2540,11 +2705,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final monday = _weekMondayFromDelta(1);
         final cached = _getAdjacentWeekData(monday);
         if (cached != null) {
-          return _buildGridView(0, monday: monday, weekData: cached);
+          return _buildDayContentView(0, monday: monday, weekData: cached);
         }
         return _buildAdjacentWeekView(1);
       }
-      return _buildGridView(item - 1);
+      return _buildDayContentView(item - 1);
     }
 
     // Keep a visible neighbour and let edge items collapse substantially.
@@ -2749,12 +2914,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final dayIndex = _tabController.index.clamp(0, 4).toInt();
 
     Widget dayAt(int index) {
-      if (index >= 0 && index < 5) return _buildGridView(index);
+      if (index >= 0 && index < 5) return _buildDayContentView(index);
       final direction = index < 0 ? -1 : 1;
       final monday = _weekMondayFromDelta(direction);
       final cached = _getAdjacentWeekData(monday);
       if (cached != null) {
-        return _buildGridView(
+        return _buildDayContentView(
           index < 0 ? 4 : 0,
           monday: monday,
           weekData: cached,
@@ -2891,12 +3056,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final dayIndex = _tabController.index.clamp(0, 4).toInt();
 
     Widget dayAt(int index) {
-      if (index >= 0 && index < 5) return _buildGridView(index);
+      if (index >= 0 && index < 5) return _buildDayContentView(index);
       final direction = index < 0 ? -1 : 1;
       final monday = _weekMondayFromDelta(direction);
       final cached = _getAdjacentWeekData(monday);
       if (cached != null) {
-        return _buildGridView(
+        return _buildDayContentView(
           index < 0 ? 4 : 0,
           monday: monday,
           weekData: cached,
@@ -3273,6 +3438,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonCompactModeNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonCancelledPatternNotifier.removeListener(_onHiddenSubjectsChanged);
+    showFullTeacherNamesNotifier.removeListener(_onTeacherNameModeChanged);
+    timetableDaySpanNotifier.removeListener(_onDaySpanChanged);
     _progressiveNotificationTimer?.cancel();
     _tabController
       ..removeListener(_onSelectedDayChanged)
@@ -4541,6 +4708,28 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return slots;
   }
 
+  /// Builds the content shown by the day (grid) timetable mode. With the
+  /// default span of 1 this is the classic single-day time grid. With a span
+  /// of 2 or 3 the timetable shows that many consecutive days side by side,
+  /// sliding the window towards the end of the week for late weekdays.
+  Widget _buildDayContentView(
+    int dayIndex, {
+    DateTime? monday,
+    Map<int, List<dynamic>>? weekData,
+  }) {
+    final span = timetableDaySpanNotifier.value.clamp(1, 3);
+    if (span == 1) {
+      return _buildGridView(dayIndex, monday: monday, weekData: weekData);
+    }
+    final start = dayIndex.clamp(0, 5 - span);
+    return _buildWeekView(
+      monday: monday,
+      weekData: weekData,
+      startDay: start,
+      dayCount: span,
+    );
+  }
+
   Widget _buildGridView(
     int dayIndex, {
     DateTime? monday,
@@ -5002,13 +5191,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
-  Widget _buildWeekView({DateTime? monday, Map<int, List<dynamic>>? weekData}) {
+  Widget _buildWeekView({
+    DateTime? monday,
+    Map<int, List<dynamic>>? weekData,
+    int startDay = 0,
+    int dayCount = 5,
+  }) {
     final wd = weekData ?? _weekData;
     final m = monday ?? _currentMonday;
     final media = MediaQuery.of(context);
     final topContentPadding = _isExportingTimetable
         ? 10.0
-        : media.padding.top + kToolbarHeight + 10;
+        : media.padding.top +
+              kToolbarHeight +
+              // The day tabs are hidden in the dedicated week view but visible
+              // whenever the day grid renders multiple days side by side.
+              (_viewMode == 1 ? 0 : kTextTabBarHeight) +
+              10;
 
     int globalMin = 480;
     int globalMax = 900;
@@ -5054,8 +5253,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final todayIndex = todayDate.difference(mondayDate).inDays;
     final nowMin = today.hour * 60 + today.minute;
     final showNowLine =
-        todayIndex >= 0 &&
-        todayIndex < 5 &&
+        todayIndex >= startDay &&
+        todayIndex < startDay + dayCount &&
         nowMin >= globalMin &&
         nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
@@ -5076,10 +5275,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final dayGridWidth = math.max(
-              (5 * minDayColWidth) + (dayColGap * 4),
+              (dayCount * minDayColWidth) + (dayColGap * (dayCount - 1)),
               constraints.maxWidth - timeColWidth - 4 - trailingDayGridInset,
             );
-            final dayColWidth = (dayGridWidth - (dayColGap * 4)) / 5;
+            final dayColWidth =
+                (dayGridWidth - (dayColGap * (dayCount - 1))) / dayCount;
 
             // On small screens five day columns cannot fit alongside the time
             // gutter. Keep their minimum readable width and scroll horizontally.
@@ -5098,15 +5298,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         bottom: 6,
                       ),
                       child: Row(
-                        children: List.generate(5, (i) {
-                          final d = m.add(Duration(days: i));
+                        children: List.generate(dayCount, (i) {
+                          final d = m.add(Duration(days: startDay + i));
                           final isToday =
                               d.year == today.year &&
                               d.month == today.month &&
                               d.day == today.day;
                           return Padding(
                             padding: EdgeInsets.only(
-                              right: i == 4 ? 0 : dayColGap,
+                              right: i == dayCount - 1 ? 0 : dayColGap,
                             ),
                             child: SizedBox(
                               width: dayColWidth,
@@ -5114,7 +5314,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 child: Column(
                                   children: [
                                     Text(
-                                      _dayShort[i],
+                                      _dayShort[startDay + i],
                                       style: GoogleFonts.outfit(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
@@ -5206,7 +5406,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         const SizedBox(width: 4),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: List.generate(5, (dayIndex) {
+                          children: List.generate(dayCount, (dayOffset) {
+                            final dayIndex = startDay + dayOffset;
                             final lessons = (wd[dayIndex] ?? [])
                                 .where(
                                   (l) => !hiddenSubjectsNotifier.value.contains(
@@ -5231,7 +5432,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               width: dayColWidth,
                               height: totalHeight,
                               margin: EdgeInsets.only(
-                                right: dayIndex == 4 ? 0 : dayColGap,
+                                right: dayOffset == dayCount - 1
+                                    ? 0
+                                    : dayColGap,
                               ),
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
@@ -5721,8 +5924,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     final isDemoMode = demoModeNotifier.value;
 
-    int requestPersonId = _viewingClassId ?? personId;
-    int requestPersonType = _viewingClassId != null ? 1 : personType;
+    var requestPersonId = _viewingClassId ?? personId;
+    var requestPersonType = _viewingClassId != null ? 1 : personType;
 
     if (isDemoMode) {
       requestPersonId = DemoModeService.demoPersonId;
@@ -5799,8 +6002,20 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     if (_subjectShortMap.isEmpty || _teacherMap.isEmpty || _roomMap.isEmpty) {
       await _loadMasterDataFromCache();
     }
+    // The cached week is now (re)enriched with the freshly loaded master data
+    // so teacher names follow the current display setting.
+    if (hasCachedWeek &&
+        (_teacherMap.isNotEmpty || _teacherShortMap.isNotEmpty)) {
+      _reEnrichWeek(_weekData);
+      currentWeekDataNotifier.value = Map<int, List<dynamic>>.from(_weekData);
+    }
 
-    if ((_currentSessionId.isEmpty || _isSessionExpired()) && !isDemoMode) {
+    // Guardian accounts (type 3) always re-authenticate so a linked student
+    // can be resolved; the timetable for the parent element itself is empty.
+    if ((_currentSessionId.isEmpty ||
+            _isSessionExpired() ||
+            requestPersonType == 3) &&
+        !isDemoMode) {
       final ok = await _reAuthenticate();
       if (!ok && !hasCachedWeek) {
         if (!mounted) return;
@@ -5812,6 +6027,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         });
         return;
       }
+      // Re-read the person after a guardian account may have been redirected
+      // to its first child during re-authentication.
+      requestPersonId = _viewingClassId ?? personId;
+      requestPersonType = _viewingClassId != null ? 1 : personType;
     }
 
     DateTime friday = requestedMonday.add(const Duration(days: 4));
