@@ -127,6 +127,11 @@ restores the production dependency afterwards:
 pwsh -File tool/test_without_local_ai.ps1
 ```
 
+### Development Server
+
+Please visit this Repo:
+https://github.com/OseMine/UntisPlus-dev-server
+
 ---
 ## Installation
 ### Android
