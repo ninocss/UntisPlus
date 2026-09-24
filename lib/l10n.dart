@@ -629,6 +629,8 @@ class AppL10n {
   String get settingsShowFullTeacherNames => _t('settingsShowFullTeacherNames');
   String get settingsShowFullTeacherNamesDesc =>
       _t('settingsShowFullTeacherNamesDesc');
+  String get settingsSwipeBack => _t('settingsSwipeBack');
+  String get settingsSwipeBackDesc => _t('settingsSwipeBackDesc');
   String get settingsCancelledColor => _t('settingsCancelledColor');
   String get settingsCancelledColorDesc => _t('settingsCancelledColorDesc');
   String get settingsLessonDesignTitle => _t('settingsLessonDesignTitle');
@@ -1515,6 +1517,9 @@ class AppL10n {
       'settingsShowFullTeacherNames': 'Vollständige Lehrernamen anzeigen',
       'settingsShowFullTeacherNamesDesc':
           'Zeigt Vor- und Nachnamen statt des Kürzels.',
+      'settingsSwipeBack': 'Wischen zum Zurückgehen',
+      'settingsSwipeBackDesc':
+          'Wische vom linken Bildschirmrand, um zur vorherigen Seite zurückzukehren.',
       'settingsCancelledColor': 'Ausgefallene Farbe',
       'settingsCancelledColorDesc': 'Farbe für ausgefallene Stunden anpassen',
       'settingsLessonDesignTitle': 'Stunden- & Kartendesign',
@@ -2716,6 +2721,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsShowFullTeacherNames': 'Show full teacher names',
       'settingsShowFullTeacherNamesDesc':
           'Show first and last names instead of abbreviations.',
+      'settingsSwipeBack': 'Swipe to go back',
+      'settingsSwipeBackDesc':
+          'Swipe from the left edge of the screen to go back to the previous page.',
       'settingsCancelledColor': 'Cancelled color',
       'settingsCancelledColorDesc': 'Customize the color for cancelled lessons',
       'settingsLessonDesignTitle': 'Lesson & Card Design',
@@ -3941,6 +3949,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Afficher les noms complets des enseignants',
       'settingsShowFullTeacherNamesDesc':
           'Afficher le prénom et le nom au lieu des abréviations.',
+      'settingsSwipeBack': 'Balayer pour revenir en arrière',
+      'settingsSwipeBackDesc':
+          'Balayez depuis le bord gauche de l\'écran pour revenir à la page précédente.',
       'settingsCancelledColor': 'Couleur annulée',
       'settingsCancelledColorDesc':
           'Personnaliser la couleur des cours annulés',
@@ -5169,6 +5180,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Mostrar nombres completos de los profesores',
       'settingsShowFullTeacherNamesDesc':
           'Muestra nombre y apellido en lugar de abreviaturas.',
+      'settingsSwipeBack': 'Deslizar para volver',
+      'settingsSwipeBackDesc':
+          'Desliza desde el borde izquierdo de la pantalla para volver a la página anterior.',
       'settingsCancelledColor': 'Color cancelado',
       'settingsCancelledColorDesc':
           'Personalizar el color de las clases canceladas',

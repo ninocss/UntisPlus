@@ -5,6 +5,20 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
+/// Width of the left-edge drag area for the swipe-back gesture.
+const double _kBackGestureWidth = 20.0;
+
+/// Minimum fling velocity (in screen widths per second) to trigger a pop
+/// when the drag ends before the halfway point.
+const double _kMinFlingVelocity = 1.0;
+
+/// Animation duration for the page settling after a completed or cancelled
+/// swipe-back gesture.
+const Duration _kDroppedSwipePageAnimationDuration = Duration(milliseconds: 350);
+
+/// Curve used for the page settling animation after a swipe-back gesture.
+const Curve _kSwipeBackAnimationCurve = Curves.fastEaseInToSlowEaseOut;
+
 /// Shared width vocabulary for layouts that need to work from a phone to a
 /// desktop-sized tablet. Keep breakpoints here instead of letting individual
 /// pages make subtly different tablet decisions.
@@ -786,66 +800,368 @@ Route<T> _buildBouncyRoute<T>(
         milliseconds: (forwardDuration.inMilliseconds * 0.82).round(),
       );
 
+  final transitionsBuilder = (BuildContext context,
+      Animation<double> animation,
+      Animation<double> secondaryAnimation,
+      Widget child) {
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return child;
+    }
+
+    final curve = _pageMotionCurve(selectedTransition);
+    final motion = CurvedAnimation(
+      parent: animation,
+      curve: curve,
+      reverseCurve: Curves.easeInCubic,
+    );
+    final opacity = CurvedAnimation(
+      parent: animation,
+      curve: const Interval(0.0, 0.82, curve: Curves.easeOutCubic),
+      reverseCurve: Curves.easeInCubic,
+    );
+    final offset = _pageMotionOffset(selectedTransition);
+    final scale = _pageMotionScale(selectedTransition);
+    final blur = _pageMotionBlur(selectedTransition);
+
+    Widget result = child;
+
+    if (blur > 0) {
+      result = AnimatedBuilder(
+        animation: motion,
+        child: result,
+        builder: (context, child) {
+          final sigma = (1 - motion.value.clamp(0.0, 1.0)) * blur;
+          return ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+            child: child,
+          );
+        },
+      );
+    }
+
+    if (scale != 1) {
+      result = ScaleTransition(
+        scale: Tween<double>(begin: scale, end: 1).animate(motion),
+        alignment: Alignment.center,
+        child: result,
+      );
+    }
+
+    if (offset != Offset.zero) {
+      result = SlideTransition(
+        position: Tween<Offset>(begin: offset, end: Offset.zero).animate(
+          motion,
+        ),
+        child: result,
+      );
+    }
+
+    return FadeTransition(opacity: opacity, child: result);
+  };
+
+  // Use SwipeBackPageRoute when the gesture is enabled to support
+  // native-style edge-swipe back on iOS/Android.
+  if (swipeBackGestureNotifier.value) {
+    return SwipeBackPageRoute<T>(
+      transitionDuration: forwardDuration,
+      reverseTransitionDuration: backwardDuration,
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: transitionsBuilder,
+    );
+  }
+
   return PageRouteBuilder<T>(
     transitionDuration: forwardDuration,
     reverseTransitionDuration: backwardDuration,
     pageBuilder: (context, animation, secondaryAnimation) => page,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
-        return child;
-      }
-
-      final curve = _pageMotionCurve(selectedTransition);
-      final motion = CurvedAnimation(
-        parent: animation,
-        curve: curve,
-        reverseCurve: Curves.easeInCubic,
-      );
-      final opacity = CurvedAnimation(
-        parent: animation,
-        curve: const Interval(0.0, 0.82, curve: Curves.easeOutCubic),
-        reverseCurve: Curves.easeInCubic,
-      );
-      final offset = _pageMotionOffset(selectedTransition);
-      final scale = _pageMotionScale(selectedTransition);
-      final blur = _pageMotionBlur(selectedTransition);
-
-      Widget result = child;
-
-      if (blur > 0) {
-        result = AnimatedBuilder(
-          animation: motion,
-          child: result,
-          builder: (context, child) {
-            final sigma = (1 - motion.value.clamp(0.0, 1.0)) * blur;
-            return ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-              child: child,
-            );
-          },
-        );
-      }
-
-      if (scale != 1) {
-        result = ScaleTransition(
-          scale: Tween<double>(begin: scale, end: 1).animate(motion),
-          alignment: Alignment.center,
-          child: result,
-        );
-      }
-
-      if (offset != Offset.zero) {
-        result = SlideTransition(
-          position: Tween<Offset>(begin: offset, end: Offset.zero).animate(
-            motion,
-          ),
-          child: result,
-        );
-      }
-
-      return FadeTransition(opacity: opacity, child: result);
-    },
+    transitionsBuilder: transitionsBuilder,
   );
+}
+
+/// A controller for an iOS-style back gesture that drives the route's
+/// animation controller based on drag input. Works in logical coordinates
+/// where 0.0 = page dismissed and 1.0 = page fully on screen.
+class _SwipeBackGestureController<T> {
+  _SwipeBackGestureController({
+    required this.navigator,
+    required this.controller,
+    required this.getIsActive,
+    required this.getIsCurrent,
+    required this.route,
+  }) {
+    navigator.didStartUserGesture();
+  }
+
+  final AnimationController controller;
+  final NavigatorState navigator;
+  final ValueGetter<bool> getIsActive;
+  final ValueGetter<bool> getIsCurrent;
+  final PageRoute<T> route;
+
+  void dragUpdate(double delta) {
+    controller.value -= delta;
+  }
+
+  void dragEnd(double velocity) {
+    const Curve animationCurve = _kSwipeBackAnimationCurve;
+    final bool isCurrent = getIsCurrent();
+
+    late bool animateForward;
+
+    if (!isCurrent) {
+      animateForward = getIsActive();
+    } else if (velocity.abs() >= _kMinFlingVelocity) {
+      animateForward = velocity <= 0;
+    } else {
+      animateForward = controller.value > 0.5;
+    }
+
+    if (animateForward) {
+      controller.animateTo(
+        1.0,
+        duration: _kDroppedSwipePageAnimationDuration,
+        curve: animationCurve,
+      ).whenCompleteOrCancel(() {
+        if (navigator.mounted) navigator.didStopUserGesture();
+      });
+    } else {
+      if (isCurrent) {
+        navigator.pop();
+      }
+
+      if (controller.isAnimating) {
+        controller.animateBack(
+          0.0,
+          duration: _kDroppedSwipePageAnimationDuration,
+          curve: animationCurve,
+        ).whenCompleteOrCancel(() {
+          if (navigator.mounted) navigator.didStopUserGesture();
+        });
+      } else {
+        navigator.didStopUserGesture();
+      }
+    }
+  }
+}
+
+/// A gesture detector widget that catches left-edge horizontal drags and
+/// drives a [_SwipeBackGestureController] to implement the swipe-back
+/// gesture. Mirrors Flutter's internal `_CupertinoBackGestureDetector` but
+/// works with any custom PageRoute transition.
+class _SwipeBackGestureDetector<T> extends StatefulWidget {
+  const _SwipeBackGestureDetector({
+    super.key,
+    required this.enabledCallback,
+    required this.onStartPopGesture,
+    required this.child,
+  });
+
+  final Widget child;
+  final ValueGetter<bool> enabledCallback;
+  final ValueGetter<_SwipeBackGestureController<T>> onStartPopGesture;
+
+  @override
+  State<_SwipeBackGestureDetector<T>> createState() =>
+      _SwipeBackGestureDetectorState<T>();
+}
+
+class _SwipeBackGestureDetectorState<T>
+    extends State<_SwipeBackGestureDetector<T>> {
+  _SwipeBackGestureController<T>? _backGestureController;
+
+  late HorizontalDragGestureRecognizer _recognizer;
+
+  @override
+  void initState() {
+    super.initState();
+    _recognizer = HorizontalDragGestureRecognizer(debugOwner: this)
+      ..onStart = _handleDragStart
+      ..onUpdate = _handleDragUpdate
+      ..onEnd = _handleDragEnd
+      ..onCancel = _handleDragCancel;
+  }
+
+  @override
+  void dispose() {
+    _recognizer.dispose();
+
+    if (_backGestureController != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_backGestureController?.navigator.mounted ?? false) {
+          _backGestureController?.navigator.didStopUserGesture();
+        }
+        _backGestureController = null;
+      });
+    }
+    super.dispose();
+  }
+
+  void _handleDragStart(DragStartDetails details) {
+    assert(mounted);
+    assert(_backGestureController == null);
+    _backGestureController = widget.onStartPopGesture();
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    assert(mounted);
+    assert(_backGestureController != null);
+    _backGestureController!.dragUpdate(
+      _convertToLogical(details.primaryDelta! / context.size!.width),
+    );
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    assert(mounted);
+    assert(_backGestureController != null);
+    _backGestureController!.dragEnd(
+      _convertToLogical(details.velocity.pixelsPerSecond.dx / context.size!.width),
+    );
+    _backGestureController = null;
+  }
+
+  void _handleDragCancel() {
+    assert(mounted);
+    _backGestureController?.dragEnd(0.0);
+    _backGestureController = null;
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    if (widget.enabledCallback()) {
+      _recognizer.addPointer(event);
+    }
+  }
+
+  double _convertToLogical(double value) {
+    final ui.TextDirection dir = Directionality.of(context);
+    return dir == ui.TextDirection.rtl ? -value : value;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    assert(debugCheckHasDirectionality(context));
+    final ui.TextDirection dir = Directionality.of(context);
+    final double dragAreaWidth = dir == ui.TextDirection.rtl
+        ? MediaQuery.paddingOf(context).right
+        : MediaQuery.paddingOf(context).left;
+    return Stack(
+      fit: StackFit.passthrough,
+      children: <Widget>[
+        widget.child,
+        PositionedDirectional(
+          start: 0.0,
+          width: math.max(dragAreaWidth, _kBackGestureWidth),
+          top: 0.0,
+          bottom: 0.0,
+          child: Listener(
+            onPointerDown: _handlePointerDown,
+            behavior: HitTestBehavior.translucent,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A PageRoute subclass that supports the iOS-style edge-swipe back gesture
+/// while preserving the app's custom page transitions.
+class SwipeBackPageRoute<T> extends PageRoute<T> {
+  SwipeBackPageRoute({
+    required this.pageBuilder,
+    required this.transitionsBuilder,
+    super.settings,
+    this.transitionDuration = const Duration(milliseconds: 300),
+    this.reverseTransitionDuration = const Duration(milliseconds: 300),
+    this.opaque = true,
+    this.barrierDismissible = false,
+    this.barrierColor,
+    this.barrierLabel,
+    this.maintainState = true,
+    super.fullscreenDialog,
+    super.allowSnapshotting = true,
+  });
+
+  final RoutePageBuilder pageBuilder;
+  final RouteTransitionsBuilder transitionsBuilder;
+
+  @override
+  final Duration transitionDuration;
+
+  @override
+  final Duration reverseTransitionDuration;
+
+  @override
+  final bool opaque;
+
+  @override
+  final bool barrierDismissible;
+
+  @override
+  final Color? barrierColor;
+
+  @override
+  final String? barrierLabel;
+
+  @override
+  final bool maintainState;
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    return pageBuilder(context, animation, secondaryAnimation);
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final bool swipeInProgress =
+        navigator?.userGestureInProgress == true && isCurrent;
+
+    // During the swipe gesture, use a simple linear slide so the page
+    // follows the finger 1:1. Otherwise use the app's custom transition.
+    if (swipeInProgress) {
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(1.0, 0.0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: animation,
+          curve: Curves.linear,
+        )),
+        child: child,
+      );
+    }
+
+    return transitionsBuilder(context, animation, secondaryAnimation, child);
+  }
+
+  @override
+  bool get popGestureEnabled {
+    if (fullscreenDialog) return false;
+    if (isFirst) return false;
+    if (willHandlePopInternally) return false;
+    if (popDisposition == RoutePopDisposition.doNotPop) return false;
+    if (animation?.isCompleted != true) return false;
+    // Only enable the gesture when the feature flag is on.
+    return swipeBackGestureNotifier.value;
+  }
+
+  @override
+  bool canTransitionTo(TransitionRoute<dynamic> nextRoute) =>
+      nextRoute is PageRoute;
+
+  @override
+  bool canTransitionFrom(TransitionRoute<dynamic> previousRoute) =>
+      previousRoute is PageRoute;
+
+  @override
+  String get debugLabel => '${super.debugLabel}(${settings.name})';
 }
 
 class _SheetOption<T> {

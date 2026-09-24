@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:ui' as ui;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -6,6 +7,8 @@ import 'dart:math' as math;
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/physics.dart';

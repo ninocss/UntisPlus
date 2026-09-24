@@ -55,6 +55,12 @@ Future<void> _settingsSetShowFullTeacherNames(bool value) async {
   await prefs.setBool('showFullTeacherNames', value);
 }
 
+Future<void> _settingsSetSwipeBackGesture(bool value) async {
+  swipeBackGestureNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('swipeBackGesture', value);
+}
+
 Future<void> _settingsSetTimetableSwitchAnimation(int value) async {
   final normalized = value.clamp(0, 2);
   timetableSwitchAnimationNotifier.value = normalized;
@@ -550,6 +556,9 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getBool('showFullTeacherNames') ?? true;
   timetableDaySpanNotifier.value = (prefs.getInt('timetableDaySpan') ?? 1)
       .clamp(1, 3);
+  swipeBackGestureNotifier.value =
+      prefs.getBool('swipeBackGesture') ??
+      (defaultTargetPlatform == TargetPlatform.iOS);
   progressivePushNotifier.value =
       prefs.getBool('progressivePush') ?? progressivePushNotifier.value;
   dailyBriefingPushNotifier.value =

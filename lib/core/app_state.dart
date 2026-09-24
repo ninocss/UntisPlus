@@ -631,6 +631,14 @@ final ValueNotifier<bool> showFullTeacherNamesNotifier = ValueNotifier(true);
 /// always shows all five days.
 final ValueNotifier<int> timetableDaySpanNotifier = ValueNotifier(1);
 
+/// When true, pages pushed onto the navigator support the iOS-style "swipe
+/// from the left edge to go back" gesture — the mobile equivalent of Android's
+/// predictive back gesture. Defaults to enabled on iOS, where the system
+/// otherwise offers no equivalent back-gesture affordance.
+final ValueNotifier<bool> swipeBackGestureNotifier = ValueNotifier(
+  defaultTargetPlatform == TargetPlatform.iOS,
+);
+
 String _icuLocale(String locale) {
   switch (locale) {
     case 'en':
