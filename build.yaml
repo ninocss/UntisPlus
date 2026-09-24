@@ -1,0 +1,20 @@
+targets:
+  $default:
+    builders:
+      freezed:
+        options:
+          # Only process files in core/state directory and features/**/providers.dart
+          build_extensions:
+            ".dart": [".freezed.dart"]
+    sources:
+      exclude:
+        - lib/main.dart
+        - lib/l10n.dart
+        - lib/l10n/**
+        - lib/screens/**
+        - lib/widgets/**
+        - lib/services/**
+        - lib/features/**/screens/**
+        - lib/features/**/widgets/**
+        - lib/features/**/application/**
+        - test/**
