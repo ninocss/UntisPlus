@@ -5,9 +5,6 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
-/// Width of the left-edge drag area for the swipe-back gesture.
-const double _kBackGestureWidth = 20.0;
-
 /// Minimum fling velocity (in screen widths per second) to trigger a pop
 /// when the drag ends before the halfway point.
 const double _kMinFlingVelocity = 1.0;
@@ -18,6 +15,14 @@ const Duration _kDroppedSwipePageAnimationDuration = Duration(milliseconds: 350)
 
 /// Curve used for the page settling animation after a swipe-back gesture.
 const Curve _kSwipeBackAnimationCurve = Curves.fastEaseInToSlowEaseOut;
+
+/// Computes the swipe-back gesture drag area width proportional to screen size.
+/// ~5% of the shortest screen dimension, clamped to [20, 48] logical pixels.
+/// Matches native iOS behavior where the edge zone scales with device size.
+double _kSwipeBackGestureWidth(BuildContext context) {
+  final double shortestSide = MediaQuery.sizeOf(context).shortestSide;
+  return (shortestSide * 0.05).clamp(20.0, 48.0);
+}
 
 /// Shared width vocabulary for layouts that need to work from a phone to a
 /// desktop-sized tablet. Keep breakpoints here instead of letting individual
@@ -1049,7 +1054,7 @@ class _SwipeBackGestureDetectorState<T>
         widget.child,
         PositionedDirectional(
           start: 0.0,
-          width: math.max(dragAreaWidth, _kBackGestureWidth),
+          width: math.max(dragAreaWidth, _kSwipeBackGestureWidth(context)),
           top: 0.0,
           bottom: 0.0,
           child: Listener(
