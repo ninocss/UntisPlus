@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assistant_short_label">KI-Assistent</string>
+    <string name="assistant_long_label">Öffne den KI-Assistenten</string>
+</resources>

@@ -73,15 +73,37 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     _loadChatHistory();
     pendingAssistantPromptNotifier.addListener(_consumeNativeAssistantPrompt);
     hiddenSubjectsNotifier.addListener(_reloadContextForHiddenSubjects);
+    // A native assistant request can arrive before this widget is built, in
+    // which case no change event reaches the listener above. Consume any value
+    // that is already waiting after the first frame.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _consumeNativeAssistantPrompt(),
+    );
     _promptFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
   }
 
+  /// A prompt received while the schedule/exam context is still loading. It is
+  /// delivered as soon as [_loadContext] finishes so the assistant has data.
+  String? _deferredAssistantPrompt;
+
   void _consumeNativeAssistantPrompt() {
-    final prompt = pendingAssistantPromptNotifier.value?.trim() ?? '';
-    if (!mounted || prompt.isEmpty) return;
+    final raw = pendingAssistantPromptNotifier.value;
     pendingAssistantPromptNotifier.value = null;
+    final prompt = normalizedAssistantPrompt(raw);
+    if (!mounted || prompt == null || prompt.isEmpty) return;
+    if (_deferredAssistantPrompt == prompt) return;
+    _deferredAssistantPrompt = prompt;
+    _deliverDeferredAssistantPrompt();
+  }
+
+  void _deliverDeferredAssistantPrompt() {
+    if (!mounted) return;
+    if (_loading) return;
+    final prompt = _deferredAssistantPrompt;
+    if (prompt == null) return;
+    _deferredAssistantPrompt = null;
     _inputController.text = prompt;
     _send();
   }
@@ -422,6 +444,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       _exams = exams;
       _loading = false;
     });
+    // A native assistant prompt may have arrived while the context was still
+    // loading; send it now that the timetable/exam data is available.
+    _deliverDeferredAssistantPrompt();
   }
 
   Future<void> _openSettings() async {
