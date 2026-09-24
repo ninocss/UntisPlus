@@ -55,6 +55,29 @@ Future<void> _settingsSetShowFullTeacherNames(bool value) async {
   await prefs.setBool('showFullTeacherNames', value);
 }
 
+/// Builds a standardized [SettingsSwitchTile] for the "show full teacher names" setting.
+/// Allows optional icon customization for contextual styling while keeping defaults consistent.
+Widget _buildShowFullTeacherNamesTile({
+  required AppL10n l,
+  required ColorScheme cs,
+  IconData? icon,
+  Color? iconColor,
+  Color? iconBackgroundColor,
+}) {
+  return ValueListenableBuilder<bool>(
+    valueListenable: showFullTeacherNamesNotifier,
+    builder: (context, value, _) => SettingsSwitchTile(
+      icon: icon ?? Icons.badge_outlined,
+      iconColor: iconColor,
+      iconBackgroundColor: iconBackgroundColor,
+      title: l.settingsShowFullTeacherNames,
+      subtitle: l.settingsShowFullTeacherNamesDesc,
+      value: value,
+      onChanged: _settingsSetShowFullTeacherNames,
+    ),
+  );
+}
+
 Future<void> _settingsSetSwipeBackGesture(bool value) async {
   swipeBackGestureNotifier.value = value;
   final prefs = await SharedPreferences.getInstance();
