@@ -280,8 +280,59 @@ Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
 Future<void> _settingsSetShowCancelled(bool value) =>
     SettingsStore.instance.write(_showCancelledPreference, value);
 
+<<<<<<< HEAD
 Future<void> _settingsSetTimetableSwitchAnimation(int value) =>
     SettingsStore.instance.write(_timetableSwitchAnimationPreference, value);
+=======
+Future<void> _settingsSetTimetableDaySpan(int value) async {
+  final normalized = value.clamp(1, 3);
+  timetableDaySpanNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('timetableDaySpan', normalized);
+}
+
+Future<void> _settingsSetShowFullTeacherNames(bool value) async {
+  showFullTeacherNamesNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('showFullTeacherNames', value);
+}
+
+/// Builds a standardized [SettingsSwitchTile] for the "show full teacher names" setting.
+/// Allows optional icon customization for contextual styling while keeping defaults consistent.
+Widget _buildShowFullTeacherNamesTile({
+  required AppL10n l,
+  required ColorScheme cs,
+  IconData? icon,
+  Color? iconColor,
+  Color? iconBackgroundColor,
+}) {
+  return ValueListenableBuilder<bool>(
+    valueListenable: showFullTeacherNamesNotifier,
+    builder: (context, value, _) => SettingsSwitchTile(
+      icon: icon ?? Icons.badge_outlined,
+      iconColor: iconColor,
+      iconBackgroundColor: iconBackgroundColor,
+      title: l.settingsShowFullTeacherNames,
+      subtitle: l.settingsShowFullTeacherNamesDesc,
+      value: value,
+      onChanged: _settingsSetShowFullTeacherNames,
+    ),
+  );
+}
+
+Future<void> _settingsSetSwipeBackGesture(bool value) async {
+  swipeBackGestureNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('swipeBackGesture', value);
+}
+
+Future<void> _settingsSetTimetableSwitchAnimation(int value) async {
+  final normalized = value.clamp(0, 2);
+  timetableSwitchAnimationNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('timetableSwitchAnimation', normalized);
+}
+>>>>>>> pr-149
 
 Future<void> _settingsSetBackgroundAnimations(bool value) =>
     SettingsStore.instance.write(_backgroundAnimationsPreference, value);
@@ -595,6 +646,63 @@ Future<void> _settingsSyncFromPrefs() async {
   blurEnabledNotifier.value =
       appThemeCapabilities(activeTheme).supportsBlur &&
       (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
+<<<<<<< HEAD
+=======
+  blurStrengthNotifier.value = (prefs.getDouble('blurStrength') ?? 1.0)
+      .clamp(0.25, 2.0)
+      .toDouble();
+  surfaceBlurEnabledNotifier.value =
+      prefs.getBool('surfaceBlurEnabled') ?? true;
+  surfaceCornerModeNotifier.value =
+      (prefs.getInt('surfaceCornerMode') ?? 0).clamp(0, 2);
+  surfaceCornerRadiusNotifier.value =
+      (prefs.getInt('surfaceCornerRadius') ?? 24).clamp(0, 48);
+  pageTransitionNotifier.value = (prefs.getInt('pageTransition') ?? 0).clamp(
+    0,
+    7,
+  );
+  mainTabFadeUpEnabledNotifier.value =
+      prefs.getBool('mainTabFadeUpEnabled') ?? false;
+  useMaterialYouNotifier.value = prefs.getBool('useMaterialYou') ?? true;
+  isAmoledNotifier.value = prefs.getBool('isAmoled') ?? false;
+  customColorSeedNotifier.value = prefs.getInt('customColorSeed') ?? 0xFF0F766E;
+  lessonCardStyleNotifier.value = (prefs.getInt('lessonCardStyle') ?? 0).clamp(
+    0,
+    4,
+  );
+  glowEffectsEnabledNotifier.value =
+      prefs.getBool('glowEffectsEnabled') ?? false;
+  lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;
+  lessonBlurAmountNotifier.value = prefs.getDouble('lessonBlurAmount') ?? 12.0;
+  lessonCardOpacityNotifier.value = prefs.getDouble('lessonCardOpacity') ?? 0.9;
+  lessonBorderRadiusNotifier.value =
+      prefs.getDouble('lessonBorderRadius') ?? 12.0;
+  lessonAccentStyleNotifier.value = (prefs.getInt('lessonAccentStyle') ?? 0)
+      .clamp(0, 3);
+  lessonShowTeacherNotifier.value = prefs.getBool('lessonShowTeacher') ?? true;
+  lessonShowSubjectIconsNotifier.value =
+      prefs.getBool('lessonShowSubjectIcons') ?? false;
+  lessonShowRoomNotifier.value = prefs.getBool('lessonShowRoom') ?? true;
+  lessonCompactModeNotifier.value = prefs.getBool('lessonCompactMode') ?? false;
+  lessonDimPastNotifier.value = prefs.getBool('lessonDimPast') ?? true;
+  lessonCancelledPatternNotifier.value =
+      prefs.getBool('lessonCancelledPattern') ?? true;
+  showFullTeacherNamesNotifier.value =
+      prefs.getBool('showFullTeacherNames') ?? true;
+  timetableDaySpanNotifier.value = (prefs.getInt('timetableDaySpan') ?? 1)
+      .clamp(1, 3);
+  swipeBackGestureNotifier.value =
+      prefs.getBool('swipeBackGesture') ??
+      (defaultTargetPlatform == TargetPlatform.iOS);
+  progressivePushNotifier.value =
+      prefs.getBool('progressivePush') ?? progressivePushNotifier.value;
+  dailyBriefingPushNotifier.value =
+      prefs.getBool('dailyBriefingPush') ?? dailyBriefingPushNotifier.value;
+  importantChangesPushNotifier.value =
+      prefs.getBool('importantChangesPush') ??
+      importantChangesPushNotifier.value;
+  demoModeNotifier.value = prefs.getBool('demoMode') ?? demoModeNotifier.value;
+>>>>>>> pr-149
 
   await store.load(_blurStrengthPreference);
   await store.load(_surfaceBlurEnabledPreference);

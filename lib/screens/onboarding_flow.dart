@@ -838,7 +838,48 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         personId = authResult.personId;
         personType = authResult.personType;
 
+<<<<<<< HEAD
         final prefs = SettingsStore.instance.preferences;
+=======
+        if (authResult['otpInvalid'] == true) {
+          if (mounted) setState(() => _requiresTwoFactor = true);
+          _showError(l.loginTwoFactorInvalid);
+          return;
+        }
+
+        sessionID = authResult['sessionId']?.toString() ?? "";
+
+        var rawId = authResult['personId'];
+        var rawType = authResult['personType'];
+
+        int resolvedPersonId;
+        int resolvedPersonType;
+        if (rawId != null && rawId.toString() != "0") {
+          resolvedPersonId = int.tryParse(rawId.toString()) ?? 0;
+          resolvedPersonType = int.tryParse(rawType.toString()) ?? 5;
+        } else if (authResult['klasseId'] != null) {
+          resolvedPersonId =
+              int.tryParse(authResult['klasseId'].toString()) ?? 0;
+          resolvedPersonType = 1;
+        } else {
+          resolvedPersonId = 0;
+          resolvedPersonType = 5;
+        }
+
+        // Guardian/parent accounts have no timetable of their own; redirect
+        // them to their first linked student so the account never stores an
+        // element that cannot be fetched.
+        final resolvedElement = _resolveTimetableElementFromAuth(
+          authResult,
+          resolvedPersonId,
+          resolvedPersonType,
+        );
+        personId = (resolvedElement['personId'] as int?) ?? resolvedPersonId;
+        personType =
+            (resolvedElement['personType'] as int?) ?? resolvedPersonType;
+
+        final prefs = await SharedPreferences.getInstance();
+>>>>>>> pr-149
         await prefs.setString('schoolUrl', schoolUrl);
         await prefs.setString('schoolName', schoolName);
         await prefs.setString('username', _userController.text);
