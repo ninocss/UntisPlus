@@ -63,10 +63,10 @@ extension AppL10nCollections on AppL10n {
     final normalizedExtension = (extension ?? '').trim().toUpperCase();
     if (normalizedExtension.isNotEmpty) {
       return count == 1
-          ? infoAttachedExtOne(normalizedExtension)
-          : infoAttachedExtMany(normalizedExtension);
+          ? infoAttachedExtOne(count, normalizedExtension)
+          : infoAttachedExtMany(count, normalizedExtension);
     }
-    return count == 1 ? infoAttachedFile : infoAttachedFiles;
+    return count == 1 ? infoAttachedFile(count) : infoAttachedFiles(count);
   }
 
   Map<String, String> get aiPromptVariableDescriptions => <String, String>{

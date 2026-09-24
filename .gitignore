@@ -66,7 +66,6 @@ windows/
 web/
 linux/
 macos/
-docs/
 changelog.json
 
 # F-Droid / IzzyOnDroid fastlane metadata – must be tracked for store listings
