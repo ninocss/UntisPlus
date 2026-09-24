@@ -138,13 +138,6 @@ https://github.com/OseMine/UntisPlus-dev-server
 1. [Download](https://github.com/ninocss/untisplus/releases) the latest APK from Releases
 2. Install APK
 
-**Alternative Android stores:**
-
-* **IzzyOnDroid** — Add the [IzzyOnDroid repository](https://apt.izzysoft.de/fdroid/repo?fingerprint=3BF0D6ABFEAE2F401707B6D966BE743BF0EEE49C2561B9BA39073711F628937A) to your F-Droid-compatible client and search for **Untis+**.
-* **Neo-Store** — The [Neo-Store](https://github.com/NeoApplications/Neo-Store) client pulls from F-Droid and IzzyOnDroid repositories, so Untis+ appears there automatically once either repository is added.
-
-> Store metadata (descriptions, screenshots, changelogs) is maintained in `fastlane/metadata/android/` and picked up automatically on each release.
-
 ### iOS
 1. Install AltStore Classic Using [Altserver](https://faq.altstore.io/altstore-classic) or [AltStore PAL (EU Only)](https://faq.altstore.io/altstore-pal).
 2. Add UntisPlus Source to AltStore
