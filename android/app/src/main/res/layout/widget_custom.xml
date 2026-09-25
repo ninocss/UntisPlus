@@ -7,6 +7,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitXY"
+        android:src="@drawable/widget_expressive_surface"
         android:contentDescription="@null" />
     <LinearLayout
         android:layout_width="match_parent"
@@ -38,7 +39,8 @@
             android:ellipsize="end"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="@color/widget_on_surface" />
+            android:textColor="@color/widget_on_surface"
+            android:text="Mathe · Raum 204" />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
@@ -65,7 +67,8 @@
             android:maxLines="2"
             android:ellipsize="end"
             android:textSize="14sp"
-            android:textColor="@color/widget_on_surface" />
+            android:textColor="@color/widget_on_surface"
+            android:text="Danach: Englisch · Raum 112" />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
@@ -92,7 +95,8 @@
             android:maxLines="2"
             android:ellipsize="end"
             android:textSize="14sp"
-            android:textColor="@color/widget_on_surface" />
+            android:textColor="@color/widget_on_surface"
+            android:text="Heute · 6 Stunden" />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
@@ -119,7 +123,8 @@
             android:maxLines="2"
             android:ellipsize="end"
             android:textSize="14sp"
-            android:textColor="@color/widget_on_surface_variant" />
+            android:textColor="@color/widget_on_surface_variant"
+            android:text="Unterricht läuft" />
     </LinearLayout>
 </LinearLayout>
 </FrameLayout>

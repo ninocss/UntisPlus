@@ -206,6 +206,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
         : hasData
         ? l.widgetCurrentStatus
         : l.widgetPreviewStatus;
+    final isCurrent = _selectedType == 'current';
     final isSchedule = _selectedType == 'schedule';
     final title = switch (_selectedType) {
       'schedule' => l.widgetToday,
@@ -240,36 +241,50 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
         ? 'Untis+'
         : l.widgetNotSynced;
 
+    Widget statusPill(String value) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: cs.primary,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+
+    TextStyle? widgetTextStyle({
+      required double size,
+      required Color color,
+      required FontWeight weight,
+      double height = 1.2,
+    }) => Theme.of(context).textTheme.bodyMedium?.copyWith(
+      color: color,
+      fontSize: size,
+      fontWeight: weight,
+      height: height,
+    );
+
     return Semantics(
       label:
           '${l.widgetPreview}: ${_typeText(l, _types.firstWhere((type) => type.id == _selectedType).label)}',
       child: AnimatedContainer(
         key: ValueKey('widget-preview-$_selectedType'),
-        duration: const Duration(milliseconds: 280),
+        duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
-        // All preview variants share the taller canvas.  Switching from a
-        // compact preview to the four-line schedule used to animate from 190
-        // to 220 px while the schedule copy appeared immediately, briefly
-        // leaving the text column too short.
         height: 220,
-        constraints: BoxConstraints(maxWidth: 360),
-        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(maxWidth: 360),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh.withValues(alpha: 0.94),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(40),
-            topRight: Radius.circular(24),
-            bottomLeft: Radius.circular(26),
-            bottomRight: Radius.circular(40),
-          ),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.72)),
-          boxShadow: _glowShadows(context, [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.14),
-              blurRadius: 28,
-              offset: const Offset(0, 12),
-            ),
-          ]),
+          color: cs.surfaceContainerLow.withValues(alpha: 0.98),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: cs.outlineVariant),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,37 +296,36 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: _selectedType == 'current'
-                          ? cs.onSurfaceVariant
-                          : cs.primary,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: _selectedType == 'current' ? 0 : 0.8,
+                    style: widgetTextStyle(
+                      size: 12,
+                      color: isCurrent ? cs.onSurfaceVariant : cs.primary,
+                      weight: FontWeight.w700,
                     ),
                   ),
                 ),
-                if (_selectedType != 'current') ...[
-                  const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                if (isCurrent)
+                  statusPill(status)
+                else
                   Flexible(
                     child: Text(
                       accountLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.end,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      style: widgetTextStyle(
+                        size: 12,
                         color: cs.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
+                        weight: FontWeight.w500,
                       ),
                     ),
                   ),
-                ] else
-                  _statusPill(context, cs, status),
               ],
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: isCurrent ? 12 : 14),
             Expanded(
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: Alignment.topLeft,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   child: Column(
@@ -323,33 +337,26 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                     children: [
                       Text(
                         headline,
-                        maxLines: isSchedule ? 4 : 2,
+                        maxLines: isSchedule ? 3 : isCurrent ? 1 : 2,
                         overflow: TextOverflow.ellipsis,
-                        style: isSchedule
-                            ? Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: cs.onSurface,
-                                height: 1.42,
-                                fontWeight: FontWeight.w700,
-                              )
-                            : Theme.of(
-                                context,
-                              ).textTheme.headlineSmall?.copyWith(
-                                color: cs.onSurface,
-                                height: 1.15,
-                                fontWeight: FontWeight.w900,
-                              ),
+                        style: widgetTextStyle(
+                          size: isCurrent ? 24 : isSchedule ? 15 : 17,
+                          color: cs.onSurface,
+                          weight: isSchedule ? FontWeight.w500 : FontWeight.w700,
+                          height: isCurrent ? 1.15 : 1.3,
+                        ),
                       ),
-                      if (_selectedType == 'current') ...[
-                        const SizedBox(height: 7),
+                      if (isCurrent) ...[
+                        const SizedBox(height: 5),
                         Text(
                           detail,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style: widgetTextStyle(
+                            size: 13,
+                            color: cs.onSurfaceVariant,
+                            weight: FontWeight.w400,
+                          ),
                         ),
                       ],
                     ],
@@ -357,15 +364,15 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Row(
               children: [
-                if (_selectedType == 'current')
-                  Flexible(child: _statusPill(context, cs, footer))
+                if (isCurrent)
+                  Flexible(child: statusPill(footer))
                 else
-                  _statusPill(context, cs, status),
+                  statusPill(status),
                 const Spacer(),
-                if (_selectedType == 'current')
+                if (isCurrent)
                   Icon(
                     Icons.more_horiz_rounded,
                     color: cs.onSurfaceVariant,
