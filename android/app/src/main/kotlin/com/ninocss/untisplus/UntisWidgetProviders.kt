@@ -207,7 +207,7 @@ class UntisWidgetCustom : HomeWidgetProvider() {
                     val text = if (index < blocks.length()) customContent(data, id, account, blocks.optString(index)) else ""
                     setViewVisibility(viewId, if (text.isEmpty()) View.GONE else View.VISIBLE)
                     setTextViewText(viewId, text)
-                    setTextColor(viewId, if (index == 0) accent else textColor)
+                    setTextColor(viewId, textColor)
                     setFloat(viewId, "setTextSize", 14f * scale)
                     setInt(viewId, "setMaxLines", if (blocks.optString(index) == "schedule") 3 else 2)
                     val iconViewId = idsForIcon[index]
