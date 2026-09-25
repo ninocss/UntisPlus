@@ -435,20 +435,17 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
         : Color(config.backgroundColor);
     final foreground = systemColors ? cs.onSurface : Color(config.textColor);
     final accent = systemColors ? cs.primary : Color(config.accentColor);
-    final compact = config.layout == 'compact';
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
       constraints: const BoxConstraints(maxWidth: 370),
-      padding: EdgeInsets.all(compact ? 14 : 18),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: background.withValues(alpha: config.opacity),
         borderRadius: BorderRadius.circular(config.cornerRadius),
         border: Border.all(
-          color: systemColors
-              ? cs.outlineVariant.withValues(alpha: 0.52)
-              : accent.withValues(alpha: 0.55),
+          color: accent.withValues(alpha: 0.55),
         ),
       ),
       child: Column(
@@ -459,7 +456,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             .entries
             .map(
               (entry) => Padding(
-                padding: EdgeInsets.only(bottom: compact ? 5 : 8),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
