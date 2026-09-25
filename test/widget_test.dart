@@ -76,9 +76,14 @@ void main() {
     );
     final toggle = find.byKey(const ValueKey('timetable-view-toggle'));
 
+    Finder active(Finder finder) {
+      final hitTestable = finder.hitTestable();
+      return hitTestable.evaluate().isNotEmpty ? hitTestable.first : finder.first;
+    }
+
     for (var i = 0; i < 100; i++) {
-      if (weekGrid.evaluate().isNotEmpty) return weekGrid;
-      if (materialWeek.evaluate().isNotEmpty) return materialWeek;
+      if (weekGrid.evaluate().isNotEmpty) return active(weekGrid);
+      if (materialWeek.evaluate().isNotEmpty) return active(materialWeek);
 
       final visibleToggle = toggle.hitTestable();
       if (visibleToggle.evaluate().isNotEmpty) {
@@ -93,7 +98,9 @@ void main() {
       weekGrid.evaluate().isNotEmpty || materialWeek.evaluate().isNotEmpty,
       isTrue,
     );
-    return weekGrid.evaluate().isNotEmpty ? weekGrid : materialWeek;
+    return weekGrid.evaluate().isNotEmpty
+        ? active(weekGrid)
+        : active(materialWeek);
   }
 
   setUp(() async {
