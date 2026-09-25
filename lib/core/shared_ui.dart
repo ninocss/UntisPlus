@@ -1708,26 +1708,47 @@ Widget _untisDropdownMenu({
   Widget? child,
 }) {
   final radius = BorderRadius.circular(_resolvedSurfaceCornerRadius(22));
+  final reduceMotion = MediaQuery.of(context).disableAnimations;
+  final surface = _sheetSurface(
+    context: context,
+    blur: true,
+    borderRadius: radius,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      child: Column(mainAxisSize: MainAxisSize.min, children: menuChildren),
+    ),
+  );
   return MenuAnchor(
     controller: controller,
     style: _untisMenuStyle(context),
     alignmentOffset: alignmentOffset,
     consumeOutsideTap: consumeOutsideTap,
     useRootOverlay: useRootOverlay,
-    animated: !MediaQuery.of(context).disableAnimations,
+    animated: !reduceMotion,
     menuChildren: [
-      _sheetSurface(
-        context: context,
-        blur: true,
-        borderRadius: radius,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: menuChildren,
-          ),
+      if (reduceMotion)
+        surface
+      else
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.97, end: 1),
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          builder: (context, scale, child) {
+            final progress = ((scale - 0.97) / 0.03).clamp(0.0, 1.0);
+            return Opacity(
+              opacity: progress,
+              child: Transform.translate(
+                offset: Offset(0, (1 - progress) * 4),
+                child: Transform.scale(
+                  scale: scale,
+                  alignment: Alignment.center,
+                  child: child,
+                ),
+              ),
+            );
+          },
+          child: surface,
         ),
-      ),
     ],
     builder: builder,
     child: child,
