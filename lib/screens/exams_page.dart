@@ -83,15 +83,26 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final now = DateTime.now();
     final start = now.subtract(const Duration(days: 14));
     final end = now.add(const Duration(days: 90));
+    final account = activeUntisAccount;
     final results = await _webUntisExamRepository.fetch(
       context: WebUntisRequestContext(
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
+        schoolUrl: account?.schoolUrl ?? schoolUrl,
+        schoolName: account?.schoolName ?? schoolName,
         sessionId: sessionID,
       ),
-      personId: personId,
+      personId: account?.personId ?? personId,
       start: start,
       end: end,
+      account: account == null
+          ? null
+          : WebUntisAccountLogin(
+              accountId: account.id,
+              username: account.username,
+              schoolUrl: account.schoolUrl,
+              schoolName: account.schoolName,
+              personId: account.personId,
+              personType: account.personType,
+            ),
     );
     _apiExams = results;
     apiExamsNotifier.value = results;

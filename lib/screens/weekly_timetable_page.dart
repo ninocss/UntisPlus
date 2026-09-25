@@ -1070,7 +1070,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       text: lesson['_teacher']?.toString() ?? '',
     );
     final room = TextEditingController(text: lesson['_room']?.toString() ?? '');
-    var cancelled = (lesson['code'] ?? '') == 'cancelled';
+    var cancelled = isTimetableCancelled(lesson);
     await showUntisDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -1133,7 +1133,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 updated['_room'] = room.text.trim();
                 if (cancelled) {
                   updated['code'] = 'cancelled';
-                } else if (updated['code'] == 'cancelled') {
+                } else if (isTimetableCancelled(updated)) {
                   updated.remove('code');
                 }
                 setState(() {
@@ -1204,7 +1204,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               (lesson) =>
                   !_isLessonSubjectHidden(lesson) &&
                   (showCancelledNotifier.value ||
-                      lesson['code'] != 'cancelled'),
+                      !isTimetableCancelled(lesson)),
             )
             .toList(growable: false)
           ..sort(
@@ -2769,7 +2769,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           )
           .where(
             (l) =>
-                showCancelledNotifier.value || (l['code'] ?? '') != 'cancelled',
+                showCancelledNotifier.value || !isTimetableCancelled(l),
           )
           .toList();
       final mergedDayLessons = _mergeConsecutiveLessons(visibleDayLessons);
@@ -2799,7 +2799,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     for (final lesson in dayLessons.whereType<Map>()) {
       final map = lesson.cast<dynamic, dynamic>();
-      if ((map['code'] ?? '') == 'cancelled') continue;
+      if (isTimetableCancelled(map)) continue;
       final start = _lessonStartMinutes(map);
       final end = _lessonEndMinutes(map);
       if (end <= start) continue;
@@ -2856,7 +2856,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       for (final raw in periods) {
         if (raw is! Map) continue;
         final lesson = raw.cast<dynamic, dynamic>();
-        if ((lesson['code'] ?? '') == 'cancelled') continue;
+        if (isTimetableCancelled(lesson)) continue;
         final lessonStart = _lessonStartMinutes(lesson);
         final lessonEnd = _lessonEndMinutes(lesson);
         if (lessonStart < endMin && lessonEnd > startMin) {
@@ -3209,6 +3209,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Widget _buildTimetableLessonCard({
     required BuildContext context,
     required bool isCancelled,
+    bool isSubstitution = false,
     required bool isDark,
     required Color fgColor,
     required Color bgColor,
@@ -3407,6 +3408,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       Icons.person_off_rounded,
                       size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
                       color: Colors.deepOrange.withValues(alpha: 0.9),
+                    ),
+                  ],
+                  if (isSubstitution && !widthCompact && !heightMinimal) ...[
+                    const SizedBox(width: 3),
+                    Icon(
+                      Icons.swap_horiz_rounded,
+                      size: (effectiveSubjectFontSize * 0.95).clamp(10.0, 15.0),
+                      color: effectiveTextColor.withValues(alpha: 0.9),
                     ),
                   ],
                 ],
@@ -3649,7 +3658,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final visibleLessons = lessons
         .where(
           (l) =>
-              showCancelledNotifier.value || (l['code'] ?? '') != 'cancelled',
+              showCancelledNotifier.value || !isTimetableCancelled(l),
         )
         .toList();
     final mergedLessons = _mergeConsecutiveLessons(visibleLessons);
@@ -3827,8 +3836,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   final isDark =
                                       Theme.of(context).brightness ==
                                       Brightness.dark;
-                                  final isCancelled =
-                                      (l['code'] ?? '') == 'cancelled';
+                                  final isCancelled = isTimetableCancelled(l);
+                                  final isSubstitution =
+                                      isTimetableSubstitution(l);
                                   final isTeacherMissing = _hasMissingTeacher(
                                     l,
                                   );
@@ -3932,6 +3942,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     child: _buildTimetableLessonCard(
                                       context: context,
                                       isCancelled: isCancelled,
+                                      isSubstitution: isSubstitution,
                                       isDark: isDark,
                                       fgColor: fgColor,
                                       bgColor: bgColor,
@@ -4180,7 +4191,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                 .where(
                                   (l) =>
                                       showCancelledNotifier.value ||
-                                      (l['code'] ?? '') != 'cancelled',
+                                      !isTimetableCancelled(l),
                                 )
                                 .toList();
                             final mergedLessons = _mergeConsecutiveLessons(
@@ -4330,8 +4341,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   ).brightness ==
                                                   Brightness.dark;
                                               final isCancelled =
-                                                  (l['code'] ?? '') ==
-                                                  'cancelled';
+                                                  isTimetableCancelled(l);
+                                              final isSubstitution =
+                                                  isTimetableSubstitution(l);
                                               final isTeacherMissing =
                                                   _hasMissingTeacher(l);
                                               final subject =
@@ -4465,6 +4477,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                 child: _buildTimetableLessonCard(
                                                   context: context,
                                                   isCancelled: isCancelled,
+                                                  isSubstitution:
+                                                      isSubstitution,
                                                   isDark: isDark2,
                                                   fgColor: fgColor,
                                                   bgColor: bgColor,

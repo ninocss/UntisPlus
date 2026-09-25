@@ -20,6 +20,13 @@ AppL10n appL10nFor(String locale) {
 extension AppL10nCollections on AppL10n {
   String get locale => localeName.split(RegExp('[-_]')).first;
 
+  String get timetableSubstitution => switch (locale) {
+    'en' => 'SUBSTITUTION',
+    'fr' => 'REMPLACEMENT',
+    'es' => 'SUSTITUCIÓN',
+    _ => 'VERTRETUNG',
+  };
+
   String wrapped(String key) {
     const copy = <String, List<String>>{
       'title': ['School Wrapped', 'School Wrapped', 'School Wrapped', 'School Wrapped'],

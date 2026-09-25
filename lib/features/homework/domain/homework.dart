@@ -135,15 +135,30 @@ class HomeworkBundle {
           final raw = Map<String, dynamic>.unmodifiable(
             Map<String, dynamic>.from(value),
           );
-          final id = raw['id']?.toString() ?? '';
-          final lessonId = raw['lessonId']?.toString() ?? '';
+          final id = (raw['id'] ?? raw['homeworkId'] ?? raw['hwid'])
+                  ?.toString() ??
+              '';
+          final rawLesson = raw['lesson'];
+          final lessonId = (raw['lessonId'] ??
+                      raw['lsid'] ??
+                      (rawLesson is Map ? rawLesson['id'] : null))
+                  ?.toString() ??
+              '';
           return Homework(
             id: id,
             lessonId: lessonId,
-            text: raw['text']?.toString() ?? '',
+            text: (raw['text'] ??
+                    raw['homework'] ??
+                    raw['homeworkText'] ??
+                    raw['description'])
+                ?.toString() ??
+                '',
             dueDate:
                 int.tryParse(
-                  (raw['dueDate'] ?? raw['date'] ?? '').toString(),
+                  (raw['dueDate'] ?? raw['date'] ?? raw['due'])
+                          ?.toString()
+                          .replaceAll('-', '') ??
+                      '',
                 ) ??
                 0,
             isDone: raw['isDone'] == true || doneIds.contains(id),

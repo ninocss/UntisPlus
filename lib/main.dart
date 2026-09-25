@@ -61,6 +61,7 @@ import 'features/school_info/application/school_html.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
+import 'features/timetable/domain/timetable_lesson_status.dart';
 import 'features/ai/domain/ai_models.dart';
 import 'features/ai/application/ai_request_coordinator.dart';
 import 'features/ai/data/ai_chat_history_store.dart';

@@ -20,7 +20,8 @@ void _showLessonDetail(
   final teacher = lessonTeacherDisplayName(lesson);
   final time =
       '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
-  final isCancelled = (lesson['code'] ?? '') == 'cancelled';
+  final isSubstitution = isTimetableSubstitution(lesson as Map?);
+  final isCancelled = isTimetableCancelled(lesson as Map?);
   final info = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
   final lessonNr = lesson['lsnumber']?.toString() ?? '';
   final studentNotes = (lesson['lsText'] ?? lesson['lstext'] ?? '')
@@ -65,6 +66,7 @@ void _showLessonDetail(
       originalTeacher: originalTeacher,
       time: time,
       isCancelled: isCancelled,
+      isSubstitution: isSubstitution,
       info: info,
       lessonNr: lessonNr,
       eventName: eventName,
@@ -86,7 +88,7 @@ class _LessonDetailSheet extends StatelessWidget {
   final String originalTeacher;
   final String eventName, classNames, activityType;
   final String studentNotes, registerNotes, homework;
-  final bool isCancelled;
+  final bool isCancelled, isSubstitution;
   final VoidCallback? onHideSubject;
 
   const _LessonDetailSheet({
@@ -96,6 +98,7 @@ class _LessonDetailSheet extends StatelessWidget {
     required this.teacher,
     required this.time,
     required this.isCancelled,
+    required this.isSubstitution,
     required this.info,
     required this.lessonNr,
     this.originalTeacher = '',
@@ -231,6 +234,36 @@ class _LessonDetailSheet extends StatelessWidget {
                         l.detailCancelled,
                         style: GoogleFonts.outfit(
                           color: cancelledColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (isSubstitution)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.swap_horiz_rounded,
+                        size: 16,
+                        color: cs.onTertiaryContainer,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        l.timetableSubstitution,
+                        style: GoogleFonts.outfit(
+                          color: cs.onTertiaryContainer,
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
                         ),

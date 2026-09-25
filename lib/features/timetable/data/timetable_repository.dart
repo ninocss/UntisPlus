@@ -126,12 +126,26 @@ class TimetableRepository {
       },
     );
     final result = response['result'];
-    if (result is List) return List<dynamic>.from(result);
+    if (result is List) return _normalizeLessons(result);
     if (result is Map && result['timetable'] is List) {
-      return List<dynamic>.from(result['timetable'] as List);
+      return _normalizeLessons(result['timetable'] as List);
     }
     return const <dynamic>[];
   }
+
+  List<dynamic> _normalizeLessons(List<dynamic> lessons) => [
+    for (final value in lessons)
+      if (value is Map &&
+          (value['new_lesson'] ?? value['newLesson']) is Map)
+        <dynamic, dynamic>{
+          ...Map<dynamic, dynamic>.from(value),
+          ...Map<dynamic, dynamic>.from(
+            (value['new_lesson'] ?? value['newLesson']) as Map,
+          ),
+        }
+      else
+        value,
+  ];
 
   Future<Map<String, dynamic>?> fetchCurrentSchoolyear(
     WebUntisRequestContext context,
