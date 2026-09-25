@@ -294,14 +294,12 @@ Future<void> _settingsSetShowCancelled(bool value) =>
 Future<void> _settingsSetTimetableDaySpan(int value) async {
   final normalized = value.clamp(1, 3).toInt();
   timetableDaySpanNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('timetableDaySpan', normalized);
+  await SettingsStore.instance.writeRaw('timetableDaySpan', normalized);
 }
 
 Future<void> _settingsSetShowFullTeacherNames(bool value) async {
   showFullTeacherNamesNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('showFullTeacherNames', value);
+  await SettingsStore.instance.writeRaw('showFullTeacherNames', value);
 }
 
 /// Builds a standardized [SettingsSwitchTile] for the "show full teacher names" setting.
@@ -329,8 +327,7 @@ Widget _buildShowFullTeacherNamesTile({
 
 Future<void> _settingsSetSwipeBackGesture(bool value) async {
   swipeBackGestureNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('swipeBackGesture', value);
+  await SettingsStore.instance.writeRaw('swipeBackGesture', value);
 }
 
 Future<void> _settingsSetTimetableSwitchAnimation(int value) =>
