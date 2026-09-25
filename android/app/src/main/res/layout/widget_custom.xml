@@ -1,10 +1,18 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_custom_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@drawable/widget_expressive_surface">
+    android:layout_height="match_parent">
+    <ImageView
+        android:id="@+id/widget_custom_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="18dp">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -13,48 +21,48 @@
         android:minHeight="22dp">
         <ImageView
             android:id="@+id/widget_custom_icon_one"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:layout_marginTop="1dp"
             android:src="@drawable/widget_icon_play"
             android:contentDescription="@null" />
         <Space
-            android:layout_width="6dp"
+            android:layout_width="8dp"
             android:layout_height="1dp" />
         <TextView
             android:id="@+id/widget_custom_one"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:maxLines="3"
+            android:maxLines="2"
             android:ellipsize="end"
-            android:textSize="18sp"
+            android:textSize="14sp"
             android:textStyle="bold"
             android:textColor="@color/widget_on_surface" />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="0dp"
         android:orientation="horizontal"
         android:gravity="top"
         android:minHeight="22dp">
         <ImageView
             android:id="@+id/widget_custom_icon_two"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:layout_marginTop="1dp"
             android:src="@drawable/widget_icon_forward"
             android:contentDescription="@null" />
         <Space
-            android:layout_width="6dp"
+            android:layout_width="8dp"
             android:layout_height="1dp" />
         <TextView
             android:id="@+id/widget_custom_two"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:maxLines="3"
+            android:maxLines="2"
             android:ellipsize="end"
             android:textSize="14sp"
             android:textColor="@color/widget_on_surface" />
@@ -62,26 +70,26 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="0dp"
         android:orientation="horizontal"
         android:gravity="top"
         android:minHeight="22dp">
         <ImageView
             android:id="@+id/widget_custom_icon_three"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:layout_marginTop="1dp"
             android:src="@drawable/widget_icon_calendar"
             android:contentDescription="@null" />
         <Space
-            android:layout_width="6dp"
+            android:layout_width="8dp"
             android:layout_height="1dp" />
         <TextView
             android:id="@+id/widget_custom_three"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:maxLines="3"
+            android:maxLines="2"
             android:ellipsize="end"
             android:textSize="14sp"
             android:textColor="@color/widget_on_surface" />
@@ -89,28 +97,29 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="0dp"
         android:orientation="horizontal"
         android:gravity="top"
         android:minHeight="22dp">
         <ImageView
             android:id="@+id/widget_custom_icon_four"
-            android:layout_width="15dp"
-            android:layout_height="15dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:layout_marginTop="1dp"
             android:src="@drawable/widget_icon_clock"
             android:contentDescription="@null" />
         <Space
-            android:layout_width="6dp"
+            android:layout_width="8dp"
             android:layout_height="1dp" />
         <TextView
             android:id="@+id/widget_custom_four"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:maxLines="3"
+            android:maxLines="2"
             android:ellipsize="end"
-            android:textSize="12sp"
+            android:textSize="14sp"
             android:textColor="@color/widget_on_surface_variant" />
     </LinearLayout>
 </LinearLayout>
+</FrameLayout>
