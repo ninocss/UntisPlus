@@ -228,10 +228,40 @@
   "infoNoPermission": "Esta cuenta no puede acceder a estos mensajes.",
   "infoOpenLink": "Abrir enlace",
   "infoAttachments": "Adjuntos",
-  "infoAttachedExtOne": "{ext} adjunto",
-  "infoAttachedExtMany": "{ext}s adjuntos",
-  "infoAttachedFile": "Archivo adjunto",
-  "infoAttachedFiles": "Archivos adjuntos",
+  "infoAttachedExtOne": "{count} {ext} adjunto",
+  "@infoAttachedExtOne": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "ext": {}
+    }
+  },
+  "infoAttachedExtMany": "{count} {ext}s adjuntos",
+  "@infoAttachedExtMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "ext": {}
+    }
+  },
+  "infoAttachedFile": "{count} archivo adjunto",
+  "@infoAttachedFile": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "infoAttachedFiles": "{count} archivos adjuntos",
+  "@infoAttachedFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "attachmentSave": "Guardar adjunto",
   "attachmentSaved": "Adjunto guardado.",
   "attachmentDownloadFailed": "No se pudo descargar el adjunto.",

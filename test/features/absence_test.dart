@@ -19,7 +19,7 @@ void main() {
     expect(absence.reason, 'Krankheit');
   });
 
-  test('does not infer unexcused from checked alone', () {
+  test('treats a checked absence as unexcused without excuse data', () {
     final absence = Absence.fromJson({
       'date': 20260908,
       'startTime': 800,
@@ -27,7 +27,18 @@ void main() {
       'checked': true,
     });
 
-    expect(absence.status, AbsenceStatus.unknown);
+    expect(absence.status, AbsenceStatus.unexcused);
+  });
+
+  test('keeps an unchecked absence open', () {
+    final absence = Absence.fromJson({
+      'date': 20260908,
+      'startTime': 800,
+      'endTime': 845,
+      'checked': false,
+    });
+
+    expect(absence.status, AbsenceStatus.open);
   });
 
   test('uses explicit unexcused status', () {

@@ -34,7 +34,8 @@ class Absence {
       'unexcused' || 'unentschuldigt' => AbsenceStatus.unexcused,
       'open' || 'offen' => AbsenceStatus.open,
       _ when excused => AbsenceStatus.excused,
-      _ when statusText.isNotEmpty || checked => AbsenceStatus.unknown,
+      _ when checked => AbsenceStatus.unexcused,
+      _ when statusText.isNotEmpty => AbsenceStatus.unknown,
       _ => AbsenceStatus.open,
     };
     final date =

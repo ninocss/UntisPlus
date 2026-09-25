@@ -361,7 +361,9 @@ class AlarmPlanner {
       if (dateNumber is! num || startNumber is! num) continue;
       final dateText = dateNumber.toInt().toString().padLeft(8, '0');
       final time = startNumber.toInt();
-      if (dateText.length != 8 || time < 0 || time > 2359) continue;
+      // All-day bookings are reported with a zero start time. They are not a
+      // real lesson a wake-up alarm should be planned for.
+      if (dateText.length != 8 || time <= 0 || time > 2359) continue;
       final start = DateTime(
         int.parse(dateText.substring(0, 4)),
         int.parse(dateText.substring(4, 6)),
@@ -729,7 +731,7 @@ class AlarmService {
   Future<void> refreshNativeCopy() async {
     if (!_supported) return;
     final config = await loadConfig();
-    await _pushPlans(config, await _loadSmartPlan());
+    await _pushPlans(config, _applyDateOverride(await _loadSmartPlan(), config));
   }
 
   Future<AlarmReadiness> readiness() async {

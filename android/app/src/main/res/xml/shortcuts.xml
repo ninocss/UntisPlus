@@ -1,10 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  App Actions declaration for rounds the native AI assistant (Google
+  Assistant / Gemini) reach the in-app assistant without navigating.
+
+  The OPTIMIZED built-in intent actions.intent.OPEN_APP_FEATURE requires
+  inline inventory, so the feature is declared as an entity shortcut with
+  localized labels (@string/assistant_*_label). Gemini matches "open the AI
+  assistant in Untis+", "KI-Assistent öffnen" etc. and either:
+
+    - fills the `feature` intent extra with the matched shortcut id
+      (`ai_assistant`), or
+    - launches the deep link below when tapped as a launcher/assistant
+      shortcut.
+
+  Free-text phrases that are not in the inventory are forwarded verbatim in
+  the `feature` parameter, which the app interprets as a spoken prompt.
+-->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <capability android:name="actions.intent.OPEN_APP_FEATURE">
-        <intent android:targetPackage="com.ninocss.untisplus" android:targetClass="com.ninocss.untisplus.MainActivity">
-            <parameter android:name="feature" android:key="feature">
-                <data android:scheme="untisplus" android:host="assistant" />
-            </parameter>
+        <intent
+            android:targetPackage="com.ninocss.untisplus"
+            android:targetClass="com.ninocss.untisplus.MainActivity">
+            <parameter android:name="feature" android:key="feature" />
         </intent>
     </capability>
+
+    <shortcut
+        android:shortcutId="ai_assistant"
+        android:shortcutShortLabel="@string/assistant_short_label"
+        android:shortcutLongLabel="@string/assistant_long_label">
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding android:key="feature" android:value="ai_assistant" />
+        </capability-binding>
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.ninocss.untisplus"
+            android:targetClass="com.ninocss.untisplus.MainActivity"
+            android:data="untisplus://assistant?feature=ai_assistant" />
+    </shortcut>
 </shortcuts>

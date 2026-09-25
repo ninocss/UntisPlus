@@ -228,10 +228,40 @@
   "infoNoPermission": "Ce compte ne peut pas accéder à ces messages.",
   "infoOpenLink": "Ouvrir le lien",
   "infoAttachments": "Pièces jointes",
-  "infoAttachedExtOne": "{ext} joint",
-  "infoAttachedExtMany": "{ext}s joints",
-  "infoAttachedFile": "Pièce jointe",
-  "infoAttachedFiles": "Pièces jointes",
+  "infoAttachedExtOne": "{count} {ext} joint",
+  "@infoAttachedExtOne": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "ext": {}
+    }
+  },
+  "infoAttachedExtMany": "{count} {ext}s joints",
+  "@infoAttachedExtMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "ext": {}
+    }
+  },
+  "infoAttachedFile": "{count} fichier joint",
+  "@infoAttachedFile": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "infoAttachedFiles": "{count} fichiers joints",
+  "@infoAttachedFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "attachmentSave": "Enregistrer la pièce jointe",
   "attachmentSaved": "Pièce jointe enregistrée.",
   "attachmentDownloadFailed": "Impossible de télécharger la pièce jointe.",

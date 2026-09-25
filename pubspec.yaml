@@ -45,12 +45,15 @@ dependencies:
   hive_ce_flutter: ^2.3.4
   cryptography: ^2.9.0
   audioplayers: 6.8.1
+  freezed_annotation: ^3.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  build_runner: ^2.4.12
+  freezed: ^3.0.0
 
 flutter:
   generate: true

@@ -22,7 +22,7 @@
           "NSSupportsFrequentLiveActivityUpdates": "YES"
         },
         "entitlements": [
-          "com.apple.security.application-groups",
+          "com.apple.security.application-groups"
         ]
       },
       "screenshotURLs": [

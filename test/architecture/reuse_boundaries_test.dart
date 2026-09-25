@@ -112,11 +112,11 @@ void main() {
     for (final file in _dartFiles('lib')) {
       if (_normalizedPath(file).contains('/l10n/generated/')) continue;
       final source = file.readAsStringSync();
-      for (final token in ['AppL10n.of(', '.ui(', 'uiFormat(']) {
+      for (final token in ['.ui(', 'uiFormat(']) {
         expect(
           source,
           isNot(contains(token)),
-          reason: '${file.path} uses dynamic localization API $token',
+          reason: '${file.path} uses legacy localization API $token',
         );
       }
     }

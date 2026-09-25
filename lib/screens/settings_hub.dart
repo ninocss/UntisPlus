@@ -291,6 +291,48 @@ Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
 Future<void> _settingsSetShowCancelled(bool value) =>
     SettingsStore.instance.write(_showCancelledPreference, value);
 
+Future<void> _settingsSetTimetableDaySpan(int value) async {
+  final normalized = value.clamp(1, 3).toInt();
+  timetableDaySpanNotifier.value = normalized;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('timetableDaySpan', normalized);
+}
+
+Future<void> _settingsSetShowFullTeacherNames(bool value) async {
+  showFullTeacherNamesNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('showFullTeacherNames', value);
+}
+
+/// Builds a standardized [SettingsSwitchTile] for the "show full teacher names" setting.
+/// Allows optional icon customization for contextual styling while keeping defaults consistent.
+Widget _buildShowFullTeacherNamesTile({
+  required AppL10n l,
+  required ColorScheme cs,
+  IconData? icon,
+  Color? iconColor,
+  Color? iconBackgroundColor,
+}) {
+  return ValueListenableBuilder<bool>(
+    valueListenable: showFullTeacherNamesNotifier,
+    builder: (context, value, _) => SettingsSwitchTile(
+      icon: icon ?? Icons.badge_outlined,
+      iconColor: iconColor,
+      iconBackgroundColor: iconBackgroundColor,
+      title: l.settingsShowFullTeacherNames,
+      subtitle: l.settingsShowFullTeacherNamesDesc,
+      value: value,
+      onChanged: _settingsSetShowFullTeacherNames,
+    ),
+  );
+}
+
+Future<void> _settingsSetSwipeBackGesture(bool value) async {
+  swipeBackGestureNotifier.value = value;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('swipeBackGesture', value);
+}
+
 Future<void> _settingsSetTimetableSwitchAnimation(int value) =>
     SettingsStore.instance.write(_timetableSwitchAnimationPreference, value);
 
@@ -612,6 +654,14 @@ Future<void> _settingsSyncFromPrefs() async {
   blurEnabledNotifier.value =
       appThemeCapabilities(activeTheme).supportsBlur &&
       (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
+  showFullTeacherNamesNotifier.value =
+      prefs.getBool('showFullTeacherNames') ?? true;
+  timetableDaySpanNotifier.value = (prefs.getInt('timetableDaySpan') ?? 1)
+      .clamp(1, 3)
+      .toInt();
+  swipeBackGestureNotifier.value =
+      prefs.getBool('swipeBackGesture') ??
+      (defaultTargetPlatform == TargetPlatform.iOS);
 
   await store.load(_blurStrengthPreference);
   await store.load(_headerStylePreference);

@@ -271,20 +271,40 @@
   "infoNoPermission": "Dieses Konto hat keinen Zugriff auf diese Mitteilungen.",
   "infoOpenLink": "Link öffnen",
   "infoAttachments": "Anhänge",
-  "infoAttachedExtOne": "Angehängte {ext}",
+  "infoAttachedExtOne": "Angehängte {count} {ext}",
   "@infoAttachedExtOne": {
     "placeholders": {
+      "count": {
+        "type": "int"
+      },
       "ext": {}
     }
   },
-  "infoAttachedExtMany": "Angehängte {ext}s",
+  "infoAttachedExtMany": "Angehängte {count} {ext}s",
   "@infoAttachedExtMany": {
     "placeholders": {
+      "count": {
+        "type": "int"
+      },
       "ext": {}
     }
   },
-  "infoAttachedFile": "Angehängte Datei",
-  "infoAttachedFiles": "Angehängte Dateien",
+  "infoAttachedFile": "Angehängte {count} Datei",
+  "@infoAttachedFile": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "infoAttachedFiles": "Angehängte {count} Dateien",
+  "@infoAttachedFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "attachmentSave": "Anhang speichern",
   "attachmentSaved": "Anhang gespeichert.",
   "attachmentDownloadFailed": "Der Anhang konnte nicht heruntergeladen werden.",

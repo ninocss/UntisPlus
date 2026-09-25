@@ -1117,6 +1117,22 @@ class SettingsAppearancePage extends StatelessWidget {
                   },
                 ),
                 ValueListenableBuilder<bool>(
+                  valueListenable: swipeBackGestureNotifier,
+                  builder: (context, enabled, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.swipe_left_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsSwipeBack,
+                      subtitle: l.settingsSwipeBackDesc,
+                      value: enabled,
+                      onChanged: _settingsSetSwipeBackGesture,
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
                   valueListenable: mainTabFadeUpEnabledNotifier,
                   builder: (context, enabled, _) {
                     return SettingsSwitchTile(

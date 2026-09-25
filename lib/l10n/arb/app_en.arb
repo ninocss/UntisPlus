@@ -240,10 +240,40 @@
   "infoNoPermission": "This account cannot access these messages.",
   "infoOpenLink": "Open link",
   "infoAttachments": "Attachments",
-  "infoAttachedExtOne": "Attached {ext}",
-  "infoAttachedExtMany": "Attached {ext}s",
-  "infoAttachedFile": "Attached File",
-  "infoAttachedFiles": "Attached Files",
+  "infoAttachedExtOne": "Attached {count} {ext}",
+  "@infoAttachedExtOne": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "ext": {}
+    }
+  },
+  "infoAttachedExtMany": "Attached {count} {ext}s",
+  "@infoAttachedExtMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "ext": {}
+    }
+  },
+  "infoAttachedFile": "Attached {count} File",
+  "@infoAttachedFile": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "infoAttachedFiles": "Attached {count} Files",
+  "@infoAttachedFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "attachmentSave": "Save attachment",
   "attachmentSaved": "Attachment saved.",
   "attachmentDownloadFailed": "The attachment could not be downloaded.",

@@ -103,6 +103,14 @@
                 <action android:name="com.ninocss.untisplus.OPEN_ASSISTANT" />
                 <data android:scheme="untisplus" android:host="assistant" />
             </intent-filter>
+            <!-- Resolves VIEW deep links (untisplus://assistant?query=…)
+                 used by App Action shortcut fulfillment and manual links. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="untisplus" android:host="assistant" />
+            </intent-filter>
         </activity>
 
         <!-- Default icon alias (enabled by default, others disabled) -->

@@ -1,7 +1,9 @@
 package com.ninocss.untisplus
 
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -37,13 +39,46 @@ internal class UiChannelHandler(
                         installApk(path, result)
                     }
                 }
+                "getPendingAssistantPrompt" -> result.success(getPendingAssistantPrompt())
+                "clearPendingAssistantPrompt" -> {
+                    clearPendingAssistantPrompt()
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
     }
 
+    /**
+     * Delivers an assistant query to Flutter. The query is persisted first
+     * because the Dart-side channel handler is only registered once `main()`
+     * runs: on a cold start the incoming method call can still beat it. Flutter
+     * replays any pending prompt right after registering its handler.
+     */
     fun openAssistant(query: String?) {
-        channel.invokeMethod("openAssistant", query)
+        storePendingAssistantPrompt(query)
+        activity.runOnUiThread {
+            channel.invokeMethod("openAssistant", query)
+        }
+    }
+
+    private fun assistantPrefs(): SharedPreferences =
+        activity.getSharedPreferences("untisplus_assistant", Context.MODE_PRIVATE)
+
+    private fun storePendingAssistantPrompt(query: String?) {
+        assistantPrefs().edit().putString("pending_prompt", query).apply()
+    }
+
+    /** Returns the last undelivered assistant prompt and clears it. */
+    private fun getPendingAssistantPrompt(): String? {
+        val prefs = assistantPrefs()
+        val pending = prefs.getString("pending_prompt", null)
+        prefs.edit().remove("pending_prompt").apply()
+        return pending
+    }
+
+    private fun clearPendingAssistantPrompt() {
+        assistantPrefs().edit().remove("pending_prompt").apply()
     }
 
     private fun applyWindowBlur(radius: Int) {

@@ -31,7 +31,16 @@ class UntisAccount {
   final int personType;
   final DateTime lastUsedAt;
 
-  String get label => username.isEmpty ? schoolName : username;
+  /// A stable, human-readable name for this profile. Prefers the username,
+  /// then the school name, then the school URL, and finally a placeholder so
+  /// accounts are never listed with an empty label (e.g. after failed or
+  /// partial logins).
+  String get label {
+    if (username.trim().isNotEmpty) return username;
+    if (schoolName.trim().isNotEmpty) return schoolName;
+    if (schoolUrl.trim().isNotEmpty) return schoolUrl;
+    return '?';
+  }
 
   Map<String, dynamic> toJson({bool includeSecrets = false}) => {
     'id': id,
@@ -68,6 +77,8 @@ class UntisAccount {
     String? credentialMode,
     String? sessionId,
     DateTime? lastUsedAt,
+    int? personId,
+    int? personType,
   }) => UntisAccount(
     id: id,
     username: username,
@@ -76,8 +87,8 @@ class UntisAccount {
     password: password ?? this.password,
     credentialMode: credentialMode ?? this.credentialMode,
     sessionId: sessionId ?? this.sessionId,
-    personId: personId,
-    personType: personType,
+    personId: personId ?? this.personId,
+    personType: personType ?? this.personType,
     lastUsedAt: lastUsedAt ?? this.lastUsedAt,
   );
 }
