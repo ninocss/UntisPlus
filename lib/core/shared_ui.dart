@@ -1679,20 +1679,19 @@ class _SheetOption<T> {
 }
 
 MenuStyle _untisMenuStyle(BuildContext context) {
-  final cs = Theme.of(context).colorScheme;
+  final radius = _resolvedSurfaceCornerRadius(22);
   return MenuStyle(
-    backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
-    surfaceTintColor: WidgetStatePropertyAll(cs.surfaceTint),
-    elevation: const WidgetStatePropertyAll(8),
-    shadowColor: WidgetStatePropertyAll(Colors.black.withValues(alpha: 0.22)),
+    alignment: Alignment.center,
+    backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+    surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+    elevation: const WidgetStatePropertyAll(0),
+    shadowColor: const WidgetStatePropertyAll(Colors.transparent),
     minimumSize: const WidgetStatePropertyAll(Size(224, 0)),
-    padding: const WidgetStatePropertyAll(
-      EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-    ),
+    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(_resolvedSurfaceCornerRadius(22)),
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.48)),
+        borderRadius: BorderRadius.circular(radius),
+        side: BorderSide.none,
       ),
     ),
   );
@@ -1708,6 +1707,7 @@ Widget _untisDropdownMenu({
   bool useRootOverlay = false,
   Widget? child,
 }) {
+  final radius = BorderRadius.circular(_resolvedSurfaceCornerRadius(22));
   return MenuAnchor(
     controller: controller,
     style: _untisMenuStyle(context),
@@ -1715,7 +1715,20 @@ Widget _untisDropdownMenu({
     consumeOutsideTap: consumeOutsideTap,
     useRootOverlay: useRootOverlay,
     animated: !MediaQuery.of(context).disableAnimations,
-    menuChildren: menuChildren,
+    menuChildren: [
+      _sheetSurface(
+        context: context,
+        blur: true,
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: menuChildren,
+          ),
+        ),
+      ),
+    ],
     builder: builder,
     child: child,
   );
