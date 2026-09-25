@@ -20,8 +20,8 @@ void _showLessonDetail(
   final teacher = lessonTeacherDisplayName(lesson);
   final time =
       '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
-  final isSubstitution = isTimetableSubstitution(lesson as Map?);
-  final isCancelled = isTimetableCancelled(lesson as Map?);
+  final isSubstitution = isTimetableSubstitution(lesson);
+  final isCancelled = isTimetableCancelled(lesson);
   final info = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
   final lessonNr = lesson['lsnumber']?.toString() ?? '';
   final studentNotes = (lesson['lsText'] ?? lesson['lstext'] ?? '')
