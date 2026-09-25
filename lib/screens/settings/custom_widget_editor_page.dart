@@ -1144,63 +1144,56 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               }).toList(),
             ),
             const SizedBox(height: 12),
-            for (final entry in config.blocks.asMap().entries)
-              Container(
-                margin: const EdgeInsets.only(bottom: 7),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerHighest.withValues(alpha: 0.48),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ListTile(
-                  dense: true,
-                  leading: Container(
-                    width: 34,
-                    height: 34,
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              onReorder: (oldIndex, newIndex) {
+                if (newIndex > oldIndex) newIndex--;
+                final blocks = [...config.blocks];
+                final item = blocks.removeAt(oldIndex);
+                blocks.insert(newIndex, item);
+                _replace(config.copyWith(blocks: blocks));
+              },
+              children: [
+                for (final entry in config.blocks.asMap().entries)
+                  Container(
+                    key: ValueKey('widget-block-${config.id}-${entry.value}'),
+                    margin: const EdgeInsets.only(bottom: 7),
                     decoration: BoxDecoration(
-                      color: cs.tertiary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(11),
+                      color: cs.surfaceContainerHighest.withValues(alpha: 0.48),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(
-                      _blocks[entry.value],
-                      size: 18,
-                      color: cs.tertiary,
+                    child: ListTile(
+                      dense: true,
+                      leading: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: cs.tertiary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(
+                          _blocks[entry.value],
+                          size: 18,
+                          color: cs.tertiary,
+                        ),
+                      ),
+                      title: Text(
+                        _blockLabel(l, entry.value),
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      ),
+                      trailing: ReorderableDragStartListener(
+                        index: entry.key,
+                        child: Icon(
+                          Icons.drag_indicator_rounded,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                   ),
-                  title: Text(
-                    _blockLabel(l, entry.value),
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.arrow_upward_rounded, size: 19),
-                        onPressed: entry.key == 0
-                            ? null
-                            : () {
-                                final blocks = [...config.blocks];
-                                final item = blocks.removeAt(entry.key);
-                                blocks.insert(entry.key - 1, item);
-                                _replace(config.copyWith(blocks: blocks));
-                              },
-                      ),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.arrow_downward_rounded, size: 19),
-                        onPressed: entry.key == config.blocks.length - 1
-                            ? null
-                            : () {
-                                final blocks = [...config.blocks];
-                                final item = blocks.removeAt(entry.key);
-                                blocks.insert(entry.key + 1, item);
-                                _replace(config.copyWith(blocks: blocks));
-                              },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              ],
+            ),
           ],
         ),
       ),
