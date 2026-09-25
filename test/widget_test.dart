@@ -46,11 +46,20 @@ void main() {
     final dayCarousel = find.byKey(const ValueKey('day-timetable-carousel'));
     for (var i = 0; i < 80; i++) {
       if (dayCarousel.evaluate().isNotEmpty) return dayCarousel;
-      final switchToDay = find
+
+      // The timetable now cycles day -> three-day -> week -> day.
+      // Only advance when we're definitely not already on the day view.
+      final switchFromWeek = find
           .byIcon(Icons.calendar_view_day_rounded)
           .hitTestable();
-      if (switchToDay.evaluate().isNotEmpty) {
-        await tester.tap(switchToDay.first);
+      final switchFromThreeDay = find
+          .byIcon(Icons.calendar_view_week_rounded)
+          .hitTestable();
+      final switcher = switchFromWeek.evaluate().isNotEmpty
+          ? switchFromWeek
+          : switchFromThreeDay;
+      if (switcher.evaluate().isNotEmpty) {
+        await tester.tap(switcher.first);
         await tester.pump(const Duration(milliseconds: 100));
         continue;
       }
@@ -58,6 +67,33 @@ void main() {
     }
     expect(dayCarousel, findsOneWidget);
     return dayCarousel;
+  }
+
+  Future<Finder> ensureWeekTimetableView(WidgetTester tester) async {
+    final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
+    final materialWeek = find.byKey(
+      const ValueKey('material-week-timetable-carousel'),
+    );
+    final toggle = find.byKey(const ValueKey('timetable-view-toggle'));
+
+    for (var i = 0; i < 100; i++) {
+      if (weekGrid.evaluate().isNotEmpty) return weekGrid;
+      if (materialWeek.evaluate().isNotEmpty) return materialWeek;
+
+      final visibleToggle = toggle.hitTestable();
+      if (visibleToggle.evaluate().isNotEmpty) {
+        await tester.tap(visibleToggle.first);
+        await tester.pump(const Duration(milliseconds: 100));
+      } else {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    expect(
+      weekGrid.evaluate().isNotEmpty || materialWeek.evaluate().isNotEmpty,
+      isTrue,
+    );
+    return weekGrid.evaluate().isNotEmpty ? weekGrid : materialWeek;
   }
 
   setUp(() async {
@@ -566,11 +602,7 @@ void main() {
       );
       final dayCarousel = await ensureDayTimetableView(tester);
       expect(dayCarousel, findsOneWidget, reason: 'day viewport: $size');
-      await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-      final weekGrid = find.byKey(
-        const ValueKey('week-grid-horizontal-scroll'),
-      );
-      await pumpUntilFound(tester, weekGrid);
+      final weekGrid = await ensureWeekTimetableView(tester);
       expect(weekGrid, findsOneWidget, reason: 'week viewport: $size');
       expect(tester.takeException(), isNull, reason: 'viewport: $size');
       await prefs.setInt('viewMode', 0);
@@ -619,9 +651,7 @@ void main() {
     final refreshedDayCarousel = await ensureDayTimetableView(tester);
     expect(refreshedDayCarousel, findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-    final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
-    await pumpUntilFound(tester, weekGrid);
+    final weekGrid = await ensureWeekTimetableView(tester);
     expect(weekGrid, findsOneWidget);
     await tester.drag(weekGrid, const Offset(-260, 0));
     await tester.pump(const Duration(milliseconds: 400));
@@ -682,11 +712,7 @@ void main() {
     final materialDay = await ensureDayTimetableView(tester);
     expect(materialDay, findsOneWidget);
     expect(find.byType(CarouselView), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-    await pumpUntilFound(
-      tester,
-      find.byKey(const ValueKey('material-week-timetable-carousel')),
-    );
+    await ensureWeekTimetableView(tester);
     expect(
       find.byKey(const ValueKey('material-week-timetable-carousel')),
       findsOneWidget,
