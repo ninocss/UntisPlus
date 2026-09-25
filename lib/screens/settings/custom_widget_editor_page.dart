@@ -980,31 +980,48 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             ),
             if (accounts.isNotEmpty) ...[
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: accounts.any((item) => item.id == config.accountId)
-                    ? config.accountId
-                    : null,
-                decoration: InputDecoration(
-                  labelText: l.widgetAccount,
-                  prefixIcon: const Icon(Icons.account_circle_rounded),
-                  filled: true,
-                ),
-                items: accounts
-                    .map(
-                      (account) => DropdownMenuItem(
-                        value: account.id,
-                        child: Text(
-                          account.label,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+              _untisDropdownMenu(
+                context: context,
+                menuChildren: [
+                  for (final account in accounts)
+                    MenuItemButton(
+                      onPressed: () =>
+                          _replace(config.copyWith(accountId: account.id)),
+                      leadingIcon: const Icon(Icons.account_circle_rounded),
+                      trailingIcon: account.id == config.accountId
+                          ? Icon(Icons.check_rounded, color: cs.primary)
+                          : null,
+                      child: Text(
+                        account.label,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    _replace(config.copyWith(accountId: value));
-                  }
-                },
+                    ),
+                ],
+                builder: (context, controller, child) => InkWell(
+                  onTap: controller.open,
+                  borderRadius: BorderRadius.circular(20),
+                  child: InputDecorator(
+                    isEmpty: !accounts.any(
+                      (item) => item.id == config.accountId,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: l.widgetAccount,
+                      prefixIcon: const Icon(Icons.account_circle_rounded),
+                      suffixIcon: const Icon(Icons.arrow_drop_down_rounded),
+                      filled: true,
+                    ),
+                    child: Text(
+                      accounts.any((item) => item.id == config.accountId)
+                          ? accounts
+                                .firstWhere(
+                                  (item) => item.id == config.accountId,
+                                )
+                                .label
+                          : '',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               ),
             ],
             const SizedBox(height: 14),
