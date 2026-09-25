@@ -417,16 +417,32 @@ struct UntisCustomView: View {
     func icon(_ block: String) -> String { ["current": "play.circle.fill", "next": "forward.fill", "schedule": "list.bullet", "homework": "checklist", "exams": "calendar", "notices": "bell", "account": "person.circle", "status": "clock"][block] ?? "square.grid.2x2" }
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: entry.radius).fill(untisCustomColor(entry.background, opacity: entry.opacity))
-            VStack(alignment: .leading, spacing: 7) {
-                ForEach(Array(entry.blocks.prefix(4).enumerated()), id: \.offset) { index, block in
-                    HStack(alignment: .top, spacing: 6) {
-                        if entry.icons { Image(systemName: icon(block)).foregroundStyle(untisCustomColor(entry.accent)).font(.system(size: 13 * entry.scale)) }
-                        Text(value(block)).font(.system(size: (index == 0 ? 17 : 13) * entry.scale, weight: index == 0 ? .bold : .medium)).foregroundStyle(index == 0 ? untisCustomColor(entry.accent) : untisCustomColor(entry.text)).lineLimit(block == "schedule" ? 3 : 2)
+            RoundedRectangle(cornerRadius: entry.radius)
+                .fill(untisCustomColor(entry.background, opacity: entry.opacity))
+                .overlay {
+                    RoundedRectangle(cornerRadius: entry.radius)
+                        .stroke(untisCustomColor(entry.accent, opacity: 0.55), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 10)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(entry.blocks.prefix(4).enumerated()), id: \.offset) { _, block in
+                    HStack(alignment: .top, spacing: 8) {
+                        if entry.icons {
+                            Image(systemName: icon(block))
+                                .foregroundStyle(untisCustomColor(entry.accent))
+                                .font(.system(size: 18))
+                        }
+                        Text(value(block))
+                            .font(.system(size: 14 * entry.scale, weight: block == "current" ? .black : .semibold))
+                            .foregroundStyle(untisCustomColor(entry.text))
+                            .lineSpacing(3.5)
+                            .lineLimit(block == "schedule" ? 3 : 2)
                     }
+                    .padding(.bottom, 8)
                 }
                 Spacer(minLength: 0)
-            }.padding()
+            }
+            .padding(18)
         }.containerBackground(for: .widget) { Color.clear }
         .widgetURL(untisWidgetURL(accountId: entry.accountId))
     }
