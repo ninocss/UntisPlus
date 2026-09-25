@@ -5733,6 +5733,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
+              key: const ValueKey('timetable-view-toggle'),
               tooltip: _isDailyView
                   ? l.timetableThreeDayView
                   : _isThreeDayView
