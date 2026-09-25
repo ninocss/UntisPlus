@@ -270,7 +270,9 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
       duration: const Duration(seconds: 8),
     );
     _startAudio();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_load());
+    });
   }
 
   @override
