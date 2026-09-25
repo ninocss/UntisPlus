@@ -294,6 +294,59 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Material-Farben',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final swatch in const <int>[
+                    0xFF6750A4,
+                    0xFF005AC1,
+                    0xFF386A20,
+                    0xFF8A4F00,
+                    0xFF984061,
+                    0xFF006A6A,
+                    0xFFBA1A1A,
+                    0xFF45464F,
+                  ])
+                    Tooltip(
+                      message: '#${swatch.toRadixString(16).substring(2).toUpperCase()}',
+                      child: InkWell(
+                        onTap: () => setSheetState(() => color = Color(swatch)),
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: Color(swatch),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: color.toARGB32() == swatch
+                                  ? Theme.of(context).colorScheme.onSurface
+                                  : Theme.of(context).colorScheme.outlineVariant,
+                              width: color.toARGB32() == swatch ? 2 : 1,
+                            ),
+                          ),
+                          child: color.toARGB32() == swatch
+                              ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+                              : null,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
               for (final channel in <String>[
                 'colorRed',
                 'colorGreen',
