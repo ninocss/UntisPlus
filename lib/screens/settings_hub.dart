@@ -1015,7 +1015,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       icon: Icons.auto_awesome_rounded,
       title: l.wrapped('title'),
       subtitle: l.wrapped('settingsDesc'),
-      onTap: () => unawaited(openSchoolWrapped(context)),
+      pageBuilder: () => const SchoolWrappedHub(),
     );
     final notificationsItem = makeItem(
       index: 2,
