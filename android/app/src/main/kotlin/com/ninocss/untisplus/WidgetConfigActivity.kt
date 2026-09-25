@@ -33,9 +33,14 @@ class WidgetConfigActivity : Activity() {
 
         val density = resources.displayMetrics.density
         fun dp(value: Int) = (value * density).toInt()
+        val surface = getColor(R.color.widget_surface)
+        val surfaceVariant = getColor(R.color.widget_surface_variant)
+        val onSurface = getColor(R.color.widget_on_surface)
+        val onSurfaceVariant = getColor(R.color.widget_on_surface_variant)
         fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
+            setStroke(dp(1), surfaceVariant)
         }
         fun text(value: String, size: Float, color: Int, bold: Boolean = false) =
             TextView(this).apply {
@@ -51,10 +56,10 @@ class WidgetConfigActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(28), dp(24), dp(24))
-            setBackgroundColor(Color.rgb(255, 248, 242))
+            setBackgroundColor(surface)
         }
-        root.addView(text(copy("setupTitle", "Widget einrichten"), 24f, Color.rgb(65, 45, 32), true))
-        root.addView(text(copy("setupAccount", "Konto für dieses Widget"), 14f, Color.rgb(100, 78, 62)).apply {
+        root.addView(text(copy("setupTitle", "Widget einrichten"), 24f, onSurface, true))
+        root.addView(text(copy("setupAccount", "Konto für dieses Widget"), 14f, onSurfaceVariant).apply {
             setPadding(0, dp(6), 0, dp(18))
         })
 
@@ -63,7 +68,7 @@ class WidgetConfigActivity : Activity() {
         if (isCustomWidget) {
             val rawProfiles = prefs.getString("widget_configurations_v1", "[]") ?: "[]"
             val profiles = try { JSONArray(rawProfiles) } catch (_: Exception) { JSONArray() }
-            root.addView(text(copy("setupProfile", "Widget-Profil"), 14f, Color.rgb(100, 78, 62)).apply {
+            root.addView(text(copy("setupProfile", "Widget-Profil"), 14f, onSurfaceVariant).apply {
                 setPadding(0, dp(6), 0, dp(18))
             })
             if (profiles.length() == 0) {
@@ -76,13 +81,13 @@ class WidgetConfigActivity : Activity() {
                     val accountId = item.optString("accountId")
                     val row = LinearLayout(this).apply {
                         orientation = LinearLayout.VERTICAL
-                        setPadding(dp(18), dp(14), dp(18), dp(14))
-                        background = rounded(Color.WHITE, 28)
+                        setPadding(dp(16), dp(14), dp(16), dp(14))
+                        background = rounded(surface, 24)
                         isClickable = true
                         isFocusable = true
                         setOnClickListener { saveBinding(accountId, profileId) }
                     }
-                    row.addView(text(item.optString("name", "Widget"), 17f, Color.rgb(65, 45, 32), true))
+                    row.addView(text(item.optString("name", "Widget"), 17f, onSurface, true))
                     row.addView(text(copy("setupProfileHint", "Profil aus dem Widget-Editor"), 13f, Color.rgb(100, 78, 62)))
                     root.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) })
                 }
@@ -111,8 +116,8 @@ class WidgetConfigActivity : Activity() {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(18), dp(14), dp(18), dp(14))
                     background = rounded(
-                        if (isPreferred) Color.rgb(235, 239, 255) else Color.WHITE,
-                        28,
+                        if (isPreferred) surfaceVariant else surface,
+                        24,
                     )
                     isClickable = true
                     isFocusable = true
