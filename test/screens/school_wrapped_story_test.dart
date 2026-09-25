@@ -20,12 +20,15 @@ void main() {
     await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
     await tester.pump(const Duration(milliseconds: 200));
     final entry = find.text('School Wrapped');
-    await tester.scrollUntilVisible(
-      entry,
-      280,
-      scrollable: find.byType(Scrollable).first,
+    final settingsScroll = find.byKey(
+      const PageStorageKey<String>('settings-hub-compact'),
     );
-    await tester.tap(entry.first);
+    for (var i = 0; i < 8 && entry.hitTestable().evaluate().isEmpty; i++) {
+      await tester.drag(settingsScroll, const Offset(0, -220));
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+    expect(entry.hitTestable(), findsOneWidget);
+    await tester.tap(entry.hitTestable().first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 650));
     expect(find.byType(SchoolWrappedHub), findsOneWidget);
