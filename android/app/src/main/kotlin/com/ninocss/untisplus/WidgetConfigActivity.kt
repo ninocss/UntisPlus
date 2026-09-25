@@ -4,7 +4,6 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.widget.LinearLayout
@@ -72,7 +71,7 @@ class WidgetConfigActivity : Activity() {
                 setPadding(0, dp(6), 0, dp(18))
             })
             if (profiles.length() == 0) {
-                root.addView(text(copy("setupNoProfile", "Erstelle zuerst ein Profil im Untis+-Widget-Editor."), 15f, Color.rgb(100, 78, 62)))
+                root.addView(text(copy("setupNoProfile", "Erstelle zuerst ein Profil im Untis+-Widget-Editor."), 15f, onSurfaceVariant))
             } else {
                 for (index in 0 until profiles.length()) {
                     val item = profiles.optJSONObject(index) ?: continue
@@ -88,7 +87,7 @@ class WidgetConfigActivity : Activity() {
                         setOnClickListener { saveBinding(accountId, profileId) }
                     }
                     row.addView(text(item.optString("name", "Widget"), 17f, onSurface, true))
-                    row.addView(text(copy("setupProfileHint", "Profil aus dem Widget-Editor"), 13f, Color.rgb(100, 78, 62)))
+                    row.addView(text(copy("setupProfileHint", "Profil aus dem Widget-Editor"), 13f, onSurfaceVariant))
                     root.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(12) })
                 }
             }
@@ -100,7 +99,7 @@ class WidgetConfigActivity : Activity() {
         val accounts = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
         val preferredAccount = prefs.getString("widget_preferred_account", null)
         if (accounts.length() == 0) {
-            root.addView(text(copy("setupNoAccount", "Öffne Untis+ und füge zuerst ein Konto hinzu."), 15f, Color.rgb(100, 78, 62)))
+            root.addView(text(copy("setupNoAccount", "Öffne Untis+ und füge zuerst ein Konto hinzu."), 15f, onSurfaceVariant))
         } else {
             val indices = (0 until accounts.length()).sortedBy { index ->
                 if (accounts.optJSONObject(index)?.optString("id") == preferredAccount) 0 else 1
@@ -126,10 +125,10 @@ class WidgetConfigActivity : Activity() {
                 row.addView(text(
                     if (isPreferred) "$label  ✓" else label,
                     17f,
-                    Color.rgb(65, 45, 32),
+                    onSurface,
                     true,
                 ))
-                if (school.isNotEmpty()) row.addView(text(school, 13f, Color.rgb(100, 78, 62)))
+                if (school.isNotEmpty()) row.addView(text(school, 13f, onSurfaceVariant))
                 root.addView(row, LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
