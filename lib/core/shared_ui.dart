@@ -9,7 +9,9 @@ const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 const double _kMinFlingVelocity = 1.0;
 
 /// Animation duration for the page settling animation after a swipe-back.
-const Duration _kDroppedSwipePageAnimationDuration = Duration(milliseconds: 350);
+const Duration _kDroppedSwipePageAnimationDuration = Duration(
+  milliseconds: 350,
+);
 
 /// Curve used for the page settling animation after a swipe-back gesture.
 const Curve _kSwipeBackAnimationCurve = Curves.fastEaseInToSlowEaseOut;
@@ -1286,10 +1288,12 @@ Route<T> _buildBouncyRoute<T>(
       reverseDuration ??
       Duration(milliseconds: (forwardDuration.inMilliseconds * 0.82).round());
 
-  final transitionsBuilder = (BuildContext context,
-      Animation<double> animation,
-      Animation<double> secondaryAnimation,
-      Widget child) {
+  Widget transitionsBuilder(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
     if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
       return child;
     }
@@ -1335,15 +1339,16 @@ Route<T> _buildBouncyRoute<T>(
 
     if (offset != Offset.zero) {
       result = SlideTransition(
-        position: Tween<Offset>(begin: offset, end: Offset.zero).animate(
-          motion,
-        ),
+        position: Tween<Offset>(
+          begin: offset,
+          end: Offset.zero,
+        ).animate(motion),
         child: result,
       );
     }
 
     return FadeTransition(opacity: opacity, child: result);
-  };
+  }
 
   // Use SwipeBackPageRoute when the gesture is enabled to support
   // native-style edge-swipe back on iOS/Android.
@@ -1403,26 +1408,30 @@ class _SwipeBackGestureController<T> {
     }
 
     if (animateForward) {
-      controller.animateTo(
-        1.0,
-        duration: _kDroppedSwipePageAnimationDuration,
-        curve: animationCurve,
-      ).whenCompleteOrCancel(() {
-        if (navigator.mounted) navigator.didStopUserGesture();
-      });
+      controller
+          .animateTo(
+            1.0,
+            duration: _kDroppedSwipePageAnimationDuration,
+            curve: animationCurve,
+          )
+          .whenCompleteOrCancel(() {
+            if (navigator.mounted) navigator.didStopUserGesture();
+          });
     } else {
       if (isCurrent) {
         navigator.pop();
       }
 
       if (controller.isAnimating) {
-        controller.animateBack(
-          0.0,
-          duration: _kDroppedSwipePageAnimationDuration,
-          curve: animationCurve,
-        ).whenCompleteOrCancel(() {
-          if (navigator.mounted) navigator.didStopUserGesture();
-        });
+        controller
+            .animateBack(
+              0.0,
+              duration: _kDroppedSwipePageAnimationDuration,
+              curve: animationCurve,
+            )
+            .whenCompleteOrCancel(() {
+              if (navigator.mounted) navigator.didStopUserGesture();
+            });
       } else {
         navigator.didStopUserGesture();
       }
@@ -1500,7 +1509,9 @@ class _SwipeBackGestureDetectorState<T>
     assert(mounted);
     assert(_backGestureController != null);
     _backGestureController!.dragEnd(
-      _convertToLogical(details.velocity.pixelsPerSecond.dx / context.size!.width),
+      _convertToLogical(
+        details.velocity.pixelsPerSecond.dx / context.size!.width,
+      ),
     );
     _backGestureController = null;
   }
@@ -1616,10 +1627,7 @@ class SwipeBackPageRoute<T> extends PageRoute<T> {
         position: Tween<Offset>(
           begin: const Offset(1.0, 0.0),
           end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: animation,
-          curve: Curves.linear,
-        )),
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.linear)),
         child: child,
       );
     }

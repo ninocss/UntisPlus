@@ -1097,24 +1097,16 @@ Future<bool> _performReAuthentication() async {
       );
       if (index >= 0) {
         var corrected = accounts[index];
-        // Guardian accounts target a parent element that has no timetable.
-        // Every re-authentication is another chance to redirect the stored
-        // element to the first linked student.
-        if (corrected.personType == 3 && authResult != null) {
-          final element = _resolveTimetableElementFromAuth(
-            authResult,
-            corrected.personId,
-            corrected.personType,
-          );
-          final childId = element['personId'] as int?;
-          final childType = element['personType'] as int?;
-          if (childId != null &&
-              childType != null &&
-              (childId != corrected.personId ||
-                  childType != corrected.personType)) {
+        // The login repository resolves linked student accounts when the
+        // WebUntis response includes them.
+        if (corrected.personType == 3 &&
+            authResult.personId > 0 &&
+            authResult.personType == 5) {
+          if (authResult.personId != corrected.personId ||
+              authResult.personType != corrected.personType) {
             corrected = corrected.copyWith(
-              personId: childId,
-              personType: childType,
+              personId: authResult.personId,
+              personType: authResult.personType,
             );
           }
         }

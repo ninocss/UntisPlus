@@ -49,6 +49,41 @@ void main() {
     });
   });
 
+  test('password login uses a linked student for a guardian', () async {
+    final repository = WebUntisLoginRepository(
+      client: WebUntisClient(
+        maxRetries: 0,
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'result': {
+                'sessionId': 'parent-session',
+                'personId': 42,
+                'personType': 3,
+                'people': [
+                  {'id': 42, 'type': 3},
+                  {'id': 99, 'type': 5},
+                ],
+              },
+            }),
+            200,
+          ),
+        ),
+      ),
+    );
+
+    final result = await repository.authenticate(
+      schoolUrl: 'school.example',
+      schoolName: 'Example',
+      username: 'guardian',
+      credential: 'password',
+    );
+
+    expect(result.status, WebUntisLoginStatus.success);
+    expect(result.personId, 99);
+    expect(result.personType, 5);
+  });
+
   test('password login reports when a second factor is required', () async {
     final repository = WebUntisLoginRepository(
       client: WebUntisClient(
@@ -151,5 +186,50 @@ void main() {
     expect(result.personType, 5);
     expect(requests, hasLength(2));
     expect(requests.last.headers['cookie'], contains('JSESSIONID=session-key'));
+  });
+
+  test('login key uses a linked student for a guardian', () async {
+    final repository = WebUntisLoginRepository(
+      client: WebUntisClient(
+        maxRetries: 0,
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('jsonrpc_intern.do')) {
+            return http.Response(
+              jsonEncode({'result': {}}),
+              200,
+              headers: {'set-cookie': 'JSESSIONID=parent-session; Path=/'},
+            );
+          }
+          return http.Response(
+            jsonEncode({
+              'data': {
+                'loginServiceConfig': {
+                  'user': {
+                    'personId': 42,
+                    'persons': [
+                      {'id': 42, 'type': 3},
+                      {'id': 99, 'type': 5},
+                    ],
+                  },
+                },
+              },
+            }),
+            200,
+          );
+        }),
+      ),
+    );
+
+    final result = await repository.authenticate(
+      schoolUrl: 'school.example',
+      schoolName: 'Example',
+      username: 'guardian',
+      credential: 'JBSWY3DPEHPK3PXP',
+      useLoginKey: true,
+    );
+
+    expect(result.status, WebUntisLoginStatus.success);
+    expect(result.personId, 99);
+    expect(result.personType, 5);
   });
 }

@@ -41,7 +41,7 @@ class SettingsTimetablePage extends StatelessWidget {
   }
 
   Future<void> _showDaySpanPicker(BuildContext context) async {
-    final l = AppL10n.of(appLocaleNotifier.value);
+    final l = appL10nFor(appLocaleNotifier.value);
     final current = timetableDaySpanNotifier.value;
     final selected = await _showUnifiedOptionSheet<int>(
       context: context,
@@ -1182,7 +1182,9 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     return _buildShowFullTeacherNamesTile(
                       l: l,
                       cs: cs,
-                      iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onPrimaryContainer,
                     );
                   },

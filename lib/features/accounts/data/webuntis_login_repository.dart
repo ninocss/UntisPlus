@@ -117,14 +117,21 @@ class WebUntisLoginRepository {
 
       final directPersonId = _asInt(result['personId']);
       final classId = _asInt(result['klasseId']);
+      final fallbackId = directPersonId != 0 ? directPersonId : classId;
+      final fallbackType = directPersonId != 0
+          ? _asInt(result['personType'], fallback: 5)
+          : classId != 0
+          ? 1
+          : 5;
+      final element = _resolveTimetableElement(
+        result,
+        fallbackId,
+        fallbackType,
+      );
       return WebUntisLoginResult.success(
         sessionId: sessionId,
-        personId: directPersonId != 0 ? directPersonId : classId,
-        personType: directPersonId != 0
-            ? _asInt(result['personType'], fallback: 5)
-            : classId != 0
-            ? 1
-            : 5,
+        personId: element.$1,
+        personType: element.$2,
       );
     } on WebUntisFailure catch (failure) {
       if (failure.kind != WebUntisFailureKind.authentication &&
@@ -215,7 +222,11 @@ class WebUntisLoginRepository {
         (person) => _asInt(person['id']) == personId,
         orElse: () => const <Object?, Object?>{},
       );
-      return (personId, _asInt(matchingPerson['type'], fallback: 5));
+      return _resolveTimetableElement(
+        user,
+        personId,
+        _asInt(matchingPerson['type'], fallback: 5),
+      );
     } on WebUntisFailure {
       // A valid session is still useful when older installations do not
       // expose the optional app-config endpoint.
@@ -240,6 +251,35 @@ class WebUntisLoginRepository {
 
   static int _asInt(Object? value, {int fallback = 0}) =>
       int.tryParse(value?.toString() ?? '') ?? fallback;
+
+  /// Guardians have no timetable element of their own. Use their first linked
+  /// student when WebUntis supplies the linked people in the login response.
+  static (int, int) _resolveTimetableElement(
+    Map result,
+    int personId,
+    int personType,
+  ) {
+    final linked = <Map>[];
+    for (final key in ['people', 'persons']) {
+      final value = result[key];
+      if (value is List) linked.addAll(value.whereType<Map>());
+    }
+    for (final person in linked) {
+      if (_asInt(person['id']) == personId) {
+        personType = _asInt(person['type'], fallback: personType);
+        break;
+      }
+    }
+    if (personType == 3) {
+      for (final person in linked) {
+        final studentId = _asInt(person['id']);
+        if (_asInt(person['type']) == 5 && studentId > 0) {
+          return (studentId, 5);
+        }
+      }
+    }
+    return (personId, personType);
+  }
 
   void close() => _client.close();
 }

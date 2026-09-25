@@ -8,8 +8,8 @@ void main() {
       app.swipeBackGestureNotifier.value = false;
 
       final route = app.SwipeBackPageRoute<void>(
-        pageBuilder: (_, __, ___) => const Text('Test'),
-        transitionsBuilder: (_, __, ___, child) => child,
+        pageBuilder: (_, _, _) => const Text('Test'),
+        transitionsBuilder: (_, _, _, child) => child,
       );
 
       expect(route.popGestureEnabled, false);
@@ -19,8 +19,8 @@ void main() {
       app.swipeBackGestureNotifier.value = true;
 
       final route = app.SwipeBackPageRoute<void>(
-        pageBuilder: (_, __, ___) => const Text('Test'),
-        transitionsBuilder: (_, __, ___, child) => child,
+        pageBuilder: (_, _, _) => const Text('Test'),
+        transitionsBuilder: (_, _, _, child) => child,
       );
 
       // Without a navigator, the route is considered "first" and popGestureEnabled returns false
@@ -31,8 +31,8 @@ void main() {
       app.swipeBackGestureNotifier.value = true;
 
       final route = app.SwipeBackPageRoute<void>(
-        pageBuilder: (_, __, ___) => const Text('Test'),
-        transitionsBuilder: (_, __, ___, child) => child,
+        pageBuilder: (_, _, _) => const Text('Test'),
+        transitionsBuilder: (_, _, _, child) => child,
         fullscreenDialog: true,
       );
 

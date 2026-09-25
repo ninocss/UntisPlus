@@ -327,7 +327,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           requestPersonId == personId &&
           requestPersonType == personType) {
         final wrapped = SchoolWrappedRepository();
-        for (final year in await wrapped.years(activeUntisAccountId ?? 'legacy')) {
+        for (final year in await wrapped.years(
+          activeUntisAccountId ?? 'legacy',
+        )) {
           final weekStart = monday ?? _currentMonday;
           if (year.contains(weekStart.add(const Duration(days: 4))) ||
               year.contains(weekStart)) {
@@ -617,6 +619,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonAccentStyleNotifier.addListener(_onHiddenSubjectsChanged);
     lessonShowTeacherNotifier.addListener(_onHiddenSubjectsChanged);
     lessonFullTeacherNamesNotifier.addListener(_onHiddenSubjectsChanged);
+    showFullTeacherNamesNotifier.addListener(_onTeacherNameModeChanged);
+    timetableDaySpanNotifier.addListener(_onHiddenSubjectsChanged);
     lessonShowRoomNotifier.addListener(_onHiddenSubjectsChanged);
     lessonCompactModeNotifier.addListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.addListener(_onHiddenSubjectsChanged);
@@ -1011,7 +1015,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         for (final year in await wrapped.years(requestAccountId)) {
           if (year.contains(requestStart)) {
             await wrapped.recordHomework(
-              accountId: requestAccountId, year: year,
+              accountId: requestAccountId,
+              year: year,
               items: res['homeworks']!,
             );
           }
@@ -1500,13 +1505,26 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final firstTeacher = teList.first as Map?;
       if (firstTeacher != null) {
         final tId = firstTeacher['id'] as int?;
-        lesson['_teacher'] =
-            firstTeacher['name']?.toString() ??
-            (tId == null ? '?' : _teacherMap[tId] ?? '?');
-        lesson['_teacherFull'] = tId == null
-            ? (firstTeacher['longName'] ?? firstTeacher['name'])?.toString() ??
-                  ''
-            : _teacherMap[tId] ?? firstTeacher['longName']?.toString() ?? '';
+        final rawShort = firstTeacher['name']?.toString().trim() ?? '';
+        final rawFull = firstTeacher['longName']?.toString().trim() ?? '';
+        final mappedFull = tId == null ? '' : _teacherMap[tId]?.trim() ?? '';
+        final previousShort = lesson['_teacherShort']?.toString().trim() ?? '';
+        final previousFull = lesson['_teacherFull']?.toString().trim() ?? '';
+        final short = rawShort.isNotEmpty
+            ? rawShort
+            : previousShort.isNotEmpty
+            ? previousShort
+            : '?';
+        final full = mappedFull.isNotEmpty
+            ? mappedFull
+            : rawFull.isNotEmpty
+            ? rawFull
+            : previousFull.isNotEmpty
+            ? previousFull
+            : short;
+        lesson['_teacherShort'] = short;
+        lesson['_teacherFull'] = full;
+        lesson['_teacher'] = showFullTeacherNamesNotifier.value ? full : short;
       }
     }
     final suList = (lesson['su'] as List?) ?? [];
@@ -1547,6 +1565,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
   }
 
+  void _onTeacherNameModeChanged() {
+    for (final week in [_weekData, ..._adjacentWeekCache.values]) {
+      for (final lessons in week.values) {
+        for (final lesson in lessons) {
+          if (lesson is Map<String, dynamic>) _enrichLesson(lesson);
+        }
+      }
+    }
+    currentWeekDataNotifier.value = Map<int, List<dynamic>>.from(_weekData);
+    if (mounted) setState(() {});
+  }
+
   Widget _buildAdjacentWeekView(int direction) {
     final adjMonday = _weekMondayFromDelta(direction);
     final cached = _getAdjacentWeekData(adjMonday);
@@ -1559,7 +1589,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         );
       } else {
         final dayIndex = direction > 0 ? 0 : 4;
-        return _buildGridView(dayIndex, monday: adjMonday, weekData: cached);
+        return _buildDayContentView(
+          dayIndex,
+          monday: adjMonday,
+          weekData: cached,
+        );
       }
     }
     final l = appL10nFor(appLocaleNotifier.value);
@@ -1713,7 +1747,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final monday = _weekMondayFromDelta(-1);
         final cached = _getAdjacentWeekData(monday);
         if (cached != null) {
-          return _buildGridView(4, monday: monday, weekData: cached);
+          return _buildDayContentView(4, monday: monday, weekData: cached);
         }
         return _buildAdjacentWeekView(-1);
       }
@@ -1721,11 +1755,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final monday = _weekMondayFromDelta(1);
         final cached = _getAdjacentWeekData(monday);
         if (cached != null) {
-          return _buildGridView(0, monday: monday, weekData: cached);
+          return _buildDayContentView(0, monday: monday, weekData: cached);
         }
         return _buildAdjacentWeekView(1);
       }
-      return _buildGridView(item - 1);
+      return _buildDayContentView(item - 1);
     }
 
     // Keep a visible neighbour and let edge items collapse substantially.
@@ -1930,12 +1964,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final dayIndex = _tabController.index.clamp(0, 4).toInt();
 
     Widget dayAt(int index) {
-      if (index >= 0 && index < 5) return _buildGridView(index);
+      if (index >= 0 && index < 5) return _buildDayContentView(index);
       final direction = index < 0 ? -1 : 1;
       final monday = _weekMondayFromDelta(direction);
       final cached = _getAdjacentWeekData(monday);
       if (cached != null) {
-        return _buildGridView(
+        return _buildDayContentView(
           index < 0 ? 4 : 0,
           monday: monday,
           weekData: cached,
@@ -2072,12 +2106,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final dayIndex = _tabController.index.clamp(0, 4).toInt();
 
     Widget dayAt(int index) {
-      if (index >= 0 && index < 5) return _buildGridView(index);
+      if (index >= 0 && index < 5) return _buildDayContentView(index);
       final direction = index < 0 ? -1 : 1;
       final monday = _weekMondayFromDelta(direction);
       final cached = _getAdjacentWeekData(monday);
       if (cached != null) {
-        return _buildGridView(
+        return _buildDayContentView(
           index < 0 ? 4 : 0,
           monday: monday,
           weekData: cached,
@@ -2452,6 +2486,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonAccentStyleNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonShowTeacherNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonFullTeacherNamesNotifier.removeListener(_onHiddenSubjectsChanged);
+    showFullTeacherNamesNotifier.removeListener(_onTeacherNameModeChanged);
+    timetableDaySpanNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonShowRoomNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonCompactModeNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -3535,6 +3571,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return slots;
   }
 
+  Widget _buildDayContentView(
+    int dayIndex, {
+    DateTime? monday,
+    Map<int, List<dynamic>>? weekData,
+  }) {
+    final span = timetableDaySpanNotifier.value.clamp(1, 3).toInt();
+    if (span == 1) {
+      return _buildGridView(dayIndex, monday: monday, weekData: weekData);
+    }
+    final start = dayIndex.clamp(0, 5 - span).toInt();
+    return _buildWeekView(
+      monday: monday,
+      weekData: weekData,
+      visibleDays: List<int>.generate(span, (offset) => start + offset),
+    );
+  }
+
   Widget _buildGridView(
     int dayIndex, {
     DateTime? monday,
@@ -4551,7 +4604,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         for (final year in await wrapped.years(accountId)) {
           if (year.contains(DateTime.now())) {
             await wrapped.recordHolidays(
-              accountId: accountId, year: year, holidays: holidays,
+              accountId: accountId,
+              year: year,
+              holidays: holidays,
             );
           }
         }
@@ -5897,10 +5952,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     sizeFactor: animation,
                     axis: Axis.vertical,
                     alignment: Alignment.topCenter,
-                    child: FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    ),
+                    child: FadeTransition(opacity: animation, child: child),
                   ),
                   child: KeyedSubtree(
                     key: ValueKey<int>(_viewMode),
