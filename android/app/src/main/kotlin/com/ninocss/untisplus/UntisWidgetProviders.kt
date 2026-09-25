@@ -6,6 +6,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import kotlin.math.roundToInt
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
@@ -56,6 +61,31 @@ private fun configureIntent(context: Context, widgetId: Int): PendingIntent =
         },
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+
+private fun customSurface(context: Context, widgetId: Int, background: Int, accent: Int, opacity: Float, radiusDp: Float): Bitmap {
+    val options = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
+    val density = context.resources.displayMetrics.density
+    val width = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 300) * density).roundToInt().coerceAtLeast(1)
+    val height = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 180) * density).roundToInt().coerceAtLeast(1)
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val inset = density
+    val rect = RectF(inset, inset, width - inset, height - inset)
+    val radius = radiusDp * density
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = background
+        alpha = (opacity.coerceIn(0f, 1f) * 255).roundToInt()
+    }
+    canvas.drawRoundRect(rect, radius, radius, fill)
+    val border = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = accent
+        alpha = (0.55f * 255).roundToInt()
+        style = Paint.Style.STROKE
+        strokeWidth = density
+    }
+    canvas.drawRoundRect(rect, radius, radius, border)
+    return bitmap
+}
 
 private fun customConfiguration(data: SharedPreferences, widgetId: Int): JSONObject? {
     val id = data.getString("widget_configuration_$widgetId", null) ?: return null
@@ -167,23 +197,26 @@ class UntisWidgetCustom : HomeWidgetProvider() {
             val background = if (useSystemColors) context.getColor(R.color.widget_surface)
                 else config?.optInt("backgroundColor", Color.rgb(23, 28, 37)) ?: Color.rgb(23, 28, 37)
             val scale = (config?.optDouble("textScale", 1.0) ?: 1.0).toFloat()
+            val opacity = (config?.optDouble("opacity", 1.0) ?: 1.0).toFloat()
+            val radius = (config?.optDouble("cornerRadius", 24.0) ?: 24.0).toFloat()
             val idsForText = intArrayOf(R.id.widget_custom_one, R.id.widget_custom_two, R.id.widget_custom_three, R.id.widget_custom_four)
             val idsForIcon = intArrayOf(R.id.widget_custom_icon_one, R.id.widget_custom_icon_two, R.id.widget_custom_icon_three, R.id.widget_custom_icon_four)
             val views = RemoteViews(context.packageName, R.layout.widget_custom).apply {
-                setInt(R.id.widget_custom_root, "setBackgroundColor", background)
+                setImageViewBitmap(R.id.widget_custom_surface, customSurface(context, id, background, accent, opacity, radius))
                 idsForText.forEachIndexed { index, viewId ->
                     val text = if (index < blocks.length()) customContent(data, id, account, blocks.optString(index)) else ""
                     setViewVisibility(viewId, if (text.isEmpty()) View.GONE else View.VISIBLE)
-                    setTextViewText(viewId, compact(text, if (index == 0) 56 else 96))
+                    setTextViewText(viewId, text)
                     setTextColor(viewId, if (index == 0) accent else textColor)
-                    setFloat(viewId, "setTextSize", if (index == 0) 18f * scale else 14f * scale)
+                    setFloat(viewId, "setTextSize", 14f * scale)
+                    setInt(viewId, "setMaxLines", if (blocks.optString(index) == "schedule") 3 else 2)
                     val iconViewId = idsForIcon[index]
                     if (showIcons && index < blocks.length()) {
                         val res = customIconRes(blocks.optString(index))
                         if (res != 0) {
                             setViewVisibility(iconViewId, View.VISIBLE)
                             setImageViewResource(iconViewId, res)
-                            setInt(iconViewId, "setColorFilter", if (index == 0) accent else textColor)
+                            setInt(iconViewId, "setColorFilter", accent)
                         } else {
                             setViewVisibility(iconViewId, View.GONE)
                         }
