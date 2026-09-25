@@ -23,6 +23,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:cryptography/dart.dart';
 import 'package:dio/dio.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
@@ -47,6 +48,9 @@ import 'features/changes/data/change_repository.dart';
 import 'features/changes/domain/timetable_change.dart';
 import 'features/exams/data/webuntis_exam_repository.dart';
 import 'features/timetable/data/timetable_repository.dart';
+import 'features/timetable/data/teacher_search_index_service.dart';
+import 'features/timetable/domain/teacher_schedule.dart';
+import 'features/wrapped/school_wrapped.dart';
 import 'features/updates/data/github_release_repository.dart';
 import 'features/updates/data/changelog_repository.dart';
 import 'features/school_info/data/school_info_repository.dart';
@@ -81,6 +85,7 @@ part 'core/app_state.dart';
 part 'core/custom_backgrounds.dart';
 part 'screens/onboarding_flow.dart';
 part 'screens/weekly_timetable_page.dart';
+part 'screens/teacher_search_page.dart';
 part 'screens/homework_page.dart';
 part 'screens/exams_page.dart';
 part 'screens/custom_background_editor_screen.dart';
@@ -99,6 +104,7 @@ part 'screens/ai/widgets/ai_chat_history_panel.dart';
 part 'screens/ai/widgets/ai_action_confirmation.dart';
 part 'screens/student_more_page.dart';
 part 'screens/grades_tracker_page.dart';
+part 'screens/school_wrapped_page.dart';
 part 'screens/settings_hub.dart';
 part 'screens/settings/settings_timetable_page.dart';
 part 'screens/settings/settings_notifications_page.dart';
@@ -256,7 +262,9 @@ AIProvider createAIProvider(
   }
 }
 
-final AiRequestCoordinator _aiRequestCoordinator = AiRequestCoordinator();
+final AiRequestCoordinator _aiRequestCoordinator = AiRequestCoordinator(
+  isEnabled: () => aiEnabledNotifier.value,
+);
 
 AiRuntimeConfiguration _currentAiRuntimeConfiguration() =>
     AiRuntimeConfiguration(
@@ -324,6 +332,7 @@ void main() async {
   }
   await prefs.setString('installedAppVersion', appVersion);
   showChangelogOnStartup = prefs.getBool('showChangelogPending') ?? false;
+  aiEnabledNotifier.value = prefs.getBool('aiEnabled') ?? true;
   demoModeNotifier.value = prefs.getBool('demoMode') ?? false;
   // Demo mode is an explicit temporary choice; do not silently replace it
   // with the last saved account during startup.
@@ -432,6 +441,7 @@ void main() async {
   blurEnabledNotifier.value =
       appThemeCapabilities(activeVisualTheme).supportsBlur &&
       (themeBlurPreferences[activeVisualTheme.storageKey] ?? true);
+  headerStyleNotifier.value = (prefs.getInt('headerStyle') ?? 0).clamp(0, 2);
   surfaceBlurEnabledNotifier.value =
       prefs.getBool('surfaceBlurEnabled') ?? true;
   surfaceCornerModeNotifier.value = (prefs.getInt('surfaceCornerMode') ?? 0)
@@ -465,6 +475,8 @@ void main() async {
   lessonAccentStyleNotifier.value = (prefs.getInt('lessonAccentStyle') ?? 0)
       .clamp(0, 3);
   lessonShowTeacherNotifier.value = prefs.getBool('lessonShowTeacher') ?? true;
+  lessonFullTeacherNamesNotifier.value =
+      prefs.getBool('lessonFullTeacherNames') ?? false;
   lessonShowSubjectIconsNotifier.value =
       prefs.getBool('lessonShowSubjectIcons') ?? false;
   lessonShowRoomNotifier.value = prefs.getBool('lessonShowRoom') ?? true;

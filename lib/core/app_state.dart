@@ -220,6 +220,9 @@ Future<void> saveOrUpdateUntisAccount({
   } else {
     accounts.add(account);
   }
+  if (activeUntisAccountId != account.id || demoModeNotifier.value) {
+    _clearTransientSchoolData();
+  }
   final storedSecurely = await _writeActiveAccountFields(prefs, account);
   await _writeUntisAccounts(prefs, accounts, includeSecrets: !storedSecurely);
   await loadAccountPersonalData();
@@ -233,14 +236,11 @@ Future<void> switchUntisAccount(String accountId) async {
   if (index < 0) return;
   final account = accounts[index].copyWith(lastUsedAt: DateTime.now());
   accounts[index] = account;
+  _clearTransientSchoolData();
   final storedSecurely = await _writeActiveAccountFields(prefs, account);
   await _writeUntisAccounts(prefs, accounts, includeSecrets: !storedSecurely);
   await _syncActiveAccountDataForBackground(prefs);
   await loadAccountPersonalData();
-  currentWeekDataNotifier.value = const {};
-  homeworksNotifier.value = const [];
-  lessonNotesNotifier.value = const [];
-  apiExamsNotifier.value = const [];
   final changes = await ChangeRepository().loadChanges(accountId);
   unreadTimetableChangesNotifier.value = changes
       .where((change) => !change.isRead)
@@ -326,6 +326,7 @@ double aiTemperature = 0.2;
 int aiMaxTokens = 2600;
 double aiTopP = 0.95;
 String aiPersona = 'helpful';
+final ValueNotifier<bool> aiEnabledNotifier = ValueNotifier(true);
 
 Future<void> loadAiPreferences(SharedPreferences prefs) async {
   aiProvider = _normalizeAiProvider(
@@ -623,6 +624,7 @@ final ValueNotifier<String?> pendingAssistantPromptNotifier = ValueNotifier(
 );
 
 final ValueNotifier<bool> blurEnabledNotifier = ValueNotifier(true);
+final ValueNotifier<int> headerStyleNotifier = ValueNotifier(0);
 final ValueNotifier<double> blurStrengthNotifier = ValueNotifier(1.0);
 final ValueNotifier<bool> surfaceBlurEnabledNotifier = ValueNotifier(true);
 final ValueNotifier<int> surfaceCornerModeNotifier = ValueNotifier(0);
@@ -645,6 +647,15 @@ final ValueNotifier<double> lessonCardOpacityNotifier = ValueNotifier(0.9);
 final ValueNotifier<double> lessonBorderRadiusNotifier = ValueNotifier(12.0);
 final ValueNotifier<int> lessonAccentStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> lessonShowTeacherNotifier = ValueNotifier(true);
+final ValueNotifier<bool> lessonFullTeacherNamesNotifier = ValueNotifier(false);
+
+String lessonTeacherDisplayName(Map<dynamic, dynamic> lesson) {
+  final short = lesson['_teacher']?.toString() ?? '';
+  if (!lessonFullTeacherNamesNotifier.value) return short;
+  final full = lesson['_teacherFull']?.toString().trim() ?? '';
+  return full.isNotEmpty ? full : short;
+}
+
 final ValueNotifier<bool> lessonShowSubjectIconsNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonShowRoomNotifier = ValueNotifier(true);
 final ValueNotifier<bool> lessonCompactModeNotifier = ValueNotifier(false);
@@ -729,6 +740,22 @@ Future<void> loadCustomData() async {
 Future<void> loadAccountPersonalData() async {
   final prefs = SettingsStore.instance.preferences;
   await loadCustomData();
+  try {
+    final raw = prefs.getString(_accountDataKey('subjectPresentations'));
+    final decoded = raw == null ? null : jsonDecode(raw);
+    subjectPresentationsNotifier.value = decoded is Map
+        ? decoded.map(
+            (key, value) => MapEntry(
+              key.toString(),
+              value is Map
+                  ? SubjectPresentation.fromJson(value)
+                  : const SubjectPresentation(),
+            ),
+          )
+        : const {};
+  } catch (_) {
+    subjectPresentationsNotifier.value = const {};
+  }
   hiddenSubjectsNotifier.value =
       (prefs.getStringList(_accountDataKey('hiddenSubjects')) ?? const [])
           .toSet();
@@ -872,6 +899,99 @@ Future<void> _unhideSubject(String key) =>
     _updateHiddenSubjects((values) => values.remove(key));
 
 final ValueNotifier<Map<String, int>> subjectColorsNotifier = ValueNotifier({});
+
+class SubjectPresentation {
+  const SubjectPresentation({
+    this.name = '',
+    this.icon = '',
+    this.aliases = const [],
+  });
+
+  final String name;
+  final String icon;
+  final List<String> aliases;
+
+  factory SubjectPresentation.fromJson(Map value) => SubjectPresentation(
+    name: value['name']?.toString().trim() ?? '',
+    icon: value['icon']?.toString().trim() ?? '',
+    aliases: (value['aliases'] as List? ?? const [])
+        .map((entry) => entry.toString())
+        .toList(growable: false),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'icon': icon,
+    'aliases': aliases,
+  };
+}
+
+void _clearTransientSchoolData() {
+  currentWeekDataNotifier.value = const {};
+  homeworksNotifier.value = const [];
+  lessonNotesNotifier.value = const [];
+  apiExamsNotifier.value = const [];
+}
+
+const Map<String, IconData> subjectIconChoices = {
+  'book': Icons.menu_book_rounded,
+  'calculate': Icons.calculate_rounded,
+  'language': Icons.translate_rounded,
+  'science': Icons.science_rounded,
+  'nature': Icons.eco_rounded,
+  'history': Icons.history_edu_rounded,
+  'globe': Icons.public_rounded,
+  'computer': Icons.computer_rounded,
+  'music': Icons.music_note_rounded,
+  'art': Icons.palette_rounded,
+  'sport': Icons.sports_soccer_rounded,
+  'people': Icons.groups_rounded,
+  'school': Icons.school_rounded,
+};
+
+final ValueNotifier<Map<String, SubjectPresentation>>
+subjectPresentationsNotifier = ValueNotifier(const {});
+
+SubjectPresentation? _subjectPresentation(Object? original) {
+  final aliases = _subjectAliases(original);
+  for (final entry in subjectPresentationsNotifier.value.entries) {
+    if (aliases.contains(_normalizedSubjectName(entry.key)) ||
+        entry.value.aliases.any(
+          (alias) => aliases.contains(_normalizedSubjectName(alias)),
+        )) {
+      return entry.value;
+    }
+  }
+  return null;
+}
+
+String _displaySubject(Object? original) {
+  final custom = _subjectPresentation(original)?.name ?? '';
+  return custom.isNotEmpty ? custom : original?.toString() ?? '';
+}
+
+IconData? _customSubjectIcon(Object? original) =>
+    subjectIconChoices[_subjectPresentation(original)?.icon];
+
+Future<void> _setSubjectPresentation(
+  String key,
+  SubjectPresentation? presentation,
+) async {
+  final updated = Map<String, SubjectPresentation>.from(
+    subjectPresentationsNotifier.value,
+  );
+  if (presentation == null ||
+      (presentation.name.isEmpty && presentation.icon.isEmpty)) {
+    updated.remove(key);
+  } else {
+    updated[key] = presentation;
+  }
+  subjectPresentationsNotifier.value = updated;
+  await SettingsStore.instance.preferences.setString(
+    _accountDataKey('subjectPresentations'),
+    jsonEncode(updated.map((key, value) => MapEntry(key, value.toJson()))),
+  );
+}
 
 final ValueNotifier<Set<String>> knownSubjectsNotifier = ValueNotifier({});
 

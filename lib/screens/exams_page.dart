@@ -34,6 +34,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     });
     customExamsNotifier.addListener(_onCustomExamsNotifierChanged);
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
+    subjectPresentationsNotifier.addListener(_onHiddenSubjectsChanged);
+    aiEnabledNotifier.addListener(_onAiEnabledChanged);
     _load();
   }
 
@@ -41,11 +43,17 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   void dispose() {
     customExamsNotifier.removeListener(_onCustomExamsNotifierChanged);
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
+    subjectPresentationsNotifier.removeListener(_onHiddenSubjectsChanged);
+    aiEnabledNotifier.removeListener(_onAiEnabledChanged);
     _tabController.dispose();
     super.dispose();
   }
 
   void _onHiddenSubjectsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onAiEnabledChanged() {
     if (mounted) setState(() {});
   }
 
@@ -87,6 +95,18 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     );
     _apiExams = results;
     apiExamsNotifier.value = results;
+    if (activeUntisAccountId != null && results.isNotEmpty) {
+      final wrapped = SchoolWrappedRepository();
+      for (final year in await wrapped.years(activeUntisAccountId!)) {
+        if (year.contains(now)) {
+          await wrapped.recordExams(
+            accountId: activeUntisAccountId!,
+            year: year,
+            items: results,
+          );
+        }
+      }
+    }
   }
 
   List<Map<String, dynamic>> get _allExams {
@@ -125,6 +145,9 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     required Uint8List fileBytes,
     required String mimeType,
   }) {
+    if (!aiEnabledNotifier.value) {
+      return Future<String>.error(StateError('AI is disabled'));
+    }
     final l = appL10nFor(appLocaleNotifier.value);
     final runtime = _currentAiRuntimeConfiguration();
     final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
@@ -159,6 +182,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   }
 
   Future<void> _importExamsWithAI() async {
+    if (!aiEnabledNotifier.value) return;
     final l = appL10nFor(appLocaleNotifier.value);
     final runtime = _currentAiRuntimeConfiguration();
     final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
@@ -335,13 +359,14 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                               onPressed: () => _showAddExamDialog(context),
                               child: Text(l.examsActionCustom),
                             ),
-                            MenuItemButton(
-                              leadingIcon: const Icon(
-                                Icons.upload_file_rounded,
+                            if (aiEnabledNotifier.value)
+                              MenuItemButton(
+                                leadingIcon: const Icon(
+                                  Icons.upload_file_rounded,
+                                ),
+                                onPressed: _importExamsWithAI,
+                                child: Text(l.examsActionImport),
                               ),
-                              onPressed: _importExamsWithAI,
-                              child: Text(l.examsActionImport),
-                            ),
                             MenuItemButton(
                               leadingIcon: const Icon(Icons.ios_share_rounded),
                               onPressed: _exportCustomExams,
@@ -354,13 +379,15 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                               onPressed: () => _showAddHomeworkDialog(context),
                               child: Text(l.homeworkActionCustom),
                             ),
-                            MenuItemButton(
-                              leadingIcon: const Icon(
-                                Icons.upload_file_rounded,
+                            if (aiEnabledNotifier.value)
+                              MenuItemButton(
+                                leadingIcon: const Icon(
+                                  Icons.upload_file_rounded,
+                                ),
+                                onPressed: () =>
+                                    _importHomeworkWithAI(context),
+                                child: Text(l.homeworkActionImport),
                               ),
-                              onPressed: () => _importHomeworkWithAI(context),
-                              child: Text(l.homeworkActionImport),
-                            ),
                           ],
                     builder: (context, controller, child) => IconButton(
                       tooltip: _tabController.index == 0
@@ -757,8 +784,12 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                             ],
                           ),
                           const SizedBox(height: 8),
+                          if (_customSubjectIcon(subject) != null)
+                            Icon(_customSubjectIcon(subject), color: accent),
                           Text(
-                            subject.isNotEmpty ? subject : l.examsUnknown,
+                            subject.isNotEmpty
+                                ? _displaySubject(subject)
+                                : l.examsUnknown,
                             style: GoogleFonts.outfit(
                               fontSize: 19,
                               fontWeight: FontWeight.w900,

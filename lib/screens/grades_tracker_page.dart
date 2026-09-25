@@ -75,12 +75,14 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     _loadGrades();
     customGradesNotifier.addListener(_onCustomGradesChanged);
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
+    subjectPresentationsNotifier.addListener(_onHiddenSubjectsChanged);
   }
 
   @override
   void dispose() {
     customGradesNotifier.removeListener(_onCustomGradesChanged);
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
+    subjectPresentationsNotifier.removeListener(_onHiddenSubjectsChanged);
     super.dispose();
   }
 
@@ -974,14 +976,21 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         ]),
                       ),
                       child: Center(
-                        child: Text(
-                          subject.isNotEmpty ? subject[0].toUpperCase() : '?',
-                          style: GoogleFonts.outfit(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 22,
-                          ),
-                        ),
+                        child: _customSubjectIcon(subject) != null
+                            ? Icon(
+                                _customSubjectIcon(subject),
+                                color: Colors.white,
+                              )
+                            : Text(
+                                subject.isNotEmpty
+                                    ? subject[0].toUpperCase()
+                                    : '?',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 22,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -990,7 +999,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            subject,
+                            _displaySubject(subject),
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.w900,
                               fontSize: 19,

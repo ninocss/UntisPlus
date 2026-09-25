@@ -1771,7 +1771,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     4: GlobalKey(debugLabel: 'tutorial-ai'),
   };
 
-  List<int> get _tutorialTargets => const [0, 1, 2, 4, 3];
+  List<int> get _tutorialTargets => aiEnabledNotifier.value
+      ? const [0, 1, 2, 4, 3]
+      : const [0, 1, 2, 3];
 
   @override
   void initState() {
@@ -1780,6 +1782,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _handleNotificationAction,
     );
     pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
+    aiEnabledNotifier.addListener(_onAiEnabledChanged);
     if (pendingAssistantOpenNotifier.value) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _openAssistantFromNative(),
@@ -1800,8 +1803,56 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         showChangelogOnStartup = false;
         final p = SettingsStore.instance.preferences;
         await p.remove('showChangelogPending');
-        if (mounted) showChangelogSheet(context);
+        if (mounted) {
+          await showChangelogSheet(context);
+          if (mounted) unawaited(_checkWrappedYearEnd());
+        }
       });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_checkWrappedYearEnd());
+      });
+    }
+  }
+
+  Future<void> _checkWrappedYearEnd() async {
+    final account = activeUntisAccount;
+    if (account == null || demoModeNotifier.value) return;
+    final wrapped = SchoolWrappedRepository();
+    final remoteYear = await wrapped.refreshSchoolYear(account);
+    final currentYear = remoteYear ??
+        (await wrapped.years(account.id))
+            .where((year) => year.contains(DateTime.now()))
+            .firstOrNull;
+    if (currentYear != null) {
+      unawaited(wrapped.captureCurrent(account, currentYear).catchError((_) {}));
+    }
+    final pending = await wrapped.pendingAnnouncement(account.id);
+    if (!mounted || account.id != activeUntisAccountId || pending == null) return;
+    final l = appL10nFor(appLocaleNotifier.value);
+    final open = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l.wrapped('announcement')),
+        content: Text(l.wrapped('announcementSub')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l.wrapped('later')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l.wrapped('begin')),
+          ),
+        ],
+      ),
+    );
+    await wrapped.markAnnouncementSeen(account.id, pending);
+    if (open == true && mounted && account.id == activeUntisAccountId) {
+      Navigator.of(context).push(_buildBouncyRoute(
+        SchoolWrappedStory(year: pending, account: account),
+      ));
     }
   }
 
@@ -1859,7 +1910,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   void _openAssistantFromNative() {
     if (!mounted || !pendingAssistantOpenNotifier.value) return;
     pendingAssistantOpenNotifier.value = false;
-    _onNavTap(4);
+    if (aiEnabledNotifier.value) _onNavTap(4);
+  }
+
+  void _onAiEnabledChanged() {
+    if (!mounted) return;
+    if (!aiEnabledNotifier.value && _selectedIndex == 4) _selectedIndex = 0;
+    setState(() {});
   }
 
   void _startTutorial() {
@@ -1880,6 +1937,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       _showTutorial = false;
       _tutorialStep = 0;
     });
+    unawaited(_checkWrappedYearEnd());
   }
 
   Future<void> _skipTutorial() async {
@@ -1913,13 +1971,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   void _onNavTap(int index) {
+    if (index == 4 && !aiEnabledNotifier.value) return;
     if (_selectedIndex != index) {
       setState(() => _selectedIndex = index);
     }
   }
 
   String _tutorialTitle(AppL10n l) {
-    switch (_tutorialStep) {
+    if (_tutorialStep >= _tutorialTargets.length) {
+      return l.tutorialStepFinishTitle;
+    }
+    switch (_tutorialTargets[_tutorialStep]) {
       case 0:
         return l.tutorialStepWeekTitle;
       case 1:
@@ -1927,16 +1989,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case 2:
         return l.tutorialStepInfoTitle;
       case 3:
-        return l.tutorialStepAiTitle;
-      case 4:
         return l.tutorialStepSettingsTitle;
+      case 4:
+        return l.tutorialStepAiTitle;
       default:
         return l.tutorialStepFinishTitle;
     }
   }
 
   String _tutorialDesc(AppL10n l) {
-    switch (_tutorialStep) {
+    if (_tutorialStep >= _tutorialTargets.length) {
+      return l.tutorialStepFinishDesc;
+    }
+    switch (_tutorialTargets[_tutorialStep]) {
       case 0:
         return l.tutorialStepWeekDesc;
       case 1:
@@ -1944,9 +2009,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       case 2:
         return l.tutorialStepInfoDesc;
       case 3:
-        return l.tutorialStepAiDesc;
-      case 4:
         return l.tutorialStepSettingsDesc;
+      case 4:
+        return l.tutorialStepAiDesc;
       default:
         return l.tutorialStepFinishDesc;
     }
@@ -2007,22 +2072,25 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const ExamsPage(),
     SchoolNotificationsPage(isActive: _selectedIndex == 2),
     const SettingsHubPage(),
-    AiAssistantPage(
-      key: ValueKey(activeUntisAccountId ?? 'active'),
-      onBackToTimetable: () => _onNavTap(0),
-      onOpenDrawer: (drawer) {
-        setState(() => _currentDrawer = drawer);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _scaffoldKey.currentState?.openDrawer();
-        });
-      },
-    ),
+    aiEnabledNotifier.value
+        ? AiAssistantPage(
+            key: ValueKey(activeUntisAccountId ?? 'active'),
+            onBackToTimetable: () => _onNavTap(0),
+            onOpenDrawer: (drawer) {
+              setState(() => _currentDrawer = drawer);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _scaffoldKey.currentState?.openDrawer();
+              });
+            },
+          )
+        : const SizedBox.shrink(),
   ];
 
   @override
   void dispose() {
     _notificationActionSub?.cancel();
     pendingAssistantOpenNotifier.removeListener(_openAssistantFromNative);
+    aiEnabledNotifier.removeListener(_onAiEnabledChanged);
     super.dispose();
   }
 
@@ -2082,14 +2150,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                         ),
                         label: Text(l.navMenu),
                       ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.auto_awesome_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[4],
-                          child: const Icon(Icons.auto_awesome_rounded),
+                      if (aiEnabledNotifier.value)
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.auto_awesome_outlined),
+                          selectedIcon: KeyedSubtree(
+                            key: _tutorialNavKeys[4],
+                            child: const Icon(Icons.auto_awesome_rounded),
+                          ),
+                          label: Text(l.navAi),
                         ),
-                        label: Text(l.navAi),
-                      ),
                     ],
                   ),
                 ),
@@ -2235,14 +2304,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         tutorialKey: _tutorialNavKeys[1],
         tutorialHighlight: _isTutorialTarget(1),
       ),
-      _NavItem(
-        icon: Icons.auto_awesome_outlined,
-        selectedIcon: Icons.auto_awesome_rounded,
-        label: l.navAi,
-        pageIndex: 4,
-        tutorialKey: _tutorialNavKeys[4],
-        tutorialHighlight: _isTutorialTarget(4),
-      ),
+      if (aiEnabledNotifier.value)
+        _NavItem(
+          icon: Icons.auto_awesome_outlined,
+          selectedIcon: Icons.auto_awesome_rounded,
+          label: l.navAi,
+          pageIndex: 4,
+          tutorialKey: _tutorialNavKeys[4],
+          tutorialHighlight: _isTutorialTarget(4),
+        ),
     ];
 
     // Which item in the secondary bar is selected? -1 = none (timetable active)
@@ -2435,7 +2505,15 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
           height: 56,
         );
         final bounds = Offset.zero & size;
-        final target = (_targetRect() ?? fallback).inflate(9).intersect(bounds);
+        final rawTarget = _targetRect() ?? fallback;
+        final target = (tablet
+                ? Rect.fromCenter(
+                    center: rawTarget.center,
+                    width: 72,
+                    height: 76,
+                  ).inflate(2)
+                : rawTarget.inflate(5))
+            .intersect(bounds);
 
         final callout = _TutorialCallout(
           step: step,
@@ -2457,8 +2535,8 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
                     clipper: _TutorialSpotlightClipper(target),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(
-                        sigmaX: tokens.blurSigma,
-                        sigmaY: tokens.blurSigma,
+                        sigmaX: math.min(tokens.blurSigma, 5),
+                        sigmaY: math.min(tokens.blurSigma, 5),
                       ),
                       child: const SizedBox.expand(),
                     ),
@@ -2471,7 +2549,7 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
                   painter: _TutorialSpotlightPainter(
                     target: target,
                     scrim: useBackdropBlur
-                        ? Colors.transparent
+                        ? Colors.black.withValues(alpha: 0.12)
                         : Colors.black.withValues(alpha: 0.58),
                     accent: cs.primary,
                   ),
@@ -3016,7 +3094,9 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                         width: pillWidth,
                         height: _pillHeight,
                         decoration: BoxDecoration(
-                          color: cs.primary,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? cs.primaryContainer
+                              : cs.primary,
                           borderRadius: BorderRadius.circular(
                             tokens.id == AppThemeId.cyber
                                 ? tokens.controlRadius
@@ -3091,7 +3171,9 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                         key: ValueKey('${item.pageIndex}_$selected'),
                         size: selected ? 22 : 24,
                         color: selected
-                            ? cs.onPrimary
+                            ? (Theme.of(context).brightness == Brightness.dark
+                                  ? cs.onPrimaryContainer
+                                  : cs.onPrimary)
                             : item.tutorialHighlight
                             ? cs.tertiary
                             : cs.onSurfaceVariant.withValues(alpha: 0.8),
@@ -3145,7 +3227,10 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                           item.label,
                           style: untisThemeTextStyle(
                             context,
-                            color: cs.onPrimary,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? cs.onPrimaryContainer
+                                : cs.onPrimary,
                             fontWeight: FontWeight.w600,
                             fontSize: 13.5,
                           ),

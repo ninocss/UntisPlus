@@ -74,7 +74,11 @@ class _MessageComposePageState extends State<_MessageComposePage>
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = error.message;
+        _error = error.statusCode == 401
+            ? appL10nFor(appLocaleNotifier.value).infoLoginRequired
+            : error.statusCode == 403
+            ? appL10nFor(appLocaleNotifier.value).infoNoPermission
+            : appL10nFor(appLocaleNotifier.value).messageRecipientsFailed;
       });
     } catch (_) {
       if (!mounted) return;
@@ -159,9 +163,9 @@ class _MessageComposePageState extends State<_MessageComposePage>
     if (_loading) return;
     final l = appL10nFor(appLocaleNotifier.value);
     if (_recipients.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.messageNoRecipients)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.messageNoRecipients)));
       return;
     }
 
@@ -174,11 +178,13 @@ class _MessageComposePageState extends State<_MessageComposePage>
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
           final query = queryController.text.trim().toLowerCase();
-          final filtered = _recipients.where((recipient) {
-            if (query.isEmpty) return true;
-            return recipient.name.toLowerCase().contains(query) ||
-                (recipient.role ?? '').toLowerCase().contains(query);
-          }).toList(growable: false);
+          final filtered = _recipients
+              .where((recipient) {
+                if (query.isEmpty) return true;
+                return recipient.name.toLowerCase().contains(query) ||
+                    (recipient.role ?? '').toLowerCase().contains(query);
+              })
+              .toList(growable: false);
           return SafeArea(
             child: SizedBox(
               height: MediaQuery.sizeOf(sheetContext).height * 0.72,
@@ -262,9 +268,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
     if (remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            l.messageAttachmentLimit(_permissions.maxFileCount),
-          ),
+          content: Text(l.messageAttachmentLimit(_permissions.maxFileCount)),
         ),
       );
       return;
@@ -284,18 +288,12 @@ class _MessageComposePageState extends State<_MessageComposePage>
       if (bytes.length > _permissions.maxFileSize) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                l.messageAttachmentTooLarge(file.name),
-              ),
-            ),
+            SnackBar(content: Text(l.messageAttachmentTooLarge(file.name))),
           );
         }
         continue;
       }
-      added.add(
-        WebUntisOutgoingAttachment(name: file.name, bytes: bytes),
-      );
+      added.add(WebUntisOutgoingAttachment(name: file.name, bytes: bytes));
     }
     if (added.isNotEmpty && mounted) {
       setState(() => _attachments.addAll(added));
@@ -307,15 +305,15 @@ class _MessageComposePageState extends State<_MessageComposePage>
     if (_selectedRecipients.isEmpty ||
         _subjectController.text.trim().isEmpty ||
         _bodyController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.messageRequiredFields)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.messageRequiredFields)));
       return;
     }
     if (demoModeNotifier.value) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.messageDemoUnavailable)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l.messageDemoUnavailable)));
       return;
     }
 
@@ -492,9 +490,9 @@ class _MessageComposePageState extends State<_MessageComposePage>
                 const Spacer(),
                 Text(
                   l.messageDraftAutosave,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
               ],
             ),
@@ -506,7 +504,10 @@ class _MessageComposePageState extends State<_MessageComposePage>
                 children: List.generate(_attachments.length, (index) {
                   final attachment = _attachments[index];
                   return InputChip(
-                    avatar: const Icon(Icons.insert_drive_file_rounded, size: 18),
+                    avatar: const Icon(
+                      Icons.insert_drive_file_rounded,
+                      size: 18,
+                    ),
                     label: Text(attachment.name),
                     onDeleted: _sending
                         ? null

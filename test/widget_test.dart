@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -60,10 +61,12 @@ void main() {
   }
 
   setUp(() async {
-    await setMockSettings({
-      'viewMode': 0,
-      'onboardingCheckpoint': 0,
-    });
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('home_widget'),
+          (call) async => true,
+        );
+    await setMockSettings({'viewMode': 0, 'onboardingCheckpoint': 0});
     demoModeNotifier.value = false;
     aiProvider = 'gemini';
     appLocaleNotifier.value = 'de';
@@ -77,11 +80,131 @@ void main() {
     // An endless decorative animation is not relevant to theme selection and
     // would keep pumpAndSettle from completing in this widget test.
     backgroundAnimationsNotifier.value = false;
+    subjectPresentationsNotifier.value = const {};
+    lessonFullTeacherNamesNotifier.value = false;
     themeBlurPreferencesNotifier.value = {
       'default': true,
       'glass': true,
       'cyber': true,
     };
+  });
+
+  test(
+    'demo timetable, homework, notes and exams clear on account login',
+    () async {
+      demoModeNotifier.value = true;
+      homeworksNotifier.value = [
+        {'subject': 'Demo'},
+      ];
+      lessonNotesNotifier.value = [
+        {'text': 'Demo'},
+      ];
+      apiExamsNotifier.value = [
+        {'subject': 'Demo'},
+      ];
+      currentWeekDataNotifier.value = {
+        0: [
+          {'subject': 'Demo'},
+        ],
+      };
+      schoolUrl = 'example.webuntis.com';
+      schoolName = 'Example School';
+      sessionID = 'session-id';
+
+      await saveOrUpdateUntisAccount(
+        username: 'real-user',
+        password: 'password',
+        credentialMode: 'password',
+      );
+
+      expect(homeworksNotifier.value, isEmpty);
+      expect(lessonNotesNotifier.value, isEmpty);
+      expect(apiExamsNotifier.value, isEmpty);
+      expect(currentWeekDataNotifier.value, isEmpty);
+      expect(activeUntisAccountId, isNotNull);
+    },
+  );
+
+  testWidgets('subject name and icon are account-local and resettable', (
+    tester,
+  ) async {
+    activeUntisAccountId = 'account-one';
+    knownSubjectsNotifier.value = {'M'};
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SubjectPresentationsPage()),
+    );
+    await tester.pump();
+    await tester.tap(find.text('M').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Mathematik Plus');
+    await tester.tap(find.byIcon(Icons.calculate_rounded));
+    await tester.tap(find.text('Änderungen speichern'));
+    await tester.pumpAndSettle();
+    expect(subjectPresentationsNotifier.value['M']?.name, 'Mathematik Plus');
+    expect(subjectPresentationsNotifier.value['M']?.icon, 'calculate');
+
+    activeUntisAccountId = 'account-two';
+    await loadAccountPersonalData();
+    expect(subjectPresentationsNotifier.value, isEmpty);
+    activeUntisAccountId = 'account-one';
+    await loadAccountPersonalData();
+    expect(subjectPresentationsNotifier.value['M']?.name, 'Mathematik Plus');
+
+    await tester.tap(find.text('Mathematik Plus').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Zurücksetzen'));
+    await tester.pumpAndSettle();
+    expect(subjectPresentationsNotifier.value, isEmpty);
+  });
+
+  testWidgets('full teacher name setting persists', (tester) async {
+    visualThemeNotifier.value = AppThemeId.manga;
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SettingsLessonDesignPage()),
+    );
+    await tester.pump();
+    final option = find.text('Vollständige Lehrkraftnamen');
+    expect(option, findsOneWidget);
+    await tester.ensureVisible(option);
+    await tester.tap(option.first);
+    await tester.pump();
+    expect(lessonFullTeacherNamesNotifier.value, isTrue);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('lessonFullTeacherNames'), isTrue);
+  });
+
+  test('teacher label uses full name only when enabled and available', () {
+    final lesson = {'_teacher': 'AB', '_teacherFull': 'Ada Beispiel'};
+    expect(lessonTeacherDisplayName(lesson), 'AB');
+    lessonFullTeacherNamesNotifier.value = true;
+    expect(lessonTeacherDisplayName(lesson), 'Ada Beispiel');
+    expect(lessonTeacherDisplayName({'_teacher': 'CD'}), 'CD');
+  });
+
+  testWidgets('selected mobile tab label is theme-safe in dark mode', (
+    tester,
+  ) async {
+    demoModeNotifier.value = true;
+    themeModeNotifier.value = ThemeMode.dark;
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(430, 932);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: MainNavigationScreen()),
+    );
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.tap(find.byIcon(Icons.campaign_outlined).first);
+    await tester.pump(const Duration(milliseconds: 350));
+    final labels = tester.widgetList<Text>(find.text('Info'));
+    final navLabel = labels.where((label) => label.style?.fontSize == 13.5);
+    expect(navLabel, isNotEmpty);
+    final navText = navLabel.first;
+    final context = tester.element(find.byType(MainNavigationScreen));
+    expect(
+      navText.style?.color,
+      Theme.of(context).colorScheme.onPrimaryContainer,
+    );
   });
 
   testWidgets('modal backdrops blur only for active blur-capable themes', (
@@ -319,10 +442,7 @@ void main() {
       const Size(768, 1024),
       const Size(1024, 768),
     ]) {
-      await setMockSettings({
-        'viewMode': 0,
-        'onboardingCheckpoint': 0,
-      });
+      await setMockSettings({'viewMode': 0, 'onboardingCheckpoint': 0});
       tester.view.physicalSize = size;
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
@@ -447,7 +567,9 @@ void main() {
       final dayCarousel = await ensureDayTimetableView(tester);
       expect(dayCarousel, findsOneWidget, reason: 'day viewport: $size');
       await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-      final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
+      final weekGrid = find.byKey(
+        const ValueKey('week-grid-horizontal-scroll'),
+      );
       await pumpUntilFound(tester, weekGrid);
       expect(weekGrid, findsOneWidget, reason: 'week viewport: $size');
       expect(tester.takeException(), isNull, reason: 'viewport: $size');
@@ -488,7 +610,9 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
-    await tester.pumpWidget(const UntisPlusApp(startScreen: WeeklyTimetablePage()));
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: WeeklyTimetablePage()),
+    );
     final dayCarousel = await ensureDayTimetableView(tester);
     expect(dayCarousel, findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('timetable-day-tab-1')));
@@ -499,10 +623,7 @@ void main() {
     final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
     await pumpUntilFound(tester, weekGrid);
     expect(weekGrid, findsOneWidget);
-    await tester.drag(
-      weekGrid,
-      const Offset(-260, 0),
-    );
+    await tester.drag(weekGrid, const Offset(-260, 0));
     await tester.pump(const Duration(milliseconds: 400));
     await prefs.setInt('viewMode', 0);
     expect(tester.takeException(), isNull);
@@ -578,9 +699,7 @@ void main() {
     timetableSwitchAnimationNotifier.value = 2;
     await tester.pumpWidget(
       const UntisPlusApp(
-        startScreen: WeeklyTimetablePage(
-          key: ValueKey('depth-fade-timetable'),
-        ),
+        startScreen: WeeklyTimetablePage(key: ValueKey('depth-fade-timetable')),
       ),
     );
     final depthDay = await ensureDayTimetableView(tester);
@@ -646,7 +765,10 @@ void main() {
 
     await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byKey(const ValueKey('settings-master-detail')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settings-master-detail')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('settings-detail-0')), findsOneWidget);
 
     await tester.tap(find.text('Erscheinungsbild').first);
@@ -668,7 +790,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('tablet notifications show a selectable detail pane', (tester) async {
+  testWidgets('tablet notifications show a selectable detail pane', (
+    tester,
+  ) async {
     demoModeNotifier.value = true;
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1366, 1024);
@@ -722,9 +846,11 @@ void main() {
     final catalogs = <String, Map<String, dynamic>>{};
     for (final locale in AppL10n.supportedLocales) {
       final languageCode = locale.languageCode;
-      catalogs[languageCode] = jsonDecode(
-        File('lib/l10n/arb/app_$languageCode.arb').readAsStringSync(),
-      ) as Map<String, dynamic>;
+      catalogs[languageCode] =
+          jsonDecode(
+                File('lib/l10n/arb/app_$languageCode.arb').readAsStringSync(),
+              )
+              as Map<String, dynamic>;
     }
     final germanKeys = catalogs['de']!.keys
         .where((key) => !key.startsWith('@'))

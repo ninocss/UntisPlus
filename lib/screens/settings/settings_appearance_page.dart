@@ -100,7 +100,7 @@ class SettingsAppearancePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('$label: ${value.round()}'),
-              Slider(
+              HapticSlider(
                 value: value,
                 min: 0,
                 max: 255,
@@ -687,7 +687,7 @@ class SettingsAppearancePage extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: Slider(
+                                      child: HapticSlider(
                                         min: 0,
                                         max: 359,
                                         divisions: 359,
@@ -772,6 +772,53 @@ class SettingsAppearancePage extends StatelessWidget {
             SettingsGroup(
               title: l.settingsAppearanceSurfaces,
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          l.settingsHeaderStyle,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      ValueListenableBuilder<int>(
+                        valueListenable: headerStyleNotifier,
+                        builder: (context, style, _) => SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<int>(
+                            showSelectedIcon: false,
+                            segments: [
+                              ButtonSegment(
+                                value: 0,
+                                label: Text(l.settingsHeaderStyleDefault),
+                              ),
+                              ButtonSegment(
+                                value: 1,
+                                label: Text(l.settingsHeaderStyleFade),
+                              ),
+                              ButtonSegment(
+                                value: 2,
+                                label: Text(l.settingsHeaderStyleBubbles),
+                              ),
+                            ],
+                            selected: {style},
+                            onSelectionChanged: (selection) {
+                              HapticFeedback.selectionClick();
+                              _settingsSetHeaderStyle(selection.first);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 if (capabilities.supportsBlur)
                   ValueListenableBuilder<bool>(
                     valueListenable: blurEnabledNotifier,
@@ -811,7 +858,7 @@ class SettingsAppearancePage extends StatelessWidget {
                                     color: cs.onSurface,
                                   ),
                                 ),
-                                Slider(
+                                HapticSlider(
                                   value: strength,
                                   min: 0.25,
                                   max: 2.0,
@@ -878,7 +925,7 @@ class SettingsAppearancePage extends StatelessWidget {
                                   color: cs.onSurface,
                                 ),
                               ),
-                              Slider(
+                              HapticSlider(
                                 value: radius.toDouble(),
                                 min: 0,
                                 max: 48,
@@ -931,7 +978,7 @@ class SettingsAppearancePage extends StatelessWidget {
                             ValueListenableBuilder<double>(
                               valueListenable: appBgBlurAmountNotifier,
                               builder: (context, amount, _) {
-                                return Slider(
+                                return HapticSlider(
                                   value: amount,
                                   min: 0,
                                   max: 40,

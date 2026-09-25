@@ -300,7 +300,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       child: Text(_colorChannelLabel(l, channel)),
                     ),
                     Expanded(
-                      child: Slider(
+                      child: HapticSlider(
                         value: channel == 'colorRed'
                             ? color.r * 255
                             : channel == 'colorGreen'
@@ -601,7 +601,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               ),
             ],
           ),
-          Slider(value: value, min: min, max: max, onChanged: onChanged),
+          HapticSlider(value: value, min: min, max: max, onChanged: onChanged),
         ],
       ),
     );
@@ -716,7 +716,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               children: [
                 Icon(Icons.zoom_out_rounded, size: 18, color: cs.onSurfaceVariant),
                 Expanded(
-                  child: Slider(
+                  child: HapticSlider(
                     value: _previewScale,
                     min: 0.75,
                     max: 1.15,

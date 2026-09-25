@@ -4,20 +4,25 @@ import 'dart:typed_data';
 import '../../../core/sync_state.dart';
 import '../../../core/time_utils.dart';
 import '../../../data/webuntis/webuntis_client.dart';
+import '../../../data/webuntis/webuntis_message_context.dart';
 
 class SchoolInfoReadResult {
   const SchoolInfoReadResult({
     required this.inbox,
     required this.news,
+    this.inboxFailure,
+    this.newsFailure,
   });
 
   final List<Map<String, dynamic>> inbox;
   final List<Map<String, dynamic>> news;
+  final WebUntisFailure? inboxFailure;
+  final WebUntisFailure? newsFailure;
 }
 
 class SchoolInfoRepository {
   SchoolInfoRepository({WebUntisClient? client})
-      : _client = client ?? WebUntisClient();
+    : _client = client ?? WebUntisClient();
 
   final WebUntisClient _client;
 
@@ -30,11 +35,23 @@ class SchoolInfoRepository {
     var activeSession = sessionId;
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
-        return await _fetchOnce(
+        final result = await _fetchOnce(
           schoolUrl: schoolUrl,
           schoolName: schoolName,
           sessionId: activeSession,
         );
+        final authFailure = [
+          result.inboxFailure,
+          result.newsFailure,
+        ].any((failure) => failure?.kind == WebUntisFailureKind.authentication);
+        if (attempt == 0 && authFailure && reauthenticate != null) {
+          final refreshed = await reauthenticate();
+          if (refreshed != null && refreshed.isNotEmpty) {
+            activeSession = refreshed;
+            continue;
+          }
+        }
+        return result;
       } on WebUntisFailure catch (failure) {
         final canRetry =
             attempt == 0 &&
@@ -121,19 +138,26 @@ class SchoolInfoRepository {
     required String sessionId,
   }) async {
     final cookies = _schoolCookies(schoolName);
+    WebUntisFailure? inboxFailure;
+    WebUntisFailure? newsFailure;
     final initial = await Future.wait<List<Map<String, dynamic>>>([
       _fetchInbox(
         schoolUrl: schoolUrl,
         schoolName: schoolName,
         sessionId: sessionId,
-        cookies: cookies,
-      ),
+      ).onError<WebUntisFailure>((failure, _) {
+        inboxFailure = failure;
+        return const [];
+      }),
       _fetchNewsWidget(
         schoolUrl: schoolUrl,
         schoolName: schoolName,
         sessionId: sessionId,
         cookies: cookies,
-      ),
+      ).onError<WebUntisFailure>((failure, _) {
+        newsFailure = failure;
+        return const [];
+      }),
     ]);
     final inbox = initial[0];
     var news = initial[1];
@@ -199,7 +223,15 @@ class SchoolInfoRepository {
         ),
       ];
       for (final fallback in fallbacks) {
-        final result = await fallback();
+        List<dynamic> result;
+        try {
+          result = await fallback();
+        } on WebUntisFailure catch (failure) {
+          if (failure.statusCode != 404 || newsFailure == null) {
+            newsFailure = failure;
+          }
+          continue;
+        }
         if (result.isEmpty) continue;
         news = result
             .whereType<Map>()
@@ -209,33 +241,50 @@ class SchoolInfoRepository {
       }
     }
 
-    return SchoolInfoReadResult(inbox: inbox, news: news);
+    return SchoolInfoReadResult(
+      inbox: inbox,
+      news: news,
+      inboxFailure: inboxFailure,
+      newsFailure: news.isEmpty && newsFailure?.statusCode != 404
+          ? newsFailure
+          : null,
+    );
   }
 
   Future<List<Map<String, dynamic>>> _fetchInbox({
     required String schoolUrl,
     required String schoolName,
     required String sessionId,
-    required List<String> cookies,
   }) async {
-    final token = await _fetchToken(
+    final context = await WebUntisMessageContextResolver(_client).resolve(
       schoolUrl: schoolUrl,
+      schoolName: schoolName,
       sessionId: sessionId,
-      cookies: cookies,
     );
-    if (token == null || token.isEmpty) return const [];
-
-    final decoded = await _getJson(
-      uri: Uri.parse(
-        'https://$schoolUrl/WebUntis/api/rest/view/v1/messages',
-      ),
-      sessionId: sessionId,
-      cookies: cookies,
-      extraHeaders: {'Authorization': 'Bearer $token'},
+    WebUntisFailure? lastFailure;
+    for (final version in const ['v2', 'v1']) {
+      try {
+        final decoded = await _client.getJson(
+          uri: Uri.parse(
+            'https://$schoolUrl/WebUntis/api/rest/view/$version/messages',
+          ),
+          headers: context.headers,
+        );
+        final incoming = decoded is Map ? decoded['incomingMessages'] : null;
+        if (incoming is List) return _normalizeInbox(incoming);
+      } on WebUntisFailure catch (failure) {
+        lastFailure = failure;
+        if (failure.statusCode != 404 && failure.statusCode != 500) rethrow;
+      }
+    }
+    if (lastFailure != null) throw lastFailure;
+    throw const WebUntisFailure(
+      WebUntisFailureKind.invalidData,
+      'WebUntis did not return a compatible message list.',
     );
-    final incoming = decoded is Map ? decoded['incomingMessages'] : null;
-    if (incoming is! List) return const [];
+  }
 
+  static List<Map<String, dynamic>> _normalizeInbox(List incoming) {
     return incoming
         .whereType<Map>()
         .map((raw) {
@@ -335,41 +384,6 @@ class SchoolInfoRepository {
     return output;
   }
 
-  Future<String?> _fetchToken({
-    required String schoolUrl,
-    required String sessionId,
-    required List<String> cookies,
-  }) async {
-    final raw = await _getText(
-      uri: Uri.parse('https://$schoolUrl/WebUntis/api/token/new'),
-      sessionId: sessionId,
-      cookies: cookies,
-    );
-    if (raw == null || raw.trim().isEmpty) return null;
-    final trimmed = raw.trim();
-    if (!trimmed.startsWith('{')) {
-      return trimmed.replaceAll('"', '').trim();
-    }
-    try {
-      final decoded = jsonDecode(trimmed);
-      if (decoded is String && decoded.trim().isNotEmpty) {
-        return decoded.trim();
-      }
-      if (decoded is Map) {
-        for (final key in const [
-          'token',
-          'jwt',
-          'jwt_token',
-          'accessToken',
-        ]) {
-          final value = decoded[key]?.toString().trim();
-          if (value != null && value.isNotEmpty) return value;
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
   Future<List<dynamic>> _getList({
     required String schoolUrl,
     required String sessionId,
@@ -392,7 +406,7 @@ class SchoolInfoRepository {
     required String method,
     required Map<String, dynamic> params,
   }) async {
-    var sawAuthenticationFailure = false;
+    WebUntisFailure? lastFailure;
     for (final cookie in cookies) {
       try {
         final decoded = await _client.rpc(
@@ -408,18 +422,10 @@ class SchoolInfoRepository {
         );
         return _extractList(decoded['result'] ?? decoded);
       } on WebUntisFailure catch (failure) {
-        if (failure.kind == WebUntisFailureKind.authentication ||
-            failure.kind == WebUntisFailureKind.permission) {
-          sawAuthenticationFailure = true;
-        }
+        lastFailure = failure;
       } catch (_) {}
     }
-    if (sawAuthenticationFailure) {
-      throw const WebUntisFailure(
-        WebUntisFailureKind.authentication,
-        'WebUntis session expired.',
-      );
-    }
+    if (lastFailure != null) throw lastFailure;
     return const [];
   }
 
@@ -429,7 +435,7 @@ class SchoolInfoRepository {
     required List<String> cookies,
     Map<String, String> extraHeaders = const {},
   }) async {
-    var sawAuthenticationFailure = false;
+    WebUntisFailure? lastFailure;
     for (final cookie in cookies) {
       try {
         return await _client.getJson(
@@ -441,49 +447,10 @@ class SchoolInfoRepository {
           },
         );
       } on WebUntisFailure catch (failure) {
-        if (failure.kind == WebUntisFailureKind.authentication ||
-            failure.kind == WebUntisFailureKind.permission) {
-          sawAuthenticationFailure = true;
-        }
+        lastFailure = failure;
       } catch (_) {}
     }
-    if (sawAuthenticationFailure) {
-      throw const WebUntisFailure(
-        WebUntisFailureKind.authentication,
-        'WebUntis session expired.',
-      );
-    }
-    return null;
-  }
-
-  Future<String?> _getText({
-    required Uri uri,
-    required String sessionId,
-    required List<String> cookies,
-  }) async {
-    var sawAuthenticationFailure = false;
-    for (final cookie in cookies) {
-      try {
-        return await _client.getText(
-          uri: uri,
-          headers: {
-            'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
-            'Accept': 'application/json',
-          },
-        );
-      } on WebUntisFailure catch (failure) {
-        if (failure.kind == WebUntisFailureKind.authentication ||
-            failure.kind == WebUntisFailureKind.permission) {
-          sawAuthenticationFailure = true;
-        }
-      } catch (_) {}
-    }
-    if (sawAuthenticationFailure) {
-      throw const WebUntisFailure(
-        WebUntisFailureKind.authentication,
-        'WebUntis session expired.',
-      );
-    }
+    if (lastFailure != null) throw lastFailure;
     return null;
   }
 
@@ -509,7 +476,6 @@ class SchoolInfoRepository {
     return values.toSet().toList(growable: false);
   }
 
-  static Map<String, dynamic> _stringKeyedMap(Map raw) => raw.map(
-        (key, value) => MapEntry(key.toString(), value),
-      );
+  static Map<String, dynamic> _stringKeyedMap(Map raw) =>
+      raw.map((key, value) => MapEntry(key.toString(), value));
 }

@@ -7,16 +7,17 @@ void _showLessonDetail(
   String originalTeacher = '',
 }) {
   HapticFeedback.mediumImpact();
-  final subject = lesson['_subjectLong']?.toString().isNotEmpty == true
+  final originalSubject = lesson['_subjectLong']?.toString().isNotEmpty == true
       ? lesson['_subjectLong'].toString()
       : (lesson['_subjectShort']?.toString().isNotEmpty == true
             ? lesson['_subjectShort'].toString()
             : '---');
+  final subject = _displaySubject(lesson['_subjectShort'] ?? originalSubject);
   final subjectShort = lesson['_subjectShort']?.toString() ?? '';
   final room = lesson['_room']?.toString().isNotEmpty == true
       ? lesson['_room'].toString()
       : '---';
-  final teacher = lesson['_teacher']?.toString() ?? '';
+  final teacher = lessonTeacherDisplayName(lesson);
   final time =
       '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
   final isCancelled = (lesson['code'] ?? '') == 'cancelled';
@@ -188,6 +189,9 @@ class _LessonDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = appL10nFor(appLocaleNotifier.value);
+    final subjectIcon = _customSubjectIcon(
+      subjectShort.isNotEmpty ? subjectShort : subject,
+    );
     final cancelledColor = Color(
       cancelledLessonColorNotifier.value,
     ).harmonizeWith(cs.primary);
@@ -276,13 +280,23 @@ class _LessonDetailSheet extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          Text(
-            subject,
-            style: GoogleFonts.outfit(
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1,
-            ),
+          Row(
+            children: [
+              if (subjectIcon != null) ...[
+                Icon(subjectIcon, size: 29, color: cs.primary),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Text(
+                  subject,
+                  style: GoogleFonts.outfit(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                  ),
+                ),
+              ),
+            ],
           ),
           if (subjectShort.isNotEmpty)
             Text(

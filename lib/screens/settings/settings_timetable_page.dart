@@ -358,7 +358,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     fontSize: 13,
                   ),
                 ),
-                Slider(
+                HapticSlider(
                   value: red,
                   min: 0,
                   max: 255,
@@ -372,7 +372,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     fontSize: 13,
                   ),
                 ),
-                Slider(
+                HapticSlider(
                   value: green,
                   min: 0,
                   max: 255,
@@ -386,7 +386,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     fontSize: 13,
                   ),
                 ),
-                Slider(
+                HapticSlider(
                   value: blue,
                   min: 0,
                   max: 255,
@@ -779,6 +779,16 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     ),
                   ),
                   ValueListenableBuilder<bool>(
+                    valueListenable: lessonFullTeacherNamesNotifier,
+                    builder: (context, value, _) => SettingsSwitchTile(
+                      icon: Icons.badge_outlined,
+                      title: l.settingsLessonFullTeacherNames,
+                      subtitle: l.settingsLessonFullTeacherNamesDesc,
+                      value: value,
+                      onChanged: _settingsSetLessonFullTeacherNames,
+                    ),
+                  ),
+                  ValueListenableBuilder<bool>(
                     valueListenable: lessonShowSubjectIconsNotifier,
                     builder: (context, value, _) => SettingsSwitchTile(
                       icon: Icons.category_outlined,
@@ -927,7 +937,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                                   ),
                                 ],
                               ),
-                              Slider(
+                              HapticSlider(
                                 value: amount,
                                 min: 4,
                                 max: 28,
@@ -969,7 +979,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                               ),
                             ],
                           ),
-                          Slider(
+                          HapticSlider(
                             value: opacity,
                             min: 0.30,
                             max: 1.0,
@@ -1016,7 +1026,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                               ),
                             ],
                           ),
-                          Slider(
+                          HapticSlider(
                             value: radius,
                             min: 4,
                             max: 26,
@@ -1106,6 +1116,16 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       onChanged: _settingsSetLessonShowSubjectIcons,
                     );
                   },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: lessonFullTeacherNamesNotifier,
+                  builder: (context, fullNames, _) => SettingsSwitchTile(
+                    icon: Icons.badge_outlined,
+                    title: l.settingsLessonFullTeacherNames,
+                    subtitle: l.settingsLessonFullTeacherNamesDesc,
+                    value: fullNames,
+                    onChanged: _settingsSetLessonFullTeacherNames,
+                  ),
                 ),
                 ValueListenableBuilder<bool>(
                   valueListenable: lessonShowRoomNotifier,

@@ -69,6 +69,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   String? _loadError;
   bool _showingCachedWeek = false;
   int _viewMode = 0;
+  bool get _isDailyView => _viewMode == 0;
+  bool get _isThreeDayView => _viewMode == 1;
+  bool get _isWeekView => _viewMode == 2;
+
+  List<int> get _visibleGridDays {
+    if (_isWeekView) return const [0, 1, 2, 3, 4];
+    final selectedDay = _tabController.index.clamp(0, 4).toInt();
+    final firstDay = (selectedDay - 1).clamp(0, 2);
+    return List<int>.generate(3, (index) => firstDay + index);
+  }
+
   // Carousel state for week switching
   double _carouselOffset = 0.0;
   AnimationController? _carouselAnimController;
@@ -312,12 +323,32 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         entityKey: key,
       );
       await OfflineCacheStore.instance.write(storeKey, payload);
+      if (!demoModeNotifier.value &&
+          requestPersonId == personId &&
+          requestPersonType == personType) {
+        final wrapped = SchoolWrappedRepository();
+        for (final year in await wrapped.years(activeUntisAccountId ?? 'legacy')) {
+          final weekStart = monday ?? _currentMonday;
+          if (year.contains(weekStart.add(const Duration(days: 4))) ||
+              year.contains(weekStart)) {
+            await wrapped.recordWeek(
+              accountId: activeUntisAccountId ?? 'legacy',
+              year: year,
+              monday: weekStart,
+              days: weekData,
+            );
+          }
+        }
+      }
       // Remove a migrated legacy JSON cache only after the Hive write succeeds.
       await prefs.remove(key);
     } catch (_) {}
   }
 
-  String _extractTeacherNamesFromLesson(Map<dynamic, dynamic> lesson) {
+  String _extractTeacherNamesFromLesson(
+    Map<dynamic, dynamic> lesson, {
+    bool full = false,
+  }) {
     final teacherEntries = ((lesson['te'] as List?) ?? const <dynamic>[])
         .whereType<Map>()
         .cast<Map<dynamic, dynamic>>()
@@ -326,23 +357,37 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     for (final te in teacherEntries) {
       final teId = te['id'] as int?;
       final mapped = teId != null ? _teacherMap[teId] : null;
-      final direct =
-          (te['longName'] ??
-                  te['longname'] ??
+      final short = (te['name'] ?? te['shortName'] ?? '').toString().trim();
+      final directFull =
+          (te['fullName'] ??
                   te['displayName'] ??
-                  te['fullName'] ??
-                  te['name'] ??
+                  te['longName'] ??
+                  te['longname'] ??
                   '')
               .toString()
               .trim();
-      final candidate = (mapped?.trim().isNotEmpty == true)
-          ? mapped!.trim()
-          : direct;
+      final candidate = full
+          ? (mapped?.trim().isNotEmpty == true
+                ? mapped!.trim()
+                : (directFull.isNotEmpty ? directFull : short))
+          : (short.isNotEmpty
+                ? short
+                : (directFull.isNotEmpty ? directFull : mapped ?? ''));
       if (candidate.isNotEmpty && !teacherParts.contains(candidate)) {
         teacherParts.add(candidate);
       }
     }
     return teacherParts.join(', ');
+  }
+
+  String _displayTeacher(Map<dynamic, dynamic> lesson) {
+    final display = lessonTeacherDisplayName(lesson);
+    if (!lessonFullTeacherNamesNotifier.value ||
+        (lesson['_teacherFull']?.toString().trim().isNotEmpty ?? false)) {
+      return display;
+    }
+    final fromEntries = _extractTeacherNamesFromLesson(lesson, full: true);
+    return fromEntries.isNotEmpty ? fromEntries : display;
   }
 
   String _extractTeacherNamesFromTopLevel(Map<dynamic, dynamic> lesson) {
@@ -554,6 +599,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.addListener(_onHiddenSubjectsChanged);
+    subjectPresentationsNotifier.addListener(_onHiddenSubjectsChanged);
     monochromeLessonsNotifier.addListener(_onHiddenSubjectsChanged);
     monochromeLessonColorNotifier.addListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.addListener(_onHiddenSubjectsChanged);
@@ -570,6 +616,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonBorderRadiusNotifier.addListener(_onHiddenSubjectsChanged);
     lessonAccentStyleNotifier.addListener(_onHiddenSubjectsChanged);
     lessonShowTeacherNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonFullTeacherNamesNotifier.addListener(_onHiddenSubjectsChanged);
     lessonShowRoomNotifier.addListener(_onHiddenSubjectsChanged);
     lessonCompactModeNotifier.addListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.addListener(_onHiddenSubjectsChanged);
@@ -869,7 +916,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Future<void> _loadViewPref() async {
     final prefs = SettingsStore.instance.preferences;
     if (mounted) {
-      setState(() => _viewMode = (prefs.getInt('viewMode') ?? 0).clamp(0, 1));
+      final savedMode = prefs.getInt('timetableViewModeV2');
+      final legacyMode = prefs.getInt('viewMode') ?? 0;
+      setState(() {
+        _viewMode = (savedMode ?? (legacyMode == 1 ? 2 : 0)).clamp(0, 2);
+      });
     }
   }
 
@@ -883,10 +934,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   Future<void> _toggleView() async {
+    if (_isDayCarouselAnimating ||
+        _isWeekCarouselAnimating ||
+        _tabController.indexIsChanging) {
+      return;
+    }
     HapticFeedback.selectionClick();
-    setState(() => _viewMode = (_viewMode + 1) % 2);
+    setState(() => _viewMode = (_viewMode + 1) % 3);
     final prefs = SettingsStore.instance.preferences;
-    await prefs.setInt('viewMode', _viewMode);
+    await prefs.setInt('timetableViewModeV2', _viewMode);
   }
 
   Future<void> _fetchHomeworkAndNotes() async {
@@ -950,6 +1006,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
       homeworksNotifier.value = res['homeworks']!;
       lessonNotesNotifier.value = res['lessonNotes']!;
+      if (!demoModeNotifier.value && requestAccountId != null) {
+        final wrapped = SchoolWrappedRepository();
+        for (final year in await wrapped.years(requestAccountId)) {
+          if (year.contains(requestStart)) {
+            await wrapped.recordHomework(
+              accountId: requestAccountId, year: year,
+              items: res['homeworks']!,
+            );
+          }
+        }
+      }
     } catch (e) {
       debugPrint('Error fetching homework and notes: $e');
     }
@@ -1433,9 +1500,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final firstTeacher = teList.first as Map?;
       if (firstTeacher != null) {
         final tId = firstTeacher['id'] as int?;
-        lesson['_teacher'] = tId != null
-            ? (_teacherMap[tId] ?? (firstTeacher['name']?.toString() ?? '?'))
-            : '?';
+        lesson['_teacher'] =
+            firstTeacher['name']?.toString() ??
+            (tId == null ? '?' : _teacherMap[tId] ?? '?');
+        lesson['_teacherFull'] = tId == null
+            ? (firstTeacher['longName'] ?? firstTeacher['name'])?.toString() ??
+                  ''
+            : _teacherMap[tId] ?? firstTeacher['longName']?.toString() ?? '';
       }
     }
     final suList = (lesson['su'] as List?) ?? [];
@@ -1480,8 +1551,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final adjMonday = _weekMondayFromDelta(direction);
     final cached = _getAdjacentWeekData(adjMonday);
     if (cached != null) {
-      if (_viewMode == 1) {
-        return _buildWeekView(monday: adjMonday, weekData: cached);
+      if (!_isDailyView) {
+        return _buildWeekView(
+          monday: adjMonday,
+          weekData: cached,
+          visibleDays: _visibleGridDays,
+        );
       } else {
         final dayIndex = direction > 0 ? 0 : 4;
         return _buildGridView(dayIndex, monday: adjMonday, weekData: cached);
@@ -1526,9 +1601,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        return _viewMode == 1
-            ? _buildMaterialWeekCarousel(width)
-            : _buildMaterialDayCarousel(width);
+        return _isDailyView
+            ? _buildMaterialDayCarousel(width)
+            : _buildMaterialWeekCarousel(width);
       },
     );
   }
@@ -1784,7 +1859,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        if (_viewMode == 1) {
+        if (!_isDailyView) {
           return _buildDepthWeekCarousel(width);
         }
         return _buildDepthDayCarousel(width);
@@ -1968,9 +2043,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     key: ValueKey(
                       'carousel-${untisDateString(_currentMonday)}',
                     ),
-                    child: _viewMode == 1
-                        ? _buildWeekView()
-                        : _buildDayCarousel(w),
+                    child: _isDailyView
+                        ? _buildDayCarousel(w)
+                        : _buildWeekView(visibleDays: _visibleGridDays),
                   ),
                 ),
               ),
@@ -1983,7 +2058,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     // The weekly grid owns horizontal swipes again. The day carousel uses its
     // own gesture handler, while a vertical drag continues to reach the
     // scrollable timetable body.
-    if (_viewMode != 1) return carousel;
+    if (_isDailyView) return carousel;
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onHorizontalDragStart: _onWeekCarouselDragStart,
@@ -2091,9 +2166,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   void _onDayCarouselDragEnd(DragEndDetails details) {
     if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
-    final width = context.findRenderObject() != null
-        ? (context.findRenderObject()! as RenderBox).size.width
-        : 400.0;
+    final width = MediaQuery.sizeOf(context).width;
     final threshold = width * 0.25;
     final velocity = details.primaryVelocity ?? 0;
 
@@ -2143,8 +2216,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
-    final renderBox = context.findRenderObject() as RenderBox?;
-    final width = renderBox?.size.width ?? 400.0;
+    final width = MediaQuery.sizeOf(context).width;
     _animateDayCarouselTo(
       targetDay > currentDay ? 1 : -1,
       width,
@@ -2153,6 +2225,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   }
 
   void _onDayTabBarTap(int targetDay) {
+    // In 3-day and week mode the grid follows the header tab directly. The
+    // full-screen day carousel transition belongs only to Daily view.
+    if (!_isDailyView) return;
     if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
     // Tapping the already-selected date must remain a no-op. For a real tab
     // change TabBar has already started animateTo(), so indexIsChanging is true.
@@ -2359,6 +2434,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   void dispose() {
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
     subjectColorsNotifier.removeListener(_onHiddenSubjectsChanged);
+    subjectPresentationsNotifier.removeListener(_onHiddenSubjectsChanged);
     monochromeLessonsNotifier.removeListener(_onHiddenSubjectsChanged);
     monochromeLessonColorNotifier.removeListener(_onHiddenSubjectsChanged);
     showCancelledNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -2375,6 +2451,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     lessonBorderRadiusNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonAccentStyleNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonShowTeacherNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonFullTeacherNamesNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonShowRoomNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonCompactModeNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonDimPastNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -3747,8 +3824,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                             ? l['_subjectLong'].toString()
                                             : '?');
                                   final room = l['_room']?.toString() ?? '';
-                                  final teacher =
-                                      l['_teacher']?.toString() ?? '';
+                                  final teacher = _displayTeacher(l);
                                   final isCurrent =
                                       (startMin <= nowMin && nowMin < endMin);
                                   final isNow = isCurrent;
@@ -3806,8 +3882,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       isDark: isDark,
                                       fgColor: fgColor,
                                       bgColor: bgColor,
-                                      subject: subject,
-                                      subjectIcon: _subjectIconFor(sk, subject),
+                                      subject: _displaySubject(
+                                        sk.isNotEmpty ? sk : subject,
+                                      ),
+                                      subjectIcon:
+                                          _customSubjectIcon(sk) ??
+                                          _subjectIconFor(sk, subject),
                                       teacher: teacher,
                                       room: room,
                                       isNow: isNow,
@@ -3881,17 +3961,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
-  Widget _buildWeekView({DateTime? monday, Map<int, List<dynamic>>? weekData}) {
+  Widget _buildWeekView({
+    DateTime? monday,
+    Map<int, List<dynamic>>? weekData,
+    List<int>? visibleDays,
+  }) {
     final wd = weekData ?? _weekData;
     final m = monday ?? _currentMonday;
+    final shownDays = visibleDays ?? _visibleGridDays;
     final media = MediaQuery.of(context);
     final topContentPadding = _isExportingTimetable
         ? 10.0
-        : media.padding.top + kToolbarHeight + 10;
+        : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
 
     int globalMin = 480;
     int globalMax = 900;
-    for (final day in wd.values) {
+    for (final dayIndex in shownDays) {
+      final day = wd[dayIndex] ?? const <dynamic>[];
       for (final l in day) {
         final s = _toMinutes((l['startTime'] as int?) ?? 480);
         final e = _toMinutes((l['endTime'] as int?) ?? 600);
@@ -3920,7 +4006,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     // it, the Friday column ends exactly at the clip edge on phones and its
     // card border/shadow can be cut off.
     const double trailingDayGridInset = 12.0;
-    final timeRanges = _collectTimeRangesFromData(wd);
+    final visibleWeekData = <int, List<dynamic>>{
+      for (final dayIndex in shownDays)
+        dayIndex: wd[dayIndex] ?? const <dynamic>[],
+    };
+    final timeRanges = _collectTimeRangesFromData(visibleWeekData);
     final filteredTimeLabels = _filterTimeLabels(timeRanges);
     final cs = Theme.of(context).colorScheme;
     final today = DateTime.now();
@@ -3931,7 +4021,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final nowMin = today.hour * 60 + today.minute;
     final showNowLine =
         todayIndex >= 0 &&
-        todayIndex < 5 &&
+        shownDays.contains(todayIndex) &&
         nowMin >= globalMin &&
         nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
@@ -3952,12 +4042,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         child: LayoutBuilder(
           builder: (context, constraints) {
             final dayGridWidth = math.max(
-              (5 * minDayColWidth) + (dayColGap * 4),
+              (shownDays.length * minDayColWidth) +
+                  (dayColGap * (shownDays.length - 1)),
               constraints.maxWidth - timeColWidth - 4 - trailingDayGridInset,
             );
-            final dayColWidth = (dayGridWidth - (dayColGap * 4)) / 5;
+            final dayColWidth =
+                (dayGridWidth - (dayColGap * (shownDays.length - 1))) /
+                shownDays.length;
 
-            // On small screens five day columns cannot fit alongside the time
+            // On small screens all day columns cannot fit alongside the time
             // gutter. Keep their minimum readable width and scroll horizontally.
             return SingleChildScrollView(
               key: const ValueKey('week-grid-horizontal-scroll'),
@@ -3968,69 +4061,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: timeColWidth + 4,
-                        bottom: 6,
-                      ),
-                      child: Row(
-                        children: List.generate(5, (i) {
-                          final d = m.add(Duration(days: i));
-                          final isToday =
-                              d.year == today.year &&
-                              d.month == today.month &&
-                              d.day == today.day;
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              right: i == 4 ? 0 : dayColGap,
-                            ),
-                            child: SizedBox(
-                              width: dayColWidth,
-                              child: Center(
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      _dayShort[i],
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: isToday
-                                            ? cs.primary
-                                            : cs.onSurfaceVariant.withValues(
-                                                alpha: 0.8,
-                                              ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: isToday
-                                            ? cs.primary
-                                            : Colors.transparent,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        '${d.day}',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w800,
-                                          color: isToday
-                                              ? cs.onPrimary
-                                              : cs.onSurface,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -4082,7 +4112,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         const SizedBox(width: 4),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: List.generate(5, (dayIndex) {
+                          children: List.generate(shownDays.length, (
+                            visibleIndex,
+                          ) {
+                            final dayIndex = shownDays[visibleIndex];
                             final lessons = (wd[dayIndex] ?? [])
                                 .where(
                                   (l) => !hiddenSubjectsNotifier.value.contains(
@@ -4107,7 +4140,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               width: dayColWidth,
                               height: totalHeight,
                               margin: EdgeInsets.only(
-                                right: dayIndex == 4 ? 0 : dayColGap,
+                                right: visibleIndex == shownDays.length - 1
+                                    ? 0
+                                    : dayColGap,
                               ),
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
@@ -4262,9 +4297,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                         : '?');
                                               final room =
                                                   l['_room']?.toString() ?? '';
-                                              final teacher =
-                                                  l['_teacher']?.toString() ??
-                                                  '';
+                                              final teacher = _displayTeacher(
+                                                l,
+                                              );
                                               final sk2 =
                                                   l['_subjectShort']
                                                       ?.toString() ??
@@ -4380,11 +4415,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   isDark: isDark2,
                                                   fgColor: fgColor,
                                                   bgColor: bgColor,
-                                                  subject: subject,
-                                                  subjectIcon: _subjectIconFor(
-                                                    sk2,
-                                                    subject,
+                                                  subject: _displaySubject(
+                                                    sk2.isNotEmpty
+                                                        ? sk2
+                                                        : subject,
                                                   ),
+                                                  subjectIcon:
+                                                      _customSubjectIcon(sk2) ??
+                                                      _subjectIconFor(
+                                                        sk2,
+                                                        subject,
+                                                      ),
                                                   teacher: teacher,
                                                   room: room,
                                                   isNow: isNow,
@@ -4504,6 +4545,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _timetableRequestContext,
       );
       if (mounted) setState(() => _holidays = holidays);
+      if (!demoModeNotifier.value) {
+        final accountId = activeUntisAccountId ?? 'legacy';
+        final wrapped = SchoolWrappedRepository();
+        for (final year in await wrapped.years(accountId)) {
+          if (year.contains(DateTime.now())) {
+            await wrapped.recordHolidays(
+              accountId: accountId, year: year, holidays: holidays,
+            );
+          }
+        }
+      }
     } catch (_) {}
   }
 
@@ -4637,7 +4689,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         requestId: 'week_req',
       );
 
-      unawaited(_fetchMasterData());
+      await _fetchMasterData();
+      if (!isCurrentRequest()) return;
       unawaited(_fetchHomeworkAndNotes());
 
       final allLessons = await timetableFuture;
@@ -4689,6 +4742,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 _subjectShortMap[subId] ??
                 (eventName.isNotEmpty ? eventName : '');
             resolvedLesson['_teacher'] = teacherResolved;
+            resolvedLesson['_teacherFull'] = _extractTeacherNamesFromLesson(
+              lessonMap,
+              full: true,
+            );
             // WebUntis returns `ro` as either a list, a single map or just an
             // ID depending on the timetable endpoint. Normalize every form so
             // a week fetched after the carousel snap cannot lose room #2.
@@ -5496,6 +5553,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+  Future<void> _openTeacherSearch() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const TeacherSearchPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
@@ -5509,6 +5572,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         leading: _untisDropdownMenu(
           context: context,
           menuChildren: [
+            MenuItemButton(
+              leadingIcon: const Icon(Icons.person_search_rounded),
+              onPressed: _openTeacherSearch,
+              child: Text(l.teacherSearchTitle),
+            ),
             MenuItemButton(
               leadingIcon: const Icon(Icons.groups_rounded),
               onPressed: _openClassSearch,
@@ -5596,11 +5664,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              tooltip: _viewMode == 0
+              tooltip: _isDailyView
+                  ? l.timetableThreeDayView
+                  : _isThreeDayView
                   ? l.timetableWeekView
                   : l.timetableDayGrid,
               icon: Icon(
-                _viewMode == 0
+                _isDailyView
+                    ? Icons.view_week_rounded
+                    : _isThreeDayView
                     ? Icons.calendar_view_week_rounded
                     : Icons.calendar_view_day_rounded,
               ),
@@ -5608,165 +5680,160 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             ),
           ),
         ],
-        bottom: _viewMode == 1
-            ? null
-            : PreferredSize(
-                preferredSize: const Size.fromHeight(kTextTabBarHeight),
-                child: SizedBox(
-                  height: kTextTabBarHeight,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      TabBar(
-                        controller: _tabController,
-                        onTap: _onDayTabBarTap,
-                        indicator: const BoxDecoration(),
-                        indicatorWeight: 0,
-                        labelStyle: untisThemeTextStyle(
-                          context,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                        labelColor: Theme.of(context).colorScheme.primary,
-                        unselectedLabelColor: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant,
-                        dividerColor: Colors.transparent,
-                        tabs: List.generate(5, (i) {
-                          final dayDate = _currentMonday.add(Duration(days: i));
-                          final dayOverride =
-                              _alarmConfig.dateOverrides[alarmDateKey(dayDate)];
-                          final now = DateTime.now();
-                          final isToday =
-                              dayDate.year == now.year &&
-                              dayDate.month == now.month &&
-                              dayDate.day == now.day;
-                          return Tab(
-                            child: GestureDetector(
-                              key: ValueKey('timetable-day-tab-$i'),
-                              behavior: HitTestBehavior.opaque,
-                              onLongPress: () {
-                                HapticFeedback.mediumImpact();
-                                _showDateAlarmActions(dayDate);
-                              },
-                              child: Column(
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(kTextTabBarHeight),
+          child: SizedBox(
+            height: kTextTabBarHeight,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                AbsorbPointer(
+                  absorbing:
+                      _isDayCarouselAnimating || _isWeekCarouselAnimating,
+                  child: TabBar(
+                    controller: _tabController,
+                    onTap: _onDayTabBarTap,
+                    indicator: const BoxDecoration(),
+                    indicatorWeight: 0,
+                    labelStyle: untisThemeTextStyle(
+                      context,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    labelColor: Theme.of(context).colorScheme.primary,
+                    unselectedLabelColor: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant,
+                    dividerColor: Colors.transparent,
+                    tabs: List.generate(5, (i) {
+                      final dayDate = _currentMonday.add(Duration(days: i));
+                      final dayOverride =
+                          _alarmConfig.dateOverrides[alarmDateKey(dayDate)];
+                      final now = DateTime.now();
+                      final isToday =
+                          dayDate.year == now.year &&
+                          dayDate.month == now.month &&
+                          dayDate.day == now.day;
+                      return Tab(
+                        child: GestureDetector(
+                          key: ValueKey('timetable-day-tab-$i'),
+                          behavior: HitTestBehavior.opaque,
+                          onLongPress: () {
+                            HapticFeedback.mediumImpact();
+                            _showDateAlarmActions(dayDate);
+                          },
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _dayShort[i],
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  height: 1.1,
+                                ),
+                              ),
+                              Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    _dayShort[i],
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      height: 1.1,
+                                    '${dayDate.day}.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      height: 1.2,
+                                      color: isToday
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        '${dayDate.day}.',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          height: 1.2,
-                                          color: isToday
-                                              ? Theme.of(
-                                                  context,
-                                                ).colorScheme.primary
-                                              : Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                      if (dayOverride != null) ...[
-                                        const SizedBox(width: 3),
-                                        Icon(
-                                          dayOverride.disabled
-                                              ? Icons.alarm_off_rounded
-                                              : dayOverride
-                                                        .customTimeOfDayMinutes !=
-                                                    null
-                                              ? Icons.alarm_rounded
-                                              : Icons.fast_forward_rounded,
-                                          size: 12,
-                                          color: dayOverride.disabled
-                                              ? Theme.of(
-                                                  context,
-                                                ).colorScheme.error
-                                              : Theme.of(
-                                                  context,
-                                                ).colorScheme.primary,
-                                        ),
-                                        if (dayOverride
-                                                .customTimeOfDayMinutes !=
-                                            null)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              left: 2,
-                                            ),
-                                            child: Text(
-                                              '${(dayOverride.customTimeOfDayMinutes! ~/ 60).toString().padLeft(2, '0')}:${(dayOverride.customTimeOfDayMinutes! % 60).toString().padLeft(2, '0')}',
-                                              style: TextStyle(
-                                                fontSize: 8,
-                                                height: 1,
-                                                fontWeight: FontWeight.w800,
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.primary,
-                                              ),
-                                            ),
+                                  if (dayOverride != null) ...[
+                                    const SizedBox(width: 3),
+                                    Icon(
+                                      dayOverride.disabled
+                                          ? Icons.alarm_off_rounded
+                                          : dayOverride
+                                                    .customTimeOfDayMinutes !=
+                                                null
+                                          ? Icons.alarm_rounded
+                                          : Icons.fast_forward_rounded,
+                                      size: 12,
+                                      color: dayOverride.disabled
+                                          ? Theme.of(context).colorScheme.error
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                    ),
+                                    if (dayOverride.customTimeOfDayMinutes !=
+                                        null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 2),
+                                        child: Text(
+                                          '${(dayOverride.customTimeOfDayMinutes! ~/ 60).toString().padLeft(2, '0')}:${(dayOverride.customTimeOfDayMinutes! % 60).toString().padLeft(2, '0')}',
+                                          style: TextStyle(
+                                            fontSize: 8,
+                                            height: 1,
+                                            fontWeight: FontWeight.w800,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
                                           ),
-                                      ],
-                                    ],
-                                  ),
-                                  if (isToday)
-                                    Container(
-                                      width: 3,
-                                      height: 3,
-                                      margin: const EdgeInsets.only(top: 1),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                        shape: BoxShape.circle,
+                                        ),
                                       ),
-                                    )
-                                  else
-                                    const SizedBox(height: 4),
+                                  ],
                                 ],
                               ),
-                            ),
-                          );
-                        }),
-                      ),
-                      IgnorePointer(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final tabWidth = constraints.maxWidth / 5;
-                            return Stack(
-                              children: [
-                                AnimatedPositioned(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeOutCubic,
-                                  left:
-                                      (tabWidth * dayIndicatorIndex) +
-                                      ((tabWidth - 38) / 2),
-                                  bottom: 0,
-                                  width: 38,
+                              if (isToday)
+                                Container(
+                                  width: 3,
                                   height: 3,
-                                  child: ColoredBox(
+                                  margin: const EdgeInsets.only(top: 1),
+                                  decoration: BoxDecoration(
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.primary,
+                                    shape: BoxShape.circle,
                                   ),
-                                ),
-                              ],
-                            );
-                          },
+                                )
+                              else
+                                const SizedBox(height: 4),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      );
+                    }),
                   ),
                 ),
-              ),
+                IgnorePointer(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final tabWidth = constraints.maxWidth / 5;
+                      return Stack(
+                        children: [
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutCubic,
+                            left:
+                                (tabWidth * dayIndicatorIndex) +
+                                ((tabWidth - 38) / 2),
+                            bottom: 0,
+                            width: 38,
+                            height: 3,
+                            child: ColoredBox(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       body: _AnimatedBackground(
         child:
@@ -5821,7 +5888,25 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               )
             : RepaintBoundary(
                 key: _timetableExportKey,
-                child: _buildTimetableSwitcher(),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  reverseDuration: const Duration(milliseconds: 400),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => SizeTransition(
+                    sizeFactor: animation,
+                    axis: Axis.vertical,
+                    alignment: Alignment.topCenter,
+                    child: FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    ),
+                  ),
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(_viewMode),
+                    child: _buildTimetableSwitcher(),
+                  ),
+                ),
               ),
       ),
     );

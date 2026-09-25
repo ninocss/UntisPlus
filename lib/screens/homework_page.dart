@@ -386,6 +386,7 @@ Future<void> _showAddHomeworkDialog(
 }
 
 Future<void> _importHomeworkWithAI(BuildContext context) async {
+  if (!aiEnabledNotifier.value) return;
   final l = appL10nFor(appLocaleNotifier.value);
   final runtime = _currentAiRuntimeConfiguration();
   final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
@@ -486,6 +487,9 @@ Future<String> _requestAiVisionAnalysisGlobal({
   required Uint8List fileBytes,
   required String mimeType,
 }) {
+  if (!aiEnabledNotifier.value) {
+    return Future<String>.error(StateError('AI is disabled'));
+  }
   final l = appL10nFor(appLocaleNotifier.value);
   final runtime = _currentAiRuntimeConfiguration();
   final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
@@ -539,10 +543,15 @@ class HomeworkPage extends StatelessWidget {
             onPressed: () => _showAddHomeworkDialog(context),
             tooltip: l.homeworkAddTitle,
           ),
-          IconButton(
-            icon: const Icon(Icons.document_scanner_rounded),
-            onPressed: () => _importHomeworkWithAI(context),
-            tooltip: l.homeworkActionImport,
+          ValueListenableBuilder<bool>(
+            valueListenable: aiEnabledNotifier,
+            builder: (context, enabled, _) => enabled
+                ? IconButton(
+                    icon: const Icon(Icons.document_scanner_rounded),
+                    onPressed: () => _importHomeworkWithAI(context),
+                    tooltip: l.homeworkActionImport,
+                  )
+                : const SizedBox.shrink(),
           ),
           const SizedBox(width: 8),
         ],
@@ -574,11 +583,13 @@ class _HomeworkViewState extends State<_HomeworkView> {
   void initState() {
     super.initState();
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
+    subjectPresentationsNotifier.addListener(_onHiddenSubjectsChanged);
   }
 
   @override
   void dispose() {
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
+    subjectPresentationsNotifier.removeListener(_onHiddenSubjectsChanged);
     super.dispose();
   }
 
@@ -1061,8 +1072,14 @@ class _HomeworkViewState extends State<_HomeworkView> {
                       children: [
                         Row(
                           children: [
+                            if (_customSubjectIcon(subject) != null)
+                              Icon(
+                                _customSubjectIcon(subject),
+                                size: 16,
+                                color: accent,
+                              ),
                             _chip(
-                              subject,
+                              _displaySubject(subject),
                               accent.withValues(alpha: 0.2),
                               accent,
                             ),

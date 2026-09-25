@@ -16,6 +16,17 @@ class SettingsSubjectsPage extends StatelessWidget {
           title: l.settingsSectionSubjects,
           children: [
             SettingsTile(
+              icon: Icons.edit_note_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsSubjectCustomize,
+              subtitle: l.settingsSubjectCustomizeDesc,
+              onTap: () => Navigator.push(
+                context,
+                _buildBouncyRoute(const SubjectPresentationsPage()),
+              ),
+            ),
+            SettingsTile(
               icon: Icons.color_lens_rounded,
               iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
               iconColor: cs.onPrimaryContainer,

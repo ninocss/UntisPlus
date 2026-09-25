@@ -97,7 +97,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                Slider(
+                HapticSlider(
                   value: value.toDouble(),
                   min: min.toDouble(),
                   max: max.toDouble(),

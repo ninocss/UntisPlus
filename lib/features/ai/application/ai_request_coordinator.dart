@@ -9,6 +9,8 @@ typedef AiProviderFactory =
 typedef AiDefaultModelResolver =
     String Function(String provider, String customCompatibility);
 
+bool _alwaysEnabled() => true;
+
 class AiRuntimeConfiguration {
   const AiRuntimeConfiguration({
     required this.provider,
@@ -90,7 +92,10 @@ class AiResolvedRequest {
 }
 
 class AiRequestCoordinator {
-  const AiRequestCoordinator();
+  const AiRequestCoordinator({bool Function() isEnabled = _alwaysEnabled})
+    : _isEnabled = isEnabled;
+
+  final bool Function() _isEnabled;
 
   String normalizeProvider(String value) {
     final normalized = value.trim().toLowerCase();
@@ -115,6 +120,7 @@ class AiRequestCoordinator {
     AiRuntimeConfiguration runtime,
     AiRequestSpec spec,
   ) {
+    if (!_isEnabled()) throw StateError('AI is disabled');
     final provider = normalizeProvider(runtime.provider);
     final compatibility = normalizeCustomCompatibility(
       runtime.customCompatibility,

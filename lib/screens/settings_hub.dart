@@ -81,6 +81,12 @@ final _blurStrengthPreference = doublePreference(
   notifier: blurStrengthNotifier,
   normalize: (value) => value.clamp(0.25, 2.0).toDouble(),
 );
+final _headerStylePreference = intPreference(
+  key: 'headerStyle',
+  defaultValue: 0,
+  notifier: headerStyleNotifier,
+  normalize: (value) => value.clamp(0, 2).toInt(),
+);
 final _surfaceBlurEnabledPreference = boolPreference(
   key: 'surfaceBlurEnabled',
   defaultValue: true,
@@ -190,6 +196,11 @@ final _lessonShowTeacherPreference = boolPreference(
   key: 'lessonShowTeacher',
   defaultValue: true,
   notifier: lessonShowTeacherNotifier,
+);
+final _lessonFullTeacherNamesPreference = boolPreference(
+  key: 'lessonFullTeacherNames',
+  defaultValue: false,
+  notifier: lessonFullTeacherNamesNotifier,
 );
 final _lessonShowSubjectIconsPreference = boolPreference(
   key: 'lessonShowSubjectIcons',
@@ -307,6 +318,9 @@ Future<void> _settingsSetBlurEnabled(bool value) async {
 Future<void> _settingsSetBlurStrength(double value) =>
     SettingsStore.instance.write(_blurStrengthPreference, value);
 
+Future<void> _settingsSetHeaderStyle(int value) =>
+    SettingsStore.instance.write(_headerStylePreference, value);
+
 Future<void> _settingsSetSurfaceBlurEnabled(bool value) =>
     SettingsStore.instance.write(_surfaceBlurEnabledPreference, value);
 
@@ -369,6 +383,9 @@ Future<void> _settingsSetLessonAccentStyle(int value) =>
 
 Future<void> _settingsSetLessonShowTeacher(bool value) =>
     SettingsStore.instance.write(_lessonShowTeacherPreference, value);
+
+Future<void> _settingsSetLessonFullTeacherNames(bool value) =>
+    SettingsStore.instance.write(_lessonFullTeacherNamesPreference, value);
 
 Future<void> _settingsSetLessonShowSubjectIcons(bool value) =>
     SettingsStore.instance.write(_lessonShowSubjectIconsPreference, value);
@@ -597,6 +614,7 @@ Future<void> _settingsSyncFromPrefs() async {
       (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
 
   await store.load(_blurStrengthPreference);
+  await store.load(_headerStylePreference);
   await store.load(_surfaceBlurEnabledPreference);
   await store.load(_surfaceCornerModePreference);
   await store.load(_surfaceCornerRadiusPreference);
@@ -618,6 +636,7 @@ Future<void> _settingsSyncFromPrefs() async {
   await store.load(_lessonBorderRadiusPreference);
   await store.load(_lessonAccentStylePreference);
   await store.load(_lessonShowTeacherPreference);
+  await store.load(_lessonFullTeacherNamesPreference);
   await store.load(_lessonShowSubjectIconsPreference);
   await store.load(_lessonShowRoomPreference);
   await store.load(_lessonCompactModePreference);
@@ -696,6 +715,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     required List<_SettingsHubItem> allItems,
   }) {
     if (item.onTap != null) {
+      HapticFeedback.selectionClick();
       item.onTap!();
       return;
     }
@@ -710,6 +730,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       return;
     }
 
+    HapticFeedback.selectionClick();
     Navigator.push(context, _buildBouncyRoute(item.pageBuilder!()));
   }
 
@@ -892,6 +913,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final expanded = UntisLayout.isExpanded(context);
 
     Color getAccent(int index) {
       return switch (index % 6) {
@@ -940,6 +962,13 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       title: l.settingsSectionSubjects,
       subtitle: l.settingsSectionColors,
       pageBuilder: () => const SettingsSubjectsPage(),
+    );
+    final wrappedItem = makeItem(
+      index: 12,
+      icon: Icons.auto_awesome_rounded,
+      title: l.wrapped('title'),
+      subtitle: l.wrapped('settingsDesc'),
+      onTap: () => unawaited(openSchoolWrapped(context)),
     );
     final notificationsItem = makeItem(
       index: 2,
@@ -1035,7 +1064,12 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final personalizeItems = <_SettingsHubItem>[appearanceItem, widgetsItem];
     final smartItems = <_SettingsHubItem>[aiItem];
     final dataItems = <_SettingsHubItem>[accountItem, backupItem];
-    final appItems = <_SettingsHubItem>[?updatesItem, supportItem, reportItem];
+    final appItems = <_SettingsHubItem>[
+      ?updatesItem,
+      supportItem,
+      reportItem,
+      wrappedItem,
+    ];
     // Keep the internal detail indices stable for existing tablet navigation
     // and widget tests. Visual grouping is independent from this order.
     final items = <_SettingsHubItem>[
@@ -1051,6 +1085,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       ?updatesItem,
       supportItem,
       reportItem,
+      wrappedItem,
     ];
 
     Widget settingsList({required bool expanded}) {
@@ -1061,17 +1096,18 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           ? 24.0
           : 16.0;
       final bottom = mq.padding.bottom + (expanded ? 28 : 118);
+      final top = expanded ? 14.0 : mq.padding.top + kToolbarHeight + 14;
 
       return CustomScrollView(
         key: PageStorageKey<String>(
           expanded ? 'settings-hub-expanded' : 'settings-hub-compact',
         ),
-        primary: !expanded,
+        primary: false,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(horizontal, 14, horizontal, bottom),
+            padding: EdgeInsets.fromLTRB(horizontal, top, horizontal, bottom),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 _buildSection(
@@ -1121,11 +1157,12 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     }
 
     return Scaffold(
+      extendBodyBehindAppBar: !expanded,
+      backgroundColor: Colors.transparent,
       appBar: _mainTabHeaderAppBar(context, l.settingsTitle),
       body: _AnimatedBackground(
         child: LayoutBuilder(
           builder: (context, _) {
-            final expanded = UntisLayout.isExpanded(context);
             if (!expanded) return settingsList(expanded: false);
 
             final detailIndex = _selectedDetail

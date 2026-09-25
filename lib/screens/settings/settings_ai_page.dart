@@ -46,6 +46,12 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _setAiEnabled(bool enabled) async {
+    aiEnabledNotifier.value = enabled;
+    await SettingsStore.instance.writeRaw('aiEnabled', enabled);
+    if (mounted) setState(() {});
+  }
+
   String _activeProviderApiKey() {
     switch (_normalizeAiProvider(aiProvider)) {
       case 'openai':
@@ -1617,7 +1623,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           style: GoogleFonts.outfit(fontSize: 12, color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
-        Slider(
+        HapticSlider(
           value: value,
           min: min,
           max: max,
@@ -1673,6 +1679,20 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     return SettingsPageShell(
       title: l.settingsSectionAI,
       children: [
+        SettingsGroup(
+          title: l.settingsAiAvailability,
+          children: [
+            SettingsSwitchTile(
+              icon: Icons.auto_awesome_rounded,
+              title: l.settingsAiEnabled,
+              subtitle: l.settingsAiEnabledDesc,
+              showSubtitle: true,
+              value: aiEnabledNotifier.value,
+              onChanged: _setAiEnabled,
+            ),
+          ],
+        ),
+        if (aiEnabledNotifier.value) ...[
         // ── GROUP 1: AI MODEL & PROVIDER ──
         SettingsGroup(
           title: l.settingsSectionAI,
@@ -1819,6 +1839,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             ),
           ],
         ),
+        ],
       ],
     );
   }

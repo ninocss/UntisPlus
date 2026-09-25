@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
+import '../core/sync_state.dart';
 import '../core/time_utils.dart';
 import '../core/version_utils.dart';
 import '../data/cache/offline_cache_store.dart';
@@ -14,6 +15,8 @@ import '../data/webuntis/webuntis_session_manager.dart';
 import '../features/changes/data/change_repository.dart';
 import '../features/changes/domain/timetable_change.dart';
 import '../features/accounts/data/untis_account_store.dart';
+import '../features/timetable/data/teacher_search_index_service.dart';
+import '../features/timetable/data/timetable_repository.dart';
 import '../features/updates/data/github_release_repository.dart';
 import '../l10n.dart';
 
@@ -49,13 +52,123 @@ void callbackDispatcher() {
           task == kProgressiveBoundaryRefreshId) {
         await refreshProgressiveNotificationFromCache();
       } else {
+        final taskStartedAt = DateTime.now();
         await updateUntisData();
+        await refreshTeacherSearchIndexIfMorning(now: taskStartedAt);
       }
     } catch (e) {
       debugPrint("Background Task Error: $e");
     }
     return Future.value(true);
   });
+}
+
+/// WorkManager runs the regular data task throughout the day. Use its first
+/// successful run in the morning to refresh the class-derived teacher index.
+Future<void> refreshTeacherSearchIndexIfMorning({DateTime? now}) async {
+  final time = now ?? DateTime.now();
+  if (time.hour < 5 || time.hour >= 11) return;
+
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getBool('demoMode') ?? false) return;
+  final accountId = prefs.getString('activeUntisAccountId') ?? '';
+  final effectiveAccountId = accountId.isEmpty ? 'legacy' : accountId;
+  final dateKey =
+      '${time.year.toString().padLeft(4, '0')}'
+      '${time.month.toString().padLeft(2, '0')}'
+      '${time.day.toString().padLeft(2, '0')}';
+  final refreshKey = 'teacherSearchMorningRefresh.$effectiveAccountId';
+  if (prefs.getString(refreshKey) == dateKey) return;
+
+  final schoolUrl = prefs.getString('schoolUrl') ?? '';
+  final schoolName = prefs.getString('schoolName') ?? '';
+  final username = prefs.getString('username') ?? '';
+  final personId = prefs.getInt('personId') ?? 0;
+  final personType = prefs.getInt('personType') ?? 5;
+  if (schoolUrl.isEmpty || schoolName.isEmpty || username.isEmpty) return;
+
+  final credentials = await CredentialVault.instance.readAccount(
+    effectiveAccountId,
+  );
+  final password = credentials.password.isNotEmpty
+      ? credentials.password
+      : prefs.getString('password') ?? '';
+  if (password.isEmpty) return;
+
+  final account = WebUntisAccountLogin(
+    accountId: effectiveAccountId,
+    username: username,
+    schoolUrl: schoolUrl,
+    schoolName: schoolName,
+    personId: personId,
+    personType: personType,
+  );
+  final indexService = TeacherSearchIndexService(
+    repository: TimetableRepository(client: _backgroundWebUntisClient),
+  );
+  final repository = TimetableRepository(client: _backgroundWebUntisClient);
+  try {
+    if (credentials.password.isNotEmpty && accountId.isNotEmpty) {
+      final nativeDirectoryAvailable = await _backgroundWebUntisSessions
+          .runAuthenticated(
+            account: account,
+            currentSessionId: credentials.sessionId,
+            request: (context) async {
+              try {
+                return (await repository.fetchTeachers(context)).isNotEmpty;
+              } on WebUntisFailure catch (failure) {
+                if (failure.kind == WebUntisFailureKind.authentication) {
+                  rethrow;
+                }
+                return false;
+              } catch (_) {
+                return false;
+              }
+            },
+          );
+      if (nativeDirectoryAvailable) {
+        await prefs.setString(refreshKey, dateKey);
+        return;
+      }
+      await _backgroundWebUntisSessions.runAuthenticated(
+        account: account,
+        currentSessionId: credentials.sessionId,
+        request: (context) => indexService.refresh(
+          accountId: effectiveAccountId,
+          context: context,
+          date: time,
+        ),
+      );
+    } else {
+      final sessionId = await _authenticateBackgroundAccount(
+        account: account,
+        password: password,
+        credentialMode: credentials.password.isNotEmpty
+            ? credentials.credentialMode
+            : (prefs.getString('loginCredentialMode') ?? 'password'),
+        clientName: 'UntisPlusTeacherSearch',
+      );
+      final context = WebUntisRequestContext(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: sessionId,
+      );
+      try {
+        if ((await repository.fetchTeachers(context)).isNotEmpty) {
+          await prefs.setString(refreshKey, dateKey);
+          return;
+        }
+      } catch (_) {}
+      await indexService.refresh(
+        accountId: effectiveAccountId,
+        context: context,
+        date: time,
+      );
+    }
+    await prefs.setString(refreshKey, dateKey);
+  } catch (error) {
+    debugPrint('Teacher search morning cache refresh failed: $error');
+  }
 }
 
 class BackgroundService {

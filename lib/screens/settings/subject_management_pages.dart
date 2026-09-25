@@ -1,5 +1,132 @@
 part of '../../main.dart';
 
+class SubjectPresentationsPage extends StatelessWidget {
+  const SubjectPresentationsPage({super.key});
+
+  Future<void> _edit(BuildContext context, String key) async {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final existing = subjectPresentationsNotifier.value[key];
+    var name = existing?.name ?? '';
+    var iconKey = existing?.icon ?? '';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) => AlertDialog(
+          title: Text(l.settingsSubjectCustomizeFor(key)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  initialValue: name,
+                  onChanged: (value) => name = value,
+                  maxLength: 60,
+                  decoration: InputDecoration(
+                    labelText: l.settingsSubjectCustomName,
+                    hintText: key,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(l.settingsSubjectIcon),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: Text(l.settingsSubjectDefaultIcon),
+                      selected: iconKey.isEmpty,
+                      onSelected: (_) => update(() => iconKey = ''),
+                    ),
+                    for (final entry in subjectIconChoices.entries)
+                      IconButton.filledTonal(
+                        tooltip: l.settingsSubjectIcon,
+                        onPressed: () => update(() => iconKey = entry.key),
+                        style: IconButton.styleFrom(
+                          backgroundColor: iconKey == entry.key
+                              ? Theme.of(
+                                  dialogContext,
+                                ).colorScheme.primaryContainer
+                              : null,
+                        ),
+                        icon: Icon(entry.value),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(l.cancel),
+            ),
+            if (existing != null)
+              TextButton(
+                onPressed: () async {
+                  await _setSubjectPresentation(key, null);
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
+                },
+                child: Text(l.settingsSubjectReset),
+              ),
+            FilledButton(
+              onPressed: () async {
+                await _setSubjectPresentation(
+                  key,
+                  SubjectPresentation(
+                    name: name.trim(),
+                    icon: iconKey,
+                    aliases: _subjectAliases(key).toList(growable: false),
+                  ),
+                );
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              },
+              child: Text(l.commonSaveChanges),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    return SettingsPageShell(
+      title: l.settingsSubjectCustomize,
+      children: [
+        ValueListenableBuilder<Set<String>>(
+          valueListenable: knownSubjectsNotifier,
+          builder: (context, known, _) =>
+              ValueListenableBuilder<Map<String, SubjectPresentation>>(
+                valueListenable: subjectPresentationsNotifier,
+                builder: (context, custom, _) {
+                  final keys = {...known, ...custom.keys}.toList()..sort();
+                  if (keys.isEmpty) return Text(l.settingsNoSubjectsLoaded);
+                  return SettingsGroup(
+                    children: [
+                      for (final key in keys)
+                        SettingsTile(
+                          icon:
+                              _customSubjectIcon(key) ??
+                              Icons.menu_book_outlined,
+                          title: _displaySubject(key),
+                          subtitle: custom[key]?.name.isNotEmpty == true
+                              ? key
+                              : l.settingsSubjectCustomizeDesc,
+                          onTap: () => _edit(context, key),
+                        ),
+                    ],
+                  );
+                },
+              ),
+        ),
+      ],
+    );
+  }
+}
+
 class SubjectColorsPage extends StatelessWidget {
   const SubjectColorsPage({super.key});
 
@@ -61,7 +188,7 @@ class SubjectColorsPage extends StatelessWidget {
                   '${l.settingsColorRed}: ${red.round()}',
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
-                Slider(
+                HapticSlider(
                   value: red,
                   min: 0,
                   max: 255,
@@ -72,7 +199,7 @@ class SubjectColorsPage extends StatelessWidget {
                   '${l.settingsColorGreen}: ${green.round()}',
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
-                Slider(
+                HapticSlider(
                   value: green,
                   min: 0,
                   max: 255,
@@ -83,7 +210,7 @@ class SubjectColorsPage extends StatelessWidget {
                   '${l.settingsColorBlue}: ${blue.round()}',
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
-                Slider(
+                HapticSlider(
                   value: blue,
                   min: 0,
                   max: 255,

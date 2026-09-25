@@ -53,6 +53,7 @@ class _CustomBackgroundEditorScreenState
 
     customBackgroundsNotifier.addListener(_syncFromActive);
     selectedCustomBackgroundIdNotifier.addListener(_syncFromActive);
+    aiEnabledNotifier.addListener(_onAiEnabledChanged);
   }
 
   @override
@@ -60,11 +61,20 @@ class _CustomBackgroundEditorScreenState
     WidgetsBinding.instance.removeObserver(this);
     customBackgroundsNotifier.removeListener(_syncFromActive);
     selectedCustomBackgroundIdNotifier.removeListener(_syncFromActive);
+    aiEnabledNotifier.removeListener(_onAiEnabledChanged);
     _scrollController.dispose();
     _previewCtrl.dispose();
     _nameCtrl.dispose();
     _aiCtrl.dispose();
     super.dispose();
+  }
+
+  void _onAiEnabledChanged() {
+    if (!mounted) return;
+    if (!aiEnabledNotifier.value && _backgroundToolIndex == 3) {
+      _backgroundToolIndex = 2;
+    }
+    setState(() {});
   }
 
   @override
@@ -272,7 +282,7 @@ class _CustomBackgroundEditorScreenState
       l.bgEditorLibrary,
       l.bgEditorMeta,
       l.bgEditorEffects,
-      l.bgEditorAiTitle,
+      if (aiEnabledNotifier.value) l.bgEditorAiTitle,
     ];
     const icons = <IconData>[
       Icons.collections_bookmark_rounded,
@@ -779,7 +789,7 @@ class _CustomBackgroundEditorScreenState
                   '${l.settingsColorRed}: ${red.round()}',
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
-                Slider(
+                HapticSlider(
                   value: red,
                   min: 0,
                   max: 255,
@@ -790,7 +800,7 @@ class _CustomBackgroundEditorScreenState
                   '${l.settingsColorGreen}: ${green.round()}',
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
-                Slider(
+                HapticSlider(
                   value: green,
                   min: 0,
                   max: 255,
@@ -801,7 +811,7 @@ class _CustomBackgroundEditorScreenState
                   '${l.settingsColorBlue}: ${blue.round()}',
                   style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                 ),
-                Slider(
+                HapticSlider(
                   value: blue,
                   min: 0,
                   max: 255,
@@ -881,6 +891,7 @@ class _CustomBackgroundEditorScreenState
   }
 
   Future<void> _generateWithAi() async {
+    if (!aiEnabledNotifier.value) return;
     if (_aiBusy) return;
     final l = appL10nFor(appLocaleNotifier.value);
     final prompt = _aiCtrl.text.trim();
@@ -1029,7 +1040,7 @@ class _CustomBackgroundEditorScreenState
             ),
           ],
         ),
-        Slider(
+        HapticSlider(
           value: value.clamp(min, max),
           min: min,
           max: max,
@@ -2168,7 +2179,7 @@ class _CustomBackgroundEditorScreenState
       0 => libraryTools,
       1 => designTools,
       2 => effectsTools,
-      _ => aiTools,
+      _ => aiEnabledNotifier.value ? aiTools : libraryTools,
     };
 
     return PopScope(

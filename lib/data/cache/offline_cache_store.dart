@@ -80,6 +80,22 @@ class OfflineCacheStore {
     }
   }
 
+  /// Keeps keys available for consumers that need to identify dated documents.
+  Future<Map<String, CachedDocument>> readEntriesWithPrefix(String prefix) async {
+    try {
+      final box = await _box();
+      final result = <String, CachedDocument>{};
+      for (final key in box.keys.whereType<String>()) {
+        if (!key.startsWith(prefix)) continue;
+        final document = _decode(box.get(key));
+        if (document != null) result[key] = document;
+      }
+      return result;
+    } catch (_) {
+      return const {};
+    }
+  }
+
   Future<void> write(String key, Map<String, dynamic> value) async {
     final payload = jsonEncode({
       'schemaVersion': 1,

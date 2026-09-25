@@ -28,7 +28,7 @@ class _SchoolNotificationItem {
   final String? url;
   final List<_MessageAttachment> attachments;
 
-  const _SchoolNotificationItem({
+  _SchoolNotificationItem({
     required this.id,
     required this.title,
     required this.body,
@@ -42,6 +42,9 @@ class _SchoolNotificationItem {
   int get sortValue => date?.millisecondsSinceEpoch ?? 0;
 
   String get displayBody => fullBody.isEmpty ? body : fullBody;
+  late final String previewBody = schoolHtmlToPlainText(
+    sanitizeSchoolHtml(body),
+  );
 
   String? get uniformAttachmentExtension {
     if (attachments.isEmpty) return null;
@@ -73,7 +76,21 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   bool _showInbox = false;
   String? _selectedNotificationId;
   bool _loading = true;
-  String? _error;
+  String? _newsError;
+  String? _inboxError;
+  String? get _error => _showInbox ? _inboxError : _newsError;
+  bool _refreshing = false;
+  Future<void>? _reloadFuture;
+
+  String _messageForFailure(WebUntisFailure failure) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    return switch (failure.kind) {
+      WebUntisFailureKind.authentication => l.infoLoginRequired,
+      WebUntisFailureKind.permission => l.infoNoPermission,
+      _ => l.infoFetchError,
+    };
+  }
+
   DateTime? _lastUpdated;
   final Set<String> _unreadMessageIds = {};
 
@@ -104,7 +121,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
 
   Future<void> _refreshInboxUnread(List<_SchoolNotificationItem> inbox) async {
     if (demoModeNotifier.value) {
+      _unreadMessageIds.clear();
       unreadInboxMessagesNotifier.value = 0;
+      if (mounted) setState(() {});
       return;
     }
     if (inbox.isEmpty) return;
@@ -114,12 +133,14 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       ..clear()
       ..addAll(unread.map((item) => item.id));
     unreadInboxMessagesNotifier.value = unread.length;
+    if (mounted) setState(() {});
     await _persistSeenMessageIds({...seen, ...inbox.map((item) => item.id)});
   }
 
   void _markMessageOpened(_SchoolNotificationItem item) {
     if (_unreadMessageIds.remove(item.id)) {
       unreadInboxMessagesNotifier.value = _unreadMessageIds.length;
+      if (mounted) setState(() {});
     }
   }
 
@@ -139,7 +160,22 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     }
   }
 
-  Future<void> _reload({bool showSpinner = false}) async {
+  Future<void> _reload({bool showSpinner = false}) {
+    final activeReload = _reloadFuture;
+    if (activeReload != null) return activeReload;
+
+    if (mounted) setState(() => _refreshing = true);
+    final reload = _performReload(showSpinner: showSpinner);
+    late final Future<void> trackedReload;
+    trackedReload = reload.whenComplete(() {
+      if (identical(_reloadFuture, trackedReload)) _reloadFuture = null;
+      if (mounted) setState(() => _refreshing = false);
+    });
+    _reloadFuture = trackedReload;
+    return trackedReload;
+  }
+
+  Future<void> _performReload({bool showSpinner = false}) async {
     if (demoModeNotifier.value) {
       final locale = appLocaleNotifier.value;
       final fetchedNews = DemoModeService.demoNotifications(locale: locale).map(
@@ -187,7 +223,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           _showInbox ? fetchedInbox : fetchedNews,
         );
         _loading = false;
-        _error = null;
+        _newsError = null;
+        _inboxError = null;
         _lastUpdated = DateTime.now();
       });
       unreadInboxMessagesNotifier.value = 0;
@@ -218,7 +255,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           _inboxItems = const [];
           _selectedNotificationId = null;
           _loading = false;
-          _error = null;
+          _newsError = appL10nFor(appLocaleNotifier.value).infoLoginRequired;
+          _inboxError = _newsError;
           _lastUpdated = DateTime.now();
         });
         unreadInboxMessagesNotifier.value = 0;
@@ -230,7 +268,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         mounted) {
       setState(() {
         _loading = true;
-        _error = null;
+        _newsError = null;
+        _inboxError = null;
       });
     }
 
@@ -238,9 +277,15 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       final fetched = await _fetchSchoolNotifications();
       if (!mounted) return;
       setState(() {
-        _newsItems = fetched.news;
-        _inboxItems = fetched.inbox;
-        final active = _showInbox ? fetched.inbox : fetched.news;
+        if (fetched.newsFailure == null) _newsItems = fetched.news;
+        if (fetched.inboxFailure == null) _inboxItems = fetched.inbox;
+        _newsError = fetched.newsFailure == null
+            ? null
+            : _messageForFailure(fetched.newsFailure!);
+        _inboxError = fetched.inboxFailure == null
+            ? null
+            : _messageForFailure(fetched.inboxFailure!);
+        final active = _showInbox ? _inboxItems : _newsItems;
         final hasExistingSelection = active.any(
           (item) => item.id == _selectedNotificationId,
         );
@@ -248,11 +293,14 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
             ? _selectedNotificationId
             : _firstNotificationId(active);
         _loading = false;
-        _error = null;
         _lastUpdated = DateTime.now();
       });
-      unawaited(_refreshInboxUnread(fetched.inbox));
-      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      if (fetched.inboxFailure == null) {
+        unawaited(_refreshInboxUnread(fetched.inbox));
+      }
+      if (fetched.newsFailure == null &&
+          !kIsWeb &&
+          (Platform.isAndroid || Platform.isIOS)) {
         final summary = fetched.news
             .take(3)
             .map((item) => item.title)
@@ -270,14 +318,20 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = appL10nFor(appLocaleNotifier.value).infoFetchError;
+        _newsError = appL10nFor(appLocaleNotifier.value).infoFetchError;
+        _inboxError = _newsError;
         _lastUpdated = DateTime.now();
       });
     }
   }
 
   Future<
-    ({List<_SchoolNotificationItem> inbox, List<_SchoolNotificationItem> news})
+    ({
+      List<_SchoolNotificationItem> inbox,
+      List<_SchoolNotificationItem> news,
+      WebUntisFailure? inboxFailure,
+      WebUntisFailure? newsFailure,
+    })
   >
   _fetchSchoolNotifications() async {
     List<_MessageAttachment> parseMessageAttachments(Map<String, dynamic> map) {
@@ -394,7 +448,12 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       sessionId: sessionID,
       reauthenticate: () async => await _reAuthenticate() ? sessionID : null,
     );
-    return (inbox: toItems(fetched.inbox), news: toItems(fetched.news));
+    return (
+      inbox: toItems(fetched.inbox),
+      news: toItems(fetched.news),
+      inboxFailure: fetched.inboxFailure,
+      newsFailure: fetched.newsFailure,
+    );
   }
 
   DateTime? _parseNotificationDate(dynamic raw) {
@@ -446,13 +505,6 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         appL10nFor(appLocaleNotifier.value).settingsGithubOpenFailed,
       );
     }
-  }
-
-  Widget _buildFormattedInfoBody(BuildContext context, String body) {
-    return _InfoHtmlBody(
-      document: sanitizeSchoolHtml(body),
-      onOpenUrl: (url) => _openInfoUrl(context, url),
-    );
   }
 
   String? _firstNotificationId(List<_SchoolNotificationItem> items) =>
@@ -529,9 +581,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                         if (item.body.isNotEmpty) ...[
                           const SizedBox(height: 3),
                           Text(
-                            schoolHtmlToPlainText(
-                              sanitizeSchoolHtml(item.body),
-                            ),
+                            item.previewBody,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
@@ -577,7 +627,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     final selectedItem = _selectedItem(activeItems);
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
       appBar: _mainTabHeaderAppBar(
         context,
         l.infoTitle,
@@ -592,8 +643,24 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
               tooltip: l.reload,
-              onPressed: _reload,
-              icon: const Icon(Icons.refresh_rounded),
+              onPressed: _refreshing ? null : _reload,
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: _refreshing
+                    ? SizedBox(
+                        key: const ValueKey('notifications-refreshing'),
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.refresh_rounded,
+                        key: ValueKey('notifications-refresh'),
+                      ),
+              ),
             ),
           ),
         ],
@@ -606,44 +673,49 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
             onRefresh: _reload,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: UntisLayout.pagePadding(context, bottom: 150),
+              padding: UntisLayout.pagePadding(context, bottom: 150).copyWith(
+                top: MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
+              ),
               children: [
                 if (_loading && activeItems.isEmpty) ...[
                   const SizedBox(height: 140),
                   const Center(child: CircularProgressIndicator()),
                 ] else ...[
                   _buildInfoSummaryCard(cs, l, activeItems.length),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _infoModeButton(
-                          label: l.start,
-                          icon: Icons.campaign_rounded,
-                          selected: !_showInbox,
-                          onTap: () => setState(() {
-                            _showInbox = false;
-                            _selectedNotificationId = _firstNotificationId(
-                              _newsItems,
-                            );
-                          }),
-                        ),
+                  SegmentedButton<bool>(
+                    showSelectedIcon: false,
+                    segments: [
+                      ButtonSegment<bool>(
+                        value: false,
+                        label: Text(l.start),
+                        icon: const Icon(Icons.campaign_outlined),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _infoModeButton(
-                          label: l.notifications,
-                          icon: Icons.mail_outline_rounded,
-                          selected: _showInbox,
-                          onTap: () => setState(() {
-                            _showInbox = true;
-                            _selectedNotificationId = _firstNotificationId(
-                              _inboxItems,
-                            );
-                          }),
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text(l.notifications),
+                        icon: Badge(
+                          isLabelVisible: _unreadMessageIds.isNotEmpty,
+                          label: Text('${_unreadMessageIds.length}'),
+                          child: const Icon(Icons.inbox_outlined),
                         ),
                       ),
                     ],
+                    selected: {_showInbox},
+                    onSelectionChanged: (selection) {
+                      final showInbox = selection.first;
+                      setState(() {
+                        _showInbox = showInbox;
+                        _selectedNotificationId = _firstNotificationId(
+                          showInbox ? _inboxItems : _newsItems,
+                        );
+                      });
+                    },
                   ),
+                  if (_refreshing && activeItems.isNotEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: LinearProgressIndicator(),
+                    ),
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
@@ -742,17 +814,16 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                     )
                   else
                     ...activeItems.map((item) {
+                      final isUnread =
+                          _showInbox && _unreadMessageIds.contains(item.id);
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _glassContainer(
-                          context: context,
-                          borderRadius: BorderRadius.circular(24),
-                          color: cs.surfaceContainerLow.withValues(alpha: 0.62),
-                          border: Border.all(
-                            color: cs.outlineVariant.withValues(alpha: 0.3),
-                          ),
+                        child: Card.filled(
+                          color: isUnread
+                              ? cs.secondaryContainer.withValues(alpha: 0.58)
+                              : cs.surfaceContainerLow,
+                          clipBehavior: Clip.antiAlias,
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(24),
                             onTap: () {
                               if (_showInbox) _markMessageOpened(item);
                               Navigator.push(
@@ -772,37 +843,21 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(
-                                        _showInbox
-                                            ? Icons.mail_outline_rounded
-                                            : Icons.campaign_rounded,
-                                        size: 18,
-                                        color: cs.primary,
-                                      ),
-                                      if (_showInbox &&
-                                          _unreadMessageIds.contains(
-                                            item.id,
-                                          )) ...[
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          width: 9,
-                                          height: 9,
-                                          decoration: BoxDecoration(
-                                            color: cs.tertiary,
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: cs.tertiary.withValues(
-                                                  alpha: 0.45,
-                                                ),
-                                                blurRadius: 4,
-                                                spreadRadius: 0.5,
-                                              ),
-                                            ],
+                                      if (isUnread)
+                                        Badge(
+                                          child: Icon(
+                                            Icons.mark_email_unread_outlined,
+                                            color: cs.onSecondaryContainer,
                                           ),
+                                        )
+                                      else
+                                        Icon(
+                                          _showInbox
+                                              ? Icons.mail_outline_rounded
+                                              : Icons.campaign_outlined,
+                                          color: cs.primary,
                                         ),
-                                      ],
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
                                           item.title,
@@ -813,11 +868,24 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                                           ),
                                         ),
                                       ),
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: cs.onSurfaceVariant,
+                                      ),
                                     ],
                                   ),
                                   if (item.body.isNotEmpty) ...[
                                     const SizedBox(height: 8),
-                                    _buildFormattedInfoBody(context, item.body),
+                                    Text(
+                                      item.previewBody,
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.outfit(
+                                        color: cs.onSurfaceVariant,
+                                        height: 1.3,
+                                      ),
+                                    ),
                                   ],
                                   const SizedBox(height: 10),
                                   Wrap(
@@ -897,80 +965,19 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     );
   }
 
-  Widget _infoModeButton({
-    required String label,
-    required IconData icon,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    return _glassContainer(
-      context: context,
-      borderRadius: BorderRadius.circular(14),
-      color: selected
-          ? cs.primary
-          : cs.surfaceContainerHighest.withValues(alpha: 0.4),
-      border: Border.all(
-        color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.3),
-      ),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                    color: selected ? cs.onPrimary : cs.onSurface,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _infoChip(BuildContext context, String text, IconData icon) {
     final cs = Theme.of(context).colorScheme;
-    return _glassContainer(
-      context: context,
-      borderRadius: BorderRadius.circular(999),
-      color: cs.surfaceContainerHigh.withValues(alpha: 0.55),
-      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: cs.primary),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+    return Chip(
+      avatar: Icon(icon, size: 16, color: cs.onSecondaryContainer),
+      label: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      side: BorderSide.none,
+      backgroundColor: cs.secondaryContainer.withValues(alpha: 0.45),
+      labelStyle: GoogleFonts.outfit(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: cs.onSecondaryContainer,
       ),
     );
   }

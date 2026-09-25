@@ -26,6 +26,39 @@ class TimetableRepository {
 
   final WebUntisClient _client;
 
+  Future<List<Map<String, dynamic>>> fetchTeachers(
+    WebUntisRequestContext context,
+  ) async {
+    final response = await _client.rpc(
+      context: context,
+      method: 'getTeachers',
+      params: const <String, dynamic>{},
+      requestId: 'teacher_search',
+    );
+    return _resultMaps(response);
+  }
+
+  Future<List<dynamic>> fetchTeacherTimetable({
+    required WebUntisRequestContext context,
+    required int teacherId,
+    required DateTime date,
+  }) => fetchTimetable(
+    context: context,
+    elementId: teacherId,
+    elementType: 2,
+    startDate: date,
+    endDate: date,
+    requestId: 'teacher_day_$teacherId',
+    showLessonText: false,
+    showSubstitutionText: false,
+    showInfo: false,
+    showBooking: false,
+    showRooms: true,
+    showSubjects: true,
+    showTeachers: true,
+    showClasses: true,
+  );
+
   Future<TimetableMasterData> fetchMasterData(
     WebUntisRequestContext context,
   ) async {

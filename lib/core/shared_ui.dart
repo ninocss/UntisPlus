@@ -1855,7 +1855,7 @@ PreferredSizeWidget _mainTabHeaderAppBar(
   PreferredSizeWidget? bottom,
 }) {
   return RoundedBlurAppBar(
-    height: 64,
+    height: kToolbarHeight,
     centerTitle: true,
     leading: leading,
     actions: actions,
@@ -1865,10 +1865,11 @@ PreferredSizeWidget _mainTabHeaderAppBar(
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
-      style: GoogleFonts.outfit(
-        fontSize: 26,
+      style: untisThemeTextStyle(
+        context,
+        display: true,
+        fontSize: 17,
         fontWeight: FontWeight.w900,
-        color: Colors.black,
       ),
     ),
   );
@@ -1883,7 +1884,10 @@ PreferredSizeWidget _mainSectionTabBar(
   final cs = Theme.of(context).colorScheme;
   return TabBar(
     controller: controller,
-    onTap: onTap,
+    onTap: (index) {
+      HapticFeedback.selectionClick();
+      onTap?.call(index);
+    },
     indicatorColor: cs.primary,
     indicatorWeight: 3,
     dividerColor: Colors.transparent,
@@ -1914,6 +1918,55 @@ PreferredSizeWidget _mainSectionTabBar(
           ),
         ),
     ],
+  );
+}
+
+/// Slider with a light tactile acknowledgement when interaction starts and
+/// when the user releases the value.
+class HapticSlider extends StatelessWidget {
+  final double value;
+  final double min;
+  final double max;
+  final int? divisions;
+  final String? label;
+  final Color? activeColor;
+  final ValueChanged<double>? onChanged;
+  final ValueChanged<double>? onChangeStart;
+  final ValueChanged<double>? onChangeEnd;
+  final String Function(double)? semanticFormatterCallback;
+
+  const HapticSlider({
+    super.key,
+    required this.value,
+    this.min = 0,
+    this.max = 1,
+    this.divisions,
+    this.label,
+    this.activeColor,
+    this.onChanged,
+    this.onChangeStart,
+    this.onChangeEnd,
+    this.semanticFormatterCallback,
+  });
+
+  @override
+  Widget build(BuildContext context) => Slider(
+    value: value,
+    min: min,
+    max: max,
+    divisions: divisions,
+    label: label,
+    activeColor: activeColor,
+    semanticFormatterCallback: semanticFormatterCallback,
+    onChangeStart: (value) {
+      HapticFeedback.selectionClick();
+      onChangeStart?.call(value);
+    },
+    onChanged: onChanged,
+    onChangeEnd: (value) {
+      HapticFeedback.selectionClick();
+      onChangeEnd?.call(value);
+    },
   );
 }
 

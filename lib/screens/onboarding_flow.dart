@@ -844,6 +844,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         await prefs.setString('username', _userController.text);
         await prefs.setInt('personType', personType);
         await prefs.setInt('personId', personId);
+        if (demoModeNotifier.value) _clearTransientSchoolData();
         await prefs.setBool('demoMode', false);
         demoModeNotifier.value = false;
         await saveOrUpdateUntisAccount(

@@ -275,6 +275,18 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
       start: schoolYearStart,
       end: now,
     );
+    if (refreshed.source == SyncSource.network && isCurrentAccount()) {
+      final wrapped = SchoolWrappedRepository();
+      for (final year in await wrapped.years(accountId)) {
+        if (year.contains(now)) {
+          await wrapped.recordAbsences(
+            accountId: accountId,
+            year: year,
+            items: refreshed.data.map((item) => item.toJson()).toList(),
+          );
+        }
+      }
+    }
     if (isCurrentAccount()) setState(() => _state = refreshed);
   }
 

@@ -3,6 +3,10 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../core/sync_state.dart';
+import '../data/webuntis/webuntis_client.dart';
+import '../data/webuntis/webuntis_message_context.dart';
+
 class WebUntisMessageFailure implements Exception {
   const WebUntisMessageFailure(this.message, {this.statusCode});
 
@@ -43,10 +47,7 @@ class WebUntisMessageRecipient {
 }
 
 class WebUntisOutgoingAttachment {
-  const WebUntisOutgoingAttachment({
-    required this.name,
-    required this.bytes,
-  });
+  const WebUntisOutgoingAttachment({required this.name, required this.bytes});
 
   final String name;
   final Uint8List bytes;
@@ -92,8 +93,7 @@ class _MessageWriteContext {
     'Accept': 'application/json',
     'Authorization': 'Bearer $token',
     if (tenantId != null && tenantId!.isNotEmpty) 'Tenant-Id': tenantId!,
-    if (schoolYearId != null)
-      'X-Webuntis-Api-School-Year-Id': '$schoolYearId',
+    if (schoolYearId != null) 'X-Webuntis-Api-School-Year-Id': '$schoolYearId',
   };
 }
 
@@ -107,147 +107,32 @@ class WebUntisMessageService {
     : _client = client ?? http.Client();
 
   final http.Client _client;
-
-  List<String> _schoolCookies(String schoolName) {
-    final values = <String>[];
-    if (schoolName.isNotEmpty) {
-      try {
-        values.add('_${base64Encode(utf8.encode(schoolName))}');
-      } catch (_) {}
-      values.add(schoolName);
-    }
-    return values.toSet().toList(growable: false);
-  }
-
-  String _cookie(String sessionId, String schoolCookie) =>
-      'JSESSIONID=$sessionId; schoolname=$schoolCookie';
+  late final WebUntisMessageContextResolver _contextResolver =
+      WebUntisMessageContextResolver(WebUntisClient(client: _client));
 
   Future<_MessageWriteContext> _writeContext({
     required String schoolUrl,
     required String schoolName,
     required String sessionId,
   }) async {
-    if (schoolUrl.isEmpty || schoolName.isEmpty || sessionId.isEmpty) {
-      throw const WebUntisMessageFailure('Not signed in.', statusCode: 401);
-    }
-
-    String? token;
-    String? selectedCookie;
-    for (final schoolCookie in _schoolCookies(schoolName)) {
-      final cookie = _cookie(sessionId, schoolCookie);
-      try {
-        final response = await _client
-            .get(
-              Uri.parse('https://$schoolUrl/WebUntis/api/token/new'),
-              headers: {'Cookie': cookie, 'Accept': 'application/json'},
-            )
-            .timeout(const Duration(seconds: 12));
-        if (response.statusCode != 200) continue;
-        final raw = response.body.trim();
-        if (raw.isEmpty || raw.startsWith('<')) continue;
-        token = _tokenFromResponse(raw);
-        if (token != null && token.isNotEmpty) {
-          selectedCookie = cookie;
-          break;
-        }
-      } catch (_) {}
-    }
-
-    if (token == null || selectedCookie == null) {
-      throw const WebUntisMessageFailure(
-        'WebUntis session expired.',
-        statusCode: 401,
+    try {
+      final context = await _contextResolver.resolve(
+        schoolUrl: schoolUrl,
+        schoolName: schoolName,
+        sessionId: sessionId,
+      );
+      return _MessageWriteContext(
+        cookie: context.cookie,
+        token: context.token,
+        schoolYearId: context.schoolYearId,
+        tenantId: context.tenantId,
+      );
+    } on WebUntisFailure catch (failure) {
+      throw WebUntisMessageFailure(
+        failure.message,
+        statusCode: failure.statusCode,
       );
     }
-
-    final schoolYearId = await _schoolYearId(
-      schoolUrl: schoolUrl,
-      schoolName: schoolName,
-      cookie: selectedCookie,
-    );
-
-    return _MessageWriteContext(
-      cookie: selectedCookie,
-      token: token,
-      schoolYearId: schoolYearId,
-      tenantId: _tenantId(token),
-    );
-  }
-
-  String? _tokenFromResponse(String raw) {
-    if (!raw.startsWith('{')) {
-      return raw.replaceAll('"', '').trim();
-    }
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is String) return decoded.trim();
-      if (decoded is Map) {
-        for (final key in const [
-          'accessToken',
-          'token',
-          'access_token',
-          'jwt',
-          'jwt_token',
-        ]) {
-          final value = decoded[key]?.toString().trim();
-          if (value != null && value.isNotEmpty) return value;
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  String? _tenantId(String token) {
-    final parts = token.split('.');
-    if (parts.length < 2) return null;
-    try {
-      var payloadPart = parts[1].replaceAll('-', '+').replaceAll('_', '/');
-      while (payloadPart.length % 4 != 0) {
-        payloadPart += '=';
-      }
-      final payload = utf8.decode(base64Decode(payloadPart));
-      final decoded = jsonDecode(payload);
-      if (decoded is! Map) return null;
-      final value = decoded['tenant_id'] ?? decoded['tenantId'];
-      final tenant = value?.toString().trim();
-      return tenant == null || tenant.isEmpty ? null : tenant;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<int?> _schoolYearId({
-    required String schoolUrl,
-    required String schoolName,
-    required String cookie,
-  }) async {
-    try {
-      final response = await _client
-          .post(
-            Uri.parse(
-              'https://$schoolUrl/WebUntis/jsonrpc.do'
-              '?school=${Uri.encodeQueryComponent(schoolName)}',
-            ),
-            headers: {
-              'Cookie': cookie,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode({
-              'id': 'message-school-year',
-              'method': 'getCurrentSchoolyear',
-              'params': {},
-              'jsonrpc': '2.0',
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200) return null;
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map && decoded['result'] is Map) {
-        return (decoded['result']['id'] as num?)?.toInt();
-      }
-    } catch (_) {}
-    return null;
   }
 
   Future<WebUntisComposeData> loadComposeData({
@@ -274,42 +159,45 @@ class WebUntisMessageService {
     String schoolUrl,
     _MessageWriteContext context,
   ) async {
-    try {
-      final response = await _client
-          .get(
-            Uri.parse(
-              'https://$schoolUrl/WebUntis/api/rest/view/v1/messages/permissions',
-            ),
-            headers: context.headers,
-          )
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        throw WebUntisMessageFailure(
-          'WebUntis session expired.',
-          statusCode: response.statusCode,
+    for (final version in const ['v2', 'v1']) {
+      try {
+        final response = await _client
+            .get(
+              Uri.parse(
+                'https://$schoolUrl/WebUntis/api/rest/view/$version/messages/permissions',
+              ),
+              headers: context.headers,
+            )
+            .timeout(const Duration(seconds: 10));
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          throw WebUntisMessageFailure(
+            'WebUntis session expired.',
+            statusCode: response.statusCode,
+          );
+        }
+        if (response.statusCode == 404 || response.statusCode == 500) continue;
+        if (response.statusCode != 200 ||
+            response.body.trim().startsWith('<')) {
+          return const WebUntisMessagePermissions();
+        }
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map) return const WebUntisMessagePermissions();
+        final options = (decoded['recipientOptions'] as List? ?? const [])
+            .map((value) => value.toString())
+            .where((value) => value.isNotEmpty)
+            .toList(growable: false);
+        return WebUntisMessagePermissions(
+          recipientOptions: options.isEmpty ? const ['TEACHER'] : options,
+          maxFileSize: (decoded['maxFileSize'] as num?)?.toInt() ?? 7000000,
+          maxFileCount: (decoded['maxFileCount'] as num?)?.toInt() ?? 5,
         );
+      } on WebUntisMessageFailure {
+        rethrow;
+      } catch (_) {
+        continue;
       }
-      if (response.statusCode != 200 || response.body.trim().startsWith('<')) {
-        return const WebUntisMessagePermissions();
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map) return const WebUntisMessagePermissions();
-      final options = (decoded['recipientOptions'] as List? ?? const [])
-          .map((value) => value.toString())
-          .where((value) => value.isNotEmpty)
-          .toList(growable: false);
-      return WebUntisMessagePermissions(
-        recipientOptions: options.isEmpty ? const ['TEACHER'] : options,
-        maxFileSize:
-            (decoded['maxFileSize'] as num?)?.toInt() ?? 7000000,
-        maxFileCount:
-            (decoded['maxFileCount'] as num?)?.toInt() ?? 5,
-      );
-    } on WebUntisMessageFailure {
-      rethrow;
-    } catch (_) {
-      return const WebUntisMessagePermissions();
     }
+    return const WebUntisMessagePermissions();
   }
 
   Future<List<WebUntisMessageRecipient>> _fetchRecipients(
@@ -317,15 +205,13 @@ class WebUntisMessageService {
     _MessageWriteContext context,
   ) async {
     final paths = const [
+      '/WebUntis/api/rest/view/v2/messages/recipients/static/persons',
       '/WebUntis/api/rest/view/v1/messages/recipients/static/persons',
     ];
     for (final path in paths) {
       try {
         final response = await _client
-            .get(
-              Uri.parse('https://$schoolUrl$path'),
-              headers: context.headers,
-            )
+            .get(Uri.parse('https://$schoolUrl$path'), headers: context.headers)
             .timeout(const Duration(seconds: 12));
         if (response.statusCode == 401 || response.statusCode == 403) {
           throw WebUntisMessageFailure(
@@ -333,7 +219,8 @@ class WebUntisMessageService {
             statusCode: response.statusCode,
           );
         }
-        if (response.statusCode != 200 || response.body.trim().startsWith('<')) {
+        if (response.statusCode != 200 ||
+            response.body.trim().startsWith('<')) {
           continue;
         }
         final decoded = jsonDecode(response.body);
@@ -346,14 +233,13 @@ class WebUntisMessageService {
         final seen = <String>{};
         for (final rawGroup in groups) {
           if (rawGroup is! Map) continue;
-          final type = (rawGroup['type'] ?? 'TEACHER')
-              .toString()
-              .toUpperCase();
+          final type = (rawGroup['type'] ?? 'TEACHER').toString().toUpperCase();
           final people = rawGroup['persons'];
           if (people is! List) continue;
           for (final rawPerson in people) {
             if (rawPerson is! Map) continue;
-            final id = (rawPerson['userId'] as num?)?.toInt() ??
+            final id =
+                (rawPerson['userId'] as num?)?.toInt() ??
                 (rawPerson['id'] as num?)?.toInt();
             final name = (rawPerson['displayName'] ?? rawPerson['name'] ?? '')
                 .toString()
@@ -383,7 +269,7 @@ class WebUntisMessageService {
         rethrow;
       } catch (_) {}
     }
-    return const [];
+    throw const WebUntisMessageFailure('Recipient list unavailable.');
   }
 
   Future<void> sendMessage({
@@ -427,7 +313,9 @@ class WebUntisMessageService {
       'subject': cleanSubject,
       'content': cleanContent,
       'recipientOption': option,
-      'recipientPersons': recipients.map((recipient) => {'id': recipient.id}).toList(),
+      'recipientPersons': recipients
+          .map((recipient) => {'id': recipient.id})
+          .toList(),
       'recipientGroups': const <dynamic>[],
     };
 
@@ -504,9 +392,9 @@ class WebUntisMessageService {
       ..headers.addAll(headers)
       ..headers['Content-Type'] = 'multipart/form-data; boundary=$boundary'
       ..bodyBytes = builder.takeBytes();
-    final streamed = await _client.send(request).timeout(
-      const Duration(seconds: 30),
-    );
+    final streamed = await _client
+        .send(request)
+        .timeout(const Duration(seconds: 30));
     return http.Response.fromStream(streamed);
   }
 

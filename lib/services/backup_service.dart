@@ -32,6 +32,7 @@ class BackupService {
     'pageTransition',
     'surfaceCornerMode',
     'surfaceCornerRadius',
+    'headerStyle',
   };
 
   static const Set<String> _stringKeys = {
@@ -252,6 +253,9 @@ class BackupService {
         }
         if (key == 'pageTransition') {
           normalized = normalized.clamp(0, 8);
+        }
+        if (key == 'headerStyle') {
+          normalized = normalized.clamp(0, 2);
         }
         await prefs.setInt(key, normalized);
       }
