@@ -705,9 +705,6 @@ jobs:
             printf '%s\n' \
               '{"error":{"message":"transport_error"}}'
           }
-
           extract_body() {
-            jq -r '
-              [
-                ((.candidates[0].content.parts // []) | map(.text // empty) | join("\n")),
-                ((.candidates // []) | map(.output_text // empty)
+            jq -r '[((.candidates[0].content.parts // []) | map(.text // empty) | join("\n")), ((.candidates // []) | map(.output_text // empty) | join("\n")), (.text // empty)] | map(select(length > 0)) | .[0] // empty'
+          }
