@@ -56,7 +56,7 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
     }
     _contentOffset.animateWith(
       SpringSimulation(
-        const SpringDescription(mass: 1, stiffness: 520, damping: 28),
+        const SpringDescription(mass: 0.7, stiffness: 520, damping: 18),
         _contentOffset.value,
         0,
         0,
@@ -173,9 +173,9 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
                       // content. Previously only the list bounced back,
                       // which made a pull-to-refresh feel visually rigid.
                       final displacement = _contentOffset.value;
-                      final scale = (1 + displacement.abs() / 105).clamp(
+                      final scale = (1 + displacement.abs() / 95).clamp(
                         1.0,
-                        1.14,
+                        1.18,
                       );
                       return Transform.translate(
                         offset: Offset(0, displacement * .52),
@@ -217,19 +217,51 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
                                   duration: const Duration(milliseconds: 180),
                                   curve: Curves.easeOutBack,
                                   scale: isSpinning || isArmed ? 1.0 : 0.76,
-                                  child: AnimatedBuilder(
-                                    animation: _motion,
-                                    builder: (context, _) => CustomPaint(
-                                      size: const Size.square(56),
-                                      painter: _ExpressiveLoaderPainter(
-                                        containerColor: cs.primaryContainer,
-                                        blobColor: cs.onPrimaryContainer,
-                                        turns: _motion.value,
-                                        pullProgress: isPulling
-                                            ? pullProgress
-                                            : null,
-                                      ),
-                                    ),
+                                  child: ValueListenableBuilder<bool>(
+                                    valueListenable: appBgBlurEnabledNotifier,
+                                    builder: (context, blurEnabled, _) =>
+                                        ValueListenableBuilder<double>(
+                                          valueListenable:
+                                              appBgBlurAmountNotifier,
+                                          builder: (context, blurAmount, _) {
+                                            final indicator = AnimatedBuilder(
+                                              animation: _motion,
+                                              builder: (context, _) =>
+                                                  CustomPaint(
+                                                    size: const Size.square(48),
+                                                    painter:
+                                                        _ExpressiveLoaderPainter(
+                                                          containerColor:
+                                                              blurEnabled
+                                                              ? cs.primaryContainer
+                                                                    .withValues(
+                                                                      alpha: .68,
+                                                                    )
+                                                              : cs.primaryContainer,
+                                                          blobColor:
+                                                              cs.onPrimaryContainer,
+                                                          turns: _motion.value,
+                                                          pullProgress:
+                                                              isPulling
+                                                              ? pullProgress
+                                                              : null,
+                                                        ),
+                                                  ),
+                                            );
+                                            if (!blurEnabled) return indicator;
+                                            return ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(24),
+                                              child: BackdropFilter(
+                                                filter: ImageFilter.blur(
+                                                  sigmaX: blurAmount,
+                                                  sigmaY: blurAmount,
+                                                ),
+                                                child: indicator,
+                                              ),
+                                            );
+                                          },
+                                        ),
                                   ),
                                 ),
                               ),
@@ -307,8 +339,8 @@ class _ExpressiveLoaderPainter extends CustomPainter {
   /// A bounded, lightly under-damped spring (zeta = .78). It models the
   /// expressive spatial motion without the harshness of a cubic Bézier.
   static double _spring(double t) {
-    const dampingRatio = .78;
-    const angularFrequency = 14.0;
+    const dampingRatio = .62;
+    const angularFrequency = 12.0;
     final dampedFrequency =
         angularFrequency * math.sqrt(1 - dampingRatio * dampingRatio);
     final settled =
@@ -317,7 +349,7 @@ class _ExpressiveLoaderPainter extends CustomPainter {
             (math.cos(dampedFrequency * t) +
                 (dampingRatio * angularFrequency / dampedFrequency) *
                     math.sin(dampedFrequency * t));
-    return settled.clamp(0.0, 1.0);
+    return settled.clamp(0.0, 1.10);
   }
 
   @override
