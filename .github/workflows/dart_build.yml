@@ -4,39 +4,47 @@ on:
   push:
     tags:
       - 'v*'
+
   workflow_dispatch:
     inputs:
       tag:
-        description: '🏷️ Release Tag (leer = Version aus pubspec.yaml, z.B. v5.2.0)'
+        description: 'Release tag (leer = Version aus pubspec.yaml, z. B. v5.2.0)'
         required: false
         default: ''
         type: string
+
       release_name:
-        description: '📝 Optionaler Release-Name (leer = Tag wird verwendet)'
+        description: 'Optionaler Release-Name (leer = Tag wird verwendet)'
         required: false
+        default: ''
         type: string
+
       prerelease:
-        description: '🧪 Als Pre-Release markieren'
+        description: 'Als Pre-Release markieren'
         required: true
         default: false
         type: boolean
+
       draft:
-        description: '📌 Als Draft (Entwurf) erstellen'
+        description: 'Als Draft erstellen'
         required: true
         default: false
         type: boolean
+
       run_tests:
-        description: '🔍 Qualitätsprüfungen ausführen (flutter analyze & test)'
+        description: 'Kompatibilitaetsoption; Release-Checks laufen immer'
         required: true
         default: true
         type: boolean
+
       use_fllama_cache:
-        description: '⚡ fllama Native Build Cache verwenden'
+        description: 'fllama-Native-Build-Cache verwenden'
         required: true
         default: true
         type: boolean
+
       build_artifacts:
-        description: '📦 Welche Artefakte sollen gebaut werden?'
+        description: 'Welche Artefakte bauen?'
         required: true
         default: 'apk+ipa'
         type: choice
@@ -46,15 +54,19 @@ on:
           - apk+aab
           - ipa
           - apk+ipa
+          - aab+ipa
+          - apk+aab+ipa
           - none
+
       split_per_abi:
-        description: '📱 APK per ABI splitten (armeabi-v7a, arm64-v8a, x86_64)'
+        description: 'APK zusaetzlich per ABI splitten'
         required: true
         default: true
         type: boolean
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  FLUTTER_VERSION: '3.47.0'
+  JAVA_VERSION: '17'
 
 permissions:
   contents: read
@@ -64,30 +76,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+
+  # ─────────────────────────────────────────────────────────────
+  # RELEASE METADATA
+  # ─────────────────────────────────────────────────────────────
+
   meta:
-    name: ⚙️ Metadata & Config
-    runs-on: ubuntu-latest
+    name: Release-Metadaten
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
     outputs:
       release_tag: ${{ steps.meta.outputs.release_tag }}
       release_name: ${{ steps.meta.outputs.release_name }}
       prerelease: ${{ steps.meta.outputs.prerelease }}
       draft: ${{ steps.meta.outputs.draft }}
-      run_tests: ${{ steps.meta.outputs.run_tests }}
       use_fllama_cache: ${{ steps.meta.outputs.use_fllama_cache }}
+
       build_apk: ${{ steps.meta.outputs.build_apk }}
       build_aab: ${{ steps.meta.outputs.build_aab }}
       build_ipa: ${{ steps.meta.outputs.build_ipa }}
+
       split_per_abi: ${{ steps.meta.outputs.split_per_abi }}
-      last_semver_tag: ${{ steps.meta.outputs.last_semver_tag }}
+
+      previous_tag: ${{ steps.meta.outputs.previous_tag }}
+
       app_version: ${{ steps.meta.outputs.app_version }}
+      app_version_full: ${{ steps.meta.outputs.app_version_full }}
       version_code: ${{ steps.meta.outputs.version_code }}
+
     steps:
-      - name: Checkout Repository (Full depth for tags)
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Resolve Release Metadata
+      - name: Release-Metadaten bestimmen
         id: meta
         env:
           INPUT_TAG: ${{ github.event.inputs.tag }}
@@ -98,561 +123,1529 @@ jobs:
           INPUT_USE_FLLAMA_CACHE: ${{ github.event.inputs.use_fllama_cache }}
           INPUT_BUILD_ARTIFACTS: ${{ github.event.inputs.build_artifacts }}
           INPUT_SPLIT_PER_ABI: ${{ github.event.inputs.split_per_abi }}
+
+        shell: bash
+
         run: |
           set -euo pipefail
 
-          normalize_bool() {
-            local v="${1:-}"
-            local fallback="${2:-false}"
-            if [ "$v" = "true" ] \vert{}\vert{} [ "$v" = "false" ]; then
-              echo "$v"
-            else
-              echo "$fallback"
-            fi
+          fail() {
+            echo "::error::$*"
+            exit 1
           }
 
-          input_tag="$(echo "${INPUT_TAG:-}" | tr -d '[:space:]')"
+          normalize_bool() {
+            case "${1:-}" in
+              true|false)
+                printf '%s\n' "$1"
+                ;;
+              *)
+                printf '%s\n' "${2:-false}"
+                ;;
+            esac
+          }
+
+          # -------------------------------------------------------
+          # Version aus pubspec.yaml
+          # -------------------------------------------------------
+
+          version_full="$(
+            sed -nE \
+              's/^version:[[:space:]]*([^[:space:]#]+).*/\1/p' \
+              pubspec.yaml |
+              head -n 1 |
+              tr -d "'\""
+          )"
+
+          [ -n "$version_full" ] ||
+            fail 'pubspec.yaml enthält keine gültige version.'
+
+          app_version="${version_full%%+*}"
+
+          build_number=""
+
+          if [[ "$version_full" == *+* ]]; then
+            build_number="${version_full##*+}"
+          fi
+
+          if ! [[ "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            fail "Ungültige Version: $version_full"
+          fi
+
+          # -------------------------------------------------------
+          # Tag
+          # -------------------------------------------------------
+
+          input_tag="$(
+            printf '%s' "${INPUT_TAG:-}" |
+              tr -d '[:space:]'
+          )"
+
           if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
-            input_tag="${GITHUB_REF_NAME}"
+            input_tag="$GITHUB_REF_NAME"
           fi
 
-          last_tag="$(git tag --list \vert{} grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          release_tag="${input_tag:-v$app_version}"
 
-          app_version="$(grep -E '^version:\s*' pubspec.yaml | head -n 1 | sed -E 's/^version:\s*//' | sed -E 's/[[:space:]]*\+.*//')"
-          if [ -z "$app_version" ]; then
-            echo 'pubspec.yaml has no valid version.'
-            exit 1
+          if ! [[ "$release_tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            fail "Ungültiger Release-Tag: $release_tag"
           fi
 
-          resolved_tag="$input_tag"
-          if [ -z "$resolved_tag" ]; then
-            resolved_tag="v$app_version"
-          fi
-          if ! [[ "$resolved_tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
-            echo "Release tag must be semantic: $resolved_tag"
-            exit 1
-          fi
-          if [ "${resolved_tag#v}" != "$app_version" ]; then
-            echo "Release tag $resolved_tag does not match pubspec.yaml version$app_version."
-            exit 1
+          if [ "${release_tag#v}" != "$app_version" ]; then
+            fail \
+              "Release-Tag $release_tag passt nicht zur pubspec-Version $app_version."
           fi
 
-          resolved_name="$(echo "${INPUT_RELEASE_NAME:-}" \vert{} sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-          if [ -z "$resolved_name" ]; then
-            resolved_name="$resolved_tag"
+          # -------------------------------------------------------
+          # Release Name
+          # -------------------------------------------------------
+
+          release_name="$(
+            printf '%s' "${INPUT_RELEASE_NAME:-}" |
+              tr '\r\n' '  ' |
+              sed -E \
+                's/^[[:space:]]+//;
+                 s/[[:space:]]+$//;
+                 s/[[:space:]]+/ /g'
+          )"
+
+          release_name="${release_name:-$release_tag}"
+
+          # -------------------------------------------------------
+          # Boolean Inputs
+          # -------------------------------------------------------
+
+          prerelease="$(
+            normalize_bool "${INPUT_PRERELEASE:-}" false
+          )"
+
+          draft="$(
+            normalize_bool "${INPUT_DRAFT:-}" false
+          )"
+
+          use_fllama_cache="$(
+            normalize_bool "${INPUT_USE_FLLAMA_CACHE:-}" true
+          )"
+
+          split_per_abi="$(
+            normalize_bool "${INPUT_SPLIT_PER_ABI:-}" true
+          )"
+
+          if [ "$(
+            normalize_bool "${INPUT_RUN_TESTS:-}" true
+          )" != "true" ]; then
+            echo \
+              "::warning::run_tests=false wird ignoriert; Release-Checks sind verpflichtend."
           fi
 
-          prerelease="$(normalize_bool "${INPUT_PRERELEASE:-}" "false")"
-          draft="$(normalize_bool "${INPUT_DRAFT:-}" "false")"
-          run_tests="$(normalize_bool "${INPUT_RUN_TESTS:-}" "true")"
-          if [ "$run_tests" != "true" ]; then
-            echo 'Quality checks are mandatory for published releases; forcing run_tests=true.'
-            run_tests="true"
-          fi
-          split_per_abi="$(normalize_bool "${INPUT_SPLIT_PER_ABI:-}" "true")"
-          use_fllama_cache="$(normalize_bool "${INPUT_USE_FLLAMA_CACHE:-}" "true")"
+          # -------------------------------------------------------
+          # Artefakte
+          # -------------------------------------------------------
 
-          build_artifacts="$(echo "${INPUT_BUILD_ARTIFACTS:-apk}" | tr -d '[:space:]')"
-          build_apk="false"
-          build_aab="false"
-          build_ipa="false"
+          build_artifacts="$(
+            printf '%s' "${INPUT_BUILD_ARTIFACTS:-apk}" |
+              tr -d '[:space:]'
+          )"
+
+          build_apk=false
+          build_aab=false
+          build_ipa=false
+
           case "$build_artifacts" in
-            apk) build_apk="true" ;;
-            aab) build_aab="true" ;;
-            apk+aab) build_apk="true"; build_aab="true" ;;
-            ipa) build_ipa="true" ;;
-            apk+ipa) build_apk="true"; build_ipa="true" ;;
-            none) ;;
-            *) build_apk="true" ;;
+
+            apk)
+              build_apk=true
+              ;;
+
+            aab)
+              build_aab=true
+              ;;
+
+            apk+aab)
+              build_apk=true
+              build_aab=true
+              ;;
+
+            ipa)
+              build_ipa=true
+              ;;
+
+            apk+ipa)
+              build_apk=true
+              build_ipa=true
+              ;;
+
+            aab+ipa)
+              build_aab=true
+              build_ipa=true
+              ;;
+
+            apk+aab+ipa)
+              build_apk=true
+              build_aab=true
+              build_ipa=true
+              ;;
+
+            none)
+              ;;
+
+            *)
+              fail \
+                "Unbekannte Artefakt-Auswahl: $build_artifacts"
+              ;;
           esac
 
-          version_code="1"
-          if [[ "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            IFS='.' read -r v_major v_minor v_patch <<< "$app_version"
-            version_code=$((10#$v_major * 10000 + 10#$v_minor * 100 + 10#$v_patch))
+          # -------------------------------------------------------
+          # Android versionCode
+          #
+          # Beste Lösung:
+          # version: 6.0.0+6000000
+          #
+          # Dann wird +6000000 direkt verwendet.
+          # -------------------------------------------------------
+
+          if [ -n "$build_number" ]; then
+
+            if ! [[ "$build_number" =~ ^[1-9][0-9]*$ ]]; then
+              fail \
+                "Ungültige Flutter Build-Nummer: $build_number"
+            fi
+
+            version_code="$build_number"
+
+          else
+
+            # Pre-Releases brauchen eine eigene Buildnummer,
+            # damit z.B. beta -> stable installierbar bleibt.
+
+            if [[ "$app_version" == *-* ]]; then
+              fail \
+                "Pre-Releases benötigen eine explizite Build-Nummer, z.B. 6.0.0-beta.1+6000001"
+            fi
+
+            core="${app_version%%-*}"
+
+            IFS='.' read -r \
+              major \
+              minor \
+              patch <<< "$core"
+
+            if (( minor > 999 || patch > 999 )); then
+              fail \
+                'MINOR/PATCH > 999 benötigt eine explizite pubspec Build-Nummer.'
+            fi
+
+            version_code=$(
+              (
+                10#$major * 1000000 +
+                10#$minor * 1000 +
+                10#$patch
+              )
+            )
           fi
 
+          if (( version_code <= 0 || version_code > 2100000000 )); then
+            fail \
+              "Android versionCode ungültig: $version_code"
+          fi
+
+          # -------------------------------------------------------
+          # Vorherigen erreichbaren SemVer Tag finden
+          # -------------------------------------------------------
+
+          previous_tag="$(
+            {
+              git tag \
+                --merged HEAD \
+                --sort=-version:refname |
+
+                grep -E \
+                  '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$' |
+
+                grep -Fxv "$release_tag" |
+
+                head -n 1
+            } || true
+          )"
+
+          # -------------------------------------------------------
+          # Outputs
+          # -------------------------------------------------------
+
           {
-            echo "release_tag=$resolved_tag"
-            echo "release_name=$resolved_name"
+            echo "release_tag=$release_tag"
+            echo "release_name=$release_name"
+
             echo "prerelease=$prerelease"
             echo "draft=$draft"
-            echo "run_tests=$run_tests"
+
             echo "use_fllama_cache=$use_fllama_cache"
+
             echo "build_apk=$build_apk"
             echo "build_aab=$build_aab"
             echo "build_ipa=$build_ipa"
+
             echo "split_per_abi=$split_per_abi"
-            echo "last_semver_tag=$last_tag"
+
+            echo "previous_tag=$previous_tag"
+
             echo "app_version=$app_version"
+            echo "app_version_full=$version_full"
+
             echo "version_code=$version_code"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Summary UX
-        run: |
-          cat <<EOF >> $GITHUB_STEP_SUMMARY
-          ### 🚀 Release Configuration
-          | Key | Value |
-          |---|---|
-          | **Tag** | \`${{ steps.meta.outputs.release_tag }}\` |
-          | **Name** | \`${{ steps.meta.outputs.release_name }}\` |
-          | **App Version** | \`${{ steps.meta.outputs.app_version }}\` |
-          | **Version Code** | \`${{ steps.meta.outputs.version_code }}\` |
-          | **Build APK** | \`${{ steps.meta.outputs.build_apk }}\` |
-          | **Build AAB** | \`${{ steps.meta.outputs.build_aab }}\` |
-          | **Build IPA** | \`${{ steps.meta.outputs.build_ipa }}\` |
-          | **Pre-Release** | \`${{ steps.meta.outputs.prerelease }}\` |
-          | **Draft** | \`${{ steps.meta.outputs.draft }}\` |
-          EOF
+  # ─────────────────────────────────────────────────────────────
+  # QUALITY
+  # ─────────────────────────────────────────────────────────────
 
   quality_checks:
-    name: 🧪 Analyze & Tests
-    runs-on: ubuntu-latest
-    needs: meta
-    if: ${{ needs.meta.outputs.run_tests == 'true' }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    name: Analyse & Tests
 
-      - name: Setup Flutter
+    runs-on: ubuntu-24.04
+
+    timeout-minutes: 30
+
+    needs:
+      - meta
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Flutter einrichten
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.0'
-          channel: 'stable'
-          cache: true
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
 
-      - name: Cache fllama native builds
+          cache: true
+          pub-cache: true
+
+      - name: fllama Cache
         if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
-        uses: actions/cache@v4
+
+        uses: actions/cache@v6
+
         with:
           path: ~/.cache/fllama
-          key: ${{ runner.os }}-fllama-linux-${{ hashFiles('pubspec.lock') }}
 
-      - name: Install Dependencies
+          key: >-
+            ${{ runner.os }}-${{ runner.arch }}-
+            fllama-linux-
+            flutter-${{ env.FLUTTER_VERSION }}-
+            ${{ hashFiles('pubspec.lock') }}
+
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-fllama-linux-flutter-${{ env.FLUTTER_VERSION }}-
+
+      - name: Dependencies installieren
         run: flutter pub get
 
-      - name: Analyze & Test
-        run: |
-          flutter analyze --no-fatal-infos
-          pwsh -NoProfile -File tool/test_without_local_ai.ps1
+      - name: Flutter Analyze
+        run: flutter analyze --no-fatal-infos
 
-  build_apk:
-    name: 🤖 Build APK
-    runs-on: ubuntu-latest
-    needs: [meta, quality_checks]
-    if: ${{ always() && needs.meta.outputs.build_apk == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Tests
+        shell: pwsh
+        run: ./tool/test_without_local_ai.ps1
 
-      - name: Setup Java & Gradle Cache
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
+  # ─────────────────────────────────────────────────────────────
+  # ANDROID
+  # APK + AAB IM SELBEN JOB
+  # ─────────────────────────────────────────────────────────────
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.47.0'
-          channel: 'stable'
-          cache: true
+  build_android:
+    name: Android bauen
 
-      - name: Cache fllama native builds
-        if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/fllama
-          key: ${{ runner.os }}-fllama-android-${{ hashFiles('pubspec.lock') }}
+    runs-on: ubuntu-24.04
 
-      - name: Configure Android Signing
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ] \vert{}\vert{} [ -z "$KEY_STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] \vert{}\vert{} [ -z "$KEY_PASSWORD" ]; then
-            echo "Android signing secrets are required for release."
-            exit 1
-          fi
-          mkdir -p android
-          echo "$KEYSTORE_BASE64" | base64 -d > android/upload-keystore.jks
-          echo "storePassword=$KEY_STORE_PASSWORD" > android/key.properties
-          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
-          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
-          echo "storeFile=upload-keystore.jks" >> android/key.properties
-
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Build Android APKs
-        run: |
-          flutter build apk --release --build-number=${{ needs.meta.outputs.version_code }}
-          mkdir -p universal_apk
-          cp build/app/outputs/flutter-apk/app-release.apk universal_apk/
-          if [ "${{ needs.meta.outputs.split_per_abi }}" = "true" ]; then
-            flutter build apk --release --split-per-abi --build-number=${{ needs.meta.outputs.version_code }}
-          fi
-
-      - name: Prepare APK Artifacts & Manifest
-        run: |
-          mkdir -p apk_artifacts
-          TAG="${{ needs.meta.outputs.release_tag }}"
-          
-          cp universal_apk/app-release.apk "apk_artifacts/UntisPlus-${TAG}-universal.apk"
-          if [ "${{ needs.meta.outputs.split_per_abi }}" = "true" ]; then
-            for abi in armeabi-v7a arm64-v8a x86_64; do
-              source="build/app/outputs/flutter-apk/app-${abi}-release.apk"
-              if [ -f "$source" ]; then
-                cp "$source" "apk_artifacts/UntisPlus-${TAG}-${abi}.apk"
-              fi
-            done
-          fi
-
-          (
-            cd apk_artifacts
-            sha256sum *.apk > SHA256SUMS.txt
-            assets="$({
-              for f in *.apk; do
-                abi="universal"
-                case "$f" in
-                  *-armeabi-v7a.apk) abi="armeabi-v7a" ;;
-                  *-arm64-v8a.apk) abi="arm64-v8a" ;;
-                  *-x86_64.apk) abi="x86_64" ;;
-                esac
-                jq -n --arg name "$f" --arg abi "$abi" \
-                  --arg sha "$(sha256sum "$f" | awk '{print $1}')" \
-                  --argjson size "$(stat -c\%s "$f")" \
-                  '{name: $name, abi:$abi, sha256: $sha, size_bytes:$size}'
-              done
-            } | jq -s '.')"
-            jq -n \
-              --arg tag "$TAG" \
-              --arg version "${TAG#v}" \
-              --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              --argjson assets "$assets" \
-              '{tag: $tag, version:$version, generated_at: $generated_at, assets:$assets}' \
-              > release-manifest.json
-          )
-
-      - name: Upload APK Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-apk
-          path: apk_artifacts/
-          if-no-files-found: error
-
-      - name: APK Summary UX
-        run: |
-          echo "### 📱 Built APKs" >> $GITHUB_STEP_SUMMARY
-          echo "| File | Size | SHA256 |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
-          cd apk_artifacts
-          for f in *.apk; do
-            size=$(du -h "$f" | cut -f1)
-            sha=$(sha256sum "$f" | cut -c1-12)
-            echo "| \`$f\` | $size | \`$sha...\` |" >> $GITHUB_STEP_SUMMARY
-          done
-
-  build_aab:
-    name: 📦 Build AAB
-    runs-on: ubuntu-latest
-    needs: [meta, quality_checks]
-    if: ${{ always() && needs.meta.outputs.build_aab == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Java & Gradle Cache
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.47.0'
-          channel: 'stable'
-          cache: true
-
-      - name: Cache fllama native builds
-        if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/fllama
-          key: ${{ runner.os }}-fllama-android-${{ hashFiles('pubspec.lock') }}
-
-      - name: Configure Android Signing
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          if [ -z "$KEYSTORE_BASE64" ] \vert{}\vert{} [ -z "$KEY_STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] \vert{}\vert{} [ -z "$KEY_PASSWORD" ]; then
-            echo "Android signing secrets are required for release."
-            exit 1
-          fi
-          mkdir -p android
-          echo "$KEYSTORE_BASE64" | base64 -d > android/upload-keystore.jks
-          echo "storePassword=$KEY_STORE_PASSWORD" > android/key.properties
-          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
-          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
-          echo "storeFile=upload-keystore.jks" >> android/key.properties
-
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Build Android AAB
-        run: flutter build appbundle --release --build-number=${{ needs.meta.outputs.version_code }}
-
-      - name: Prepare AAB Artifact
-        run: |
-          mkdir -p aab_artifacts
-          TAG="${{ needs.meta.outputs.release_tag }}"
-          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
-            cp "build/app/outputs/bundle/release/app-release.aab" "aab_artifacts/UntisPlus-${TAG}.aab"
-          fi
-
-      - name: Upload AAB Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-aab
-          path: aab_artifacts/
-          if-no-files-found: error
-
-  build_ipa:
-    name: 🍏 Build Unsigned IPA
-    runs-on: macos-latest
     timeout-minutes: 60
-    needs: [meta, quality_checks]
-    if: ${{ always() && needs.meta.outputs.build_ipa == 'true' && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
+
+    needs:
+      - meta
+      - quality_checks
+
+    if: >-
+      ${{
+        always() &&
+        needs.meta.result == 'success' &&
+        needs.quality_checks.result == 'success' &&
+        (
+          needs.meta.outputs.build_apk == 'true' ||
+          needs.meta.outputs.build_aab == 'true'
+        )
+      }}
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
-          flutter-version: '3.47.0'
-          channel: 'stable'
-          cache: true
+          persist-credentials: false
 
-      - name: Cache fllama native builds
+      - name: Java einrichten
+        uses: actions/setup-java@v6
+
+        with:
+          distribution: zulu
+
+          java-version: ${{ env.JAVA_VERSION }}
+
+          cache: gradle
+
+          cache-dependency-path: |
+            android/**/*.gradle*
+            android/**/gradle-wrapper.properties
+
+      - name: Flutter einrichten
+        uses: subosito/flutter-action@v2
+
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+          channel: stable
+
+          cache: true
+          pub-cache: true
+
+      - name: fllama Cache
         if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
-        uses: actions/cache@v4
+
+        uses: actions/cache@v6
+
         with:
           path: ~/.cache/fllama
-          key: ${{ runner.os }}-fllama-ios-${{ hashFiles('pubspec.lock') }}
 
-      - name: Install Dependencies
+          key: >-
+            ${{ runner.os }}-${{ runner.arch }}-
+            fllama-android-
+            flutter-${{ env.FLUTTER_VERSION }}-
+            ${{ hashFiles('pubspec.lock') }}
+
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-fllama-android-flutter-${{ env.FLUTTER_VERSION }}-
+
+      - name: Dependencies installieren
         run: flutter pub get
 
-      - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
+      # Keystore bleibt nur auf DIESEM Runner.
+      # Kein Secret-Artefakt mehr.
 
-      - name: Package Unsigned IPA
-        run: |
-          TAG="${{ needs.meta.outputs.release_tag }}"
-          mkdir -p ipa_artifacts Payload
-          ditto --norsrc build/ios/iphoneos/Runner.app Payload/Runner.app
-          zip -r "ipa_artifacts/UntisPlus-${TAG}.ipa" Payload
-          rm -rf Payload
+      - name: Android Signing konfigurieren
 
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-ipa
-          path: ipa_artifacts/
-          if-no-files-found: error
-
-  release_notes:
-    name: 🤖 Gemini Release Notes
-    runs-on: ubuntu-latest
-    needs: [meta, quality_checks]
-    if: ${{ always() && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') }}
-    outputs:
-      has_ai_notes: ${{ steps.ai_notes.outputs.has_ai_notes }}
-    steps:
-      - name: Checkout Repository (Full depth for logs)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Generate Gemini Release Notes
-        id: ai_notes
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-2.5-flash
-          GEMINI_FALLBACK_MODEL: gemini-2.5-flash-lite
-          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+        shell: bash
+
         run: |
           set -euo pipefail
 
-          if [ -z "$GEMINI_API_KEY" ]; then
-            echo "has_ai_notes=false" >> $GITHUB_OUTPUT
+          if \
+            [ -z "${KEYSTORE_BASE64:-}" ] ||
+            [ -z "${KEY_STORE_PASSWORD:-}" ] ||
+            [ -z "${KEY_ALIAS:-}" ] ||
+            [ -z "${KEY_PASSWORD:-}" ]
+          then
+            echo "::error::Android Signing Secrets fehlen."
+            exit 1
+          fi
+
+          keystore="$RUNNER_TEMP/upload-keystore.jks"
+
+          printf '%s' "$KEYSTORE_BASE64" |
+            base64 --decode > "$keystore"
+
+          chmod 600 "$keystore"
+
+          {
+            echo "storePassword=$KEY_STORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=$keystore"
+          } > android/key.properties
+
+          chmod 600 android/key.properties
+
+      # ----------------------------------------------------------
+      # APK
+      # ----------------------------------------------------------
+
+      - name: Universal APK bauen
+
+        if: ${{ needs.meta.outputs.build_apk == 'true' }}
+
+        env:
+          VERSION_CODE: ${{ needs.meta.outputs.version_code }}
+
+        run: |
+          flutter build apk \
+            --release \
+            --build-number="$VERSION_CODE"
+
+      - name: ABI APKs bauen
+
+        if: >-
+          ${{
+            needs.meta.outputs.build_apk == 'true' &&
+            needs.meta.outputs.split_per_abi == 'true'
+          }}
+
+        env:
+          VERSION_CODE: ${{ needs.meta.outputs.version_code }}
+
+        run: |
+          flutter build apk \
+            --release \
+            --split-per-abi \
+            --build-number="$VERSION_CODE"
+
+      # ----------------------------------------------------------
+      # AAB
+      # ----------------------------------------------------------
+
+      - name: AAB bauen
+
+        if: ${{ needs.meta.outputs.build_aab == 'true' }}
+
+        env:
+          VERSION_CODE: ${{ needs.meta.outputs.version_code }}
+
+        run: |
+          flutter build appbundle \
+            --release \
+            --build-number="$VERSION_CODE"
+
+      # ----------------------------------------------------------
+      # RELEASE FILES
+      # ----------------------------------------------------------
+
+      - name: Android Artefakte vorbereiten
+
+        env:
+          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
+
+          BUILD_APK: ${{ needs.meta.outputs.build_apk }}
+
+          BUILD_AAB: ${{ needs.meta.outputs.build_aab }}
+
+          SPLIT_PER_ABI: ${{ needs.meta.outputs.split_per_abi }}
+
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          mkdir -p android_artifacts
+
+          # Universal APK
+
+          if [ "$BUILD_APK" = "true" ]; then
+
+            universal="build/app/outputs/flutter-apk/app-release.apk"
+
+            if [ ! -f "$universal" ]; then
+              echo "::error::Universal APK fehlt: $universal"
+              exit 1
+            fi
+
+            cp \
+              "$universal" \
+              "android_artifacts/UntisPlus-${RELEASE_TAG}-universal.apk"
+
+            # ABI Splits
+
+            if [ "$SPLIT_PER_ABI" = "true" ]; then
+
+              for abi in \
+                armeabi-v7a \
+                arm64-v8a \
+                x86_64
+              do
+
+                source="build/app/outputs/flutter-apk/app-${abi}-release.apk"
+
+                if [ ! -f "$source" ]; then
+                  echo "::error::APK fehlt: $source"
+                  exit 1
+                fi
+
+                cp \
+                  "$source" \
+                  "android_artifacts/UntisPlus-${RELEASE_TAG}-${abi}.apk"
+
+              done
+            fi
+          fi
+
+          # AAB
+
+          if [ "$BUILD_AAB" = "true" ]; then
+
+            bundle="build/app/outputs/bundle/release/app-release.aab"
+
+            if [ ! -f "$bundle" ]; then
+              echo "::error::AAB fehlt: $bundle"
+              exit 1
+            fi
+
+            cp \
+              "$bundle" \
+              "android_artifacts/UntisPlus-${RELEASE_TAG}.aab"
+          fi
+
+      - name: Signing Dateien löschen
+        if: always()
+
+        shell: bash
+
+        run: |
+          rm -f android/key.properties
+          rm -f "$RUNNER_TEMP/upload-keystore.jks"
+
+      - name: Android Artefakte hochladen
+
+        uses: actions/upload-artifact@v7
+
+        with:
+          name: release-android
+
+          path: android_artifacts/
+
+          if-no-files-found: error
+
+          # APK/AAB sind bereits komprimiert.
+          compression-level: 0
+
+          retention-days: 3
+
+  # ─────────────────────────────────────────────────────────────
+  # iOS
+  # ─────────────────────────────────────────────────────────────
+
+  build_ipa:
+    name: Unsigned IPA bauen
+
+    runs-on: macos-latest
+
+    timeout-minutes: 60
+
+    needs:
+      - meta
+      - quality_checks
+
+    if: >-
+      ${{
+        always() &&
+        needs.meta.result == 'success' &&
+        needs.quality_checks.result == 'success' &&
+        needs.meta.outputs.build_ipa == 'true'
+      }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Flutter einrichten
+        uses: subosito/flutter-action@v2
+
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+          channel: stable
+
+          cache: true
+          pub-cache: true
+
+      - name: fllama Cache
+
+        if: ${{ needs.meta.outputs.use_fllama_cache == 'true' }}
+
+        uses: actions/cache@v6
+
+        with:
+          path: ~/.cache/fllama
+
+          key: >-
+            ${{ runner.os }}-${{ runner.arch }}-
+            fllama-ios-
+            flutter-${{ env.FLUTTER_VERSION }}-
+            ${{ hashFiles('pubspec.lock') }}
+
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-fllama-ios-flutter-${{ env.FLUTTER_VERSION }}-
+
+      - name: Dependencies installieren
+        run: flutter pub get
+
+      - name: iOS bauen
+        run: |
+          flutter build ios \
+            --release \
+            --no-codesign
+
+      - name: IPA erstellen
+
+        env:
+          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
+
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          app="build/ios/iphoneos/Runner.app"
+
+          if [ ! -d "$app" ]; then
+            echo "::error::Runner.app fehlt: $app"
+            exit 1
+          fi
+
+          rm -rf \
+            Payload \
+            ipa_artifacts
+
+          mkdir -p \
+            Payload \
+            ipa_artifacts
+
+          ditto \
+            --norsrc \
+            "$app" \
+            Payload/Runner.app
+
+          ditto \
+            -c \
+            -k \
+            --sequesterRsrc \
+            --keepParent \
+            Payload \
+            "ipa_artifacts/UntisPlus-${RELEASE_TAG}.ipa"
+
+          rm -rf Payload
+
+      - name: IPA hochladen
+
+        uses: actions/upload-artifact@v7
+
+        with:
+          name: release-ipa
+
+          path: ipa_artifacts/
+
+          if-no-files-found: error
+
+          compression-level: 0
+
+          retention-days: 3
+
+  # ─────────────────────────────────────────────────────────────
+  # RELEASE NOTES
+  # ─────────────────────────────────────────────────────────────
+
+  release_notes:
+    name: Release Notes
+
+    runs-on: ubuntu-24.04
+
+    timeout-minutes: 10
+
+    needs:
+      - meta
+      - quality_checks
+
+    if: >-
+      ${{
+        always() &&
+        needs.meta.result == 'success' &&
+        needs.quality_checks.result == 'success'
+      }}
+
+    outputs:
+      has_ai_notes: ${{ steps.ai_notes.outputs.has_ai_notes }}
+
+      ai_reason: ${{ steps.ai_notes.outputs.ai_reason }}
+
+      gemini_used_model: ${{ steps.ai_notes.outputs.gemini_used_model }}
+
+    steps:
+      - name: Checkout
+
+        uses: actions/checkout@v7
+
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Gemini Release Notes
+
+        id: ai_notes
+
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+          GEMINI_MODEL: gemini-3.5-flash
+
+          GEMINI_FALLBACK_MODEL: gemini-3.5-flash-lite
+
+          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
+
+          APP_VERSION: ${{ needs.meta.outputs.app_version_full }}
+
+          PREVIOUS_TAG: ${{ needs.meta.outputs.previous_tag }}
+
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          output() {
+            printf '%s=%s\n' \
+              "$1" \
+              "$2" >> "$GITHUB_OUTPUT"
+          }
+
+          if [ -z "${GEMINI_API_KEY:-}" ]; then
+
+            output \
+              has_ai_notes \
+              false
+
+            output \
+              ai_reason \
+              missing_api_key
+
+            output \
+              gemini_used_model \
+              none
+
             exit 0
           fi
 
-          APP_VERSION=$(grep -E '^version:\s*' pubspec.yaml | head -n 1 | sed -E 's/^version:\s*//')
-          PREV_TAG=$(git tag --sort=-creatordate | grep -Fxv "$RELEASE_TAG" | head -n 1 || true)
-          REPO_SLUG="${GITHUB_REPOSITORY:-}"
+          # -------------------------------------------------------
+          # Changelog Context
+          # -------------------------------------------------------
 
-          if [ -n "$REPO_SLUG" ] && [ -n "$PREV_TAG" ]; then
-            COMPARE_URL="https://github.com/${REPO_SLUG}/compare/${PREV_TAG}...${RELEASE_TAG}"
+          if [ -n "${PREVIOUS_TAG:-}" ]; then
+
+            RANGE="${PREVIOUS_TAG}..HEAD"
+
+            COMMIT_COUNT="$(
+              git rev-list \
+                --count \
+                "$RANGE"
+            )"
+
+            COMMITS="$(
+              git log \
+                "$RANGE" \
+                -n 100 \
+                --no-merges \
+                --pretty=format:'- %s' ||
+              true
+            )"
+
+            CHANGED_FILES="$(
+              git diff \
+                --name-only \
+                "$RANGE" |
+                head -n 250 ||
+              true
+            )"
+
+            DIFF_STAT="$(
+              git diff \
+                --stat \
+                "$RANGE" |
+                head -n 150 ||
+              true
+            )"
+
+            COMPARE_URL="https://github.com/${GITHUB_REPOSITORY}/compare/${PREVIOUS_TAG}...${RELEASE_TAG}"
+
           else
-            COMPARE_URL=""
+
+            COMMIT_COUNT="$(
+              git rev-list \
+                --count \
+                HEAD
+            )"
+
+            COMMITS="$(
+              git log \
+                -n 100 \
+                --no-merges \
+                --pretty=format:'- %s' ||
+              true
+            )"
+
+            CHANGED_FILES="$(
+              git log \
+                -n 100 \
+                --no-merges \
+                --name-only \
+                --pretty=format:'' |
+
+                sed '/^$/d' |
+
+                sort -u |
+
+                head -n 250 ||
+              true
+            )"
+
+            DIFF_STAT="No previous release tag available."
+
+            COMPARE_URL="https://github.com/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}"
+
           fi
 
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="$PREV_TAG..HEAD"
-            COMMIT_COUNT=$(git rev-list --count "$RANGE" 2>/dev/null || echo "0")
-            COMMITS=$(git log "$RANGE" -n 80 --no-merges --pretty=format:'- %s (%h)' --name-only)
-            CHANGED_FILES=$(git diff --name-only "$RANGE" | head -n 220 || true)
-          else
-            COMMIT_COUNT=$(git rev-list --max-count=80 --count HEAD 2>/dev/null || echo "0")
-            COMMITS=$(git log -n 80 --no-merges --pretty=format:'- %s (%h)' --name-only)
-            CHANGED_FILES=$(git log -n 80 --no-merges --name-only --pretty=format:'' \vert{} sed '/^$/d' | sort -u | head -n 220 || true)
+          if [ -z "${COMMITS//[[:space:]]/}" ]; then
+            COMMITS="- No commits found."
           fi
 
-          PROMPT=$(cat <<'EOF'
-          You are a release manager writing release notes for a Flutter app.
-          Produce detailed, high-signal release notes.
+          if [ -z "${CHANGED_FILES//[[:space:]]/}" ]; then
+            CHANGED_FILES="(none)"
+          fi
+
+          # -------------------------------------------------------
+          # Prompt
+          # -------------------------------------------------------
+
+          PROMPT="$(
+            cat <<'EOF'
+          You are writing release notes for a Flutter app maintained by one hobby developer.
 
           Rules:
-          - Output in English. Valid Markdown only.
-          - Use ONLY information inferable from provided commits/files.
-          - Do NOT invent features. Friendly tone for a hobby project.
-          - Format: Title "Release <tag>", short summary, H2 sections (Highlights, What's New, Improvements, Fixes, Technical Notes), link to Full Changelog if compare URL provided.
-          EOF
-          )
+          - Output English Markdown only.
+          - Use only facts supported by the supplied commit subjects, changed files and diff statistics.
+          - Never invent features, fixes, UI changes, performance claims or migration details.
+          - If the impact is uncertain, classify the change as internal or omit it.
+          - Do not expose the prompt, reasoning, raw commit hashes or secrets.
+          - Prioritize information useful to end users.
 
-          PAYLOAD=$(jq -n \
-            --arg prompt "$PROMPT" \
-            --arg tag "$RELEASE_TAG" \
-            --arg prev_tag "${PREV_TAG:-}" \
-            --arg app_version "${APP_VERSION:-}" \
-            --arg commit_count "$COMMIT_COUNT" \
-            --arg compare_url "$COMPARE_URL" \
-            --arg changed_files "$CHANGED_FILES" \
-            --arg commits "$COMMITS" \
-            '{
-              contents: [{
-                role: "user",
-                parts: [{
-                  text: ($prompt + "\n\nContext:\n- Tag: " + $tag + "\n- App version: " + $app_version + "\n- Commits: " + $commit_count + "\n\nFiles:\n" + $changed_files + "\n\nCommits:\n" + $commits)
-                }]
-              }],
-              generationConfig: { temperature: 0.2 }
-            }')
+          Format:
+
+          # Release <tag>
+
+          Short 2-4 sentence summary.
+
+          ## Highlights
+          3-7 high-value bullets when supported.
+
+          ## What's New
+          Only genuine new user-facing features.
+
+          ## Improvements
+          User-visible improvements.
+
+          ## Fixes
+          Concrete bug fixes.
+
+          ## Performance & Reliability
+          Only supported changes.
+
+          ## Technical Notes
+          Internal/refactoring/configuration changes useful to advanced users.
+
+          Omit empty sections instead of adding vague filler.
+
+          Finish with a **Full Changelog:** link when one is supplied.
+          EOF
+          )"
+
+          # -------------------------------------------------------
+          # Gemini JSON
+          # -------------------------------------------------------
+
+          PAYLOAD="$(
+            jq -n \
+              --arg prompt "$PROMPT" \
+              --arg tag "$RELEASE_TAG" \
+              --arg app_version "$APP_VERSION" \
+              --arg previous_tag "${PREVIOUS_TAG:-}" \
+              --arg commit_count "$COMMIT_COUNT" \
+              --arg compare_url "$COMPARE_URL" \
+              --arg changed_files "$CHANGED_FILES" \
+              --arg diff_stat "$DIFF_STAT" \
+              --arg commits "$COMMITS" \
+              '
+              {
+                contents: [
+                  {
+                    role: "user",
+                    parts: [
+                      {
+                        text:
+                          (
+                            $prompt +
+
+                            "\n\nRelease context:" +
+
+                            "\n- Tag: " +
+                            $tag +
+
+                            "\n- pubspec version: " +
+                            $app_version +
+
+                            "\n- Previous tag: " +
+                            (
+                              if ($previous_tag | length) > 0
+                              then $previous_tag
+                              else "(none)"
+                              end
+                            ) +
+
+                            "\n- Commit count: " +
+                            $commit_count +
+
+                            "\n- Full changelog URL: " +
+                            $compare_url +
+
+                            "\n\nChanged files:\n" +
+                            $changed_files +
+
+                            "\n\nDiff statistics:\n" +
+                            $diff_stat +
+
+                            "\n\nCommit subjects:\n" +
+                            $commits
+                          )
+                      }
+                    ]
+                  }
+                ],
+
+                generationConfig: {
+                  temperature: 0.2,
+                  maxOutputTokens: 4096,
+                  responseMimeType: "text/plain"
+                }
+              }
+              '
+          )"
+
+          # -------------------------------------------------------
+          # API Request
+          # -------------------------------------------------------
 
           request_model() {
+
             local model="$1"
-            curl -sS "https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD"
+
+            local response
+
+            if ! response="$(
+              curl \
+                --silent \
+                --show-error \
+                --connect-timeout 10 \
+                --max-time 90 \
+                --retry 2 \
+                --retry-all-errors \
+                -X POST \
+                "https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent" \
+                -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+                -H "Content-Type: application/json" \
+                --data-binary "$PAYLOAD"
+            )"
+            then
+
+              printf '%s\n' \
+                '{"error":{"message":"transport_error"}}'
+
+              return 0
+            fi
+
+            if ! jq -e . >/dev/null 2>&1 <<< "$response"
+            then
+
+              printf '%s\n' \
+                '{"error":{"message":"invalid_json_response"}}'
+
+              return 0
+            fi
+
+            printf '%s\n' \
+              "$response"
           }
 
-          RESPONSE=$(request_model "$GEMINI_MODEL")
-          BODY=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+          extract_body() {
 
-          if [ -z "$BODY" ]; then
-            RESPONSE=$(request_model "$GEMINI_FALLBACK_MODEL")
-            BODY=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty')
+            jq -r \
+              '
+              (.candidates[0].content.parts // [])
+              |
+              map(.text // empty)
+              |
+              join("\n")
+              '
+          }
+
+          # Primary
+
+          RESPONSE="$(
+            request_model \
+              "$GEMINI_MODEL"
+          )"
+
+          API_ERROR="$(
+            jq -r \
+              '.error.message // empty' \
+              <<< "$RESPONSE"
+          )"
+
+          BODY="$(
+            extract_body \
+              <<< "$RESPONSE"
+          )"
+
+          USED_MODEL="$GEMINI_MODEL"
+
+          # Fallback
+
+          if \
+            [ -n "$API_ERROR" ] ||
+            [ -z "${BODY//[[:space:]]/}" ]
+          then
+
+            RESPONSE="$(
+              request_model \
+                "$GEMINI_FALLBACK_MODEL"
+            )"
+
+            API_ERROR="$(
+              jq -r \
+                '.error.message // empty' \
+                <<< "$RESPONSE"
+            )"
+
+            BODY="$(
+              extract_body \
+                <<< "$RESPONSE"
+            )"
+
+            USED_MODEL="$GEMINI_FALLBACK_MODEL"
           fi
 
-          if [ -n "$BODY" ]; then
-            printf '%s\n' "$BODY" > gemini_release_notes.md
-            echo "has_ai_notes=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_ai_notes=false" >> $GITHUB_OUTPUT
+          output \
+            gemini_used_model \
+            "$USED_MODEL"
+
+          if [ -n "$API_ERROR" ]; then
+
+            output \
+              has_ai_notes \
+              false
+
+            output \
+              ai_reason \
+              gemini_api_error
+
+            exit 0
           fi
 
-      - name: Create Fallback Notes
+          if [ -z "${BODY//[[:space:]]/}" ]; then
+
+            output \
+              has_ai_notes \
+              false
+
+            output \
+              ai_reason \
+              empty_gemini_response
+
+            exit 0
+          fi
+
+          printf '%s\n' \
+            "$BODY" > gemini_release_notes.md
+
+          output \
+            has_ai_notes \
+            true
+
+          output \
+            ai_reason \
+            success
+
+      # ----------------------------------------------------------
+      # Fallback notes
+      # ----------------------------------------------------------
+
+      - name: Fallback Release Notes
+
         if: ${{ steps.ai_notes.outputs.has_ai_notes != 'true' }}
+
         env:
           RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
+
+          PREVIOUS_TAG: ${{ needs.meta.outputs.previous_tag }}
+
+        shell: bash
+
         run: |
-          PREV_TAG=$(git tag --sort=-creatordate | grep -Fxv "$RELEASE_TAG" | head -n 1 || true)
-          RANGE="${PREV_TAG}..HEAD"
-          [ -z "$PREV_TAG" ] && RANGE="HEAD"
+          set -euo pipefail
+
+          if [ -n "${PREVIOUS_TAG:-}" ]; then
+            RANGE="${PREVIOUS_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
 
           {
             echo "# Release $RELEASE_TAG"
             echo
+
             echo "## Changes"
-            git log "$RANGE" --no-merges --pretty=format:'- %s' | head -n 80
+
+            git log \
+              "$RANGE" \
+              --no-merges \
+              --pretty=format:'- %s' |
+              sed '/^[[:space:]]*$/d' |
+              head -n 120
+
             echo
+            echo
+
             echo "## Verification"
-            echo "- Ran Flutter analysis and tests in release workflow."
+
+            echo \
+              "- Flutter analysis and tests passed in the release workflow."
+
+            if [ -n "${PREVIOUS_TAG:-}" ]; then
+              echo
+              echo \
+                "**Full Changelog:** https://github.com/${GITHUB_REPOSITORY}/compare/${PREVIOUS_TAG}...${RELEASE_TAG}"
+            fi
+
           } > fallback_release_notes.md
 
-      - name: Select Release Notes
+      - name: Release Notes auswählen
+
+        env:
+          HAS_AI_NOTES: ${{ steps.ai_notes.outputs.has_ai_notes }}
+
+        shell: bash
+
         run: |
-          if [ "${{ steps.ai_notes.outputs.has_ai_notes }}" = "true" ]; then
-            cp gemini_release_notes.md release_notes.md
+          if [ "$HAS_AI_NOTES" = "true" ]; then
+
+            cp \
+              gemini_release_notes.md \
+              release_notes.md
+
           else
-            cp fallback_release_notes.md release_notes.md
+
+            cp \
+              fallback_release_notes.md \
+              release_notes.md
+
           fi
 
-      - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@v4
+      - name: Release Notes hochladen
+
+        uses: actions/upload-artifact@v7
+
         with:
           name: release-notes
+
           path: release_notes.md
 
-      - name: Release Notes Summary UX
-        run: |
-          echo "### 📝 Generated Release Notes Preview" >> $GITHUB_STEP_SUMMARY
-          echo '```markdown' >> $GITHUB_STEP_SUMMARY
-          cat release_notes.md | head -n 30 >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          if-no-files-found: error
+
+          retention-days: 3
+
+  # ─────────────────────────────────────────────────────────────
+  # RELEASE
+  # ─────────────────────────────────────────────────────────────
 
   release:
-    name: 🎉 GitHub Release
-    runs-on: ubuntu-latest
+    name: GitHub Release
+
+    runs-on: ubuntu-24.04
+
+    timeout-minutes: 15
+
     permissions:
       contents: write
-    needs: [meta, quality_checks, build_apk, build_aab, build_ipa, release_notes]
-    if: ${{ always() && needs.meta.result == 'success' && (needs.quality_checks.result == 'success' || needs.quality_checks.result == 'skipped') && (needs.build_apk.result == 'success' || needs.build_apk.result == 'skipped') && (needs.build_aab.result == 'success' || needs.build_aab.result == 'skipped') && (needs.build_ipa.result == 'success' || needs.build_ipa.result == 'skipped') && (needs.release_notes.result == 'success' || needs.release_notes.result == 'skipped') }}
+      actions: write
+
+    needs:
+      - meta
+      - quality_checks
+      - build_android
+      - build_ipa
+      - release_notes
+
+    if: >-
+      ${{
+        always() &&
+        needs.meta.result == 'success' &&
+        needs.quality_checks.result == 'success' &&
+        (
+          needs.build_android.result == 'success' ||
+          needs.build_android.result == 'skipped'
+        ) &&
+        (
+          needs.build_ipa.result == 'success' ||
+          needs.build_ipa.result == 'skipped'
+        ) &&
+        needs.release_notes.result == 'success'
+      }}
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
-      - name: Download All Build Artifacts
-        uses: actions/download-artifact@v4
+      # ----------------------------------------------------------
+      # Download artifacts
+      # ----------------------------------------------------------
+
+      - name: Android Artefakte herunterladen
+
+        if: >-
+          ${{
+            needs.meta.outputs.build_apk == 'true' ||
+            needs.meta.outputs.build_aab == 'true'
+          }}
+
+        uses: actions/download-artifact@v8
+
         with:
-          path: downloaded_artifacts
+          name: release-android
+          path: release_assets
 
-      - name: Prepare Release Assets
-        run: |
-          mkdir -p release_assets
-          find downloaded_artifacts -type f \( -name "*.apk" -o -name "*.aab" -o -name "*.ipa" -o -name "SHA256SUMS.txt" -o -name "release-manifest.json" \) -exec cp {} release_assets/ \;
+      - name: IPA herunterladen
 
-      - name: Publish GitHub Release
+        if: ${{ needs.meta.outputs.build_ipa == 'true' }}
+
+        uses: actions/download-artifact@v8
+
+        with:
+          name: release-ipa
+          path: release_assets
+
+      - name: Release Notes herunterladen
+
+        uses: actions/download-artifact@v8
+
+        with:
+          name: release-notes
+          path: release_assets
+
+      # ----------------------------------------------------------
+      # SHA256 + JSON manifest
+      # ----------------------------------------------------------
+
+      - name: Release Manifest erzeugen
+
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.meta.outputs.release_tag }}
-          NAME: ${{ needs.meta.outputs.release_name }}
-          PRERELEASE: ${{ needs.meta.outputs.prerelease }}
-          DRAFT: ${{ needs.meta.outputs.draft }}
-        run: |
-          NOTES_FILE="downloaded_artifacts/release-notes/release_notes.md"
-          
-          OPTS=()
-          [ "$PRERELEASE" = "true" ] && OPTS+=("--prerelease")
-          [ "$DRAFT" = "true" ] && OPTS+=("--draft")
-          [ -f "$NOTES_FILE" ] && OPTS+=("--notes-file" "$NOTES_FILE")
+          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
 
-          gh release create "$TAG" release_assets/* \
-            --title "$NAME" \
-            "${OPTS[@]}"
+          APP_VERSION: ${{ needs.meta.outputs.app_version }}
 
-      - name: Final Summary UX
+          VERSION_CODE: ${{ needs.meta.outputs.version_code }}
+
+          SOURCE_SHA: ${{ github.sha }}
+
+        shell: bash
+
         run: |
-          echo "## 🎉 Release Published Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "Tag: **${{ needs.meta.outputs.release_tag }}**" >> $GITHUB_STEP_SUMMARY
+          set -euo pipefail
+
+          mkdir -p release_assets
+
+          cd release_assets
+
+          shopt -s nullglob
+
+          binaries=(
+            *.apk
+            *.aab
+            *.ipa
+          )
+
+          # -------------------------------------------------------
+          # Checksums
+          # -------------------------------------------------------
+
+          if (( ${#binaries[@]} > 0 )); then
+
+            printf '%s\0' \
+              "${binaries[@]}" |
+
+              sort -z |
+
+              xargs \
+                -0 \
+                sha256sum \
+                > SHA256SUMS.txt
+          fi
+
+          # -------------------------------------------------------
+          # Manifest assets
+          # -------------------------------------------------------
+
+          assets="[]"
+
+          if (( ${#binaries[@]} > 0 )); then
+
+            assets="$(
+              {
+                for file in "${binaries[@]}"
+                do
+
+                  kind="${file##*.}"
+
+                  abi=""
+
+                  case "$file" in
+
+                    *-armeabi-v7a.apk)
+                      abi="armeabi-v7a"
+                      ;;
+
+                    *-arm64-v8a.apk)
+                      abi="arm64-v8a"
+                      ;;
+
+                    *-x86_64.apk)
+                      abi="x86_64"
+                      ;;
+
+                    *-universal.apk)
+                      abi="universal"
+                      ;;
+
+                  esac
+
+                  jq -n \
+                    --arg name "$file" \
+                    --arg kind "$kind" \
+                    --arg abi "$abi" \
+                    --arg sha256 "$(
+                      sha256sum "$file" |
+                        awk '{print $1}'
+                    )" \
+                    --argjson size_bytes "$(
+                      stat -c%s "$file"
+                    )" \
+                    '
+                    {
+                      name: $name,
+                      kind: $kind,
+                      sha256: $sha256,
+                      size_bytes: $size_bytes
+                    }
+                    +
+                    (
+                      if ($abi | length) > 0
+                      then {
+                        abi: $abi
+                      }
+                      else {}
+                      end
+                    )
+                    '
+
+                done
+
+              } | jq -s '.'
+            )"
+          fi
+
+          # -------------------------------------------------------
+          # Manifest
+          # -------------------------------------------------------
+
+          jq -n \
+            --arg tag "$RELEASE_TAG" \
+            --arg version "$APP_VERSION" \
+            --arg version_code "$VERSION_CODE" \
+            --arg source_sha "$SOURCE_SHA" \
+            --arg generated_at "$(
+              date -u \
+                +%Y-%m-%dT%H:%M:%SZ
+            )" \
+            --argjson assets "$assets" \
+            '
+            {
+              tag: $tag,
+              version: $version,
+              android_version_code:
+                ($version_code | tonumber),
+              source_sha: $source_sha,
+              generated_at: $generated_at,
+              assets: $assets
+            }
+            ' \
+            > release-manifest.json
+
+      # ----------------------------------------------------------
+      # GitHub Release
+      # ----------------------------------------------------------
+
+      - name: GitHub Release erstellen
+
+        uses: softprops/action-gh-release@v3
+
+        with:
+          tag_name: ${{ needs.meta.outputs.release_tag }}
+
+          # Wichtig bei workflow_dispatch:
+          # exakt der Commit, der getestet/gebaut wurde.
+          target_commitish: ${{ github.sha }}
+
+          name: ${{ needs.meta.outputs.release_name }}
+
+          body_path: release_assets/release_notes.md
+
+          files: |
+            release_assets/*.apk
+            release_assets/*.aab
+            release_assets/*.ipa
+            release_assets/SHA256SUMS.txt
+            release_assets/release-manifest.json
+
+          fail_on_unmatched_files: false
+
+          draft: ${{ needs.meta.outputs.draft == 'true' }}
+
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
+
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # ----------------------------------------------------------
+      # AltStore
+      # ----------------------------------------------------------
+
+      - name: AltStore Source aktualisieren
+
+        if: >-
+          ${{
+            needs.meta.outputs.build_ipa == 'true' &&
+            needs.meta.outputs.draft == 'false'
+          }}
+
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
+
+        shell: bash
+
+        run: |
+          gh workflow run \
+            altstore_source.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            -f tag="$RELEASE_TAG"
