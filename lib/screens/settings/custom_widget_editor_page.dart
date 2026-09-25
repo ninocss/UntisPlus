@@ -448,139 +448,49 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
         border: Border.all(
           color: systemColors
               ? cs.outlineVariant.withValues(alpha: 0.52)
-              : accent.withValues(alpha: 0.42),
+              : accent.withValues(alpha: 0.55),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: cs.shadow.withValues(alpha: 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.school_rounded, color: accent, size: 19),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
+        children: config.blocks
+            .asMap()
+            .entries
+            .map(
+              (entry) => Padding(
+                padding: EdgeInsets.only(bottom: compact ? 5 : 8),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'UNTIS+',
-                      style: GoogleFonts.outfit(
-                        color: foreground.withValues(alpha: 0.68),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                    Text(
-                      _content(config, 'account'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        color: foreground,
-                        fontSize: 13 * config.textScale,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  appL10nFor(appLocaleNotifier.value).previewStatus,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    color: accent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: compact ? 10 : 16),
-          for (final entry in config.blocks.asMap().entries)
-            Padding(
-              padding: EdgeInsets.only(bottom: compact ? 5 : 9),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (config.showIcons) ...[
-                    Container(
-                      width: compact ? 28 : 32,
-                      height: compact ? 28 : 32,
-                      decoration: BoxDecoration(
-                        color: entry.key == 0
-                            ? accent.withValues(alpha: 0.18)
-                            : cs.surfaceContainerHighest.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: Icon(
+                    if (config.showIcons) ...[
+                      Icon(
                         _blocks[entry.value] ?? Icons.widgets_rounded,
-                        color: entry.key == 0 ? accent : foreground.withValues(alpha: 0.72),
-                        size: compact ? 16 : 18,
+                        color: accent,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: Text(
+                        _content(config, entry.value),
+                        maxLines: entry.value == 'schedule' ? 3 : 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          color: foreground,
+                          fontSize: 14 * config.textScale,
+                          fontWeight: entry.key == 0
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          height: 1.25,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 9),
                   ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _blockLabel(
-                            appL10nFor(appLocaleNotifier.value),
-                            entry.value,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            color: foreground.withValues(alpha: 0.62),
-                            fontSize: 10 * config.textScale,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Text(
-                          _content(config, entry.value),
-                          maxLines: entry.value == 'schedule' ? 2 : 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            color: foreground,
-                            fontSize: (entry.key == 0 ? 14 : 12) * config.textScale,
-                            fontWeight: entry.key == 0
-                                ? FontWeight.w800
-                                : FontWeight.w600,
-                            height: 1.18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-        ],
+            )
+            .toList(),
       ),
     );
   }
