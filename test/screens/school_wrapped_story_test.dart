@@ -20,7 +20,11 @@ void main() {
     await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
     await tester.pump(const Duration(milliseconds: 200));
     final entry = find.text('School Wrapped');
-    await tester.ensureVisible(entry.first);
+    await tester.scrollUntilVisible(
+      entry,
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(entry.first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 650));
