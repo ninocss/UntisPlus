@@ -221,31 +221,37 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     final current = _selected;
     final next = switch (index) {
       0 => current.copyWith(
+          layout: 'stacked',
+          blocks: const ['current', 'next', 'status'],
           colorMode: 'system',
-          opacity: 0.96,
+          opacity: 1,
           cornerRadius: 28,
           textScale: 1,
           showIcons: true,
         ),
       1 => current.copyWith(
+          layout: 'compact',
+          blocks: const ['current', 'next', 'schedule'],
           colorMode: 'custom',
-          backgroundColor: 0xFF101828,
-          accentColor: 0xFF84CAFF,
-          textColor: 0xFFF5F7FA,
-          opacity: 0.97,
+          backgroundColor: 0xFF171A22,
+          accentColor: 0xFFD0BCFF,
+          textColor: 0xFFE6E1E9,
+          opacity: 1,
           cornerRadius: 24,
-          textScale: 1,
+          textScale: 0.98,
           showIcons: true,
         ),
       _ => current.copyWith(
+          layout: 'timeline',
+          blocks: const ['schedule', 'homework', 'exams'],
           colorMode: 'custom',
-          backgroundColor: 0xFFFDF8F3,
-          accentColor: 0xFF8D4A3B,
-          textColor: 0xFF2A1914,
+          backgroundColor: 0xFFF7F2FA,
+          accentColor: 0xFF6750A4,
+          textColor: 0xFF1D1B20,
           opacity: 1,
-          cornerRadius: 32,
-          textScale: 1.05,
-          showIcons: false,
+          cornerRadius: 28,
+          textScale: 1,
+          showIcons: true,
         ),
     };
     _replace(next);
@@ -370,63 +376,158 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
 
   Widget _preview(WidgetConfiguration config) {
     final cs = Theme.of(context).colorScheme;
-    final background = Color(
-      config.backgroundColor,
-    ).withValues(alpha: config.opacity);
-    return Container(
+    final systemColors = config.colorMode == 'system';
+    final background = systemColors
+        ? cs.surfaceContainer
+        : Color(config.backgroundColor);
+    final foreground = systemColors ? cs.onSurface : Color(config.textColor);
+    final accent = systemColors ? cs.primary : Color(config.accentColor);
+    final compact = config.layout == 'compact';
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       constraints: const BoxConstraints(maxWidth: 370),
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 14 : 18),
       decoration: BoxDecoration(
-        color: background,
+        color: background.withValues(alpha: config.opacity),
         borderRadius: BorderRadius.circular(config.cornerRadius),
         border: Border.all(
-          color: Color(config.accentColor).withValues(alpha: .55),
+          color: systemColors
+              ? cs.outlineVariant.withValues(alpha: 0.52)
+              : accent.withValues(alpha: 0.42),
         ),
         boxShadow: [
           BoxShadow(
-            color: cs.shadow.withValues(alpha: .2),
+            color: cs.shadow.withValues(alpha: 0.12),
             blurRadius: 20,
-            offset: const Offset(0, 10),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: config.blocks
-            .map(
-              (block) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.school_rounded, color: accent, size: 19),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (config.showIcons) ...[
-                      Icon(
-                        _blocks[block] ?? Icons.widgets_rounded,
-                        color: Color(config.accentColor),
-                        size: 18,
+                    Text(
+                      'UNTIS+',
+                      style: GoogleFonts.outfit(
+                        color: foreground.withValues(alpha: 0.68),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
                       ),
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(
-                      child: Text(
-                        _content(config, block),
-                        maxLines: block == 'schedule' ? 3 : 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
-                          color: Color(config.textColor),
-                          fontSize: 14 * config.textScale,
-                          fontWeight: block == 'current'
-                              ? FontWeight.w900
-                              : FontWeight.w600,
-                          height: 1.25,
-                        ),
+                    ),
+                    Text(
+                      _content(config, 'account'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        color: foreground,
+                        fontSize: 13 * config.textScale,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
-            )
-            .toList(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  appL10nFor(appLocaleNotifier.value).previewStatus,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.outfit(
+                    color: accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: compact ? 10 : 16),
+          for (final entry in config.blocks.asMap().entries)
+            Padding(
+              padding: EdgeInsets.only(bottom: compact ? 5 : 9),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (config.showIcons) ...[
+                    Container(
+                      width: compact ? 28 : 32,
+                      height: compact ? 28 : 32,
+                      decoration: BoxDecoration(
+                        color: entry.key == 0
+                            ? accent.withValues(alpha: 0.18)
+                            : cs.surfaceContainerHighest.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(
+                        _blocks[entry.value] ?? Icons.widgets_rounded,
+                        color: entry.key == 0 ? accent : foreground.withValues(alpha: 0.72),
+                        size: compact ? 16 : 18,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _blockLabel(
+                            appL10nFor(appLocaleNotifier.value),
+                            entry.value,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            color: foreground.withValues(alpha: 0.62),
+                            fontSize: 10 * config.textScale,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          _content(config, entry.value),
+                          maxLines: entry.value == 'schedule' ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            color: foreground,
+                            fontSize: (entry.key == 0 ? 14 : 12) * config.textScale,
+                            fontWeight: entry.key == 0
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            height: 1.18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1155,7 +1256,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               children: [
                 Expanded(
                   child: _stylePresetButton(
-                    label: 'Material',
+                    label: 'M3',
                     icon: Icons.auto_awesome_rounded,
                     onTap: () => _applyStylePreset(0),
                   ),
@@ -1163,7 +1264,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _stylePresetButton(
-                    label: 'Night',
+                    label: 'Fokus',
                     icon: Icons.dark_mode_rounded,
                     onTap: () => _applyStylePreset(1),
                   ),
@@ -1171,7 +1272,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _stylePresetButton(
-                    label: 'Paper',
+                    label: 'Agenda',
                     icon: Icons.article_rounded,
                     onTap: () => _applyStylePreset(2),
                   ),
