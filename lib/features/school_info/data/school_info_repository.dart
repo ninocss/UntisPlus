@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import '../../../core/sync_state.dart';
 import '../../../core/time_utils.dart';
+import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_client.dart';
-import '../../../data/webuntis/webuntis_message_context.dart';
 
 class SchoolInfoReadResult {
   const SchoolInfoReadResult({
@@ -109,7 +109,7 @@ class SchoolInfoRepository {
   }) async {
     WebUntisFailure? lastFailure;
     final uri = Uri.parse(
-      'https://$schoolUrl/WebUntis/messageFileRequest.do'
+      '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/messageFileRequest.do'
       '?file=${Uri.encodeQueryComponent(attachmentId)}',
     );
     for (final cookie in _schoolCookies(schoolName)) {
@@ -256,32 +256,52 @@ class SchoolInfoRepository {
     required String schoolName,
     required String sessionId,
   }) async {
-    final context = await WebUntisMessageContextResolver(_client).resolve(
-      schoolUrl: schoolUrl,
-      schoolName: schoolName,
-      sessionId: sessionId,
-    );
-    WebUntisFailure? lastFailure;
-    for (final version in const ['v2', 'v1']) {
-      try {
-        final decoded = await _client.getJson(
-          uri: Uri.parse(
-            'https://$schoolUrl/WebUntis/api/rest/view/$version/messages',
-          ),
-          headers: context.headers,
-        );
-        final incoming = decoded is Map ? decoded['incomingMessages'] : null;
-        if (incoming is List) return _normalizeInbox(incoming);
-      } on WebUntisFailure catch (failure) {
-        lastFailure = failure;
-        if (failure.statusCode != 404 && failure.statusCode != 500) rethrow;
+    final cookies = _schoolCookies(schoolName);
+    String? token;
+    for (final cookie in cookies) {
+      final raw = await _getText(
+        uri: Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/token/new'),
+        sessionId: sessionId,
+        cookies: [cookie],
+      );
+      if (raw != null && raw.trim().isNotEmpty) {
+        final trimmed = raw.trim();
+        if (!trimmed.startsWith('{')) {
+          token = trimmed.replaceAll('"', '').trim();
+        } else {
+          try {
+            final decoded = jsonDecode(trimmed);
+            if (decoded is String && decoded.trim().isNotEmpty) {
+              token = decoded.trim();
+            } else if (decoded is Map) {
+              for (final key in const ['token', 'jwt', 'jwt_token', 'accessToken']) {
+                final value = decoded[key]?.toString().trim();
+                if (value != null && value.isNotEmpty) {
+                  token = value;
+                  break;
+                }
+              }
+            }
+          } catch (_) {}
+        }
       }
+      if (token != null && token.isNotEmpty) break;
     }
-    if (lastFailure != null) throw lastFailure;
-    throw const WebUntisFailure(
-      WebUntisFailureKind.invalidData,
-      'WebUntis did not return a compatible message list.',
+
+    if (token == null || token.isEmpty) return const [];
+
+    final decoded = await _getJson(
+      uri: Uri.parse(
+        '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/rest/view/v1/messages',
+      ),
+      sessionId: sessionId,
+      cookies: cookies,
+      extraHeaders: {'Authorization': 'Bearer $token'},
     );
+    if (decoded == null) return const [];
+    final incoming = decoded is Map ? decoded['incomingMessages'] : null;
+    if (incoming is List) return _normalizeInbox(incoming);
+    return const [];
   }
 
   static List<Map<String, dynamic>> _normalizeInbox(List incoming) {
@@ -363,7 +383,7 @@ class SchoolInfoRepository {
       final date = untisDateString(day);
       final decoded = await _getJson(
         uri: Uri.parse(
-          'https://$schoolUrl/WebUntis/api/public/news/'
+          '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/public/news/'
           'newsWidgetData?date=$date',
         ),
         sessionId: sessionId,
@@ -391,7 +411,7 @@ class SchoolInfoRepository {
     required String path,
   }) async {
     final decoded = await _getJson(
-      uri: Uri.parse('https://$schoolUrl$path'),
+      uri: Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}$path'),
       sessionId: sessionId,
       cookies: cookies,
     );
@@ -439,6 +459,31 @@ class SchoolInfoRepository {
     for (final cookie in cookies) {
       try {
         return await _client.getJson(
+          uri: uri,
+          headers: {
+            'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
+            'Accept': 'application/json',
+            ...extraHeaders,
+          },
+        );
+      } on WebUntisFailure catch (failure) {
+        lastFailure = failure;
+      } catch (_) {}
+    }
+    if (lastFailure != null) throw lastFailure;
+    return null;
+  }
+
+  Future<String?> _getText({
+    required Uri uri,
+    required String sessionId,
+    required List<String> cookies,
+    Map<String, String> extraHeaders = const {},
+  }) async {
+    WebUntisFailure? lastFailure;
+    for (final cookie in cookies) {
+      try {
+        return await _client.getText(
           uri: uri,
           headers: {
             'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',

@@ -835,8 +835,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
       if (authResult.isSuccess) {
         sessionID = authResult.sessionId;
-        personId = authResult.personId;
-        personType = authResult.personType;
+
+        // Guardian/parent accounts have no timetable of their own; redirect
+        // them to their first linked student so the account never stores an
+        // element that cannot be fetched.
+        final element = _resolveTimetableElementFromAuth(
+          authResult.linkedPeople,
+          authResult.personId,
+          authResult.personType,
+        );
+        personId = element['personId']! as int;
+        personType = element['personType']! as int;
 
         final prefs = SettingsStore.instance.preferences;
         await prefs.setString('schoolUrl', schoolUrl);

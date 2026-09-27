@@ -5,10 +5,12 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
-/// Minimum fling velocity (in screen widths per second) to trigger a pop.
+/// Minimum fling velocity (in screen widths per second) to trigger a pop
+/// when the drag ends before the halfway point.
 const double _kMinFlingVelocity = 1.0;
 
-/// Animation duration for the page settling animation after a swipe-back.
+/// Animation duration for the page settling after a completed or cancelled
+/// swipe-back gesture.
 const Duration _kDroppedSwipePageAnimationDuration = Duration(
   milliseconds: 350,
 );
@@ -17,9 +19,11 @@ const Duration _kDroppedSwipePageAnimationDuration = Duration(
 const Curve _kSwipeBackAnimationCurve = Curves.fastEaseInToSlowEaseOut;
 
 /// Computes the swipe-back gesture drag area width proportional to screen size.
+/// ~5% of the shortest screen dimension, clamped to [20, 48] logical pixels.
+/// Matches native iOS behavior where the edge zone scales with device size.
 double _kSwipeBackGestureWidth(BuildContext context) {
-  final double shortestSide = MediaQuery.sizeOf(context).shortestSide;
-  return (shortestSide * 0.05).clamp(20.0, 48.0).toDouble();
+  final shortestSide = MediaQuery.sizeOf(context).shortestSide;
+  return (shortestSide * 0.05).clamp(20.0, 48.0);
 }
 
 class _AiImportFile {
@@ -1529,15 +1533,15 @@ class _SwipeBackGestureDetectorState<T>
   }
 
   double _convertToLogical(double value) {
-    final ui.TextDirection dir = Directionality.of(context);
-    return dir == ui.TextDirection.rtl ? -value : value;
+    final TextDirection dir = Directionality.of(context);
+    return dir == TextDirection.rtl ? -value : value;
   }
 
   @override
   Widget build(BuildContext context) {
     assert(debugCheckHasDirectionality(context));
-    final ui.TextDirection dir = Directionality.of(context);
-    final double dragAreaWidth = dir == ui.TextDirection.rtl
+    final TextDirection dir = Directionality.of(context);
+    final double dragAreaWidth = dir == TextDirection.rtl
         ? MediaQuery.paddingOf(context).right
         : MediaQuery.paddingOf(context).left;
     return Stack(

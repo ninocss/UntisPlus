@@ -46,10 +46,10 @@ dependencies:
   hive_ce_flutter: ^2.3.4
   cryptography: ^2.9.0
   audioplayers: 6.8.1
+  freezed_annotation: ^3.0.0
   wishkit:
     git:
       url: https://github.com/OseMine/wishkit-flutter.git
-
 dev_dependencies:
   flutter_test:
     sdk: flutter

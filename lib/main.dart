@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'dart:ui' as ui;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -8,7 +7,6 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/physics.dart';
@@ -17,7 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:html/dom.dart' as html_dom;
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
@@ -47,6 +45,7 @@ import 'data/cache/offline_cache_store.dart';
 import 'data/security/credential_vault.dart';
 import 'data/webuntis/webuntis_client.dart';
 import 'data/webuntis/webuntis_session_manager.dart';
+import 'data/webuntis/untis_endpoint.dart';
 import 'features/changes/data/change_repository.dart';
 import 'features/changes/domain/timetable_change.dart';
 import 'features/exams/data/webuntis_exam_repository.dart';
@@ -617,6 +616,21 @@ void main() async {
       customCompatibility: aiCustomCompatibility,
     );
     await prefs.setString('aiModel', aiModel);
+  }
+
+  // Check dev server reachability on startup if dev mode is enabled.
+  // This runs asynchronously so it doesn't block the first frame.
+  if (devModeNotifier.value) {
+    unawaited(() async {
+      final reachable = await checkDevServerReachable();
+      if (reachable && devServerReachableNotifier.value) {
+        // Dev server is reachable - show notification based on user preference.
+        if (devModeNotificationStyleNotifier.value == DevModeNotificationStyle.popup) {
+          // We'll show the popup after the app is built, via a post-frame callback.
+          // For now, just mark it reachable.
+        }
+      }
+    }());
   }
 
   runApp(

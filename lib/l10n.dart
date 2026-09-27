@@ -213,6 +213,7 @@ extension AppL10nCollections on AppL10n {
     '[current_lesson]': aiVar_current_lesson,
     '[next_lesson]': aiVar_next_lesson,
   };
+
   /// Copy transported to native alarm processes that can run while Flutter is
   /// stopped.
   Map<String, String> nativeAlarmCopy() => <String, String>{
@@ -252,6 +253,7 @@ extension AppL10nCollections on AppL10n {
     'titleSchedule': widgetSchedule,
     'titleHomework': widgetHomework.toUpperCase(),
     'titleNotices': widgetNotices.toUpperCase(),
+
   };
 
   String get settingsAiCustomBaseUrl => _t('settingsAiCustomBaseUrl');
@@ -5609,5 +5611,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'noExamsForSubject': 'No hay exámenes programados para esta asignatura.',
       'noHomeworkForSubject': 'No hay tareas pendientes para esta asignatura.',
     },
+
+
   };
 }
+

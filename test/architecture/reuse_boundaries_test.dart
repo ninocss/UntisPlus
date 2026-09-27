@@ -242,4 +242,34 @@ void main() {
       );
     }
   });
+
+  test('WebUntis request URLs are built through untisBaseUrl', () {
+    // Developer mode can only redirect requests if every WebUntis URL goes
+    // through the single resolver; a hardcoded scheme bypasses it.
+    const resolverPath = 'lib/data/webuntis/untis_endpoint.dart';
+    final offenders = [
+      RegExp(r'https://\$\{?\s*(context\.)?schoolUrl'),
+      RegExp(r'https://\$schoolUrl'),
+      // The school directory is a shared service rather than a per-school
+      // backend, so it has no schoolUrl to interpolate, but it still has to go
+      // through untisDirectoryBaseUrl for the same reason.
+      RegExp(r'https://mobile\.webuntis\.com'),
+    ];
+
+    for (final root in ['lib/data', 'lib/features', 'lib/services']) {
+      for (final file in _dartFiles(root)) {
+        if (_normalizedPath(file) == resolverPath) continue;
+        final source = file.readAsStringSync();
+        for (final pattern in offenders) {
+          expect(
+            pattern.hasMatch(source),
+            isFalse,
+            reason:
+                '${file.path} hardcodes a WebUntis host; build it with untisBaseUrl '
+                'or untisDirectoryBaseUrl',
+          );
+        }
+      }
+    }
+  });
 }

@@ -1,13 +1,16 @@
 import '../../../core/school_models.dart';
 import '../../../core/sync_state.dart';
+import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 
 class SchoolDirectoryRepository {
   SchoolDirectoryRepository({WebUntisClient? client})
     : _client = client ?? WebUntisClient();
 
-  static final Uri endpoint = Uri.parse(
-    'https://mobile.webuntis.com/ms/schoolquery2',
+  /// Directory endpoint, resolved on every call so that toggling developer mode
+  /// takes effect without restarting the app.
+  static Uri get endpoint => Uri.parse(
+    '${untisDirectoryBaseUrl()}/ms/schoolquery2',
   );
 
   final WebUntisClient _client;

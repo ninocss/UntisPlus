@@ -267,6 +267,99 @@ final _demoModePreference = boolPreference(
   defaultValue: false,
   notifier: demoModeNotifier,
 );
+final _devModePreference = boolPreference(
+  key: 'devMode',
+  defaultValue: false,
+  notifier: devModeNotifier,
+);
+final _devServerUrlPreference = stringPreference(
+  key: 'devServerUrl',
+  defaultValue: kDefaultDevServerUrl,
+  notifier: devServerUrlNotifier,
+  normalize: normalizeDevServerUrl,
+);
+final _devUseHttpsPreference = boolPreference(
+  key: 'devUseHttps',
+  defaultValue: false,
+  notifier: devUseHttpsNotifier,
+);
+final _devServerSchoolNamePreference = stringPreference(
+  key: 'devServerSchoolName',
+  defaultValue: '',
+  notifier: devServerSchoolNameNotifier,
+);
+final _devServerUsernamePreference = stringPreference(
+  key: 'devServerUsername',
+  defaultValue: '',
+  notifier: devServerUsernameNotifier,
+);
+final _devServerPasswordPreference = stringPreference(
+  key: 'devServerPassword',
+  defaultValue: '',
+  notifier: devServerPasswordNotifier,
+);
+final _devModeNotificationStylePreference = enumPreference<DevModeNotificationStyle>(
+  key: 'devModeNotificationStyle',
+  defaultValue: DevModeNotificationStyle.popup,
+  notifier: devModeNotificationStyleNotifier,
+  values: DevModeNotificationStyle.values,
+);
+final _showFullTeacherNamesPreference = boolPreference(
+  key: 'showFullTeacherNames',
+  defaultValue: true,
+  notifier: showFullTeacherNamesNotifier,
+);
+final _timetableDaySpanPreference = intPreference(
+  key: 'timetableDaySpan',
+  defaultValue: 1,
+  notifier: timetableDaySpanNotifier,
+  normalize: (value) => value.clamp(1, 3).toInt(),
+);
+final _swipeBackGesturePreference = boolPreference(
+  key: 'swipeBackGesture',
+  defaultValue: defaultTargetPlatform == TargetPlatform.iOS,
+  notifier: swipeBackGestureNotifier,
+);
+
+/// Developer mode and demo mode never run at the same time: demo mode answers
+/// from local sample data, so the development server would never be reached.
+/// Enabling either one therefore turns the other off.
+/// Dev mode CAN run alongside a real school account — the dev server simply
+/// takes precedence when reachable.
+Future<void> _settingsSetDevMode(bool value) async {
+  if (value) demoModeNotifier.value = false;
+  await SettingsStore.instance.write(_devModePreference, value);
+  if (value) await SettingsStore.instance.write(_demoModePreference, false);
+}
+
+/// Validates and stores the development-server address, reporting whether the
+/// input was accepted so the caller can show feedback.
+///
+/// Anything the user types in is reduced to a bare `host[:port]`; the input is
+/// only rejected when what remains is not something that can be connected to,
+/// i.e. it has no host part or a host that contains whitespace.
+Future<bool> _settingsSetDevServerUrl(String value) async {
+  final normalized = normalizeDevServerUrl(value);
+  final host = normalized.split(':').first;
+  if (host.isEmpty || host.contains(RegExp(r'\s'))) return false;
+  await SettingsStore.instance.write(_devServerUrlPreference, normalized);
+  return true;
+}
+
+Future<void> _settingsSetDevUseHttps(bool value) =>
+    SettingsStore.instance.write(_devUseHttpsPreference, value);
+
+Future<void> _settingsSetDevServerSchoolName(String value) =>
+    SettingsStore.instance.write(_devServerSchoolNamePreference, value);
+
+Future<void> _settingsSetDevServerUsername(String value) =>
+    SettingsStore.instance.write(_devServerUsernamePreference, value);
+
+Future<void> _settingsSetDevServerPassword(String value) =>
+    SettingsStore.instance.write(_devServerPasswordPreference, value);
+
+Future<void> _settingsSetDevModeNotificationStyle(DevModeNotificationStyle value) =>
+    SettingsStore.instance.write(_devModeNotificationStylePreference, value);
 
 Future<void> _settingsSetLocale(String code) async {
   await ensureDateFormattingForLocale(code);
@@ -290,6 +383,7 @@ Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
 
 Future<void> _settingsSetShowCancelled(bool value) =>
     SettingsStore.instance.write(_showCancelledPreference, value);
+
 
 Future<void> _settingsSetTimetableDaySpan(int value) async {
   final normalized = value.clamp(1, 3).toInt();
@@ -329,6 +423,8 @@ Future<void> _settingsSetSwipeBackGesture(bool value) async {
   swipeBackGestureNotifier.value = value;
   await SettingsStore.instance.writeRaw('swipeBackGesture', value);
 }
+
+
 
 Future<void> _settingsSetTimetableSwitchAnimation(int value) =>
     SettingsStore.instance.write(_timetableSwitchAnimationPreference, value);
@@ -488,6 +584,9 @@ Future<void> _settingsSetNotifyChangeOther(bool value) =>
 
 Future<void> _settingsSetDemoMode(BuildContext context, bool enabled) async {
   await SettingsStore.instance.write(_demoModePreference, enabled);
+  // Demo mode serves local sample data and performs no requests, so it cannot
+  // coexist with developer mode. See [_settingsSetDevMode].
+  if (enabled) await SettingsStore.instance.write(_devModePreference, false);
   if (enabled) {
     if (schoolName.isEmpty) schoolName = 'demo.school';
     if (schoolUrl.isEmpty) schoolUrl = 'demo.school';
@@ -651,6 +750,7 @@ Future<void> _settingsSyncFromPrefs() async {
   blurEnabledNotifier.value =
       appThemeCapabilities(activeTheme).supportsBlur &&
       (themeBlurPreferencesNotifier.value[activeTheme.storageKey] ?? true);
+
   showFullTeacherNamesNotifier.value =
       prefs.getBool('showFullTeacherNames') ?? true;
   timetableDaySpanNotifier.value = (prefs.getInt('timetableDaySpan') ?? 1)
@@ -659,6 +759,8 @@ Future<void> _settingsSyncFromPrefs() async {
   swipeBackGestureNotifier.value =
       prefs.getBool('swipeBackGesture') ??
       (defaultTargetPlatform == TargetPlatform.iOS);
+
+
 
   await store.load(_blurStrengthPreference);
   await store.load(_headerStylePreference);
@@ -697,6 +799,12 @@ Future<void> _settingsSyncFromPrefs() async {
   await store.load(_notifyChangeTeacherPreference);
   await store.load(_notifyChangeOtherPreference);
   await store.load(_demoModePreference);
+  await store.load(_devModePreference);
+  await store.load(_devServerUrlPreference);
+  await store.load(_devUseHttpsPreference);
+  await store.load(_showFullTeacherNamesPreference);
+  await store.load(_timetableDaySpanPreference);
+  await store.load(_swipeBackGesturePreference);
 
   await loadAiPreferences(prefs);
   await loadAccountPersonalData();
@@ -1314,3 +1422,4 @@ Future<void> _settingsSetAppIcon(String icon) async {
   final prefs = SettingsStore.instance.preferences;
   await prefs.setString('appIcon', icon);
 }
+

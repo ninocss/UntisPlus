@@ -1182,9 +1182,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     return _buildShowFullTeacherNamesTile(
                       l: l,
                       cs: cs,
-                      iconBackgroundColor: cs.primaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
+                      iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
                       iconColor: cs.onPrimaryContainer,
                     );
                   },

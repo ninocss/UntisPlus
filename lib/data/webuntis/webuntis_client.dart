@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../../core/sync_state.dart';
+import 'untis_endpoint.dart';
 
 class WebUntisRequestContext {
   const WebUntisRequestContext({
@@ -80,7 +81,7 @@ class WebUntisClient {
     bool internal = false,
   }) {
     final uri = Uri.parse(
-      'https://${context.schoolUrl}/WebUntis/'
+      '${untisBaseUrl(schoolUrl: context.schoolUrl)}/WebUntis/'
       '${internal ? 'jsonrpc_intern.do' : 'jsonrpc.do'}'
       '?school=${Uri.encodeQueryComponent(context.schoolName)}',
     );

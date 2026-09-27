@@ -1879,6 +1879,49 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         SchoolWrappedStory(year: pending, account: account),
       ));
     }
+
+    // Dev mode: show popup if dev server is reachable and style is 'popup'
+    if (devModeNotifier.value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final reachable = await checkDevServerReachable();
+        if (!mounted) return;
+        if (reachable && devModeNotificationStyleNotifier.value == DevModeNotificationStyle.popup) {
+          _showDevModePopup(context);
+        }
+      });
+    }
+  }
+
+  void _showDevModePopup(BuildContext context) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final url = normalizeDevServerUrl(devServerUrlNotifier.value);
+    showUntisDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.developer_mode, color: Colors.green),
+            const SizedBox(width: 8),
+            Text(l.settingsDevModeUsingDevServer),
+          ],
+        ),
+        content: Text(l.settingsDevModeUsingDevServerDesc.replaceAll('{url}', url)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l.settingsDevModeNotificationStyleNone),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.of(context).pushNamed('/settings/account');
+            },
+            child: Text(l.settingsHubAccount),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleNotificationAction(NotificationActionEvent event) {
@@ -2293,6 +2336,22 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 isLast: _tutorialStep == _tutorialTargets.length - 1,
               ),
             ),
+          // Dev mode indicator bar (green bar at top when dev server is reachable)
+          ValueListenableBuilder<bool>(
+            valueListenable: devServerReachableNotifier,
+            builder: (context, reachable, _) {
+              if (!reachable) return const SizedBox.shrink();
+              return ValueListenableBuilder<DevModeNotificationStyle>(
+                valueListenable: devModeNotificationStyleNotifier,
+                builder: (context, style, _) {
+                  if (style != DevModeNotificationStyle.bar) return const SizedBox.shrink();
+                  return _DevModeIndicatorBar(
+                    serverUrl: normalizeDevServerUrl(devServerUrlNotifier.value),
+                  );
+                },
+              );
+            },
+          ),
         ],
       ),
     );
@@ -3346,6 +3405,69 @@ class _BouncyButtonState extends State<_BouncyButton>
         _controller.reverse();
       },
       child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
+    );
+  }
+}
+
+// Dev mode indicator bar - shown at top when dev server is reachable
+// and notification style is set to 'bar'.
+class _DevModeIndicatorBar extends StatelessWidget {
+  final String serverUrl;
+
+  const _DevModeIndicatorBar({required this.serverUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final mq = MediaQuery.of(context);
+
+    return Positioned(
+      top: mq.padding.top,
+      left: 0,
+      right: 0,
+      child: Material(
+        elevation: 4,
+        color: Colors.green.shade700,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.developer_mode, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l.settingsDevModeUsingDevServer,
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    // Navigate to settings account page
+                    Navigator.of(context).pushNamed('/settings/account');
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  ),
+                  child: Text(
+                    l.settingsHubAccount,
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

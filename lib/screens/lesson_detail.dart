@@ -1,5 +1,19 @@
 part of '../main.dart';
 
+/// Teacher name to show on lesson cards and in the lesson detail sheet.
+///
+/// `_teacher` holds the canonical full name because lesson identity and change
+/// detection compare against it; `_teacherShort` holds the WebUntis Kürzel and
+/// may be absent. The choice is made here, at render time, so toggling the
+/// "full teacher names" setting takes effect immediately instead of waiting for
+/// the next sync.
+String displayTeacherForLesson(Map<Object?, Object?> lesson) {
+  final full = (lesson['_teacher'] ?? '').toString().trim();
+  if (showFullTeacherNamesNotifier.value || full.isEmpty) return full;
+  final short = (lesson['_teacherShort'] ?? '').toString().trim();
+  return short.isEmpty ? full : short;
+}
+
 // --- DETAIL BOTTOM SHEET OPENER ---
 void _showLessonDetail(
   BuildContext context,
@@ -17,7 +31,7 @@ void _showLessonDetail(
   final room = lesson['_room']?.toString().isNotEmpty == true
       ? lesson['_room'].toString()
       : '---';
-  final teacher = lessonTeacherDisplayName(lesson);
+  final teacher = displayTeacherForLesson(lesson);
   final time =
       '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
   final isSubstitution = isTimetableSubstitution(lesson);

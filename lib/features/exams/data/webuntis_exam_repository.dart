@@ -1,5 +1,6 @@
-import '../../../core/time_utils.dart';
 import '../../../core/sync_state.dart';
+import '../../../core/time_utils.dart';
+import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 import '../../../data/webuntis/webuntis_session_manager.dart';
 
@@ -8,9 +9,6 @@ class WebUntisExamRepository {
     : _client = client ?? WebUntisClient();
 
   final WebUntisClient _client;
-  late final WebUntisSessionManager _sessions = WebUntisSessionManager(
-    client: _client,
-  );
 
   Future<List<Map<String, dynamic>>> fetch({
     required WebUntisRequestContext context,
@@ -33,7 +31,7 @@ class WebUntisExamRepository {
       for (final path in paths) {
         try {
           final decoded = await _client.getJson(
-            uri: Uri.parse('https://${requestContext.schoolUrl}$path?$query'),
+            uri: Uri.parse('${untisBaseUrl(schoolUrl: requestContext.schoolUrl)}$path?$query'),
             headers: {
               'Accept': 'application/json',
               if (requestContext.sessionId.isNotEmpty)
@@ -56,11 +54,19 @@ class WebUntisExamRepository {
 
     if (account != null) {
       try {
-        return await _sessions.runAuthenticated(
-          account: account,
-          currentSessionId: context.sessionId,
-          request: request,
-        );
+        for (final path in paths) {
+          await _client.getJson(
+            uri: Uri.parse(
+              '${untisBaseUrl(schoolUrl: context.schoolUrl)}$path?$query',
+            ),
+            headers: {
+              'Accept': 'application/json',
+              if (context.sessionId.isNotEmpty)
+                'Cookie':
+                    'JSESSIONID=${context.sessionId}; schoolname=${context.schoolName}',
+            },
+          );
+        }
       } catch (_) {
         return const [];
       }
