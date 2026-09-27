@@ -701,7 +701,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                               color: color.withValues(alpha: 0.2),
                             ),
                             child: InkWell(
-                              onTap: () => HapticFeedback.selectionClick(),
+                              onTap: () => AppHaptics.selection(),
                               borderRadius: BorderRadius.circular(12),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -747,7 +747,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                 final avg = _calculateAverage(subjGrades);
                 return _springEntry(
                   key: ValueKey('grade_subject_$subj'),
-                  duration: Duration(milliseconds: 400 + (index * 80)),
+                  duration: Duration(
+                    milliseconds: (400 + index * 45).clamp(400, 600).toInt(),
+                  ),
                   offsetY: 20,
                   child: _buildSubjectCard(cs, subj, subjGrades, avg),
                 );
@@ -901,7 +903,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
           const SizedBox(height: 32),
           FilledButton.icon(
             onPressed: () {
-              HapticFeedback.selectionClick();
+              AppHaptics.selection();
               showAddGradeDialog();
             },
             icon: const Icon(Icons.add_rounded),
@@ -1080,13 +1082,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         () => _grades.removeWhere((item) => item.id == g.id),
                       );
                       _saveGrades();
-                      HapticFeedback.mediumImpact();
+                      AppHaptics.confirmation();
                     },
                     child: Material(
                       type: MaterialType.transparency,
                       child: ListTile(
                         onTap: () {
-                          HapticFeedback.selectionClick();
+                          AppHaptics.selection();
                           showAddGradeDialog(g);
                         },
                         contentPadding: const EdgeInsets.symmetric(

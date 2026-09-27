@@ -104,7 +104,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
 
   Future<void> _selectAccount(String accountId) async {
     if (_accountId == accountId) return;
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     setState(() => _accountId = accountId);
     await _reloadPreview();
   }
@@ -157,9 +157,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            supported ? l.widgetPickerSent : l.widgetPickerHint,
-          ),
+          content: Text(supported ? l.widgetPickerSent : l.widgetPickerHint),
         ),
       );
     } catch (_) {
@@ -399,9 +397,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.add_to_home_screen_rounded),
-                label: Text(
-                  _pinning ? l.widgetPickerOpening : l.widgetAdd,
-                ),
+                label: Text(_pinning ? l.widgetPickerOpening : l.widgetAdd),
               ),
             ),
           ),
@@ -540,7 +536,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                           label: Text(_typeText(l, type.label)),
                           selected: _selectedType == type.id,
                           onSelected: (_) {
-                            HapticFeedback.selectionClick();
+                            AppHaptics.selection();
                             setState(() => _selectedType = type.id);
                           },
                         ),

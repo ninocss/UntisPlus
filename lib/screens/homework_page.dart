@@ -796,7 +796,11 @@ class _HomeworkViewState extends State<_HomeworkView> {
                       final hw = entry.value;
                       return _springEntry(
                         key: ValueKey('hw_${hw['id']}_$idx'),
-                        duration: Duration(milliseconds: 380 + idx * 60),
+                        duration: Duration(
+                          milliseconds: (380 + idx * 40)
+                              .clamp(380, 580)
+                              .toInt(),
+                        ),
                         offsetY: 24,
                         startScale: 0.94,
                         curve: _kSmoothBounce,
@@ -833,7 +837,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
       ),
       child: InkWell(
         onTap: () {
-          HapticFeedback.selectionClick();
+          AppHaptics.selection();
           setState(() => _filterIndex = index);
         },
         borderRadius: BorderRadius.circular(14),
@@ -961,7 +965,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
     }
 
     Future<void> toggleDone() async {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       await setDone(!isDone);
       if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -978,7 +982,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
     }
 
     Future<void> openHomework() async {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       if (!isCustom) {
         ScaffoldMessenger.of(
           context,
@@ -1004,6 +1008,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
       child: _glassContainer(
         context: context,
         borderRadius: BorderRadius.circular(24),
+        showShadow: false,
         color: isDone
             ? cs.surfaceContainerLowest.withValues(alpha: 0.35)
             : accent.withValues(alpha: isDark ? 0.14 : 0.08),

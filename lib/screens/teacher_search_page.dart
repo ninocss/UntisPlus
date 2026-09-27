@@ -289,7 +289,7 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                     _requestContext.sessionId.isEmpty
                 ? null
                 : () {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selection();
                     unawaited(_refreshSearch());
                   },
             icon: const Icon(Icons.refresh_rounded),
@@ -306,8 +306,8 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                 controller: _queryController,
                 focusNode: _searchFocusNode,
                 textInputAction: TextInputAction.search,
-                onTap: HapticFeedback.selectionClick,
-                onSubmitted: (_) => HapticFeedback.selectionClick(),
+                onTap: AppHaptics.selection,
+                onSubmitted: (_) => AppHaptics.selection(),
                 decoration: InputDecoration(
                   hintText: l.teacherSearchHint,
                   prefixIcon: const Icon(Icons.search_rounded),
@@ -316,7 +316,7 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                       : IconButton(
                           tooltip: l.teacherSearchClear,
                           onPressed: () {
-                            HapticFeedback.selectionClick();
+                            AppHaptics.selection();
                             _queryController.clear();
                             setState(() {});
                           },

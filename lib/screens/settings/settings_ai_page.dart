@@ -24,7 +24,6 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   @override
   void dispose() {
-    _downloadRevision.dispose();
     super.dispose();
   }
 
@@ -66,29 +65,13 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     }
   }
 
-  /// State for local model downloads
-  final Map<String, double> _downloadProgress = {};
-  final Map<String, CancelToken> _downloadTokens = {};
-  final Set<String> _downloadingModels = {};
-  final Map<String, DateTime> _lastProgressUpdate = {};
-  final Map<String, int> _downloadReceived = {};
-  final Map<String, int> _downloadTotal = {};
-  final Map<String, int> _lastReceived = {};
-  final Map<String, double> _downloadSpeed = {};
-
-  /// Bumped whenever download state changes so the open bottom sheet rebuilds.
-  final ValueNotifier<int> _downloadRevision = ValueNotifier<int>(0);
-
-  void _markDownloadStateChanged() {
-    _downloadRevision.value++;
-  }
+  final LocalModelDownloadCoordinator _downloadCoordinator =
+      LocalModelDownloadCoordinator.instance;
 
   /// Get the local file path for a model
   Future<String> _getLocalModelPath(String modelId) async {
-    final dir = await getApplicationDocumentsDirectory();
     final model = kLocalModels.firstWhere((m) => m.id == modelId);
-    final fileName = model.url.split('/').last;
-    return '${dir.path}/$fileName';
+    return _downloadCoordinator.pathFor(model);
   }
 
   /// Check if a model is already downloaded and valid
@@ -110,146 +93,17 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   /// Download a local model
   Future<void> _downloadLocalModel(LocalModelInfo model) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final path = await _getLocalModelPath(model.id);
-
-    // Check if already downloading
-    if (_downloadingModels.contains(model.id)) return;
-
-    // Check if already downloaded and valid
-    if (await _isValidModelFile(path, model: model)) {
-      setState(() {
-        _downloadProgress[model.id] = 1.0;
-      });
-      _markDownloadStateChanged();
-      return;
-    }
-
-    // A stale/corrupt file exists — delete it so the fresh download doesn't
-    // append to a broken GGUF.
-    if (await File(path).exists()) {
-      await File(path).delete();
-    }
-
-    setState(() {
-      _downloadingModels.add(model.id);
-      _downloadProgress[model.id] = 0.0;
-    });
-    _markDownloadStateChanged();
-
-    final cancelToken = CancelToken();
-    _downloadTokens[model.id] = cancelToken;
-
-    try {
-      final tempPath = '$path.part';
-      final expectedBytes = (model.sizeGb * 1024 * 1024 * 1024).toInt();
-      await _downloadLocalModelFile(
-        url: model.url,
-        targetPath: tempPath,
-        cancelToken: cancelToken,
-        expectedBytes: expectedBytes,
-        onProgress: (received, total) {
-          if (cancelToken.isCancelled) return;
-          if (total > 0) {
-            final now = DateTime.now();
-            final last = _lastProgressUpdate[model.id];
-            if (last == null || now.difference(last).inMilliseconds > 200) {
-              final lastReceived = _lastReceived[model.id] ?? received;
-              final deltaMs = now.difference(last ?? now).inMilliseconds;
-              _downloadSpeed[model.id] = deltaMs > 0
-                  ? (received - lastReceived) * 1000 / deltaMs
-                  : 0;
-              _lastReceived[model.id] = received;
-              _lastProgressUpdate[model.id] = now;
-              setState(() {
-                _downloadProgress[model.id] = received / total;
-                _downloadReceived[model.id] = received;
-                _downloadTotal[model.id] = total;
-              });
-              _markDownloadStateChanged();
-            }
-          }
-        },
+    final state = await _downloadCoordinator.start(model);
+    if (mounted && state.hasError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${l.aiConnectionError} ${state.error}')),
       );
-
-      // Verify the downloaded file is the exact pinned GGUF model before
-      // promoting it to the final path. Both the cheap magic/size gate and
-      // the full pinned SHA-256 digest must pass; a truncated, corrupt or
-      // tampered download never becomes visible as an "installed" model.
-      if (await _isValidModelFile(tempPath, model: model) &&
-          await _verifyLocalModelChecksum(tempPath, model)) {
-        if (await File(path).exists()) {
-          await File(path).delete();
-        }
-        await File(tempPath).rename(path);
-        final fileLength = await File(path).length();
-        setState(() {
-          _downloadProgress[model.id] = 1.0;
-          _downloadReceived[model.id] = fileLength;
-          _downloadTotal[model.id] = fileLength;
-          _downloadSpeed.remove(model.id);
-          _downloadingModels.remove(model.id);
-          _lastProgressUpdate.remove(model.id);
-        });
-        _markDownloadStateChanged();
-      } else {
-        await File(tempPath).delete();
-        throw Exception('Download verification failed');
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.cancel) {
-        // Download was cancelled, clean up partial file
-        await File(path).delete();
-        await File('$path.part').delete();
-      } else {
-        // Keep the partial file so the next attempt can resume.
-        setState(() {
-          _downloadProgress[model.id] = -1.0; // Error state
-          _downloadSpeed.remove(model.id);
-          _downloadingModels.remove(model.id);
-          _lastProgressUpdate.remove(model.id);
-        });
-        _markDownloadStateChanged();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${l.aiConnectionError} ${e.message}')),
-          );
-        }
-      }
-    } catch (e) {
-      await File('$path.part').delete();
-      setState(() {
-        _downloadProgress[model.id] = -1.0;
-        _downloadSpeed.remove(model.id);
-        _downloadingModels.remove(model.id);
-        _lastProgressUpdate.remove(model.id);
-      });
-      _markDownloadStateChanged();
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('${l.aiConnectionError} $e')));
-      }
-    } finally {
-      _downloadTokens.remove(model.id);
-      _lastProgressUpdate.remove(model.id);
-      _downloadSpeed.remove(model.id);
     }
   }
 
   /// Cancel a model download
   void _cancelDownload(String modelId) {
-    final token = _downloadTokens[modelId];
-    if (token != null && !token.isCancelled) {
-      token.cancel('User cancelled');
-    }
-    _downloadingModels.remove(modelId);
-    _downloadProgress.remove(modelId);
-    _downloadSpeed.remove(modelId);
-    _lastReceived.remove(modelId);
-    _lastProgressUpdate.remove(modelId);
-    _downloadReceived.remove(modelId);
-    _downloadTotal.remove(modelId);
-    _markDownloadStateChanged();
+    _downloadCoordinator.cancel(modelId);
   }
 
   /// Delete a downloaded model
@@ -303,14 +157,9 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     );
 
     if (confirmed == true) {
-      await File(path).delete();
-      setState(() {
-        _downloadProgress.remove(model.id);
-        _downloadReceived.remove(model.id);
-        _downloadTotal.remove(model.id);
-        _downloadSpeed.remove(model.id);
-      });
-      _markDownloadStateChanged();
+      await _downloadCoordinator.delete(model);
+      if (!mounted) return;
+      unawaited(AppHaptics.destructive());
       // If this was the active model, clear the path and revert provider
       if (aiLocalModelPath == path) {
         final prefs = SettingsStore.instance.preferences;
@@ -339,8 +188,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         builder: (ctx) {
           final cs = Theme.of(ctx).colorScheme;
           final tt = Theme.of(ctx).textTheme;
-          return ValueListenableBuilder<int>(
-            valueListenable: _downloadRevision,
+          return ValueListenableBuilder<Map<String, LocalModelDownloadState>>(
+            valueListenable: _downloadCoordinator,
             builder: (context, _, _) {
               return Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -464,9 +313,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   ) {
     final cs = Theme.of(ctx).colorScheme;
     final tt = Theme.of(ctx).textTheme;
-    final progress = _downloadProgress[model.id] ?? 0.0;
-    final isDownloading = _downloadingModels.contains(model.id);
-    final hasError = progress < 0;
+    final downloadState = _downloadCoordinator.stateFor(model.id);
+    final progress = downloadState.progress;
+    final isDownloading = downloadState.isDownloading;
+    final hasError = downloadState.hasError;
     final isActive = aiLocalModelPath.endsWith(model.url.split('/').last);
 
     return FutureBuilder<bool>(
@@ -861,9 +711,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
     final cs = Theme.of(ctx).colorScheme;
     final tt = Theme.of(ctx).textTheme;
     final pct = (progress.clamp(0.0, 1.0) * 100).round();
-    final received = _downloadReceived[model.id] ?? 0;
-    final total = _downloadTotal[model.id] ?? 0;
-    final speed = _downloadSpeed[model.id] ?? 0;
+    final downloadState = _downloadCoordinator.stateFor(model.id);
+    final received = downloadState.received;
+    final total = downloadState.total;
+    final speed = downloadState.bytesPerSecond;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1693,152 +1544,160 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           ],
         ),
         if (aiEnabledNotifier.value) ...[
-        // ── GROUP 1: AI MODEL & PROVIDER ──
-        SettingsGroup(
-          title: l.settingsSectionAI,
-          children: [
-            SettingsTile(
-              icon: Icons.smart_toy_rounded,
-              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
-              iconColor: cs.onPrimaryContainer,
-              title: l.settingsAiProvider,
-              subtitle: _localizedAiProviderLabel(l, aiProvider),
-              onTap: _showProviderDialog,
-            ),
-            SettingsTile(
-              icon: Icons.memory_rounded,
-              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
-              iconColor: cs.onPrimaryContainer,
-              title: l.settingsAiModel,
-              subtitle: aiModel,
-              onTap: _showModelDialog,
-            ),
-            if (isCustom) ...[
-              SettingsTile(
-                icon: Icons.merge_type_rounded,
-                iconBackgroundColor: cs.secondaryContainer.withValues(
-                  alpha: 0.7,
-                ),
-                iconColor: cs.onSecondaryContainer,
-                title: l.settingsAiCompatibility,
-                subtitle: _settingsAiCompatibilityLabel(
-                  l,
-                  aiCustomCompatibility,
-                ),
-                onTap: _showCompatibilityDialog,
-              ),
-              SettingsTile(
-                icon: Icons.link_rounded,
-                iconBackgroundColor: cs.secondaryContainer.withValues(
-                  alpha: 0.7,
-                ),
-                iconColor: cs.onSecondaryContainer,
-                title: l.settingsAiCustomBaseUrl,
-                subtitle: aiCustomBaseUrl.isEmpty
-                    ? l.settingsAiCustomBaseUrlHint
-                    : aiCustomBaseUrl,
-                onTap: _showBaseUrlDialog,
-              ),
-            ],
-            if (!isLocal)
-              SettingsTile(
-                icon: Icons.key_rounded,
-                iconBackgroundColor: cs.secondaryContainer.withValues(
-                  alpha: 0.7,
-                ),
-                iconColor: cs.onSecondaryContainer,
-                title: l.settingsAiApiKey,
-                subtitle: activeKey.isEmpty
-                    ? l.settingsAiApiKeyNotSet
-                    : _settingsMaskKey(activeKey),
-                onTap: _showApiKeyDialog,
-              ),
-            SettingsTile(
-              icon: Icons.tune_rounded,
-              iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
-              iconColor: cs.onSecondaryContainer,
-              title: l.settingsAiParametersTitle,
-              subtitle: l.settingsAiParametersDesc,
-              onTap: _showAdvancedSettingsDialog,
-            ),
-          ],
-        ),
-
-        // ── GROUP 2: PERSÖNLICHKEIT ──
-        SettingsGroup(
-          title: l.settingsAiAdjustmentTitle,
-          children: [
-            SettingsTile(
-              icon: Icons.face_rounded,
-              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
-              iconColor: cs.onTertiaryContainer,
-              title: l.settingsAiPersonaTitle,
-              subtitle: aiPersona == 'helpful'
-                  ? l.settingsAiPersonaHelpful
-                  : aiPersona == 'strict'
-                  ? l.settingsAiPersonaStrict
-                  : l.settingsAiPersonaBuddy,
-              onTap: _showAiPersonaDialog,
-            ),
-          ],
-        ),
-
-        // ── GROUP: LOCAL MODEL SETTINGS (only for local provider) ──
-        if (isLocal) ...[
+          // ── GROUP 1: AI MODEL & PROVIDER ──
           SettingsGroup(
-            title: l.settingsAiLocalModel,
+            title: l.settingsSectionAI,
             children: [
               SettingsTile(
-                icon: Icons.download_rounded,
+                icon: Icons.smart_toy_rounded,
+                iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                iconColor: cs.onPrimaryContainer,
+                title: l.settingsAiProvider,
+                subtitle: _localizedAiProviderLabel(l, aiProvider),
+                onTap: _showProviderDialog,
+              ),
+              SettingsTile(
+                icon: Icons.memory_rounded,
+                iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                iconColor: cs.onPrimaryContainer,
+                title: l.settingsAiModel,
+                subtitle: aiModel,
+                onTap: _showModelDialog,
+              ),
+              if (isCustom) ...[
+                SettingsTile(
+                  icon: Icons.merge_type_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsAiCompatibility,
+                  subtitle: _settingsAiCompatibilityLabel(
+                    l,
+                    aiCustomCompatibility,
+                  ),
+                  onTap: _showCompatibilityDialog,
+                ),
+                SettingsTile(
+                  icon: Icons.link_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsAiCustomBaseUrl,
+                  subtitle: aiCustomBaseUrl.isEmpty
+                      ? l.settingsAiCustomBaseUrlHint
+                      : aiCustomBaseUrl,
+                  onTap: _showBaseUrlDialog,
+                ),
+              ],
+              if (!isLocal)
+                SettingsTile(
+                  icon: Icons.key_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsAiApiKey,
+                  subtitle: activeKey.isEmpty
+                      ? l.settingsAiApiKeyNotSet
+                      : _settingsMaskKey(activeKey),
+                  onTap: _showApiKeyDialog,
+                ),
+              SettingsTile(
+                icon: Icons.tune_rounded,
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsAiParametersTitle,
+                subtitle: l.settingsAiParametersDesc,
+                onTap: _showAdvancedSettingsDialog,
+              ),
+            ],
+          ),
+
+          // ── GROUP 2: PERSÖNLICHKEIT ──
+          SettingsGroup(
+            title: l.settingsAiAdjustmentTitle,
+            children: [
+              SettingsTile(
+                icon: Icons.face_rounded,
                 iconBackgroundColor: cs.tertiaryContainer.withValues(
                   alpha: 0.7,
                 ),
                 iconColor: cs.onTertiaryContainer,
-                title: l.settingsAiLocalModel,
-                subtitle: l.settingsAiLocalModelDesc,
-                onTap: _showLocalModelDialog,
+                title: l.settingsAiPersonaTitle,
+                subtitle: aiPersona == 'helpful'
+                    ? l.settingsAiPersonaHelpful
+                    : aiPersona == 'strict'
+                    ? l.settingsAiPersonaStrict
+                    : l.settingsAiPersonaBuddy,
+                onTap: _showAiPersonaDialog,
               ),
             ],
           ),
-        ],
 
-        // ── GROUP 3: PROMPT CONFIGURATION ──
-        SettingsGroup(
-          title: l.settingsAiPrompt,
-          children: [
-            SettingsTile(
-              icon: Icons.edit_note_rounded,
-              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
-              iconColor: cs.onTertiaryContainer,
-              title: l.settingsAiPrompt,
-              subtitle: l.settingsAiPromptDesc,
-              onTap: _showPromptDialog,
-            ),
-            SettingsTile(
-              icon: Icons.data_object_rounded,
-              iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
-              iconColor: cs.onTertiaryContainer,
-              title: l.settingsAiPromptVariables,
-              subtitle: l.settingsAiPromptVariablesDesc,
-              onTap: _showPromptVariablesDialog,
+          // ── GROUP: LOCAL MODEL SETTINGS (only for local provider) ──
+          if (isLocal) ...[
+            SettingsGroup(
+              title: l.settingsAiLocalModel,
+              children: [
+                SettingsTile(
+                  icon: Icons.download_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: l.settingsAiLocalModel,
+                  subtitle: l.settingsAiLocalModelDesc,
+                  onTap: _showLocalModelDialog,
+                ),
+              ],
             ),
           ],
-        ),
 
-        // ── GROUP 4: DATEN ──
-        SettingsGroup(
-          title: l.settingsAiDataTitle,
-          children: [
-            SettingsTile(
-              icon: Icons.delete_sweep_rounded,
-              iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
-              iconColor: cs.onErrorContainer,
-              title: l.aiClearHistoryTileTitle,
-              subtitle: l.aiClearHistoryTileDesc,
-              onTap: _clearChatHistory,
-            ),
-          ],
-        ),
+          // ── GROUP 3: PROMPT CONFIGURATION ──
+          SettingsGroup(
+            title: l.settingsAiPrompt,
+            children: [
+              SettingsTile(
+                icon: Icons.edit_note_rounded,
+                iconBackgroundColor: cs.tertiaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onTertiaryContainer,
+                title: l.settingsAiPrompt,
+                subtitle: l.settingsAiPromptDesc,
+                onTap: _showPromptDialog,
+              ),
+              SettingsTile(
+                icon: Icons.data_object_rounded,
+                iconBackgroundColor: cs.tertiaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onTertiaryContainer,
+                title: l.settingsAiPromptVariables,
+                subtitle: l.settingsAiPromptVariablesDesc,
+                onTap: _showPromptVariablesDialog,
+              ),
+            ],
+          ),
+
+          // ── GROUP 4: DATEN ──
+          SettingsGroup(
+            title: l.settingsAiDataTitle,
+            children: [
+              SettingsTile(
+                icon: Icons.delete_sweep_rounded,
+                iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.7),
+                iconColor: cs.onErrorContainer,
+                title: l.aiClearHistoryTileTitle,
+                subtitle: l.aiClearHistoryTileDesc,
+                onTap: _clearChatHistory,
+              ),
+            ],
+          ),
         ],
       ],
     );

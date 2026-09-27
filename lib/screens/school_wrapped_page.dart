@@ -1,53 +1,7 @@
 part of '../main.dart';
 
 Future<void> openSchoolWrapped(BuildContext context) async {
-  final repository = SchoolWrappedRepository();
-  final account = activeUntisAccount;
-  WrappedYear? year;
-  if (account == null || demoModeNotifier.value) {
-    final now = DateTime.now();
-    year = WrappedYear(
-      start: DateTime(now.year - (now.month < 8 ? 1 : 0), 8, 1),
-      end: DateTime(now.year + (now.month >= 8 ? 1 : 0), 7, 31),
-    );
-  } else {
-    final years = await repository.years(account.id);
-    if (!context.mounted || account.id != activeUntisAccountId) return;
-    final today = DateTime.now();
-    year = years.where((item) => item.contains(today)).firstOrNull;
-    year ??= await repository.refreshSchoolYear(account);
-    if (!context.mounted || account.id != activeUntisAccountId) return;
-    year ??= years.firstOrNull;
-    if (year == null) {
-      final l = appL10nFor(appLocaleNotifier.value);
-      final now = DateTime.now();
-      final latest = DateTime(now.year + 2, 12, 31);
-      final start = await showDatePicker(
-        context: context,
-        firstDate: DateTime(now.year - 5),
-        lastDate: latest.subtract(const Duration(days: 1)),
-        initialDate: DateTime(now.year - (now.month < 8 ? 1 : 0), 8, 1),
-        helpText: l.wrapped('startDate'),
-      );
-      if (!context.mounted || start == null) return;
-      final end = await showDatePicker(
-        context: context,
-        firstDate: start.add(const Duration(days: 1)),
-        lastDate: latest,
-        initialDate: DateTime(start.year + 1, 7, 31).isAfter(latest)
-            ? latest
-            : DateTime(start.year + 1, 7, 31),
-        helpText: l.wrapped('endDate'),
-      );
-      if (!context.mounted || end == null) return;
-      year = WrappedYear(start: start, end: end, manual: true);
-      await repository.saveYear(account.id, year);
-    }
-  }
-  if (!context.mounted) return;
-  Navigator.of(context).push(
-    _buildBouncyRoute(SchoolWrappedStory(year: year, account: account)),
-  );
+  await Navigator.of(context).push(_buildBouncyRoute(const SchoolWrappedHub()));
 }
 
 class SchoolWrappedHub extends StatefulWidget {
@@ -256,6 +210,7 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
   bool _audioFailed = false;
   bool _autoAdvance = true;
   bool _appPaused = false;
+  bool _dependenciesReady = false;
 
   @override
   void initState() {
@@ -264,23 +219,47 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
     _motion = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 9),
-    )..repeat();
+    );
     _slideProgress = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 8),
     );
+    backgroundAnimationsNotifier.addListener(_handleMotionPreference);
     _startAudio();
     _load();
+  }
+
+  void _handleMotionPreference() {
+    if (!mounted) return;
+    if (!AppMotion.enabled(context) || !backgroundAnimationsNotifier.value) {
+      _advanceTimer?.cancel();
+      _slideProgress.stop();
+      _motion.stop();
+      return;
+    }
+    if (!_motion.isAnimating) _motion.repeat();
+    final snapshot = _snapshot;
+    if (snapshot != null) {
+      _armAutoAdvance(
+        _slides(snapshot, appL10nFor(appLocaleNotifier.value)).length,
+      );
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.of(context).disableAnimations ||
-        !backgroundAnimationsNotifier.value) {
+    _dependenciesReady = true;
+    if (!AppMotion.enabled(context) || !backgroundAnimationsNotifier.value) {
       _motion.stop();
     } else if (!_motion.isAnimating) {
       _motion.repeat();
+    }
+    final snapshot = _snapshot;
+    if (snapshot != null) {
+      _armAutoAdvance(
+        _slides(snapshot, appL10nFor(appLocaleNotifier.value)).length,
+      );
     }
   }
 
@@ -383,7 +362,9 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
         _snapshot = updated;
         _loading = false;
       });
-      _armAutoAdvance(_slides(updated, appL10nFor(appLocaleNotifier.value)).length);
+      _armAutoAdvance(
+        _slides(updated, appL10nFor(appLocaleNotifier.value)).length,
+      );
     }
   }
 
@@ -391,8 +372,13 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
     _advanceTimer?.cancel();
     _slideProgress.stop();
     _slideProgress.value = 0;
-    if (!mounted || _appPaused || !_autoAdvance || _stopped ||
-        _index >= length - 1 || MediaQuery.of(context).disableAnimations ||
+    if (!mounted ||
+        !_dependenciesReady ||
+        _appPaused ||
+        !_autoAdvance ||
+        _stopped ||
+        _index >= length - 1 ||
+        !AppMotion.enabled(context) ||
         !backgroundAnimationsNotifier.value) {
       return;
     }
@@ -416,12 +402,13 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
       _slideProgress.stop();
       _motion.stop();
     } else {
-      if (backgroundAnimationsNotifier.value &&
-          !MediaQuery.of(context).disableAnimations) {
+      if (backgroundAnimationsNotifier.value && AppMotion.enabled(context)) {
         _motion.repeat();
       }
       if (_snapshot != null) {
-        _armAutoAdvance(_slides(_snapshot!, appL10nFor(appLocaleNotifier.value)).length);
+        _armAutoAdvance(
+          _slides(_snapshot!, appL10nFor(appLocaleNotifier.value)).length,
+        );
       }
     }
   }
@@ -431,6 +418,7 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
     _stopped = true;
     _advanceTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    backgroundAnimationsNotifier.removeListener(_handleMotionPreference);
     _player.dispose();
     _pages.dispose();
     _motion.dispose();
@@ -552,8 +540,7 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
   void _go(int index, int length) {
     if (index < 0 || index >= length) return;
     _advanceTimer?.cancel();
-    if (MediaQuery.of(context).disableAnimations ||
-        !backgroundAnimationsNotifier.value) {
+    if (!AppMotion.enabled(context) || !backgroundAnimationsNotifier.value) {
       _pages.jumpToPage(index);
       return;
     }
@@ -568,8 +555,7 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final reduceMotion =
-        MediaQuery.of(context).disableAnimations ||
-        !backgroundAnimationsNotifier.value;
+        !AppMotion.enabled(context) || !backgroundAnimationsNotifier.value;
     if (_loading && (_snapshot == null || _snapshot!.coveredWeeks == 0)) {
       return Scaffold(
         backgroundColor: const Color(0xFF151126),
@@ -690,15 +676,15 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
           if (!reduceMotion)
             Positioned.fill(
               child: AnimatedBuilder(
-                  animation: _motion,
-                  builder: (context, _) => IgnorePointer(
-                    child: CustomPaint(
-                      painter: _WrappedGlowPainter(
-                        phase: _motion.value,
-                        colors: slide.colors,
-                      ),
+                animation: _motion,
+                builder: (context, _) => IgnorePointer(
+                  child: CustomPaint(
+                    painter: _WrappedGlowPainter(
+                      phase: _motion.value,
+                      colors: slide.colors,
                     ),
                   ),
+                ),
               ),
             ),
           SafeArea(
@@ -1058,7 +1044,8 @@ class _WrappedGlowPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(x + math.sin(orbit + seed) * 12, y + math.cos(orbit + seed) * 9),
         radius,
-        sparklePaint..color = Colors.white.withValues(alpha: 0.12 + twinkle * 0.5),
+        sparklePaint
+          ..color = Colors.white.withValues(alpha: 0.12 + twinkle * 0.5),
       );
     }
   }

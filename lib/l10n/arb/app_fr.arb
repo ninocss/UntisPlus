@@ -1078,7 +1078,7 @@
   "save": "Enregistrer",
   "delete": "Supprimer",
   "reload": "Recharger",
-  "settingsAppBgBlur": "App-Hintergrundunschärfe",
-  "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
-  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
+  "settingsAppBgBlur": "Flou de l’arrière-plan de l’application",
+  "settingsAppBgBlurDesc": "Floute l’arrière-plan de l’application pour un effet de verre dépoli.",
+  "settingsAppBgBlurAmount": "Intensité du flou d’arrière-plan"
 }

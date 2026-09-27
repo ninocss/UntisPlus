@@ -6,7 +6,8 @@ void _showLessonDetail(
   dynamic lesson, {
   String originalTeacher = '',
 }) {
-  HapticFeedback.mediumImpact();
+  if (lesson is! Map) return;
+  unawaited(AppHaptics.confirmation());
   final originalSubject = lesson['_subjectLong']?.toString().isNotEmpty == true
       ? lesson['_subjectLong'].toString()
       : (lesson['_subjectShort']?.toString().isNotEmpty == true
@@ -20,8 +21,8 @@ void _showLessonDetail(
   final teacher = lessonTeacherDisplayName(lesson);
   final time =
       '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
-  final isSubstitution = isTimetableSubstitution(lesson as Map?);
-  final isCancelled = isTimetableCancelled(lesson as Map?);
+  final isSubstitution = isTimetableSubstitution(lesson);
+  final isCancelled = isTimetableCancelled(lesson);
   final info = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
   final lessonNr = lesson['lsnumber']?.toString() ?? '';
   final studentNotes = (lesson['lsText'] ?? lesson['lstext'] ?? '')
@@ -882,7 +883,7 @@ class LessonCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: cardRadius,
-        onTapDown: (_) => HapticFeedback.selectionClick(),
+        onTapDown: (_) => AppHaptics.selection(),
         child: cardBody,
       ),
     );

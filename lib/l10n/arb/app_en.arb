@@ -1078,7 +1078,7 @@
   "save": "Save",
   "delete": "Delete",
   "reload": "Reload",
-  "settingsAppBgBlur": "App-Hintergrundunschärfe",
-  "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
-  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
+  "settingsAppBgBlur": "App background blur",
+  "settingsAppBgBlurDesc": "Blurs the app background for a frosted glass effect.",
+  "settingsAppBgBlurAmount": "Background blur strength"
 }

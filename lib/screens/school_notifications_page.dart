@@ -93,6 +93,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
 
   DateTime? _lastUpdated;
   final Set<String> _unreadMessageIds = {};
+  final Set<String> _seenMessageIds = {};
 
   String get _seenAccountId => activeUntisAccountId ?? 'legacy';
 
@@ -127,20 +128,27 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       return;
     }
     if (inbox.isEmpty) return;
+    final accountId = _seenAccountId;
     final seen = await _loadSeenMessageIds();
+    if (!mounted || accountId != _seenAccountId) return;
     final unread = inbox.where((item) => !seen.contains(item.id)).toList();
+    _seenMessageIds
+      ..clear()
+      ..addAll(seen);
     _unreadMessageIds
       ..clear()
       ..addAll(unread.map((item) => item.id));
     unreadInboxMessagesNotifier.value = unread.length;
     if (mounted) setState(() {});
-    await _persistSeenMessageIds({...seen, ...inbox.map((item) => item.id)});
   }
 
   void _markMessageOpened(_SchoolNotificationItem item) {
     if (_unreadMessageIds.remove(item.id)) {
+      _seenMessageIds.add(item.id);
       unreadInboxMessagesNotifier.value = _unreadMessageIds.length;
       if (mounted) setState(() {});
+      unawaited(_persistSeenMessageIds(Set.unmodifiable(_seenMessageIds)));
+      unawaited(AppHaptics.selection());
     }
   }
 
@@ -668,7 +676,6 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Positioned.fill(child: _AnimatedBackground(child: SizedBox.expand())),
           ExpressiveRefreshIndicator(
             onRefresh: _reload,
             child: ListView(
@@ -703,6 +710,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                     selected: {_showInbox},
                     onSelectionChanged: (selection) {
                       final showInbox = selection.first;
+                      if (showInbox == _showInbox) return;
+                      unawaited(AppHaptics.selection());
                       setState(() {
                         _showInbox = showInbox;
                         _selectedNotificationId = _firstNotificationId(

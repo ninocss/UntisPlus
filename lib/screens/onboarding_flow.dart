@@ -801,7 +801,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _handleLogin() async {
-    HapticFeedback.heavyImpact();
+    AppHaptics.lightImpact();
     final l = appL10nFor(appLocaleNotifier.value);
 
     if (_serverController.text.trim().isEmpty ||
@@ -892,7 +892,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _activateDemoMode() async {
-    HapticFeedback.mediumImpact();
+    AppHaptics.confirmation();
     final prefs = SettingsStore.instance.preferences;
     demoModeNotifier.value = true;
     schoolName = 'demo.school';
@@ -1078,7 +1078,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(18),
                               onTap: () {
-                                HapticFeedback.selectionClick();
+                                AppHaptics.selection();
                                 Navigator.pop(sheetContext, idx);
                               },
                               child: Ink(
@@ -1401,7 +1401,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
-          HapticFeedback.selectionClick();
+          AppHaptics.selection();
           await ensureDateFormattingForLocale(code);
           if (!mounted) return;
           appLocaleNotifier.value = code;
@@ -1752,7 +1752,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           child: InkWell(
             key: ValueKey('onboarding-theme-${theme.storageKey}'),
             onTap: () {
-              HapticFeedback.selectionClick();
+              AppHaptics.selection();
               unawaited(_settingsSetVisualTheme(theme));
             },
             borderRadius: BorderRadius.circular(sharp ? 3 : 14),
@@ -1849,7 +1849,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () async {
-                  HapticFeedback.selectionClick();
+                  AppHaptics.selection();
                   themeModeNotifier.value = mode;
                   final prefs = SettingsStore.instance.preferences;
                   await prefs.setInt('themeMode', mode.index);
@@ -2150,7 +2150,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: () {
-                            HapticFeedback.selectionClick();
+                            AppHaptics.selection();
                             setState(() {
                               _schoolController.text = s.loginName;
                               _serverController.text = s.serverUrl;
@@ -2473,7 +2473,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          HapticFeedback.selectionClick();
+          AppHaptics.selection();
           onTap();
         },
         borderRadius: BorderRadius.circular(12),
@@ -3252,22 +3252,103 @@ class _StepWrapper extends StatelessWidget {
           );
 
           if (!editorial) {
-            return Container(
-              width: double.infinity,
-              padding: EdgeInsets.fromLTRB(
-                16,
-                compact ? 10 : 13,
-                16,
-                compact ? 12 : 15,
-              ),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.18),
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(26),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [cs.primaryContainer, cs.secondaryContainer],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.28),
+                  ),
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -36,
+                      top: -62,
+                      child: Container(
+                        width: 148,
+                        height: 148,
+                        decoration: BoxDecoration(
+                          color: cs.tertiary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 16 : 20,
+                        vertical: compact ? 14 : 18,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: compact ? 52 : 60,
+                            height: compact ? 52 : 60,
+                            decoration: BoxDecoration(
+                              color: cs.surface.withValues(alpha: 0.58),
+                              borderRadius: BorderRadius.circular(19),
+                              border: Border.all(
+                                color: cs.onPrimaryContainer.withValues(
+                                  alpha: 0.12,
+                                ),
+                              ),
+                            ),
+                            child: Icon(
+                              icon,
+                              size: compact ? 26 : 30,
+                              color: cs.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: untisThemeTextStyle(
+                                    context,
+                                    display: true,
+                                    fontSize: compact ? 21 : 25,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.55,
+                                    color: cs.onPrimaryContainer,
+                                    height: 1.06,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  subtitle,
+                                  style: untisThemeTextStyle(
+                                    context,
+                                    fontSize: compact ? 12.5 : 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: cs.onPrimaryContainer.withValues(
+                                      alpha: 0.76,
+                                    ),
+                                    height: 1.35,
+                                  ),
+                                  maxLines: compact ? 2 : 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: text,
             );
           }
 
@@ -3392,7 +3473,21 @@ class _StepWrapper extends StatelessWidget {
                       children: [
                         header(editorial: false),
                         SizedBox(height: compact ? 10 : 14),
-                        Expanded(child: form()),
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.all(compact ? 14 : 18),
+                            decoration: BoxDecoration(
+                              color: cs.surfaceContainerLow.withValues(
+                                alpha: 0.86,
+                              ),
+                              borderRadius: BorderRadius.circular(26),
+                              border: Border.all(
+                                color: cs.outlineVariant.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: form(),
+                          ),
+                        ),
                       ],
                     ),
             ),

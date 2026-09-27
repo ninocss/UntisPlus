@@ -1078,7 +1078,7 @@
   "save": "Guardar",
   "delete": "Eliminar",
   "reload": "Recargar",
-  "settingsAppBgBlur": "App-Hintergrundunschärfe",
-  "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
-  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
+  "settingsAppBgBlur": "Desenfoque del fondo de la aplicación",
+  "settingsAppBgBlurDesc": "Desenfoca el fondo de la aplicación para crear un efecto de vidrio esmerilado.",
+  "settingsAppBgBlurAmount": "Intensidad del desenfoque del fondo"
 }

@@ -60,6 +60,25 @@ void main() {
     return dayCarousel;
   }
 
+  Future<Finder> switchToWeekTimetable(WidgetTester tester) async {
+    final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
+    for (var i = 0; i < 3 && weekGrid.evaluate().isEmpty; i++) {
+      final cycleView = find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is Icon &&
+                (widget.icon == Icons.view_week_rounded ||
+                    widget.icon == Icons.calendar_view_week_rounded),
+          )
+          .hitTestable();
+      expect(cycleView, findsWidgets);
+      await tester.tap(cycleView.first);
+      await tester.pump(const Duration(milliseconds: 350));
+    }
+    await pumpUntilFound(tester, weekGrid);
+    return weekGrid;
+  }
+
   setUp(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
@@ -206,6 +225,38 @@ void main() {
       Theme.of(context).colorScheme.onPrimaryContainer,
     );
   });
+
+  testWidgets(
+    'main navigation owns one animated background and semantic tabs',
+    (tester) async {
+      demoModeNotifier.value = true;
+      backgroundAnimationsNotifier.value = true;
+      addTearDown(() {
+        demoModeNotifier.value = false;
+        backgroundAnimationsNotifier.value = false;
+      });
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(430, 932);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        const UntisPlusApp(startScreen: MainNavigationScreen()),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      Finder backgroundScenes() => find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_AnimatedBackgroundScene',
+      );
+
+      expect(backgroundScenes(), findsOneWidget);
+      expect(find.bySemanticsLabel('Info'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Info'));
+      await tester.pump(const Duration(milliseconds: 550));
+      expect(backgroundScenes(), findsOneWidget);
+    },
+  );
 
   testWidgets('modal backdrops blur only for active blur-capable themes', (
     tester,
@@ -561,19 +612,17 @@ void main() {
       tester.view.physicalSize = size;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('viewMode', 0);
+      await prefs.setInt('timetableViewModeV2', 0);
       await tester.pumpWidget(
         UntisPlusApp(startScreen: WeeklyTimetablePage(key: ValueKey(size))),
       );
       final dayCarousel = await ensureDayTimetableView(tester);
       expect(dayCarousel, findsOneWidget, reason: 'day viewport: $size');
-      await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-      final weekGrid = find.byKey(
-        const ValueKey('week-grid-horizontal-scroll'),
-      );
-      await pumpUntilFound(tester, weekGrid);
+      final weekGrid = await switchToWeekTimetable(tester);
       expect(weekGrid, findsOneWidget, reason: 'week viewport: $size');
       expect(tester.takeException(), isNull, reason: 'viewport: $size');
       await prefs.setInt('viewMode', 0);
+      await prefs.setInt('timetableViewModeV2', 0);
     }
   });
 
@@ -610,6 +659,7 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: WeeklyTimetablePage()),
     );
@@ -619,13 +669,12 @@ void main() {
     final refreshedDayCarousel = await ensureDayTimetableView(tester);
     expect(refreshedDayCarousel, findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
-    final weekGrid = find.byKey(const ValueKey('week-grid-horizontal-scroll'));
-    await pumpUntilFound(tester, weekGrid);
+    final weekGrid = await switchToWeekTimetable(tester);
     expect(weekGrid, findsOneWidget);
     await tester.drag(weekGrid, const Offset(-260, 0));
     await tester.pump(const Duration(milliseconds: 400));
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     expect(tester.takeException(), isNull);
   });
 
@@ -670,6 +719,7 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
 
     timetableSwitchAnimationNotifier.value = 1;
     await tester.pumpWidget(
@@ -682,7 +732,7 @@ void main() {
     final materialDay = await ensureDayTimetableView(tester);
     expect(materialDay, findsOneWidget);
     expect(find.byType(CarouselView), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.calendar_view_week_rounded));
+    await switchToWeekTimetable(tester);
     await pumpUntilFound(
       tester,
       find.byKey(const ValueKey('material-week-timetable-carousel')),
@@ -696,6 +746,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     timetableSwitchAnimationNotifier.value = 2;
     await tester.pumpWidget(
       const UntisPlusApp(

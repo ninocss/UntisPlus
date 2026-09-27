@@ -294,14 +294,18 @@ Future<void> _settingsSetShowCancelled(bool value) =>
 Future<void> _settingsSetTimetableDaySpan(int value) async {
   final normalized = value.clamp(1, 3).toInt();
   timetableDaySpanNotifier.value = normalized;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('timetableDaySpan', normalized);
+  await SettingsStore.instance.preferences.setInt(
+    'timetableDaySpan',
+    normalized,
+  );
 }
 
 Future<void> _settingsSetShowFullTeacherNames(bool value) async {
   showFullTeacherNamesNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('showFullTeacherNames', value);
+  await SettingsStore.instance.preferences.setBool(
+    'showFullTeacherNames',
+    value,
+  );
 }
 
 /// Builds a standardized [SettingsSwitchTile] for the "show full teacher names" setting.
@@ -329,8 +333,7 @@ Widget _buildShowFullTeacherNamesTile({
 
 Future<void> _settingsSetSwipeBackGesture(bool value) async {
   swipeBackGestureNotifier.value = value;
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('swipeBackGesture', value);
+  await SettingsStore.instance.preferences.setBool('swipeBackGesture', value);
 }
 
 Future<void> _settingsSetTimetableSwitchAnimation(int value) =>
@@ -765,7 +768,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     required List<_SettingsHubItem> allItems,
   }) {
     if (item.onTap != null) {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       item.onTap!();
       return;
     }
@@ -774,13 +777,13 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     if (expanded) {
       final index = allItems.indexOf(item);
       if (index >= 0 && index != _selectedDetail) {
-        HapticFeedback.selectionClick();
+        AppHaptics.selection();
         setState(() => _selectedDetail = index);
       }
       return;
     }
 
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     Navigator.push(context, _buildBouncyRoute(item.pageBuilder!()));
   }
 
@@ -1210,42 +1213,37 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       extendBodyBehindAppBar: !expanded,
       backgroundColor: Colors.transparent,
       appBar: _mainTabHeaderAppBar(context, l.settingsTitle),
-      body: _AnimatedBackground(
-        child: LayoutBuilder(
-          builder: (context, _) {
-            if (!expanded) return settingsList(expanded: false);
+      body: LayoutBuilder(
+        builder: (context, _) {
+          if (!expanded) return settingsList(expanded: false);
 
-            final detailIndex = _selectedDetail
-                .clamp(0, items.length - 1)
-                .toInt();
-            final detail =
-                items[detailIndex].pageBuilder?.call() ??
-                const SettingsTimetablePage();
-            final masterWidth = (MediaQuery.sizeOf(context).width * 0.34)
-                .clamp(350.0, 420.0)
-                .toDouble();
+          final detailIndex = _selectedDetail
+              .clamp(0, items.length - 1)
+              .toInt();
+          final detail =
+              items[detailIndex].pageBuilder?.call() ??
+              const SettingsTimetablePage();
+          final masterWidth = (MediaQuery.sizeOf(context).width * 0.34)
+              .clamp(350.0, 420.0)
+              .toDouble();
 
-            return Row(
-              key: const ValueKey('settings-master-detail'),
-              children: [
-                SizedBox(
-                  width: masterWidth,
-                  child: settingsList(expanded: true),
+          return Row(
+            key: const ValueKey('settings-master-detail'),
+            children: [
+              SizedBox(width: masterWidth, child: settingsList(expanded: true)),
+              VerticalDivider(
+                width: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.45),
+              ),
+              Expanded(
+                child: KeyedSubtree(
+                  key: ValueKey('settings-detail-$detailIndex'),
+                  child: detail,
                 ),
-                VerticalDivider(
-                  width: 1,
-                  color: cs.outlineVariant.withValues(alpha: 0.45),
-                ),
-                Expanded(
-                  child: KeyedSubtree(
-                    key: ValueKey('settings-detail-$detailIndex'),
-                    child: detail,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

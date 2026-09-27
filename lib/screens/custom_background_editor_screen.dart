@@ -305,7 +305,7 @@ class _CustomBackgroundEditorScreenState
             child: InkWell(
               borderRadius: BorderRadius.circular(18),
               onTap: () {
-                HapticFeedback.selectionClick();
+                AppHaptics.selection();
                 setState(() => _backgroundToolIndex = index);
                 if (_scrollController.hasClients) {
                   _scrollController.animateTo(
@@ -1412,7 +1412,7 @@ class _CustomBackgroundEditorScreenState
                     return InkWell(
                       borderRadius: BorderRadius.circular(18),
                       onTap: () {
-                        HapticFeedback.selectionClick();
+                        AppHaptics.selection();
                         selectCustomBackground(s.id);
                       },
                       onLongPress: () async {
@@ -1643,7 +1643,7 @@ class _CustomBackgroundEditorScreenState
               ),
               value: _draft.base.useThemeColors,
               onChanged: (v) {
-                HapticFeedback.selectionClick();
+                AppHaptics.selection();
                 _updateDraft(
                   _draft.copyWith(
                     base: _draft.base.copyWith(useThemeColors: v),
@@ -1671,7 +1671,7 @@ class _CustomBackgroundEditorScreenState
               selected: {_draft.base.type},
               onSelectionChanged: (v) {
                 if (v.isEmpty) return;
-                HapticFeedback.selectionClick();
+                AppHaptics.selection();
                 _updateDraft(
                   _draft.copyWith(base: _draft.base.copyWith(type: v.first)),
                 );
@@ -1805,7 +1805,7 @@ class _CustomBackgroundEditorScreenState
               ),
               value: _draft.orbs.enabled,
               onChanged: (v) {
-                HapticFeedback.selectionClick();
+                AppHaptics.selection();
                 _updateDraft(
                   _draft.copyWith(orbs: _draft.orbs.copyWith(enabled: v)),
                 );
@@ -1826,7 +1826,7 @@ class _CustomBackgroundEditorScreenState
               ),
               value: _draft.orbs.useThemeColors,
               onChanged: (v) {
-                HapticFeedback.selectionClick();
+                AppHaptics.selection();
                 _updateDraft(
                   _draft.copyWith(
                     orbs: _draft.orbs.copyWith(useThemeColors: v),
@@ -1839,7 +1839,7 @@ class _CustomBackgroundEditorScreenState
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      HapticFeedback.selectionClick();
+                      AppHaptics.selection();
                       final seed = math.Random().nextInt(1 << 31);
                       _updateDraft(
                         _draft.copyWith(orbs: _draft.orbs.copyWith(seed: seed)),
@@ -1998,7 +1998,7 @@ class _CustomBackgroundEditorScreenState
               selected: {_draft.pattern.type},
               onSelectionChanged: (v) {
                 if (v.isEmpty) return;
-                HapticFeedback.selectionClick();
+                AppHaptics.selection();
                 _updateDraft(
                   _draft.copyWith(
                     pattern: _draft.pattern.copyWith(type: v.first),
@@ -2087,7 +2087,7 @@ class _CustomBackgroundEditorScreenState
               ),
               value: _draft.animate,
               onChanged: (v) {
-                HapticFeedback.selectionClick();
+                AppHaptics.selection();
                 _updateDraft(_draft.copyWith(animate: v));
               },
             ),

@@ -197,11 +197,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   void _hapticSelection() {
-    unawaited(HapticFeedback.selectionClick());
+    unawaited(AppHaptics.selection());
   }
 
   void _hapticAction() {
-    unawaited(HapticFeedback.mediumImpact());
+    unawaited(AppHaptics.confirmation());
   }
 
   void _selectAiTab(int index, {bool haptic = true}) {
@@ -1062,7 +1062,7 @@ ${l.aiAssistantRules}''';
       return;
     }
     _lastStreamingHapticAt = now;
-    unawaited(HapticFeedback.lightImpact());
+    unawaited(AppHaptics.lightImpact());
   }
 
   Future<void> _sendChat(String text) async {
@@ -1795,10 +1795,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     3: GlobalKey(debugLabel: 'tutorial-settings'),
     4: GlobalKey(debugLabel: 'tutorial-ai'),
   };
+  final Map<int, GlobalKey> _tutorialNavLabelKeys = {
+    0: GlobalKey(debugLabel: 'tutorial-timetable-label'),
+    1: GlobalKey(debugLabel: 'tutorial-exams-label'),
+    2: GlobalKey(debugLabel: 'tutorial-info-label'),
+    3: GlobalKey(debugLabel: 'tutorial-settings-label'),
+    4: GlobalKey(debugLabel: 'tutorial-ai-label'),
+  };
 
-  List<int> get _tutorialTargets => aiEnabledNotifier.value
-      ? const [0, 1, 2, 4, 3]
-      : const [0, 1, 2, 3];
+  List<int> get _tutorialTargets =>
+      aiEnabledNotifier.value ? const [0, 1, 2, 4, 3] : const [0, 1, 2, 3];
 
   @override
   void initState() {
@@ -1845,15 +1851,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (account == null || demoModeNotifier.value) return;
     final wrapped = SchoolWrappedRepository();
     final remoteYear = await wrapped.refreshSchoolYear(account);
-    final currentYear = remoteYear ??
-        (await wrapped.years(account.id))
-            .where((year) => year.contains(DateTime.now()))
-            .firstOrNull;
+    final currentYear =
+        remoteYear ??
+        (await wrapped.years(
+          account.id,
+        )).where((year) => year.contains(DateTime.now())).firstOrNull;
     if (currentYear != null) {
-      unawaited(wrapped.captureCurrent(account, currentYear).catchError((_) {}));
+      unawaited(
+        wrapped.captureCurrent(account, currentYear).catchError((_) {}),
+      );
     }
     final pending = await wrapped.pendingAnnouncement(account.id);
-    if (!mounted || account.id != activeUntisAccountId || pending == null) return;
+    if (!mounted || account.id != activeUntisAccountId || pending == null) {
+      return;
+    }
     final l = appL10nFor(appLocaleNotifier.value);
     final open = await showDialog<bool>(
       context: context,
@@ -1875,9 +1886,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     await wrapped.markAnnouncementSeen(account.id, pending);
     if (open == true && mounted && account.id == activeUntisAccountId) {
-      Navigator.of(context).push(_buildBouncyRoute(
-        SchoolWrappedStory(year: pending, account: account),
-      ));
+      Navigator.of(context).push(
+        _buildBouncyRoute(SchoolWrappedStory(year: pending, account: account)),
+      );
     }
   }
 
@@ -2043,53 +2054,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Widget _buildPageWithBackground(BuildContext context, Widget page) {
-    final cs = Theme.of(context).colorScheme;
-    final tokens = untisThemeTokensOf(context);
-    if (tokens.id != AppThemeId.defaultTheme) {
-      return ValueListenableBuilder<int>(
-        valueListenable: backgroundAnimationStyleNotifier,
-        builder: (context, style, _) => ValueListenableBuilder<bool>(
-          valueListenable: backgroundAnimationsNotifier,
-          builder: (context, enabled, _) => ThemedBackdrop(
-            animate: enabled,
-            backgroundStyle: style,
-            child: page,
-          ),
-        ),
-      );
-    }
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(decoration: BoxDecoration(color: cs.surface)),
-        ),
-        Positioned.fill(
-          child: ValueListenableBuilder<bool>(
-            valueListenable: backgroundAnimationsNotifier,
-            builder: (context, enabled, _) {
-              if (!enabled) return const SizedBox.shrink();
-              return ValueListenableBuilder<int>(
-                valueListenable: backgroundAnimationStyleNotifier,
-                builder: (context, style, _) {
-                  return IgnorePointer(
-                    ignoring: true,
-                    child: Opacity(
-                      opacity: Theme.of(context).brightness == Brightness.dark
-                          ? 0.28
-                          : 0.2,
-                      child: _AnimatedBackgroundScene(style: style),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        Positioned.fill(child: page),
-      ],
-    );
+    return page;
   }
 
   List<Widget> get _pages => <Widget>[
@@ -2131,169 +2096,189 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       drawer: _currentDrawer,
       extendBody: true,
       resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          Row(
-            children: [
-              if (isTablet)
-                SafeArea(
-                  child: NavigationRail(
-                    selectedIndex: _selectedIndex,
-                    onDestinationSelected: _onNavTap,
-                    labelType: NavigationRailLabelType.selected,
-                    groupAlignment: 0,
-                    destinations: [
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.watch_later_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[0],
-                          child: const Icon(Icons.watch_later_rounded),
-                        ),
-                        label: Text(l.timetableTitle),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.event_note_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[1],
-                          child: const Icon(Icons.event_note_rounded),
-                        ),
-                        label: Text(l.examsTitle),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.campaign_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[2],
-                          child: const Icon(Icons.campaign_rounded),
-                        ),
-                        label: Text(l.navInfo),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.settings_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[3],
-                          child: const Icon(Icons.settings_rounded),
-                        ),
-                        label: Text(l.navMenu),
-                      ),
-                      if (aiEnabledNotifier.value)
+      body: _AnimatedBackground(
+        child: Stack(
+          children: [
+            Row(
+              children: [
+                if (isTablet)
+                  SafeArea(
+                    child: NavigationRail(
+                      selectedIndex: _selectedIndex,
+                      onDestinationSelected: _onNavTap,
+                      labelType: NavigationRailLabelType.selected,
+                      groupAlignment: 0,
+                      destinations: [
                         NavigationRailDestination(
-                          icon: const Icon(Icons.auto_awesome_outlined),
+                          icon: const Icon(Icons.watch_later_outlined),
                           selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[4],
-                            child: const Icon(Icons.auto_awesome_rounded),
+                            key: _tutorialNavKeys[0],
+                            child: const Icon(Icons.watch_later_rounded),
                           ),
-                          label: Text(l.navAi),
+                          label: Text(
+                            l.timetableTitle,
+                            key: _tutorialNavLabelKeys[0],
+                          ),
                         ),
-                    ],
-                  ),
-                ),
-              Expanded(
-                child: MediaQuery(
-                  data: mq.copyWith(
-                    padding: mq.padding.copyWith(
-                      bottom: isTablet
-                          ? mq.padding.bottom
-                          : mq.padding.bottom + 104,
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.event_note_outlined),
+                          selectedIcon: KeyedSubtree(
+                            key: _tutorialNavKeys[1],
+                            child: const Icon(Icons.event_note_rounded),
+                          ),
+                          label: Text(
+                            l.examsTitle,
+                            key: _tutorialNavLabelKeys[1],
+                          ),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.campaign_outlined),
+                          selectedIcon: KeyedSubtree(
+                            key: _tutorialNavKeys[2],
+                            child: const Icon(Icons.campaign_rounded),
+                          ),
+                          label: Text(
+                            l.navInfo,
+                            key: _tutorialNavLabelKeys[2],
+                          ),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.settings_outlined),
+                          selectedIcon: KeyedSubtree(
+                            key: _tutorialNavKeys[3],
+                            child: const Icon(Icons.settings_rounded),
+                          ),
+                          label: Text(
+                            l.navMenu,
+                            key: _tutorialNavLabelKeys[3],
+                          ),
+                        ),
+                        if (aiEnabledNotifier.value)
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.auto_awesome_outlined),
+                            selectedIcon: KeyedSubtree(
+                              key: _tutorialNavKeys[4],
+                              child: const Icon(Icons.auto_awesome_rounded),
+                            ),
+                            label: Text(
+                              l.navAi,
+                              key: _tutorialNavLabelKeys[4],
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: mainTabFadeUpEnabledNotifier,
-                    builder: (context, animationsEnabled, _) {
-                      final pages = _pages;
+                Expanded(
+                  child: MediaQuery(
+                    data: mq.copyWith(
+                      padding: mq.padding.copyWith(
+                        bottom: isTablet
+                            ? mq.padding.bottom
+                            : mq.padding.bottom + 104,
+                      ),
+                    ),
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: mainTabFadeUpEnabledNotifier,
+                      builder: (context, animationsEnabled, _) {
+                        final pages = _pages;
 
-                      if (!animationsEnabled ||
-                          MediaQuery.of(context).disableAnimations) {
-                        return IndexedStack(
-                          index: _selectedIndex,
-                          children: pages
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                                final active = entry.key == _selectedIndex;
-                                return TickerMode(
-                                  enabled: active,
-                                  child: _buildPageWithBackground(
-                                    context,
-                                    entry.value,
-                                  ),
-                                );
-                              })
-                              .toList(growable: false),
-                        );
-                      }
-
-                      return ValueListenableBuilder<int>(
-                        valueListenable: pageTransitionNotifier,
-                        builder: (context, transitionType, _) {
-                          return Stack(
-                            fit: StackFit.expand,
+                        if (!animationsEnabled ||
+                            MediaQuery.of(context).disableAnimations) {
+                          return IndexedStack(
+                            index: _selectedIndex,
                             children: pages
                                 .asMap()
                                 .entries
                                 .map((entry) {
                                   final active = entry.key == _selectedIndex;
-                                  return _MainTabTransitionLayer(
-                                    key: ValueKey(
-                                      'main-tab-layer-${entry.key}',
-                                    ),
-                                    active: active,
-                                    relativePosition:
-                                        entry.key - _selectedIndex,
-                                    transitionType: transitionType,
-                                    child: TickerMode(
-                                      enabled: active,
-                                      child: _buildPageWithBackground(
-                                        context,
-                                        entry.value,
-                                      ),
+                                  return TickerMode(
+                                    enabled: active,
+                                    child: _buildPageWithBackground(
+                                      context,
+                                      entry.value,
                                     ),
                                   );
                                 })
                                 .toList(growable: false),
                           );
-                        },
-                      );
-                    },
+                        }
+
+                        return ValueListenableBuilder<int>(
+                          valueListenable: pageTransitionNotifier,
+                          builder: (context, transitionType, _) {
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: pages
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                    final active = entry.key == _selectedIndex;
+                                    return _MainTabTransitionLayer(
+                                      key: ValueKey(
+                                        'main-tab-layer-${entry.key}',
+                                      ),
+                                      active: active,
+                                      relativePosition:
+                                          entry.key - _selectedIndex,
+                                      transitionType: transitionType,
+                                      child: TickerMode(
+                                        enabled: active,
+                                        child: _buildPageWithBackground(
+                                          context,
+                                          entry.value,
+                                        ),
+                                      ),
+                                    );
+                                  })
+                                  .toList(growable: false),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          // Floating nav bar
-          if (!isTablet)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: mq.padding.bottom + 16,
-              child: ValueListenableBuilder<String>(
-                valueListenable: appLocaleNotifier,
-                builder: (context, locale, _) {
-                  return ListenableBuilder(
-                    listenable: Listenable.merge([
-                      unreadTimetableChangesNotifier,
-                      unreadInboxMessagesNotifier,
-                    ]),
-                    builder: (context, _) => _buildFloatingNavBar(context, cs),
-                  );
-                },
-              ),
+              ],
             ),
-          if (_showTutorial)
-            Positioned.fill(
-              child: _TutorialSpotlightOverlay(
-                key: ValueKey(_tutorialStep),
-                targetKey: _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
-                step: _tutorialStep,
-                totalSteps: _tutorialTargets.length,
-                title: _tutorialTitle(l),
-                description: _tutorialDesc(l),
-                onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
-                onNext: _nextTutorialStep,
-                onSkip: _skipTutorial,
-                isLast: _tutorialStep == _tutorialTargets.length - 1,
+            // Floating nav bar
+            if (!isTablet)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: mq.padding.bottom + 16,
+                child: ValueListenableBuilder<String>(
+                  valueListenable: appLocaleNotifier,
+                  builder: (context, locale, _) {
+                    return ListenableBuilder(
+                      listenable: Listenable.merge([
+                        unreadTimetableChangesNotifier,
+                        unreadInboxMessagesNotifier,
+                      ]),
+                      builder: (context, _) =>
+                          _buildFloatingNavBar(context, cs),
+                    );
+                  },
+                ),
               ),
-            ),
-        ],
+            if (_showTutorial)
+              Positioned.fill(
+                child: _TutorialSpotlightOverlay(
+                  key: ValueKey(_tutorialStep),
+                  targetKey: _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
+                  labelKey:
+                      _tutorialNavLabelKeys[_tutorialTargets[_tutorialStep]],
+                  step: _tutorialStep,
+                  totalSteps: _tutorialTargets.length,
+                  title: _tutorialTitle(l),
+                  description: _tutorialDesc(l),
+                  onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
+                  onNext: _nextTutorialStep,
+                  onSkip: _skipTutorial,
+                  isLast: _tutorialStep == _tutorialTargets.length - 1,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -2310,6 +2295,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navMenu,
         pageIndex: 3,
         tutorialKey: _tutorialNavKeys[3],
+        tutorialLabelKey: _tutorialNavLabelKeys[3],
         tutorialHighlight: _isTutorialTarget(3),
       ),
       _NavItem(
@@ -2318,6 +2304,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navInfo,
         pageIndex: 2,
         tutorialKey: _tutorialNavKeys[2],
+        tutorialLabelKey: _tutorialNavLabelKeys[2],
         tutorialHighlight: _isTutorialTarget(2),
         badgeCount: unreadInboxMessagesNotifier.value,
       ),
@@ -2327,6 +2314,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navExams,
         pageIndex: 1,
         tutorialKey: _tutorialNavKeys[1],
+        tutorialLabelKey: _tutorialNavLabelKeys[1],
         tutorialHighlight: _isTutorialTarget(1),
       ),
       if (aiEnabledNotifier.value)
@@ -2336,6 +2324,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           label: l.navAi,
           pageIndex: 4,
           tutorialKey: _tutorialNavKeys[4],
+          tutorialLabelKey: _tutorialNavLabelKeys[4],
           tutorialHighlight: _isTutorialTarget(4),
         ),
     ];
@@ -2479,8 +2468,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 // Material You Expressive Navigation Bar
 // ---------------------------------------------------------------------------
 
-class _TutorialSpotlightOverlay extends StatelessWidget {
+class _TutorialSpotlightOverlay extends StatefulWidget {
   final GlobalKey? targetKey;
+  final GlobalKey? labelKey;
   final int step;
   final int totalSteps;
   final String title;
@@ -2493,6 +2483,7 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
   const _TutorialSpotlightOverlay({
     super.key,
     required this.targetKey,
+    this.labelKey,
     required this.step,
     required this.totalSteps,
     required this.title,
@@ -2503,8 +2494,43 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
     required this.isLast,
   });
 
-  Rect? _targetRect() {
-    final targetContext = targetKey?.currentContext;
+  @override
+  State<_TutorialSpotlightOverlay> createState() =>
+      _TutorialSpotlightOverlayState();
+}
+
+class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
+  bool _expandToLabel = false;
+  bool _labelExpansionScheduled = false;
+
+  GlobalKey? get targetKey => widget.targetKey;
+  GlobalKey? get labelKey => widget.labelKey;
+  int get step => widget.step;
+  int get totalSteps => widget.totalSteps;
+  String get title => widget.title;
+  String get description => widget.description;
+  VoidCallback? get onBack => widget.onBack;
+  VoidCallback get onNext => widget.onNext;
+  VoidCallback get onSkip => widget.onSkip;
+  bool get isLast => widget.isLast;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_labelExpansionScheduled || labelKey == null) return;
+    _labelExpansionScheduled = true;
+
+    final isTablet = MediaQuery.sizeOf(context).width >= 720;
+    final delay = isTablet
+        ? Duration.zero
+        : AppMotion.duration(context, const Duration(milliseconds: 560));
+    Future<void>.delayed(delay, () {
+      if (mounted) setState(() => _expandToLabel = true);
+    });
+  }
+
+  Rect? _rectForKey(GlobalKey? key) {
+    final targetContext = key?.currentContext;
     final renderObject = targetContext?.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) return null;
     return renderObject.localToGlobal(Offset.zero) & renderObject.size;
@@ -2530,14 +2556,14 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
           height: 56,
         );
         final bounds = Offset.zero & size;
-        final rawTarget = _targetRect() ?? fallback;
-        final target = (tablet
-                ? Rect.fromCenter(
-                    center: rawTarget.center,
-                    width: 72,
-                    height: 76,
-                  ).inflate(2)
-                : rawTarget.inflate(5))
+        final rawTarget = _rectForKey(targetKey) ?? fallback;
+        final labelTarget = _rectForKey(labelKey);
+        final combinedTarget = labelTarget == null
+            ? rawTarget
+            : rawTarget.expandToInclude(labelTarget);
+        final startTarget = rawTarget.inflate(tablet ? 8 : 5).intersect(bounds);
+        final endTarget = (_expandToLabel ? combinedTarget : rawTarget)
+            .inflate(tablet ? 8 : 5)
             .intersect(bounds);
 
         final callout = _TutorialCallout(
@@ -2551,8 +2577,15 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
           nextLabel: isLast ? l.tutorialDone : l.onboardingNext,
         );
 
-        return Stack(
-          children: [
+        return TweenAnimationBuilder<Rect>(
+          tween: RectTween(begin: startTarget, end: endTarget),
+          duration: AppMotion.duration(
+            context,
+            const Duration(milliseconds: 360),
+          ),
+          curve: Curves.easeOutCubic,
+          builder: (context, target, _) => Stack(
+            children: [
             if (useBackdropBlur)
               Positioned.fill(
                 child: IgnorePointer(
@@ -2608,7 +2641,8 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
                 top: target.bottom + 16,
                 child: callout,
               ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -2822,6 +2856,7 @@ class _NavItem {
   final String label;
   final int pageIndex;
   final GlobalKey? tutorialKey;
+  final GlobalKey? tutorialLabelKey;
   final bool tutorialHighlight;
   final int badgeCount;
 
@@ -2831,6 +2866,7 @@ class _NavItem {
     required this.label,
     required this.pageIndex,
     this.tutorialKey,
+    this.tutorialLabelKey,
     this.tutorialHighlight = false,
     this.badgeCount = 0,
   });
@@ -2951,6 +2987,20 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     if (oldWidget.selectedIndex == widget.selectedIndex) return;
 
     final newSel = widget.selectedIndex;
+    if (!AppMotion.enabled(context)) {
+      for (var i = 0; i < _labelControllers.length; i++) {
+        _labelControllers[i].value = i == newSel ? 1 : 0;
+      }
+      _visibilityController.value = newSel >= 0 ? 1 : 0;
+      _targetSel = newSel >= 0 ? newSel : 0;
+      _targetFrac = newSel >= 0 ? 1 : 0;
+      final layout = _layoutFor(_targetSel, _targetFrac);
+      _fromLeft = _lastLeft = layout.left;
+      _fromWidth = _lastWidth = layout.width;
+      _fromWidths = _lastWidths = List.of(layout.widths);
+      _morphController.value = 1;
+      return;
+    }
     final wasHidden = _pillAlpha.value < 0.05;
 
     final oldSel = oldWidget.selectedIndex;
@@ -2988,7 +3038,9 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       _visibilityController.forward();
     }
 
-    if (newSel >= 0 && newSel < _iconWiggle.length) {
+    if (AppMotion.enabled(context) &&
+        newSel >= 0 &&
+        newSel < _iconWiggle.length) {
       _iconWiggle[newSel].forward(from: 0);
     }
 
@@ -2996,6 +3048,10 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   }
 
   void _animateMorph() {
+    if (!AppMotion.enabled(context)) {
+      _morphController.value = 1;
+      return;
+    }
     _morphController.value = 0;
     final spring = SpringDescription.withDampingRatio(
       mass: 1,
@@ -3156,118 +3212,127 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     final selected = widget.selectedIndex == i;
     final wiggle = _iconWiggle[i];
 
-    return GestureDetector(
+    return Semantics(
       key: item.tutorialKey,
-      onTap: () {
-        HapticFeedback.lightImpact();
-        widget.onTap(item.pageIndex);
-      },
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: width,
-        height: _barHeight,
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // --- Icon with wiggle ---
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AnimatedBuilder(
-                    animation: wiggle,
-                    builder: (context, child) {
-                      // Spring-style wiggle: sin wave decaying
-                      final t = wiggle.value;
-                      final angle = math.sin(t * math.pi * 4) * 0.08 * (1 - t);
-                      return Transform.rotate(angle: angle, child: child);
-                    },
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 280),
-                      switchInCurve: _kSmoothBounce,
-                      switchOutCurve: Curves.easeOut,
-                      transitionBuilder: (child, anim) => ScaleTransition(
-                        scale: Tween(begin: 0.7, end: 1.0).animate(anim),
-                        child: FadeTransition(opacity: anim, child: child),
-                      ),
-                      child: Icon(
-                        selected ? item.selectedIcon : item.icon,
-                        key: ValueKey('${item.pageIndex}_$selected'),
-                        size: selected ? 22 : 24,
-                        color: selected
-                            ? (Theme.of(context).brightness == Brightness.dark
-                                  ? cs.onPrimaryContainer
-                                  : cs.onPrimary)
-                            : item.tutorialHighlight
-                            ? cs.tertiary
-                            : cs.onSurfaceVariant.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ),
-                  if (item.badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -5,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 3.5,
-                          vertical: 1,
+      button: true,
+      selected: selected,
+      label: item.label,
+      value: item.badgeCount > 0 ? '${item.badgeCount}' : null,
+      child: GestureDetector(
+        onTap: () {
+          if (!selected) unawaited(AppHaptics.lightImpact());
+          widget.onTap(item.pageIndex);
+        },
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: width,
+          height: _barHeight,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // --- Icon with wiggle ---
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedBuilder(
+                      animation: wiggle,
+                      builder: (context, child) {
+                        // Spring-style wiggle: sin wave decaying
+                        final t = wiggle.value;
+                        final angle =
+                            math.sin(t * math.pi * 4) * 0.08 * (1 - t);
+                        return Transform.rotate(angle: angle, child: child);
+                      },
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: _kSmoothBounce,
+                        switchOutCurve: Curves.easeOut,
+                        transitionBuilder: (child, anim) => ScaleTransition(
+                          scale: Tween(begin: 0.7, end: 1.0).animate(anim),
+                          child: FadeTransition(opacity: anim, child: child),
                         ),
-                        constraints: const BoxConstraints(minWidth: 13),
-                        decoration: BoxDecoration(
-                          color: cs.error,
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(
-                            color: cs.surfaceContainerHigh,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
-                          style: TextStyle(
-                            color: cs.onError,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
-                          ),
-                          textAlign: TextAlign.center,
+                        child: Icon(
+                          selected ? item.selectedIcon : item.icon,
+                          key: ValueKey('${item.pageIndex}_$selected'),
+                          size: selected ? 22 : 24,
+                          color: selected
+                              ? (Theme.of(context).brightness == Brightness.dark
+                                    ? cs.onPrimaryContainer
+                                    : cs.onPrimary)
+                              : item.tutorialHighlight
+                              ? cs.tertiary
+                              : cs.onSurfaceVariant.withValues(alpha: 0.8),
                         ),
                       ),
                     ),
-                ],
-              ),
+                    if (item.badgeCount > 0)
+                      Positioned(
+                        right: -6,
+                        top: -5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 3.5,
+                            vertical: 1,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 13),
+                          decoration: BoxDecoration(
+                            color: cs.error,
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: cs.surfaceContainerHigh,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
+                            style: TextStyle(
+                              color: cs.onError,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
 
-              // --- Label (slides in/out with the morph) ---
-              Flexible(
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: _labelControllers[i].value,
-                    child: Opacity(
-                      opacity: _labelControllers[i].value,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Text(
-                          item.label,
-                          style: untisThemeTextStyle(
-                            context,
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? cs.onPrimaryContainer
-                                : cs.onPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13.5,
+                // --- Label (slides in/out with the morph) ---
+                Flexible(
+                  child: ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: _labelControllers[i].value,
+                      child: Opacity(
+                        opacity: _labelControllers[i].value,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Text(
+                            item.label,
+                            key: item.tutorialLabelKey,
+                            style: untisThemeTextStyle(
+                              context,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? cs.onPrimaryContainer
+                                  : cs.onPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.clip,
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -3329,21 +3394,21 @@ class _BouncyButtonState extends State<_BouncyButton>
     return GestureDetector(
       onTapDown: (_) {
         if (_tapLocked) return;
-        _controller.forward();
-        HapticFeedback.lightImpact();
+        if (AppMotion.enabled(context)) _controller.forward();
+        unawaited(AppHaptics.lightImpact());
       },
       onTap: () {
         if (_tapLocked) return;
         _tapLocked = true;
         widget.onTap();
-        _controller.reverse();
+        if (AppMotion.enabled(context)) _controller.reverse();
         Future.delayed(const Duration(milliseconds: 140), () {
           if (!mounted) return;
           _tapLocked = false;
         });
       },
       onTapCancel: () {
-        _controller.reverse();
+        if (AppMotion.enabled(context)) _controller.reverse();
       },
       child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );

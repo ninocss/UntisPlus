@@ -585,7 +585,6 @@ void main() async {
     ),
   );
 
-  // Native integrations are important but do not need to delay the first UI.
   unawaited(_initializeDeferredNativeServices());
   unawaited(_initializeDeferredAccountData());
   if (!kIsWeb && !Platform.isIOS) {

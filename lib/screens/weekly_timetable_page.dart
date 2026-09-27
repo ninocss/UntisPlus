@@ -64,6 +64,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     with TickerProviderStateMixin {
   late TabController _tabController;
   Map<int, List<dynamic>> _weekData = {0: [], 1: [], 2: [], 3: [], 4: []};
+  DateTime? _displayedMonday;
   List<Map<String, dynamic>> _holidays = [];
   bool _loading = true;
   String? _loadError;
@@ -100,7 +101,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   bool _isWeekCarouselAnimating = false;
   bool _isDayCarouselAnimating = false;
   bool _suppressDayTabControllerRebuild = false;
-  late final AnimationController _cacheRefreshController;
   int _weekFetchGeneration = 0;
   bool _isExportingTimetable = false;
   final GlobalKey _timetableExportKey = GlobalKey();
@@ -587,10 +587,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       vsync: this,
       initialIndex: resolveInitialTimetableDayIndex(DateTime.now()),
     )..addListener(_onSelectedDayChanged);
-    _cacheRefreshController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
     _highlightController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
@@ -943,7 +939,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         _tabController.indexIsChanging) {
       return;
     }
-    HapticFeedback.selectionClick();
+    unawaited(AppHaptics.selection());
     setState(() => _viewMode = (_viewMode + 1) % 3);
     final prefs = SettingsStore.instance.preferences;
     await prefs.setInt('timetableViewModeV2', _viewMode);
@@ -1830,7 +1826,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
       _materialDayIndex = normalized;
       setState(() {});
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       return;
     }
 
@@ -1839,12 +1835,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final cached = _adjacentWeekCache[_mondayKey(newMonday)];
     final targetDay = normalized == 0 ? 4 : 0;
     setState(() {
-      _currentMonday = newMonday;
-      if (cached != null) {
-        _weekData = cached;
-        _showingCachedWeek = true;
-        _loading = false;
-      }
+      _stageWeekTarget(newMonday, cached);
     });
     _suppressDayTabControllerRebuild = true;
     try {
@@ -1854,7 +1845,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
     _replaceMaterialDayCarouselController(targetDay + 1);
     _replaceMaterialWeekCarouselController();
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     unawaited(_fetchFullWeek());
     unawaited(_prefetchAdjacentWeeks());
   }
@@ -1869,12 +1860,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final cached = _adjacentWeekCache[_mondayKey(newMonday)];
     final targetDay = normalized == 0 ? 4 : 0;
     setState(() {
-      _currentMonday = newMonday;
-      if (cached != null) {
-        _weekData = cached;
-        _showingCachedWeek = true;
-        _loading = false;
-      }
+      _stageWeekTarget(newMonday, cached);
     });
     _suppressDayTabControllerRebuild = true;
     try {
@@ -1884,7 +1870,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
     _replaceMaterialWeekCarouselController();
     _replaceMaterialDayCarouselController(targetDay + 1);
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     unawaited(_fetchFullWeek());
     unawaited(_prefetchAdjacentWeeks());
   }
@@ -2322,12 +2308,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           );
           final cached = _adjacentWeekCache[_mondayKey(newMonday)];
           setState(() {
-            _currentMonday = newMonday;
-            if (cached != null) {
-              _weekData = cached;
-              _showingCachedWeek = true;
-              _loading = false;
-            }
+            _stageWeekTarget(newMonday, cached);
           });
           _tabController.animateTo(
             resolvedTargetDay < 0 ? 4 : 0,
@@ -2336,7 +2317,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           _fetchFullWeek();
           _prefetchAdjacentWeeks();
         }
-        HapticFeedback.selectionClick();
+        AppHaptics.selection();
       }
       setState(() {
         _dayCarouselOffset = 0;
@@ -2441,12 +2422,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final cacheKey = _mondayKey(newMonday);
         final cached = _adjacentWeekCache[cacheKey];
         setState(() {
-          _currentMonday = newMonday;
-          if (cached != null) {
-            _weekData = cached;
-            _showingCachedWeek = true;
-            _loading = false;
-          }
+          _stageWeekTarget(newMonday, cached);
           _carouselOffset = 0;
           // Synchronize TabController index when jumping weeks
           if (direction < 0) {
@@ -2456,7 +2432,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           }
         });
         _isWeekCarouselAnimating = false;
-        HapticFeedback.selectionClick();
+        AppHaptics.selection();
         _fetchFullWeek();
         _prefetchAdjacentWeeks();
       }
@@ -2502,8 +2478,23 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     _materialWeekCarouselController?.dispose();
     _highlightTimer?.cancel();
     _highlightController?.dispose();
-    _cacheRefreshController.dispose();
     super.dispose();
+  }
+
+  void _stageWeekTarget(DateTime monday, Map<int, List<dynamic>>? cached) {
+    _currentMonday = monday;
+    _displayedMonday = monday;
+    if (cached != null) {
+      _weekData = cached;
+      _showingCachedWeek = true;
+      _loading = false;
+      _loadError = null;
+    } else {
+      _weekData = _emptyWeekData();
+      _showingCachedWeek = false;
+      _loading = true;
+      _loadError = null;
+    }
   }
 
   @override
@@ -2767,10 +2758,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               l['_subjectShort']?.toString() ?? '',
             ),
           )
-          .where(
-            (l) =>
-                showCancelledNotifier.value || !isTimetableCancelled(l),
-          )
+          .where((l) => showCancelledNotifier.value || !isTimetableCancelled(l))
           .toList();
       final mergedDayLessons = _mergeConsecutiveLessons(visibleDayLessons);
       for (final lesson in mergedDayLessons) {
@@ -3103,7 +3091,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                             final i = entry.key;
                             final room = entry.value;
                             return _springEntry(
-                              duration: Duration(milliseconds: 300 + i * 50),
+                              duration: Duration(
+                                milliseconds: (300 + i * 40)
+                                    .clamp(300, 520)
+                                    .toInt(),
+                              ),
                               offsetY: 16,
                               startScale: 0.95,
                               curve: _kSmoothBounce,
@@ -3656,10 +3648,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
     final visibleLessons = lessons
-        .where(
-          (l) =>
-              showCancelledNotifier.value || !isTimetableCancelled(l),
-        )
+        .where((l) => showCancelledNotifier.value || !isTimetableCancelled(l))
         .toList();
     final mergedLessons = _mergeConsecutiveLessons(visibleLessons);
     final lessonSlots = _computeLessonSlots(mergedLessons);
@@ -4674,6 +4663,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (!isCurrentRequest()) return;
       setState(() {
         _weekData = tempWeek;
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = false;
         _loading = false;
         _loadError = null;
@@ -4694,7 +4684,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       return;
     }
 
-    final hasExistingWeek = _weekData.values.any((l) => l.isNotEmpty);
+    final hasExistingWeek =
+        _displayedMonday == requestedMonday &&
+        _weekData.values.any((l) => l.isNotEmpty);
     final cachedWeek = (!silent || !hasExistingWeek)
         ? await _loadWeekFromCache(
             requestPersonId: requestPersonId,
@@ -4711,6 +4703,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       _applyKnownSubjectsFromWeek(cachedWeek);
       setState(() {
         _weekData = cachedWeek;
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = true;
         _loading = false;
         _loadError = null;
@@ -4723,6 +4716,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       unawaited(_prefetchAdjacentWeeks(allowNetwork: false));
     } else if (!silent && mounted && !hasCachedWeek) {
       setState(() {
+        _weekData = _emptyWeekData();
+        _displayedMonday = requestedMonday;
+        _showingCachedWeek = false;
         _loading = true;
         _loadError = null;
       });
@@ -4739,6 +4735,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         setState(() {
           _loadError = l.timetableNotSignedIn;
           _weekData = _emptyWeekData();
+          _displayedMonday = requestedMonday;
           _showingCachedWeek = false;
           _loading = false;
         });
@@ -4890,6 +4887,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       _applyKnownSubjectsFromWeek(tempWeek);
       setState(() {
         _weekData = tempWeek;
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = false;
         _loading = false;
         _loadError = null;
@@ -4983,6 +4981,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         setState(() {
           _loadError = null;
           _weekData = _emptyWeekData();
+          _displayedMonday = requestedMonday;
           _showingCachedWeek = false;
           _loading = false;
         });
@@ -4995,6 +4994,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             ? l.timetableHttpError(e.statusCode!)
             : apiMsg;
         _weekData = _emptyWeekData();
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = false;
         _loading = false;
       });
@@ -5017,6 +5017,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         setState(() {
           _loadError = null;
           _weekData = _emptyWeekData();
+          _displayedMonday = requestedMonday;
           _showingCachedWeek = false;
           _loading = false;
         });
@@ -5027,6 +5028,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       setState(() {
         _loadError = l.timetableLoadError;
         _weekData = _emptyWeekData();
+        _displayedMonday = requestedMonday;
         _showingCachedWeek = false;
         _loading = false;
       });
@@ -5417,7 +5419,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               final isDefault = defaultClassId == id;
 
                               return _springEntry(
-                                duration: Duration(milliseconds: 300 + i * 45),
+                                duration: Duration(
+                                  milliseconds: (300 + i * 35)
+                                      .clamp(300, 520)
+                                      .toInt(),
+                                ),
                                 offsetY: 16,
                                 startScale: 0.95,
                                 curve: _kSmoothBounce,
@@ -5636,7 +5642,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         .toInt();
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Colors.transparent,
       appBar: RoundedBlurAppBar(
         leading: _untisDropdownMenu(
           context: context,
@@ -5673,7 +5679,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           onTap: () {
             final thisMonday = resolveDefaultTimetableMonday(DateTime.now());
             if (_currentMonday != thisMonday) {
-              HapticFeedback.selectionClick();
+              AppHaptics.selection();
               setState(() => _currentMonday = thisMonday);
               _fetchFullWeek();
             }
@@ -5712,13 +5718,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           message: l.timetableOfflineCache,
                           child: Padding(
                             padding: const EdgeInsets.only(left: 8, top: 2),
-                            child: RotationTransition(
-                              turns: _cacheRefreshController,
-                              child: Icon(
-                                Icons.sync_rounded,
-                                size: 18,
-                                color: Theme.of(context).colorScheme.tertiary,
-                              ),
+                            child: _CacheRefreshIcon(
+                              color: Theme.of(context).colorScheme.tertiary,
                             ),
                           ),
                         ),
@@ -5788,7 +5789,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           key: ValueKey('timetable-day-tab-$i'),
                           behavior: HitTestBehavior.opaque,
                           onLongPress: () {
-                            HapticFeedback.mediumImpact();
+                            AppHaptics.confirmation();
                             _showDateAlarmActions(dayDate);
                           },
                           child: Column(
@@ -5904,77 +5905,140 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           ),
         ),
       ),
-      body: _AnimatedBackground(
-        child:
-            (_loading &&
+      body:
+          (_loading &&
+              _weekData.values.every((list) => list.isEmpty) &&
+              !_showingCachedWeek)
+          ? const Center(child: CircularProgressIndicator())
+          : (_loadError != null &&
                 _weekData.values.every((list) => list.isEmpty) &&
                 !_showingCachedWeek)
-            ? const Center(child: CircularProgressIndicator())
-            : (_loadError != null &&
-                  _weekData.values.every((list) => list.isEmpty) &&
-                  !_showingCachedWeek)
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.cloud_off_rounded,
-                        size: 80,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.cloud_off_rounded,
+                      size: 80,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l.timetableNotLoaded,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        l.timetableNotLoaded,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _loadError!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _loadError!,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      FilledButton.tonal(
-                        onPressed: _fetchFullWeek,
-                        child: Text(l.reload),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : RepaintBoundary(
-                key: _timetableExportKey,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  reverseDuration: const Duration(milliseconds: 400),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => SizeTransition(
-                    sizeFactor: animation,
-                    axis: Axis.vertical,
-                    alignment: Alignment.topCenter,
-                    child: FadeTransition(opacity: animation, child: child),
-                  ),
-                  child: KeyedSubtree(
-                    key: ValueKey<int>(_viewMode),
-                    child: _buildTimetableSwitcher(),
-                  ),
+                    ),
+                    const SizedBox(height: 18),
+                    FilledButton.tonal(
+                      onPressed: _fetchFullWeek,
+                      child: Text(l.reload),
+                    ),
+                  ],
                 ),
               ),
-      ),
+            )
+          : RepaintBoundary(
+              key: _timetableExportKey,
+              child: AnimatedSwitcher(
+                duration: AppMotion.duration(
+                  context,
+                  const Duration(milliseconds: 560),
+                ),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  alignment: Alignment.topCenter,
+                  fit: StackFit.passthrough,
+                  children: <Widget>[
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                ),
+                transitionBuilder: (child, animation) {
+                  final curved = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOutCubic,
+                  );
+                  return FadeTransition(
+                    opacity: curved,
+                    child: AnimatedBuilder(
+                      animation: curved,
+                      child: child,
+                      builder: (context, child) => Transform.translate(
+                        offset: Offset(0, 8 * (1 - curved.value)),
+                        child: Transform.scale(
+                          alignment: Alignment.topCenter,
+                          scale: 0.985 + (0.015 * curved.value),
+                          child: child,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: RepaintBoundary(
+                  key: ValueKey<int>(_viewMode),
+                  child: _buildTimetableSwitcher(),
+                ),
+              ),
+            ),
     );
   }
+}
+
+class _CacheRefreshIcon extends StatefulWidget {
+  const _CacheRefreshIcon({required this.color});
+
+  final Color color;
+
+  @override
+  State<_CacheRefreshIcon> createState() => _CacheRefreshIconState();
+}
+
+class _CacheRefreshIconState extends State<_CacheRefreshIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.enabled(context)) {
+      if (!_controller.isAnimating) _controller.repeat();
+    } else {
+      _controller.stop(canceled: false);
+      _controller.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => RotationTransition(
+    turns: _controller,
+    child: Icon(Icons.sync_rounded, size: 18, color: widget.color),
+  );
 }

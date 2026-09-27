@@ -844,6 +844,26 @@ class _StripedHatchPainter extends CustomPainter {
       oldDelegate.gap != gap;
 }
 
+class AppMotion {
+  const AppMotion._();
+
+  static bool enabled(BuildContext context) =>
+      !(MediaQuery.maybeOf(context)?.disableAnimations ?? false) &&
+      TickerMode.valuesOf(context).enabled;
+
+  static Duration duration(BuildContext context, Duration normal) =>
+      enabled(context) ? normal : Duration.zero;
+}
+
+class AppHaptics {
+  const AppHaptics._();
+
+  static Future<void> selection() => HapticFeedback.selectionClick();
+  static Future<void> lightImpact() => HapticFeedback.lightImpact();
+  static Future<void> confirmation() => HapticFeedback.mediumImpact();
+  static Future<void> destructive() => HapticFeedback.heavyImpact();
+}
+
 Widget _springEntry({
   Key? key,
   required Widget child,
@@ -852,7 +872,97 @@ Widget _springEntry({
   double startScale = 0.96,
   Curve curve = Curves.easeOutCubic,
 }) {
-  return child;
+  return _SpringEntry(
+    key: key,
+    duration: duration,
+    offsetY: offsetY,
+    startScale: startScale,
+    curve: curve,
+    child: child,
+  );
+}
+
+class _SpringEntry extends StatefulWidget {
+  const _SpringEntry({
+    super.key,
+    required this.child,
+    required this.duration,
+    required this.offsetY,
+    required this.startScale,
+    required this.curve,
+  });
+
+  final Widget child;
+  final Duration duration;
+  final double offsetY;
+  final double startScale;
+  final Curve curve;
+
+  @override
+  State<_SpringEntry> createState() => _SpringEntryState();
+}
+
+class _SpringEntryState extends State<_SpringEntry>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+    _animation = CurvedAnimation(parent: _controller, curve: widget.curve);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!AppMotion.enabled(context)) {
+      _controller.value = 1;
+    } else if (_controller.value == 0) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _SpringEntry oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.duration != widget.duration) {
+      _controller.duration = widget.duration;
+    }
+    if (oldWidget.curve != widget.curve) {
+      _animation = CurvedAnimation(parent: _controller, curve: widget.curve);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!AppMotion.enabled(context)) return widget.child;
+    return AnimatedBuilder(
+      animation: _animation,
+      child: widget.child,
+      builder: (context, child) {
+        final value = _animation.value;
+        return Opacity(
+          opacity: value.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, widget.offsetY * (1 - value)),
+            child: Transform.scale(
+              scale: widget.startScale + ((1 - widget.startScale) * value),
+              alignment: Alignment.center,
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 Widget _blurEffect({
@@ -1104,6 +1214,7 @@ Widget _glassContainer({
   Color? color,
   Gradient? gradient,
   Border? border,
+  bool showShadow = true,
 }) {
   return ThemedSurface(
     borderRadius: borderRadius,
@@ -1111,6 +1222,7 @@ Widget _glassContainer({
     color: color,
     gradient: gradient,
     border: border,
+    showShadow: showShadow,
     child: child,
   );
 }
@@ -2209,7 +2321,7 @@ PreferredSizeWidget _mainSectionTabBar(
   return TabBar(
     controller: controller,
     onTap: (index) {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       onTap?.call(index);
     },
     indicatorColor: cs.primary,
@@ -2283,12 +2395,12 @@ class HapticSlider extends StatelessWidget {
     activeColor: activeColor,
     semanticFormatterCallback: semanticFormatterCallback,
     onChangeStart: (value) {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       onChangeStart?.call(value);
     },
     onChanged: onChanged,
     onChangeEnd: (value) {
-      HapticFeedback.selectionClick();
+      AppHaptics.selection();
       onChangeEnd?.call(value);
     },
   );
@@ -2504,7 +2616,7 @@ class SettingsSwitchTile extends StatelessWidget {
       label: hasSubtitle ? '$title. $subtitle' : title,
       child: InkWell(
         onTap: () {
-          HapticFeedback.selectionClick();
+          AppHaptics.selection();
           onChanged(!value);
         },
         borderRadius: BorderRadius.circular(
@@ -2551,7 +2663,7 @@ class SettingsSwitchTile extends StatelessWidget {
               Switch(
                 value: value,
                 onChanged: (val) {
-                  HapticFeedback.selectionClick();
+                  AppHaptics.selection();
                   onChanged(val);
                 },
                 thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
