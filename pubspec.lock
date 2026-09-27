@@ -814,6 +814,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.7"
+  nested:
+    dependency: transitive
+    description:
+      name: nested
+      sha256: "03bac4c528c64c95c722ec99280375a6f2fc708eec17c7b3f07253b626cd2a20"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   objective_c:
     dependency: transitive
     description:
@@ -942,6 +950,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.5.2"
+  provider:
+    dependency: transitive
+    description:
+      name: provider
+      sha256: "4e82183fa20e5ca25703ead7e05de9e4cceed1fbd1eadc1ac3cb6f565a09f272"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.1.5+1"
   pub_semver:
     dependency: transitive
     description:
@@ -1243,6 +1259,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.0"
+  wishkit:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: "4e261ab841bdae070e2afb9d4b5b8090d3dfd543"
+      url: "https://github.com/OseMine/wishkit-flutter.git"
+    source: git
+    version: "1.0.0"
   workmanager:
     dependency: "direct main"
     description:
