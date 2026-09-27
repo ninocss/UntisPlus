@@ -37,10 +37,10 @@
         {
           "version": "5.5.0",
           "buildVersion": "5.5.0.1",
-          "date": "2026-09-18",
-          "localizedDescription": "This update introduces a new WebUntis message composer, customizable timetable switch animations, and a polished visual redesign. It also brings smoother navigation transitions and improves overall alarm reliability and timetable performance.",
-          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.5.0/UntisPlus-v5.5.0.ipa",
-          "size": 53410400,
+          "date": "2026-09-27",
+          "localizedDescription": "This update introduces the new School Wrapped hub for school insights and adds highly requested 2/3-day timetable views. We have also enabled native swipe-to-go-back gestures, polished the user interface, and fixed several bugs for a smoother experience.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.6.1/UntisPlus-v5.6.1.ipa",
+          "size": 55290295,
           "minOSVersion": "15.0"
         },
         {
@@ -180,8 +180,8 @@
     {
       "title": "Untis+ 5.5.0 is here",
       "identifier": "untisplus-release-5-5-0",
-      "caption": "This update introduces a new WebUntis message composer, customizable timetable switch animations, and a polished visual redesign. It also brings smoother navigation transitions and improves overall alarm reliability and timetable performance.",
-      "date": "2026-09-18",
+      "caption": "This update introduces the new School Wrapped hub for school insights and adds highly requested 2/3-day timetable views. We have also enabled native swipe-to-go-back gestures, polished the user interface, and fixed several bugs for a smoother experience.",
+      "date": "2026-09-27",
       "tintColor": "4A90D9",
       "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
       "appID": "com.ninocss.untisplus",
