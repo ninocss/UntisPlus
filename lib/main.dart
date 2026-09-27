@@ -60,7 +60,14 @@ import 'features/school_info/data/school_info_repository.dart';
 import 'features/school_info/application/school_html.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:wishkit/wishkit.dart'
-    show WishKit, WishKitTheme, WishKitConfiguration, EmailField, TranslateButton, Display, WishModel;
+    show
+        WishKit,
+        WishKitTheme,
+        WishKitConfiguration,
+        EmailField,
+        TranslateButton,
+        Display,
+        WishModel;
 import 'package:wishkit/l10n/generated/wishkit_localizations.dart';
 import 'package:provider/provider.dart' show ChangeNotifierProvider;
 import 'features/absences/data/absence_repository.dart';
@@ -81,6 +88,7 @@ import 'platform/native_ui_gateway.dart';
 import 'core/sync_state.dart';
 import 'core/school_models.dart';
 import 'core/design_tokens.dart';
+import 'core/api_keys.dart';
 
 export 'features/accounts/domain/untis_account.dart';
 export 'core/school_models.dart';
@@ -324,9 +332,10 @@ void main() async {
 
   // Initialize WishKit SDK for user feedback
   WishKit.configure(
-    apiKey: 'wsk_live_your_api_key_here', // Replace with actual API key
+    apiKey: wishkitapikey, // Replace with actual API key
     appId: 'com.ninocss.untisplus',
   );
+  
   WishKit.theme = WishKitTheme(
     primaryColor: null, // Uses system primary
   );

@@ -73,3 +73,7 @@ changelog.json
 !fastlane/**/*.png
 !fastlane/**/*.md
 security-results/
+
+# API Keys
+
+lib/core/api_keys.dart

@@ -83,6 +83,27 @@ concurrency:
 jobs:
 
   # ──────────────────────────────────────────────────────────────
+  # INJECT API KEYS
+  # ──────────────────────────────────────────────────────────────
+
+  inject_api_keys:
+    name: Inject API Keys
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: WishKit API Key injizieren
+        uses: ./.github/actions/inject-api-key
+        with:
+          key_name: wishkitapikey
+          key_value: ${{ secrets.WISHKIT_API_KEY }}
+
+  # ──────────────────────────────────────────────────────────────
   # METADATA
   # ──────────────────────────────────────────────────────────────
 
@@ -421,6 +442,7 @@ jobs:
 
     needs:
       - meta
+      - inject_api_keys
 
     steps:
       - name: Repository auschecken
@@ -898,6 +920,7 @@ jobs:
     # wenn quality_checks erfolgreich war (harter Gate im release-Job).
     needs:
       - meta
+      - inject_api_keys
 
     if: >-
       ${{
@@ -1150,6 +1173,7 @@ jobs:
     # Build parallel zu Analyse & Tests; Publication bleibt im release-Job gegated.
     needs:
       - meta
+      - inject_api_keys
 
     if: >-
       ${{

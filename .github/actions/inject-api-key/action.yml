@@ -1,0 +1,53 @@
+name: Inject API Key
+description: Inject API key into Dart file at build time
+
+inputs:
+  key_name:
+    description: 'Name of the API key variable (e.g., wishkitapikey)'
+    required: true
+  key_value:
+    description: 'Value of the API key from secrets'
+    required: true
+  file_path:
+    description: 'Path to the Dart file containing the key placeholder'
+    required: true
+    default: 'lib/core/api_keys.dart'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Inject API key
+      shell: bash
+      run: |
+        set -euo pipefail
+        
+        FILE="${{ inputs.file_path }}"
+        KEY_NAME="${{ inputs.key_name }}"
+        KEY_VALUE="${{ inputs.key_value }}"
+        
+        if [ ! -f "$FILE" ]; then
+          echo "::error::File $FILE not found"
+          exit 1
+        fi
+        
+        if [ -z "$KEY_VALUE" ] || [ "$KEY_VALUE" = "***" ]; then
+          echo "::warning::API key is empty or placeholder, skipping injection"
+          exit 0
+        fi
+        
+        # Escape special characters for sed
+        ESCAPED_VALUE=$(printf '%s\n' "$KEY_VALUE" | sed 's/[[\.*^$()+?{|\\/]/\\&/g')
+        
+        # Replace the placeholder with actual value
+        # Pattern: final String wishkitapikey = "..."; -> final String wishkitapikey = "actual_key";
+        sed -i "s/final String ${KEY_NAME} = \".*\";/final String ${KEY_NAME} = \"${ESCAPED_VALUE}\";/" "$FILE"
+        
+        # Verify the replacement worked
+        if grep -q "final String ${KEY_NAME} = \"${KEY_VALUE}\";" "$FILE"; then
+          echo "✅ Successfully injected ${KEY_NAME}"
+        else
+          echo "::error::Failed to inject ${KEY_NAME} - pattern may have changed"
+          echo "Current file content:"
+          cat "$FILE"
+          exit 1
+        fi
