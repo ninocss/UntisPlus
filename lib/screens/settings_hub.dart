@@ -1089,6 +1089,18 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         );
       },
     );
+    final feedbackItem = makeItem(
+      index: 11,
+      icon: Icons.feedback_rounded,
+      title: l.settingsGiveFeedback,
+      subtitle: l.settingsGiveFeedbackDesc,
+      onTap: () {
+        if (!WishKit.isConfigured) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => WishKit.feedbackPage()),
+        );
+      },
+    );
     final reportItem = makeItem(
       index: 11,
       icon: Icons.bug_report_rounded,
@@ -1114,6 +1126,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final appItems = <_SettingsHubItem>[
       ?updatesItem,
       supportItem,
+      feedbackItem,
       reportItem,
       wrappedItem,
     ];
@@ -1131,6 +1144,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       ?alarmItem,
       ?updatesItem,
       supportItem,
+      feedbackItem,
       reportItem,
       wrappedItem,
     ];

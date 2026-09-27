@@ -60,8 +60,9 @@ import 'features/school_info/data/school_info_repository.dart';
 import 'features/school_info/application/school_html.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:wishkit/wishkit.dart'
-    show WishKit, WishKitTheme, WishKitConfiguration, EmailField, TranslateButton, Display;
+    show WishKit, WishKitTheme, WishKitConfiguration, EmailField, TranslateButton, Display, WishModel;
 import 'package:wishkit/l10n/generated/wishkit_localizations.dart';
+import 'package:provider/provider.dart' show ChangeNotifierProvider;
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
