@@ -1083,5 +1083,7 @@
   "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe",
   "settingsFeedbackSupport": "Comentarios y ayuda",
   "settingsGiveFeedback": "Enviar comentarios",
-  "settingsGiveFeedbackDesc": "Comparte ideas, reporta errores o solicita funciones"
+  "settingsGiveFeedbackDesc": "Comparte ideas, reporta errores o solicita funciones",
+  "settingsFeedbackNotConfigured": "Los comentarios no están configurados. Por favor, abra un issue en GitHub en su lugar.",
+  "settingsOpenGitHub": "Abrir GitHub Issues"
 }

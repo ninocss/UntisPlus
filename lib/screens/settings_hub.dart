@@ -1095,7 +1095,22 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       title: l.settingsGiveFeedback,
       subtitle: l.settingsGiveFeedbackDesc,
       onTap: () {
-        if (!WishKit.isConfigured) return;
+        if (!WishKit.isConfigured) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l.settingsFeedbackNotConfigured),
+              behavior: SnackBarBehavior.floating,
+              action: SnackBarAction(
+                label: l.settingsOpenGitHub,
+                onPressed: () => url_launcher.launchUrlString(
+                  'https://github.com/ninocss/UntisPlus/issues',
+                  mode: url_launcher.LaunchMode.externalApplication,
+                ),
+              ),
+            ),
+          );
+          return;
+        }
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => WishKit.feedbackPage()),
         );

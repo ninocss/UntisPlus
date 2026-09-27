@@ -331,21 +331,37 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize WishKit SDK for user feedback
-  WishKit.configure(
-    apiKey: wishkitapikey, // Replace with actual API key
-    appId: 'com.ninocss.untisplus',
-  );
-  
-  WishKit.theme = WishKitTheme(
-    primaryColor: null, // Uses system primary
-  );
-  WishKit.config = WishKitConfiguration(
-    emailField: EmailField.optional,
-    translateButton: TranslateButton.automatic,
-    showChatButtonInFeedbackView: true,
-    cornerRadius: 12.0,
-    dropShadow: Display.show,
-  );
+  // API key is injected at build time via GitHub Actions (WISHKIT_API_KEY secret).
+  // If the key is missing or placeholder, we skip WishKit initialization gracefully.
+  final String wishKitApiKey = wishkitapikey;
+  final bool wishKitEnabled = wishKitApiKey.isNotEmpty &&
+      wishKitApiKey != '...' &&
+      !wishKitApiKey.contains('YOUR_API_KEY');
+
+  if (wishKitEnabled) {
+    try {
+      WishKit.configure(
+        apiKey: wishKitApiKey,
+        appId: 'com.ninocss.untisplus',
+      );
+      WishKit.theme = WishKitTheme(
+        primaryColor: null, // Uses system primary
+      );
+      WishKit.config = WishKitConfiguration(
+        emailField: EmailField.optional,
+        translateButton: TranslateButton.automatic,
+        showChatButtonInFeedbackView: true,
+        cornerRadius: 12.0,
+        dropShadow: Display.show,
+      );
+      debugPrint('✅ WishKit initialized successfully');
+    } catch (e, stack) {
+      debugPrint('⚠️ WishKit initialization failed: $e');
+      debugPrintStack(stackTrace: stack);
+    }
+  } else {
+    debugPrint('⚠️ WishKit disabled: API key not configured or placeholder detected');
+  }
 
   unawaited(OfflineCacheStore.instance.preWarm());
   nativeUiGateway.registerAssistantOpenHandler((prompt) {

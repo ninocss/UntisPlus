@@ -1083,5 +1083,7 @@
   "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe",
   "settingsFeedbackSupport": "Feedback & Support",
   "settingsGiveFeedback": "Give feedback",
-  "settingsGiveFeedbackDesc": "Share ideas, report bugs, or request features"
+  "settingsGiveFeedbackDesc": "Share ideas, report bugs, or request features",
+  "settingsFeedbackNotConfigured": "Feedback is not configured. Please open an issue on GitHub instead.",
+  "settingsOpenGitHub": "Open GitHub Issues"
 }
