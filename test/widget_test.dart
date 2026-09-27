@@ -252,6 +252,38 @@ void main() {
     );
   });
 
+  testWidgets(
+    'main navigation owns one animated background and semantic tabs',
+    (tester) async {
+      demoModeNotifier.value = true;
+      backgroundAnimationsNotifier.value = true;
+      addTearDown(() {
+        demoModeNotifier.value = false;
+        backgroundAnimationsNotifier.value = false;
+      });
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(430, 932);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        const UntisPlusApp(startScreen: MainNavigationScreen()),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      Finder backgroundScenes() => find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_AnimatedBackgroundScene',
+      );
+
+      expect(backgroundScenes(), findsOneWidget);
+      expect(find.bySemanticsLabel('Info'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Info'));
+      await tester.pump(const Duration(milliseconds: 550));
+      expect(backgroundScenes(), findsOneWidget);
+    },
+  );
+
   testWidgets('modal backdrops blur only for active blur-capable themes', (
     tester,
   ) async {
@@ -606,6 +638,7 @@ void main() {
       tester.view.physicalSize = size;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('viewMode', 0);
+      await prefs.setInt('timetableViewModeV2', 0);
       await tester.pumpWidget(
         UntisPlusApp(startScreen: WeeklyTimetablePage(key: ValueKey(size))),
       );
@@ -615,6 +648,7 @@ void main() {
       expect(weekGrid, findsOneWidget, reason: 'week viewport: $size');
       expect(tester.takeException(), isNull, reason: 'viewport: $size');
       await prefs.setInt('viewMode', 0);
+      await prefs.setInt('timetableViewModeV2', 0);
     }
   });
 
@@ -694,6 +728,7 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: WeeklyTimetablePage()),
     );
@@ -708,6 +743,7 @@ void main() {
     await tester.drag(weekGrid, const Offset(-260, 0));
     await tester.pump(const Duration(milliseconds: 400));
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     expect(tester.takeException(), isNull);
   });
 
@@ -752,6 +788,7 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
 
     timetableSwitchAnimationNotifier.value = 1;
     await tester.pumpWidget(
@@ -774,6 +811,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     timetableSwitchAnimationNotifier.value = 2;
     await tester.pumpWidget(
       const UntisPlusApp(

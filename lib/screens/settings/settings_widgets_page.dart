@@ -104,7 +104,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
 
   Future<void> _selectAccount(String accountId) async {
     if (_accountId == accountId) return;
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     setState(() => _accountId = accountId);
     await _reloadPreview();
   }
@@ -534,7 +534,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                           label: Text(_typeText(l, type.label)),
                           selected: _selectedType == type.id,
                           onSelected: (_) {
-                            HapticFeedback.selectionClick();
+                            AppHaptics.selection();
                             setState(() => _selectedType = type.id);
                           },
                         ),

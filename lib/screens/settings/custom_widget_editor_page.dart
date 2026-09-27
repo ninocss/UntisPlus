@@ -911,7 +911,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             child: InkWell(
               borderRadius: BorderRadius.circular(18),
               onTap: () {
-                HapticFeedback.selectionClick();
+                AppHaptics.selection();
                 setState(() => _toolIndex = index);
               },
               child: AnimatedContainer(

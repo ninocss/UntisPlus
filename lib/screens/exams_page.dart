@@ -345,7 +345,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
         .toList();
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: Colors.transparent,
       appBar: _mainTabHeaderAppBar(
         context,
         _tabController.index == 0
@@ -395,8 +395,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                                 leadingIcon: const Icon(
                                   Icons.upload_file_rounded,
                                 ),
-                                onPressed: () =>
-                                    _importHomeworkWithAI(context),
+                                onPressed: () => _importHomeworkWithAI(context),
                                 child: Text(l.homeworkActionImport),
                               ),
                           ],
@@ -632,7 +631,9 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   ) {
     return _springEntry(
       key: ValueKey('exam_${exam['date']}_${exam['subject']}_$index'),
-      duration: Duration(milliseconds: 420 + index * 75),
+      duration: Duration(
+        milliseconds: (420 + index * 45).clamp(420, 600).toInt(),
+      ),
       offsetY: 28,
       startScale: 0.93,
       curve: _kSmoothBounce,
@@ -745,7 +746,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(24),
             onTap: isCustom && customIndex != null
                 ? () {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selection();
                     _showAddExamDialog(
                       context,
                       existing: Map<String, dynamic>.from(exam)

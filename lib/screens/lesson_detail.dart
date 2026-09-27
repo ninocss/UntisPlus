@@ -20,7 +20,8 @@ void _showLessonDetail(
   dynamic lesson, {
   String originalTeacher = '',
 }) {
-  HapticFeedback.mediumImpact();
+  if (lesson is! Map) return;
+  unawaited(AppHaptics.confirmation());
   final originalSubject = lesson['_subjectLong']?.toString().isNotEmpty == true
       ? lesson['_subjectLong'].toString()
       : (lesson['_subjectShort']?.toString().isNotEmpty == true
@@ -896,7 +897,7 @@ class LessonCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: cardRadius,
-        onTapDown: (_) => HapticFeedback.selectionClick(),
+        onTapDown: (_) => AppHaptics.selection(),
         child: cardBody,
       ),
     );

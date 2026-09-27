@@ -414,7 +414,7 @@ class SettingsAppearancePage extends StatelessWidget {
                     key: ValueKey('theme-${theme.storageKey}'),
                     borderRadius: BorderRadius.circular(14),
                     onTap: () {
-                      HapticFeedback.selectionClick();
+                      AppHaptics.selection();
                       _settingsSetVisualTheme(theme);
                     },
                     child: AnimatedContainer(
@@ -535,693 +535,681 @@ class SettingsAppearancePage extends StatelessWidget {
     return SettingsPageShell(
       title: l.settingsAppearance,
       children: [
-            _buildThemePicker(context, l, selectedTheme),
-            // ── GROUP 1: THEME & COLOR SCHEME ──
-            SettingsGroup(
-              title: l.settingsThemeMode,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  child: ValueListenableBuilder<ThemeMode>(
+        _buildThemePicker(context, l, selectedTheme),
+        // ── GROUP 1: THEME & COLOR SCHEME ──
+        SettingsGroup(
+          title: l.settingsThemeMode,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: ValueListenableBuilder<ThemeMode>(
+                valueListenable: themeModeNotifier,
+                builder: (context, mode, _) {
+                  return SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<ThemeMode>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          label: Text(
+                            l.settingsThemeSystem,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.phone_android_rounded,
+                            size: 18,
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          label: Text(
+                            l.settingsThemeLight,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          icon: const Icon(Icons.light_mode_rounded, size: 18),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          label: Text(
+                            l.settingsThemeDark,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          icon: const Icon(Icons.dark_mode_rounded, size: 18),
+                        ),
+                      ],
+                      selected: {mode},
+                      onSelectionChanged: (selection) {
+                        AppHaptics.selection();
+                        _settingsSetThemeMode(selection.first);
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (capabilities.supportsMaterialYou)
+              ValueListenableBuilder<bool>(
+                valueListenable: useMaterialYouNotifier,
+                builder: (context, useMaterialYou, _) {
+                  return SettingsSwitchTile(
+                    icon: Icons.palette_rounded,
+                    iconBackgroundColor: cs.primaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onPrimaryContainer,
+                    title: l.settingsUseMaterialYou,
+                    subtitle: l.settingsUseMaterialYouDesc,
+                    value: useMaterialYou,
+                    onChanged: _settingsSetUseMaterialYou,
+                  );
+                },
+              ),
+            if (selectedTheme == AppThemeId.defaultTheme)
+              ValueListenableBuilder<bool>(
+                valueListenable: isAmoledNotifier,
+                builder: (context, isAmoled, _) {
+                  return ValueListenableBuilder<ThemeMode>(
                     valueListenable: themeModeNotifier,
                     builder: (context, mode, _) {
-                      return SizedBox(
-                        width: double.infinity,
-                        child: SegmentedButton<ThemeMode>(
-                          showSelectedIcon: false,
-                          segments: [
-                            ButtonSegment(
-                              value: ThemeMode.system,
-                              label: Text(
-                                l.settingsThemeSystem,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.phone_android_rounded,
-                                size: 18,
-                              ),
-                            ),
-                            ButtonSegment(
-                              value: ThemeMode.light,
-                              label: Text(
-                                l.settingsThemeLight,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.light_mode_rounded,
-                                size: 18,
-                              ),
-                            ),
-                            ButtonSegment(
-                              value: ThemeMode.dark,
-                              label: Text(
-                                l.settingsThemeDark,
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.dark_mode_rounded,
-                                size: 18,
-                              ),
-                            ),
-                          ],
-                          selected: {mode},
-                          onSelectionChanged: (selection) {
-                            HapticFeedback.selectionClick();
-                            _settingsSetThemeMode(selection.first);
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                if (capabilities.supportsMaterialYou)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: useMaterialYouNotifier,
-                    builder: (context, useMaterialYou, _) {
+                      final isDark =
+                          mode == ThemeMode.dark ||
+                          (mode == ThemeMode.system &&
+                              MediaQuery.of(context).platformBrightness ==
+                                  Brightness.dark);
                       return SettingsSwitchTile(
-                        icon: Icons.palette_rounded,
-                        iconBackgroundColor: cs.primaryContainer.withValues(
-                          alpha: 0.7,
-                        ),
-                        iconColor: cs.onPrimaryContainer,
-                        title: l.settingsUseMaterialYou,
-                        subtitle: l.settingsUseMaterialYouDesc,
-                        value: useMaterialYou,
-                        onChanged: _settingsSetUseMaterialYou,
+                        icon: Icons.dark_mode_rounded,
+                        iconBackgroundColor: cs.surfaceContainerHighest,
+                        iconColor: isDark
+                            ? cs.primary
+                            : cs.onSurfaceVariant.withValues(alpha: 0.5),
+                        title: l.settingsIsAmoled,
+                        subtitle: l.settingsIsAmoledDesc,
+                        value: isAmoled,
+                        onChanged: isDark ? _settingsSetIsAmoled : (v) {},
                       );
                     },
-                  ),
-                if (selectedTheme == AppThemeId.defaultTheme)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: isAmoledNotifier,
-                    builder: (context, isAmoled, _) {
-                      return ValueListenableBuilder<ThemeMode>(
-                        valueListenable: themeModeNotifier,
-                        builder: (context, mode, _) {
-                          final isDark =
-                              mode == ThemeMode.dark ||
-                              (mode == ThemeMode.system &&
-                                  MediaQuery.of(context).platformBrightness ==
-                                      Brightness.dark);
-                          return SettingsSwitchTile(
-                            icon: Icons.dark_mode_rounded,
-                            iconBackgroundColor: cs.surfaceContainerHighest,
-                            iconColor: isDark
-                                ? cs.primary
-                                : cs.onSurfaceVariant.withValues(alpha: 0.5),
-                            title: l.settingsIsAmoled,
-                            subtitle: l.settingsIsAmoledDesc,
-                            value: isAmoled,
-                            onChanged: isDark ? _settingsSetIsAmoled : (v) {},
-                          );
-                        },
-                      );
-                    },
-                  ),
-                if (capabilities.supportsMaterialYou)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: useMaterialYouNotifier,
-                    builder: (context, useMaterialYou, _) {
-                      if (useMaterialYou) return const SizedBox.shrink();
-                      return ValueListenableBuilder<int>(
-                        valueListenable: customColorSeedNotifier,
-                        builder: (context, seed, _) {
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  l.settingsCustomColorSeed,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 13.5,
-                                    color: cs.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: Color(seed),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: cs.outlineVariant.withValues(
-                                            alpha: 0.5,
-                                          ),
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: HapticSlider(
-                                        min: 0,
-                                        max: 359,
-                                        divisions: 359,
-                                        value:
-                                            (HSLColor.fromColor(
-                                                      Color(seed),
-                                                    ).hue %
-                                                    360)
-                                                .clamp(0, 359),
-                                        onChanged: (hue) {
-                                          final hsl = HSLColor.fromColor(
-                                            Color(seed),
-                                          );
-                                          final newColor = hsl
-                                              .withHue(hue)
-                                              .withSaturation(0.5)
-                                              .withLightness(0.5)
-                                              .toColor();
-                                          _settingsSetCustomColorSeed(
-                                            newColor.toARGB32(),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children:
-                                      [
-                                        0xFF0F766E,
-                                        0xFFD32F2F,
-                                        0xFF1976D2,
-                                        0xFF388E3C,
-                                        0xFFF57C00,
-                                        0xFF7B1FA2,
-                                        0xFF00796B,
-                                        0xFFC2185B,
-                                        0xFF455A64,
-                                        0xFF5D4037,
-                                      ].map((color) {
-                                        final selected = seed == color;
-                                        final c = Color(color);
-                                        return GestureDetector(
-                                          onTap: () {
-                                            HapticFeedback.selectionClick();
-                                            _settingsSetCustomColorSeed(color);
-                                          },
-                                          child: Container(
-                                            width: 30,
-                                            height: 30,
-                                            decoration: BoxDecoration(
-                                              color: c,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: selected
-                                                  ? Border.all(
-                                                      color: cs.primary,
-                                                      width: 2.5,
-                                                    )
-                                                  : Border.all(
-                                                      color: Colors.transparent,
-                                                    ),
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-              ],
-            ),
-
-            // ── SURFACES ──
-            SettingsGroup(
-              title: l.settingsAppearanceSurfaces,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          l.settingsHeaderStyle,
-                          style: GoogleFonts.outfit(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                      ),
-                      ValueListenableBuilder<int>(
-                        valueListenable: headerStyleNotifier,
-                        builder: (context, style, _) => SizedBox(
-                          width: double.infinity,
-                          child: SegmentedButton<int>(
-                            showSelectedIcon: false,
-                            segments: [
-                              ButtonSegment(
-                                value: 0,
-                                label: Text(l.settingsHeaderStyleDefault),
-                              ),
-                              ButtonSegment(
-                                value: 1,
-                                label: Text(l.settingsHeaderStyleFade),
-                              ),
-                              ButtonSegment(
-                                value: 2,
-                                label: Text(l.settingsHeaderStyleBubbles),
-                              ),
-                            ],
-                            selected: {style},
-                            onSelectionChanged: (selection) {
-                              HapticFeedback.selectionClick();
-                              _settingsSetHeaderStyle(selection.first);
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (capabilities.supportsBlur)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: blurEnabledNotifier,
-                    builder: (context, value, _) {
-                      return SettingsSwitchTile(
-                        icon: Icons.blur_on_rounded,
-                        iconBackgroundColor: cs.secondaryContainer.withValues(
-                          alpha: 0.7,
-                        ),
-                        iconColor: cs.onSecondaryContainer,
-                        title: l.settingsGlassEffect,
-                        subtitle: l.settingsGlassEffectDesc,
-                        value: value,
-                        onChanged: _settingsSetBlurEnabled,
-                      );
-                    },
-                  ),
-                if (capabilities.supportsBlur)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: blurEnabledNotifier,
-                    builder: (context, blurEnabled, _) {
-                      if (!blurEnabled) return const SizedBox.shrink();
+                  );
+                },
+              ),
+            if (capabilities.supportsMaterialYou)
+              ValueListenableBuilder<bool>(
+                valueListenable: useMaterialYouNotifier,
+                builder: (context, useMaterialYou, _) {
+                  if (useMaterialYou) return const SizedBox.shrink();
+                  return ValueListenableBuilder<int>(
+                    valueListenable: customColorSeedNotifier,
+                    builder: (context, seed, _) {
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                        child: ValueListenableBuilder<double>(
-                          valueListenable: blurStrengthNotifier,
-                          builder: (context, strength, _) {
-                            final percent = (strength * 100).round();
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${l.settingsGlassEffect}: $percent%',
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    color: cs.onSurface,
-                                  ),
-                                ),
-                                HapticSlider(
-                                  value: strength,
-                                  min: 0.25,
-                                  max: 2.0,
-                                  divisions: 35,
-                                  label: '$percent%',
-                                  onChanged: _settingsSetBlurStrength,
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                if (capabilities.supportsBlur)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: surfaceBlurEnabledNotifier,
-                    builder: (context, value, _) {
-                      return SettingsSwitchTile(
-                        icon: Icons.blur_circular_rounded,
-                        iconBackgroundColor: cs.secondaryContainer.withValues(
-                          alpha: 0.7,
-                        ),
-                        iconColor: cs.onSecondaryContainer,
-                        title: l.settingsSurfaceBlur,
-                        subtitle: l.settingsSurfaceBlurDesc,
-                        value: value,
-                        onChanged: _settingsSetSurfaceBlurEnabled,
-                      );
-                    },
-                  ),
-                ValueListenableBuilder<int>(
-                  valueListenable: surfaceCornerModeNotifier,
-                  builder: (context, mode, _) {
-                    return SettingsTile(
-                      icon: Icons.rounded_corner_rounded,
-                      iconBackgroundColor: cs.primaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onPrimaryContainer,
-                      title: l.settingsSurfaceCorners,
-                      subtitle: _surfaceCornerModeLabel(l, mode),
-                      onTap: () => _showSurfaceCornerModeDialog(context),
-                    );
-                  },
-                ),
-                ValueListenableBuilder<int>(
-                  valueListenable: surfaceCornerModeNotifier,
-                  builder: (context, mode, _) {
-                    if (mode != 2) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                      child: ValueListenableBuilder<int>(
-                        valueListenable: surfaceCornerRadiusNotifier,
-                        builder: (context, radius, _) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${l.settingsSurfaceCornerRadius}: $radius px',
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: cs.onSurface,
-                                ),
-                              ),
-                              HapticSlider(
-                                value: radius.toDouble(),
-                                min: 0,
-                                max: 48,
-                                divisions: 48,
-                                label: '$radius px',
-                                onChanged: _settingsSetSurfaceCornerRadius,
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-                if (capabilities.supportsBlur)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: appBgBlurEnabledNotifier,
-                    builder: (context, value, _) {
-                      return SettingsSwitchTile(
-                        icon: Icons.blur_linear_rounded,
-                        iconBackgroundColor: cs.secondaryContainer.withValues(
-                          alpha: 0.7,
-                        ),
-                        iconColor: cs.onSecondaryContainer,
-                        title: l.settingsAppBgBlur,
-                        subtitle: l.settingsAppBgBlurDesc,
-                        value: value,
-                        onChanged: _settingsSetAppBgBlurEnabled,
-                      );
-                    },
-                  ),
-                if (capabilities.supportsBlur)
-                  ValueListenableBuilder<bool>(
-                    valueListenable: appBgBlurEnabledNotifier,
-                    builder: (context, blurEnabled, _) {
-                      if (!blurEnabled) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                        padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              l.settingsAppBgBlurAmount,
+                              l.settingsCustomColorSeed,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13.5,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: Color(seed),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: cs.outlineVariant.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: HapticSlider(
+                                    min: 0,
+                                    max: 359,
+                                    divisions: 359,
+                                    value:
+                                        (HSLColor.fromColor(Color(seed)).hue %
+                                                360)
+                                            .clamp(0, 359),
+                                    onChanged: (hue) {
+                                      final hsl = HSLColor.fromColor(
+                                        Color(seed),
+                                      );
+                                      final newColor = hsl
+                                          .withHue(hue)
+                                          .withSaturation(0.5)
+                                          .withLightness(0.5)
+                                          .toColor();
+                                      _settingsSetCustomColorSeed(
+                                        newColor.toARGB32(),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children:
+                                  [
+                                    0xFF0F766E,
+                                    0xFFD32F2F,
+                                    0xFF1976D2,
+                                    0xFF388E3C,
+                                    0xFFF57C00,
+                                    0xFF7B1FA2,
+                                    0xFF00796B,
+                                    0xFFC2185B,
+                                    0xFF455A64,
+                                    0xFF5D4037,
+                                  ].map((color) {
+                                    final selected = seed == color;
+                                    final c = Color(color);
+                                    return GestureDetector(
+                                      onTap: () {
+                                        AppHaptics.selection();
+                                        _settingsSetCustomColorSeed(color);
+                                      },
+                                      child: Container(
+                                        width: 30,
+                                        height: 30,
+                                        decoration: BoxDecoration(
+                                          color: c,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: selected
+                                              ? Border.all(
+                                                  color: cs.primary,
+                                                  width: 2.5,
+                                                )
+                                              : Border.all(
+                                                  color: Colors.transparent,
+                                                ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+          ],
+        ),
+
+        // ── SURFACES ──
+        SettingsGroup(
+          title: l.settingsAppearanceSurfaces,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      l.settingsHeaderStyle,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ),
+                  ValueListenableBuilder<int>(
+                    valueListenable: headerStyleNotifier,
+                    builder: (context, style, _) => SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<int>(
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment(
+                            value: 0,
+                            label: Text(l.settingsHeaderStyleDefault),
+                          ),
+                          ButtonSegment(
+                            value: 1,
+                            label: Text(l.settingsHeaderStyleFade),
+                          ),
+                          ButtonSegment(
+                            value: 2,
+                            label: Text(l.settingsHeaderStyleBubbles),
+                          ),
+                        ],
+                        selected: {style},
+                        onSelectionChanged: (selection) {
+                          AppHaptics.selection();
+                          _settingsSetHeaderStyle(selection.first);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (capabilities.supportsBlur)
+              ValueListenableBuilder<bool>(
+                valueListenable: blurEnabledNotifier,
+                builder: (context, value, _) {
+                  return SettingsSwitchTile(
+                    icon: Icons.blur_on_rounded,
+                    iconBackgroundColor: cs.secondaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onSecondaryContainer,
+                    title: l.settingsGlassEffect,
+                    subtitle: l.settingsGlassEffectDesc,
+                    value: value,
+                    onChanged: _settingsSetBlurEnabled,
+                  );
+                },
+              ),
+            if (capabilities.supportsBlur)
+              ValueListenableBuilder<bool>(
+                valueListenable: blurEnabledNotifier,
+                builder: (context, blurEnabled, _) {
+                  if (!blurEnabled) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: blurStrengthNotifier,
+                      builder: (context, strength, _) {
+                        final percent = (strength * 100).round();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${l.settingsGlassEffect}: $percent%',
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
                                 color: cs.onSurface,
                               ),
                             ),
-                            ValueListenableBuilder<double>(
-                              valueListenable: appBgBlurAmountNotifier,
-                              builder: (context, amount, _) {
-                                return HapticSlider(
-                                  value: amount,
-                                  min: 0,
-                                  max: 40,
-                                  onChanged: _settingsSetAppBgBlurAmount,
-                                );
-                              },
+                            HapticSlider(
+                              value: strength,
+                              min: 0.25,
+                              max: 2.0,
+                              divisions: 35,
+                              label: '$percent%',
+                              onChanged: _settingsSetBlurStrength,
                             ),
                           ],
-                        ),
-                      );
-                    },
-                  ),
-              ],
-            ),
-
-            // ── BACKGROUND ──
-            if (capabilities.supportsBackgroundMotion ||
-                capabilities.supportsCustomBackgrounds)
-              SettingsGroup(
-                title: l.settingsBackgroundAnimations,
-                children: [
-                  if (capabilities.supportsCustomBackgrounds)
-                    SettingsTile(
-                      icon: Icons.wallpaper_rounded,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onSecondaryContainer,
-                      title: l.settingsCustomBackgrounds,
-                      subtitle: l.settingsCustomBackgroundsDesc,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          _buildBouncyRoute(
-                            const CustomBackgroundEditorScreen(),
-                          ),
                         );
                       },
                     ),
-                  if (capabilities.supportsBackgroundMotion)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: backgroundAnimationsNotifier,
-                      builder: (context, value, _) {
-                        return SettingsSwitchTile(
-                          icon: Icons.auto_awesome_rounded,
-                          iconBackgroundColor: cs.tertiaryContainer.withValues(
-                            alpha: 0.7,
-                          ),
-                          iconColor: cs.onTertiaryContainer,
-                          title: l.settingsBackgroundAnimations,
-                          subtitle: l.settingsBackgroundAnimationsDesc,
-                          value: value,
-                          onChanged: _settingsSetBackgroundAnimations,
-                        );
-                      },
-                    ),
-                  if (capabilities.supportsBackgroundMotion)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: backgroundAnimationsNotifier,
-                      builder: (context, animationsEnabled, _) {
-                        if (!animationsEnabled) return const SizedBox.shrink();
-                        return ValueListenableBuilder<int>(
-                          valueListenable: backgroundAnimationStyleNotifier,
-                          builder: (context, style, _) {
-                            return SettingsTile(
-                              icon: Icons.style_rounded,
-                              iconBackgroundColor: cs.tertiaryContainer
-                                  .withValues(alpha: 0.7),
-                              iconColor: cs.onTertiaryContainer,
-                              title: l.settingsBackgroundStyle,
-                              subtitle: _backgroundStyleLabel(l, style),
-                              onTap: () => _showBackgroundStyleDialog(context),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  if (capabilities.supportsBackgroundMotion)
-                    ValueListenableBuilder<bool>(
-                      valueListenable: backgroundAnimationsNotifier,
-                      builder: (context, animationsEnabled, _) {
-                        if (!animationsEnabled) return const SizedBox.shrink();
-                        return ValueListenableBuilder<bool>(
-                          valueListenable: backgroundGyroscopeNotifier,
-                          builder: (context, value, _) {
-                            return SettingsSwitchTile(
-                              icon: Icons.screen_rotation_rounded,
-                              iconBackgroundColor: cs.tertiaryContainer
-                                  .withValues(alpha: 0.7),
-                              iconColor: cs.onTertiaryContainer,
-                              title: l.settingsBackgroundGyroscope,
-                              subtitle: l.settingsBackgroundGyroscopeDesc,
-                              value: value,
-                              onChanged: _settingsSetBackgroundGyroscope,
-                            );
-                          },
-                        );
-                      },
-                    ),
-                ],
+                  );
+                },
               ),
-
-            // ── MOTION & EFFECTS ──
-            SettingsGroup(
-              title: l.settingsAppearanceMotion,
-              children: [
-                ValueListenableBuilder<bool>(
-                  valueListenable: glowEffectsEnabledNotifier,
-                  builder: (context, glowEnabled, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.flare_rounded,
-                      iconBackgroundColor: cs.tertiaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onTertiaryContainer,
-                      title: l.settingsGlowEffects,
-                      subtitle: l.settingsGlowEffectsDesc,
-                      value: glowEnabled,
-                      onChanged: _settingsSetGlowEffectsEnabled,
-                    );
-                  },
-                ),
-                ValueListenableBuilder<int>(
-                  valueListenable: pageTransitionNotifier,
-                  builder: (context, transition, _) {
-                    return SettingsTile(
-                      icon: Icons.animation_rounded,
-                      iconBackgroundColor: cs.primaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onPrimaryContainer,
-                      title: l.settingsPageTransition,
-                      subtitle: _transitionLabel(l, transition),
-                      onTap: () => _showTransitionDialog(context),
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: swipeBackGestureNotifier,
-                  builder: (context, enabled, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.swipe_left_rounded,
-                      iconBackgroundColor: cs.tertiaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onTertiaryContainer,
-                      title: l.settingsSwipeBack,
-                      subtitle: l.settingsSwipeBackDesc,
-                      value: enabled,
-                      onChanged: _settingsSetSwipeBackGesture,
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: mainTabFadeUpEnabledNotifier,
-                  builder: (context, enabled, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.motion_photos_auto_rounded,
-                      iconBackgroundColor: cs.tertiaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onTertiaryContainer,
-                      title: l.settingsMainTabFadeUp,
-                      subtitle: l.settingsMainTabFadeUpDesc,
-                      value: enabled,
-                      onChanged: _settingsSetMainTabFadeUpEnabled,
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            // ── TIMETABLE COLORS ──
-            SettingsGroup(
-              title: l.settingsAppearanceTimetable,
-              children: [
-                ValueListenableBuilder<bool>(
-                  valueListenable: monochromeLessonsNotifier,
-                  builder: (context, value, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.tonality_rounded,
-                      iconBackgroundColor: cs.surfaceContainerHighest,
-                      iconColor: cs.onSurfaceVariant,
-                      title: l.settingsMonochromeLessons,
-                      subtitle: l.settingsMonochromeLessonsDesc,
-                      value: value,
-                      onChanged: _settingsSetMonochromeLessons,
-                    );
-                  },
-                ),
-                ValueListenableBuilder<bool>(
-                  valueListenable: monochromeLessonsNotifier,
-                  builder: (context, enabled, _) {
-                    if (!enabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<int>(
-                      valueListenable: monochromeLessonColorNotifier,
-                      builder: (context, color, _) => SettingsTile(
-                        icon: Icons.palette_rounded,
-                        iconBackgroundColor: Color(color).withValues(alpha: 0.18),
-                        iconColor: Color(color),
-                        title: l.settingsCustomColor,
-                        subtitle: '#${color.toRadixString(16).substring(2).toUpperCase()}',
-                        onTap: () => _showMonochromeLessonColorDialog(context),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-
-            // ── APP ──
-            SettingsGroup(
-              title: l.settingsAppearanceApp,
-              children: [
-                SettingsTile(
-                  icon: Icons.app_shortcut_rounded,
-                  iconBackgroundColor: cs.secondaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onSecondaryContainer,
-                  title: l.appearanceAppIcon,
-                  subtitle: !kIsWeb
-                      ? l.appearanceIconChoose
-                      : l.appearanceIconAndroidOnly,
-                  onTap: !kIsWeb
-                      ? () => _showAppIconDialog(context)
-                      : null,
-                ),
-                SettingsTile(
-                  icon: Icons.translate_rounded,
+            if (capabilities.supportsBlur)
+              ValueListenableBuilder<bool>(
+                valueListenable: surfaceBlurEnabledNotifier,
+                builder: (context, value, _) {
+                  return SettingsSwitchTile(
+                    icon: Icons.blur_circular_rounded,
+                    iconBackgroundColor: cs.secondaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onSecondaryContainer,
+                    title: l.settingsSurfaceBlur,
+                    subtitle: l.settingsSurfaceBlurDesc,
+                    value: value,
+                    onChanged: _settingsSetSurfaceBlurEnabled,
+                  );
+                },
+              ),
+            ValueListenableBuilder<int>(
+              valueListenable: surfaceCornerModeNotifier,
+              builder: (context, mode, _) {
+                return SettingsTile(
+                  icon: Icons.rounded_corner_rounded,
                   iconBackgroundColor: cs.primaryContainer.withValues(
                     alpha: 0.7,
                   ),
                   iconColor: cs.onPrimaryContainer,
-                  title: l.settingsLanguage,
-                  subtitle:
-                      _settingsLocaleLabels[appLocaleNotifier.value] ??
-                      (_settingsLocaleLabels['de'] ?? appLocaleNotifier.value),
-                  onTap: () => _showLanguageDialog(context),
+                  title: l.settingsSurfaceCorners,
+                  subtitle: _surfaceCornerModeLabel(l, mode),
+                  onTap: () => _showSurfaceCornerModeDialog(context),
+                );
+              },
+            ),
+            ValueListenableBuilder<int>(
+              valueListenable: surfaceCornerModeNotifier,
+              builder: (context, mode, _) {
+                if (mode != 2) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: surfaceCornerRadiusNotifier,
+                    builder: (context, radius, _) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${l.settingsSurfaceCornerRadius}: $radius px',
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          HapticSlider(
+                            value: radius.toDouble(),
+                            min: 0,
+                            max: 48,
+                            divisions: 48,
+                            label: '$radius px',
+                            onChanged: _settingsSetSurfaceCornerRadius,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+            if (capabilities.supportsBlur)
+              ValueListenableBuilder<bool>(
+                valueListenable: appBgBlurEnabledNotifier,
+                builder: (context, value, _) {
+                  return SettingsSwitchTile(
+                    icon: Icons.blur_linear_rounded,
+                    iconBackgroundColor: cs.secondaryContainer.withValues(
+                      alpha: 0.7,
+                    ),
+                    iconColor: cs.onSecondaryContainer,
+                    title: l.settingsAppBgBlur,
+                    subtitle: l.settingsAppBgBlurDesc,
+                    value: value,
+                    onChanged: _settingsSetAppBgBlurEnabled,
+                  );
+                },
+              ),
+            if (capabilities.supportsBlur)
+              ValueListenableBuilder<bool>(
+                valueListenable: appBgBlurEnabledNotifier,
+                builder: (context, blurEnabled, _) {
+                  if (!blurEnabled) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.settingsAppBgBlurAmount,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        ValueListenableBuilder<double>(
+                          valueListenable: appBgBlurAmountNotifier,
+                          builder: (context, amount, _) {
+                            return HapticSlider(
+                              value: amount,
+                              min: 0,
+                              max: 40,
+                              onChanged: _settingsSetAppBgBlurAmount,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+
+        // ── BACKGROUND ──
+        if (capabilities.supportsBackgroundMotion ||
+            capabilities.supportsCustomBackgrounds)
+          SettingsGroup(
+            title: l.settingsBackgroundAnimations,
+            children: [
+              if (capabilities.supportsCustomBackgrounds)
+                SettingsTile(
+                  icon: Icons.wallpaper_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsCustomBackgrounds,
+                  subtitle: l.settingsCustomBackgroundsDesc,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      _buildBouncyRoute(const CustomBackgroundEditorScreen()),
+                    );
+                  },
                 ),
-              ],
+              if (capabilities.supportsBackgroundMotion)
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.auto_awesome_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsBackgroundAnimations,
+                      subtitle: l.settingsBackgroundAnimationsDesc,
+                      value: value,
+                      onChanged: _settingsSetBackgroundAnimations,
+                    );
+                  },
+                ),
+              if (capabilities.supportsBackgroundMotion)
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, animationsEnabled, _) {
+                    if (!animationsEnabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<int>(
+                      valueListenable: backgroundAnimationStyleNotifier,
+                      builder: (context, style, _) {
+                        return SettingsTile(
+                          icon: Icons.style_rounded,
+                          iconBackgroundColor: cs.tertiaryContainer.withValues(
+                            alpha: 0.7,
+                          ),
+                          iconColor: cs.onTertiaryContainer,
+                          title: l.settingsBackgroundStyle,
+                          subtitle: _backgroundStyleLabel(l, style),
+                          onTap: () => _showBackgroundStyleDialog(context),
+                        );
+                      },
+                    );
+                  },
+                ),
+              if (capabilities.supportsBackgroundMotion)
+                ValueListenableBuilder<bool>(
+                  valueListenable: backgroundAnimationsNotifier,
+                  builder: (context, animationsEnabled, _) {
+                    if (!animationsEnabled) return const SizedBox.shrink();
+                    return ValueListenableBuilder<bool>(
+                      valueListenable: backgroundGyroscopeNotifier,
+                      builder: (context, value, _) {
+                        return SettingsSwitchTile(
+                          icon: Icons.screen_rotation_rounded,
+                          iconBackgroundColor: cs.tertiaryContainer.withValues(
+                            alpha: 0.7,
+                          ),
+                          iconColor: cs.onTertiaryContainer,
+                          title: l.settingsBackgroundGyroscope,
+                          subtitle: l.settingsBackgroundGyroscopeDesc,
+                          value: value,
+                          onChanged: _settingsSetBackgroundGyroscope,
+                        );
+                      },
+                    );
+                  },
+                ),
+            ],
+          ),
+
+        // ── MOTION & EFFECTS ──
+        SettingsGroup(
+          title: l.settingsAppearanceMotion,
+          children: [
+            ValueListenableBuilder<bool>(
+              valueListenable: glowEffectsEnabledNotifier,
+              builder: (context, glowEnabled, _) {
+                return SettingsSwitchTile(
+                  icon: Icons.flare_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: l.settingsGlowEffects,
+                  subtitle: l.settingsGlowEffectsDesc,
+                  value: glowEnabled,
+                  onChanged: _settingsSetGlowEffectsEnabled,
+                );
+              },
+            ),
+            ValueListenableBuilder<int>(
+              valueListenable: pageTransitionNotifier,
+              builder: (context, transition, _) {
+                return SettingsTile(
+                  icon: Icons.animation_rounded,
+                  iconBackgroundColor: cs.primaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onPrimaryContainer,
+                  title: l.settingsPageTransition,
+                  subtitle: _transitionLabel(l, transition),
+                  onTap: () => _showTransitionDialog(context),
+                );
+              },
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: swipeBackGestureNotifier,
+              builder: (context, enabled, _) {
+                return SettingsSwitchTile(
+                  icon: Icons.swipe_left_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: l.settingsSwipeBack,
+                  subtitle: l.settingsSwipeBackDesc,
+                  value: enabled,
+                  onChanged: _settingsSetSwipeBackGesture,
+                );
+              },
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: mainTabFadeUpEnabledNotifier,
+              builder: (context, enabled, _) {
+                return SettingsSwitchTile(
+                  icon: Icons.motion_photos_auto_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onTertiaryContainer,
+                  title: l.settingsMainTabFadeUp,
+                  subtitle: l.settingsMainTabFadeUpDesc,
+                  value: enabled,
+                  onChanged: _settingsSetMainTabFadeUpEnabled,
+                );
+              },
             ),
           ],
+        ),
+
+        // ── TIMETABLE COLORS ──
+        SettingsGroup(
+          title: l.settingsAppearanceTimetable,
+          children: [
+            ValueListenableBuilder<bool>(
+              valueListenable: monochromeLessonsNotifier,
+              builder: (context, value, _) {
+                return SettingsSwitchTile(
+                  icon: Icons.tonality_rounded,
+                  iconBackgroundColor: cs.surfaceContainerHighest,
+                  iconColor: cs.onSurfaceVariant,
+                  title: l.settingsMonochromeLessons,
+                  subtitle: l.settingsMonochromeLessonsDesc,
+                  value: value,
+                  onChanged: _settingsSetMonochromeLessons,
+                );
+              },
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: monochromeLessonsNotifier,
+              builder: (context, enabled, _) {
+                if (!enabled) return const SizedBox.shrink();
+                return ValueListenableBuilder<int>(
+                  valueListenable: monochromeLessonColorNotifier,
+                  builder: (context, color, _) => SettingsTile(
+                    icon: Icons.palette_rounded,
+                    iconBackgroundColor: Color(color).withValues(alpha: 0.18),
+                    iconColor: Color(color),
+                    title: l.settingsCustomColor,
+                    subtitle:
+                        '#${color.toRadixString(16).substring(2).toUpperCase()}',
+                    onTap: () => _showMonochromeLessonColorDialog(context),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+
+        // ── APP ──
+        SettingsGroup(
+          title: l.settingsAppearanceApp,
+          children: [
+            SettingsTile(
+              icon: Icons.app_shortcut_rounded,
+              iconBackgroundColor: cs.secondaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onSecondaryContainer,
+              title: l.appearanceAppIcon,
+              subtitle: !kIsWeb
+                  ? l.appearanceIconChoose
+                  : l.appearanceIconAndroidOnly,
+              onTap: !kIsWeb ? () => _showAppIconDialog(context) : null,
+            ),
+            SettingsTile(
+              icon: Icons.translate_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsLanguage,
+              subtitle:
+                  _settingsLocaleLabels[appLocaleNotifier.value] ??
+                  (_settingsLocaleLabels['de'] ?? appLocaleNotifier.value),
+              onTap: () => _showLanguageDialog(context),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

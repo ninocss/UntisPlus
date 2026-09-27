@@ -579,7 +579,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                   ],
                   selected: {_previewState},
                   onSelectionChanged: (set) {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selection();
                     setState(() => _previewState = set.first);
                   },
                 ),

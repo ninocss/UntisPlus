@@ -7,56 +7,69 @@ class _AnimatedBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: backgroundAnimationsNotifier,
-      builder: (context, enabled, _) {
-        final tokens = untisThemeTokensOf(context);
-        if (tokens.id != AppThemeId.defaultTheme) {
+    if (_AnimatedBackgroundScope.maybeOf(context) != null) return child;
+    return _AnimatedBackgroundScope(
+      child: ValueListenableBuilder<bool>(
+        valueListenable: backgroundAnimationsNotifier,
+        builder: (context, enabled, _) {
+          final tokens = untisThemeTokensOf(context);
+          if (tokens.id != AppThemeId.defaultTheme) {
+            return ValueListenableBuilder<int>(
+              valueListenable: backgroundAnimationStyleNotifier,
+              builder: (context, style, _) => ThemedBackdrop(
+                animate: enabled,
+                backgroundStyle: style,
+                child: child,
+              ),
+            );
+          }
+          if (!enabled) return child;
           return ValueListenableBuilder<int>(
             valueListenable: backgroundAnimationStyleNotifier,
-            builder: (context, style, _) => ThemedBackdrop(
-              animate: enabled,
-              backgroundStyle: style,
-              child: child,
-            ),
-          );
-        }
-        if (!enabled) return child;
-        return ValueListenableBuilder<int>(
-          valueListenable: backgroundAnimationStyleNotifier,
-          builder: (context, style, _) {
-            return ValueListenableBuilder<bool>(
-              valueListenable: appBgBlurEnabledNotifier,
-              builder: (context, bgBlurEnabled, _) {
-                return ValueListenableBuilder<double>(
-                  valueListenable: appBgBlurAmountNotifier,
-                  builder: (context, bgBlurAmount, _) {
-                    return Stack(
-                      children: [
-                        Positioned.fill(
-                          child: _AnimatedBackgroundScene(style: style),
-                        ),
-                        if (bgBlurEnabled && bgBlurAmount > 0)
+            builder: (context, style, _) {
+              return ValueListenableBuilder<bool>(
+                valueListenable: appBgBlurEnabledNotifier,
+                builder: (context, bgBlurEnabled, _) {
+                  return ValueListenableBuilder<double>(
+                    valueListenable: appBgBlurAmountNotifier,
+                    builder: (context, bgBlurAmount, _) {
+                      return Stack(
+                        children: [
                           Positioned.fill(
-                            child: _blurEffect(
-                              enabled: true,
-                              sigma: bgBlurAmount,
-                              respectBlurStrength: false,
-                              child: const SizedBox.expand(),
-                            ),
+                            child: _AnimatedBackgroundScene(style: style),
                           ),
-                        child,
-                      ],
-                    );
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
+                          if (bgBlurEnabled && bgBlurAmount > 0)
+                            Positioned.fill(
+                              child: _blurEffect(
+                                enabled: true,
+                                sigma: bgBlurAmount,
+                                respectBlurStrength: false,
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                          child,
+                        ],
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
+}
+
+class _AnimatedBackgroundScope extends InheritedWidget {
+  const _AnimatedBackgroundScope({required super.child});
+
+  static _AnimatedBackgroundScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_AnimatedBackgroundScope>();
+
+  @override
+  bool updateShouldNotify(_AnimatedBackgroundScope oldWidget) => false;
 }
 
 class _AnimatedBackgroundScene extends StatefulWidget {
@@ -85,9 +98,22 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 16),
-    )..repeat();
+    );
     backgroundGyroscopeNotifier.addListener(_handleGyroscopeToggle);
-    _handleGyroscopeToggle();
+  }
+
+  bool get _motionAllowed => !_isPaused && AppMotion.enabled(context);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_motionAllowed) {
+      if (!_ctrl.isAnimating) _ctrl.repeat();
+      _handleGyroscopeToggle();
+    } else {
+      _ctrl.stop(canceled: false);
+      _stopGyroscope();
+    }
   }
 
   @override
@@ -112,7 +138,7 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
     } else if (state == AppLifecycleState.resumed) {
       if (_isPaused) {
         _isPaused = false;
-        if (mounted) {
+        if (mounted && _motionAllowed) {
           _ctrl.repeat();
           _handleGyroscopeToggle();
         }
@@ -121,7 +147,7 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
   }
 
   void _handleGyroscopeToggle() {
-    if (backgroundGyroscopeNotifier.value) {
+    if (_motionAllowed && backgroundGyroscopeNotifier.value) {
       _startGyroscope();
       return;
     }
