@@ -225,6 +225,33 @@ PreferenceBinding<List<String>> stringListPreference({
   accountNamespace: accountNamespace,
 );
 
+/// Creates a [PreferenceBinding] for an enum value, stored as its [Enum.name].
+PreferenceBinding<T> enumPreference<T extends Enum>({
+  required String key,
+  required T defaultValue,
+  required ValueNotifier<T> notifier,
+  required List<T> values,
+  PreferenceNormalizer<T>? normalize,
+  String? accountNamespace,
+}) => PreferenceBinding<T>(
+  key: key,
+  defaultValue: defaultValue,
+  notifier: notifier,
+  decoder: (raw) {
+    if (raw is String) {
+      try {
+        return values.firstWhere((v) => v.name == raw);
+      } catch (_) {
+        return defaultValue;
+      }
+    }
+    return defaultValue;
+  },
+  encoder: (value) => value.name,
+  normalize: normalize,
+  accountNamespace: accountNamespace,
+);
+
 PreferenceBinding<T> jsonPreference<T>({
   required String key,
   required T defaultValue,

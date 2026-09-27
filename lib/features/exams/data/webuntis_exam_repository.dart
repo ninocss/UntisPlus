@@ -1,4 +1,5 @@
 import '../../../core/time_utils.dart';
+import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 
 class WebUntisExamRepository {
@@ -24,7 +25,9 @@ class WebUntisExamRepository {
     for (final path in paths) {
       try {
         final decoded = await _client.getJson(
-          uri: Uri.parse('https://${context.schoolUrl}$path?$query'),
+          uri: Uri.parse(
+            '${untisBaseUrl(schoolUrl: context.schoolUrl)}$path?$query',
+          ),
           headers: {
             'Accept': 'application/json',
             if (context.sessionId.isNotEmpty)

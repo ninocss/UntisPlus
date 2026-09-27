@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import '../data/webuntis/untis_endpoint.dart';
+
 class WebUntisMessageFailure implements Exception {
   const WebUntisMessageFailure(this.message, {this.statusCode});
 
@@ -138,7 +140,7 @@ class WebUntisMessageService {
       try {
         final response = await _client
             .get(
-              Uri.parse('https://$schoolUrl/WebUntis/api/token/new'),
+              Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/token/new'),
               headers: {'Cookie': cookie, 'Accept': 'application/json'},
             )
             .timeout(const Duration(seconds: 12));
@@ -225,7 +227,7 @@ class WebUntisMessageService {
       final response = await _client
           .post(
             Uri.parse(
-              'https://$schoolUrl/WebUntis/jsonrpc.do'
+              '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/jsonrpc.do'
               '?school=${Uri.encodeQueryComponent(schoolName)}',
             ),
             headers: {
@@ -278,7 +280,7 @@ class WebUntisMessageService {
       final response = await _client
           .get(
             Uri.parse(
-              'https://$schoolUrl/WebUntis/api/rest/view/v1/messages/permissions',
+              '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/rest/view/v1/messages/permissions',
             ),
             headers: context.headers,
           )
@@ -323,7 +325,7 @@ class WebUntisMessageService {
       try {
         final response = await _client
             .get(
-              Uri.parse('https://$schoolUrl$path'),
+              Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}$path'),
               headers: context.headers,
             )
             .timeout(const Duration(seconds: 12));
@@ -438,7 +440,7 @@ class WebUntisMessageService {
     http.Response? lastResponse;
     for (final path in paths) {
       final response = await _multipartPost(
-        Uri.parse('https://$schoolUrl$path'),
+        Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}$path'),
         headers: context.headers,
         requestJson: jsonEncode(meta),
         attachments: attachments,

@@ -16,7 +16,7 @@ void _showLessonDetail(
   final room = lesson['_room']?.toString().isNotEmpty == true
       ? lesson['_room'].toString()
       : '---';
-  final teacher = lesson['_teacher']?.toString() ?? '';
+  final teacher = displayTeacherForLesson(lesson);
   final time =
       '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
   final isCancelled = (lesson['code'] ?? '') == 'cancelled';

@@ -1,4 +1,5 @@
 import '../../../core/sync_state.dart';
+import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_auth.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 
@@ -15,17 +16,20 @@ class WebUntisLoginResult {
     this.sessionId = '',
     this.personId = 0,
     this.personType = 5,
+    this.linkedPeople = const [],
   });
 
   const WebUntisLoginResult.success({
     required String sessionId,
     int personId = 0,
     int personType = 5,
+    List<Map<String, dynamic>> linkedPeople = const [],
   }) : this._(
          status: WebUntisLoginStatus.success,
          sessionId: sessionId,
          personId: personId,
          personType: personType,
+         linkedPeople: linkedPeople,
        );
 
   const WebUntisLoginResult.failed()
@@ -41,6 +45,11 @@ class WebUntisLoginResult {
   final String sessionId;
   final int personId;
   final int personType;
+
+  /// Every person element the server linked to this login, combining the
+  /// `people` and `persons` lists. Guardian accounts use it to find the first
+  /// linked student, because the parent element itself has no timetable.
+  final List<Map<String, dynamic>> linkedPeople;
 
   bool get isSuccess => status == WebUntisLoginStatus.success;
 }
@@ -125,6 +134,7 @@ class WebUntisLoginRepository {
             : classId != 0
             ? 1
             : 5,
+        linkedPeople: _linkedPeopleOf(result),
       );
     } on WebUntisFailure catch (failure) {
       if (failure.kind != WebUntisFailureKind.authentication &&
@@ -177,6 +187,7 @@ class WebUntisLoginRepository {
         sessionId: sessionId,
         personId: identity.$1,
         personType: identity.$2,
+        linkedPeople: identity.$3,
       );
     } on ArgumentError {
       return const WebUntisLoginResult.invalidOneTimeCode();
@@ -192,13 +203,15 @@ class WebUntisLoginRepository {
     }
   }
 
-  Future<(int, int)> _loadLoginKeyIdentity({
+  Future<(int, int, List<Map<String, dynamic>>)> _loadLoginKeyIdentity({
     required WebUntisRequestContext context,
     required String sessionId,
   }) async {
     try {
       final response = await _client.getJson(
-        uri: Uri.parse('https://${context.schoolUrl}/WebUntis/api/app/config'),
+        uri: Uri.parse(
+          '${untisBaseUrl(schoolUrl: context.schoolUrl)}/WebUntis/api/app/config',
+        ),
         headers: <String, String>{
           'Cookie': 'JSESSIONID=$sessionId; schoolname=${context.schoolName}',
         },
@@ -206,21 +219,36 @@ class WebUntisLoginRepository {
       final data = response is Map ? response['data'] : null;
       final loginConfig = data is Map ? data['loginServiceConfig'] : null;
       final user = loginConfig is Map ? loginConfig['user'] : null;
-      if (user is! Map) return (0, 5);
+      if (user is! Map) return (0, 5, const <Map<String, dynamic>>[]);
 
       final personId = _asInt(user['personId']);
-      final persons = user['persons'];
-      if (persons is! List) return (personId, 5);
-      final matchingPerson = persons.whereType<Map>().cast<Map>().firstWhere(
+      final linked = _linkedPeopleOf(user);
+      if (linked.isEmpty) return (personId, 5, const <Map<String, dynamic>>[]);
+      final matchingPerson = linked.firstWhere(
         (person) => _asInt(person['id']) == personId,
-        orElse: () => const <Object?, Object?>{},
+        orElse: () => const <String, dynamic>{},
       );
-      return (personId, _asInt(matchingPerson['type'], fallback: 5));
+      return (personId, _asInt(matchingPerson['type'], fallback: 5), linked);
     } on WebUntisFailure {
       // A valid session is still useful when older installations do not
       // expose the optional app-config endpoint.
-      return (0, 5);
+      return (0, 5, const <Map<String, dynamic>>[]);
     }
+  }
+
+  /// Merges the `people` and `persons` lists a WebUntis login payload can use.
+  /// Both keys describe the same relation, so either one is accepted and
+  /// non-map entries are dropped rather than crashing the login.
+  static List<Map<String, dynamic>> _linkedPeopleOf(Map<Object?, Object?> source) {
+    final linked = <Map<String, dynamic>>[];
+    for (final key in const ['people', 'persons']) {
+      final raw = source[key];
+      if (raw is! List) continue;
+      for (final entry in raw) {
+        if (entry is Map) linked.add(Map<String, dynamic>.from(entry));
+      }
+    }
+    return linked;
   }
 
   static bool _mentionsOneTimeCode(String message) =>

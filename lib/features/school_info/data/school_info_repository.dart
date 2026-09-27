@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import '../../../core/sync_state.dart';
 import '../../../core/time_utils.dart';
+import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 
 class SchoolInfoReadResult {
@@ -92,7 +93,7 @@ class SchoolInfoRepository {
   }) async {
     WebUntisFailure? lastFailure;
     final uri = Uri.parse(
-      'https://$schoolUrl/WebUntis/messageFileRequest.do'
+      '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/messageFileRequest.do'
       '?file=${Uri.encodeQueryComponent(attachmentId)}',
     );
     for (final cookie in _schoolCookies(schoolName)) {
@@ -227,7 +228,7 @@ class SchoolInfoRepository {
 
     final decoded = await _getJson(
       uri: Uri.parse(
-        'https://$schoolUrl/WebUntis/api/rest/view/v1/messages',
+        '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/rest/view/v1/messages',
       ),
       sessionId: sessionId,
       cookies: cookies,
@@ -314,7 +315,7 @@ class SchoolInfoRepository {
       final date = untisDateString(day);
       final decoded = await _getJson(
         uri: Uri.parse(
-          'https://$schoolUrl/WebUntis/api/public/news/'
+          '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/public/news/'
           'newsWidgetData?date=$date',
         ),
         sessionId: sessionId,
@@ -341,7 +342,7 @@ class SchoolInfoRepository {
     required List<String> cookies,
   }) async {
     final raw = await _getText(
-      uri: Uri.parse('https://$schoolUrl/WebUntis/api/token/new'),
+      uri: Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/token/new'),
       sessionId: sessionId,
       cookies: cookies,
     );
@@ -377,7 +378,7 @@ class SchoolInfoRepository {
     required String path,
   }) async {
     final decoded = await _getJson(
-      uri: Uri.parse('https://$schoolUrl$path'),
+      uri: Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}$path'),
       sessionId: sessionId,
       cookies: cookies,
     );

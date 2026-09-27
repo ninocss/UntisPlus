@@ -1,5 +1,19 @@
 part of '../main.dart';
 
+/// Teacher name to show on lesson cards and in the lesson detail sheet.
+///
+/// `_teacher` holds the canonical full name because lesson identity and change
+/// detection compare against it; `_teacherShort` holds the WebUntis Kürzel and
+/// may be absent. The choice is made here, at render time, so toggling the
+/// "full teacher names" setting takes effect immediately instead of waiting for
+/// the next sync.
+String displayTeacherForLesson(Map<Object?, Object?> lesson) {
+  final full = (lesson['_teacher'] ?? '').toString().trim();
+  if (showFullTeacherNamesNotifier.value || full.isEmpty) return full;
+  final short = (lesson['_teacherShort'] ?? '').toString().trim();
+  return short.isEmpty ? full : short;
+}
+
 // --- WOCHENPLAN (TAB VIEW) ---
 class WeeklyTimetablePage extends StatefulWidget {
   const WeeklyTimetablePage({super.key});
@@ -124,7 +138,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
   final Map<int, String> _subjectLong = {};
   final Map<int, String> _subjectShortMap = {};
+
+  /// Teacher id to full name ("First Last").
+  ///
+  /// This stays the canonical value stored on each lesson, because lesson
+  /// identity and change detection compare teachers by it and must not shift
+  /// when the display preference changes.
   final Map<int, String> _teacherMap = {};
+
+  /// Teacher id to the WebUntis short name (Kürzel), used when the
+  /// "full teacher names" setting is off.
+  final Map<int, String> _teacherShortMap = {};
   final Map<int, String> _roomMap = {};
 
   String _mondayKey(DateTime monday) => untisDateString(monday);
@@ -448,6 +472,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           if (id != null) _teacherMap[id] = v.toString();
         });
       }
+      if (val['teachersShort'] is Map) {
+        (val['teachersShort'] as Map).forEach((k, v) {
+          final id = int.tryParse(k.toString());
+          if (id != null) _teacherShortMap[id] = v.toString();
+        });
+      }
       if (val['rooms'] is Map) {
         (val['rooms'] as Map).forEach((k, v) {
           final id = int.tryParse(k.toString());
@@ -473,6 +503,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         },
         'teachers': {
           for (final e in _teacherMap.entries) e.key.toString(): e.value,
+        },
+        'teachersShort': {
+          for (final e in _teacherShortMap.entries) e.key.toString(): e.value,
         },
         'rooms': {for (final e in _roomMap.entries) e.key.toString(): e.value},
       };
@@ -517,10 +550,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         final fore = (teacher['foreName'] ?? teacher['forename'] ?? '')
             .toString()
             .trim();
-        final last = (teacher['longName'] ?? teacher['name'] ?? '')
-            .toString()
-            .trim();
+        final short = (teacher['name'] ?? '').toString().trim();
+        final last = (teacher['longName'] ?? short).toString().trim();
         _teacherMap[id] = fore.isNotEmpty ? '$fore $last' : last;
+        // Only meaningful when it differs from the full name; some
+        // installations repeat the surname instead of exposing a Kürzel.
+        if (short.isNotEmpty && short != _teacherMap[id]) {
+          _teacherShortMap[id] = short;
+        }
       }
       for (final room in data.rooms) {
         final id = room['id'] as int?;
@@ -1433,9 +1470,13 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       final firstTeacher = teList.first as Map?;
       if (firstTeacher != null) {
         final tId = firstTeacher['id'] as int?;
+        final inline = firstTeacher['name']?.toString() ?? '';
         lesson['_teacher'] = tId != null
-            ? (_teacherMap[tId] ?? (firstTeacher['name']?.toString() ?? '?'))
+            ? (_teacherMap[tId] ?? (inline.isEmpty ? '?' : inline))
             : '?';
+        lesson['_teacherShort'] = tId != null
+            ? (_teacherShortMap[tId] ?? inline)
+            : '';
       }
     }
     final suList = (lesson['su'] as List?) ?? [];
@@ -3458,6 +3499,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return slots;
   }
 
+  /// Number of consecutive weekdays the day-grid view shows at once.
+  ///
+  /// Read from [timetableDaySpanNotifier] at build time so a settings change
+  /// takes effect on the next frame, without refetching the week. The
+  /// dedicated week view ignores this and always shows all five days.
+  int get _daySpan => timetableDaySpanNotifier.value.clamp(1, 3);
+
+  /// True when [a] and [b] fall on the same calendar day.
+  bool _isSameCalendarDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
   Widget _buildGridView(
     int dayIndex, {
     DateTime? monday,
@@ -3470,13 +3522,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ? 10.0
         : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
 
-    final lessons = (wd[dayIndex] ?? [])
-        .where(
-          (l) => !hiddenSubjectsNotifier.value.contains(
-            l['_subjectShort']?.toString() ?? '',
-          ),
-        )
-        .toList();
+    // The span is anchored on the selected day and stops at the end of the
+    // week, so with a 3-day span the Monday page shows Mon-Wed while the
+    // Friday page shows Friday alone.
+    final dayIndices = <int>[
+      for (var i = 0; i < _daySpan && dayIndex + i < 5; i++) dayIndex + i,
+    ];
 
     int globalMin = 480;
     int globalMax = 1200;
@@ -3508,24 +3559,11 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final filteredTimeLabels = _filterTimeLabels(timeRanges);
 
     final now = DateTime.now();
-    final dayDate = m.add(Duration(days: dayIndex));
-    final isToday =
-        dayDate.year == now.year &&
-        dayDate.month == now.month &&
-        dayDate.day == now.day;
     final nowMin = now.hour * 60 + now.minute;
-    final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
-    final nowTop = (nowMin - globalMin) * _ppm;
-    final visibleLessons = lessons
-        .where(
-          (l) =>
-              showCancelledNotifier.value || (l['code'] ?? '') != 'cancelled',
-        )
-        .toList();
-    final mergedLessons = _mergeConsecutiveLessons(visibleLessons);
-    final lessonSlots = _computeLessonSlots(mergedLessons);
 
     final csG = Theme.of(context).colorScheme;
+    const double columnGap = 6.0;
+    final showDayHeaders = dayIndices.length > 1;
     return ExpressiveRefreshIndicator(
       onRefresh: _onRefresh,
       // The expressive indicator starts immediately under the app bar rather
@@ -3534,350 +3572,443 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(bottom: 32, top: topContentPadding),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: timeColWidth,
-              height: totalHeight,
-              child: Stack(
-                children: filteredTimeLabels.isNotEmpty
-                    ? filteredTimeLabels.map((value) {
-                        final top = (value - globalMin) * _ppm - 9;
-                        return Positioned(
-                          top: top,
-                          left: 0,
-                          right: 0,
-                          child: Text(
-                            _formatMinutes(value),
-                            textAlign: TextAlign.right,
-                            style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: csG.onSurfaceVariant.withValues(
-                                alpha: 0.54,
-                              ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // The day columns share the time scale, so the header row has to be
+            // measured from the same width the columns get below it.
+            final dayAreaWidth = constraints.maxWidth - timeColWidth - 4 - 12;
+            final columnWidth =
+                (dayAreaWidth - (columnGap * (dayIndices.length - 1))) /
+                dayIndices.length;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showDayHeaders)
+                  Row(
+                    children: [
+                      const SizedBox(width: timeColWidth + 4),
+                      for (final (i, index) in dayIndices.indexed) ...[
+                        if (i > 0) const SizedBox(width: columnGap),
+                        SizedBox(
+                          width: columnWidth,
+                          child: _buildDayColumnHeader(
+                            index,
+                            m.add(Duration(days: index)),
+                            isToday: _isSameCalendarDay(
+                              m.add(Duration(days: index)),
+                              now,
                             ),
                           ),
-                        );
-                      }).toList()
-                    : ticks.map((tick) {
-                        final top = (tick - globalMin) * _ppm - 9;
-                        return Positioned(
-                          top: top,
-                          left: 0,
-                          right: 0,
-                          child: Text(
-                            _formatMinutes(tick),
-                            textAlign: TextAlign.right,
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: csG.onSurfaceVariant.withValues(
-                                alpha: 0.5,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: SizedBox(
-                height: totalHeight,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Stack(
-                      children: [
-                        ...ticks.map((tick) {
-                          final top = (tick - globalMin) * _ppm;
-                          return Positioned(
-                            top: top,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 0.45,
-                              color: csG.outlineVariant.withValues(alpha: 0.28),
-                            ),
-                          );
-                        }),
-                        ..._getHolidaysForDay(dayDate).map((holiday) {
-                          final holidayStartMin = _toMinutes(800);
-                          final holidayEndMin = _toMinutes(1800);
-                          final top = (holidayStartMin - globalMin) * _ppm;
-                          final height =
-                              ((holidayEndMin - holidayStartMin) * _ppm).clamp(
-                                28.0,
-                                9999.0,
+                        ),
+                      ],
+                      const SizedBox(width: 12),
+                    ],
+                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: timeColWidth,
+                      height: totalHeight,
+                      child: Stack(
+                        children: filteredTimeLabels.isNotEmpty
+                            ? filteredTimeLabels.map((value) {
+                                final top = (value - globalMin) * _ppm - 9;
+                                return Positioned(
+                                  top: top,
+                                  left: 0,
+                                  right: 0,
+                                  child: Text(
+                                    _formatMinutes(value),
+                                    textAlign: TextAlign.right,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: csG.onSurfaceVariant.withValues(
+                                        alpha: 0.54,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList()
+                            : ticks.map((tick) {
+                                final top = (tick - globalMin) * _ppm - 9;
+                                return Positioned(
+                                  top: top,
+                                  left: 0,
+                                  right: 0,
+                                  child: Text(
+                                    _formatMinutes(tick),
+                                    textAlign: TextAlign.right,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: csG.onSurfaceVariant.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: SizedBox(
+                        height: totalHeight,
+                        child: Stack(
+                          children: [
+                            ...ticks.map((tick) {
+                              final top = (tick - globalMin) * _ppm;
+                              return Positioned(
+                                top: top,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  height: 0.45,
+                                  color: csG.outlineVariant.withValues(
+                                    alpha: 0.28,
+                                  ),
+                                ),
                               );
-                          final holidayName =
-                              (holiday['longName'] ?? holiday['name'] ?? '')
-                                  .toString();
-                          return Positioned(
-                            top: top,
-                            left: 2,
-                            right: 2,
-                            height: height,
-                            child: Material(
-                              color: Colors.transparent,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: csG.tertiaryContainer.withValues(
-                                    alpha: 0.85,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: csG.tertiary.withValues(alpha: 0.4),
-                                    width: 1.5,
-                                  ),
-                                ),
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      Icons.celebration_rounded,
-                                      size: 20,
-                                      color: csG.tertiary,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      holidayName,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
-                                        color: csG.onTertiaryContainer,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                        ...lessonSlots.map((slot) {
-                          final l = slot.lesson;
-                          final startMin = slot.startMin;
-                          final endMin = slot.endMin;
-                          final top = (startMin - globalMin) * _ppm;
-                          final height = ((endMin - startMin) * _ppm).clamp(
-                            28.0,
-                            9999.0,
-                          );
-                          final dim = isToday && endMin <= nowMin;
-
-                          const horizontalInset = 2.0;
-                          const columnGap = 4.0;
-                          final columns = slot.columnCount;
-                          final availableWidth =
-                              constraints.maxWidth - (horizontalInset * 2);
-                          final totalGap = (columns - 1) * columnGap;
-                          final rawCardWidth =
-                              (availableWidth - totalGap) / columns;
-                          final cardWidth = rawCardWidth > 8
-                              ? rawCardWidth
-                              : 8.0;
-                          final left =
-                              horizontalInset +
-                              (slot.column * (cardWidth + columnGap));
-
-                          return Positioned(
-                            top: top,
-                            left: left,
-                            width: cardWidth,
-                            height: height,
-                            child: _dimPastLesson(
-                              dim: dim,
-                              child: Builder(
-                                builder: (context) {
-                                  final cs = Theme.of(context).colorScheme;
-                                  final isDark =
-                                      Theme.of(context).brightness ==
-                                      Brightness.dark;
-                                  final isCancelled =
-                                      (l['code'] ?? '') == 'cancelled';
-                                  final isTeacherMissing = _hasMissingTeacher(
-                                    l,
-                                  );
-                                  final sk =
-                                      l['_subjectShort']?.toString() ?? '';
-                                  final useMonochrome =
-                                      monochromeLessonsNotifier.value;
-                                  final cancelledColor = Color(
-                                    cancelledLessonColorNotifier.value,
-                                  );
-                                  final cv = isCancelled || useMonochrome
-                                      ? null
-                                      : subjectColorsNotifier.value[sk];
-                                  final fgColor = isCancelled
-                                      ? cancelledColor
-                                      : useMonochrome
-                                      ? Color(
-                                          monochromeLessonColorNotifier.value,
-                                        )
-                                      : cv != null
-                                      ? Color(cv)
-                                      : _autoLessonColor(sk, isDark);
-                                  final bgColor = isCancelled
-                                      ? Color.alphaBlend(
-                                          cancelledColor.withValues(
-                                            alpha: isDark ? 0.14 : 0.10,
-                                          ),
-                                          cs.surfaceContainerHighest,
-                                        )
-                                      : Color.alphaBlend(
-                                          fgColor.withValues(
-                                            alpha: isDark ? 0.14 : 0.10,
-                                          ),
-                                          cs.surfaceContainerHighest,
-                                        );
-                                  final subject =
-                                      l['_subjectShort']
-                                              ?.toString()
-                                              .isNotEmpty ==
-                                          true
-                                      ? l['_subjectShort'].toString()
-                                      : (l['_subjectLong']
-                                                    ?.toString()
-                                                    .isNotEmpty ==
-                                                true
-                                            ? l['_subjectLong'].toString()
-                                            : '?');
-                                  final room = l['_room']?.toString() ?? '';
-                                  final teacher =
-                                      l['_teacher']?.toString() ?? '';
-                                  final isCurrent =
-                                      (startMin <= nowMin && nowMin < endMin);
-                                  final isNow = isCurrent;
-
-                                  final lDateInt =
-                                      int.tryParse(
-                                        l['date']?.toString() ?? '',
-                                      ) ??
-                                      0;
-                                  final hasHomework =
-                                      homeworksNotifier.value.any(
-                                        (hw) =>
-                                            hw['dueDate'] == lDateInt &&
-                                            (hw['subject'] == sk ||
-                                                hw['subject'] == subject),
-                                      ) ||
-                                      customHomeworkNotifier.value.any(
-                                        (hw) =>
-                                            hw['dueDate'] == lDateInt &&
-                                            (hw['subject'] == sk ||
-                                                hw['subject'] == subject),
-                                      );
-                                  final hasExam =
-                                      apiExamsNotifier.value.any(
-                                        (ex) =>
-                                            (ex['date'] ??
-                                                    ex['examDate'] ??
-                                                    0) ==
-                                                lDateInt &&
-                                            (ex['subject'] == sk ||
-                                                ex['subjectName'] == sk ||
-                                                ex['subject'] == subject),
-                                      ) ||
-                                      customExamsNotifier.value.any(
-                                        (ex) =>
-                                            (ex['date'] ?? 0) == lDateInt &&
-                                            (ex['subject'] == sk ||
-                                                ex['subject'] == subject),
-                                      );
-
-                                  final originalTeacher =
-                                      _originalTeachers[_lessonIdentityOf(l)] ??
-                                      '';
-                                  final lessonTile = GestureDetector(
-                                    onTap: () => _showLessonDetail(
-                                      context,
-                                      l,
-                                      originalTeacher: originalTeacher,
-                                    ),
-                                    onLongPress: () =>
-                                        _editLessonTemporarily(l),
-                                    child: _buildTimetableLessonCard(
-                                      context: context,
-                                      isCancelled: isCancelled,
-                                      isDark: isDark,
-                                      fgColor: fgColor,
-                                      bgColor: bgColor,
-                                      subject: subject,
-                                      subjectIcon: _subjectIconFor(sk, subject),
-                                      teacher: teacher,
-                                      room: room,
-                                      isNow: isNow,
-                                      isTeacherMissing: isTeacherMissing,
-                                      hasHomework: hasHomework,
-                                      hasExam: hasExam,
-                                      originalTeacher: originalTeacher,
-                                      padding: const EdgeInsets.fromLTRB(
-                                        8,
-                                        5,
-                                        6,
-                                        5,
-                                      ),
-                                      accentWidth: 3.5,
-                                      subjectFontSize: 11.5,
-                                      teacherFontSize: 9.5,
-                                      roomFontSize: 9.5,
-                                      useStripes: true,
-                                    ),
-                                  );
-                                  return _withChangeHighlight(
-                                    child: lessonTile,
-                                    highlighted: _isHighlightMatch(l),
-                                    color: cs.tertiary,
-                                  );
-                                },
-                              ),
-                            ),
-                          );
-                        }),
-                        if (showNowLine)
-                          Positioned(
-                            top: nowTop - 1,
-                            left: 0,
-                            right: 0,
-                            child: IgnorePointer(
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 5,
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: csG.error,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Container(
-                                      height: 2,
-                                      decoration: BoxDecoration(
-                                        color: csG.error,
-                                        borderRadius: BorderRadius.circular(2),
-                                      ),
+                            }),
+                            // One column per day in the span. With a span of 1
+                            // this collapses to the previous single-day layout.
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (final (i, index)
+                                    in dayIndices.indexed) ...[
+                                  if (i > 0) const SizedBox(width: columnGap),
+                                  SizedBox(
+                                    key: ValueKey('timetable-day-column-$index'),
+                                    width: columnWidth,
+                                    child: _buildDayGridColumn(
+                                      dayIndex: index,
+                                      monday: m,
+                                      weekData: wd,
+                                      columnWidth: columnWidth,
+                                      globalMin: globalMin,
+                                      globalMax: globalMax,
+                                      now: now,
+                                      nowMin: nowMin,
                                     ),
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
-                          ),
-                      ],
-                    );
-                  },
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// The per-day layer of the day grid: holiday banner, lesson cards and the
+  /// "now" indicator, laid out inside one column of the shared time scale.
+  Widget _buildDayGridColumn({
+    required int dayIndex,
+    required DateTime monday,
+    required Map<int, List<dynamic>> weekData,
+    required double columnWidth,
+    required int globalMin,
+    required int globalMax,
+    required DateTime now,
+    required int nowMin,
+  }) {
+    final dayDate = monday.add(Duration(days: dayIndex));
+    final isToday = _isSameCalendarDay(dayDate, now);
+    final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
+    final nowTop = (nowMin - globalMin) * _ppm;
+
+    final lessons = (weekData[dayIndex] ?? [])
+        .where(
+          (l) => !hiddenSubjectsNotifier.value.contains(
+            l['_subjectShort']?.toString() ?? '',
+          ),
+        )
+        .where(
+          (l) =>
+              showCancelledNotifier.value || (l['code'] ?? '') != 'cancelled',
+        )
+        .toList();
+    final lessonSlots = _computeLessonSlots(_mergeConsecutiveLessons(lessons));
+
+    final csG = Theme.of(context).colorScheme;
+    return Stack(
+      children: [
+        ..._getHolidaysForDay(dayDate).map((holiday) {
+          final holidayStartMin = _toMinutes(800);
+          final holidayEndMin = _toMinutes(1800);
+          final top = (holidayStartMin - globalMin) * _ppm;
+          final height = ((holidayEndMin - holidayStartMin) * _ppm).clamp(
+            28.0,
+            9999.0,
+          );
+          final holidayName = (holiday['longName'] ?? holiday['name'] ?? '')
+              .toString();
+          return Positioned(
+            top: top,
+            left: 2,
+            right: 2,
+            height: height,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: csG.tertiaryContainer.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: csG.tertiary.withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.celebration_rounded,
+                      size: 20,
+                      color: csG.tertiary,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      holidayName,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: csG.onTertiaryContainer,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-          ],
+          );
+        }),
+        ...lessonSlots.map((slot) {
+          final l = slot.lesson;
+          final startMin = slot.startMin;
+          final endMin = slot.endMin;
+          final top = (startMin - globalMin) * _ppm;
+          final height = ((endMin - startMin) * _ppm).clamp(28.0, 9999.0);
+          final dim = isToday && endMin <= nowMin;
+
+          const horizontalInset = 2.0;
+          const columnGap = 4.0;
+          final columns = slot.columnCount;
+          final availableWidth = columnWidth - (horizontalInset * 2);
+          final totalGap = (columns - 1) * columnGap;
+          final rawCardWidth = (availableWidth - totalGap) / columns;
+          final cardWidth = rawCardWidth > 8 ? rawCardWidth : 8.0;
+          final left =
+              horizontalInset + (slot.column * (cardWidth + columnGap));
+
+          return Positioned(
+            top: top,
+            left: left,
+            width: cardWidth,
+            height: height,
+            child: _dimPastLesson(
+              dim: dim,
+              child: Builder(
+                builder: (context) {
+                  final cs = Theme.of(context).colorScheme;
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
+                  final isCancelled = (l['code'] ?? '') == 'cancelled';
+                  final isTeacherMissing = _hasMissingTeacher(l);
+                  final sk = l['_subjectShort']?.toString() ?? '';
+                  final useMonochrome = monochromeLessonsNotifier.value;
+                  final cancelledColor = Color(
+                    cancelledLessonColorNotifier.value,
+                  );
+                  final cv = isCancelled || useMonochrome
+                      ? null
+                      : subjectColorsNotifier.value[sk];
+                  final fgColor = isCancelled
+                      ? cancelledColor
+                      : useMonochrome
+                      ? Color(monochromeLessonColorNotifier.value)
+                      : cv != null
+                      ? Color(cv)
+                      : _autoLessonColor(sk, isDark);
+                  final bgColor = isCancelled
+                      ? Color.alphaBlend(
+                          cancelledColor.withValues(
+                            alpha: isDark ? 0.14 : 0.10,
+                          ),
+                          cs.surfaceContainerHighest,
+                        )
+                      : Color.alphaBlend(
+                          fgColor.withValues(alpha: isDark ? 0.14 : 0.10),
+                          cs.surfaceContainerHighest,
+                        );
+                  final subject =
+                      l['_subjectShort']?.toString().isNotEmpty == true
+                      ? l['_subjectShort'].toString()
+                      : (l['_subjectLong']?.toString().isNotEmpty == true
+                            ? l['_subjectLong'].toString()
+                            : '?');
+                  final room = l['_room']?.toString() ?? '';
+                  final teacher = displayTeacherForLesson(l);
+                  final isCurrent = (startMin <= nowMin && nowMin < endMin);
+                  final isNow = isCurrent;
+
+                  final lDateInt =
+                      int.tryParse(l['date']?.toString() ?? '') ?? 0;
+                  final hasHomework =
+                      homeworksNotifier.value.any(
+                        (hw) =>
+                            hw['dueDate'] == lDateInt &&
+                            (hw['subject'] == sk || hw['subject'] == subject),
+                      ) ||
+                      customHomeworkNotifier.value.any(
+                        (hw) =>
+                            hw['dueDate'] == lDateInt &&
+                            (hw['subject'] == sk || hw['subject'] == subject),
+                      );
+                  final hasExam =
+                      apiExamsNotifier.value.any(
+                        (ex) =>
+                            (ex['date'] ?? ex['examDate'] ?? 0) == lDateInt &&
+                            (ex['subject'] == sk ||
+                                ex['subjectName'] == sk ||
+                                ex['subject'] == subject),
+                      ) ||
+                      customExamsNotifier.value.any(
+                        (ex) =>
+                            (ex['date'] ?? 0) == lDateInt &&
+                            (ex['subject'] == sk || ex['subject'] == subject),
+                      );
+
+                  final originalTeacher =
+                      _originalTeachers[_lessonIdentityOf(l)] ?? '';
+                  final lessonTile = GestureDetector(
+                    onTap: () => _showLessonDetail(
+                      context,
+                      l,
+                      originalTeacher: originalTeacher,
+                    ),
+                    onLongPress: () => _editLessonTemporarily(l),
+                    child: _buildTimetableLessonCard(
+                      context: context,
+                      isCancelled: isCancelled,
+                      isDark: isDark,
+                      fgColor: fgColor,
+                      bgColor: bgColor,
+                      subject: subject,
+                      subjectIcon: _subjectIconFor(sk, subject),
+                      teacher: teacher,
+                      room: room,
+                      isNow: isNow,
+                      isTeacherMissing: isTeacherMissing,
+                      hasHomework: hasHomework,
+                      hasExam: hasExam,
+                      originalTeacher: originalTeacher,
+                      padding: const EdgeInsets.fromLTRB(8, 5, 6, 5),
+                      accentWidth: 3.5,
+                      subjectFontSize: 11.5,
+                      teacherFontSize: 9.5,
+                      roomFontSize: 9.5,
+                      useStripes: true,
+                    ),
+                  );
+                  return _withChangeHighlight(
+                    child: lessonTile,
+                    highlighted: _isHighlightMatch(l),
+                    color: cs.tertiary,
+                  );
+                },
+              ),
+            ),
+          );
+        }),
+        if (showNowLine)
+          Positioned(
+            top: nowTop - 1,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Row(
+                children: [
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: csG.error,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      decoration: BoxDecoration(
+                        color: csG.error,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Weekday and date label above a day column, shown only when the grid shows
+  /// more than one day and the tab bar can no longer identify the columns.
+  Widget _buildDayColumnHeader(
+    int dayIndex,
+    DateTime dayDate, {
+    required bool isToday,
+  }) {
+    final csG = Theme.of(context).colorScheme;
+    final weekday = dayIndex >= 0 && dayIndex < _dayShort.length
+        ? _dayShort[dayIndex]
+        : '';
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            weekday,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: isToday ? csG.primary : csG.onSurfaceVariant,
+            ),
+          ),
         ),
-      ),
+        const SizedBox(width: 4),
+        Text(
+          '${dayDate.day}.${dayDate.month}.',
+          style: GoogleFonts.outfit(
+            fontSize: 11,
+            fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+            color: isToday ? csG.primary : csG.onSurfaceVariant,
+          ),
+        ),
+        if (isToday) ...[
+          const SizedBox(width: 3),
+          Icon(Icons.circle, size: 6, color: csG.primary),
+        ],
+      ],
     );
   }
 
@@ -4263,8 +4394,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                               final room =
                                                   l['_room']?.toString() ?? '';
                                               final teacher =
-                                                  l['_teacher']?.toString() ??
-                                                  '';
+                                                  displayTeacherForLesson(l);
                                               final sk2 =
                                                   l['_subjectShort']
                                                       ?.toString() ??

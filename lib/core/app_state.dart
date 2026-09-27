@@ -630,6 +630,7 @@ final ValueNotifier<int> surfaceCornerRadiusNotifier = ValueNotifier(24);
 final ValueNotifier<bool> appBgBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> appBgBlurAmountNotifier = ValueNotifier(10.0);
 final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
+
 final ValueNotifier<int> pageTransitionNotifier = ValueNotifier(0);
 final ValueNotifier<bool> mainTabFadeUpEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<bool> useMaterialYouNotifier = ValueNotifier(true);
@@ -931,6 +932,52 @@ String _formatUntisTime(String time) {
   return formatUntisTime(time);
 }
 
+/// Resolves which timetable element an authenticated account should use.
+///
+/// A guardian login (person type 3) has no timetable of its own, so the stored
+/// element is redirected to the first linked student. [linkedPeople] is the
+/// merged `people`/`persons` list from the login payload; ids and types are
+/// read leniently because WebUntis mixes numeric and string values.
+///
+/// Returns `{'personId': int, 'personType': int}`, falling back to the supplied
+/// element whenever the payload does not yield a usable student.
+Map<String, dynamic> _resolveTimetableElementFromAuth(
+  List<Map<String, dynamic>> linkedPeople,
+  int fallbackPersonId,
+  int fallbackPersonType,
+) {
+  var personId = fallbackPersonId;
+  var personType = fallbackPersonType;
+
+  int? idOf(Map<String, dynamic> person) =>
+      int.tryParse(person['id']?.toString() ?? '');
+  int? typeOf(Map<String, dynamic> person) =>
+      int.tryParse(person['type']?.toString() ?? '');
+
+  // The server may report the account's own element with a more precise type
+  // than the one already stored, so prefer that when it is present.
+  for (final person in linkedPeople) {
+    if (idOf(person) == personId) {
+      personType = typeOf(person) ?? personType;
+      break;
+    }
+  }
+
+  if (personType == 3) {
+    for (final person in linkedPeople) {
+      if (typeOf(person) != 5) continue;
+      final childId = idOf(person);
+      if (childId != null && childId > 0) {
+        personId = childId;
+        personType = 5;
+      }
+      break;
+    }
+  }
+
+  return {'personId': personId, 'personType': personType};
+}
+
 Future<bool>? _reAuthenticationInFlight;
 
 /// Shares a refresh across concurrent requests. The Info tab loads Inbox and
@@ -980,9 +1027,9 @@ Future<bool> _performReAuthentication() async {
         // Guardian accounts target a parent element that has no timetable.
         // Every re-authentication is another chance to redirect the stored
         // element to the first linked student.
-        if (corrected.personType == 3 && authResult != null) {
+        if (corrected.personType == 3) {
           final element = _resolveTimetableElementFromAuth(
-            authResult,
+            authResult.linkedPeople,
             corrected.personId,
             corrected.personType,
           );

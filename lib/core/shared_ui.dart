@@ -5,7 +5,6 @@ const Curve _kSoftBounce = Curves.easeOutQuad;
 
 const AnimationStyle _kBottomSheetAnimationStyle = AnimationStyle();
 
-<<<<<<< HEAD
 class _AiImportFile {
   const _AiImportFile({required this.bytes, required this.mimeType});
 
@@ -435,14 +434,17 @@ abstract final class LessonCardVisualsResolver {
           : (accentStyle == 1 ? 1.8 : 0.0),
     );
   }
-=======
+}
+
 /// Minimum fling velocity (in screen widths per second) to trigger a pop
 /// when the drag ends before the halfway point.
 const double _kMinFlingVelocity = 1.0;
 
 /// Animation duration for the page settling after a completed or cancelled
 /// swipe-back gesture.
-const Duration _kDroppedSwipePageAnimationDuration = Duration(milliseconds: 350);
+const Duration _kDroppedSwipePageAnimationDuration = Duration(
+  milliseconds: 350,
+);
 
 /// Curve used for the page settling animation after a swipe-back gesture.
 const Curve _kSwipeBackAnimationCurve = Curves.fastEaseInToSlowEaseOut;
@@ -451,9 +453,8 @@ const Curve _kSwipeBackAnimationCurve = Curves.fastEaseInToSlowEaseOut;
 /// ~5% of the shortest screen dimension, clamped to [20, 48] logical pixels.
 /// Matches native iOS behavior where the edge zone scales with device size.
 double _kSwipeBackGestureWidth(BuildContext context) {
-  final double shortestSide = MediaQuery.sizeOf(context).shortestSide;
+  final shortestSide = MediaQuery.sizeOf(context).shortestSide;
   return (shortestSide * 0.05).clamp(20.0, 48.0);
->>>>>>> pr-149
 }
 
 /// Shared width vocabulary for layouts that need to work from a phone to a
@@ -1291,10 +1292,12 @@ Route<T> _buildBouncyRoute<T>(
       reverseDuration ??
       Duration(milliseconds: (forwardDuration.inMilliseconds * 0.82).round());
 
-  final transitionsBuilder = (BuildContext context,
-      Animation<double> animation,
-      Animation<double> secondaryAnimation,
-      Widget child) {
+  Widget transitionsBuilder(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
     if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
       return child;
     }
@@ -1348,7 +1351,7 @@ Route<T> _buildBouncyRoute<T>(
     }
 
     return FadeTransition(opacity: opacity, child: result);
-  };
+  }
 
   // Use SwipeBackPageRoute when the gesture is enabled to support
   // native-style edge-swipe back on iOS/Android.
@@ -1365,66 +1368,7 @@ Route<T> _buildBouncyRoute<T>(
     transitionDuration: forwardDuration,
     reverseTransitionDuration: backwardDuration,
     pageBuilder: (context, animation, secondaryAnimation) => page,
-<<<<<<< HEAD
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
-        return child;
-      }
-
-      final curve = _pageMotionCurve(selectedTransition);
-      final motion = CurvedAnimation(
-        parent: animation,
-        curve: curve,
-        reverseCurve: Curves.easeInCubic,
-      );
-      final opacity = CurvedAnimation(
-        parent: animation,
-        curve: const Interval(0.0, 0.82, curve: Curves.easeOutCubic),
-        reverseCurve: Curves.easeInCubic,
-      );
-      final offset = _pageMotionOffset(selectedTransition);
-      final scale = _pageMotionScale(selectedTransition);
-      final blur = _pageMotionBlur(selectedTransition);
-
-      Widget result = child;
-
-      if (blur > 0) {
-        result = AnimatedBuilder(
-          animation: motion,
-          child: result,
-          builder: (context, child) {
-            final sigma = (1 - motion.value.clamp(0.0, 1.0)) * blur;
-            return ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-              child: child,
-            );
-          },
-        );
-      }
-
-      if (scale != 1) {
-        result = ScaleTransition(
-          scale: Tween<double>(begin: scale, end: 1).animate(motion),
-          alignment: Alignment.center,
-          child: result,
-        );
-      }
-
-      if (offset != Offset.zero) {
-        result = SlideTransition(
-          position: Tween<Offset>(
-            begin: offset,
-            end: Offset.zero,
-          ).animate(motion),
-          child: result,
-        );
-      }
-
-      return FadeTransition(opacity: opacity, child: result);
-    },
-=======
     transitionsBuilder: transitionsBuilder,
->>>>>>> pr-149
   );
 }
 
@@ -1582,15 +1526,15 @@ class _SwipeBackGestureDetectorState<T>
   }
 
   double _convertToLogical(double value) {
-    final ui.TextDirection dir = Directionality.of(context);
-    return dir == ui.TextDirection.rtl ? -value : value;
+    final TextDirection dir = Directionality.of(context);
+    return dir == TextDirection.rtl ? -value : value;
   }
 
   @override
   Widget build(BuildContext context) {
     assert(debugCheckHasDirectionality(context));
-    final ui.TextDirection dir = Directionality.of(context);
-    final double dragAreaWidth = dir == ui.TextDirection.rtl
+    final TextDirection dir = Directionality.of(context);
+    final double dragAreaWidth = dir == TextDirection.rtl
         ? MediaQuery.paddingOf(context).right
         : MediaQuery.paddingOf(context).left;
     return Stack(

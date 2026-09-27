@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:untisplus/core/settings_store.dart';
+import 'package:untisplus/data/webuntis/untis_endpoint.dart';
 import 'package:untisplus/l10n.dart';
 import 'package:untisplus/main.dart';
 
@@ -65,6 +66,7 @@ void main() {
       'onboardingCheckpoint': 0,
     });
     demoModeNotifier.value = false;
+    devModeNotifier.value = false;
     aiProvider = 'gemini';
     appLocaleNotifier.value = 'de';
     activeUntisAccountId = null;
@@ -455,6 +457,49 @@ void main() {
     }
   });
 
+  testWidgets('timetable day grid honours the configured day span', (
+    tester,
+  ) async {
+    demoModeNotifier.value = true;
+    addTearDown(() {
+      demoModeNotifier.value = false;
+      timetableDaySpanNotifier.value = 1;
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1024, 768);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('viewMode', 0);
+
+    for (final span in [1, 2, 3]) {
+      timetableDaySpanNotifier.value = span;
+      await tester.pumpWidget(
+        UntisPlusApp(startScreen: WeeklyTimetablePage(key: ValueKey(span))),
+      );
+      await ensureDayTimetableView(tester);
+      // The first page is anchored on the selected day, so it shows the full
+      // span unless the week runs out of days.
+      expect(
+        find.byKey(const ValueKey('timetable-day-column-0')),
+        findsOneWidget,
+        reason: 'span $span: the anchor column is always present',
+      );
+      expect(
+        find.byKey(ValueKey('timetable-day-column-${span - 1}')),
+        findsOneWidget,
+        reason: 'span $span: the last column of the span is present',
+      );
+      expect(
+        find.byKey(ValueKey('timetable-day-column-$span')),
+        findsNothing,
+        reason: 'span $span: the span does not overrun the week',
+      );
+      expect(tester.takeException(), isNull, reason: 'span $span');
+    }
+  });
+
   testWidgets('timetable more menu uses the expressive menu actions', (
     tester,
   ) async {
@@ -625,6 +670,49 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('App-Tutorial wiederholen'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('developer mode explains the local server and links to it', (
+    tester,
+  ) async {
+    devModeNotifier.value = true;
+    addTearDown(() => devModeNotifier.value = false);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(430, 1400);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      const UntisPlusApp(startScreen: SettingsAccountPage()),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Both entry points live in the developer-mode group, so they only appear
+    // once the toggle is on.
+    const aboutTile = 'Über den Entwicklungsserver';
+    const repositoryTile = 'Projekt auf GitHub öffnen';
+    expect(find.text(aboutTile), findsOneWidget);
+    expect(find.text(repositoryTile), findsOneWidget);
+
+    await tester.tap(find.text(aboutTile));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // The sheet explains the server and repeats the repository link as a
+    // button, so the project can be reached without dismissing it first.
+    expect(find.text('UntisPlus-Entwicklungsserver'), findsOneWidget);
+    expect(
+      find.textContaining('verbindet diese App mit einem lokalen Server'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Stundenplan, Nachrichten, Hausaufgaben'),
+      findsOneWidget,
+    );
+    expect(
+      find.widgetWithText(FilledButton, repositoryTile),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
