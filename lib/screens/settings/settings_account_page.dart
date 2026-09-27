@@ -198,7 +198,30 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
               ),
             ),
 
-            // ── GROUP 2: DEMO MODE ──
+            // ── GROUP 2: FEEDBACK & SUPPORT ──
+            SettingsGroup(
+              title: l.settingsFeedbackSupport,
+              children: [
+                SettingsTile(
+                  icon: Icons.feedback_rounded,
+                  iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                  iconColor: cs.onTertiaryContainer,
+                  title: l.settingsGiveFeedback,
+                  subtitle: l.settingsGiveFeedbackDesc,
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    if (!WishKit.isConfigured) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => WishKit.feedbackPage(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+
+            // ── GROUP 3: DEMO MODE ──
             SettingsGroup(
               title: l.settingsDemoMode,
               children: [

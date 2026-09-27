@@ -1080,5 +1080,8 @@
   "reload": "Recharger",
   "settingsAppBgBlur": "App-Hintergrundunschärfe",
   "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
-  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
+  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe",
+  "settingsFeedbackSupport": "Commentaires et aide",
+  "settingsGiveFeedback": "Donner son avis",
+  "settingsGiveFeedbackDesc": "Partager des idées, signaler des bugs ou demander des fonctionnalités"
 }

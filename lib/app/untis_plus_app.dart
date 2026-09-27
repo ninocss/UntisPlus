@@ -411,10 +411,13 @@ class UntisPlusApp extends StatelessWidget {
                                           debugShowCheckedModeBanner: false,
                                           title: l.appName,
                                           locale: Locale(locale),
-                                          localizationsDelegates:
-                                              AppL10n.localizationsDelegates,
+                                          localizationsDelegates: [
+                                            ...AppL10n.localizationsDelegates,
+                                            ...WishKitLocalizations.localizationsDelegates,
+                                            GlobalMaterialLocalizations.delegate,
+                                          ],
                                           supportedLocales:
-                                              AppL10n.supportedLocales,
+                                              WishKitLocalizations.supportedLocales,
                                           scrollBehavior:
                                               const _UntisScrollBehavior(),
                                           theme: _themeFrom(

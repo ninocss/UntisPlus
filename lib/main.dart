@@ -58,6 +58,10 @@ import 'features/updates/data/github_release_repository.dart';
 import 'features/updates/data/changelog_repository.dart';
 import 'features/school_info/data/school_info_repository.dart';
 import 'features/school_info/application/school_html.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:wishkit/wishkit.dart'
+    show WishKit, WishKitTheme, WishKitConfiguration, EmailField, TranslateButton, Display;
+import 'package:wishkit/l10n/generated/wishkit_localizations.dart';
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
 import 'features/homework/domain/homework.dart';
@@ -316,6 +320,23 @@ Future<void> _initializeDeferredAccountData() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize WishKit SDK for user feedback
+  WishKit.configure(
+    apiKey: 'wsk_live_your_api_key_here', // Replace with actual API key
+    appId: 'com.ninocss.untisplus',
+  );
+  WishKit.theme = WishKitTheme(
+    primaryColor: null, // Uses system primary
+  );
+  WishKit.config = WishKitConfiguration(
+    emailField: EmailField.optional,
+    translateButton: TranslateButton.automatic,
+    showChatButtonInFeedbackView: true,
+    cornerRadius: 12.0,
+    dropShadow: Display.show,
+  );
+
   unawaited(OfflineCacheStore.instance.preWarm());
   nativeUiGateway.registerAssistantOpenHandler((prompt) {
     pendingAssistantPromptNotifier.value = prompt;
