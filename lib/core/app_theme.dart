@@ -391,6 +391,7 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
 
 TextTheme untisThemeTextTheme(AppThemeId id, Brightness brightness) {
   final base = ThemeData(brightness: brightness, useMaterial3: true).textTheme;
+  GoogleFonts.config.allowRuntimeFetching = false;
   final body = GoogleFonts.outfitTextTheme(base);
   if (id != AppThemeId.manga && id != AppThemeId.cyber) {
     return body;

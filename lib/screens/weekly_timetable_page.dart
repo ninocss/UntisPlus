@@ -2767,10 +2767,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               l['_subjectShort']?.toString() ?? '',
             ),
           )
-          .where(
-            (l) =>
-                showCancelledNotifier.value || !isTimetableCancelled(l),
-          )
+          .where((l) => showCancelledNotifier.value || !isTimetableCancelled(l))
           .toList();
       final mergedDayLessons = _mergeConsecutiveLessons(visibleDayLessons);
       for (final lesson in mergedDayLessons) {
@@ -3656,10 +3653,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * _ppm;
     final visibleLessons = lessons
-        .where(
-          (l) =>
-              showCancelledNotifier.value || !isTimetableCancelled(l),
-        )
+        .where((l) => showCancelledNotifier.value || !isTimetableCancelled(l))
         .toList();
     final mergedLessons = _mergeConsecutiveLessons(visibleLessons);
     final lessonSlots = _computeLessonSlots(mergedLessons);
@@ -4201,6 +4195,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               mergedLessons,
                             );
                             return Container(
+                              key: ValueKey(
+                                'timetable-day-column-$visibleIndex',
+                              ),
                               width: dayColWidth,
                               height: totalHeight,
                               margin: EdgeInsets.only(

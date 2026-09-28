@@ -126,15 +126,21 @@ class WebUntisLoginRepository {
 
       final directPersonId = _asInt(result['personId']);
       final classId = _asInt(result['klasseId']);
-      return WebUntisLoginResult.success(
-        sessionId: sessionId,
+      final linkedPeople = _linkedPeopleOf(result);
+      final redirected = _redirectToLinkedStudent(
+        linkedPeople: linkedPeople,
         personId: directPersonId != 0 ? directPersonId : classId,
         personType: directPersonId != 0
             ? _asInt(result['personType'], fallback: 5)
             : classId != 0
             ? 1
             : 5,
-        linkedPeople: _linkedPeopleOf(result),
+      );
+      return WebUntisLoginResult.success(
+        sessionId: sessionId,
+        personId: redirected.$1,
+        personType: redirected.$2,
+        linkedPeople: linkedPeople,
       );
     } on WebUntisFailure catch (failure) {
       if (failure.kind != WebUntisFailureKind.authentication &&
@@ -223,12 +229,13 @@ class WebUntisLoginRepository {
 
       final personId = _asInt(user['personId']);
       final linked = _linkedPeopleOf(user);
-      if (linked.isEmpty) return (personId, 5, const <Map<String, dynamic>>[]);
-      final matchingPerson = linked.firstWhere(
-        (person) => _asInt(person['id']) == personId,
-        orElse: () => const <String, dynamic>{},
+      final redirected = _redirectToLinkedStudent(
+        linkedPeople: linked,
+        personId: personId,
+        personType: 5,
       );
-      return (personId, _asInt(matchingPerson['type'], fallback: 5), linked);
+      if (linked.isEmpty) return (personId, 5, const <Map<String, dynamic>>[]);
+      return (redirected.$1, redirected.$2, linked);
     } on WebUntisFailure {
       // A valid session is still useful when older installations do not
       // expose the optional app-config endpoint.
@@ -239,7 +246,9 @@ class WebUntisLoginRepository {
   /// Merges the `people` and `persons` lists a WebUntis login payload can use.
   /// Both keys describe the same relation, so either one is accepted and
   /// non-map entries are dropped rather than crashing the login.
-  static List<Map<String, dynamic>> _linkedPeopleOf(Map<Object?, Object?> source) {
+  static List<Map<String, dynamic>> _linkedPeopleOf(
+    Map<Object?, Object?> source,
+  ) {
     final linked = <Map<String, dynamic>>[];
     for (final key in const ['people', 'persons']) {
       final raw = source[key];
@@ -249,6 +258,43 @@ class WebUntisLoginRepository {
       }
     }
     return linked;
+  }
+
+  static (int, int) _redirectToLinkedStudent({
+    required List<Map<String, dynamic>> linkedPeople,
+    required int personId,
+    required int personType,
+  }) {
+    if (linkedPeople.isEmpty) {
+      return (personId, personType);
+    }
+
+    int? idOf(Map<String, dynamic> person) =>
+        int.tryParse(person['id']?.toString() ?? '');
+    int? typeOf(Map<String, dynamic> person) =>
+        int.tryParse(person['type']?.toString() ?? '');
+
+    for (final person in linkedPeople) {
+      if (idOf(person) == personId) {
+        final matchedType = typeOf(person);
+        if (matchedType != null && matchedType > 0) {
+          personType = matchedType;
+        }
+        break;
+      }
+    }
+
+    if (personType == 3) {
+      for (final person in linkedPeople) {
+        if (typeOf(person) != 5) continue;
+        final childId = idOf(person);
+        if (childId != null && childId > 0) {
+          return (childId, 5);
+        }
+      }
+    }
+
+    return (personId, personType);
   }
 
   static bool _mentionsOneTimeCode(String message) =>

@@ -5,6 +5,7 @@ import '../../../core/sync_state.dart';
 import '../../../core/time_utils.dart';
 import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_client.dart';
+import '../../../data/webuntis/webuntis_message_context.dart';
 
 class SchoolInfoReadResult {
   const SchoolInfoReadResult({
@@ -257,50 +258,49 @@ class SchoolInfoRepository {
     required String sessionId,
   }) async {
     final cookies = _schoolCookies(schoolName);
-    String? token;
+    final resolver = WebUntisMessageContextResolver(_client);
+    WebUntisMessageContext? context;
+    WebUntisFailure? lastInboxFailure;
     for (final cookie in cookies) {
-      final raw = await _getText(
-        uri: Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/token/new'),
-        sessionId: sessionId,
-        cookies: [cookie],
-      );
-      if (raw != null && raw.trim().isNotEmpty) {
-        final trimmed = raw.trim();
-        if (!trimmed.startsWith('{')) {
-          token = trimmed.replaceAll('"', '').trim();
-        } else {
-          try {
-            final decoded = jsonDecode(trimmed);
-            if (decoded is String && decoded.trim().isNotEmpty) {
-              token = decoded.trim();
-            } else if (decoded is Map) {
-              for (final key in const ['token', 'jwt', 'jwt_token', 'accessToken']) {
-                final value = decoded[key]?.toString().trim();
-                if (value != null && value.isNotEmpty) {
-                  token = value;
-                  break;
-                }
-              }
-            }
-          } catch (_) {}
-        }
+      try {
+        context = await resolver.resolve(
+          schoolUrl: schoolUrl,
+          schoolName: schoolName,
+          sessionId: sessionId,
+        );
+        if (context != null) break;
+      } on WebUntisFailure catch (failure) {
+        lastInboxFailure = failure;
+        continue;
       }
-      if (token != null && token.isNotEmpty) break;
     }
 
-    if (token == null || token.isEmpty) return const [];
+    if (context == null) {
+      if (lastInboxFailure != null) throw lastInboxFailure;
+      return const [];
+    }
 
-    final decoded = await _getJson(
-      uri: Uri.parse(
-        '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/rest/view/v1/messages',
-      ),
-      sessionId: sessionId,
-      cookies: cookies,
-      extraHeaders: {'Authorization': 'Bearer $token'},
-    );
-    if (decoded == null) return const [];
-    final incoming = decoded is Map ? decoded['incomingMessages'] : null;
-    if (incoming is List) return _normalizeInbox(incoming);
+    final messagePaths = const [
+      '/WebUntis/api/rest/view/v2/messages',
+      '/WebUntis/api/rest/view/v1/messages',
+    ];
+    WebUntisFailure? lastMessageFailure;
+    for (final path in messagePaths) {
+      try {
+        final decoded = await _client.getJson(
+          uri: Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}$path'),
+          headers: context.headers,
+        );
+        final incoming = decoded is Map ? decoded['incomingMessages'] : null;
+        if (incoming is List) return _normalizeInbox(incoming);
+      } on WebUntisFailure catch (failure) {
+        lastMessageFailure = failure;
+        continue;
+      }
+    }
+    if (lastMessageFailure != null) {
+      throw lastMessageFailure;
+    }
     return const [];
   }
 

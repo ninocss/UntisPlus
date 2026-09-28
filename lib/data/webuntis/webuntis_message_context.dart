@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../core/sync_state.dart';
+import 'untis_endpoint.dart';
 import 'webuntis_client.dart';
 
 class WebUntisMessageContext {
@@ -53,7 +54,9 @@ class WebUntisMessageContextResolver {
       final cookie = 'JSESSIONID=$sessionId; schoolname=$schoolCookie';
       try {
         final raw = await client.getText(
-          uri: Uri.parse('https://$schoolUrl/WebUntis/api/token/new'),
+          uri: Uri.parse(
+            '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/token/new',
+          ),
           headers: {'Cookie': cookie, 'Accept': 'application/json'},
         );
         final token = _token(raw);
