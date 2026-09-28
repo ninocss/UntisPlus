@@ -391,16 +391,13 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
 
 TextTheme untisThemeTextTheme(AppThemeId id, Brightness brightness) {
   final base = ThemeData(brightness: brightness, useMaterial3: true).textTheme;
-  GoogleFonts.config.allowRuntimeFetching = false;
-  final body = GoogleFonts.outfitTextTheme(base);
+  final body = base.apply(fontFamily: 'sans-serif');
   if (id != AppThemeId.manga && id != AppThemeId.cyber) {
     return body;
   }
-  final display = switch (id) {
-    AppThemeId.manga => GoogleFonts.bebasNeueTextTheme(base),
-    AppThemeId.cyber => GoogleFonts.ibmPlexMonoTextTheme(base),
-    _ => body,
-  };
+  final display = base.apply(
+    fontFamily: id == AppThemeId.manga ? 'serif' : 'monospace',
+  );
   return body.copyWith(
     displayLarge: display.displayLarge,
     displayMedium: display.displayMedium,

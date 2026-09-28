@@ -3668,6 +3668,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(bottom: 32, top: topContentPadding),
         child: Row(
+          key: const ValueKey('timetable-day-column-0'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
