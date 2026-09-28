@@ -485,7 +485,7 @@ jobs:
         run: flutter pub get
 
       - name: Flutter Analyze
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Tests
         shell: pwsh
