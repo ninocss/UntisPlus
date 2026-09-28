@@ -982,6 +982,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-fllama-android-
 
+      - name: API Key Template vorbereiten
+        run: |
+          cp lib/core/api_keys.dart.template lib/core/api_keys.dart
+
       - name: Dependencies installieren
         run: flutter pub get
 
@@ -1233,6 +1237,10 @@ jobs:
 
           restore-keys: |
             ${{ runner.os }}-cocoapods-
+
+      - name: API Key Template vorbereiten
+        run: |
+          cp lib/core/api_keys.dart.template lib/core/api_keys.dart
 
       - name: Dependencies installieren
         run: flutter pub get

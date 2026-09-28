@@ -46,7 +46,9 @@ jobs:
           key: ${{ runner.os }}-fllama-ios-${{ hashFiles('pubspec.lock') }}
 
       - name: Install Dependencies
-        run: flutter pub get
+        run: |
+          cp lib/core/api_keys.dart.template lib/core/api_keys.dart
+          flutter pub get
 
       - name: Build iOS (no codesign)
         run: flutter build ios --release --no-codesign

@@ -257,28 +257,12 @@ class SchoolInfoRepository {
     required String schoolName,
     required String sessionId,
   }) async {
-    final cookies = _schoolCookies(schoolName);
     final resolver = WebUntisMessageContextResolver(_client);
-    WebUntisMessageContext? context;
-    WebUntisFailure? lastInboxFailure;
-    for (final cookie in cookies) {
-      try {
-        context = await resolver.resolve(
-          schoolUrl: schoolUrl,
-          schoolName: schoolName,
-          sessionId: sessionId,
-        );
-        if (context != null) break;
-      } on WebUntisFailure catch (failure) {
-        lastInboxFailure = failure;
-        continue;
-      }
-    }
-
-    if (context == null) {
-      if (lastInboxFailure != null) throw lastInboxFailure;
-      return const [];
-    }
+    final context = await resolver.resolve(
+      schoolUrl: schoolUrl,
+      schoolName: schoolName,
+      sessionId: sessionId,
+    );
 
     final messagePaths = const [
       '/WebUntis/api/rest/view/v2/messages',
@@ -459,31 +443,6 @@ class SchoolInfoRepository {
     for (final cookie in cookies) {
       try {
         return await _client.getJson(
-          uri: uri,
-          headers: {
-            'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
-            'Accept': 'application/json',
-            ...extraHeaders,
-          },
-        );
-      } on WebUntisFailure catch (failure) {
-        lastFailure = failure;
-      } catch (_) {}
-    }
-    if (lastFailure != null) throw lastFailure;
-    return null;
-  }
-
-  Future<String?> _getText({
-    required Uri uri,
-    required String sessionId,
-    required List<String> cookies,
-    Map<String, String> extraHeaders = const {},
-  }) async {
-    WebUntisFailure? lastFailure;
-    for (final cookie in cookies) {
-      try {
-        return await _client.getText(
           uri: uri,
           headers: {
             'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
