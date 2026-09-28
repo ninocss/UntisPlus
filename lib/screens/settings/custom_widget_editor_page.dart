@@ -221,38 +221,38 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     final current = _selected;
     final next = switch (index) {
       0 => current.copyWith(
-          layout: 'stacked',
-          blocks: const ['current', 'next', 'status'],
-          colorMode: 'system',
-          opacity: 1,
-          cornerRadius: 28,
-          textScale: 1,
-          showIcons: true,
-        ),
+        layout: 'stacked',
+        blocks: const ['current', 'next', 'status'],
+        colorMode: 'system',
+        opacity: 1,
+        cornerRadius: 28,
+        textScale: 1,
+        showIcons: true,
+      ),
       1 => current.copyWith(
-          layout: 'compact',
-          blocks: const ['current', 'next', 'schedule'],
-          colorMode: 'custom',
-          backgroundColor: 0xFF171A22,
-          accentColor: 0xFFD0BCFF,
-          textColor: 0xFFE6E1E9,
-          opacity: 1,
-          cornerRadius: 24,
-          textScale: 0.98,
-          showIcons: true,
-        ),
+        layout: 'compact',
+        blocks: const ['current', 'next', 'schedule'],
+        colorMode: 'custom',
+        backgroundColor: 0xFF171A22,
+        accentColor: 0xFFD0BCFF,
+        textColor: 0xFFE6E1E9,
+        opacity: 1,
+        cornerRadius: 24,
+        textScale: 0.98,
+        showIcons: true,
+      ),
       _ => current.copyWith(
-          layout: 'timeline',
-          blocks: const ['schedule', 'homework', 'exams'],
-          colorMode: 'custom',
-          backgroundColor: 0xFFF7F2FA,
-          accentColor: 0xFF6750A4,
-          textColor: 0xFF1D1B20,
-          opacity: 1,
-          cornerRadius: 28,
-          textScale: 1,
-          showIcons: true,
-        ),
+        layout: 'timeline',
+        blocks: const ['schedule', 'homework', 'exams'],
+        colorMode: 'custom',
+        backgroundColor: 0xFFF7F2FA,
+        accentColor: 0xFF6750A4,
+        textColor: 0xFF1D1B20,
+        opacity: 1,
+        cornerRadius: 28,
+        textScale: 1,
+        showIcons: true,
+      ),
     };
     _replace(next);
   }
@@ -321,7 +321,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                     0xFF45464F,
                   ])
                     Tooltip(
-                      message: '#${swatch.toRadixString(16).substring(2).toUpperCase()}',
+                      message:
+                          '#${swatch.toRadixString(16).substring(2).toUpperCase()}',
                       child: InkWell(
                         onTap: () => setSheetState(() => color = Color(swatch)),
                         customBorder: const CircleBorder(),
@@ -334,12 +335,18 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                             border: Border.all(
                               color: color.toARGB32() == swatch
                                   ? Theme.of(context).colorScheme.onSurface
-                                  : Theme.of(context).colorScheme.outlineVariant,
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.outlineVariant,
                               width: color.toARGB32() == swatch ? 2 : 1,
                             ),
                           ),
                           child: color.toARGB32() == swatch
-                              ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                )
                               : null,
                         ),
                       ),
@@ -444,9 +451,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       decoration: BoxDecoration(
         color: background.withValues(alpha: config.opacity),
         borderRadius: BorderRadius.circular(config.cornerRadius),
-        border: Border.all(
-          color: accent.withValues(alpha: 0.55),
-        ),
+        border: Border.all(color: accent.withValues(alpha: 0.55)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -502,11 +507,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     if (mounted) {
       setState(() => _pinning = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            ok ? l.widgetPickerSent : l.widgetPickerHint,
-          ),
-        ),
+        SnackBar(content: Text(ok ? l.widgetPickerSent : l.widgetPickerHint)),
       );
     }
   }
@@ -716,9 +717,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isSystem
-                            ? l.widgetSystemColors
-                            : l.widgetCustomColors,
+                        isSystem ? l.widgetSystemColors : l.widgetCustomColors,
                         style: GoogleFonts.outfit(
                           fontSize: 12.5,
                           color: cs.onSurfaceVariant,
@@ -729,7 +728,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(999),
@@ -775,7 +777,11 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             const SizedBox(height: 14),
             Row(
               children: [
-                Icon(Icons.zoom_out_rounded, size: 18, color: cs.onSurfaceVariant),
+                Icon(
+                  Icons.zoom_out_rounded,
+                  size: 18,
+                  color: cs.onSurfaceVariant,
+                ),
                 Expanded(
                   child: HapticSlider(
                     value: _previewScale,
@@ -784,7 +790,11 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                     onChanged: (value) => setState(() => _previewScale = value),
                   ),
                 ),
-                Icon(Icons.zoom_in_rounded, size: 18, color: cs.onSurfaceVariant),
+                Icon(
+                  Icons.zoom_in_rounded,
+                  size: 18,
+                  color: cs.onSurfaceVariant,
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -793,7 +803,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 Expanded(
                   child: _previewMetric(
                     icon: Icons.layers_rounded,
-                    label: '${config.blocks.length}/${WidgetConfiguration.maxBlocks}',
+                    label:
+                        '${config.blocks.length}/${WidgetConfiguration.maxBlocks}',
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -885,19 +896,13 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       Icons.view_quilt_rounded,
       Icons.palette_rounded,
     ];
-    final labels = [
-      l.editorYourWidgets,
-      l.editorContentLayout,
-      l.editorDesign,
-    ];
+    final labels = [l.editorYourWidgets, l.editorContentLayout, l.editorDesign];
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: cs.surfaceContainerLow.withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.34),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.34)),
       ),
       child: Row(
         children: List.generate(3, (index) {
@@ -911,7 +916,10 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 8,
+                ),
                 decoration: BoxDecoration(
                   color: selected ? cs.secondaryContainer : Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
@@ -933,7 +941,9 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.outfit(
                         fontSize: 11.5,
-                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: selected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
                         color: selected
                             ? cs.onSecondaryContainer
                             : cs.onSurfaceVariant,
@@ -1009,7 +1019,9 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
                   tooltip: l.delete,
-                  onPressed: _configurations.length > 1 ? _deleteSelected : null,
+                  onPressed: _configurations.length > 1
+                      ? _deleteSelected
+                      : null,
                   icon: const Icon(Icons.delete_outline_rounded),
                 ),
               ],
@@ -1148,7 +1160,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 if (newIndex > oldIndex) newIndex--;
                 final blocks = [...config.blocks];
                 final item = blocks.removeAt(oldIndex);
@@ -1261,7 +1273,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                     (
                       'editorBackground',
                       config.backgroundColor,
-                      (value) => _replace(config.copyWith(backgroundColor: value)),
+                      (value) =>
+                          _replace(config.copyWith(backgroundColor: value)),
                     ),
                     (
                       'editorAccent',
@@ -1330,8 +1343,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 l.editorShowIcons,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
               ),
-              onChanged: (value) =>
-                  _replace(config.copyWith(showIcons: value)),
+              onChanged: (value) => _replace(config.copyWith(showIcons: value)),
             ),
             _valueSlider(
               label: l.editorTransparency,
@@ -1339,8 +1351,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               min: .35,
               max: 1,
               valueText: '${(config.opacity * 100).round()}%',
-              onChanged: (value) =>
-                  _replace(config.copyWith(opacity: value)),
+              onChanged: (value) => _replace(config.copyWith(opacity: value)),
             ),
             _valueSlider(
               label: l.editorRounding,
@@ -1357,8 +1368,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               min: .75,
               max: 1.35,
               valueText: '${(config.textScale * 100).round()}%',
-              onChanged: (value) =>
-                  _replace(config.copyWith(textScale: value)),
+              onChanged: (value) => _replace(config.copyWith(textScale: value)),
             ),
           ],
         ),
@@ -1371,9 +1381,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       if (!kIsWeb && Platform.isAndroid) ...[
         const SizedBox(height: 14),
         FilledButton.icon(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(54),
-          ),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
           onPressed: _pinning ? null : _pin,
           icon: _pinning
               ? const SizedBox.square(
@@ -1398,7 +1406,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             style: GoogleFonts.outfit(color: cs.onSurfaceVariant),
           ),
         ),
-      ]
+      ],
     ];
   }
 
@@ -1471,10 +1479,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      flex: 5,
-                      child: _previewStage(context, config),
-                    ),
+                    Expanded(flex: 5, child: _previewStage(context, config)),
                     const SizedBox(width: 18),
                     Expanded(
                       flex: 6,
@@ -1496,10 +1501,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 MediaQuery.paddingOf(context).bottom + 36,
               ),
               children: [
-                SizedBox(
-                  height: 470,
-                  child: _previewStage(context, config),
-                ),
+                SizedBox(height: 470, child: _previewStage(context, config)),
                 const SizedBox(height: 16),
                 ..._editorPanels(context, config, l),
               ],

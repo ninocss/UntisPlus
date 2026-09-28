@@ -157,9 +157,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            supported ? l.widgetPickerSent : l.widgetPickerHint,
-          ),
+          content: Text(supported ? l.widgetPickerSent : l.widgetPickerHint),
         ),
       );
     } catch (_) {
@@ -170,25 +168,6 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
     } finally {
       if (mounted) setState(() => _pinning = false);
     }
-  }
-
-  Widget _statusPill(BuildContext context, ColorScheme cs, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Text(
-        value,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: cs.primary,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
   }
 
   Widget _preview(BuildContext context, ColorScheme cs) {
@@ -337,12 +316,22 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                     children: [
                       Text(
                         headline,
-                        maxLines: isSchedule ? 3 : isCurrent ? 1 : 2,
+                        maxLines: isSchedule
+                            ? 3
+                            : isCurrent
+                            ? 1
+                            : 2,
                         overflow: TextOverflow.ellipsis,
                         style: widgetTextStyle(
-                          size: isCurrent ? 24 : isSchedule ? 15 : 17,
+                          size: isCurrent
+                              ? 24
+                              : isSchedule
+                              ? 15
+                              : 17,
                           color: cs.onSurface,
-                          weight: isSchedule ? FontWeight.w500 : FontWeight.w700,
+                          weight: isSchedule
+                              ? FontWeight.w500
+                              : FontWeight.w700,
                           height: isCurrent ? 1.15 : 1.3,
                         ),
                       ),
@@ -406,9 +395,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.add_to_home_screen_rounded),
-                label: Text(
-                  _pinning ? l.widgetPickerOpening : l.widgetAdd,
-                ),
+                label: Text(_pinning ? l.widgetPickerOpening : l.widgetAdd),
               ),
             ),
           ),

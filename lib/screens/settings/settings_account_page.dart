@@ -206,7 +206,10 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
     );
   }
 
-  String _devModeNotificationStyleLabel(DevModeNotificationStyle style, dynamic l) {
+  String _devModeNotificationStyleLabel(
+    DevModeNotificationStyle style,
+    dynamic l,
+  ) {
     switch (style) {
       case DevModeNotificationStyle.popup:
         return l.settingsDevModeNotificationStylePopup;
@@ -219,7 +222,9 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
 
   Future<void> _editDevServerSchoolName(BuildContext context) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final controller = TextEditingController(text: devServerSchoolNameNotifier.value);
+    final controller = TextEditingController(
+      text: devServerSchoolNameNotifier.value,
+    );
     try {
       final value = await showUntisDialog<String>(
         context: context,
@@ -269,7 +274,9 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
 
   Future<void> _editDevServerUsername(BuildContext context) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final controller = TextEditingController(text: devServerUsernameNotifier.value);
+    final controller = TextEditingController(
+      text: devServerUsernameNotifier.value,
+    );
     try {
       final value = await showUntisDialog<String>(
         context: context,
@@ -319,7 +326,9 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
 
   Future<void> _editDevServerPassword(BuildContext context) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    final controller = TextEditingController(text: devServerPasswordNotifier.value);
+    final controller = TextEditingController(
+      text: devServerPasswordNotifier.value,
+    );
     try {
       final value = await showUntisDialog<String>(
         context: context,
@@ -378,26 +387,28 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) => UntisSheetScaffold(
         title: Text(l.settingsDevModeNotificationStyle),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final style in DevModeNotificationStyle.values)
-              ListTile(
-                title: Text(_devModeNotificationStyleLabel(style, l)),
-                leading: Radio<DevModeNotificationStyle>(
-                  // ignore: deprecated_member_use
-                  value: style,
-                  // ignore: deprecated_member_use
-                  groupValue: devModeNotificationStyleNotifier.value,
-                  onChanged: (value) {
-                    if (value != null) {
-                      _settingsSetDevModeNotificationStyle(value);
-                      Navigator.pop(ctx);
-                    }
+        child: RadioGroup<DevModeNotificationStyle>(
+          groupValue: devModeNotificationStyleNotifier.value,
+          onChanged: (value) {
+            if (value != null) {
+              _settingsSetDevModeNotificationStyle(value);
+              Navigator.pop(ctx);
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final style in DevModeNotificationStyle.values)
+                ListTile(
+                  title: Text(_devModeNotificationStyleLabel(style, l)),
+                  leading: Radio<DevModeNotificationStyle>(value: style),
+                  onTap: () {
+                    _settingsSetDevModeNotificationStyle(style);
+                    Navigator.pop(ctx);
                   },
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -557,7 +568,9 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
             children: [
               SettingsSwitchTile(
                 icon: Icons.science_rounded,
-                iconBackgroundColor: cs.tertiaryContainer.withValues(alpha: 0.7),
+                iconBackgroundColor: cs.tertiaryContainer.withValues(
+                  alpha: 0.7,
+                ),
                 iconColor: cs.onTertiaryContainer,
                 title: l.settingsDevMode,
                 subtitle: l.settingsDevModeDesc,
@@ -596,7 +609,9 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                     iconBackgroundColor: cs.surfaceContainerHighest,
                     iconColor: cs.onSurfaceVariant,
                     title: l.settingsDevModeSchoolName,
-                    subtitle: schoolName.isEmpty ? l.settingsDevModeSchoolNameDesc : schoolName,
+                    subtitle: schoolName.isEmpty
+                        ? l.settingsDevModeSchoolNameDesc
+                        : schoolName,
                     trailing: const Icon(Icons.edit_rounded),
                     onTap: () => _editDevServerSchoolName(context),
                   ),
@@ -608,7 +623,9 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                     iconBackgroundColor: cs.surfaceContainerHighest,
                     iconColor: cs.onSurfaceVariant,
                     title: l.settingsDevModeUsername,
-                    subtitle: username.isEmpty ? l.settingsDevModeUsernameDesc : username,
+                    subtitle: username.isEmpty
+                        ? l.settingsDevModeUsernameDesc
+                        : username,
                     trailing: const Icon(Icons.edit_rounded),
                     onTap: () => _editDevServerUsername(context),
                   ),
@@ -620,7 +637,9 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                     iconBackgroundColor: cs.surfaceContainerHighest,
                     iconColor: cs.onSurfaceVariant,
                     title: l.settingsDevModePassword,
-                    subtitle: password.isEmpty ? l.settingsDevModePasswordDesc : '•' * password.length,
+                    subtitle: password.isEmpty
+                        ? l.settingsDevModePasswordDesc
+                        : '•' * password.length,
                     trailing: const Icon(Icons.edit_rounded),
                     onTap: () => _editDevServerPassword(context),
                   ),

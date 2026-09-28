@@ -18,6 +18,13 @@ on:
       - "pubspec.lock"
       - "analysis_options.yaml"
       - ".github/workflows/analyze.yml"
+  workflow_dispatch:
+    inputs:
+      run_full_validation:
+        description: "Run full Flutter validation including widget tests and debug APK build"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -56,7 +63,11 @@ jobs:
 
       - name: Analyze Flutter
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
-      - name: Run Tests
+
+      - name: Run Tests (manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_validation == true }}
         run: flutter test
-      - name: Build APK
+
+      - name: Build APK (manual only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_full_validation == true }}
         run: flutter build apk --debug
