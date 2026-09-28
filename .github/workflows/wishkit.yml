@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fetch and Sync Wishkit Wishes
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           WISHKIT_API_KEY: ${{ secrets.WISHKIT_API_KEY }}
         with:
