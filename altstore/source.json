@@ -35,6 +35,15 @@
       ],
       "versions": [
         {
+          "version": "5.6.2",
+          "buildVersion": "5.6.2",
+          "date": "2026-09-28",
+          "localizedDescription": "A new update with improvements and bug fixes.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.6.2/UntisPlus-v5.6.2.ipa",
+          "size": 55450969,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "5.5.0",
           "buildVersion": "5.5.0.1",
           "date": "2026-09-27",
@@ -177,6 +186,16 @@
     "com.ninocss.untisplus"
   ],
   "news": [
+    {
+      "title": "Untis+ 5.6.2 is here",
+      "identifier": "untisplus-release-5-6-2",
+      "caption": "A new update with improvements and bug fixes.",
+      "date": "2026-09-28",
+      "tintColor": "4A90D9",
+      "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
+      "appID": "com.ninocss.untisplus",
+      "notify": true
+    },
     {
       "title": "Untis+ 5.5.0 is here",
       "identifier": "untisplus-release-5-5-0",
