@@ -454,6 +454,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: API Key Template vorbereiten
+        run: |
+          cp lib/core/api_keys.dart.template lib/core/api_keys.dart
+
       - name: Flutter einrichten
         uses: subosito/flutter-action@v2
         with:
