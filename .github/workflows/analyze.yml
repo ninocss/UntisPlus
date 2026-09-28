@@ -1,0 +1,60 @@
+name: "Flutter analyze"
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "**/*.dart"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - "analysis_options.yaml"
+      - ".github/workflows/analyze.yml"
+  pull_request:
+    paths:
+      - "**/*.dart"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - "analysis_options.yaml"
+      - ".github/workflows/analyze.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  flutter_analyze:
+    name: Flutter analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.0"
+          channel: stable
+          cache: true
+          pub-cache: true
+
+      - name: Prepare generated files
+        run: |
+          set -euo pipefail
+          if [ ! -f lib/core/api_keys.dart ]; then
+            cp lib/core/api_keys.dart.template lib/core/api_keys.dart
+          fi
+          flutter pub get
+
+      - name: Analyze Flutter
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Run Tests
+        run: flutter test
