@@ -8,8 +8,29 @@ bool isSafeSchoolExternalUrl(String? value) {
       (uri.scheme == 'https' || uri.scheme == 'http');
 }
 
+/// Preprocesses plain text to convert line breaks to <br> tags for proper HTML rendering.
+/// This handles the case where WebUntis API returns plain text with \n instead of HTML.
+String _preprocessHtmlForLineBreaks(String source) {
+  // If the source already contains HTML tags, don't modify it
+  if (source.contains('<') && source.contains('>')) {
+    // Check if it looks like real HTML (has known tags)
+    final htmlTagRegex = RegExp(r'</?(p|div|br|span|strong|b|em|i|ul|ol|li|h[1-6]|table|blockquote)[^>]*>');
+    if (htmlTagRegex.hasMatch(source)) {
+      return source;
+    }
+  }
+  // Convert plain text line breaks to <br> tags
+  return source
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n')
+      .split('\n')
+      .map((line) => line.trimRight())
+      .join('<br>');
+}
+
 html_dom.Document sanitizeSchoolHtml(String source) {
-  final document = html_parser.parse(source);
+  final processedSource = _preprocessHtmlForLineBreaks(source);
+  final document = html_parser.parse(processedSource);
 
   for (final element in document.querySelectorAll(
     'script, style, iframe, object, embed, form, input, button, video, audio, source',
