@@ -19,7 +19,14 @@ class UntisPlusApp extends StatelessWidget {
     final expressive = appThemeCapabilities(
       visualTheme,
     ).supportsExpressiveComponents;
-    final useBlur = blurEnabled && tokens.supportsBlur;
+    final useBlur =
+        blurEnabled &&
+        tokens.supportsBlur &&
+        effectQualityNotifier.value != AppEffectQuality.reduced;
+    final useSurfaceTransparency = useBlur && AppEffects.full;
+    final controlDuration = interactionAnimationsEnabledNotifier.value
+        ? AppMotionTokens.standardEffects
+        : Duration.zero;
     final baseText = untisThemeTextTheme(visualTheme, scheme.brightness);
     final controlShape = expressive
         ? WidgetStateProperty.resolveWith<OutlinedBorder>((states) {
@@ -53,7 +60,7 @@ class UntisPlusApp extends StatelessWidget {
           ? const WidgetStatePropertyAll(Size(48, 48))
           : null,
       shape: controlShape,
-      animationDuration: expressive ? const Duration(milliseconds: 200) : null,
+      animationDuration: controlDuration,
     );
     TextStyle displayFont({
       Color? color,
@@ -131,14 +138,14 @@ class UntisPlusApp extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         elevation: 0,
-        color: useBlur
+        color: useSurfaceTransparency
             ? scheme.surfaceContainerLow.withValues(
                 alpha: tokens.surfaceOpacity,
               )
             : scheme.surfaceContainerLow,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: useBlur
+        backgroundColor: useSurfaceTransparency
             ? scheme.surfaceContainerHigh.withValues(
                 alpha: tokens.surfaceOpacity,
               )
@@ -151,7 +158,7 @@ class UntisPlusApp extends StatelessWidget {
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: useBlur
+        backgroundColor: useSurfaceTransparency
             ? scheme.surfaceContainerLow.withValues(
                 alpha: tokens.surfaceOpacity,
               )
@@ -179,9 +186,7 @@ class UntisPlusApp extends StatelessWidget {
               ? const WidgetStatePropertyAll(Size(48, 48))
               : null,
           shape: iconControlShape,
-          animationDuration: expressive
-              ? const Duration(milliseconds: 200)
-              : null,
+          animationDuration: controlDuration,
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -204,11 +209,23 @@ class UntisPlusApp extends StatelessWidget {
       ),
       chipTheme: ChipThemeData(
         shape: expressive
-            ? const StadiumBorder()
+            ? WidgetStateOutlinedBorder.resolveWith(
+                (states) => states.contains(WidgetState.pressed)
+                    ? RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      )
+                    : const StadiumBorder(),
+              )
             : RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(tokens.controlRadius),
               ),
         side: BorderSide(color: scheme.outlineVariant),
+        selectedColor: expressive ? scheme.secondaryContainer : null,
+        checkmarkColor: expressive ? scheme.onSecondaryContainer : null,
+        labelStyle: expressive ? baseText.labelLarge : null,
+        secondaryLabelStyle: expressive
+            ? baseText.labelLarge?.copyWith(color: scheme.onSecondaryContainer)
+            : null,
         padding: EdgeInsets.symmetric(
           horizontal: expressive ? 12 : 8,
           vertical: expressive ? 8 : 4,
@@ -286,191 +303,241 @@ class UntisPlusApp extends StatelessWidget {
     );
   }
 
+  ThemeData _withoutControlMotion(ThemeData theme) {
+    ButtonStyle stop(ButtonStyle? style) => (style ?? const ButtonStyle())
+        .copyWith(animationDuration: Duration.zero);
+    return theme.copyWith(
+      filledButtonTheme: FilledButtonThemeData(
+        style: stop(theme.filledButtonTheme.style),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: stop(theme.elevatedButtonTheme.style),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: stop(theme.outlinedButtonTheme.style),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: stop(theme.textButtonTheme.style),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: stop(theme.iconButtonTheme.style),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<AppThemeId>(
-      valueListenable: visualThemeNotifier,
-      builder: (context, visualTheme, _) {
-        return ValueListenableBuilder<String>(
-          valueListenable: appLocaleNotifier,
-          builder: (context, locale, _) {
-            return ValueListenableBuilder<ThemeMode>(
-              valueListenable: themeModeNotifier,
-              builder: (context, themeMode, _) {
-                return ValueListenableBuilder<bool>(
-                  valueListenable: useMaterialYouNotifier,
-                  builder: (context, useMaterialYou, _) {
+    return ProviderScope(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([
+          effectQualityNotifier,
+          interactionAnimationsEnabledNotifier,
+        ]),
+        builder: (context, _) => ValueListenableBuilder<AppThemeId>(
+          valueListenable: visualThemeNotifier,
+          builder: (context, visualTheme, _) {
+            return ValueListenableBuilder<String>(
+              valueListenable: appLocaleNotifier,
+              builder: (context, locale, _) {
+                return ValueListenableBuilder<ThemeMode>(
+                  valueListenable: themeModeNotifier,
+                  builder: (context, themeMode, _) {
                     return ValueListenableBuilder<bool>(
-                      valueListenable: isAmoledNotifier,
-                      builder: (context, isAmoled, _) {
+                      valueListenable: useMaterialYouNotifier,
+                      builder: (context, useMaterialYou, _) {
                         return ValueListenableBuilder<bool>(
-                          valueListenable: blurEnabledNotifier,
-                          builder: (context, blurEnabled, _) {
-                            return ValueListenableBuilder<int>(
-                              valueListenable: customColorSeedNotifier,
-                              builder: (context, seed, _) {
-                                return DynamicColorBuilder(
-                                  builder: (lightDynamic, darkDynamic) {
-                                    final canUseDynamic =
-                                        visualTheme == AppThemeId.defaultTheme;
-                                    final ColorScheme lightScheme;
-                                    if (canUseDynamic &&
-                                        useMaterialYou &&
-                                        lightDynamic != null) {
-                                      lightScheme = ColorScheme.fromSeed(
-                                        seedColor: lightDynamic.primary,
-                                        brightness: Brightness.light,
-                                        dynamicSchemeVariant:
-                                            DynamicSchemeVariant.vibrant,
-                                      );
-                                    } else if (canUseDynamic &&
-                                        useMaterialYou &&
-                                        darkDynamic != null) {
-                                      lightScheme = ColorScheme.fromSeed(
-                                        seedColor: darkDynamic.primary,
-                                        brightness: Brightness.light,
-                                        dynamicSchemeVariant:
-                                            DynamicSchemeVariant.vibrant,
-                                      );
-                                    } else {
-                                      lightScheme = untisThemeScheme(
-                                        visualTheme,
-                                        Brightness.light,
-                                        seed,
-                                      );
-                                    }
+                          valueListenable: isAmoledNotifier,
+                          builder: (context, isAmoled, _) {
+                            return ValueListenableBuilder<bool>(
+                              valueListenable: blurEnabledNotifier,
+                              builder: (context, blurEnabled, _) {
+                                return ValueListenableBuilder<int>(
+                                  valueListenable: customColorSeedNotifier,
+                                  builder: (context, seed, _) {
+                                    return DynamicColorBuilder(
+                                      builder: (lightDynamic, darkDynamic) {
+                                        final canUseDynamic =
+                                            visualTheme ==
+                                            AppThemeId.defaultTheme;
+                                        final ColorScheme lightScheme;
+                                        if (canUseDynamic &&
+                                            useMaterialYou &&
+                                            lightDynamic != null) {
+                                          lightScheme = ColorScheme.fromSeed(
+                                            seedColor: lightDynamic.primary,
+                                            brightness: Brightness.light,
+                                            dynamicSchemeVariant:
+                                                DynamicSchemeVariant.vibrant,
+                                          );
+                                        } else if (canUseDynamic &&
+                                            useMaterialYou &&
+                                            darkDynamic != null) {
+                                          lightScheme = ColorScheme.fromSeed(
+                                            seedColor: darkDynamic.primary,
+                                            brightness: Brightness.light,
+                                            dynamicSchemeVariant:
+                                                DynamicSchemeVariant.vibrant,
+                                          );
+                                        } else {
+                                          lightScheme = untisThemeScheme(
+                                            visualTheme,
+                                            Brightness.light,
+                                            seed,
+                                          );
+                                        }
 
-                                    ColorScheme darkScheme;
-                                    if (canUseDynamic &&
-                                        useMaterialYou &&
-                                        darkDynamic != null) {
-                                      darkScheme = ColorScheme.fromSeed(
-                                        seedColor: darkDynamic.primary,
-                                        brightness: Brightness.dark,
-                                        dynamicSchemeVariant:
-                                            DynamicSchemeVariant.vibrant,
-                                      );
-                                    } else if (canUseDynamic &&
-                                        useMaterialYou &&
-                                        lightDynamic != null) {
-                                      darkScheme = ColorScheme.fromSeed(
-                                        seedColor: lightDynamic.primary,
-                                        brightness: Brightness.dark,
-                                        dynamicSchemeVariant:
-                                            DynamicSchemeVariant.vibrant,
-                                      );
-                                    } else {
-                                      darkScheme = untisThemeScheme(
-                                        visualTheme,
-                                        Brightness.dark,
-                                        seed,
-                                      );
-                                    }
+                                        ColorScheme darkScheme;
+                                        if (canUseDynamic &&
+                                            useMaterialYou &&
+                                            darkDynamic != null) {
+                                          darkScheme = ColorScheme.fromSeed(
+                                            seedColor: darkDynamic.primary,
+                                            brightness: Brightness.dark,
+                                            dynamicSchemeVariant:
+                                                DynamicSchemeVariant.vibrant,
+                                          );
+                                        } else if (canUseDynamic &&
+                                            useMaterialYou &&
+                                            lightDynamic != null) {
+                                          darkScheme = ColorScheme.fromSeed(
+                                            seedColor: lightDynamic.primary,
+                                            brightness: Brightness.dark,
+                                            dynamicSchemeVariant:
+                                                DynamicSchemeVariant.vibrant,
+                                          );
+                                        } else {
+                                          darkScheme = untisThemeScheme(
+                                            visualTheme,
+                                            Brightness.dark,
+                                            seed,
+                                          );
+                                        }
 
-                                    if (isAmoled &&
-                                        visualTheme ==
-                                            AppThemeId.defaultTheme) {
-                                      darkScheme = darkScheme.copyWith(
-                                        surface: Colors.black,
-                                        surfaceContainerLowest: Colors.black,
-                                        surfaceContainerLow: Color.alphaBlend(
-                                          darkScheme.primary.withValues(
-                                            alpha: 0.08,
-                                          ),
-                                          const Color(0xFF0A0A0A),
-                                        ),
-                                        surfaceContainer: Color.alphaBlend(
-                                          darkScheme.primary.withValues(
-                                            alpha: 0.12,
-                                          ),
-                                          const Color(0xFF111111),
-                                        ),
-                                        surfaceContainerHigh: Color.alphaBlend(
-                                          darkScheme.primary.withValues(
-                                            alpha: 0.16,
-                                          ),
-                                          const Color(0xFF1A1A1A),
-                                        ),
-                                        surfaceContainerHighest:
-                                            Color.alphaBlend(
+                                        if (isAmoled &&
+                                            visualTheme ==
+                                                AppThemeId.defaultTheme) {
+                                          darkScheme = darkScheme.copyWith(
+                                            surface: Colors.black,
+                                            surfaceContainerLowest:
+                                                Colors.black,
+                                            surfaceContainerLow:
+                                                Color.alphaBlend(
+                                                  darkScheme.primary.withValues(
+                                                    alpha: 0.08,
+                                                  ),
+                                                  const Color(0xFF0A0A0A),
+                                                ),
+                                            surfaceContainer: Color.alphaBlend(
                                               darkScheme.primary.withValues(
-                                                alpha: 0.20,
+                                                alpha: 0.12,
                                               ),
-                                              const Color(0xFF222222),
+                                              const Color(0xFF111111),
                                             ),
-                                      );
-                                    }
+                                            surfaceContainerHigh:
+                                                Color.alphaBlend(
+                                                  darkScheme.primary.withValues(
+                                                    alpha: 0.16,
+                                                  ),
+                                                  const Color(0xFF1A1A1A),
+                                                ),
+                                            surfaceContainerHighest:
+                                                Color.alphaBlend(
+                                                  darkScheme.primary.withValues(
+                                                    alpha: 0.20,
+                                                  ),
+                                                  const Color(0xFF222222),
+                                                ),
+                                          );
+                                        }
 
-                                    final l = appL10nFor(locale);
+                                        final l = appL10nFor(locale);
 
-                                    return ValueListenableBuilder<bool>(
-                                      valueListenable:
-                                          glowEffectsEnabledNotifier,
-                                      builder: (context, glowEnabled, _) {
-                                        return MaterialApp(
-                                          debugShowCheckedModeBanner: false,
-                                          title: l.appName,
-                                          locale: Locale(locale),
-                                          localizationsDelegates:
-                                              AppL10n.localizationsDelegates,
-                                          supportedLocales:
-                                              AppL10n.supportedLocales,
-                                          scrollBehavior:
-                                              const _UntisScrollBehavior(),
-                                          theme: _themeFrom(
-                                            lightScheme,
-                                            isAmoled,
-                                            blurEnabled,
-                                            glowEnabled,
-                                            visualTheme,
-                                          ),
-                                          darkTheme: _themeFrom(
-                                            darkScheme,
-                                            isAmoled,
-                                            blurEnabled,
-                                            glowEnabled,
-                                            visualTheme,
-                                          ),
-                                          themeMode: themeMode,
-                                          themeAnimationDuration: Duration.zero,
-                                          builder: (context, child) {
-                                            final isDark =
-                                                Theme.of(context).brightness ==
-                                                Brightness.dark;
-                                            final overlayStyle =
-                                                SystemUiOverlayStyle(
-                                                  statusBarColor:
-                                                      Colors.transparent,
-                                                  statusBarIconBrightness:
-                                                      isDark
-                                                      ? Brightness.light
-                                                      : Brightness.dark,
-                                                  statusBarBrightness: isDark
-                                                      ? Brightness.dark
-                                                      : Brightness.light,
-                                                  systemNavigationBarColor:
-                                                      Colors.transparent,
-                                                  systemNavigationBarIconBrightness:
-                                                      isDark
-                                                      ? Brightness.light
-                                                      : Brightness.dark,
+                                        return ValueListenableBuilder<bool>(
+                                          valueListenable:
+                                              glowEffectsEnabledNotifier,
+                                          builder: (context, glowEnabled, _) {
+                                            return MaterialApp(
+                                              debugShowCheckedModeBanner: false,
+                                              title: l.appName,
+                                              locale: Locale(locale),
+                                              localizationsDelegates: AppL10n
+                                                  .localizationsDelegates,
+                                              supportedLocales:
+                                                  AppL10n.supportedLocales,
+                                              scrollBehavior:
+                                                  const _UntisScrollBehavior(),
+                                              theme: _themeFrom(
+                                                lightScheme,
+                                                isAmoled,
+                                                blurEnabled,
+                                                glowEnabled && AppEffects.glow,
+                                                visualTheme,
+                                              ),
+                                              darkTheme: _themeFrom(
+                                                darkScheme,
+                                                isAmoled,
+                                                blurEnabled,
+                                                glowEnabled && AppEffects.glow,
+                                                visualTheme,
+                                              ),
+                                              themeMode: themeMode,
+                                              themeAnimationDuration:
+                                                  Duration.zero,
+                                              builder: (context, child) {
+                                                final isDark =
+                                                    Theme.of(
+                                                      context,
+                                                    ).brightness ==
+                                                    Brightness.dark;
+                                                final overlayStyle =
+                                                    SystemUiOverlayStyle(
+                                                      statusBarColor:
+                                                          Colors.transparent,
+                                                      statusBarIconBrightness:
+                                                          isDark
+                                                          ? Brightness.light
+                                                          : Brightness.dark,
+                                                      statusBarBrightness:
+                                                          isDark
+                                                          ? Brightness.dark
+                                                          : Brightness.light,
+                                                      systemNavigationBarColor:
+                                                          Colors.transparent,
+                                                      systemNavigationBarIconBrightness:
+                                                          isDark
+                                                          ? Brightness.light
+                                                          : Brightness.dark,
+                                                    );
+                                                return AnnotatedRegion<
+                                                  SystemUiOverlayStyle
+                                                >(
+                                                  value: overlayStyle,
+                                                  child: AppExperienceScope(
+                                                    child: Theme(
+                                                      data:
+                                                          MediaQuery.disableAnimationsOf(
+                                                            context,
+                                                          )
+                                                          ? _withoutControlMotion(
+                                                              Theme.of(context),
+                                                            )
+                                                          : Theme.of(context),
+                                                      child:
+                                                          child ??
+                                                          const SizedBox.shrink(),
+                                                    ),
+                                                  ),
                                                 );
-                                            return AnnotatedRegion<
-                                              SystemUiOverlayStyle
-                                            >(
-                                              value: overlayStyle,
-                                              child:
-                                                  child ??
-                                                  const SizedBox.shrink(),
+                                              },
+                                              home: Stack(
+                                                fit: StackFit.expand,
+                                                children: [
+                                                  startScreen,
+                                                  const _FocusBlurWarmup(),
+                                                ],
+                                              ),
                                             );
                                           },
-                                          home: Stack(
-                                            fit: StackFit.expand,
-                                            children: [
-                                              startScreen,
-                                              const _FocusBlurWarmup(),
-                                            ],
-                                          ),
                                         );
                                       },
                                     );
@@ -487,8 +554,8 @@ class UntisPlusApp extends StatelessWidget {
               },
             );
           },
-        );
-      },
+        ),
+      ),
     );
   }
 }

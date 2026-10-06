@@ -84,7 +84,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
                   ),
@@ -92,7 +93,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
                 const SizedBox(height: 18),
                 Text(
                   '$value$effectiveSuffix',
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: 36,
                     fontWeight: FontWeight.w900,
                   ),
@@ -159,13 +161,14 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
             children: [
               Text(
                 _formatTimeOfDay(sheetContext, startOfDayMinutes),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 8),
-              ListTile(
+              UntisActionTile(
                 leading: _sheetActionIcon(sheetContext, Icons.timer_rounded),
                 title: Text(l.alarmLead),
                 subtitle: Text(
@@ -196,7 +199,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
                   );
                 },
               ),
-              ListTile(
+              UntisActionTile(
                 leading: _sheetActionIcon(
                   sheetContext,
                   Icons.alarm_off_rounded,
@@ -215,7 +218,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
                 },
               ),
               if (current != null)
-                ListTile(
+                UntisActionTile(
                   leading: _sheetActionIcon(
                     sheetContext,
                     Icons.restart_alt_rounded,
@@ -306,12 +309,13 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
                 children: [
                   Text(
                     l.alarmOwn,
-                    style: GoogleFonts.outfit(
+                    style: _appTextStyle(
+                      context,
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  ListTile(
+                  UntisActionTile(
                     leading: _sheetActionIcon(context, Icons.schedule_rounded),
                     title: Text(time.format(context)),
                     subtitle: Text(l.alarmTime),
@@ -348,7 +352,8 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
                       );
                     }).toList(),
                   ),
-                  SwitchListTile(
+                  UntisSwitchTile(
+                    adaptive: false,
                     title: Text(l.alarmActive),
                     value: edited.enabled,
                     onChanged: (value) => setSheetState(
@@ -414,7 +419,7 @@ class _SettingsAlarmPageState extends State<SettingsAlarmPage>
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: ExpressiveLoadingIndicator()));
     }
     final readiness = _readiness!;
     final hasConfiguredAlarm =

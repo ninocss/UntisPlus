@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../data/cache/offline_cache_store.dart';
 import '../domain/timetable_change.dart';
 
@@ -7,13 +9,33 @@ class ChangeRepository {
 
   final OfflineCacheStore _store;
   static const TimetableChangeDetector _detector = TimetableChangeDetector();
+  static final Map<String, Future<void>> _pendingWrites = {};
+
+  Future<T> _serialize<T>(
+    String accountId,
+    Future<T> Function() operation,
+  ) async {
+    final previous = _pendingWrites[accountId];
+    final done = Completer<void>();
+    final pending = done.future;
+    _pendingWrites[accountId] = pending;
+    try {
+      if (previous != null) await previous;
+      return await operation();
+    } finally {
+      done.complete();
+      if (identical(_pendingWrites[accountId], pending)) {
+        _pendingWrites.remove(accountId);
+      }
+    }
+  }
 
   Future<List<TimetableChange>> recordSnapshot({
     required String accountId,
     required String rangeKey,
     required Iterable<Map<dynamic, dynamic>> lessons,
     String dataset = 'timetableSnapshot',
-  }) async {
+  }) => _serialize(accountId, () async {
     final snapshotKey = _store.scopedKey(
       accountId: accountId,
       dataset: dataset,
@@ -32,7 +54,7 @@ class ChangeRepository {
 
     // The first complete snapshot establishes a baseline and must never flood
     // the user with synthetic "added" changes.
-    final detected = previous.isEmpty
+    final detected = previousDocument == null
         ? <TimetableChange>[]
         : _detector.compare(before: previous, after: current);
     await _store.write(snapshotKey, {
@@ -53,7 +75,7 @@ class ChangeRepository {
           ..sort((a, b) => b.detectedAt.compareTo(a.detectedAt));
     await _saveChanges(accountId, retained);
     return retained;
-  }
+  });
 
   Future<List<TimetableChange>> loadChanges(String accountId) async {
     final key = _store.scopedKey(
@@ -76,12 +98,25 @@ class ChangeRepository {
     return changes;
   }
 
-  Future<void> markAllRead(String accountId) async {
+  Future<void> markAllRead(String accountId) => _serialize(accountId, () async {
     final changes = (await loadChanges(
       accountId,
     )).map((change) => change.copyWith(isRead: true)).toList();
     await _saveChanges(accountId, changes);
-  }
+  });
+
+  Future<void> markRead(String accountId, String changeId) => _serialize(
+    accountId,
+    () async {
+      final changes = (await loadChanges(accountId))
+          .map(
+            (change) =>
+                change.id == changeId ? change.copyWith(isRead: true) : change,
+          )
+          .toList();
+      await _saveChanges(accountId, changes);
+    },
+  );
 
   Future<void> _saveChanges(
     String accountId,

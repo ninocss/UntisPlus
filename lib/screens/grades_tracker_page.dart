@@ -129,6 +129,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   }
 
   Future<void> _saveGrades() async {
+    // Edits mutate the existing list; invalidate the prepared grouping too.
+    _groupedCache = null;
     await saveCustomGrades(_grades.map((e) => e.toJson()).toList());
   }
 
@@ -212,7 +214,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                 existing == null
                                     ? l.gradesAddTitle
                                     : l.gradesEditTitle,
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: -0.5,
@@ -220,7 +223,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                               ),
                               Text(
                                 l.gradesAddDesc,
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: cs.onSurfaceVariant.withValues(
@@ -248,7 +252,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                               child: Center(
                                 child: Text(
                                   previewValue.toString().replaceAll('.0', ''),
-                                  style: GoogleFonts.outfit(
+                                  style: _appTextStyle(
+                                    context,
                                     fontWeight: FontWeight.w900,
                                     fontSize: 22,
                                     color: previewColor,
@@ -262,7 +267,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     const SizedBox(height: 32),
                     Text(
                       l.gradesSubjectLabel.toUpperCase(),
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: cs.primary,
@@ -284,7 +290,10 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     else
                       TextField(
                         controller: subjectController,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                         decoration: InputDecoration(
                           prefixIcon: const Icon(Icons.book_rounded),
                           hintText: l.gradesSubjectLabel,
@@ -293,7 +302,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             alpha: 0.4,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(
+                              _expressiveRadius(
+                                context,
+                                20,
+                                expressiveRadius: 28,
+                              ),
+                            ),
                             borderSide: BorderSide.none,
                           ),
                         ),
@@ -308,7 +323,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             children: [
                               Text(
                                 l.gradesGradeLabel.toUpperCase(),
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                   color: cs.primary,
@@ -323,7 +339,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                       decimal: true,
                                     ),
                                 onChanged: (_) => setDlg(() {}),
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 18,
                                 ),
@@ -333,7 +350,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                   fillColor: cs.surfaceContainerHighest
                                       .withValues(alpha: 0.4),
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(
+                                      _expressiveRadius(
+                                        context,
+                                        20,
+                                        expressiveRadius: 28,
+                                      ),
+                                    ),
                                     borderSide: BorderSide.none,
                                   ),
                                 ),
@@ -349,7 +372,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             children: [
                               Text(
                                 l.gradesWeightLabel.toUpperCase(),
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                   color: cs.primary,
@@ -363,7 +387,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                     const TextInputType.numberWithOptions(
                                       decimal: true,
                                     ),
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 18,
                                 ),
@@ -373,7 +398,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                   fillColor: cs.surfaceContainerHighest
                                       .withValues(alpha: 0.4),
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(
+                                      _expressiveRadius(
+                                        context,
+                                        20,
+                                        expressiveRadius: 28,
+                                      ),
+                                    ),
                                     borderSide: BorderSide.none,
                                   ),
                                 ),
@@ -386,7 +417,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     const SizedBox(height: 24),
                     Text(
                       l.gradesTypeLabel.toUpperCase(),
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: cs.primary,
@@ -396,7 +428,10 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: typeController,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      style: _appTextStyle(
+                        context,
+                        fontWeight: FontWeight.w700,
+                      ),
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.label_important_rounded),
                         hintText: l.examsTypeLabel,
@@ -405,7 +440,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           alpha: 0.4,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(
+                            _expressiveRadius(
+                              context,
+                              20,
+                              expressiveRadius: 28,
+                            ),
+                          ),
                           borderSide: BorderSide.none,
                         ),
                       ),
@@ -413,7 +454,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     const SizedBox(height: 24),
                     Text(
                       l.gradesDateLabel.toUpperCase(),
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: cs.primary,
@@ -431,7 +473,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         );
                         if (picked != null) setDlg(() => selectedDate = picked);
                       },
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(
+                        _expressiveRadius(context, 20, expressiveRadius: 28),
+                      ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -441,7 +485,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           color: cs.surfaceContainerHighest.withValues(
                             alpha: 0.4,
                           ),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(
+                            _expressiveRadius(
+                              context,
+                              20,
+                              expressiveRadius: 28,
+                            ),
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -452,7 +502,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                 'dd. MMMM yyyy',
                                 _icuLocale(appLocaleNotifier.value),
                               ).format(selectedDate),
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 16,
                               ),
@@ -555,7 +606,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             ),
                             child: Text(
                               existing == null ? l.save : l.commonSaveChanges,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 16,
                               ),
@@ -575,13 +627,27 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     );
   }
 
+  Map<String, List<_Grade>>? _groupedCache;
+  List<_Grade>? _groupedSource;
+  Set<String>? _groupedHidden;
+
   Map<String, List<_Grade>> get _groupedGrades {
+    if (_groupedCache != null &&
+        identical(_groupedSource, _grades) &&
+        setEquals(_groupedHidden, hiddenSubjectsNotifier.value)) {
+      return _groupedCache!;
+    }
+    _groupedSource = _grades;
+    _groupedHidden = Set.of(hiddenSubjectsNotifier.value);
     final map = <String, List<_Grade>>{};
     for (var g in _grades) {
       if (_isSubjectHidden(g.subject)) continue;
       (map[g.subject] ??= []).add(g);
     }
-    return map;
+    for (final grades in map.values) {
+      grades.sort((a, b) => b.date.compareTo(a.date));
+    }
+    return _groupedCache = map;
   }
 
   double _calculateAverage(List<_Grade> grades) {
@@ -623,129 +689,146 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     );
 
     return _loading
-        ? const Center(child: CircularProgressIndicator())
+        ? const Center(child: ExpressiveLoadingIndicator())
         : visibleGradeCount == 0
         ? _buildEmptyState(cs, l)
-        : ListView(
+        : LazyContentList(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 132),
-            children: [
-              _buildGradesSummaryCard(cs, l),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  children: [
-                    // Stats
-                    _buildStatBadge(
-                      cs,
-                      l.gradesAverage,
-                      _overallAverage.toStringAsFixed(2),
-                      Icons.analytics_rounded,
-                      _colorForGrade(_overallAverage),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildStatBadge(
-                      cs,
-                      l.gradesTotal,
-                      visibleGradeCount.toString(),
-                      Icons.numbers_rounded,
-                      cs.primary,
-                    ),
-
-                    // Best Subject (if any)
-                    ...(() {
-                      final grouped = _groupedGrades;
-                      if (grouped.length < 2) return <Widget>[];
-                      String bestSubject = "";
-                      double bestAvg = 99;
-                      grouped.forEach((s, g) {
-                        final a = _calculateAverage(g);
-                        if (a < bestAvg) {
-                          bestAvg = a;
-                          bestSubject = s;
-                        }
-                      });
-                      if (bestSubject.isEmpty) return <Widget>[];
-                      return [
+            entries: [
+              (context) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildGradesSummaryCard(cs, l),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        // Stats
+                        _buildStatBadge(
+                          cs,
+                          l.gradesAverage,
+                          _overallAverage.toStringAsFixed(2),
+                          Icons.analytics_rounded,
+                          _colorForGrade(_overallAverage),
+                        ),
                         const SizedBox(width: 8),
                         _buildStatBadge(
                           cs,
-                          l.gradesBestSubject,
-                          bestSubject,
-                          Icons.workspace_premium_rounded,
-                          Colors.amber,
+                          l.gradesTotal,
+                          visibleGradeCount.toString(),
+                          Icons.numbers_rounded,
+                          cs.primary,
                         ),
-                      ];
-                    })(),
 
-                    // Subject quick filters
-                    if (subjects.length > 2) ...[
-                      const SizedBox(width: 16),
-                      Container(
-                        width: 1,
-                        height: 16,
-                        color: cs.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(width: 16),
-                      ...subjects.map((s) {
-                        final isDark =
-                            Theme.of(context).brightness == Brightness.dark;
-                        final color = _autoLessonColor(s, isDark);
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _glassContainer(
-                            context: context,
-                            borderRadius: BorderRadius.circular(12),
-                            color: color.withValues(alpha: 0.1),
-                            border: Border.all(
-                              color: color.withValues(alpha: 0.2),
+                        // Best Subject (if any)
+                        ...(() {
+                          final grouped = _groupedGrades;
+                          if (grouped.length < 2) return <Widget>[];
+                          String bestSubject = "";
+                          double bestAvg = 99;
+                          grouped.forEach((s, g) {
+                            final a = _calculateAverage(g);
+                            if (a < bestAvg) {
+                              bestAvg = a;
+                              bestSubject = s;
+                            }
+                          });
+                          if (bestSubject.isEmpty) return <Widget>[];
+                          return [
+                            const SizedBox(width: 8),
+                            _buildStatBadge(
+                              cs,
+                              l.gradesBestSubject,
+                              bestSubject,
+                              Icons.workspace_premium_rounded,
+                              Colors.amber,
                             ),
-                            child: InkWell(
-                              onTap: () => AppHaptics.selection(),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
+                          ];
+                        })(),
+
+                        // Subject quick filters
+                        if (subjects.length > 2) ...[
+                          const SizedBox(width: 16),
+                          Container(
+                            width: 1,
+                            height: 16,
+                            color: cs.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(width: 16),
+                          ...subjects.map((s) {
+                            final isDark =
+                                Theme.of(context).brightness == Brightness.dark;
+                            final color = _autoLessonColor(s, isDark);
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: _glassContainer(
+                                context: context,
+                                borderRadius: BorderRadius.circular(
+                                  _expressiveRadius(
+                                    context,
+                                    12,
+                                    expressiveRadius: 20,
+                                  ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.book_rounded,
-                                      size: 13,
-                                      color: color,
+                                color: color.withValues(alpha: 0.1),
+                                border: Border.all(
+                                  color: color.withValues(alpha: 0.2),
+                                ),
+                                child: InkWell(
+                                  onTap: () => AppHaptics.selection(),
+                                  borderRadius: BorderRadius.circular(
+                                    _expressiveRadius(
+                                      context,
+                                      12,
+                                      expressiveRadius: 20,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      s,
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 11,
-                                        color: isDark
-                                            ? color.withValues(alpha: 0.9)
-                                            : color,
-                                      ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
                                     ),
-                                  ],
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.book_rounded,
+                                          size: 13,
+                                          color: color,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          s,
+                                          style: _appTextStyle(
+                                            context,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 11,
+                                            color: isDark
+                                                ? color.withValues(alpha: 0.9)
+                                                : color,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ],
-                ),
+                            );
+                          }),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
-              const SizedBox(height: 16),
               ...subjects.asMap().entries.map((entry) {
                 final index = entry.key;
                 final subj = entry.value;
-                final subjGrades = grouped[subj]!
-                  ..sort((a, b) => b.date.compareTo(a.date));
+                final subjGrades = grouped[subj]!;
                 final avg = _calculateAverage(subjGrades);
-                return _springEntry(
+                return (context) => _springEntry(
                   key: ValueKey('grade_subject_$subj'),
                   duration: Duration(
                     milliseconds: (400 + index * 45).clamp(400, 600).toInt(),
@@ -767,7 +850,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
         children: [
           Text(
             l.gradesAverage,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color: cs.onSurfaceVariant,
@@ -776,7 +860,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
           const SizedBox(height: 2),
           Text(
             _overallAverage.toStringAsFixed(2),
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 22,
               fontWeight: FontWeight.w900,
               color: averageColor,
@@ -789,12 +874,15 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: cs.primary.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(
+            _expressiveRadius(context, 14, expressiveRadius: 24),
+          ),
           border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
         ),
         child: Text(
           '${_grades.length} ${l.gradesTotal}',
-          style: GoogleFonts.outfit(
+          style: _appTextStyle(
+            context,
             fontSize: 12,
             fontWeight: FontWeight.w800,
             color: cs.primary,
@@ -813,7 +901,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
   ) {
     return _glassContainer(
       context: context,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(
+        _expressiveRadius(context, 14, expressiveRadius: 24),
+      ),
       color: cs.surfaceContainerLow.withValues(alpha: 0.5),
       border: Border.all(
         color: cs.outlineVariant.withValues(alpha: 0.25),
@@ -828,14 +918,17 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(
+                  _expressiveRadius(context, 8, expressiveRadius: 12),
+                ),
               ),
               child: Icon(icon, color: color, size: 14),
             ),
             const SizedBox(width: 8),
             Text(
               "$label: ",
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: cs.onSurfaceVariant,
@@ -843,7 +936,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
             ),
             Text(
               value,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
                 color: cs.onSurface,
@@ -882,7 +976,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
           const SizedBox(height: 32),
           Text(
             l.gradesNone,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 26,
               fontWeight: FontWeight.w900,
               color: cs.onSurface,
@@ -893,7 +988,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
           Text(
             l.gradesNoneHint,
             textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 14.5,
               fontWeight: FontWeight.w500,
               color: cs.onSurfaceVariant,
@@ -909,7 +1005,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
             icon: const Icon(Icons.add_rounded),
             label: Text(
               l.gradesAddTitle,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontWeight: FontWeight.w800,
                 fontSize: 15,
               ),
@@ -987,7 +1084,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                 subject.isNotEmpty
                                     ? subject[0].toUpperCase()
                                     : '?',
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w900,
                                   fontSize: 22,
@@ -1002,7 +1100,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         children: [
                           Text(
                             _displaySubject(subject),
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontWeight: FontWeight.w900,
                               fontSize: 19,
                               color: cs.onSurface,
@@ -1014,7 +1113,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             grades.length == 1
                                 ? l.gradesCountLabel(1)
                                 : l.gradesCountLabel(grades.length),
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: cs.onSurfaceVariant,
@@ -1025,7 +1125,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                     ),
                     _glassContainer(
                       context: context,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(
+                        _expressiveRadius(context, 16, expressiveRadius: 24),
+                      ),
                       color: gradeColor.withValues(alpha: 0.15),
                       border: Border.all(
                         color: gradeColor.withValues(alpha: 0.35),
@@ -1038,7 +1140,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                         ),
                         child: Text(
                           average.toStringAsFixed(2),
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontWeight: FontWeight.w900,
                             fontSize: 19,
                             color: gradeColor,
@@ -1109,7 +1212,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           child: Center(
                             child: Text(
                               g.value.toString().replaceAll('.0', ''),
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 17,
                                 color: gColor,
@@ -1122,7 +1226,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             Expanded(
                               child: Text(
                                 g.type.isNotEmpty ? g.type : l.gradesTypeSingle,
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 14.5,
                                   color: cs.onSurface,
@@ -1139,11 +1244,18 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                                   color: cs.primaryContainer.withValues(
                                     alpha: 0.5,
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(
+                                    _expressiveRadius(
+                                      context,
+                                      8,
+                                      expressiveRadius: 12,
+                                    ),
+                                  ),
                                 ),
                                 child: Text(
                                   "${l.gradesWeightLabelShort}: ${g.weight}",
-                                  style: GoogleFonts.outfit(
+                                  style: _appTextStyle(
+                                    context,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w800,
                                     color: cs.primary,
@@ -1157,7 +1269,8 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             'dd. MMMM yyyy',
                             _icuLocale(appLocaleNotifier.value),
                           ).format(g.date),
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: cs.onSurfaceVariant,

@@ -24,7 +24,7 @@ class StudentMorePage extends StatelessWidget {
       appBar: RoundedBlurAppBar(
         title: Text(
           appL10nFor(appLocaleNotifier.value).aiMore,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          style: _appTextStyle(context, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
       ),
@@ -143,7 +143,11 @@ class _MoreSection extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
         child: Text(
           title,
-          style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w700),
+          style: _appTextStyle(
+            context,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       Card(
@@ -176,7 +180,10 @@ class _MoreAction extends StatelessWidget {
       backgroundColor: color.withValues(alpha: 0.14),
       child: Icon(icon, color: color),
     ),
-    title: Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+    title: Text(
+      title,
+      style: _appTextStyle(context, fontWeight: FontWeight.w700),
+    ),
     subtitle: Text(subtitle),
     trailing: const Icon(Icons.chevron_right_rounded),
     onTap: onTap,
@@ -338,7 +345,7 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
             fr: 'Absences',
             es: 'Ausencias',
           ),
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          style: _appTextStyle(context, fontWeight: FontWeight.w800),
         ),
       ),
       body: _AnimatedBackground(
@@ -369,7 +376,7 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
+                    child: ExpressiveLoadingIndicator(),
                   ),
                 )
               else if (values.isEmpty)
@@ -407,6 +414,7 @@ class ChangeCenterPage extends StatefulWidget {
 
 class _ChangeCenterPageState extends State<ChangeCenterPage> {
   List<TimetableChange>? _changes;
+  String get _accountId => activeUntisAccountId ?? 'legacy';
 
   @override
   void initState() {
@@ -415,9 +423,9 @@ class _ChangeCenterPageState extends State<ChangeCenterPage> {
   }
 
   Future<void> _load() async {
-    final changes = await ChangeRepository().loadChanges(
-      activeUntisAccountId ?? 'legacy',
-    );
+    final accountId = _accountId;
+    final changes = await ChangeRepository().loadChanges(accountId);
+    if (!mounted || _accountId != accountId) return;
     unreadTimetableChangesNotifier.value = changes
         .where((change) => !change.isRead)
         .length;
@@ -425,9 +433,68 @@ class _ChangeCenterPageState extends State<ChangeCenterPage> {
   }
 
   Future<void> _markRead() async {
-    await ChangeRepository().markAllRead(activeUntisAccountId ?? 'legacy');
+    final accountId = _accountId;
+    try {
+      await ChangeRepository().markAllRead(accountId);
+    } catch (_) {
+      if (mounted) {
+        context.showUntisSnackBar(
+          _studentCopy(
+            de: 'Lesestatus konnte nicht gespeichert werden.',
+            en: 'Could not save the read status.',
+            fr: 'Impossible d’enregistrer le statut de lecture.',
+            es: 'No se pudo guardar el estado de lectura.',
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted || _accountId != accountId) return;
     unreadTimetableChangesNotifier.value = 0;
     await _load();
+  }
+
+  Future<void> _openChange(TimetableChange change) async {
+    if (parseUntisDate(change.date) == null) {
+      context.showUntisSnackBar(
+        _studentCopy(
+          de: 'Für diese Änderung ist kein gültiges Datum gespeichert.',
+          en: 'This change has no valid date.',
+          fr: 'Aucune date valide pour cette modification.',
+          es: 'Este cambio no tiene una fecha válida.',
+        ),
+      );
+      return;
+    }
+    AppHaptics.selection();
+    final accountId = _accountId;
+    if (!change.isRead) {
+      try {
+        await ChangeRepository().markRead(accountId, change.id);
+        if (!mounted || accountId != _accountId) return;
+        await _load();
+      } catch (_) {
+        if (!mounted) return;
+        context.showUntisSnackBar(
+          _studentCopy(
+            de: 'Änderung konnte nicht als gelesen gespeichert werden.',
+            en: 'Could not save the read status.',
+            fr: 'Impossible d’enregistrer le statut de lecture.',
+            es: 'No se pudo guardar el estado de lectura.',
+          ),
+        );
+      }
+    }
+    if (!mounted || accountId != _accountId) return;
+    await Navigator.of(context).push(
+      _buildBouncyRoute(
+        WeeklyTimetablePage(
+          initialChangeDate: change.date,
+          initialChangeIdentity: change.lessonIdentity,
+        ),
+      ),
+    );
+    if (mounted) await _load();
   }
 
   @override
@@ -440,7 +507,7 @@ class _ChangeCenterPageState extends State<ChangeCenterPage> {
           fr: 'Modifications',
           es: 'Cambios',
         ),
-        style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+        style: _appTextStyle(context, fontWeight: FontWeight.w800),
       ),
       actions: [
         IconButton(
@@ -459,7 +526,7 @@ class _ChangeCenterPageState extends State<ChangeCenterPage> {
     ),
     body: _AnimatedBackground(
       child: _changes == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: ExpressiveLoadingIndicator())
           : _changes!.isEmpty
           ? _FeatureEmptyState(
               icon: Icons.check_circle_outline_rounded,
@@ -479,7 +546,10 @@ class _ChangeCenterPageState extends State<ChangeCenterPage> {
           : ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               itemCount: _changes!.length,
-              itemBuilder: (context, index) => _ChangeTile(_changes![index]),
+              itemBuilder: (context, index) => _ChangeTile(
+                _changes![index],
+                onTap: () => _openChange(_changes![index]),
+              ),
             ),
     ),
   );
@@ -540,7 +610,9 @@ class _SyncStatusBanner extends StatelessWidget {
       color: (isError ? cs.errorContainer : cs.secondaryContainer).withValues(
         alpha: 0.8,
       ),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(
+        _expressiveRadius(context, 16, expressiveRadius: 24),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
@@ -548,7 +620,7 @@ class _SyncStatusBanner extends StatelessWidget {
             if (state.isRefreshing)
               const SizedBox.square(
                 dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: ExpressiveLoadingIndicator(strokeWidth: 2),
               )
             else
               Icon(
@@ -651,7 +723,11 @@ class _SummaryMetric extends StatelessWidget {
       children: [
         Text(
           value,
-          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w800),
+          style: _appTextStyle(
+            context,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+          ),
         ),
         Text(
           label,
@@ -721,7 +797,7 @@ class _AbsenceTile extends StatelessWidget {
         ),
         title: Text(
           absence.subject.isEmpty ? formattedDate : absence.subject,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+          style: _appTextStyle(context, fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
           [
@@ -737,8 +813,9 @@ class _AbsenceTile extends StatelessWidget {
 }
 
 class _ChangeTile extends StatelessWidget {
-  const _ChangeTile(this.change);
+  const _ChangeTile(this.change, {required this.onTap});
   final TimetableChange change;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -828,17 +905,24 @@ class _ChangeTile extends StatelessWidget {
     return Card(
       elevation: 0,
       child: ListTile(
+        onTap: onTap,
         leading: Badge(
           isLabelVisible: !change.isRead,
           child: CircleAvatar(child: Icon(meta.$2)),
         ),
         title: Text(
           '${meta.$1}${change.subject.isEmpty ? '' : ' · ${change.subject}'}',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+          style: _appTextStyle(context, fontWeight: FontWeight.w700),
         ),
-        subtitle: change.before != null || change.after != null
-            ? Text('${change.before ?? '–'} → ${change.after ?? '–'}')
-            : null,
+        subtitle: Text(
+          [
+            if (parseUntisDate(change.date) case final date?)
+              DateFormat('dd.MM.yyyy').format(date),
+            if (change.before != null || change.after != null)
+              '${change.before ?? '–'} → ${change.after ?? '–'}',
+          ].join(' · '),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
       ),
     );
   }
@@ -865,7 +949,8 @@ class _FeatureEmptyState extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 20,
               fontWeight: FontWeight.w800,
             ),

@@ -49,11 +49,30 @@ class _CustomBackgroundEditorScreenState
     _previewCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 14),
-    )..repeat();
+    );
 
     customBackgroundsNotifier.addListener(_syncFromActive);
     selectedCustomBackgroundIdNotifier.addListener(_syncFromActive);
     aiEnabledNotifier.addListener(_onAiEnabledChanged);
+  }
+
+  bool get _previewMotionAllowed =>
+      !_isPreviewPaused &&
+      (ModalRoute.isCurrentOf(context) ?? true) &&
+      AppMotion.backgroundEnabled(context);
+
+  void _syncPreviewMotion() {
+    if (_previewMotionAllowed) {
+      if (!_previewCtrl.isAnimating) _previewCtrl.repeat();
+    } else {
+      _previewCtrl.stop(canceled: false);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncPreviewMotion();
   }
 
   @override
@@ -79,20 +98,10 @@ class _CustomBackgroundEditorScreenState
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden) {
-      if (!_isPreviewPaused) {
-        _isPreviewPaused = true;
-        _previewCtrl.stop(canceled: false);
-      }
-    } else if (state == AppLifecycleState.resumed) {
-      if (_isPreviewPaused) {
-        _isPreviewPaused = false;
-        if (mounted) {
-          _previewCtrl.repeat();
-        }
-      }
+    if (state != AppLifecycleState.resumed) {
+      _previewCtrl.stop(canceled: false);
+    } else if (mounted) {
+      _syncPreviewMotion();
     }
   }
 
@@ -245,7 +254,8 @@ class _CustomBackgroundEditorScreenState
               preset.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w800,
               ),
@@ -255,7 +265,8 @@ class _CustomBackgroundEditorScreenState
               preset.category,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 11.2,
                 fontWeight: FontWeight.w600,
                 color: cs.onSurfaceVariant,
@@ -269,11 +280,7 @@ class _CustomBackgroundEditorScreenState
 
   void _togglePreviewAnimation() {
     setState(() => _isPreviewPaused = !_isPreviewPaused);
-    if (_isPreviewPaused) {
-      _previewCtrl.stop(canceled: false);
-    } else {
-      _previewCtrl.repeat();
-    }
+    _syncPreviewMotion();
   }
 
   Widget _backgroundToolSelector(AppL10n l) {
@@ -291,6 +298,39 @@ class _CustomBackgroundEditorScreenState
       Icons.auto_awesome_rounded,
     ];
 
+    if (_usesExpressiveComponents(context)) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var index = 0; index < labels.length; index++)
+            ChoiceChip(
+              selected: _backgroundToolIndex == index,
+              avatar: Icon(icons[index], size: 18),
+              label: Text(labels[index], maxLines: 2),
+              onSelected: (_) {
+                if (_backgroundToolIndex == index) return;
+                AppHaptics.selection();
+                setState(() => _backgroundToolIndex = index);
+                if (_scrollController.hasClients) {
+                  if (AppMotion.enabled(context)) {
+                    _scrollController.animateTo(
+                      0,
+                      duration: AppMotion.duration(
+                        context,
+                        AppMotionTokens.standardEffects,
+                      ),
+                      curve: Curves.easeOutCubic,
+                    );
+                  } else {
+                    _scrollController.jumpTo(0);
+                  }
+                }
+              },
+            ),
+        ],
+      );
+    }
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -340,7 +380,8 @@ class _CustomBackgroundEditorScreenState
                       labels[index],
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 11,
                         fontWeight: selected
                             ? FontWeight.w800
@@ -770,7 +811,8 @@ class _CustomBackgroundEditorScreenState
                 const SizedBox(height: 4),
                 Text(
                   title,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -787,7 +829,7 @@ class _CustomBackgroundEditorScreenState
                 const SizedBox(height: 16),
                 Text(
                   '${l.settingsColorRed}: ${red.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w600),
                 ),
                 HapticSlider(
                   value: red,
@@ -798,7 +840,7 @@ class _CustomBackgroundEditorScreenState
                 ),
                 Text(
                   '${l.settingsColorGreen}: ${green.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w600),
                 ),
                 HapticSlider(
                   value: green,
@@ -809,7 +851,7 @@ class _CustomBackgroundEditorScreenState
                 ),
                 Text(
                   '${l.settingsColorBlue}: ${blue.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w600),
                 ),
                 HapticSlider(
                   value: blue,
@@ -825,14 +867,20 @@ class _CustomBackgroundEditorScreenState
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
                         l.cancel,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     FilledButton(
                       onPressed: () => Navigator.pop(ctx, preview),
                       child: Text(
                         l.settingsColorApply,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -869,8 +917,9 @@ class _CustomBackgroundEditorScreenState
     onChanged(safe);
   }
 
-  Future<String> _requestAiBackgroundSpec(String prompt) {
+  Future<String> _requestAiBackgroundSpec(String prompt) async {
     final l = appL10nFor(appLocaleNotifier.value);
+    await _ensureAiConfigurationReady();
     final runtime = _currentAiRuntimeConfiguration();
     final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
     return _aiRequestCoordinator.generate(
@@ -968,17 +1017,23 @@ class _CustomBackgroundEditorScreenState
       padding: const EdgeInsets.only(bottom: 12),
       child: _glassContainer(
         context: context,
-        borderRadius: BorderRadius.circular(radius),
-        sigma: 20,
-        color: cs.surface.withValues(alpha: 0.46),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            effectiveAccent.withValues(alpha: 0.10),
-            cs.surfaceContainerHighest.withValues(alpha: 0.70),
-          ],
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, radius, expressiveRadius: 28),
         ),
+        sigma: 20,
+        color: _usesExpressiveComponents(context)
+            ? cs.surfaceContainerLow
+            : cs.surface.withValues(alpha: 0.46),
+        gradient: _usesExpressiveComponents(context)
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  effectiveAccent.withValues(alpha: 0.10),
+                  cs.surfaceContainerHighest.withValues(alpha: 0.70),
+                ],
+              ),
         border: Border.all(
           color: effectiveAccent.withValues(alpha: 0.18),
           width: 1,
@@ -999,7 +1054,8 @@ class _CustomBackgroundEditorScreenState
         const SizedBox(width: 8),
         Text(
           title,
-          style: GoogleFonts.outfit(
+          style: _appTextStyle(
+            context,
             fontWeight: FontWeight.w900,
             fontSize: 15.5,
           ),
@@ -1028,12 +1084,13 @@ class _CustomBackgroundEditorScreenState
             Expanded(
               child: Text(
                 label,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
               ),
             ),
             Text(
               text,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontWeight: FontWeight.w700,
                 color: cs.onSurfaceVariant,
               ),
@@ -1099,7 +1156,8 @@ class _CustomBackgroundEditorScreenState
                           _draft.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 18.5,
                             fontWeight: FontWeight.w800,
                           ),
@@ -1107,7 +1165,8 @@ class _CustomBackgroundEditorScreenState
                         const SizedBox(height: 2),
                         Text(
                           '${l.bgEditorUpdatedAt} $updated',
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 12.2,
                             fontWeight: FontWeight.w600,
                             color: cs.onSurfaceVariant,
@@ -1210,7 +1269,8 @@ class _CustomBackgroundEditorScreenState
                 ),
               ),
               const SizedBox(height: 14),
-              Row(
+              _responsiveButtonRow(
+                context,
                 children: [
                   Expanded(
                     child: FilledButton.icon(
@@ -1218,12 +1278,15 @@ class _CustomBackgroundEditorScreenState
                       icon: _saving
                           ? const SizedBox.square(
                               dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: ExpressiveLoadingIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.save_rounded),
                       label: Text(
                         l.save,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size(0, 52),
@@ -1237,7 +1300,10 @@ class _CustomBackgroundEditorScreenState
                       icon: const Icon(Icons.check_circle_rounded),
                       label: Text(
                         l.bgEditorUseInApp,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       style: FilledButton.styleFrom(
                         minimumSize: const Size(0, 52),
@@ -1268,7 +1334,8 @@ class _CustomBackgroundEditorScreenState
           const SizedBox(width: 5),
           Text(
             label,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
               color: cs.onSurface,
@@ -1287,7 +1354,8 @@ class _CustomBackgroundEditorScreenState
       const SizedBox(width: 8),
       Text(
         l.bgEditorLibraryTab,
-        style: GoogleFonts.outfit(
+        style: _appTextStyle(
+          context,
           fontSize: 12,
           fontWeight: FontWeight.w800,
           color: cs.onSurfaceVariant,
@@ -1308,7 +1376,8 @@ class _CustomBackgroundEditorScreenState
       const SizedBox(height: 8),
       Text(
         l.bgEditorStartPoints,
-        style: GoogleFonts.outfit(
+        style: _appTextStyle(
+          context,
           fontSize: 12,
           fontWeight: FontWeight.w800,
           color: cs.onSurfaceVariant,
@@ -1387,7 +1456,8 @@ class _CustomBackgroundEditorScreenState
                                 const SizedBox(height: 10),
                                 Text(
                                   l.bgEditorNew,
-                                  style: GoogleFonts.outfit(
+                                  style: _appTextStyle(
+                                    context,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 13,
                                   ),
@@ -1395,7 +1465,8 @@ class _CustomBackgroundEditorScreenState
                                 const SizedBox(height: 2),
                                 Text(
                                   l.bgEditorNewName,
-                                  style: GoogleFonts.outfit(
+                                  style: _appTextStyle(
+                                    context,
                                     fontSize: 11.5,
                                     color: cs.onSurfaceVariant,
                                   ),
@@ -1518,7 +1589,8 @@ class _CustomBackgroundEditorScreenState
                                 s.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12.5,
                                 ),
@@ -1530,7 +1602,8 @@ class _CustomBackgroundEditorScreenState
                                     s.updatedAtMs,
                                   ),
                                 ),
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 11,
                                   color: cs.onSurfaceVariant,
                                 ),
@@ -1551,7 +1624,8 @@ class _CustomBackgroundEditorScreenState
                         icon: const Icon(Icons.copy_rounded, size: 18),
                         label: Text(
                           l.bgEditorDuplicate,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1572,7 +1646,8 @@ class _CustomBackgroundEditorScreenState
                         ),
                         label: Text(
                           l.delete,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontWeight: FontWeight.w700,
                             color: cs.error,
                           ),
@@ -1612,7 +1687,7 @@ class _CustomBackgroundEditorScreenState
                   borderSide: BorderSide.none,
                 ),
               ),
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              style: _appTextStyle(context, fontWeight: FontWeight.w600),
               onChanged: (v) => _updateDraft(_draft.copyWith(name: v)),
             ),
           ],
@@ -1628,22 +1703,22 @@ class _CustomBackgroundEditorScreenState
           children: [
             _header(l.bgEditorBase, Icons.gradient_rounded, color: cs.primary),
             const SizedBox(height: 12),
-            SwitchListTile.adaptive(
+            UntisSwitchTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
                 l.bgEditorUseThemeColors,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
                 l.bgEditorUseThemeColorsDesc,
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 12.5,
                   color: cs.onSurfaceVariant,
                 ),
               ),
               value: _draft.base.useThemeColors,
               onChanged: (v) {
-                AppHaptics.selection();
                 _updateDraft(
                   _draft.copyWith(
                     base: _draft.base.copyWith(useThemeColors: v),
@@ -1797,36 +1872,35 @@ class _CustomBackgroundEditorScreenState
               color: cs.tertiary,
             ),
             const SizedBox(height: 12),
-            SwitchListTile.adaptive(
+            UntisSwitchTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
                 l.bgEditorOrbsEnabled,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
               ),
               value: _draft.orbs.enabled,
               onChanged: (v) {
-                AppHaptics.selection();
                 _updateDraft(
                   _draft.copyWith(orbs: _draft.orbs.copyWith(enabled: v)),
                 );
               },
             ),
-            SwitchListTile.adaptive(
+            UntisSwitchTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
                 l.bgEditorUseThemeColors,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
                 l.bgEditorOrbsThemeDesc,
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 12.5,
                   color: cs.onSurfaceVariant,
                 ),
               ),
               value: _draft.orbs.useThemeColors,
               onChanged: (v) {
-                AppHaptics.selection();
                 _updateDraft(
                   _draft.copyWith(
                     orbs: _draft.orbs.copyWith(useThemeColors: v),
@@ -1848,7 +1922,10 @@ class _CustomBackgroundEditorScreenState
                     icon: const Icon(Icons.casino_rounded, size: 18),
                     label: Text(
                       l.bgEditorRandomizeSeed,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      style: _appTextStyle(
+                        context,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 46),
@@ -2079,15 +2156,14 @@ class _CustomBackgroundEditorScreenState
               color: cs.primary,
             ),
             const SizedBox(height: 12),
-            SwitchListTile.adaptive(
+            UntisSwitchTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
                 l.bgEditorAnimate,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
               ),
               value: _draft.animate,
               onChanged: (v) {
-                AppHaptics.selection();
                 _updateDraft(_draft.copyWith(animate: v));
               },
             ),
@@ -2128,7 +2204,8 @@ class _CustomBackgroundEditorScreenState
             const SizedBox(height: 10),
             Text(
               l.bgEditorAiDesc,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 12.8,
                 color: cs.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
@@ -2147,7 +2224,7 @@ class _CustomBackgroundEditorScreenState
                   borderSide: BorderSide.none,
                 ),
               ),
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              style: _appTextStyle(context, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -2158,12 +2235,12 @@ class _CustomBackgroundEditorScreenState
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: ExpressiveLoadingIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.auto_awesome_rounded),
                 label: Text(
                   l.bgEditorAiGenerate,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w800),
                 ),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(0, 54),

@@ -33,12 +33,22 @@ class SchoolTeacher {
   }
 
   bool matches(String query) {
-    final normalized = query.trim().toLowerCase();
+    final normalized = _searchText(query);
     if (normalized.isEmpty) return true;
-    return name.toLowerCase().contains(normalized) ||
-        abbreviation.toLowerCase().contains(normalized);
+    final searchable = '${_searchText(name)} ${_searchText(abbreviation)}';
+    return normalized.split(RegExp(r'\s+')).every(searchable.contains);
   }
 }
+
+String _searchText(String text) => text
+    .trim()
+    .toLowerCase()
+    .replaceAll('ä', 'a')
+    .replaceAll('ö', 'o')
+    .replaceAll('ü', 'u')
+    .replaceAll('é', 'e')
+    .replaceAll('è', 'e')
+    .replaceAll('ß', 'ss');
 
 class TeacherLessonLocation {
   const TeacherLessonLocation({
@@ -101,6 +111,65 @@ class TeacherScheduleSnapshot {
     }
     return TeacherScheduleSnapshot(current: current, next: next);
   }
+}
+
+/// Parsed lessons for every day of a requested week. Cancelled and malformed
+/// entries are omitted; repeated class timetable entries are collapsed.
+class TeacherWeekSchedule {
+  TeacherWeekSchedule.fromLessons(Iterable<dynamic> lessons) {
+    final seen = <String>{};
+    for (final raw in lessons) {
+      if (raw is! Map) continue;
+      final lesson = raw.map((key, value) => MapEntry(key.toString(), value));
+      if (_isCancelled(lesson)) continue;
+      final date = _lessonDate(lesson['date']);
+      final start = _untisMinute(lesson['startTime']);
+      final end = _untisMinute(lesson['endTime']);
+      if (date == null || start == null || end == null || end <= start) {
+        continue;
+      }
+      final entry = TeacherLessonLocation(
+        subject:
+            _elementName(lesson['su']) ??
+            _text(lesson['subject'] ?? lesson['name']),
+        room: _elementName(lesson['ro']) ?? _text(lesson['room']),
+        startMinute: start,
+        endMinute: end,
+      );
+      if (!seen.add('$date|$start|$end|${entry.subject}|${entry.room}')) {
+        continue;
+      }
+      (lessonsByDate[date] ??= []).add(entry);
+    }
+    for (final day in lessonsByDate.values) {
+      day.sort((a, b) => a.startMinute.compareTo(b.startMinute));
+    }
+  }
+
+  final Map<int, List<TeacherLessonLocation>> lessonsByDate = {};
+
+  List<TeacherLessonLocation> on(DateTime date) =>
+      lessonsByDate[date.year * 10000 + date.month * 100 + date.day] ??
+      const [];
+}
+
+int? _lessonDate(dynamic value) {
+  if (value is DateTime) {
+    return value.year * 10000 + value.month * 100 + value.day;
+  }
+  final text = _text(value);
+  if (text.contains('-')) {
+    final date = DateTime.tryParse(text);
+    if (date != null) {
+      return date.year * 10000 + date.month * 100 + date.day;
+    }
+  }
+  final date = _asInt(value);
+  if (date == null || date < 19000101 || date > 99991231) return null;
+  final parsed = DateTime(date ~/ 10000, date ~/ 100 % 100, date % 100);
+  return parsed.year * 10000 + parsed.month * 100 + parsed.day == date
+      ? date
+      : null;
 }
 
 String _firstText(Map<String, dynamic> json, List<String> keys) {

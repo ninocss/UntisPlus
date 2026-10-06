@@ -860,7 +860,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           item.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontWeight: selected
                                 ? FontWeight.w800
                                 : FontWeight.w600,
@@ -875,7 +876,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                           item.subtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontWeight: FontWeight.w500,
                             fontSize: 12.5,
                             color: selected
@@ -932,7 +934,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 7),
           child: Text(
             title,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontWeight: FontWeight.w800,
               fontSize: 13,
               color: cs.primary,

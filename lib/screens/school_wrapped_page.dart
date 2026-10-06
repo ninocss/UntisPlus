@@ -114,7 +114,7 @@ class _SchoolWrappedHubState extends State<SchoolWrappedHub> {
           const Center(
             child: Padding(
               padding: EdgeInsets.all(30),
-              child: CircularProgressIndicator(),
+              child: ExpressiveLoadingIndicator(),
             ),
           ),
         if (demo)
@@ -231,7 +231,8 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
 
   void _handleMotionPreference() {
     if (!mounted) return;
-    if (!AppMotion.enabled(context) || !backgroundAnimationsNotifier.value) {
+    if (!AppMotion.backgroundEnabled(context) ||
+        !backgroundAnimationsNotifier.value) {
       _advanceTimer?.cancel();
       _slideProgress.stop();
       _motion.stop();
@@ -250,7 +251,8 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _dependenciesReady = true;
-    if (!AppMotion.enabled(context) || !backgroundAnimationsNotifier.value) {
+    if (!AppMotion.backgroundEnabled(context) ||
+        !backgroundAnimationsNotifier.value) {
       _motion.stop();
     } else if (!_motion.isAnimating) {
       _motion.repeat();
@@ -378,7 +380,7 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
         !_autoAdvance ||
         _stopped ||
         _index >= length - 1 ||
-        !AppMotion.enabled(context) ||
+        !AppMotion.backgroundEnabled(context) ||
         !backgroundAnimationsNotifier.value) {
       return;
     }
@@ -402,7 +404,8 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
       _slideProgress.stop();
       _motion.stop();
     } else {
-      if (backgroundAnimationsNotifier.value && AppMotion.enabled(context)) {
+      if (backgroundAnimationsNotifier.value &&
+          AppMotion.backgroundEnabled(context)) {
         _motion.repeat();
       }
       if (_snapshot != null) {
@@ -540,7 +543,8 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
   void _go(int index, int length) {
     if (index < 0 || index >= length) return;
     _advanceTimer?.cancel();
-    if (!AppMotion.enabled(context) || !backgroundAnimationsNotifier.value) {
+    if (!AppMotion.backgroundEnabled(context) ||
+        !backgroundAnimationsNotifier.value) {
       _pages.jumpToPage(index);
       return;
     }
@@ -555,7 +559,8 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final reduceMotion =
-        !AppMotion.enabled(context) || !backgroundAnimationsNotifier.value;
+        !AppMotion.backgroundEnabled(context) ||
+        !backgroundAnimationsNotifier.value;
     if (_loading && (_snapshot == null || _snapshot!.coveredWeeks == 0)) {
       return Scaffold(
         backgroundColor: const Color(0xFF151126),
@@ -577,7 +582,8 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
                     Text(
                       l.wrapped('loading'),
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         color: Colors.white,
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
@@ -747,7 +753,7 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
                       const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(
+                        child: ExpressiveLoadingIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
@@ -907,7 +913,8 @@ class _WrappedSlideView extends StatelessWidget {
                   Text(
                     slide.title,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: _appTextStyle(
+                      context,
                       color: Colors.white,
                       fontSize: titleSize,
                       fontWeight: FontWeight.w900,
@@ -919,7 +926,8 @@ class _WrappedSlideView extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       slide.value,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         color: Colors.white,
                         fontSize: numberSize,
                         fontWeight: FontWeight.w900,
@@ -932,7 +940,8 @@ class _WrappedSlideView extends StatelessWidget {
                   Text(
                     slide.unit.toUpperCase(),
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: _appTextStyle(
+                      context,
                       color: Colors.white,
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -943,7 +952,8 @@ class _WrappedSlideView extends StatelessWidget {
                   Text(
                     slide.caption,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: _appTextStyle(
+                      context,
                       color: Colors.white,
                       fontSize: 23,
                       fontWeight: FontWeight.w600,
@@ -954,7 +964,8 @@ class _WrappedSlideView extends StatelessWidget {
                     Text(
                       slide.detail,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         color: Colors.white.withValues(alpha: 0.82),
                         fontSize: 15,
                       ),

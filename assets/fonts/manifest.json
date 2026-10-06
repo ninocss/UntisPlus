@@ -1,0 +1,122 @@
+[
+  {
+    "file": "Outfit-Thin.ttf",
+    "sha256": "f7968975ae24bca86d0ebba03d80d1ef478aec26faf682675c5f45670683df82",
+    "bytes": 47520
+  },
+  {
+    "file": "Outfit-ExtraLight.ttf",
+    "sha256": "9e637bedb79866638f15630672ee888906e37fe739039f063946a0849031abf2",
+    "bytes": 47872
+  },
+  {
+    "file": "Outfit-Light.ttf",
+    "sha256": "998bf6ee552524ec5e863bb9784219426dbb463a960944735050e0ed6cf974ce",
+    "bytes": 47792
+  },
+  {
+    "file": "Outfit-Regular.ttf",
+    "sha256": "28fe0a241b5270b9a576ef60c21bec15aefd15ac11df0537e954ef6bd4aece9c",
+    "bytes": 47820
+  },
+  {
+    "file": "Outfit-Medium.ttf",
+    "sha256": "020dd19794fbcb05ec8e4ea2d2a35dd46e8073a1fbf7ed674aa8d32f3b063cf2",
+    "bytes": 47776
+  },
+  {
+    "file": "Outfit-SemiBold.ttf",
+    "sha256": "9f897e407e3027fe1022db28d78d19851195331567fb477801cf3d12edc3e3af",
+    "bytes": 48432
+  },
+  {
+    "file": "Outfit-Bold.ttf",
+    "sha256": "20bb459e188481fbcfa23f518d92efd946077016c47d8546e6fb6558ad6c2036",
+    "bytes": 48316
+  },
+  {
+    "file": "Outfit-ExtraBold.ttf",
+    "sha256": "d6bea2566ee900861e80f59f8ec10e26344bd7ce4e5d77f9afe27691550100e6",
+    "bytes": 48248
+  },
+  {
+    "file": "Outfit-Black.ttf",
+    "sha256": "65d21eaffe8b1b9eaf0f6ef9ea7182c75d482d71976779bb13ce94d4d054040a",
+    "bytes": 48300
+  },
+  {
+    "file": "BebasNeue-Regular.ttf",
+    "sha256": "a1b67d8679c6f4d301f4a05c13d1a4032cefed98bd9b61b11b2fac9689c99116",
+    "bytes": 38232
+  },
+  {
+    "file": "IBMPlexMono-Thin.ttf",
+    "sha256": "28b47d79415935b4eb7e21b4ab6567b49ec8c5654769456ec98e2193e8998fdd",
+    "bytes": 77016
+  },
+  {
+    "file": "IBMPlexMono-ThinItalic.ttf",
+    "sha256": "29dc9c11fa19d718d763725de56a911b985eec34ff0ce19cbdfbe81438f1f5f4",
+    "bytes": 83652
+  },
+  {
+    "file": "IBMPlexMono-ExtraLight.ttf",
+    "sha256": "777e2bfad74ee25085099fe319dec1ab75fa07afe1fd95511691a7d785e5e76a",
+    "bytes": 76620
+  },
+  {
+    "file": "IBMPlexMono-ExtraLightItalic.ttf",
+    "sha256": "dec2d3b718edf9c988b7bc4bf9cc2ff98c0a73b3704321db9bd77c8c10da9f57",
+    "bytes": 83624
+  },
+  {
+    "file": "IBMPlexMono-Light.ttf",
+    "sha256": "fb12a959f0a3b900dfb41e969e19ea06d7fd0e546d20848c74d7c0a09bb9fcc5",
+    "bytes": 76372
+  },
+  {
+    "file": "IBMPlexMono-LightItalic.ttf",
+    "sha256": "fcb360ec811b8ad1bcbcaa48f01ac3b20321699d2c2a44ac2061d61f1856356f",
+    "bytes": 83248
+  },
+  {
+    "file": "IBMPlexMono-Regular.ttf",
+    "sha256": "d37b0be393abb9e88603a9493e97d0ca660146b93fad3897d22358f3a93e7a05",
+    "bytes": 76988
+  },
+  {
+    "file": "IBMPlexMono-Italic.ttf",
+    "sha256": "129654d831d41d7c91e3068d3a41048ac376d3268e6fa37d70a32655f80b28df",
+    "bytes": 84068
+  },
+  {
+    "file": "IBMPlexMono-Medium.ttf",
+    "sha256": "ccde6e24d2f07f518ab9860bb438d768dade104dd9f4a5e8c7442885ff4bad81",
+    "bytes": 76544
+  },
+  {
+    "file": "IBMPlexMono-MediumItalic.ttf",
+    "sha256": "7c4d06a8e36553d03d27fce5ed3e3190fffb6f1809b94cafcb51831e43550b5c",
+    "bytes": 83312
+  },
+  {
+    "file": "IBMPlexMono-SemiBold.ttf",
+    "sha256": "f22d51089f8e130bf17474587afa91909c802be2733c8f6e79f33eb7318b2d77",
+    "bytes": 76516
+  },
+  {
+    "file": "IBMPlexMono-SemiBoldItalic.ttf",
+    "sha256": "c53a0ff962598476827ac59e2871f2edc365bbf0bf021477f6adea969df952b6",
+    "bytes": 82964
+  },
+  {
+    "file": "IBMPlexMono-Bold.ttf",
+    "sha256": "655d8d7800662579d0ec6d4b4cfdffd1f647a5f24575f42d4bb0b295f0dd8779",
+    "bytes": 76560
+  },
+  {
+    "file": "IBMPlexMono-BoldItalic.ttf",
+    "sha256": "dc02aef1a17967582c7dc41541adcfa296295b0b2419a6a94e018112c560a30a",
+    "bytes": 83348
+  }
+]

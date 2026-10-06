@@ -618,6 +618,12 @@ void main() {
       );
       final dayCarousel = await ensureDayTimetableView(tester);
       expect(dayCarousel, findsOneWidget, reason: 'day viewport: $size');
+      await pumpUntilFound(tester, find.text('Dein Tag im Überblick'));
+      expect(
+        find.text('Dein Tag im Überblick'),
+        findsWidgets,
+        reason: 'daily overview: $size',
+      );
       final weekGrid = await switchToWeekTimetable(tester);
       expect(weekGrid, findsOneWidget, reason: 'week viewport: $size');
       expect(tester.takeException(), isNull, reason: 'viewport: $size');

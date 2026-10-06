@@ -81,146 +81,147 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
     return SettingsPageShell(
       title: l.settingsHubAccount,
       children: [
-            // ── GROUP 1: ACCOUNT ──
-            SettingsGroup(
-              title: l.settingsHubAccount,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(
-                          Icons.account_circle_rounded,
-                          size: 28,
-                          color: cs.onPrimaryContainer,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              l.settingsLoggedInAs,
-                              style: GoogleFonts.outfit(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _username.isEmpty ? '—' : _username,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                            if (_serverUrl.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                _serverUrl,
-                                style: GoogleFonts.outfit(
-                                  color: cs.onSurfaceVariant,
-                                  fontSize: 12.5,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SettingsTile(
-                  icon: Icons.person_remove_rounded,
-                  iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.8),
-                  iconColor: cs.onErrorContainer,
-                  title: l.accountRemoveThis,
-                  subtitle: l.accountSignOut,
-                  destructive: true,
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _removeActiveAccount,
-                ),
-              ],
-            ),
-
-            ValueListenableBuilder<List<UntisAccount>>(
-              valueListenable: untisAccountsNotifier,
-              builder: (context, accounts, _) => SettingsGroup(
-                title: l.accounts,
+        // ── GROUP 1: ACCOUNT ──
+        SettingsGroup(
+          title: l.settingsHubAccount,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+              child: Row(
                 children: [
-                  for (final account in accounts)
-                    SettingsTile(
-                      icon: account.id == activeUntisAccountId
-                          ? Icons.check_circle_rounded
-                          : Icons.account_circle_outlined,
-                      iconBackgroundColor: account.id == activeUntisAccountId
-                          ? cs.primaryContainer
-                          : cs.surfaceContainerHighest,
-                      iconColor: account.id == activeUntisAccountId
-                          ? cs.onPrimaryContainer
-                          : cs.onSurfaceVariant,
-                      title: account.label,
-                      subtitle: '${account.schoolName} · ${account.schoolUrl}',
-                      trailing: _switchingAccountId == account.id
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : account.id == activeUntisAccountId
-                          ? const Icon(Icons.check_rounded)
-                          : const Icon(Icons.chevron_right_rounded),
-                      onTap: () => _switchAccount(account),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  SettingsTile(
-                    icon: Icons.person_add_alt_1_rounded,
-                    title: l.accountAdd,
-                    subtitle: l.accountConnect,
-                    trailing: const Icon(Icons.add_rounded),
-                    onTap: () => Navigator.of(context).push(
-                      _buildBouncyRoute(
-                        const OnboardingFlow(accountOnly: true),
-                      ),
+                    child: Icon(
+                      Icons.account_circle_rounded,
+                      size: 28,
+                      color: cs.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          l.settingsLoggedInAs,
+                          style: _appTextStyle(
+                            context,
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _username.isEmpty ? '—' : _username,
+                          style: _appTextStyle(
+                            context,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        if (_serverUrl.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            _serverUrl,
+                            style: _appTextStyle(
+                              context,
+                              color: cs.onSurfaceVariant,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-
-            // ── GROUP 2: DEMO MODE ──
-            SettingsGroup(
-              title: l.settingsDemoMode,
-              children: [
-                ValueListenableBuilder<bool>(
-                  valueListenable: demoModeNotifier,
-                  builder: (context, value, _) {
-                    return SettingsSwitchTile(
-                      icon: Icons.science_rounded,
-                      iconBackgroundColor: cs.secondaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                      iconColor: cs.onSecondaryContainer,
-                      title: l.settingsDemoMode,
-                      subtitle: l.settingsDemoModeDesc,
-                      value: value,
-                      onChanged: (v) => _settingsSetDemoMode(context, v),
-                    );
-                  },
-                ),
-              ],
+            SettingsTile(
+              icon: Icons.person_remove_rounded,
+              iconBackgroundColor: cs.errorContainer.withValues(alpha: 0.8),
+              iconColor: cs.onErrorContainer,
+              title: l.accountRemoveThis,
+              subtitle: l.accountSignOut,
+              destructive: true,
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: _removeActiveAccount,
             ),
           ],
+        ),
+
+        ValueListenableBuilder<List<UntisAccount>>(
+          valueListenable: untisAccountsNotifier,
+          builder: (context, accounts, _) => SettingsGroup(
+            title: l.accounts,
+            children: [
+              for (final account in accounts)
+                SettingsTile(
+                  icon: account.id == activeUntisAccountId
+                      ? Icons.check_circle_rounded
+                      : Icons.account_circle_outlined,
+                  iconBackgroundColor: account.id == activeUntisAccountId
+                      ? cs.primaryContainer
+                      : cs.surfaceContainerHighest,
+                  iconColor: account.id == activeUntisAccountId
+                      ? cs.onPrimaryContainer
+                      : cs.onSurfaceVariant,
+                  title: account.label,
+                  subtitle: '${account.schoolName} · ${account.schoolUrl}',
+                  trailing: _switchingAccountId == account.id
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: ExpressiveLoadingIndicator(strokeWidth: 2),
+                        )
+                      : account.id == activeUntisAccountId
+                      ? const Icon(Icons.check_rounded)
+                      : const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _switchAccount(account),
+                ),
+              SettingsTile(
+                icon: Icons.person_add_alt_1_rounded,
+                title: l.accountAdd,
+                subtitle: l.accountConnect,
+                trailing: const Icon(Icons.add_rounded),
+                onTap: () => Navigator.of(context).push(
+                  _buildBouncyRoute(const OnboardingFlow(accountOnly: true)),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── GROUP 2: DEMO MODE ──
+        SettingsGroup(
+          title: l.settingsDemoMode,
+          children: [
+            ValueListenableBuilder<bool>(
+              valueListenable: demoModeNotifier,
+              builder: (context, value, _) {
+                return SettingsSwitchTile(
+                  icon: Icons.science_rounded,
+                  iconBackgroundColor: cs.secondaryContainer.withValues(
+                    alpha: 0.7,
+                  ),
+                  iconColor: cs.onSecondaryContainer,
+                  title: l.settingsDemoMode,
+                  subtitle: l.settingsDemoModeDesc,
+                  value: value,
+                  onChanged: (v) => _settingsSetDemoMode(context, v),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

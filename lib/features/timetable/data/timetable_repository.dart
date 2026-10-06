@@ -42,13 +42,14 @@ class TimetableRepository {
     required WebUntisRequestContext context,
     required int teacherId,
     required DateTime date,
+    DateTime? endDate,
   }) => fetchTimetable(
     context: context,
     elementId: teacherId,
     elementType: 2,
     startDate: date,
-    endDate: date,
-    requestId: 'teacher_day_$teacherId',
+    endDate: endDate ?? date,
+    requestId: 'teacher_week_$teacherId',
     showLessonText: false,
     showSubstitutionText: false,
     showInfo: false,
@@ -135,8 +136,7 @@ class TimetableRepository {
 
   List<dynamic> _normalizeLessons(List<dynamic> lessons) => [
     for (final value in lessons)
-      if (value is Map &&
-          (value['new_lesson'] ?? value['newLesson']) is Map)
+      if (value is Map && (value['new_lesson'] ?? value['newLesson']) is Map)
         <dynamic, dynamic>{
           ...Map<dynamic, dynamic>.from(value),
           ...Map<dynamic, dynamic>.from(

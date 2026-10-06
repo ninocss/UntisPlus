@@ -190,9 +190,12 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           l.settingsBackupConfirmTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          style: _appTextStyle(context, fontWeight: FontWeight.w800),
         ),
-        content: Text(l.settingsBackupConfirmDesc, style: GoogleFonts.outfit()),
+        content: Text(
+          l.settingsBackupConfirmDesc,
+          style: _appTextStyle(context),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -231,7 +234,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
                     fr: 'Déchiffrer la sauvegarde',
                     es: 'Descifrar copia de seguridad',
                   ),
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+            style: _appTextStyle(context, fontWeight: FontWeight.w800),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -286,9 +289,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: Text(
-                appL10nFor(appLocaleNotifier.value).cancel,
-              ),
+              child: Text(appL10nFor(appLocaleNotifier.value).cancel),
             ),
             FilledButton(
               onPressed: () {
@@ -348,131 +349,130 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
     return SettingsPageShell(
       title: l.settingsHubDataBackup,
       children: [
-            // ── GROUP 1: EXPORT ──
-            SettingsGroup(
-              title: l.settingsHubDataBackup,
-              children: [
-                SettingsSwitchTile(
-                  icon: Icons.key_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsBackupIncludeApiKeys,
-                  subtitle: l.settingsBackupIncludeApiKeysDesc,
-                  value: _includeApiKeys,
-                  onChanged: (value) => setState(() => _includeApiKeys = value),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.tonalIcon(
-                          onPressed: _busy ? null : _exportToFile,
-                          icon: const Icon(Icons.save_alt_rounded, size: 18),
-                          label: Text(
-                            l.settingsBackupExportAllFile,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _busy ? null : _exportToClipboard,
-                          icon: const Icon(
-                            Icons.content_paste_rounded,
-                            size: 18,
-                          ),
-                          label: Text(
-                            l.settingsBackupExportAllClipboard,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        // ── GROUP 1: EXPORT ──
+        SettingsGroup(
+          title: l.settingsHubDataBackup,
+          children: [
+            SettingsSwitchTile(
+              icon: Icons.key_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsBackupIncludeApiKeys,
+              subtitle: l.settingsBackupIncludeApiKeysDesc,
+              value: _includeApiKeys,
+              onChanged: (value) => setState(() => _includeApiKeys = value),
             ),
-
-            // ── GROUP 2: IMPORT ──
-            SettingsGroup(
-              title: l.settingsBackupImportAllTitle,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.tonalIcon(
-                          onPressed: _busy ? null : _importFromFile,
-                          icon: const Icon(Icons.file_upload_rounded, size: 18),
-                          label: Text(
-                            l.settingsBackupImportAllFile,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 12,
-                            ),
-                            backgroundColor: cs.secondaryContainer,
-                            foregroundColor: cs.onSecondaryContainer,
-                          ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: _busy ? null : _exportToFile,
+                      icon: const Icon(Icons.save_alt_rounded, size: 18),
+                      label: Text(
+                        l.settingsBackupExportAllFile,
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _busy ? null : _importFromClipboard,
-                          icon: const Icon(
-                            Icons.assignment_return_rounded,
-                            size: 18,
-                          ),
-                          label: Text(
-                            l.settingsBackupImportAllClipboard,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 12,
-                            ),
-                          ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 12,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : _exportToClipboard,
+                      icon: const Icon(Icons.content_paste_rounded, size: 18),
+                      label: Text(
+                        l.settingsBackupExportAllClipboard,
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
+        ),
+
+        // ── GROUP 2: IMPORT ──
+        SettingsGroup(
+          title: l.settingsBackupImportAllTitle,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: _busy ? null : _importFromFile,
+                      icon: const Icon(Icons.file_upload_rounded, size: 18),
+                      label: Text(
+                        l.settingsBackupImportAllFile,
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 12,
+                        ),
+                        backgroundColor: cs.secondaryContainer,
+                        foregroundColor: cs.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _busy ? null : _importFromClipboard,
+                      icon: const Icon(
+                        Icons.assignment_return_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        l.settingsBackupImportAllClipboard,
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

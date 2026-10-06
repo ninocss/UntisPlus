@@ -9,6 +9,8 @@ class TeacherSearchPage extends StatefulWidget {
 
 class _TeacherSearchPageState extends State<TeacherSearchPage> {
   late final WebUntisRequestContext _requestContext;
+  final String? _accountId = activeUntisAccountId;
+  bool get _contextCurrent => mounted && _accountId == activeUntisAccountId;
   final TeacherSearchIndexService _teacherIndexService =
       TeacherSearchIndexService();
   final TextEditingController _queryController = TextEditingController();
@@ -17,34 +19,38 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
   Map<int, List<dynamic>> _fallbackLessonsByTeacherId = const {};
   bool _usingClassFallback = false;
   int _fallbackScannedClasses = 0;
-  Timer? _clockTimer;
+
   bool _loadingTeachers = true;
   bool _loadingSchedule = false;
   String? _teacherError;
   String? _scheduleError;
   SchoolTeacher? _selectedTeacher;
-  List<dynamic> _scheduleLessons = const [];
+  TeacherWeekSchedule _preparedSchedule = TeacherWeekSchedule.fromLessons(
+    const [],
+  );
+  set _scheduleLessons(List<dynamic> value) {
+    _preparedSchedule = TeacherWeekSchedule.fromLessons(value);
+  }
+
+  final Map<String, List<dynamic>> _weekCache = BoundedLruCache(capacity: 5);
+  late DateTime _weekStart;
+  late DateTime _selectedDay;
+  int _scheduleRequest = 0;
+  int _weekRequest = 0;
 
   AppL10n get _l => appL10nFor(appLocaleNotifier.value);
 
   @override
   void initState() {
     super.initState();
+    _selectedDay = DateTime.now();
+    _weekStart = _monday(_selectedDay);
     _requestContext = WebUntisRequestContext(
       schoolUrl: schoolUrl,
       schoolName: schoolName,
       sessionId: sessionID,
     );
-    _queryController.addListener(_onQueryChanged);
-    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (!mounted) return;
-      setState(() {});
-    });
     unawaited(_loadTeachers());
-  }
-
-  void _onQueryChanged() {
-    if (mounted) setState(() {});
   }
 
   Future<void> _loadTeachers({bool manualRefresh = false}) async {
@@ -66,16 +72,16 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
     if (_requestContext.sessionId.isEmpty) {
       try {
         final cached = await _teacherIndexService.read(
-          accountId: activeUntisAccountId ?? 'legacy',
+          accountId: _accountId ?? 'legacy',
           context: _requestContext,
-          date: DateTime.now(),
+          date: _weekStart,
         );
         if (cached != null && cached.teachers.isNotEmpty) {
           _applyFallbackIndex(cached);
           return;
         }
       } catch (_) {}
-      if (!mounted) return;
+      if (!_contextCurrent) return;
       setState(() {
         _loadingTeachers = false;
         _teacherError = _l.teacherSearchNotSignedIn;
@@ -87,6 +93,18 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
       _loadingTeachers = true;
       _teacherError = null;
     });
+    if (!manualRefresh && _teachers.isEmpty) {
+      try {
+        final cached = await _teacherIndexService.read(
+          accountId: _accountId ?? 'legacy',
+          context: _requestContext,
+          date: _weekStart,
+        );
+        if (cached != null && cached.teachers.isNotEmpty) {
+          _applyFallbackIndex(cached);
+        }
+      } catch (_) {}
+    }
     if (!_usingClassFallback || !manualRefresh) {
       try {
         final teachers = await _timetableRepository.fetchTeachers(
@@ -101,7 +119,7 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                 (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
               );
         if (parsed.isNotEmpty) {
-          if (!mounted) return;
+          if (!_contextCurrent) return;
           setState(() {
             _teachers
               ..clear()
@@ -119,13 +137,13 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
       }
     }
 
-    if (!mounted) return;
+    if (!_contextCurrent) return;
     setState(() => _usingClassFallback = true);
     try {
       final index = await _resolveFallbackIndex(forceRefresh: manualRefresh);
       _applyFallbackIndex(index);
     } catch (error) {
-      if (!mounted) return;
+      if (!_contextCurrent || !mounted) return;
       debugPrint(
         'Teacher search class fallback failed (${error.runtimeType}).',
       );
@@ -150,21 +168,21 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
   }) async {
     if (!forceRefresh) {
       final cached = await _teacherIndexService.read(
-        accountId: activeUntisAccountId ?? 'legacy',
+        accountId: _accountId ?? 'legacy',
         context: _requestContext,
-        date: DateTime.now(),
+        date: _weekStart,
       );
       if (cached != null && cached.teachers.isNotEmpty) return cached;
     }
     return _teacherIndexService.refresh(
-      accountId: activeUntisAccountId ?? 'legacy',
+      accountId: _accountId ?? 'legacy',
       context: _requestContext,
-      date: DateTime.now(),
+      date: _weekStart,
     );
   }
 
   void _applyFallbackIndex(TeacherSearchIndex index) {
-    if (!mounted) return;
+    if (!_contextCurrent) return;
     setState(() {
       _teachers
         ..clear()
@@ -181,11 +199,25 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
 
   Future<void> _selectTeacher(SchoolTeacher teacher) async {
     _searchFocusNode.unfocus();
+    AppHaptics.selection();
+    final request = ++_scheduleRequest;
     if (_usingClassFallback) {
       setState(() {
         _selectedTeacher = teacher;
         _scheduleLessons =
             _fallbackLessonsByTeacherId[teacher.id] ?? const <dynamic>[];
+        _scheduleError = null;
+        _loadingSchedule = false;
+      });
+      return;
+    }
+    final cacheKey =
+        '${teacher.id}:${_weekStart.year}-${_weekStart.month}-${_weekStart.day}';
+    final cached = _weekCache[cacheKey];
+    if (cached != null) {
+      setState(() {
+        _selectedTeacher = teacher;
+        _scheduleLessons = cached;
         _scheduleError = null;
         _loadingSchedule = false;
       });
@@ -201,20 +233,22 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
       final lessons = await _timetableRepository.fetchTeacherTimetable(
         context: _requestContext,
         teacherId: teacher.id,
-        date: DateTime.now(),
+        date: _weekStart,
+        endDate: _weekStart.add(const Duration(days: 6)),
       );
-      if (!mounted || _selectedTeacher?.id != teacher.id) return;
+      if (!_contextCurrent || request != _scheduleRequest) return;
+      _weekCache[cacheKey] = lessons;
       setState(() {
         _scheduleLessons = lessons;
         _loadingSchedule = false;
       });
     } on WebUntisFailure catch (failure) {
-      if (!mounted || _selectedTeacher?.id != teacher.id) return;
+      if (!_contextCurrent || request != _scheduleRequest) return;
       if (failure.kind == WebUntisFailureKind.unsupported ||
           failure.kind == WebUntisFailureKind.permission) {
         try {
           final index = await _resolveFallbackIndex(forceRefresh: false);
-          if (!mounted || _selectedTeacher?.id != teacher.id) return;
+          if (!_contextCurrent || request != _scheduleRequest) return;
           setState(() {
             _usingClassFallback = true;
             _fallbackLessonsByTeacherId = index.lessonsByTeacherId;
@@ -232,7 +266,7 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
         _scheduleError = _failureText(failure);
       });
     } catch (_) {
-      if (!mounted || _selectedTeacher?.id != teacher.id) return;
+      if (!_contextCurrent || request != _scheduleRequest) return;
       setState(() {
         _loadingSchedule = false;
         _scheduleError = _l.teacherSearchLoadError;
@@ -241,6 +275,7 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
   }
 
   Future<void> _refreshSearch() async {
+    _weekCache.clear();
     final selectedId = _selectedTeacher?.id;
     await _loadTeachers(manualRefresh: true);
     if (!mounted || selectedId == null || _teacherError != null) return;
@@ -261,12 +296,46 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
       .where((teacher) => teacher.matches(_queryController.text))
       .toList(growable: false);
 
+  DateTime _monday(DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    return day.subtract(Duration(days: day.weekday - 1));
+  }
+
+  Future<void> _changeWeek(int weeks) async {
+    AppHaptics.selection();
+    final request = ++_weekRequest;
+    final nextWeek = _weekStart.add(Duration(days: weeks * 7));
+    final selectedWeekday = _selectedDay.weekday;
+    setState(() {
+      _weekStart = nextWeek;
+      _selectedDay = nextWeek.add(Duration(days: selectedWeekday - 1));
+      _scheduleLessons = const [];
+      _scheduleError = null;
+    });
+    ++_scheduleRequest;
+    if (_usingClassFallback) {
+      setState(() => _loadingTeachers = true);
+      try {
+        final index = await _resolveFallbackIndex(forceRefresh: false);
+        if (!_contextCurrent || request != _weekRequest) return;
+        _applyFallbackIndex(index);
+      } catch (_) {
+        if (_contextCurrent && request == _weekRequest) {
+          setState(() {
+            _loadingTeachers = false;
+            _teacherError = _l.teacherSearchClassFallbackUnavailable;
+          });
+        }
+      }
+    }
+    if (!_contextCurrent || request != _weekRequest) return;
+    final teacher = _selectedTeacher;
+    if (teacher != null && mounted) await _selectTeacher(teacher);
+  }
+
   @override
   void dispose() {
-    _clockTimer?.cancel();
-    _queryController
-      ..removeListener(_onQueryChanged)
-      ..dispose();
+    _queryController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
@@ -276,7 +345,6 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
     final l = _l;
     final cs = Theme.of(context).colorScheme;
     final selected = _selectedTeacher;
-    final filtered = _filteredTeachers;
     return Scaffold(
       appBar: AppBar(
         title: Text(l.teacherSearchTitle),
@@ -323,7 +391,9 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                           icon: const Icon(Icons.close_rounded),
                         ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 18, expressiveRadius: 28),
+                    ),
                   ),
                 ),
               ),
@@ -345,28 +415,50 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
             Expanded(
               child: _teacherError != null
                   ? _messageState(_teacherError!, cs)
-                  : _loadingTeachers
+                  : _loadingTeachers && _teachers.isEmpty
                   ? const SizedBox.shrink()
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      children: [
-                        if (selected != null) ...[
-                          _buildScheduleCard(selected, cs, l),
-                          const SizedBox(height: 14),
-                        ],
-                        if (filtered.isEmpty)
-                          _messageState(l.teacherSearchNoMatch, cs)
-                        else ...[
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
-                            child: Text(
-                              l.teacherSearchResults(filtered.length),
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                          ),
-                          for (final teacher in filtered)
-                            Card(
+                  : ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _queryController,
+                      builder: (context, query, _) {
+                        final filtered = _filteredTeachers;
+                        return ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          itemCount: filtered.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == 0) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (selected != null) ...[
+                                    _buildScheduleCard(selected, cs, l),
+                                    const SizedBox(height: 14),
+                                  ],
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      4,
+                                      2,
+                                      4,
+                                      8,
+                                    ),
+                                    child: Text(
+                                      filtered.isEmpty
+                                          ? l.teacherSearchNoMatch
+                                          : l.teacherSearchResults(
+                                              filtered.length,
+                                            ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(
+                                            color: cs.onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+                            final teacher = filtered[index - 1];
+                            return Card(
                               elevation: 0,
                               color: selected?.id == teacher.id
                                   ? cs.secondaryContainer
@@ -388,9 +480,10 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                                 ),
                                 onTap: () => _selectTeacher(teacher),
                               ),
-                            ),
-                        ],
-                      ],
+                            );
+                          },
+                        );
+                      },
                     ),
             ),
           ],
@@ -417,12 +510,10 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
     ColorScheme colors,
     AppL10n l,
   ) {
-    final schedule = _loadingSchedule || _scheduleError != null
-        ? null
-        : TeacherScheduleSnapshot.fromLessons(
-            _scheduleLessons,
-            now: DateTime.now(),
-          );
+    final schedule = _preparedSchedule;
+    final lessons = schedule.on(_selectedDay);
+    final locale = l.localeName;
+    final weekEnd = _weekStart.add(const Duration(days: 6));
     return Card(
       elevation: 0,
       color: colors.surfaceContainerHigh,
@@ -439,7 +530,7 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-                const Icon(Icons.today_rounded),
+                Icon(Icons.calendar_view_week_rounded, color: colors.primary),
               ],
             ),
             const SizedBox(height: 8),
@@ -449,40 +540,67 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                 context,
               ).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
             ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                IconButton(
+                  tooltip: l.teacherWeekPrevious,
+                  onPressed: () => unawaited(_changeWeek(-1)),
+                  icon: const Icon(Icons.chevron_left_rounded),
+                ),
+                Expanded(
+                  child: Text(
+                    '${DateFormat.MMMd(locale).format(_weekStart)} – ${DateFormat.yMMMd(locale).format(weekEnd)}',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.teacherWeekNext,
+                  onPressed: () => unawaited(_changeWeek(1)),
+                  icon: const Icon(Icons.chevron_right_rounded),
+                ),
+              ],
+            ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final day in List.generate(
+                  7,
+                  (index) => _weekStart.add(Duration(days: index)),
+                ))
+                  ChoiceChip(
+                    label: Text(
+                      '${DateFormat.E(locale).format(day)} ${day.day}'
+                      '${_loadingSchedule ? '' : ' · ${schedule.on(day).length}'}',
+                    ),
+                    selected: day == _selectedDay,
+                    onSelected: (_) {
+                      AppHaptics.selection();
+                      setState(() => _selectedDay = day);
+                    },
+                  ),
+              ],
+            ),
             if (_loadingSchedule) ...[
               const SizedBox(height: 16),
               const LinearProgressIndicator(),
             ] else if (_scheduleError != null) ...[
               const SizedBox(height: 14),
               Text(_scheduleError!, style: TextStyle(color: colors.error)),
-            ] else if (schedule != null) ...[
-              const SizedBox(height: 12),
-              if (schedule.current != null)
-                _lessonTile(
-                  icon: Icons.meeting_room_rounded,
-                  title: l.teacherSearchCurrent,
-                  lesson: schedule.current!,
-                  detail: l.teacherSearchUntil(schedule.current!.endTime),
-                  colors: colors,
-                ),
-              if (schedule.next != null) ...[
-                if (schedule.current != null) const SizedBox(height: 8),
-                _lessonTile(
-                  icon: Icons.arrow_forward_rounded,
-                  title: l.teacherSearchNext,
-                  lesson: schedule.next!,
-                  detail: l.teacherSearchFrom(schedule.next!.startTime),
-                  colors: colors,
-                ),
-              ],
-              if (schedule.current == null && schedule.next == null)
+            ] else ...[
+              const SizedBox(height: 14),
+              if (lessons.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
-                    l.teacherSearchNoLessons,
+                    l.teacherWeekNoLessons,
                     style: TextStyle(color: colors.onSurfaceVariant),
                   ),
                 ),
+              for (final hour in _visibleHours(lessons))
+                _hourRow(hour, lessons, colors, l),
             ],
           ],
         ),
@@ -490,23 +608,107 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
     );
   }
 
-  Widget _lessonTile({
-    required IconData icon,
-    required String title,
-    required TeacherLessonLocation lesson,
-    required String detail,
-    required ColorScheme colors,
-  }) {
-    final details = <String>[
-      if (lesson.subject.isNotEmpty) lesson.subject,
-      if (lesson.room.isNotEmpty) lesson.room,
-    ].join(' · ');
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: colors.primary),
-      title: Text(title),
-      subtitle: Text([if (details.isNotEmpty) details, detail].join('\n')),
-      isThreeLine: details.isNotEmpty,
+  Iterable<int> _visibleHours(List<TeacherLessonLocation> lessons) sync* {
+    if (lessons.isEmpty) return;
+    final first = lessons.first.startMinute ~/ 60;
+    final last =
+        (lessons.map((e) => e.endMinute).reduce((a, b) => a > b ? a : b) - 1) ~/
+        60;
+    for (var hour = first; hour <= last; hour++) {
+      yield hour;
+    }
+  }
+
+  Widget _hourRow(
+    int hour,
+    List<TeacherLessonLocation> lessons,
+    ColorScheme colors,
+    AppL10n l,
+  ) {
+    final starting = lessons.where((e) => e.startMinute ~/ 60 == hour).toList();
+    final ongoing = lessons.any(
+      (e) => e.startMinute < hour * 60 && e.endMinute > hour * 60,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 58,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                '${hour.toString().padLeft(2, '0')}:00',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: starting.isEmpty
+                ? Container(
+                    constraints: const BoxConstraints(minHeight: 38),
+                    alignment: Alignment.centerLeft,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: colors.outlineVariant),
+                      ),
+                    ),
+                    child: Text(
+                      ongoing ? l.teacherWeekContinues : l.teacherWeekFree,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      for (final lesson in starting)
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colors.primaryContainer,
+                            borderRadius: BorderRadius.circular(
+                              _expressiveRadius(
+                                context,
+                                14,
+                                expressiveRadius: 24,
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${lesson.startTime}–${lesson.endTime}',
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      color: colors.onPrimaryContainer,
+                                    ),
+                              ),
+                              Text(
+                                lesson.subject.isEmpty
+                                    ? l.teacherWeekLesson
+                                    : lesson.subject,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              if (lesson.room.isNotEmpty)
+                                Text(
+                                  lesson.room,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

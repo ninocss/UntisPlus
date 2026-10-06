@@ -132,7 +132,10 @@ class UntisThemeTokens extends ThemeExtension<UntisThemeTokens> {
   });
 
   bool get supportsBlur => appThemeCapabilities(id).supportsBlur;
-  bool get blurActive => supportsBlur && blurEnabledNotifier.value;
+  bool get blurActive =>
+      supportsBlur &&
+      blurEnabledNotifier.value &&
+      AppEffects.resolveBlur(blurSigma) > 0;
 
   factory UntisThemeTokens.forTheme(
     AppThemeId id,
@@ -391,7 +394,34 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
 
 TextTheme untisThemeTextTheme(AppThemeId id, Brightness brightness) {
   final base = ThemeData(brightness: brightness, useMaterial3: true).textTheme;
-  final body = GoogleFonts.outfitTextTheme(base);
+  final outfit = GoogleFonts.outfitTextTheme(base);
+  final body = outfit.copyWith(
+    headlineLarge: outfit.headlineLarge?.copyWith(
+      fontSize: 32,
+      fontWeight: FontWeight.w700,
+      height: 1.12,
+    ),
+    headlineMedium: outfit.headlineMedium?.copyWith(
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+      height: 1.16,
+    ),
+    titleLarge: outfit.titleLarge?.copyWith(
+      fontSize: 22,
+      fontWeight: FontWeight.w700,
+      height: 1.22,
+    ),
+    titleMedium: outfit.titleMedium?.copyWith(
+      fontSize: 16,
+      fontWeight: FontWeight.w700,
+    ),
+    bodyLarge: outfit.bodyLarge?.copyWith(fontSize: 16, height: 1.45),
+    bodyMedium: outfit.bodyMedium?.copyWith(fontSize: 14, height: 1.4),
+    labelLarge: outfit.labelLarge?.copyWith(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+    ),
+  );
   if (id != AppThemeId.manga && id != AppThemeId.cyber) {
     return body;
   }
@@ -499,8 +529,7 @@ class ThemedBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = untisThemeTokensOf(context);
     if (tokens.id == AppThemeId.defaultTheme) return child;
-    final reduceMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduceMotion = !AppMotion.backgroundEnabled(context);
     final themeSceneStyle = switch (tokens.id) {
       AppThemeId.glass => 0,
       AppThemeId.cyber => 8,

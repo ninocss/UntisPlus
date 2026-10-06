@@ -17,7 +17,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:html/dom.dart' as html_dom;
-import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
@@ -49,10 +48,15 @@ import 'data/webuntis/webuntis_client.dart';
 import 'data/webuntis/webuntis_session_manager.dart';
 import 'features/changes/data/change_repository.dart';
 import 'features/changes/domain/timetable_change.dart';
+import 'features/day_context/day_context.dart';
 import 'features/exams/data/webuntis_exam_repository.dart';
 import 'features/timetable/data/timetable_repository.dart';
 import 'features/timetable/data/teacher_search_index_service.dart';
 import 'features/timetable/domain/teacher_schedule.dart';
+import 'features/timetable/presentation/timetable_carousel.dart';
+import 'features/timetable/domain/timetable_presentation.dart';
+import 'features/timetable/application/timetable_controller.dart';
+import 'features/ai/presentation/chat_follow_state.dart';
 import 'features/wrapped/school_wrapped.dart';
 import 'features/updates/data/github_release_repository.dart';
 import 'features/updates/data/changelog_repository.dart';
@@ -76,6 +80,12 @@ import 'platform/native_ui_gateway.dart';
 import 'core/sync_state.dart';
 import 'core/school_models.dart';
 import 'core/design_tokens.dart';
+import 'core/bounded_lru_cache.dart';
+import 'core/app_experience.dart';
+import 'widgets/app_experience_scope.dart';
+import 'widgets/lazy_content_list.dart';
+
+export 'core/app_experience.dart';
 
 export 'features/accounts/domain/untis_account.dart';
 export 'core/school_models.dart';
@@ -178,6 +188,7 @@ bool _hasMissingTeacher(dynamic lesson) {
 @pragma('vm:entry-point')
 void alarmRefreshDispatcher() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
   var refreshed = false;
   try {
     refreshed = await updateUntisData();
@@ -309,13 +320,112 @@ Future<void> _initializeDeferredAccountData() async {
   final accountId = activeUntisAccountId;
   if (accountId == null) return;
   final changes = await ChangeRepository().loadChanges(accountId);
+  if (activeUntisAccountId != accountId) return;
   unreadTimetableChangesNotifier.value = changes
       .where((change) => !change.isRead)
       .length;
 }
 
+Future<void>? _deferredAiConfiguration;
+
+Future<void> _ensureAiConfigurationReady() =>
+    _deferredAiConfiguration ?? Future<void>.value();
+
+Future<bool> _prepareAiInteraction(BuildContext context) async {
+  try {
+    await _ensureAiConfigurationReady();
+  } catch (error) {
+    if (context.mounted) {
+      context.showUntisSnackBar(
+        '${appL10nFor(appLocaleNotifier.value).aiConnectionError} ${error.runtimeType}',
+      );
+    }
+    return false;
+  }
+  return context.mounted && aiEnabledNotifier.value;
+}
+
+Future<void> _initializeAiConfiguration(SharedPreferences prefs) async {
+  final hasProviderConfig = prefs.containsKey('aiProvider');
+  if (!hasProviderConfig && (prefs.getString('geminiApiKey') ?? '').isEmpty) {
+    // Legacy migration: old versions stored the Gemini key under openAiApiKey.
+    final legacy = prefs.getString('openAiApiKey') ?? '';
+    if (legacy.isNotEmpty) {
+      await CredentialVault.instance.writeAiApiKey('gemini', legacy);
+      await prefs.remove('openAiApiKey');
+    }
+  }
+  final secureAiKeys = await CredentialVault.instance.loadAndMigrateAiKeys(
+    prefs,
+  );
+  geminiApiKey = secureAiKeys['gemini'] ?? '';
+
+  openAiApiKey = secureAiKeys['openai'] ?? '';
+  mistralApiKey = secureAiKeys['mistral'] ?? '';
+  customAiApiKey = secureAiKeys['custom'] ?? '';
+  aiProvider = _normalizeAiProvider(prefs.getString('aiProvider') ?? 'gemini');
+  aiCustomCompatibility = _normalizeAiCustomCompatibility(
+    prefs.getString('aiCustomCompatibility') ?? 'openai',
+  );
+  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? '';
+  aiSystemPromptTemplate = prefs.getString('aiSystemPromptTemplate') ?? '';
+  aiTemperature = prefs.getDouble('aiTemperature') ?? 0.2;
+  aiMaxTokens = prefs.getInt('aiMaxTokens') ?? 2600;
+  aiTopP = prefs.getDouble('aiTopP') ?? 0.95;
+  aiPersona = prefs.getString('aiPersona') ?? 'helpful';
+  aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
+  if (aiLocalModelPath.isNotEmpty) {
+    // A stale or tampered path (file deleted, moved, truncated or replaced
+    // with something that is not a GGUF) must never reach the native
+    // llama.cpp parser. Validate it with the same magic/size rules used on
+    // download and fall back to a cleared path on failure.
+    if (!await _isValidLocalModelFile(
+      aiLocalModelPath,
+      model: _localModelForPath(aiLocalModelPath),
+    )) {
+      aiLocalModelPath = '';
+      await prefs.setString('aiLocalModelPath', '');
+      // With no usable model file a 'local' provider is a broken state.
+      // Mirror _deleteLocalModel and fall back to Gemini.
+      if (_normalizeAiProvider(aiProvider) == 'local') {
+        aiProvider = 'gemini';
+        aiModel = _defaultModelForProvider('gemini');
+        await prefs.setString('aiProvider', aiProvider);
+        await prefs.setString('aiModel', aiModel);
+      }
+    }
+  }
+  final savedModel = prefs.getString('aiModel') ?? '';
+  final availableModels = _modelsForProvider(
+    aiProvider,
+    customCompatibility: aiCustomCompatibility,
+  );
+  aiModel = savedModel.isNotEmpty
+      ? savedModel
+      : _defaultModelForProvider(
+          aiProvider,
+          customCompatibility: aiCustomCompatibility,
+        );
+  if (!availableModels.contains(aiModel)) {
+    aiModel = _defaultModelForProvider(
+      aiProvider,
+      customCompatibility: aiCustomCompatibility,
+    );
+    await prefs.setString('aiModel', aiModel);
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
+  LicenseRegistry.addLicense(() async* {
+    for (final family in ['Outfit', 'BebasNeue', 'IBMPlexMono']) {
+      final license = await rootBundle.loadString(
+        'assets/fonts/$family-OFL.txt',
+      );
+      yield LicenseEntryWithLineBreaks([family], license);
+    }
+  });
   unawaited(OfflineCacheStore.instance.preWarm());
   nativeUiGateway.registerAssistantOpenHandler((prompt) {
     pendingAssistantPromptNotifier.value = prompt;
@@ -324,6 +434,7 @@ void main() async {
 
   final settingsStore = await SettingsStore.initialize();
   final prefs = settingsStore.preferences;
+  await loadAppExperience(settingsStore);
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
   await ensureDateFormattingForLocale(appLocaleNotifier.value);
   unawaited(WidgetService.publishNativeCopy(appLocaleNotifier.value));
@@ -504,73 +615,9 @@ void main() async {
 
   await loadCustomBackgroundsFromPrefs(prefs);
 
-  final hasProviderConfig = prefs.containsKey('aiProvider');
-  if (!hasProviderConfig && (prefs.getString('geminiApiKey') ?? '').isEmpty) {
-    // Legacy migration: old versions stored the Gemini key under openAiApiKey.
-    final legacy = prefs.getString('openAiApiKey') ?? '';
-    if (legacy.isNotEmpty) {
-      await CredentialVault.instance.writeAiApiKey('gemini', legacy);
-      await prefs.remove('openAiApiKey');
-    }
-  }
-  final secureAiKeys = await CredentialVault.instance.loadAndMigrateAiKeys(
-    prefs,
-  );
-  geminiApiKey = secureAiKeys['gemini'] ?? '';
-
-  openAiApiKey = secureAiKeys['openai'] ?? '';
-  mistralApiKey = secureAiKeys['mistral'] ?? '';
-  customAiApiKey = secureAiKeys['custom'] ?? '';
-  aiProvider = _normalizeAiProvider(prefs.getString('aiProvider') ?? 'gemini');
-  aiCustomCompatibility = _normalizeAiCustomCompatibility(
-    prefs.getString('aiCustomCompatibility') ?? 'openai',
-  );
-  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? '';
-  aiSystemPromptTemplate = prefs.getString('aiSystemPromptTemplate') ?? '';
-  aiTemperature = prefs.getDouble('aiTemperature') ?? 0.2;
-  aiMaxTokens = prefs.getInt('aiMaxTokens') ?? 2600;
-  aiTopP = prefs.getDouble('aiTopP') ?? 0.95;
-  aiPersona = prefs.getString('aiPersona') ?? 'helpful';
-  aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
-  if (aiLocalModelPath.isNotEmpty) {
-    // A stale or tampered path (file deleted, moved, truncated or replaced
-    // with something that is not a GGUF) must never reach the native
-    // llama.cpp parser. Validate it with the same magic/size rules used on
-    // download and fall back to a cleared path on failure.
-    if (!await _isValidLocalModelFile(
-      aiLocalModelPath,
-      model: _localModelForPath(aiLocalModelPath),
-    )) {
-      aiLocalModelPath = '';
-      await prefs.setString('aiLocalModelPath', '');
-      // With no usable model file a 'local' provider is a broken state.
-      // Mirror _deleteLocalModel and fall back to Gemini.
-      if (_normalizeAiProvider(aiProvider) == 'local') {
-        aiProvider = 'gemini';
-        aiModel = _defaultModelForProvider('gemini');
-        await prefs.setString('aiProvider', aiProvider);
-        await prefs.setString('aiModel', aiModel);
-      }
-    }
-  }
-  final savedModel = prefs.getString('aiModel') ?? '';
-  final availableModels = _modelsForProvider(
-    aiProvider,
-    customCompatibility: aiCustomCompatibility,
-  );
-  aiModel = savedModel.isNotEmpty
-      ? savedModel
-      : _defaultModelForProvider(
-          aiProvider,
-          customCompatibility: aiCustomCompatibility,
-        );
-  if (!availableModels.contains(aiModel)) {
-    aiModel = _defaultModelForProvider(
-      aiProvider,
-      customCompatibility: aiCustomCompatibility,
-    );
-    await prefs.setString('aiModel', aiModel);
-  }
+  // Optional credentials and local model checks start after the first frame.
+  final aiReady = Completer<void>();
+  _deferredAiConfiguration = aiReady.future;
 
   runApp(
     ProviderScope(
@@ -585,8 +632,21 @@ void main() async {
     ),
   );
 
-  unawaited(_initializeDeferredNativeServices());
-  unawaited(_initializeDeferredAccountData());
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _initializeAiConfiguration(prefs).then(
+      (_) => aiReady.complete(),
+      onError: (Object error, StackTrace stack) =>
+          aiReady.completeError(error, stack),
+    );
+    // Observe failures even when the optional feature is never opened.
+    unawaited(
+      aiReady.future.catchError((Object error) {
+        debugPrint('Deferred AI configuration failed: ${error.runtimeType}');
+      }),
+    );
+    unawaited(_initializeDeferredNativeServices());
+    unawaited(_initializeDeferredAccountData());
+  });
   if (!kIsWeb && !Platform.isIOS) {
     unawaited(checkGithubUpdateAndNotify());
   }

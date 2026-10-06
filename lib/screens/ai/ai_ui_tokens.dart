@@ -3,16 +3,14 @@ part of '../../main.dart';
 enum _AiMode { analysis, chat }
 
 const Duration _kAiStandardMotion = Duration(milliseconds: 280);
-const Duration _kAiReducedMotion = Duration(milliseconds: 120);
 
-bool _aiReduceMotion(BuildContext context) =>
-    MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+bool _aiReduceMotion(BuildContext context) => !AppMotion.enabled(context);
 
 Duration _aiMotionDuration(
   BuildContext context, {
   Duration normal = _kAiStandardMotion,
 }) {
-  return _aiReduceMotion(context) ? _kAiReducedMotion : normal;
+  return AppMotion.duration(context, normal);
 }
 
 Curve _aiMotionCurve(BuildContext context) =>

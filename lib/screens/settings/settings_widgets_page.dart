@@ -394,7 +394,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                 icon: _pinning
                     ? const SizedBox.square(
                         dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: ExpressiveLoadingIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.add_to_home_screen_rounded),
                 label: Text(_pinning ? l.widgetPickerOpening : l.widgetAdd),
@@ -486,7 +486,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
                   if (_loadingPreview)
                     const SizedBox.square(
                       dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: ExpressiveLoadingIndicator(strokeWidth: 2),
                     ),
                 ],
               ),

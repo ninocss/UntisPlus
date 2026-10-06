@@ -36,7 +36,11 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
       builder: (context, headerStyle, _) => ValueListenableBuilder<bool>(
         valueListenable: blurEnabledNotifier,
         builder: (context, blurEnabled, _) {
-          final isBlurActive = useBlur && tokens.supportsBlur && blurEnabled;
+          final isBlurActive =
+              useBlur &&
+              tokens.supportsBlur &&
+              blurEnabled &&
+              AppEffects.resolveBlur(tokens.blurSigma) > 0;
           final useFade = headerStyle == 1;
           final useBubbles = headerStyle == 2;
           final headerTitle = useBubbles && title != null
@@ -56,18 +60,20 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
                 )
               : leading;
           final headerActions = useBubbles && actions != null
-              ? actions!.map((action) {
-                  final content = _unwrapHeaderActionPadding(action);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _headerBubble(
-                      context,
-                      Center(child: content),
-                      circular: _isIconHeaderAction(content),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  );
-                }).toList(growable: false)
+              ? actions!
+                    .map((action) {
+                      final content = _unwrapHeaderActionPadding(action);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _headerBubble(
+                          context,
+                          Center(child: content),
+                          circular: _isIconHeaderAction(content),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                      );
+                    })
+                    .toList(growable: false)
               : actions;
 
           return AppBar(
@@ -85,7 +91,7 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
                         ? tokens.navigationOpacity
                         : 0.62,
                   )
-                : (blurEnabled ? Colors.transparent : cs.surface),
+                : cs.surface,
             elevation: 0,
             scrolledUnderElevation: isBlurActive || useFade || useBubbles
                 ? 0

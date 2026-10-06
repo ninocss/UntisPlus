@@ -129,7 +129,13 @@
   "teacherSearchHint": "Name oder Kürzel suchen",
   "teacherSearchClear": "Suche leeren",
   "teacherSearchResults": "Lehrkräfte ({count})",
-  "@teacherSearchResults": {"placeholders": {"count": {"type": "int"}}},
+  "@teacherSearchResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "teacherSearchNoMatch": "Keine passende Lehrkraft gefunden.",
   "teacherSearchUnavailable": "Die Lehrkraftsuche wird von dieser Schule nicht bereitgestellt.",
   "teacherSearchLoadError": "Die Lehrkraftdaten konnten nicht geladen werden. Bitte erneut versuchen.",
@@ -143,9 +149,21 @@
   "teacherSearchNoLessons": "Heute stehen keine weiteren Stunden im Stundenplan.",
   "teacherSearchRefresh": "Stundenplan aktualisieren",
   "teacherSearchUntil": "Bis {time}",
-  "@teacherSearchUntil": {"placeholders": {"time": {"type": "String"}}},
+  "@teacherSearchUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "teacherSearchFrom": "Ab {time}",
-  "@teacherSearchFrom": {"placeholders": {"time": {"type": "String"}}},
+  "@teacherSearchFrom": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "freeRoomsSelectTime": "Zeitraum wählen",
   "freeRoomsNoneFound": "Keine freien Räume in diesem Zeitraum gefunden.",
   "freeRoomsNoRangesHint": "Keine passenden Zeitfenster im aktuellen Tag gefunden.",
@@ -768,7 +786,13 @@
   "settingsSubjectCustomize": "Fachnamen & Icons",
   "settingsSubjectCustomizeDesc": "Eigene Namen und Symbole für Fächer festlegen.",
   "settingsSubjectCustomizeFor": "{subject} anpassen",
-  "@settingsSubjectCustomizeFor": {"placeholders": {"subject": {"type": "String"}}},
+  "@settingsSubjectCustomizeFor": {
+    "placeholders": {
+      "subject": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSubjectCustomName": "Eigener Fachname",
   "settingsSubjectIcon": "Fach-Icon",
   "settingsSubjectDefaultIcon": "Standard",
@@ -1448,5 +1472,18 @@
   "reload": "Neu laden",
   "settingsAppBgBlur": "App-Hintergrundunschärfe",
   "settingsAppBgBlurDesc": "Verwischt den App-Hintergrund für einen Frosted-Glass-Effekt.",
-  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe"
+  "settingsAppBgBlurAmount": "Stärke der Hintergrundunschärfe",
+  "settingsEffectQuality": "Effektqualität",
+  "settingsEffectQualityDesc": "Manuelle Profile. Deine persönlichen Effektwerte bleiben gespeichert.",
+  "effectQualityFull": "Voll",
+  "effectQualityBalanced": "Ausgewogen",
+  "effectQualityReduced": "Reduziert",
+  "effectQualityFullDesc": "Alle gewählten Effekte, Blur und Hintergrundbewegung.",
+  "effectQualityBalancedDesc": "Flüssige Übergänge, dezenter Blur an Navigation und Headern, ruhige Inhaltskarten.",
+  "effectQualityReducedDesc": "Klare Flächen ohne Blur, Glow oder bewegte Hintergründe.",
+  "settingsInteractionAnimations": "Interaktionsanimationen",
+  "settingsInteractionAnimationsDesc": "Formwechsel und Übergänge. Die Systemeinstellung für reduzierte Bewegung hat Vorrang.",
+  "settingsHaptics": "Haptisches Feedback",
+  "settingsHapticsDesc": "Kurzes Feedback bei Auswahl, Aktionen und Bestätigungen.",
+  "aiJumpToLatest": "Zur neuesten Nachricht"
 }

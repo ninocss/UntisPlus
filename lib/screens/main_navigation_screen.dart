@@ -1,5 +1,13 @@
 part of '../main.dart';
 
+class _RectTargetTween extends Tween<Rect> {
+  _RectTargetTween({required Rect begin, required Rect end})
+    : super(begin: begin, end: end);
+
+  @override
+  Rect lerp(double t) => Rect.lerp(begin!, end!, t)!;
+}
+
 // --- HAUPT NAVIGATION ---
 class MainNavigationScreen extends StatefulWidget {
   final bool showTutorialOnStart;
@@ -28,7 +36,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   late TabController _tabController;
   Timer? _streamRenderTimer;
   final StringBuffer _pendingStreamText = StringBuffer();
-  DateTime? _lastStreamingHapticAt;
+  final ValueNotifier<int> _streamRevision = ValueNotifier(0);
+  final ValueNotifier<bool> _showChatJump = ValueNotifier(false);
+  final ChatFollowState _chatFollow = ChatFollowState();
+  bool get _followChat => _chatFollow.shouldFollow;
+  bool _chatScrollQueued = false;
   int _searchGeneration = 0;
   String _latestQuery = '';
   AiSearchResult? _latestResult;
@@ -41,6 +53,9 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     4: <dynamic>[],
   };
   DateTime _currentMonday = DateTime.now();
+  bool _hasWeekData = false;
+  bool _weekIsCached = false;
+  List<TimetableChange> _contextChanges = const [];
   bool _loading = true;
   bool _thinking = false;
   bool _chatMode = false;
@@ -187,6 +202,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     _streamRenderTimer?.cancel();
     _inputController.dispose();
     _scrollController.dispose();
+    _streamRevision.dispose();
+    _showChatJump.dispose();
     super.dispose();
   }
 
@@ -334,19 +351,17 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   Future<void> _loadContext() async {
+    final contextAccountId = activeUntisAccountId ?? 'legacy';
     final now = DateTime.now();
-    final monday = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
+    final monday = resolveDefaultTimetableMonday(now);
 
     // The timetable tab is the source of truth while it is alive. Reading its
     // published snapshot avoids an outdated SharedPreferences cache claiming
     // that a currently loaded school day is free.
-    Map<int, List<dynamic>> weekData = currentWeekDataNotifier.value.isEmpty
-        ? _emptyWeekData()
-        : Map<int, List<dynamic>>.from(currentWeekDataNotifier.value);
+    Map<int, List<dynamic>> weekData = _emptyWeekData();
+    bool hasWeekData = false;
+    bool weekIsCached = false;
+    List<TimetableChange> changes = const [];
     List<Map<String, dynamic>> exams = [];
 
     if (demoModeNotifier.value) {
@@ -355,6 +370,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
         locale: appLocaleNotifier.value,
       );
       exams = DemoModeService.demoExams(locale: appLocaleNotifier.value);
+      hasWeekData = true;
     } else {
       try {
         final prefs = SettingsStore.instance.preferences;
@@ -374,6 +390,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
             final week = decoded['weekData'];
             if (week is Map) {
               weekData = _decodeWeek(week.cast<dynamic, dynamic>());
+              hasWeekData = true;
+              weekIsCached = true;
             }
           }
         }
@@ -400,6 +418,20 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           ...customExams.map((e) => {...e, '_source': 'custom'}),
         ];
       } catch (_) {}
+      try {
+        changes = await ChangeRepository().loadChanges(contextAccountId);
+      } catch (_) {}
+    }
+
+    final liveMonday = currentWeekMondayNotifier.value;
+    if (liveMonday != null &&
+        liveMonday.year == monday.year &&
+        liveMonday.month == monday.month &&
+        liveMonday.day == monday.day &&
+        currentWeekDataNotifier.value.isNotEmpty) {
+      weekData = Map<int, List<dynamic>>.from(currentWeekDataNotifier.value);
+      hasWeekData = true;
+      weekIsCached = currentWeekIsCachedNotifier.value;
     }
 
     final hiddenSubjectAliases = <String>{};
@@ -437,11 +469,16 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       return da.compareTo(db);
     });
 
-    if (!mounted) return;
+    if (!mounted || contextAccountId != (activeUntisAccountId ?? 'legacy')) {
+      return;
+    }
     setState(() {
       _currentMonday = monday;
       _weekData = visibleWeekData;
       _exams = exams;
+      _contextChanges = changes;
+      _hasWeekData = hasWeekData;
+      _weekIsCached = weekIsCached;
       _loading = false;
     });
     // A native assistant prompt may have arrived while the context was still
@@ -489,8 +526,14 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       '[day_summary_tomorrow]': _daySummaryForPrompt(
         DateTime.now().add(const Duration(days: 1)),
       ),
-      '[timetable]': _formatWeekForAi(_weekData, _currentMonday),
-      '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
+      '[timetable]': _hasWeekData
+          ? _formatWeekForAi(_weekData, _currentMonday)
+          : l.aiDayDataUnavailable(
+              DateFormat('dd.MM.yyyy').format(DateTime.now()),
+            ),
+      '[timetable_json]': _hasWeekData
+          ? jsonEncode(_jsonSafeValue(_weekData))
+          : '{}',
       '[exams]': _formatExamsForAi(),
       '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
       '[current_lesson]': _currentLessonSummary(),
@@ -504,6 +547,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
       resolved = resolved.replaceAll(entry.key, entry.value);
     }
     return '''$resolved
+
+VERIFIZIERTER TAGESKONTEXT:
+${_dayContextForPrompt(DateTime.now())}
+${_dayContextForPrompt(DateTime.now().add(const Duration(days: 1)))}
+Nutze nur belegte Schuldaten. Erfinde keine Stunden, Aufgaben, Fristen oder Änderungen.
 
 ${l.aiResponseFormat}''';
   }
@@ -532,8 +580,14 @@ ${l.aiResponseFormat}''';
       '[day_summary_tomorrow]': _daySummaryForPrompt(
         DateTime.now().add(const Duration(days: 1)),
       ),
-      '[timetable]': _formatWeekForAi(_weekData, _currentMonday),
-      '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
+      '[timetable]': _hasWeekData
+          ? _formatWeekForAi(_weekData, _currentMonday)
+          : l.aiDayDataUnavailable(
+              DateFormat('dd.MM.yyyy').format(DateTime.now()),
+            ),
+      '[timetable_json]': _hasWeekData
+          ? jsonEncode(_jsonSafeValue(_weekData))
+          : '{}',
       '[exams]': _formatExamsForAi(),
       '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
       '[current_lesson]': _currentLessonSummary(),
@@ -563,6 +617,11 @@ ${l.aiResponseFormat}''';
 
     return '''$resolved
 
+VERIFIZIERTER TAGESKONTEXT:
+${_dayContextForPrompt(DateTime.now())}
+${_dayContextForPrompt(DateTime.now().add(const Duration(days: 1)))}
+Nutze nur belegte Schuldaten. Falls Daten fehlen oder gespeichert statt aktuell sind, sage das klar. Erfinde keine Stunden, Aufgaben, Fristen oder Änderungen.
+
 ${l.aiAssistantIntro}
 $personaInstruction
 ${l.aiAssistantRules}''';
@@ -571,8 +630,9 @@ ${l.aiAssistantRules}''';
   Future<String> _requestProviderResponse(
     String systemPrompt, {
     required String userQuery,
-  }) {
+  }) async {
     final l = appL10nFor(appLocaleNotifier.value);
+    await _ensureAiConfigurationReady();
     final runtime = _currentAiRuntimeConfiguration();
     final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
     return _aiRequestCoordinator.generate(
@@ -591,11 +651,75 @@ ${l.aiAssistantRules}''';
     );
   }
 
+  Future<void> _refreshChatDayContext() async {
+    final accountId = activeUntisAccountId ?? 'legacy';
+    final today = DateTime.now();
+    final monday = resolveDefaultTimetableMonday(today);
+    if (_currentMonday.year != monday.year ||
+        _currentMonday.month != monday.month ||
+        _currentMonday.day != monday.day) {
+      await _loadContext();
+    }
+    final liveMonday = currentWeekMondayNotifier.value;
+    if (liveMonday != null &&
+        liveMonday.year == monday.year &&
+        liveMonday.month == monday.month &&
+        liveMonday.day == monday.day &&
+        currentWeekDataNotifier.value.isNotEmpty) {
+      _weekData = {
+        for (final entry in currentWeekDataNotifier.value.entries)
+          entry.key: entry.value
+              .where((lesson) => !_isLessonSubjectHidden(lesson))
+              .toList(growable: false),
+      };
+      _hasWeekData = true;
+      _weekIsCached = currentWeekIsCachedNotifier.value;
+    }
+    if (demoModeNotifier.value) return;
+    try {
+      final changes = await ChangeRepository().loadChanges(accountId);
+      if (mounted && accountId == (activeUntisAccountId ?? 'legacy')) {
+        _contextChanges = changes;
+      }
+    } catch (_) {}
+  }
+
+  String _dayContextForPrompt(DateTime date) {
+    final index = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).difference(_currentMonday).inDays;
+    final label = DateFormat('dd.MM.yyyy').format(date);
+    if (!_hasWeekData || index < 0 || index > 4) {
+      return '$label: Schuldaten nicht verfügbar.';
+    }
+    final snapshot = DayContextSnapshot.build(
+      accountId: activeUntisAccountId ?? 'legacy',
+      date: date,
+      dataState: _weekIsCached ? DayDataState.cached : DayDataState.current,
+      lessons: _weekData[index] ?? const [],
+      homework: [...homeworksNotifier.value, ...customHomeworkNotifier.value],
+      changes: _contextChanges,
+      hiddenSubjects: hiddenSubjectsNotifier.value,
+    );
+    final lines = <String>[
+      '$label (${_weekIsCached ? 'gespeicherter Stand, Aktualität unklar' : 'geladener Stand'}):',
+      'Offene Aufgaben mit Fälligkeit in den nächsten zwei Tagen: ${snapshot.dueHomework.length}',
+      for (final task in snapshot.dueHomework.take(6))
+        '- ${task['subject'] ?? '?'}: ${task['text'] ?? task['description'] ?? ''} (Fälligkeit ${task['dueDate'] ?? task['date']})',
+      'Stundenplanänderungen: ${snapshot.changes.length}',
+      for (final change in snapshot.changes.take(6))
+        '- ${change.type.name} ${change.subject}: ${change.before ?? '–'} → ${change.after ?? '–'}',
+    ];
+    return lines.join('\n');
+  }
+
   String _daySummaryForPrompt(DateTime date) {
     final l = appL10nFor(appLocaleNotifier.value);
     final index = date.difference(_currentMonday).inDays;
     final dateLabel = DateFormat('dd.MM.yyyy').format(date);
-    if (index < 0 || index > 4) {
+    if (!_hasWeekData || index < 0 || index > 4) {
       return l.aiDayDataUnavailable(dateLabel);
     }
 
@@ -639,7 +763,7 @@ ${l.aiAssistantRules}''';
       'EEEE, dd.MM.',
       _icuLocale(appLocaleNotifier.value),
     ).format(date);
-    if (index < 0 || index > 4) {
+    if (!_hasWeekData || index < 0 || index > 4) {
       return appL10nFor(appLocaleNotifier.value).aiWeekDataUnavailable(label);
     }
     final lessons = (_weekData[index] ?? const <dynamic>[])
@@ -649,7 +773,12 @@ ${l.aiAssistantRules}''';
         )
         .toList(growable: false);
     if (lessons.isEmpty) {
-      return appL10nFor(appLocaleNotifier.value).aiNoScheduledLessons(label);
+      final reply = appL10nFor(
+        appLocaleNotifier.value,
+      ).aiNoScheduledLessons(label);
+      return _weekIsCached
+          ? '${_studentCopy(de: 'Gespeicherter Stand, Aktualität unklar.', en: 'Saved data; freshness unknown.', fr: 'Données enregistrées, actualité incertaine.', es: 'Datos guardados; vigencia incierta.')}\n$reply'
+          : reply;
     }
     final formatted = lessons
         .map((lesson) {
@@ -658,9 +787,12 @@ ${l.aiAssistantRules}''';
           return '${_formatUntisTime(lesson['startTime'].toString())} $subject';
         })
         .join(', ');
-    return appL10nFor(
+    final reply = appL10nFor(
       appLocaleNotifier.value,
     ).aiScheduleReply(label, formatted);
+    return _weekIsCached
+        ? '${_studentCopy(de: 'Gespeicherter Stand, Aktualität unklar.', en: 'Saved data; freshness unknown.', fr: 'Données enregistrées, actualité incertaine.', es: 'Datos guardados; vigencia incierta.')}\n$reply'
+        : reply;
   }
 
   Object? _jsonSafeValue(Object? value) {
@@ -776,17 +908,47 @@ ${l.aiAssistantRules}''';
     });
   }
 
-  void _scrollToBottom() {
-    if (!mounted) return;
+  void _scrollToBottom({bool force = false, bool animated = true}) {
+    if (!mounted || (!force && !_followChat) || _chatScrollQueued) return;
+    _chatScrollQueued = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutQuart,
+      _chatScrollQueued = false;
+      if (!mounted ||
+          !_scrollController.hasClients ||
+          (!force && !_followChat)) {
+        return;
+      }
+      final position = _scrollController.position;
+      if (animated && AppMotion.enabled(context)) {
+        unawaited(
+          _scrollController.animateTo(
+            position.maxScrollExtent,
+            duration: AppMotion.duration(
+              context,
+              AppMotionTokens.standardEffects,
+            ),
+            curve: Curves.easeOutCubic,
+          ),
         );
+      } else {
+        _scrollController.jumpTo(position.maxScrollExtent);
       }
     });
+  }
+
+  bool _onChatScroll(ScrollNotification notification) {
+    if ((notification is ScrollStartNotification &&
+            notification.dragDetails != null) ||
+        (notification is UserScrollNotification &&
+            notification.direction != ScrollDirection.idle)) {
+      _chatFollow.beginUserScroll();
+    } else if (notification is ScrollEndNotification ||
+        (notification is UserScrollNotification &&
+            notification.direction == ScrollDirection.idle)) {
+      _chatFollow.endScroll(notification.metrics.extentAfter);
+    }
+    _showChatJump.value = !_followChat;
+    return false;
   }
 
   void _queueStreamingText(String chunk) {
@@ -1040,33 +1202,31 @@ ${l.aiAssistantRules}''';
     _streamRenderTimer?.cancel();
     _streamRenderTimer = null;
     if (!mounted || _pendingStreamText.isEmpty) return;
-
     final text = _pendingStreamText.toString();
     _pendingStreamText.clear();
-    setState(() {
-      final lastIndex = _chatMessages.length - 1;
-      if (lastIndex >= 0 && _chatMessages[lastIndex]['role'] == 'assistant') {
-        final current = _chatMessages[lastIndex]['content'] ?? '';
-        _chatMessages[lastIndex]['content'] = current + text;
-      }
-    });
-    _streamingProgressHaptic();
-    _scrollToBottom();
-  }
-
-  void _streamingProgressHaptic() {
-    final now = DateTime.now();
-    if (_lastStreamingHapticAt != null &&
-        now.difference(_lastStreamingHapticAt!) <
-            const Duration(milliseconds: 500)) {
-      return;
+    final lastIndex = _chatMessages.length - 1;
+    if (lastIndex >= 0 && _chatMessages[lastIndex]['role'] == 'assistant') {
+      final current = _chatMessages[lastIndex]['content'] ?? '';
+      _chatMessages[lastIndex]['content'] = current + text;
+      _streamRevision.value++;
     }
-    _lastStreamingHapticAt = now;
-    unawaited(AppHaptics.lightImpact());
+    _scrollToBottom(animated: false);
   }
 
   Future<void> _sendChat(String text) async {
+    _chatFollow.resume();
+    _showChatJump.value = false;
+    final requestAccountId = activeUntisAccountId ?? 'legacy';
+    await _refreshChatDayContext();
+    if (!mounted || requestAccountId != (activeUntisAccountId ?? 'legacy')) {
+      return;
+    }
     final l = appL10nFor(appLocaleNotifier.value);
+    if (!await _prepareAiInteraction(context) ||
+        !mounted ||
+        requestAccountId != (activeUntisAccountId ?? 'legacy')) {
+      return;
+    }
     final runtime = _currentAiRuntimeConfiguration();
     final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
     final attachments = List<AiChatAttachment>.from(_attachments);
@@ -1081,9 +1241,12 @@ ${l.aiAssistantRules}''';
       unsupportedAttachmentMessage: (_) =>
           'Dieses lokale Modell kann nur Textdateien lesen. Nutze für Bilder oder PDFs einen passenden Remote-Anbieter.',
     );
+    final factualReply = attachments.isEmpty
+        ? _deterministicScheduleReply(text)
+        : null;
 
     try {
-      _aiRequestCoordinator.validate(runtime, spec);
+      if (factualReply == null) _aiRequestCoordinator.validate(runtime, spec);
     } catch (e) {
       final message = e.toString();
       final isConfigError = message.contains('CONFIG:');
@@ -1130,7 +1293,6 @@ ${l.aiAssistantRules}''';
     }
     _scrollToBottom();
 
-    final factualReply = _deterministicScheduleReply(text);
     if (factualReply != null) {
       setState(() {
         _chatMessages.add({'role': 'assistant', 'content': factualReply});
@@ -1433,37 +1595,81 @@ ${l.aiAssistantRules}''';
             _chatMessages.last['role'] == 'assistant' &&
             (_chatMessages.last['content'] ?? '').isEmpty);
 
-    return ListView(
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+    final hasTitle = activeTitle != null && activeTitle.trim().isNotEmpty;
+    final title = activeTitle;
+    final headerCount = hasTitle ? 1 : 0;
+    return Stack(
       children: [
-        if (activeTitle != null && activeTitle.trim().isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 2, 4, 14),
-            child: Text(
-              activeTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: untisThemeTextStyle(
-                context,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
+        NotificationListener<ScrollNotification>(
+          onNotification: _onChatScroll,
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            itemCount:
+                headerCount + _chatMessages.length + (showExtraTyping ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (hasTitle && index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 14),
+                  child: Text(
+                    title!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                );
+              }
+              final messageIndex = index - headerCount;
+              if (messageIndex == _chatMessages.length) {
+                return const _AiChatMessage(
+                  content: '',
+                  isUser: false,
+                  streaming: true,
+                );
+              }
+              Widget message() => _AiChatMessage(
+                key: ValueKey('chat-message-$_currentChatId-$messageIndex'),
+                content: _chatMessages[messageIndex]['content'] ?? '',
+                isUser: _chatMessages[messageIndex]['role'] == 'user',
+                streaming:
+                    _thinking &&
+                    messageIndex == _chatMessages.length - 1 &&
+                    _chatMessages[messageIndex]['role'] == 'assistant',
+              );
+              if (messageIndex == _chatMessages.length - 1) {
+                return ValueListenableBuilder<int>(
+                  valueListenable: _streamRevision,
+                  builder: (context, _, _) => message(),
+                );
+              }
+              return message();
+            },
           ),
-        ],
-        for (final entry in _chatMessages.indexed)
-          _AiChatMessage(
-            content: entry.$2['content'] ?? '',
-            isUser: entry.$2['role'] == 'user',
-            streaming:
-                _thinking &&
-                entry.$2['role'] == 'assistant' &&
-                entry.$1 == _chatMessages.length - 1,
+        ),
+        Positioned(
+          bottom: 12,
+          left: 16,
+          right: 16,
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _showChatJump,
+            builder: (context, visible, _) => visible
+                ? Center(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () {
+                        _chatFollow.resume();
+                        _showChatJump.value = false;
+                        AppHaptics.selection();
+                        _scrollToBottom(force: true);
+                      },
+                      icon: const Icon(Icons.arrow_downward_rounded),
+                      label: Text(
+                        appL10nFor(appLocaleNotifier.value).aiJumpToLatest,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
-        if (showExtraTyping)
-          const _AiChatMessage(content: '', isUser: false, streaming: true),
+        ),
       ],
     );
   }
@@ -1477,7 +1683,7 @@ ${l.aiAssistantRules}''';
         Expanded(
           child: AnimatedSwitcher(
             duration: reduceMotion
-                ? _kAiReducedMotion
+                ? Duration.zero
                 : const Duration(milliseconds: 280),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeOutCubic,
@@ -1562,6 +1768,38 @@ ${l.aiAssistantRules}''';
                 ),
               ),
             ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final prompt in [
+                  _studentCopy(
+                    de: 'Was habe ich morgen für Unterricht?',
+                    en: 'What lessons do I have tomorrow?',
+                    fr: 'Quels cours ai-je demain ?',
+                    es: '¿Qué clases tengo mañana?',
+                  ),
+                  _studentCopy(
+                    de: 'Plane meine bald fälligen Aufgaben.',
+                    en: 'Help me plan my upcoming homework.',
+                    fr: 'Aide-moi à planifier mes devoirs à venir.',
+                    es: 'Ayúdame a planificar mis próximas tareas.',
+                  ),
+                  _studentCopy(
+                    de: 'Erkläre mir die Änderungen für heute.',
+                    en: 'Explain today’s timetable changes.',
+                    fr: 'Explique les changements d’aujourd’hui.',
+                    es: 'Explica los cambios de hoy.',
+                  ),
+                ])
+                  _AiSuggestionCard(
+                    compact: true,
+                    text: prompt,
+                    icon: Icons.auto_awesome_rounded,
+                    onTap: () => unawaited(_sendQuickPrompt(prompt)),
+                  ),
+              ],
+            ),
           ] else if (analysisSuggestions.isNotEmpty) ...[
             Text(
               l.aiTryIt,
@@ -1634,7 +1872,7 @@ ${l.aiAssistantRules}''';
                       SizedBox(
                         width: 24,
                         height: 24,
-                        child: CircularProgressIndicator(
+                        child: ExpressiveLoadingIndicator(
                           strokeWidth: 2.5,
                           color: cs.primary,
                         ),
@@ -1704,8 +1942,9 @@ ${l.aiAssistantRules}''';
   }
 }
 
-class _MainTabTransitionLayer extends StatelessWidget {
+class _MainTabTransitionLayer extends StatefulWidget {
   final bool active;
+  final bool animate;
   final int relativePosition;
   final int transitionType;
   final Widget child;
@@ -1713,23 +1952,47 @@ class _MainTabTransitionLayer extends StatelessWidget {
   const _MainTabTransitionLayer({
     super.key,
     required this.active,
+    required this.animate,
     required this.relativePosition,
     required this.transitionType,
     required this.child,
   });
 
   @override
+  State<_MainTabTransitionLayer> createState() =>
+      _MainTabTransitionLayerState();
+}
+
+class _MainTabTransitionLayerState extends State<_MainTabTransitionLayer> {
+  bool _hidden = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _hidden = !widget.active;
+  }
+
+  @override
+  void didUpdateWidget(_MainTabTransitionLayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active || oldWidget.active) _hidden = false;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
-    final type = transitionType.clamp(0, 8);
-    final duration = reduceMotion ? Duration.zero : _pageMotionDuration(type);
-    final direction = relativePosition < 0 ? -1.0 : 1.0;
+    final reduceMotion = !widget.animate || !AppMotion.enabled(context);
+    final type = widget.transitionType.clamp(0, 8);
+    final duration = reduceMotion
+        ? Duration.zero
+        : AppMotion.duration(context, _pageMotionDuration(type));
+    final direction = widget.relativePosition < 0 ? -1.0 : 1.0;
     final hiddenOffset = _pageMotionOffset(type, direction: direction);
     final hiddenScale = _pageMotionScale(type);
     final hiddenBlur = _pageMotionBlur(type);
     final curve = _pageMotionCurve(type);
 
-    Widget content = child;
+    final active = widget.active;
+    Widget content = widget.child;
 
     if (hiddenBlur > 0) {
       content = TweenAnimationBuilder<double>(
@@ -1767,14 +2030,26 @@ class _MainTabTransitionLayer extends StatelessWidget {
       opacity: active ? 1 : 0,
       duration: duration,
       curve: Curves.easeOutCubic,
+      onEnd: () {
+        if (!mounted || widget.active || _hidden) return;
+        // Zero-duration implicit animations can complete during tree updates.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !widget.active && !_hidden) {
+            setState(() => _hidden = true);
+          }
+        });
+      },
       child: content,
     );
 
-    return IgnorePointer(
-      ignoring: !active,
-      child: ExcludeSemantics(
-        excluding: !active,
-        child: RepaintBoundary(child: content),
+    return Offstage(
+      offstage: !active && (_hidden || reduceMotion),
+      child: IgnorePointer(
+        ignoring: !active,
+        child: ExcludeSemantics(
+          excluding: !active,
+          child: RepaintBoundary(child: content),
+        ),
       ),
     );
   }
@@ -1782,6 +2057,8 @@ class _MainTabTransitionLayer extends StatelessWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
+  final Set<int> _visitedTabs = {0};
+  String? _tabAccountId = activeUntisAccountId;
   bool _showTutorial = false;
   int _tutorialStep = 0;
   StreamSubscription<NotificationActionEvent>? _notificationActionSub;
@@ -1814,6 +2091,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
     aiEnabledNotifier.addListener(_onAiEnabledChanged);
+    untisAccountsNotifier.addListener(_refreshAccountTabs);
     if (pendingAssistantOpenNotifier.value) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _openAssistantFromNative(),
@@ -1955,6 +2233,21 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {});
   }
 
+  void _refreshAccountTabs() {
+    if (!mounted || _tabAccountId == activeUntisAccountId) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _tabAccountId == activeUntisAccountId) return;
+      setState(() {
+        _tabAccountId = activeUntisAccountId;
+        _visitedTabs
+          ..clear()
+          ..add(0)
+          ..add(_selectedIndex);
+        _currentDrawer = null;
+      });
+    });
+  }
+
   void _startTutorial() {
     if (!mounted) return;
     setState(() {
@@ -2057,30 +2350,43 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return page;
   }
 
-  List<Widget> get _pages => <Widget>[
-    WeeklyTimetablePage(key: ValueKey(activeUntisAccountId ?? 'active')),
-    const ExamsPage(),
-    SchoolNotificationsPage(isActive: _selectedIndex == 2),
-    const SettingsHubPage(),
-    aiEnabledNotifier.value
-        ? AiAssistantPage(
-            key: ValueKey(activeUntisAccountId ?? 'active'),
-            onBackToTimetable: () => _onNavTap(0),
-            onOpenDrawer: (drawer) {
-              setState(() => _currentDrawer = drawer);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _scaffoldKey.currentState?.openDrawer();
-              });
-            },
-          )
-        : const SizedBox.shrink(),
-  ];
+  List<Widget> get _pages {
+    _visitedTabs.add(_selectedIndex);
+    return <Widget>[
+      WeeklyTimetablePage(key: ValueKey(activeUntisAccountId ?? 'active')),
+      _visitedTabs.contains(1)
+          ? ExamsPage(key: ValueKey('exams-$activeUntisAccountId'))
+          : const SizedBox.shrink(),
+      _visitedTabs.contains(2)
+          ? SchoolNotificationsPage(
+              key: ValueKey('info-$activeUntisAccountId'),
+              isActive: _selectedIndex == 2,
+            )
+          : const SizedBox.shrink(),
+      _visitedTabs.contains(3)
+          ? const SettingsHubPage()
+          : const SizedBox.shrink(),
+      aiEnabledNotifier.value && _visitedTabs.contains(4)
+          ? AiAssistantPage(
+              key: ValueKey(activeUntisAccountId ?? 'active'),
+              onBackToTimetable: () => _onNavTap(0),
+              onOpenDrawer: (drawer) {
+                setState(() => _currentDrawer = drawer);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _scaffoldKey.currentState?.openDrawer();
+                });
+              },
+            )
+          : const SizedBox.shrink(),
+    ];
+  }
 
   @override
   void dispose() {
     _notificationActionSub?.cancel();
     pendingAssistantOpenNotifier.removeListener(_openAssistantFromNative);
     aiEnabledNotifier.removeListener(_onAiEnabledChanged);
+    untisAccountsNotifier.removeListener(_refreshAccountTabs);
     super.dispose();
   }
 
@@ -2137,10 +2443,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             key: _tutorialNavKeys[2],
                             child: const Icon(Icons.campaign_rounded),
                           ),
-                          label: Text(
-                            l.navInfo,
-                            key: _tutorialNavLabelKeys[2],
-                          ),
+                          label: Text(l.navInfo, key: _tutorialNavLabelKeys[2]),
                         ),
                         NavigationRailDestination(
                           icon: const Icon(Icons.settings_outlined),
@@ -2148,10 +2451,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             key: _tutorialNavKeys[3],
                             child: const Icon(Icons.settings_rounded),
                           ),
-                          label: Text(
-                            l.navMenu,
-                            key: _tutorialNavLabelKeys[3],
-                          ),
+                          label: Text(l.navMenu, key: _tutorialNavLabelKeys[3]),
                         ),
                         if (aiEnabledNotifier.value)
                           NavigationRailDestination(
@@ -2160,10 +2460,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                               key: _tutorialNavKeys[4],
                               child: const Icon(Icons.auto_awesome_rounded),
                             ),
-                            label: Text(
-                              l.navAi,
-                              key: _tutorialNavLabelKeys[4],
-                            ),
+                            label: Text(l.navAi, key: _tutorialNavLabelKeys[4]),
                           ),
                       ],
                     ),
@@ -2182,27 +2479,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       builder: (context, animationsEnabled, _) {
                         final pages = _pages;
 
-                        if (!animationsEnabled ||
-                            MediaQuery.of(context).disableAnimations) {
-                          return IndexedStack(
-                            index: _selectedIndex,
-                            children: pages
-                                .asMap()
-                                .entries
-                                .map((entry) {
-                                  final active = entry.key == _selectedIndex;
-                                  return TickerMode(
-                                    enabled: active,
-                                    child: _buildPageWithBackground(
-                                      context,
-                                      entry.value,
-                                    ),
-                                  );
-                                })
-                                .toList(growable: false),
-                          );
-                        }
-
                         return ValueListenableBuilder<int>(
                           valueListenable: pageTransitionNotifier,
                           builder: (context, transitionType, _) {
@@ -2218,6 +2494,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                                         'main-tab-layer-${entry.key}',
                                       ),
                                       active: active,
+                                      animate: animationsEnabled,
                                       relativePosition:
                                           entry.key - _selectedIndex,
                                       transitionType: transitionType,
@@ -2411,7 +2688,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                           ),
                           child: Center(
                             child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 420),
+                              duration: AppMotion.duration(
+                                context,
+                                AppMotionTokens.calmEffects,
+                              ),
                               switchInCurve: _kSmoothBounce,
                               switchOutCurve: _kSoftBounce,
                               transitionBuilder: (child, anim) {
@@ -2502,6 +2782,7 @@ class _TutorialSpotlightOverlay extends StatefulWidget {
 class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
   bool _expandToLabel = false;
   bool _labelExpansionScheduled = false;
+  Timer? _labelExpansionTimer;
 
   GlobalKey? get targetKey => widget.targetKey;
   GlobalKey? get labelKey => widget.labelKey;
@@ -2517,6 +2798,22 @@ class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _scheduleLabelExpansion();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TutorialSpotlightOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.step != widget.step ||
+        oldWidget.labelKey != widget.labelKey) {
+      _labelExpansionTimer?.cancel();
+      _expandToLabel = false;
+      _labelExpansionScheduled = false;
+      _scheduleLabelExpansion();
+    }
+  }
+
+  void _scheduleLabelExpansion() {
     if (_labelExpansionScheduled || labelKey == null) return;
     _labelExpansionScheduled = true;
 
@@ -2524,9 +2821,15 @@ class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
     final delay = isTablet
         ? Duration.zero
         : AppMotion.duration(context, const Duration(milliseconds: 560));
-    Future<void>.delayed(delay, () {
+    _labelExpansionTimer = Timer(delay, () {
       if (mounted) setState(() => _expandToLabel = true);
     });
+  }
+
+  @override
+  void dispose() {
+    _labelExpansionTimer?.cancel();
+    super.dispose();
   }
 
   Rect? _rectForKey(GlobalKey? key) {
@@ -2578,7 +2881,7 @@ class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
         );
 
         return TweenAnimationBuilder<Rect>(
-          tween: RectTween(begin: startTarget, end: endTarget),
+          tween: _RectTargetTween(begin: startTarget, end: endTarget),
           duration: AppMotion.duration(
             context,
             const Duration(milliseconds: 360),
@@ -2586,61 +2889,61 @@ class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
           curve: Curves.easeOutCubic,
           builder: (context, target, _) => Stack(
             children: [
-            if (useBackdropBlur)
+              if (useBackdropBlur)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ClipPath(
+                      clipper: _TutorialSpotlightClipper(target),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: math.min(tokens.blurSigma, 5),
+                          sigmaY: math.min(tokens.blurSigma, 5),
+                        ),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned.fill(
                 child: IgnorePointer(
-                  child: ClipPath(
-                    clipper: _TutorialSpotlightClipper(target),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: math.min(tokens.blurSigma, 5),
-                        sigmaY: math.min(tokens.blurSigma, 5),
-                      ),
-                      child: const SizedBox.expand(),
+                  child: CustomPaint(
+                    painter: _TutorialSpotlightPainter(
+                      target: target,
+                      scrim: useBackdropBlur
+                          ? Colors.black.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.58),
+                      accent: cs.primary,
                     ),
                   ),
                 ),
               ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _TutorialSpotlightPainter(
-                    target: target,
-                    scrim: useBackdropBlur
-                        ? Colors.black.withValues(alpha: 0.12)
-                        : Colors.black.withValues(alpha: 0.58),
-                    accent: cs.primary,
+              if (tablet)
+                Positioned(
+                  left: math.min(
+                    math.max(target.right + 18, 94),
+                    math.max(16, size.width - 406),
                   ),
+                  top: (target.center.dy - 130).clamp(
+                    mq.padding.top + 16,
+                    math.max(mq.padding.top + 16, size.height - 310),
+                  ),
+                  width: math.min(380, size.width - 110),
+                  child: callout,
+                )
+              else if (target.top > size.height * 0.48)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: size.height - target.top + 16,
+                  child: callout,
+                )
+              else
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: target.bottom + 16,
+                  child: callout,
                 ),
-              ),
-            ),
-            if (tablet)
-              Positioned(
-                left: math.min(
-                  math.max(target.right + 18, 94),
-                  math.max(16, size.width - 406),
-                ),
-                top: (target.center.dy - 130).clamp(
-                  mq.padding.top + 16,
-                  math.max(mq.padding.top + 16, size.height - 310),
-                ),
-                width: math.min(380, size.width - 110),
-                child: callout,
-              )
-            else if (target.top > size.height * 0.48)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: size.height - target.top + 16,
-                child: callout,
-              )
-            else
-              Positioned(
-                left: 16,
-                right: 16,
-                top: target.bottom + 16,
-                child: callout,
-              ),
             ],
           ),
         );
@@ -2690,7 +2993,7 @@ class _TutorialCallout extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = appL10nFor(appLocaleNotifier.value);
-    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final reduceMotion = !AppMotion.enabled(context);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: reduceMotion
@@ -2982,6 +3285,31 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _visibilityController.duration = AppMotion.duration(
+      context,
+      AppMotionTokens.standardEffects,
+    );
+    for (final controller in _labelControllers) {
+      controller.duration = AppMotion.duration(
+        context,
+        AppMotionTokens.standardEffects,
+      );
+    }
+    if (!AppMotion.enabled(context)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _morphController.value = 1;
+        _visibilityController.value = widget.selectedIndex >= 0 ? 1 : 0;
+        for (var i = 0; i < _labelControllers.length; i++) {
+          _labelControllers[i].value = i == widget.selectedIndex ? 1 : 0;
+        }
+      });
+    }
+  }
+
+  @override
   void didUpdateWidget(_ExpressiveNavBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedIndex == widget.selectedIndex) return;
@@ -3038,12 +3366,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       _visibilityController.forward();
     }
 
-    if (AppMotion.enabled(context) &&
-        newSel >= 0 &&
-        newSel < _iconWiggle.length) {
-      _iconWiggle[newSel].forward(from: 0);
-    }
-
     _animateMorph();
   }
 
@@ -3052,17 +3374,14 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       _morphController.value = 1;
       return;
     }
+    final velocity = _morphController.velocity;
     _morphController.value = 0;
-    final spring = SpringDescription.withDampingRatio(
-      mass: 1,
-      stiffness: 460,
-      ratio: 0.78,
-    );
+    final spring = AppMotion.spring(AppMotionSpeed.standard);
     final sim = SpringSimulation(
       spring,
       0,
       1.0,
-      0, // initial velocity
+      velocity, // Preserve momentum when retargeting.
     );
     _morphController.animateWith(sim);
   }

@@ -129,7 +129,13 @@
   "teacherSearchHint": "Buscar por nombre o iniciales",
   "teacherSearchClear": "Borrar búsqueda",
   "teacherSearchResults": "Profesores ({count})",
-  "@teacherSearchResults": {"placeholders": {"count": {"type": "int"}}},
+  "@teacherSearchResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "teacherSearchNoMatch": "No se encontró ningún profesor.",
   "teacherSearchUnavailable": "Esta escuela no ofrece la búsqueda de profesores.",
   "teacherSearchLoadError": "No se pudieron cargar los datos. Inténtalo de nuevo.",
@@ -143,9 +149,21 @@
   "teacherSearchNoLessons": "No hay más clases programadas para hoy.",
   "teacherSearchRefresh": "Actualizar horario",
   "teacherSearchUntil": "Hasta las {time}",
-  "@teacherSearchUntil": {"placeholders": {"time": {"type": "String"}}},
+  "@teacherSearchUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "teacherSearchFrom": "Desde las {time}",
-  "@teacherSearchFrom": {"placeholders": {"time": {"type": "String"}}},
+  "@teacherSearchFrom": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "freeRoomsSelectTime": "Elegir franja horaria",
   "freeRoomsNoneFound": "No se encontraron aulas libres para esta franja horaria.",
   "freeRoomsNoRangesHint": "No se encontraron franjas horarias adecuadas para el día actual.",
@@ -661,7 +679,13 @@
   "settingsSubjectCustomize": "Nombres e iconos de asignaturas",
   "settingsSubjectCustomizeDesc": "Elegir nombres y símbolos propios para las asignaturas.",
   "settingsSubjectCustomizeFor": "Personalizar {subject}",
-  "@settingsSubjectCustomizeFor": {"placeholders": {"subject": {"type": "String"}}},
+  "@settingsSubjectCustomizeFor": {
+    "placeholders": {
+      "subject": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSubjectCustomName": "Nombre personalizado",
   "settingsSubjectIcon": "Icono de la asignatura",
   "settingsSubjectDefaultIcon": "Predeterminado",
@@ -1080,5 +1104,18 @@
   "reload": "Recargar",
   "settingsAppBgBlur": "Desenfoque del fondo de la aplicación",
   "settingsAppBgBlurDesc": "Desenfoca el fondo de la aplicación para crear un efecto de vidrio esmerilado.",
-  "settingsAppBgBlurAmount": "Intensidad del desenfoque del fondo"
+  "settingsAppBgBlurAmount": "Intensidad del desenfoque del fondo",
+  "settingsEffectQuality": "Calidad de los efectos",
+  "settingsEffectQualityDesc": "Perfiles manuales. Tus ajustes personales se conservan.",
+  "effectQualityFull": "Completa",
+  "effectQualityBalanced": "Equilibrada",
+  "effectQualityReduced": "Reducida",
+  "effectQualityFullDesc": "Todos los efectos elegidos, desenfoque y fondos animados.",
+  "effectQualityBalancedDesc": "Transiciones fluidas, desenfoque suave en navegación y cabeceras, tarjetas sencillas.",
+  "effectQualityReducedDesc": "Superficies claras sin desenfoque, brillo ni fondos animados.",
+  "settingsInteractionAnimations": "Animaciones de interacción",
+  "settingsInteractionAnimationsDesc": "Cambios de forma y transiciones. El ajuste del sistema para reducir movimiento tiene prioridad.",
+  "settingsHaptics": "Respuesta háptica",
+  "settingsHapticsDesc": "Respuesta breve para selecciones, acciones y confirmaciones.",
+  "aiJumpToLatest": "Ir al último mensaje"
 }

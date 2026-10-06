@@ -579,7 +579,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                           item.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontWeight: FontWeight.w800,
                             color: isSelected
                                 ? cs.onPrimaryContainer
@@ -592,7 +593,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             item.previewBody,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontSize: 12.5,
                               color: cs.onSurfaceVariant,
                             ),
@@ -659,7 +661,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                         key: const ValueKey('notifications-refreshing'),
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
+                        child: ExpressiveLoadingIndicator(
                           strokeWidth: 2,
                           color: cs.onSurfaceVariant,
                         ),
@@ -686,7 +688,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
               children: [
                 if (_loading && activeItems.isEmpty) ...[
                   const SizedBox(height: 140),
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(child: ExpressiveLoadingIndicator()),
                 ] else ...[
                   _buildInfoSummaryCard(cs, l, activeItems.length),
                   SegmentedButton<bool>(
@@ -739,7 +741,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                           padding: const EdgeInsets.all(14),
                           child: Text(
                             _error!,
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               color: cs.onErrorContainer,
                               fontWeight: FontWeight.w700,
                             ),
@@ -763,7 +766,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                           children: [
                             Text(
                               l.infoEmpty,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -771,7 +775,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             const SizedBox(height: 6),
                             Text(
                               l.infoEmptyHint,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 color: cs.onSurfaceVariant,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -807,7 +812,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                                 ? Center(
                                     child: Text(
                                       l.infoEmpty,
-                                      style: GoogleFonts.outfit(
+                                      style: _appTextStyle(
+                                        context,
                                         fontWeight: FontWeight.w700,
                                         color: cs.onSurfaceVariant,
                                       ),
@@ -870,7 +876,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                                       Expanded(
                                         child: Text(
                                           item.title,
-                                          style: GoogleFonts.outfit(
+                                          style: _appTextStyle(
+                                            context,
                                             fontSize: 17,
                                             fontWeight: FontWeight.w800,
                                             height: 1.15,
@@ -890,7 +897,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                                       item.previewBody,
                                       maxLines: 3,
                                       overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.outfit(
+                                      style: _appTextStyle(
+                                        context,
                                         color: cs.onSurfaceVariant,
                                         height: 1.3,
                                       ),
@@ -955,7 +963,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       iconShadow: false,
       title: Text(
         count == 1 ? '1 ${l.infoTitle}' : '$count ${l.infoTitle}',
-        style: GoogleFonts.outfit(
+        style: _appTextStyle(
+          context,
           fontSize: 17,
           fontWeight: FontWeight.w900,
           color: cs.onSurface,
@@ -965,7 +974,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         subtitle,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.outfit(
+        style: _appTextStyle(
+          context,
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
           color: cs.onSurfaceVariant,
@@ -983,7 +993,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       side: BorderSide.none,
       backgroundColor: cs.secondaryContainer.withValues(alpha: 0.45),
-      labelStyle: GoogleFonts.outfit(
+      labelStyle: _appTextStyle(
+        context,
         fontSize: 12,
         fontWeight: FontWeight.w600,
         color: cs.onSecondaryContainer,
@@ -1006,7 +1017,8 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
         Flexible(
           child: Text(
             label,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: cs.onSurfaceVariant,
@@ -1278,7 +1290,8 @@ class _InfoHtmlBody extends StatelessWidget {
     'pre',
   };
 
-  TextStyle _baseStyle(BuildContext context) => GoogleFonts.outfit(
+  TextStyle _baseStyle(BuildContext context) => _appTextStyle(
+    context,
     color: Theme.of(context).colorScheme.onSurfaceVariant,
     fontSize: 14,
     height: 1.4,

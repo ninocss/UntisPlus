@@ -118,14 +118,30 @@ class _LessonDetailSheet extends StatelessWidget {
     Color color, {
     VoidCallback? onTap,
   }) {
+    if (_usesExpressiveComponents(context)) {
+      return IconButton.filledTonal(
+        tooltip: appL10nFor(appLocaleNotifier.value).detailHideSubject,
+        onPressed: onTap == null
+            ? null
+            : () {
+                AppHaptics.confirmation();
+                onTap();
+              },
+        icon: Icon(icon),
+      );
+    }
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(
+        _expressiveRadius(context, 12, expressiveRadius: 20),
+      ),
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(
+            _expressiveRadius(context, 12, expressiveRadius: 20),
+          ),
         ),
         child: Icon(icon, size: 20, color: color),
       ),
@@ -150,7 +166,9 @@ class _LessonDetailSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: (iconColor ?? Theme.of(context).colorScheme.primary)
                   .withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(
+                _expressiveRadius(context, 14, expressiveRadius: 24),
+              ),
             ),
             child: Icon(
               icon,
@@ -165,7 +183,8 @@ class _LessonDetailSheet extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: Theme.of(
@@ -176,7 +195,8 @@ class _LessonDetailSheet extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                   ),
@@ -220,7 +240,9 @@ class _LessonDetailSheet extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: cancelledColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 20, expressiveRadius: 28),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -233,7 +255,8 @@ class _LessonDetailSheet extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         l.detailCancelled,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           color: cancelledColor,
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
@@ -250,7 +273,9 @@ class _LessonDetailSheet extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: cs.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 20, expressiveRadius: 28),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -263,7 +288,8 @@ class _LessonDetailSheet extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         l.timetableSubstitution,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           color: cs.onTertiaryContainer,
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
@@ -280,7 +306,9 @@ class _LessonDetailSheet extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: cs.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 20, expressiveRadius: 28),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -293,7 +321,8 @@ class _LessonDetailSheet extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         l.detailRegular,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           color: cs.tertiary,
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
@@ -323,7 +352,8 @@ class _LessonDetailSheet extends StatelessWidget {
               Expanded(
                 child: Text(
                   subject,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: 32,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
@@ -335,7 +365,8 @@ class _LessonDetailSheet extends StatelessWidget {
           if (subjectShort.isNotEmpty)
             Text(
               subjectShort,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: cs.primary.withValues(alpha: 0.7),
@@ -358,7 +389,9 @@ class _LessonDetailSheet extends StatelessWidget {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: cs.tertiary.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(
+                        _expressiveRadius(context, 14, expressiveRadius: 24),
+                      ),
                     ),
                     child: Icon(
                       Icons.swap_horiz_rounded,
@@ -373,7 +406,8 @@ class _LessonDetailSheet extends StatelessWidget {
                       children: [
                         Text(
                           l.detailOriginalTeacher,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: cs.onSurface.withValues(alpha: 0.5),
@@ -382,7 +416,8 @@ class _LessonDetailSheet extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           originalTeacher,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
                             color: cs.onSurfaceVariant,
@@ -416,7 +451,9 @@ class _LessonDetailSheet extends StatelessWidget {
                   ),
                 );
               },
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(
+                _expressiveRadius(context, 16, expressiveRadius: 24),
+              ),
               child: _row(
                 context,
                 Icons.notes_rounded,
@@ -436,7 +473,9 @@ class _LessonDetailSheet extends StatelessWidget {
                   ),
                 );
               },
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(
+                _expressiveRadius(context, 16, expressiveRadius: 24),
+              ),
               child: _row(
                 context,
                 Icons.book_rounded,
@@ -452,7 +491,9 @@ class _LessonDetailSheet extends StatelessWidget {
                   context,
                 ).push(_buildBouncyRoute(const HomeworkPage()));
               },
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(
+                _expressiveRadius(context, 16, expressiveRadius: 24),
+              ),
               child: _row(
                 context,
                 Icons.assignment_rounded,
@@ -504,7 +545,9 @@ class StudentNotesPage extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: iconColor.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              _expressiveRadius(context, 16, expressiveRadius: 24),
+            ),
           ),
           child: Icon(icon, size: 22, color: iconColor),
         ),
@@ -512,7 +555,8 @@ class StudentNotesPage extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 20,
               fontWeight: FontWeight.w900,
               letterSpacing: -0.5,
@@ -533,7 +577,7 @@ class StudentNotesPage extends StatelessWidget {
       appBar: RoundedBlurAppBar(
         title: Text(
           l.detailNotesForStudents,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          style: _appTextStyle(context, fontWeight: FontWeight.w800),
         ),
       ),
       body: Stack(
@@ -572,7 +616,8 @@ class StudentNotesPage extends StatelessWidget {
                         const SizedBox(height: 28),
                         Text(
                           notes,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 17.5,
                             height: 1.7,
                             fontWeight: FontWeight.w500,
@@ -592,7 +637,8 @@ class StudentNotesPage extends StatelessWidget {
                         const SizedBox(height: 28),
                         Text(
                           registerNotes,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 17.5,
                             height: 1.7,
                             fontWeight: FontWeight.w500,
@@ -775,7 +821,8 @@ class LessonCard extends StatelessWidget {
                     children: [
                       Text(
                         time,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           color: isCancelled ? cancelledColor : cs.primary,
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
@@ -784,7 +831,8 @@ class LessonCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         subject,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.5,
@@ -800,7 +848,8 @@ class LessonCard extends StatelessWidget {
                       if (subjectShort.isNotEmpty)
                         Text(
                           subjectShort,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             color: isCancelled
                                 ? cancelledColor.withValues(alpha: 0.7)
                                 : cs.primary.withValues(alpha: 0.7),
@@ -820,7 +869,8 @@ class LessonCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               room,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 color: cs.onSurface,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
@@ -838,7 +888,8 @@ class LessonCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               teacher,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 color: cs.onSurface,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,

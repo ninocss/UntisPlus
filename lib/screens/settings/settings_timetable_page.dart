@@ -408,7 +408,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                 const SizedBox(height: 16),
                 Text(
                   l.settingsCancelledColor,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -427,7 +428,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                 const SizedBox(height: 16),
                 Text(
                   '${l.settingsColorRed}: ${red.round()}',
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -441,7 +443,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                 ),
                 Text(
                   '${l.settingsColorGreen}: ${green.round()}',
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -455,7 +458,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                 ),
                 Text(
                   '${l.settingsColorBlue}: ${blue.round()}',
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -475,7 +479,10 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
                         l.cancel,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -486,7 +493,10 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       },
                       child: Text(
                         l.settingsColorApply,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -547,7 +557,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       value: 0,
                       label: Text(
                         l.settingsLessonPreviewRegular,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontWeight: FontWeight.w600,
                           fontSize: 12.5,
                         ),
@@ -558,7 +569,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       value: 1,
                       label: Text(
                         l.settingsLessonPreviewActive,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontWeight: FontWeight.w600,
                           fontSize: 12.5,
                         ),
@@ -569,7 +581,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       value: 2,
                       label: Text(
                         l.settingsLessonPreviewCancelled,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontWeight: FontWeight.w600,
                           fontSize: 12.5,
                         ),
@@ -749,7 +762,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       subject,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: subjectFontSize,
                         fontWeight: FontWeight.w800,
                         color: effectiveTextColor,
@@ -769,7 +783,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                   teacher,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: teacherFontSize,
                     fontWeight: FontWeight.w600,
                     color: effectiveSecondaryTextColor,
@@ -782,7 +797,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                   room,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: roomFontSize,
                     fontWeight: FontWeight.w600,
                     color: effectiveSecondaryTextColor,
@@ -996,7 +1012,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                                 children: [
                                   Text(
                                     l.settingsLessonBlurAmount,
-                                    style: GoogleFonts.outfit(
+                                    style: _appTextStyle(
+                                      context,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
                                       color: cs.onSurface,
@@ -1004,7 +1021,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                                   ),
                                   Text(
                                     '${amount.round()} px',
-                                    style: GoogleFonts.outfit(
+                                    style: _appTextStyle(
+                                      context,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13,
                                       color: cs.primary,
@@ -1038,7 +1056,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                             children: [
                               Text(
                                 l.settingsLessonCardOpacity,
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
                                   color: cs.onSurface,
@@ -1046,7 +1065,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                               ),
                               Text(
                                 '${(opacity * 100).round()}%',
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
                                   color: cs.primary,
@@ -1085,7 +1105,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                             children: [
                               Text(
                                 l.settingsLessonBorderRadius,
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
                                   color: cs.onSurface,
@@ -1093,7 +1114,8 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                               ),
                               Text(
                                 '${radius.round()} px',
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13.5,
                                   color: cs.primary,

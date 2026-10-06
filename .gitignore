@@ -73,3 +73,8 @@ changelog.json
 !fastlane/**/*.png
 !fastlane/**/*.md
 security-results/
+
+# Offline fonts and the experience validation documents must ship with the app.
+!assets/fonts/*-OFL.txt
+!docs/app_experience.md
+!docs/performance_validation.md

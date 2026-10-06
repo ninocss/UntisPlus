@@ -289,6 +289,7 @@ abstract final class LessonCardVisualsResolver {
         : (borderRadius ?? lessonBorderRadiusNotifier.value);
     final cardStyle = themeOwnsStyle ? 3 : lessonCardStyleNotifier.value;
     final blurEnabled =
+        AppEffects.full &&
         tokens.supportsBlur &&
         blurEnabledNotifier.value &&
         (themeOwnsStyle || lessonBlurEnabledNotifier.value || cardStyle == 1);
@@ -305,7 +306,7 @@ abstract final class LessonCardVisualsResolver {
         lessonCancelledPatternNotifier.value;
 
     List<BoxShadow>? shadows;
-    if (tokens.glowEffectsEnabled && isNow) {
+    if (tokens.glowEffectsEnabled && AppEffects.glow && isNow) {
       shadows = [
         BoxShadow(
           color: foregroundColor.withValues(alpha: 0.38),
@@ -432,6 +433,23 @@ abstract final class LessonCardVisualsResolver {
       );
     }
 
+    if (!AppEffects.full) {
+      fillColor = Color.alphaBlend(fillColor, cs.surfaceContainerLow);
+      if (gradient is LinearGradient) {
+        gradient = LinearGradient(
+          begin: gradient.begin,
+          end: gradient.end,
+          colors: [
+            for (final color in gradient.colors)
+              Color.alphaBlend(color, cs.surfaceContainerLow),
+          ],
+          stops: gradient.stops,
+          tileMode: gradient.tileMode,
+          transform: gradient.transform,
+        );
+      }
+    }
+
     return LessonCardVisuals(
       radius: radius,
       cardStyle: cardStyle,
@@ -506,12 +524,14 @@ abstract final class UntisLayout {
 /// backdrop filter when the active theme supports the user's Blur preference.
 bool _usesModalBackdropBlur(BuildContext context) {
   final tokens = untisThemeTokensOf(context);
-  return tokens.supportsBlur && blurEnabledNotifier.value;
+  return tokens.supportsBlur &&
+      blurEnabledNotifier.value &&
+      AppEffects.resolveBlur(tokens.blurSigma) > 0;
 }
 
 double _resolvedBlurSigma(double sigma) {
   final strength = blurStrengthNotifier.value.clamp(0.25, 2.0).toDouble();
-  return sigma * strength;
+  return AppEffects.resolveBlur(sigma * strength);
 }
 
 Widget _blurredModalBarrier({
@@ -646,7 +666,9 @@ Future<T?> showUntisDialog<T>({
       traversalEdgeBehavior:
           traversalEdgeBehavior ?? TraversalEdgeBehavior.closedLoop,
       fullscreenDialog: fullscreenDialog,
-      animationStyle: animationStyle,
+      animationStyle: AppMotion.enabled(context)
+          ? animationStyle
+          : AnimationStyle.noAnimation,
       useBackdropBlur: useBackdropBlur,
       blurSigma: _resolvedBlurSigma(tokens.blurSigma),
     ),
@@ -679,7 +701,7 @@ Future<T> runWithUntisBlockingLoader<T>(
     context: context,
     barrierDismissible: false,
     useRootNavigator: true,
-    builder: (_) => const Center(child: CircularProgressIndicator()),
+    builder: (_) => const Center(child: ExpressiveLoadingIndicator()),
   );
 
   // Allow the pushed route to become active before an immediately-completing
@@ -754,7 +776,9 @@ Future<T?> showUntisModalBottomSheet<T>({
       transitionAnimationController: transitionAnimationController,
       anchorPoint: anchorPoint,
       useSafeArea: useSafeArea,
-      sheetAnimationStyle: sheetAnimationStyle,
+      sheetAnimationStyle: AppMotion.enabled(context)
+          ? sheetAnimationStyle
+          : AnimationStyle.noAnimation,
       requestFocus: requestFocus,
       useBackdropBlur: useBackdropBlur,
       blurSigma: _resolvedBlurSigma(tokens.blurSigma),
@@ -809,6 +833,484 @@ double _expressiveRadius(
   required double expressiveRadius,
 }) => _usesExpressiveComponents(context) ? expressiveRadius : legacyRadius;
 
+/// Text roles for Default, retaining the other themes' existing local styling.
+TextStyle _appTextStyle(
+  BuildContext context, {
+  double? fontSize,
+  FontWeight? fontWeight,
+  Color? color,
+  double? height,
+  double? letterSpacing,
+  TextDecoration? decoration,
+  Color? decorationColor,
+  double? decorationThickness,
+}) {
+  if (!_usesExpressiveComponents(context)) {
+    return GoogleFonts.outfit(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+      decoration: decoration,
+      decorationColor: decorationColor,
+      decorationThickness: decorationThickness,
+    );
+  }
+  final text = Theme.of(context).textTheme;
+  final size = fontSize ?? 14;
+  final strong = (fontWeight?.value ?? 400) >= FontWeight.w600.value;
+  final base = size >= 28
+      ? text.headlineLarge
+      : size >= 20
+      ? text.titleLarge
+      : size >= 16 && strong
+      ? text.titleMedium
+      : size >= 16
+      ? text.bodyLarge
+      : strong
+      ? text.labelLarge
+      : text.bodyMedium;
+  // Leave unspecified foreground colors inherited from buttons and menus.
+  return TextStyle(
+    fontFamily: base?.fontFamily,
+    fontFamilyFallback: base?.fontFamilyFallback,
+    fontSize: fontSize ?? base?.fontSize,
+    fontWeight: fontWeight ?? base?.fontWeight,
+    color: color,
+    height: height ?? base?.height,
+    letterSpacing: letterSpacing ?? base?.letterSpacing,
+    decoration: decoration,
+    decorationColor: decorationColor,
+    decorationThickness: decorationThickness,
+  );
+}
+
+/// A tonal action/selection row shared by sheets, editors and attachments.
+class UntisActionTile extends StatelessWidget {
+  const UntisActionTile({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.leading,
+    this.trailing,
+    this.selected = false,
+    this.destructive = false,
+    this.onTap,
+  });
+
+  final Widget title;
+  final Widget? subtitle, leading, trailing;
+  final bool selected, destructive;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_usesExpressiveComponents(context)) {
+      return ListTile(
+        title: title,
+        subtitle: subtitle,
+        leading: leading,
+        trailing: trailing,
+        selected: selected,
+        onTap: onTap,
+      );
+    }
+    final cs = Theme.of(context).colorScheme;
+    final foreground = destructive
+        ? cs.onErrorContainer
+        : selected
+        ? cs.onSecondaryContainer
+        : cs.onSurface;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: MergeSemantics(
+        child: Semantics(
+          selected: selected,
+          child: TextButton(
+            onPressed: onTap == null
+                ? null
+                : () {
+                    AppHaptics.selection();
+                    onTap!();
+                  },
+            style: ButtonStyle(
+              minimumSize: const WidgetStatePropertyAll(Size(48, 64)),
+              padding: const WidgetStatePropertyAll(
+                EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+              backgroundColor: WidgetStatePropertyAll(
+                destructive
+                    ? cs.errorContainer
+                    : selected
+                    ? cs.secondaryContainer
+                    : cs.surfaceContainerLow,
+              ),
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.disabled)
+                    ? cs.onSurface.withValues(alpha: .38)
+                    : foreground,
+              ),
+              animationDuration: AppMotion.duration(
+                context,
+                AppMotionTokens.standardEffects,
+              ),
+              shape: WidgetStateProperty.resolveWith(
+                (states) => RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    states.contains(WidgetState.pressed)
+                        ? 14
+                        : selected
+                        ? 28
+                        : 20,
+                  ),
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                if (leading != null) ...[leading!, const SizedBox(width: 14)],
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DefaultTextStyle.merge(
+                        style: _appTextStyle(
+                          context,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        child: title,
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 4),
+                        DefaultTextStyle.merge(
+                          style: _appTextStyle(context, fontSize: 14),
+                          child: subtitle!,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (trailing != null || selected) ...[
+                  const SizedBox(width: 12),
+                  trailing ?? Icon(Icons.check_rounded, color: foreground),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A form selection anchored to its field, with stable values separate from labels.
+class UntisSelectionField<T> extends StatelessWidget {
+  const UntisSelectionField({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.entries,
+    required this.value,
+    required this.onChanged,
+  });
+  final String label;
+  final IconData icon;
+  final List<({T value, String label})> entries;
+  final T? value;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final valid = entries.any((entry) => entry.value == value);
+    if (!_usesExpressiveComponents(context)) {
+      return DropdownButtonFormField<T>(
+        initialValue: valid ? value : null,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          filled: true,
+        ),
+        items: [
+          for (final entry in entries)
+            DropdownMenuItem<T>(
+              value: entry.value,
+              child: Text(entry.label, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: (next) {
+          if (next != null) onChanged(next);
+        },
+      );
+    }
+    final selectedLabel = valid
+        ? entries.firstWhere((entry) => entry.value == value).label
+        : '';
+    return _untisDropdownMenu(
+      context: context,
+      menuChildren: [
+        for (final entry in entries)
+          MenuItemButton(
+            onPressed: () {
+              AppHaptics.selection();
+              onChanged(entry.value);
+            },
+            leadingIcon: Icon(icon),
+            trailingIcon: entry.value == value
+                ? const Icon(Icons.check_rounded)
+                : null,
+            child: Text(entry.label),
+          ),
+      ],
+      builder: (context, controller, _) => Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: entries.isEmpty
+              ? null
+              : () {
+                  AppHaptics.selection();
+                  controller.isOpen ? controller.close() : controller.open();
+                },
+          child: InputDecorator(
+            isEmpty: selectedLabel.isEmpty,
+            decoration: InputDecoration(
+              labelText: label.isEmpty ? null : label,
+              prefixIcon: Icon(icon),
+              suffixIcon: const Icon(Icons.unfold_more_rounded),
+              enabled: entries.isNotEmpty,
+            ),
+            child: Text(
+              selectedLabel,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Native switch semantics, with a tonal row in Default and legacy adaptation elsewhere.
+class UntisSwitchTile extends StatelessWidget {
+  const UntisSwitchTile({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.onChanged,
+    this.subtitle,
+    this.contentPadding,
+    this.adaptive = true,
+    this.secondary,
+  });
+  final Widget title;
+  final Widget? subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final EdgeInsetsGeometry? contentPadding;
+  final bool adaptive;
+  final Widget? secondary;
+
+  @override
+  Widget build(BuildContext context) {
+    void change(bool next) {
+      AppHaptics.selection();
+      onChanged!(next);
+    }
+
+    if (!_usesExpressiveComponents(context)) {
+      return adaptive
+          ? SwitchListTile.adaptive(
+              secondary: secondary,
+              title: title,
+              subtitle: subtitle,
+              value: value,
+              onChanged: onChanged == null ? null : change,
+              contentPadding: contentPadding,
+            )
+          : SwitchListTile(
+              secondary: secondary,
+              title: title,
+              subtitle: subtitle,
+              value: value,
+              onChanged: onChanged == null ? null : change,
+              contentPadding: contentPadding,
+            );
+    }
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Material(
+        color: cs.surfaceContainerLow,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        clipBehavior: Clip.antiAlias,
+        child: SwitchListTile(
+          secondary: secondary,
+          title: title,
+          subtitle: subtitle,
+          value: value,
+          onChanged: onChanged == null ? null : change,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          thumbIcon: WidgetStateProperty.resolveWith(
+            (states) => Icon(
+              states.contains(WidgetState.selected)
+                  ? Icons.check_rounded
+                  : Icons.close_rounded,
+              size: 14,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Spring-driven selection background; fast target changes retain velocity.
+class UntisSelectionIndicator extends StatefulWidget {
+  const UntisSelectionIndicator({
+    super.key,
+    required this.index,
+    required this.count,
+  });
+  final int index, count;
+
+  @override
+  State<UntisSelectionIndicator> createState() =>
+      _UntisSelectionIndicatorState();
+}
+
+class _UntisSelectionIndicatorState extends State<UntisSelectionIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _position = AnimationController.unbounded(
+    vsync: this,
+    value: widget.index.toDouble(),
+  );
+
+  void _move() {
+    if (!AppMotion.enabled(context)) {
+      _position.stop();
+      _position.value = widget.index.toDouble();
+    } else if ((_position.value - widget.index).abs() > .001) {
+      _position.animateWith(
+        SpringSimulation(
+          AppMotion.spring(AppMotionSpeed.standard),
+          _position.value,
+          widget.index.toDouble(),
+          _position.velocity,
+        ),
+      );
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _move();
+  }
+
+  @override
+  void didUpdateWidget(UntisSelectionIndicator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.index != widget.index || oldWidget.count != widget.count) {
+      _move();
+    }
+  }
+
+  @override
+  void dispose() {
+    _position.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: IgnorePointer(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final count = math.max(1, widget.count);
+          final width = constraints.maxWidth / count;
+          final rtl = Directionality.of(context) == ui.TextDirection.rtl;
+          return AnimatedBuilder(
+            animation: _position,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: SizedBox(
+                width: math.max(0, width - 8),
+                height: math.max(0, constraints.maxHeight - 8),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+              ),
+            ),
+            builder: (context, child) {
+              final index = _position.value.clamp(0.0, (count - 1).toDouble());
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Transform.translate(
+                  offset: Offset(width * (rtl ? count - 1 - index : index), 0),
+                  child: child,
+                ),
+              );
+            },
+          );
+        },
+      ),
+    ),
+  );
+}
+
+Widget _responsiveButtonRow(
+  BuildContext context, {
+  required List<Widget> children,
+}) {
+  if (!_usesExpressiveComponents(context)) return Row(children: children);
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth >= 480 &&
+          MediaQuery.textScalerOf(context).scale(14) <= 18) {
+        return Row(children: children);
+      }
+      final actions = children
+          .whereType<Expanded>()
+          .map((item) => item.child)
+          .toList();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var index = 0; index < actions.length; index++) ...[
+            if (index > 0) const SizedBox(height: 8),
+            actions[index],
+          ],
+        ],
+      );
+    },
+  );
+}
+
+/// Metadata wraps on narrow screens instead of shrinking or hiding labels.
+Widget _metadataRow(BuildContext context, {required List<Widget> children}) {
+  if (!_usesExpressiveComponents(context)) return Row(children: children);
+  return Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: children
+        .where((child) => child is! Spacer && child is! SizedBox)
+        .toList(),
+  );
+}
+
 class _StripedHatchPainter extends CustomPainter {
   final Color color;
   final double stripeWidth;
@@ -847,21 +1349,48 @@ class _StripedHatchPainter extends CustomPainter {
 class AppMotion {
   const AppMotion._();
 
-  static bool enabled(BuildContext context) =>
-      !(MediaQuery.maybeOf(context)?.disableAnimations ?? false) &&
-      TickerMode.valuesOf(context).enabled;
+  static bool enabled(BuildContext context) {
+    final experience = AppExperienceScope.maybeOf(context);
+    return !(MediaQuery.maybeOf(context)?.disableAnimations ?? false) &&
+        TickerMode.valuesOf(context).enabled &&
+        (experience?.active ?? true) &&
+        (experience?.interactions ??
+            interactionAnimationsEnabledNotifier.value);
+  }
+
+  static bool backgroundEnabled(BuildContext context) =>
+      enabled(context) &&
+      (AppExperienceScope.maybeOf(context)?.backgroundAllowed ??
+          AppEffects.backgrounds);
+
+  static SpringDescription spring(AppMotionSpeed speed) =>
+      effectQualityNotifier.value == AppEffectQuality.reduced
+      ? const SpringDescription(mass: 1, stiffness: 700, damping: 54)
+      : AppMotionTokens.spring(speed);
 
   static Duration duration(BuildContext context, Duration normal) =>
-      enabled(context) ? normal : Duration.zero;
+      !enabled(context)
+      ? Duration.zero
+      : effectQualityNotifier.value == AppEffectQuality.reduced
+      ? Duration(milliseconds: math.min(normal.inMilliseconds, 180))
+      : normal;
 }
 
 class AppHaptics {
   const AppHaptics._();
 
-  static Future<void> selection() => HapticFeedback.selectionClick();
-  static Future<void> lightImpact() => HapticFeedback.lightImpact();
-  static Future<void> confirmation() => HapticFeedback.mediumImpact();
-  static Future<void> destructive() => HapticFeedback.heavyImpact();
+  static Future<void> selection() => hapticsEnabledNotifier.value
+      ? HapticFeedback.selectionClick()
+      : Future<void>.value();
+  static Future<void> lightImpact() => hapticsEnabledNotifier.value
+      ? HapticFeedback.lightImpact()
+      : Future<void>.value();
+  static Future<void> confirmation() => hapticsEnabledNotifier.value
+      ? HapticFeedback.mediumImpact()
+      : Future<void>.value();
+  static Future<void> destructive() => hapticsEnabledNotifier.value
+      ? HapticFeedback.heavyImpact()
+      : Future<void>.value();
 }
 
 Widget _springEntry({
@@ -917,6 +1446,7 @@ class _SpringEntryState extends State<_SpringEntry>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _controller.duration = AppMotion.duration(context, widget.duration);
     if (!AppMotion.enabled(context)) {
       _controller.value = 1;
     } else if (_controller.value == 0) {
@@ -973,12 +1503,17 @@ Widget _blurEffect({
   bool respectBlurStrength = true,
 }) {
   return AnimatedBuilder(
-    animation: Listenable.merge([blurEnabledNotifier, blurStrengthNotifier]),
+    animation: Listenable.merge([
+      blurEnabledNotifier,
+      blurStrengthNotifier,
+      effectQualityNotifier,
+    ]),
     builder: (context, _) {
       if (!enabled || !blurEnabledNotifier.value) return child;
       final effectiveSigma = respectBlurStrength
           ? _resolvedBlurSigma(sigma)
-          : sigma;
+          : AppEffects.resolveBlur(sigma, layer: AppEffectLayer.background);
+      if (effectiveSigma <= 0) return child;
       return ClipRRect(
         borderRadius: borderRadius is BorderRadius
             ? borderRadius
@@ -1092,6 +1627,7 @@ class ThemedSurface extends StatelessWidget {
       animation: Listenable.merge([
         blurEnabledNotifier,
         blurStrengthNotifier,
+        effectQualityNotifier,
         surfaceBlurEnabledNotifier,
         surfaceCornerModeNotifier,
         surfaceCornerRadiusNotifier,
@@ -1105,6 +1641,9 @@ class ThemedSurface extends StatelessWidget {
             ? _resolvedSurfaceBorderRadius(baseRadius)
             : baseRadius;
         final blurActive =
+            (AppEffects.full ||
+                !respectSurfaceBlurPreference &&
+                    effectQualityNotifier.value == AppEffectQuality.balanced) &&
             blur &&
             tokens.supportsBlur &&
             blurEnabledNotifier.value &&
@@ -1340,8 +1879,10 @@ double _pageMotionScale(int transitionType) {
   };
 }
 
-double _pageMotionBlur(int transitionType) =>
-    transitionType.clamp(0, 8) == 4 ? 14.0 : 0.0;
+double _pageMotionBlur(int transitionType) => AppEffects.resolveBlur(
+  transitionType.clamp(0, 8) == 4 ? 14.0 : 0.0,
+  layer: AppEffectLayer.transition,
+);
 
 /// Prepares the GPU blur pipeline while the app is idle. Without this tiny
 /// composited layer, Android may compile the ImageFiltered pipeline during the
@@ -1406,7 +1947,7 @@ Route<T> _buildBouncyRoute<T>(
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+    if (!AppMotion.enabled(context)) {
       return child;
     }
 
@@ -1826,7 +2367,7 @@ Widget _untisDropdownMenu({
     alignmentOffset: alignmentOffset,
     consumeOutsideTap: consumeOutsideTap,
     useRootOverlay: useRootOverlay,
-    animated: !MediaQuery.of(context).disableAnimations,
+    animated: AppMotion.enabled(context),
     menuChildren: menuChildren,
     builder: builder,
     child: child,
@@ -1844,6 +2385,15 @@ Widget _m3SelectionMenu({
   required ValueChanged<String> onSelected,
   required IconData icon,
 }) {
+  if (_usesExpressiveComponents(context)) {
+    return UntisSelectionField<String>(
+      label: '',
+      icon: icon,
+      value: value,
+      entries: [for (final entry in entries) (value: entry, label: entry)],
+      onChanged: onSelected,
+    );
+  }
   final cs = Theme.of(context).colorScheme;
   return _untisDropdownMenu(
     context: context,
@@ -1881,7 +2431,8 @@ Widget _m3SelectionMenu({
           ),
           child: Text(
             value,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontWeight: FontWeight.w700,
               color: cs.onSurface,
               fontSize: 16,
@@ -2016,6 +2567,17 @@ Future<T?> _showUnifiedOptionSheet<T>({
                       backgroundColor: iconBackground,
                     ));
 
+          if (_usesExpressiveComponents(ctx)) {
+            return UntisActionTile(
+              selected: opt.selected,
+              destructive: opt.destructive,
+              leading: leading,
+              title: Text(opt.title),
+              subtitle: opt.subtitle == null ? null : Text(opt.subtitle!),
+              onTap: () => Navigator.pop(ctx, opt.value),
+            );
+          }
+
           return Material(
             color: rowBackground,
             borderRadius: BorderRadius.circular(18),
@@ -2040,7 +2602,8 @@ Future<T?> _showUnifiedOptionSheet<T>({
                         children: [
                           Text(
                             opt.title,
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontSize: 15,
                               fontWeight: opt.selected
                                   ? FontWeight.w800
@@ -2053,7 +2616,8 @@ Future<T?> _showUnifiedOptionSheet<T>({
                             const SizedBox(height: 2),
                             Text(
                               opt.subtitle!,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
                                 color: opt.destructive
@@ -2107,7 +2671,8 @@ Future<T?> _showUnifiedOptionSheet<T>({
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                         color: cs.onSurface,
@@ -2118,7 +2683,8 @@ Future<T?> _showUnifiedOptionSheet<T>({
                       Text(
                         subtitle,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: cs.onSurfaceVariant,
@@ -2324,18 +2890,51 @@ PreferredSizeWidget _mainSectionTabBar(
       AppHaptics.selection();
       onTap?.call(index);
     },
+    indicator: _usesExpressiveComponents(context)
+        ? BoxDecoration(
+            color: cs.secondaryContainer,
+            borderRadius: BorderRadius.circular(28),
+          )
+        : null,
+    indicatorSize: _usesExpressiveComponents(context)
+        ? TabBarIndicatorSize.tab
+        : null,
+    indicatorPadding: _usesExpressiveComponents(context)
+        ? const EdgeInsets.symmetric(horizontal: 4, vertical: 4)
+        : EdgeInsets.zero,
+    indicatorAnimation:
+        _usesExpressiveComponents(context) && AppMotion.enabled(context)
+        ? TabIndicatorAnimation.elastic
+        : TabIndicatorAnimation.linear,
+    labelColor: _usesExpressiveComponents(context)
+        ? cs.onSecondaryContainer
+        : null,
+    unselectedLabelColor: _usesExpressiveComponents(context)
+        ? cs.onSurfaceVariant
+        : null,
     indicatorColor: cs.primary,
     indicatorWeight: 3,
     dividerColor: Colors.transparent,
     labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-    labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 14),
-    unselectedLabelStyle: GoogleFonts.outfit(
+    labelStyle: _appTextStyle(
+      context,
+      fontWeight: FontWeight.w800,
+      fontSize: 14,
+    ),
+    unselectedLabelStyle: _appTextStyle(
+      context,
       fontWeight: FontWeight.w600,
       fontSize: 14,
     ),
     tabs: [
       for (final item in items)
         Tab(
+          height: _usesExpressiveComponents(context)
+              ? math.max(
+                  48,
+                  MediaQuery.textScalerOf(context).scale(14) * 2 + 16,
+                )
+              : null,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.max,
@@ -2345,7 +2944,7 @@ PreferredSizeWidget _mainSectionTabBar(
               Flexible(
                 child: Text(
                   item.label,
-                  maxLines: 1,
+                  maxLines: _usesExpressiveComponents(context) ? 2 : 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                 ),
@@ -2359,7 +2958,7 @@ PreferredSizeWidget _mainSectionTabBar(
 
 /// Slider with a light tactile acknowledgement when interaction starts and
 /// when the user releases the value.
-class HapticSlider extends StatelessWidget {
+class HapticSlider extends StatefulWidget {
   final double value;
   final double min;
   final double max;
@@ -2386,22 +2985,54 @@ class HapticSlider extends StatelessWidget {
   });
 
   @override
+  State<HapticSlider> createState() => _HapticSliderState();
+}
+
+class _HapticSliderState extends State<HapticSlider> {
+  final Stopwatch _feedbackClock = Stopwatch()..start();
+  int _lastFeedbackMs = 0;
+  int? _lastStep;
+
+  int? _step(double value) =>
+      widget.divisions == null ||
+          widget.divisions! <= 0 ||
+          widget.max <= widget.min
+      ? null
+      : ((value - widget.min) / (widget.max - widget.min) * widget.divisions!)
+            .round();
+
+  @override
   Widget build(BuildContext context) => Slider(
-    value: value,
-    min: min,
-    max: max,
-    divisions: divisions,
-    label: label,
-    activeColor: activeColor,
-    semanticFormatterCallback: semanticFormatterCallback,
+    value: widget.value,
+    min: widget.min,
+    max: widget.max,
+    divisions: widget.divisions,
+    label: widget.label,
+    activeColor: widget.activeColor,
+    semanticFormatterCallback: widget.semanticFormatterCallback,
     onChangeStart: (value) {
+      _lastStep = _step(value);
+      _lastFeedbackMs = _feedbackClock.elapsedMilliseconds;
       AppHaptics.selection();
-      onChangeStart?.call(value);
+      widget.onChangeStart?.call(value);
     },
-    onChanged: onChanged,
+    onChanged: widget.onChanged == null
+        ? null
+        : (value) {
+            final step = _step(value);
+            final elapsed = _feedbackClock.elapsedMilliseconds;
+            if (step != null &&
+                step != _lastStep &&
+                elapsed - _lastFeedbackMs >= 60) {
+              AppHaptics.selection();
+              _lastFeedbackMs = elapsed;
+            }
+            _lastStep = step;
+            widget.onChanged!(value);
+          },
     onChangeEnd: (value) {
-      AppHaptics.selection();
-      onChangeEnd?.call(value);
+      if (widget.divisions == null) AppHaptics.selection();
+      widget.onChangeEnd?.call(value);
     },
   );
 }
@@ -2422,7 +3053,8 @@ PreferredSizeWidget _settingsHeaderAppBar(
       title,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.outfit(
+      style: _appTextStyle(
+        context,
         fontSize: 22,
         fontWeight: FontWeight.w800,
         color: cs.onSurface,

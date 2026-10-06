@@ -394,7 +394,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
       appBar: RoundedBlurAppBar(
         title: Text(
           l.messageComposeTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w900),
+          style: _appTextStyle(context, fontWeight: FontWeight.w900),
         ),
         actions: [
           IconButton(
@@ -445,7 +445,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: ExpressiveLoadingIndicator(strokeWidth: 2),
                         )
                       : null,
                   onTap: _loading ? null : _chooseRecipients,
@@ -523,7 +523,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: ExpressiveLoadingIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.send_rounded),
               label: Text(_sending ? l.messageSending : l.messageSend),

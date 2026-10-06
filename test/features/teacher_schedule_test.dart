@@ -15,7 +15,17 @@ void main() {
       expect(teacher.name, 'Anna Becker');
       expect(teacher.matches('ab'), isTrue);
       expect(teacher.matches('anna'), isTrue);
+      expect(teacher.matches('becker anna'), isTrue);
       expect(teacher.matches('müller'), isFalse);
+    });
+
+    test('matches names without accents', () {
+      const teacher = SchoolTeacher(
+        id: 2,
+        name: 'Jörg Müller',
+        abbreviation: 'JM',
+      );
+      expect(teacher.matches('jorg muller'), isTrue);
     });
   });
 
@@ -73,6 +83,21 @@ void main() {
       expect(snapshot.current, isNull);
       expect(snapshot.next, isNull);
     });
+  });
+
+  test('groups a full week and deduplicates class timetable entries', () {
+    final schedule = TeacherWeekSchedule.fromLessons([
+      _lesson(start: 900, end: 945, date: 20260928),
+      _lesson(start: 900, end: 945, date: 20260928),
+      _lesson(start: 1000, end: 1045, date: 20260929),
+      _lesson(start: 1100, end: 1145, date: 20260929, code: 'cancelled'),
+      _lesson(start: 1200, end: 1245, date: 20261004),
+      _lesson(start: 1300, end: 1345, date: 'invalid'),
+    ]);
+    expect(schedule.on(DateTime(2026, 9, 28)), hasLength(1));
+    expect(schedule.on(DateTime(2026, 9, 29)), hasLength(1));
+    expect(schedule.on(DateTime(2026, 10, 4)), hasLength(1));
+    expect(schedule.on(DateTime(2026, 9, 30)), isEmpty);
   });
 }
 

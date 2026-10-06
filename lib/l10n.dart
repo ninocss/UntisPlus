@@ -18,6 +18,13 @@ AppL10n appL10nFor(String locale) {
 }
 
 extension AppL10nCollections on AppL10n {
+  String get loadingIndicatorLabel => switch (locale) {
+    'en' => 'Loading',
+    'fr' => 'Chargement',
+    'es' => 'Cargando',
+    _ => 'Wird geladen',
+  };
+
   String get locale => localeName.split(RegExp('[-_]')).first;
 
   String get timetableSubstitution => switch (locale) {
@@ -29,62 +36,262 @@ extension AppL10nCollections on AppL10n {
 
   String wrapped(String key) {
     const copy = <String, List<String>>{
-      'title': ['School Wrapped', 'School Wrapped', 'School Wrapped', 'School Wrapped'],
-      'settingsDesc': ['Dein Schuljahr als Story', 'Your school year as a story', 'Ton année scolaire en récit', 'Tu año escolar en historias'],
-      'intro': ['Dein Schuljahr in Zahlen.', 'Your school year in numbers.', 'Ton année scolaire en chiffres.', 'Tu año escolar en cifras.'],
-      'partial': ['Bisher in diesem Schuljahr', 'So far this school year', 'Jusqu’ici cette année', 'Hasta ahora este curso'],
-      'complete': ['Dein Jahresrückblick', 'Your year in review', 'Ton bilan de l’année', 'Tu año en resumen'],
-      'begin': ['Wrapped starten', 'Start Wrapped', 'Lancer Wrapped', 'Iniciar Wrapped'],
-      'configure': ['Schuljahr festlegen', 'Set school year', 'Définir l’année scolaire', 'Definir el curso escolar'],
-      'datesInfo': ['WebUntis liefert kein Schuljahresdatum. Wähle Beginn und Ende.', 'WebUntis has no school year dates. Choose the start and end.', 'WebUntis ne fournit pas de dates. Choisis le début et la fin.', 'WebUntis no proporciona fechas. Elige el inicio y el fin.'],
-      'startDate': ['Beginn wählen', 'Choose start', 'Choisir le début', 'Elegir inicio'],
+      'title': [
+        'School Wrapped',
+        'School Wrapped',
+        'School Wrapped',
+        'School Wrapped',
+      ],
+      'settingsDesc': [
+        'Dein Schuljahr als Story',
+        'Your school year as a story',
+        'Ton année scolaire en récit',
+        'Tu año escolar en historias',
+      ],
+      'intro': [
+        'Dein Schuljahr in Zahlen.',
+        'Your school year in numbers.',
+        'Ton année scolaire en chiffres.',
+        'Tu año escolar en cifras.',
+      ],
+      'partial': [
+        'Bisher in diesem Schuljahr',
+        'So far this school year',
+        'Jusqu’ici cette année',
+        'Hasta ahora este curso',
+      ],
+      'complete': [
+        'Dein Jahresrückblick',
+        'Your year in review',
+        'Ton bilan de l’année',
+        'Tu año en resumen',
+      ],
+      'begin': [
+        'Wrapped starten',
+        'Start Wrapped',
+        'Lancer Wrapped',
+        'Iniciar Wrapped',
+      ],
+      'configure': [
+        'Schuljahr festlegen',
+        'Set school year',
+        'Définir l’année scolaire',
+        'Definir el curso escolar',
+      ],
+      'datesInfo': [
+        'WebUntis liefert kein Schuljahresdatum. Wähle Beginn und Ende.',
+        'WebUntis has no school year dates. Choose the start and end.',
+        'WebUntis ne fournit pas de dates. Choisis le début et la fin.',
+        'WebUntis no proporciona fechas. Elige el inicio y el fin.',
+      ],
+      'startDate': [
+        'Beginn wählen',
+        'Choose start',
+        'Choisir le début',
+        'Elegir inicio',
+      ],
       'endDate': ['Ende wählen', 'Choose end', 'Choisir la fin', 'Elegir fin'],
-      'noYear': ['Noch kein Schuljahr verfügbar', 'No school year available yet', 'Aucune année scolaire disponible', 'Aún no hay curso escolar'],
-      'noData': ['Noch keine Schuldaten für diesen Rückblick verfügbar. Verbinde dich mit WebUntis und versuche es erneut.', 'No school data is available for this review yet. Connect to WebUntis and try again.', 'Aucune donnée scolaire disponible pour ce bilan. Connecte-toi à WebUntis et réessaie.', 'Aún no hay datos escolares para este resumen. Conéctate a WebUntis e inténtalo de nuevo.'],
-      'loading': ['Dein Schuljahr wird gesammelt', 'Gathering your school year', 'Collecte de ton année scolaire', 'Recopilando tu curso escolar'],
+      'noYear': [
+        'Noch kein Schuljahr verfügbar',
+        'No school year available yet',
+        'Aucune année scolaire disponible',
+        'Aún no hay curso escolar',
+      ],
+      'noData': [
+        'Noch keine Schuldaten für diesen Rückblick verfügbar. Verbinde dich mit WebUntis und versuche es erneut.',
+        'No school data is available for this review yet. Connect to WebUntis and try again.',
+        'Aucune donnée scolaire disponible pour ce bilan. Connecte-toi à WebUntis et réessaie.',
+        'Aún no hay datos escolares para este resumen. Conéctate a WebUntis e inténtalo de nuevo.',
+      ],
+      'loading': [
+        'Dein Schuljahr wird gesammelt',
+        'Gathering your school year',
+        'Collecte de ton année scolaire',
+        'Recopilando tu curso escolar',
+      ],
       'retry': ['Erneut versuchen', 'Try again', 'Réessayer', 'Reintentar'],
-      'incomplete': ['Einige Wochen fehlen. Zahlen zeigen nur verfügbare Daten.', 'Some weeks are missing. Numbers cover available data only.', 'Certaines semaines manquent. Les chiffres ne couvrent que les données disponibles.', 'Faltan algunas semanas. Las cifras solo incluyen los datos disponibles.'],
-      'sourceMissing': ['Diese Daten stellt deine Schule nicht bereit.', 'Your school does not provide this data.', 'Ton école ne fournit pas ces données.', 'Tu centro no proporciona estos datos.'],
-      'lessonsTitle': ['So viel Unterricht', 'All those lessons', 'Tous ces cours', 'Todas esas clases'],
+      'incomplete': [
+        'Einige Wochen fehlen. Zahlen zeigen nur verfügbare Daten.',
+        'Some weeks are missing. Numbers cover available data only.',
+        'Certaines semaines manquent. Les chiffres ne couvrent que les données disponibles.',
+        'Faltan algunas semanas. Las cifras solo incluyen los datos disponibles.',
+      ],
+      'sourceMissing': [
+        'Diese Daten stellt deine Schule nicht bereit.',
+        'Your school does not provide this data.',
+        'Ton école ne fournit pas ces données.',
+        'Tu centro no proporciona estos datos.',
+      ],
+      'lessonsTitle': [
+        'So viel Unterricht',
+        'All those lessons',
+        'Tous ces cours',
+        'Todas esas clases',
+      ],
       'lessons': ['Unterrichtsstunden', 'lessons', 'cours', 'clases'],
-      'hours': ['Zeit im Unterricht', 'time in class', 'temps en cours', 'tiempo en clase'],
-      'changesTitle': ['Pläne ändern sich', 'Plans change', 'Les plans changent', 'Los planes cambian'],
-      'cancelled': ['Ausfälle', 'cancelled lessons', 'cours annulés', 'clases canceladas'],
-      'substitutions': ['Vertretungen', 'substitutions', 'remplacements', 'sustituciones'],
-      'absenceTitle': ['Deine Fehlzeiten', 'Your absences', 'Tes absences', 'Tus ausencias'],
-      'absentLessons': ['betroffene Unterrichtsstunden', 'affected lessons', 'cours concernés', 'clases afectadas'],
-      'absenceRecords': ['Abwesenheitseinträge', 'absence records', 'absences enregistrées', 'registros de ausencia'],
+      'hours': [
+        'Zeit im Unterricht',
+        'time in class',
+        'temps en cours',
+        'tiempo en clase',
+      ],
+      'changesTitle': [
+        'Pläne ändern sich',
+        'Plans change',
+        'Les plans changent',
+        'Los planes cambian',
+      ],
+      'cancelled': [
+        'Ausfälle',
+        'cancelled lessons',
+        'cours annulés',
+        'clases canceladas',
+      ],
+      'substitutions': [
+        'Vertretungen',
+        'substitutions',
+        'remplacements',
+        'sustituciones',
+      ],
+      'absenceTitle': [
+        'Deine Fehlzeiten',
+        'Your absences',
+        'Tes absences',
+        'Tus ausencias',
+      ],
+      'absentLessons': [
+        'betroffene Unterrichtsstunden',
+        'affected lessons',
+        'cours concernés',
+        'clases afectadas',
+      ],
+      'absenceRecords': [
+        'Abwesenheitseinträge',
+        'absence records',
+        'absences enregistrées',
+        'registros de ausencia',
+      ],
       'excused': ['entschuldigt', 'excused', 'justifiées', 'justificadas'],
-      'unexcused': ['unentschuldigt', 'unexcused', 'non justifiées', 'sin justificar'],
-      'freeTitle': ['Zeit zum Durchatmen', 'Room to breathe', 'Le temps de souffler', 'Tiempo para respirar'],
-      'freeDays': ['schulfreie Wochentage', 'school-free weekdays', 'jours de semaine sans cours', 'días lectivos libres'],
-      'holidays': ['Ferien & freie Zeiten', 'Holidays & breaks', 'Vacances et pauses', 'Vacaciones y descansos'],
+      'unexcused': [
+        'unentschuldigt',
+        'unexcused',
+        'non justifiées',
+        'sin justificar',
+      ],
+      'freeTitle': [
+        'Zeit zum Durchatmen',
+        'Room to breathe',
+        'Le temps de souffler',
+        'Tiempo para respirar',
+      ],
+      'freeDays': [
+        'schulfreie Wochentage',
+        'school-free weekdays',
+        'jours de semaine sans cours',
+        'días lectivos libres',
+      ],
+      'holidays': [
+        'Ferien & freie Zeiten',
+        'Holidays & breaks',
+        'Vacances et pauses',
+        'Vacaciones y descansos',
+      ],
       'gradeTitle': ['Deine Noten', 'Your grades', 'Tes notes', 'Tus notas'],
-      'grades': ['eingetragene Noten', 'recorded grades', 'notes enregistrées', 'notas registradas'],
-      'workTitle': ['Dein Lernalltag', 'Your school work', 'Ton travail scolaire', 'Tu trabajo escolar'],
+      'grades': [
+        'eingetragene Noten',
+        'recorded grades',
+        'notes enregistrées',
+        'notas registradas',
+      ],
+      'workTitle': [
+        'Dein Lernalltag',
+        'Your school work',
+        'Ton travail scolaire',
+        'Tu trabajo escolar',
+      ],
       'exams': ['Prüfungen', 'exams', 'examens', 'exámenes'],
       'homework': ['Hausaufgaben', 'homework items', 'devoirs', 'tareas'],
-      'finalTitle': ['Das war dein Schuljahr.', 'That was your school year.', 'Voilà ton année scolaire.', 'Así fue tu curso escolar.'],
-      'finalSub': ['Bis zum nächsten Kapitel.', 'On to the next chapter.', 'Place au prochain chapitre.', 'Vamos al próximo capítulo.'],
-      'musicOn': ['Musik ausschalten', 'Mute music', 'Couper la musique', 'Silenciar música'],
-      'musicOff': ['Musik einschalten', 'Play music', 'Activer la musique', 'Activar música'],
-      'autoOn': ['Automatisch weiter: an', 'Auto advance: on', 'Défilement auto : activé', 'Avance automática: activada'],
-      'autoOff': ['Automatisch weiter: aus', 'Auto advance: off', 'Défilement auto : désactivé', 'Avance automática: desactivada'],
+      'finalTitle': [
+        'Das war dein Schuljahr.',
+        'That was your school year.',
+        'Voilà ton année scolaire.',
+        'Así fue tu curso escolar.',
+      ],
+      'finalSub': [
+        'Bis zum nächsten Kapitel.',
+        'On to the next chapter.',
+        'Place au prochain chapitre.',
+        'Vamos al próximo capítulo.',
+      ],
+      'musicOn': [
+        'Musik ausschalten',
+        'Mute music',
+        'Couper la musique',
+        'Silenciar música',
+      ],
+      'musicOff': [
+        'Musik einschalten',
+        'Play music',
+        'Activer la musique',
+        'Activar música',
+      ],
+      'autoOn': [
+        'Automatisch weiter: an',
+        'Auto advance: on',
+        'Défilement auto : activé',
+        'Avance automática: activada',
+      ],
+      'autoOff': [
+        'Automatisch weiter: aus',
+        'Auto advance: off',
+        'Défilement auto : désactivé',
+        'Avance automática: desactivada',
+      ],
       'next': ['Weiter', 'Next', 'Suivant', 'Siguiente'],
       'back': ['Zurück', 'Back', 'Retour', 'Atrás'],
       'close': ['Schließen', 'Close', 'Fermer', 'Cerrar'],
-      'announcement': ['Dein School Wrapped ist da!', 'Your School Wrapped is here!', 'Ton School Wrapped est arrivé !', '¡Ya está tu School Wrapped!'],
-      'announcementSub': ['Schau dir dein Schuljahr an.', 'Take a look at your school year.', 'Découvre ton année scolaire.', 'Descubre tu curso escolar.'],
+      'announcement': [
+        'Dein School Wrapped ist da!',
+        'Your School Wrapped is here!',
+        'Ton School Wrapped est arrivé !',
+        '¡Ya está tu School Wrapped!',
+      ],
+      'announcementSub': [
+        'Schau dir dein Schuljahr an.',
+        'Take a look at your school year.',
+        'Découvre ton année scolaire.',
+        'Descubre tu curso escolar.',
+      ],
       'later': ['Später', 'Later', 'Plus tard', 'Más tarde'],
-      'demo': ['Demo-Rückblick mit Beispieldaten', 'Demo review with sample data', 'Bilan démo avec exemples', 'Resumen de prueba con ejemplos'],
-      'summer': ['Sommerferien', 'Summer break', 'Vacances d’été', 'Vacaciones de verano'],
-      'winter': ['Winterferien', 'Winter break', 'Vacances d’hiver', 'Vacaciones de invierno'],
+      'demo': [
+        'Demo-Rückblick mit Beispieldaten',
+        'Demo review with sample data',
+        'Bilan démo avec exemples',
+        'Resumen de prueba con ejemplos',
+      ],
+      'summer': [
+        'Sommerferien',
+        'Summer break',
+        'Vacances d’été',
+        'Vacaciones de verano',
+      ],
+      'winter': [
+        'Winterferien',
+        'Winter break',
+        'Vacances d’hiver',
+        'Vacaciones de invierno',
+      ],
       'math': ['Mathe', 'Math', 'Maths', 'Matemáticas'],
       'language': ['Deutsch', 'German', 'Allemand', 'Alemán'],
     };
     final values = copy[key];
     if (values == null) return key;
-    final index = switch (locale) {'en' => 1, 'fr' => 2, 'es' => 3, _ => 0};
+    final index = switch (locale) {
+      'en' => 1,
+      'fr' => 2,
+      'es' => 3,
+      _ => 0,
+    };
     return values[index];
   }
 
@@ -100,6 +307,43 @@ extension AppL10nCollections on AppL10n {
     'es' => 'Actualizar docentes y horario',
     'fr' => 'Actualiser les enseignants et l’emploi du temps',
     _ => 'Lehrkräfte und Stundenplan aktualisieren',
+  };
+
+  String get teacherWeekPrevious => switch (locale) {
+    'en' => 'Previous week',
+    'fr' => 'Semaine précédente',
+    'es' => 'Semana anterior',
+    _ => 'Vorherige Woche',
+  };
+  String get teacherWeekNext => switch (locale) {
+    'en' => 'Next week',
+    'fr' => 'Semaine suivante',
+    'es' => 'Semana siguiente',
+    _ => 'Nächste Woche',
+  };
+  String get teacherWeekNoLessons => switch (locale) {
+    'en' => 'No lessons scheduled for this day.',
+    'fr' => 'Aucun cours prévu ce jour.',
+    'es' => 'No hay clases programadas para este día.',
+    _ => 'Für diesen Tag sind keine Stunden eingetragen.',
+  };
+  String get teacherWeekFree => switch (locale) {
+    'en' => 'No lesson',
+    'fr' => 'Pas de cours',
+    'es' => 'Sin clase',
+    _ => 'Keine Stunde',
+  };
+  String get teacherWeekContinues => switch (locale) {
+    'en' => 'Lesson continues',
+    'fr' => 'Cours en cours',
+    'es' => 'La clase continúa',
+    _ => 'Stunde läuft weiter',
+  };
+  String get teacherWeekLesson => switch (locale) {
+    'en' => 'Lesson',
+    'fr' => 'Cours',
+    'es' => 'Clase',
+    _ => 'Unterricht',
   };
 
   String teacherSearchClassFallback(int count) => switch (locale) {
@@ -213,6 +457,7 @@ extension AppL10nCollections on AppL10n {
     '[current_lesson]': aiVar_current_lesson,
     '[next_lesson]': aiVar_next_lesson,
   };
+
   /// Copy transported to native alarm processes that can run while Flutter is
   /// stopped.
   Map<String, String> nativeAlarmCopy() => <String, String>{
@@ -428,10 +673,8 @@ extension AppL10nCollections on AppL10n {
       _t('settingsSurfaceCornersCurrent');
   String get settingsSurfaceCornersSharper =>
       _t('settingsSurfaceCornersSharper');
-  String get settingsSurfaceCornersCustom =>
-      _t('settingsSurfaceCornersCustom');
-  String get settingsSurfaceCornerRadius =>
-      _t('settingsSurfaceCornerRadius');
+  String get settingsSurfaceCornersCustom => _t('settingsSurfaceCornersCustom');
+  String get settingsSurfaceCornerRadius => _t('settingsSurfaceCornerRadius');
   String get settingsGlowEffects => _t('settingsGlowEffects');
   String get settingsGlowEffectsDesc => _t('settingsGlowEffectsDesc');
   String get settingsAppBgBlur =>
@@ -477,8 +720,7 @@ extension AppL10nCollections on AppL10n {
   String get settingsNotifyChangeCancellationsDesc =>
       _t('settingsNotifyChangeCancellationsDesc');
   String get settingsNotifyChangeRoom => _t('settingsNotifyChangeRoom');
-  String get settingsNotifyChangeRoomDesc =>
-      _t('settingsNotifyChangeRoomDesc');
+  String get settingsNotifyChangeRoomDesc => _t('settingsNotifyChangeRoomDesc');
   String get settingsNotifyChangeTeacher => _t('settingsNotifyChangeTeacher');
   String get settingsNotifyChangeTeacherDesc =>
       _t('settingsNotifyChangeTeacherDesc');
@@ -1018,12 +1260,14 @@ extension AppL10nCollections on AppL10n {
       'messageAttachmentTooLarge': '{name} ist zu groß.',
       'messageDraftAutosave': 'Entwurf wird automatisch gespeichert',
       'messageDiscardDraft': 'Entwurf verwerfen',
-      'messageRequiredFields': 'Empfänger, Betreff und Nachricht sind erforderlich.',
+      'messageRequiredFields':
+          'Empfänger, Betreff und Nachricht sind erforderlich.',
       'messageSend': 'Senden',
       'messageSending': 'Wird gesendet…',
       'messageSent': 'Nachricht gesendet.',
       'messageSendFailed': 'Die Nachricht konnte nicht gesendet werden.',
-      'messageDemoUnavailable': 'Im Demo-Modus können keine echten Nachrichten gesendet werden.',
+      'messageDemoUnavailable':
+          'Im Demo-Modus können keine echten Nachrichten gesendet werden.',
       'notificationActionCurrentLesson': 'Aktuelle Stunde: {lesson}',
       'notificationActionNextLessonLabel': 'Nächste Stunde',
       'notificationActionNoNextLesson':
@@ -1455,7 +1699,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsGlowEffectsDesc':
           'Farbige Leuchthöfe bei Stunden, Aufgaben, Noten und Symbolen',
       'settingsPageTransition': 'Seitenübergang',
-      'settingsPageTransitionDesc': 'Wähle den Stil für Seitenwechsel und optionale Main-Tab-Animationen',
+      'settingsPageTransitionDesc':
+          'Wähle den Stil für Seitenwechsel und optionale Main-Tab-Animationen',
       'settingsPageTransitionBounce': 'Spring',
       'settingsPageTransitionFade': 'Soft Fade',
       'settingsPageTransitionSlide': 'Shared Axis',
@@ -1492,8 +1737,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsNotifyChangeTeacherDesc':
           'Wenn die Lehrkraft einer Stunde wechselt',
       'settingsNotifyChangeOther': 'Sonstige Änderungen',
-      'settingsNotifyChangeOtherDesc':
-          'Zeit-, Fach- oder sonstige Änderungen',
+      'settingsNotifyChangeOtherDesc': 'Zeit-, Fach- oder sonstige Änderungen',
       'settingsRefreshPushWidgetNow': 'Push & Widget jetzt aktualisieren',
       'settingsRefreshPushWidgetNowDesc':
           'Lädt sofort die neuesten Daten aus dem API-Cache und aktualisiert Widget und Push',
@@ -1706,7 +1950,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmLead': 'Vorlauf',
       'ui_alarmLeadValue': '{n} Min. vor der ersten Stunde',
       'ui_alarmLeadByStart': 'Vorlauf je Startzeit',
-      'ui_alarmLeadByStartDesc': 'Eigene Vorlaufzeit oder kein Wecker für bestimmte erste Stunden.',
+      'ui_alarmLeadByStartDesc':
+          'Eigene Vorlaufzeit oder kein Wecker für bestimmte erste Stunden.',
       'ui_alarmLeadByStartAdd': 'Startzeit hinzufügen',
       'ui_alarmLeadByStartOff': 'Kein Wecker',
       'ui_alarmLeadByStartDefault': 'Standard-Vorlauf verwenden',
@@ -1868,7 +2113,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_nativeAlarmReminderTitle': 'Wecker in {minutes} Minuten',
       'ui_nativeAlarmDisableToday': 'Für diesen Tag ausschalten',
       'ui_nativeAlarmTitle': 'Wecker',
-      'ui_nativeAlarmSwipeHint': 'Nach links schlummern, nach rechts ausschalten',
+      'ui_nativeAlarmSwipeHint':
+          'Nach links schlummern, nach rechts ausschalten',
       'ui_nativeAlarmSnooze': 'Schlummern · {minutes} Min.',
       'ui_nativeAlarmDismiss': 'Ausschalten',
       'ui_nativeAlarmRefreshing': 'Wecker wird aktualisiert',
@@ -1879,28 +2125,40 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_nativeWidgetSetupAccount': 'Konto für dieses Widget',
       'ui_nativeWidgetSetupProfile': 'Widget-Profil',
       'ui_nativeWidgetSetupProfileHint': 'Profil aus dem Widget-Editor',
-      'ui_nativeWidgetSetupNoProfile': 'Erstelle zuerst ein Profil im Untis+-Widget-Editor.',
-      'ui_nativeWidgetSetupNoAccount': 'Öffne Untis+ und füge zuerst ein Konto hinzu.',
+      'ui_nativeWidgetSetupNoProfile':
+          'Erstelle zuerst ein Profil im Untis+-Widget-Editor.',
+      'ui_nativeWidgetSetupNoAccount':
+          'Öffne Untis+ und füge zuerst ein Konto hinzu.',
       'ui_nativeWidgetRefreshing': 'Wird aktualisiert …',
       'ui_refreshing': 'Wird aktualisiert',
       'ui_copyMessage': 'Nachricht kopieren',
       'ui_aiAttachmentTooLarge': 'Anhänge dürfen höchstens 8 MB groß sein.',
       'ui_aiAttachFile': 'Datei anhängen',
       'ui_aiAttachmentText': '\\n\\nDatei {name}:\\n{excerpt}',
-      'ui_aiAttachmentUnsupported': 'Anhang {name} ({mimeType}) kann von diesem Anbieter nicht gelesen werden.',
+      'ui_aiAttachmentUnsupported':
+          'Anhang {name} ({mimeType}) kann von diesem Anbieter nicht gelesen werden.',
       'ui_aiFileKindPdf': ' oder PDF',
-      'ui_aiHomeworkVisionPrompt': 'Du bist ein Assistent, der Hausaufgaben von Tafeln, Arbeitsblättern oder Notizen erfasst.\\nExtrahiere alle Aufgaben aus dem angehängten Bild{fileKind}.\\nAntworte AUSSCHLIESSLICH im folgenden JSON-Array-Format (kein Markdown-Block, nur reines JSON):\\n[\\n  {\\n    "subject": "Mathe",\\n    "text": "Seite 42 Nr. 1–5",\\n    "dueDate": "20260905"\\n  }\\n]\\nWICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt Jahr oder Datum, leite es ab. Wenn die Datei keine Hausaufgaben enthält, gib ein leeres Array [] zurück.',
-      'ui_aiExamVisionPrompt': 'Du bist ein Assistent, der Klausurpläne von Schulen strukturiert erfasst.\\nExtrahiere alle relevanten Klausuren und Prüfungen aus dem angehängten Bild{fileKind}.\\nAntworte AUSSCHLIESSLICH im folgenden JSON-Array-Format (kein Markdown-Block, nur reines JSON, keine Grußformeln):\\n[\\n  {\\n    "subject": "Mathe",\\n    "examType": "Klausur",\\n    "date": "20240325",\\n    "description": "Ergänzende Infos oder leere Zeichenkette"\\n  }\\n]\\nWICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr, leite es aus dem aktuellen Jahr ({year}) ab. Wenn die Datei keine Klausuren enthält, gib ein leeres Array [] zurück.',
-      'ui_aiExamJsonSystemPrompt': 'Extrahiere strukturierte Prüfungsdaten und antworte nur mit JSON.',
-      'ui_aiExamImageSystemPrompt': 'Extrahiere strukturierte Prüfungsdaten aus dem Bild. Antworte ausschließlich als JSON-Array.',
-      'ui_aiResponseFormat': 'ANTWORTFORMAT:\\n- Antworte kurz und visuell.\\n- Nutze bevorzugt ein JSON-Objekt mit den Feldern headline, summary, tags, metrics und lessons.\\n- metrics ist eine Liste von Objekten mit label und value.\\n- lessons ist eine Liste von Objekten mit subject, subjectShort, room, teacher, time und status.\\n- Vermeide lange Fließtexte.\\n- WICHTIG: Gib NUR Felder an, die für die Frage relevant sind. Wenn die Frage nach keiner Metrik oder keinen Stunden verlangt, lasse metrics bzw. lessons weg oder gib leere Arrays zurück.',
+      'ui_aiHomeworkVisionPrompt':
+          'Du bist ein Assistent, der Hausaufgaben von Tafeln, Arbeitsblättern oder Notizen erfasst.\\nExtrahiere alle Aufgaben aus dem angehängten Bild{fileKind}.\\nAntworte AUSSCHLIESSLICH im folgenden JSON-Array-Format (kein Markdown-Block, nur reines JSON):\\n[\\n  {\\n    "subject": "Mathe",\\n    "text": "Seite 42 Nr. 1–5",\\n    "dueDate": "20260905"\\n  }\\n]\\nWICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt Jahr oder Datum, leite es ab. Wenn die Datei keine Hausaufgaben enthält, gib ein leeres Array [] zurück.',
+      'ui_aiExamVisionPrompt':
+          'Du bist ein Assistent, der Klausurpläne von Schulen strukturiert erfasst.\\nExtrahiere alle relevanten Klausuren und Prüfungen aus dem angehängten Bild{fileKind}.\\nAntworte AUSSCHLIESSLICH im folgenden JSON-Array-Format (kein Markdown-Block, nur reines JSON, keine Grußformeln):\\n[\\n  {\\n    "subject": "Mathe",\\n    "examType": "Klausur",\\n    "date": "20240325",\\n    "description": "Ergänzende Infos oder leere Zeichenkette"\\n  }\\n]\\nWICHTIG: Das Datum MUSS als String im Format YYYYMMDD ausgegeben werden. Fehlt das Jahr, leite es aus dem aktuellen Jahr ({year}) ab. Wenn die Datei keine Klausuren enthält, gib ein leeres Array [] zurück.',
+      'ui_aiExamJsonSystemPrompt':
+          'Extrahiere strukturierte Prüfungsdaten und antworte nur mit JSON.',
+      'ui_aiExamImageSystemPrompt':
+          'Extrahiere strukturierte Prüfungsdaten aus dem Bild. Antworte ausschließlich als JSON-Array.',
+      'ui_aiResponseFormat':
+          'ANTWORTFORMAT:\\n- Antworte kurz und visuell.\\n- Nutze bevorzugt ein JSON-Objekt mit den Feldern headline, summary, tags, metrics und lessons.\\n- metrics ist eine Liste von Objekten mit label und value.\\n- lessons ist eine Liste von Objekten mit subject, subjectShort, room, teacher, time und status.\\n- Vermeide lange Fließtexte.\\n- WICHTIG: Gib NUR Felder an, die für die Frage relevant sind. Wenn die Frage nach keiner Metrik oder keinen Stunden verlangt, lasse metrics bzw. lessons weg oder gib leere Arrays zurück.',
       'ui_bgUpdateTitle': 'Untis+-Update verfügbar',
-      'ui_bgUpdateBody': 'Version {version} ist in den GitHub Releases verfügbar.',
+      'ui_bgUpdateBody':
+          'Version {version} ist in den GitHub Releases verfügbar.',
       'ui_bgDailyBriefingTitle': 'Dein Schultag auf einen Blick',
-      'ui_bgDailyBriefingBody': '{start}–{end}, {lessons} Stunden, {breaks} Pausen',
-      'ui_bgDailyBriefingExpanded': 'Start: {start}\\nEnde: {end}\\nStunden: {lessons}\\nPausen: {breaks}\\nNächste Stunde: {next}',
+      'ui_bgDailyBriefingBody':
+          '{start}–{end}, {lessons} Stunden, {breaks} Pausen',
+      'ui_bgDailyBriefingExpanded':
+          'Start: {start}\\nEnde: {end}\\nStunden: {lessons}\\nPausen: {breaks}\\nNächste Stunde: {next}',
       'ui_bgChangesTitle': 'Stundenplan aktualisiert',
-      'ui_bgChangesBody': 'Es gibt neue Änderungen heute. Tippe, um den Stundenplan zu öffnen.',
+      'ui_bgChangesBody':
+          'Es gibt neue Änderungen heute. Tippe, um den Stundenplan zu öffnen.',
       'ui_bgCurrentLesson': 'Aktuelle Stunde',
       'ui_bgNextLesson': 'Nächste Stunde',
       'ui_bgNoClasses': 'Kein Unterricht mehr',
@@ -1929,17 +2187,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_aiActionDeleteGrade': 'Note löschen: {id}',
       'ui_aiActionUnknown': 'Unbekannte Aktion',
       'ui_aiParametersTitle': 'KI-Parameter',
-      'ui_aiPersonaStrict': 'Antworte wie ein strenger, aber gerechter Lehrer. Achte auf Disziplin und Ordnung.',
-      'ui_aiPersonaBuddy': 'Antworte wie ein cooler Schulkamerad. Nutze Jugendsprache und sei sehr locker.',
-      'ui_aiPersonaHelpful': 'Antworte freundlich, professionell und hilfreich.',
-      'ui_aiAssistantIntro': 'Du bist ein hilfreicher Assistent für die Stundenplan-App „Untis+“.',
-      'ui_aiAssistantRules': 'Antworte natürlich und freundlich im Chat. Du hast Zugriff auf den Stundenplan und die Prüfungen des Nutzers oben. Verwende Markdown für eine gute Formatierung. Antworte in natürlicher Sprache, niemals als JSON, außer du wirst ausdrücklich darum gebeten. Halte Antworten kurz und präzise und beginne nicht mit einer Selbstvorstellung. Bei einer gewünschten lokalen Änderung schreibe nach deiner normalen Antwort einen separaten Block im exakten Format ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade","id":"optional id","subject":"subject","text":"text","dueDate":"YYYYMMDD","value":"optional grade","weight":"optional weight","type":"optional type"} ```. Schlage nur sichere, konkrete Änderungen vor; sie werden erst nach ausdrücklicher Bestätigung ausgeführt. Behaupte niemals, eine Änderung sei erfolgt, wenn du keinen solchen Block vorschlägst oder der Nutzer ihn nicht bestätigt hat.',
-      'ui_aiDayDataUnavailable': '{date}: Stundenplandaten für diesen Tag sind noch nicht geladen.',
-      'ui_aiWeekDataUnavailable': 'Für {date} ist die passende Stundenplanwoche noch nicht geladen. Ich rate hier nicht.',
-      'ui_aiNoScheduledLessons': 'Für {date} ist keine nicht abgesagte Stunde eingetragen.',
+      'ui_aiPersonaStrict':
+          'Antworte wie ein strenger, aber gerechter Lehrer. Achte auf Disziplin und Ordnung.',
+      'ui_aiPersonaBuddy':
+          'Antworte wie ein cooler Schulkamerad. Nutze Jugendsprache und sei sehr locker.',
+      'ui_aiPersonaHelpful':
+          'Antworte freundlich, professionell und hilfreich.',
+      'ui_aiAssistantIntro':
+          'Du bist ein hilfreicher Assistent für die Stundenplan-App „Untis+“.',
+      'ui_aiAssistantRules':
+          'Antworte natürlich und freundlich im Chat. Du hast Zugriff auf den Stundenplan und die Prüfungen des Nutzers oben. Verwende Markdown für eine gute Formatierung. Antworte in natürlicher Sprache, niemals als JSON, außer du wirst ausdrücklich darum gebeten. Halte Antworten kurz und präzise und beginne nicht mit einer Selbstvorstellung. Bei einer gewünschten lokalen Änderung schreibe nach deiner normalen Antwort einen separaten Block im exakten Format ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade","id":"optional id","subject":"subject","text":"text","dueDate":"YYYYMMDD","value":"optional grade","weight":"optional weight","type":"optional type"} ```. Schlage nur sichere, konkrete Änderungen vor; sie werden erst nach ausdrücklicher Bestätigung ausgeführt. Behaupte niemals, eine Änderung sei erfolgt, wenn du keinen solchen Block vorschlägst oder der Nutzer ihn nicht bestätigt hat.',
+      'ui_aiDayDataUnavailable':
+          '{date}: Stundenplandaten für diesen Tag sind noch nicht geladen.',
+      'ui_aiWeekDataUnavailable':
+          'Für {date} ist die passende Stundenplanwoche noch nicht geladen. Ich rate hier nicht.',
+      'ui_aiNoScheduledLessons':
+          'Für {date} ist keine nicht abgesagte Stunde eingetragen.',
       'ui_aiScheduleReply': 'Ja. Du hast am {date}: {lessons}.',
       'ui_aiApplyChangesTitle': 'Änderungen bestätigen',
-      'ui_aiApplyChangesDesc': 'Der Assistent hat folgende lokale Änderungen vorgeschlagen:',
+      'ui_aiApplyChangesDesc':
+          'Der Assistent hat folgende lokale Änderungen vorgeschlagen:',
       'ui_aiChangesApplied': 'Änderungen übernommen.',
       'ui_apply': 'Übernehmen',
       'ui_aiParametersDesc': 'Feineinstellung für die Antworten des Modells.',
@@ -2690,8 +2957,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsNotifyChangeRoom': 'Room changes',
       'settingsNotifyChangeRoomDesc': 'When the room of a lesson changes',
       'settingsNotifyChangeTeacher': 'Teacher changes',
-      'settingsNotifyChangeTeacherDesc':
-          'When the teacher of a lesson changes',
+      'settingsNotifyChangeTeacherDesc': 'When the teacher of a lesson changes',
       'settingsNotifyChangeOther': 'Other changes',
       'settingsNotifyChangeOtherDesc': 'Time, subject, or other changes',
       'settingsRefreshPushWidgetNow': 'Refresh push & widget now',
@@ -2902,7 +3168,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmLead': 'Lead time',
       'ui_alarmLeadValue': '{n} min before the first lesson',
       'ui_alarmLeadByStart': 'Lead time by start time',
-      'ui_alarmLeadByStartDesc': 'Set a different lead time, or no alarm, for selected first lessons.',
+      'ui_alarmLeadByStartDesc':
+          'Set a different lead time, or no alarm, for selected first lessons.',
       'ui_alarmLeadByStartAdd': 'Add start time',
       'ui_alarmLeadByStartOff': 'No alarm',
       'ui_alarmLeadByStartDefault': 'Use default lead time',
@@ -2927,7 +3194,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmEarlierValue': '{n} min earlier',
       'ui_alarmEarlierDesc': 'Only applies to the next timetable alarm.',
       'ui_alarmDateActions': 'Alarm for {date}',
-      'ui_alarmDateActionsDesc': 'This exception only applies to this school day.',
+      'ui_alarmDateActionsDesc':
+          'This exception only applies to this school day.',
       'ui_alarmDisableDate': 'Disable alarm on this day',
       'ui_alarmCustomTime': 'Custom alarm time',
       'ui_alarmClearDate': 'Reset exception',
@@ -3070,7 +3338,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_nativeWidgetSetupAccount': 'Account for this widget',
       'ui_nativeWidgetSetupProfile': 'Widget profile',
       'ui_nativeWidgetSetupProfileHint': 'Profile from the widget editor',
-      'ui_nativeWidgetSetupNoProfile': 'Create a profile in the Untis+ widget editor first.',
+      'ui_nativeWidgetSetupNoProfile':
+          'Create a profile in the Untis+ widget editor first.',
       'ui_nativeWidgetSetupNoAccount': 'Open Untis+ and add an account first.',
       'ui_nativeWidgetRefreshing': 'Updating …',
       'ui_refreshing': 'Refreshing',
@@ -3078,20 +3347,29 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_aiAttachmentTooLarge': 'Attachments must not exceed 8 MB.',
       'ui_aiAttachFile': 'Attach file',
       'ui_aiAttachmentText': '\\n\\nFile {name}:\\n{excerpt}',
-      'ui_aiAttachmentUnsupported': 'Attachment {name} ({mimeType}) cannot be read by this provider.',
+      'ui_aiAttachmentUnsupported':
+          'Attachment {name} ({mimeType}) cannot be read by this provider.',
       'ui_aiFileKindPdf': ' or PDF',
-      'ui_aiHomeworkVisionPrompt': 'You extract homework from boards, worksheets, and notes.\\nExtract every task from the attached image{fileKind}.\\nReply ONLY in this JSON-array format (no Markdown fence, JSON only):\\n[\\n  {\\n    "subject": "Math",\\n    "text": "Page 42, exercises 1–5",\\n    "dueDate": "20260905"\\n  }\\n]\\nIMPORTANT: The date MUST be a YYYYMMDD string. Infer a missing year or date when possible. If the file contains no homework, return an empty array [].',
-      'ui_aiExamVisionPrompt': 'You extract school exam schedules in a structured way.\\nExtract every relevant exam from the attached image{fileKind}.\\nReply ONLY in this JSON-array format (no Markdown fence, JSON only, no greeting):\\n[\\n  {\\n    "subject": "Math",\\n    "examType": "Exam",\\n    "date": "20240325",\\n    "description": "Additional details or an empty string"\\n  }\\n]\\nIMPORTANT: The date MUST be a YYYYMMDD string. Infer a missing year from the current year ({year}). If the file contains no exams, return an empty array [].',
-      'ui_aiExamJsonSystemPrompt': 'Extract structured exam data and answer with JSON only.',
-      'ui_aiExamImageSystemPrompt': 'Extract structured exam data from the image. Answer only as a JSON array.',
-      'ui_aiResponseFormat': 'RESPONSE FORMAT:\\n- Answer briefly and visually.\\n- Prefer a JSON object with headline, summary, tags, metrics, and lessons.\\n- metrics is a list of objects with label and value.\\n- lessons is a list of objects with subject, subjectShort, room, teacher, time, and status.\\n- Avoid long prose.\\n- IMPORTANT: Include ONLY fields relevant to the question. Omit metrics or lessons, or use empty arrays, when they are not requested.',
+      'ui_aiHomeworkVisionPrompt':
+          'You extract homework from boards, worksheets, and notes.\\nExtract every task from the attached image{fileKind}.\\nReply ONLY in this JSON-array format (no Markdown fence, JSON only):\\n[\\n  {\\n    "subject": "Math",\\n    "text": "Page 42, exercises 1–5",\\n    "dueDate": "20260905"\\n  }\\n]\\nIMPORTANT: The date MUST be a YYYYMMDD string. Infer a missing year or date when possible. If the file contains no homework, return an empty array [].',
+      'ui_aiExamVisionPrompt':
+          'You extract school exam schedules in a structured way.\\nExtract every relevant exam from the attached image{fileKind}.\\nReply ONLY in this JSON-array format (no Markdown fence, JSON only, no greeting):\\n[\\n  {\\n    "subject": "Math",\\n    "examType": "Exam",\\n    "date": "20240325",\\n    "description": "Additional details or an empty string"\\n  }\\n]\\nIMPORTANT: The date MUST be a YYYYMMDD string. Infer a missing year from the current year ({year}). If the file contains no exams, return an empty array [].',
+      'ui_aiExamJsonSystemPrompt':
+          'Extract structured exam data and answer with JSON only.',
+      'ui_aiExamImageSystemPrompt':
+          'Extract structured exam data from the image. Answer only as a JSON array.',
+      'ui_aiResponseFormat':
+          'RESPONSE FORMAT:\\n- Answer briefly and visually.\\n- Prefer a JSON object with headline, summary, tags, metrics, and lessons.\\n- metrics is a list of objects with label and value.\\n- lessons is a list of objects with subject, subjectShort, room, teacher, time, and status.\\n- Avoid long prose.\\n- IMPORTANT: Include ONLY fields relevant to the question. Omit metrics or lessons, or use empty arrays, when they are not requested.',
       'ui_bgUpdateTitle': 'Untis+ update available',
       'ui_bgUpdateBody': 'Version {version} is available on GitHub Releases.',
       'ui_bgDailyBriefingTitle': 'Your school day at a glance',
-      'ui_bgDailyBriefingBody': '{start}–{end}, {lessons} lessons, {breaks} breaks',
-      'ui_bgDailyBriefingExpanded': 'Start: {start}\\nEnd: {end}\\nLessons: {lessons}\\nBreaks: {breaks}\\nNext: {next}',
+      'ui_bgDailyBriefingBody':
+          '{start}–{end}, {lessons} lessons, {breaks} breaks',
+      'ui_bgDailyBriefingExpanded':
+          'Start: {start}\\nEnd: {end}\\nLessons: {lessons}\\nBreaks: {breaks}\\nNext: {next}',
       'ui_bgChangesTitle': 'Timetable updated',
-      'ui_bgChangesBody': 'There are new changes today. Tap to open your timetable.',
+      'ui_bgChangesBody':
+          'There are new changes today. Tap to open your timetable.',
       'ui_bgCurrentLesson': 'Current lesson',
       'ui_bgNextLesson': 'Next lesson',
       'ui_bgNoClasses': 'No more classes',
@@ -3120,17 +3398,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_aiActionDeleteGrade': 'Delete grade: {id}',
       'ui_aiActionUnknown': 'Unknown action',
       'ui_aiParametersTitle': 'AI parameters',
-      'ui_aiPersonaStrict': 'Respond like a strict but fair teacher. Pay attention to discipline and order.',
-      'ui_aiPersonaBuddy': 'Respond like a relaxed school friend. Use youthful, casual language.',
-      'ui_aiPersonaHelpful': 'Respond in a friendly, professional, and helpful way.',
-      'ui_aiAssistantIntro': 'You are a helpful assistant for the Untis+ timetable app.',
-      'ui_aiAssistantRules': 'Respond naturally and kindly in the chat. You can access the user’s timetable and exams above. Use Markdown for clear formatting. Respond in natural language, never as JSON unless explicitly asked. Keep replies concise and precise, and do not introduce yourself. For a requested local change, append a separate block in this exact format: ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade","id":"optional id","subject":"subject","text":"text","dueDate":"YYYYMMDD","value":"optional grade","weight":"optional weight","type":"optional type"} ```. Suggest only safe, concrete changes; they are applied only after explicit confirmation. Never claim a change happened without proposing that block and receiving confirmation.',
-      'ui_aiDayDataUnavailable': '{date}: timetable data for this day has not been loaded yet.',
-      'ui_aiWeekDataUnavailable': 'The matching timetable week for {date} has not been loaded yet, so I will not guess.',
-      'ui_aiNoScheduledLessons': 'No non-cancelled lessons are scheduled for {date}.',
+      'ui_aiPersonaStrict':
+          'Respond like a strict but fair teacher. Pay attention to discipline and order.',
+      'ui_aiPersonaBuddy':
+          'Respond like a relaxed school friend. Use youthful, casual language.',
+      'ui_aiPersonaHelpful':
+          'Respond in a friendly, professional, and helpful way.',
+      'ui_aiAssistantIntro':
+          'You are a helpful assistant for the Untis+ timetable app.',
+      'ui_aiAssistantRules':
+          'Respond naturally and kindly in the chat. You can access the user’s timetable and exams above. Use Markdown for clear formatting. Respond in natural language, never as JSON unless explicitly asked. Keep replies concise and precise, and do not introduce yourself. For a requested local change, append a separate block in this exact format: ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade","id":"optional id","subject":"subject","text":"text","dueDate":"YYYYMMDD","value":"optional grade","weight":"optional weight","type":"optional type"} ```. Suggest only safe, concrete changes; they are applied only after explicit confirmation. Never claim a change happened without proposing that block and receiving confirmation.',
+      'ui_aiDayDataUnavailable':
+          '{date}: timetable data for this day has not been loaded yet.',
+      'ui_aiWeekDataUnavailable':
+          'The matching timetable week for {date} has not been loaded yet, so I will not guess.',
+      'ui_aiNoScheduledLessons':
+          'No non-cancelled lessons are scheduled for {date}.',
       'ui_aiScheduleReply': 'Yes. On {date}, you have: {lessons}.',
       'ui_aiApplyChangesTitle': 'Confirm changes',
-      'ui_aiApplyChangesDesc': 'The assistant has suggested these local changes:',
+      'ui_aiApplyChangesDesc':
+          'The assistant has suggested these local changes:',
       'ui_aiChangesApplied': 'Changes applied.',
       'ui_apply': 'Apply',
       'ui_aiParametersDesc': 'Fine-tune the model’s responses.',
@@ -3421,16 +3708,19 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'messageSubject': 'Objet',
       'messageBody': 'Message',
       'messageAttach': 'Pièces jointes',
-      'messageAttachmentLimit': 'Un maximum de {count} pièces jointes est autorisé.',
+      'messageAttachmentLimit':
+          'Un maximum de {count} pièces jointes est autorisé.',
       'messageAttachmentTooLarge': '{name} est trop volumineux.',
       'messageDraftAutosave': 'Le brouillon est enregistré automatiquement',
       'messageDiscardDraft': 'Supprimer le brouillon',
-      'messageRequiredFields': 'Le destinataire, l’objet et le message sont requis.',
+      'messageRequiredFields':
+          'Le destinataire, l’objet et le message sont requis.',
       'messageSend': 'Envoyer',
       'messageSending': 'Envoi…',
       'messageSent': 'Message envoyé.',
       'messageSendFailed': 'Le message n’a pas pu être envoyé.',
-      'messageDemoUnavailable': 'Aucun vrai message ne peut être envoyé en mode démo.',
+      'messageDemoUnavailable':
+          'Aucun vrai message ne peut être envoyé en mode démo.',
       'notificationActionCurrentLesson': 'Cours actuel : {lesson}',
       'notificationActionNextLessonLabel': 'Cours suivant',
       'notificationActionNoNextLesson':
@@ -3894,8 +4184,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsNotifyChangeCancellationsDesc':
           'Lorsqu’un cours est annulé ou rétabli',
       'settingsNotifyChangeRoom': 'Changements de salle',
-      'settingsNotifyChangeRoomDesc':
-          'Lorsque la salle d’un cours change',
+      'settingsNotifyChangeRoomDesc': 'Lorsque la salle d’un cours change',
       'settingsNotifyChangeTeacher': 'Changements de professeur',
       'settingsNotifyChangeTeacherDesc':
           'Lorsque le professeur d’un cours change',
@@ -4112,7 +4401,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmLead': 'Délai',
       'ui_alarmLeadValue': '{n} min avant le premier cours',
       'ui_alarmLeadByStart': 'Délai par heure de début',
-      'ui_alarmLeadByStartDesc': 'Définissez un délai différent ou aucune alarme selon le premier cours.',
+      'ui_alarmLeadByStartDesc':
+          'Définissez un délai différent ou aucune alarme selon le premier cours.',
       'ui_alarmLeadByStartAdd': 'Ajouter une heure de début',
       'ui_alarmLeadByStartOff': 'Pas d’alarme',
       'ui_alarmLeadByStartDefault': 'Utiliser le délai par défaut',
@@ -4135,9 +4425,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'La journée en cours est d’abord vérifiée à nouveau dans WebUntis.',
       'ui_alarmEarlier': 'Faire sonner la prochaine alarme plus tôt',
       'ui_alarmEarlierValue': '{n} min plus tôt',
-      'ui_alarmEarlierDesc': 'S’applique seulement à la prochaine alarme d’emploi du temps.',
+      'ui_alarmEarlierDesc':
+          'S’applique seulement à la prochaine alarme d’emploi du temps.',
       'ui_alarmDateActions': 'Alarme pour le {date}',
-      'ui_alarmDateActionsDesc': 'Cette exception ne s’applique qu’à ce jour de cours.',
+      'ui_alarmDateActionsDesc':
+          'Cette exception ne s’applique qu’à ce jour de cours.',
       'ui_alarmDisableDate': 'Désactiver l’alarme ce jour',
       'ui_alarmCustomTime': 'Heure d’alarme personnalisée',
       'ui_alarmClearDate': 'Réinitialiser l’exception',
@@ -4276,7 +4568,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_nativeAlarmReminderTitle': 'Alarme dans {minutes} minutes',
       'ui_nativeAlarmDisableToday': 'Désactiver pour aujourd’hui',
       'ui_nativeAlarmTitle': 'Alarme',
-      'ui_nativeAlarmSwipeHint': 'Glissez à gauche pour répéter, à droite pour arrêter',
+      'ui_nativeAlarmSwipeHint':
+          'Glissez à gauche pour répéter, à droite pour arrêter',
       'ui_nativeAlarmSnooze': 'Répéter · {minutes} min',
       'ui_nativeAlarmDismiss': 'Arrêter',
       'ui_nativeAlarmRefreshing': 'Actualisation de l’alarme',
@@ -4287,28 +4580,41 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_nativeWidgetSetupAccount': 'Compte de ce widget',
       'ui_nativeWidgetSetupProfile': 'Profil du widget',
       'ui_nativeWidgetSetupProfileHint': 'Profil de l’éditeur de widgets',
-      'ui_nativeWidgetSetupNoProfile': 'Créez d’abord un profil dans l’éditeur de widgets Untis+.',
-      'ui_nativeWidgetSetupNoAccount': 'Ouvrez Untis+ et ajoutez d’abord un compte.',
+      'ui_nativeWidgetSetupNoProfile':
+          'Créez d’abord un profil dans l’éditeur de widgets Untis+.',
+      'ui_nativeWidgetSetupNoAccount':
+          'Ouvrez Untis+ et ajoutez d’abord un compte.',
       'ui_nativeWidgetRefreshing': 'Actualisation…',
       'ui_refreshing': 'Actualisation',
       'ui_copyMessage': 'Copier le message',
-      'ui_aiAttachmentTooLarge': 'Les pièces jointes ne doivent pas dépasser 8 Mo.',
+      'ui_aiAttachmentTooLarge':
+          'Les pièces jointes ne doivent pas dépasser 8 Mo.',
       'ui_aiAttachFile': 'Joindre un fichier',
       'ui_aiAttachmentText': '\\n\\nFichier {name} :\\n{excerpt}',
-      'ui_aiAttachmentUnsupported': 'La pièce jointe {name} ({mimeType}) ne peut pas être lue par ce fournisseur.',
+      'ui_aiAttachmentUnsupported':
+          'La pièce jointe {name} ({mimeType}) ne peut pas être lue par ce fournisseur.',
       'ui_aiFileKindPdf': ' ou PDF',
-      'ui_aiHomeworkVisionPrompt': 'Tu extrais les devoirs de tableaux, fiches et notes.\\nExtrais toutes les tâches de l’image jointe{fileKind}.\\nRéponds UNIQUEMENT dans ce format de tableau JSON (sans bloc Markdown, JSON brut) :\\n[\\n  {\\n    "subject": "Mathématiques",\\n    "text": "Page 42, exercices 1 à 5",\\n    "dueDate": "20260905"\\n  }\\n]\\nIMPORTANT : la date DOIT être une chaîne au format YYYYMMDD. Déduis une année ou une date manquante si possible. Si le fichier ne contient aucun devoir, renvoie un tableau vide [].',
-      'ui_aiExamVisionPrompt': 'Tu extrais de manière structurée les calendriers d’examens scolaires.\\nExtrais tous les examens pertinents de l’image jointe{fileKind}.\\nRéponds UNIQUEMENT dans ce format de tableau JSON (sans bloc Markdown, JSON brut, sans formule de salutation) :\\n[\\n  {\\n    "subject": "Mathématiques",\\n    "examType": "Examen",\\n    "date": "20240325",\\n    "description": "Informations complémentaires ou chaîne vide"\\n  }\\n]\\nIMPORTANT : la date DOIT être une chaîne au format YYYYMMDD. Déduis une année manquante à partir de l’année en cours ({year}). Si le fichier ne contient aucun examen, renvoie un tableau vide [].',
-      'ui_aiExamJsonSystemPrompt': 'Extrais les données structurées des examens et réponds uniquement en JSON.',
-      'ui_aiExamImageSystemPrompt': 'Extrais les données structurées des examens de l’image. Réponds uniquement sous forme de tableau JSON.',
-      'ui_aiResponseFormat': 'FORMAT DE RÉPONSE :\\n- Réponds de façon brève et visuelle.\\n- Privilégie un objet JSON avec headline, summary, tags, metrics et lessons.\\n- metrics est une liste d’objets avec label et value.\\n- lessons est une liste d’objets avec subject, subjectShort, room, teacher, time et status.\\n- Évite les longs textes.\\n- IMPORTANT : ne fournis QUE les champs utiles à la question. Omet metrics ou lessons, ou renvoie des tableaux vides, s’ils ne sont pas demandés.',
+      'ui_aiHomeworkVisionPrompt':
+          'Tu extrais les devoirs de tableaux, fiches et notes.\\nExtrais toutes les tâches de l’image jointe{fileKind}.\\nRéponds UNIQUEMENT dans ce format de tableau JSON (sans bloc Markdown, JSON brut) :\\n[\\n  {\\n    "subject": "Mathématiques",\\n    "text": "Page 42, exercices 1 à 5",\\n    "dueDate": "20260905"\\n  }\\n]\\nIMPORTANT : la date DOIT être une chaîne au format YYYYMMDD. Déduis une année ou une date manquante si possible. Si le fichier ne contient aucun devoir, renvoie un tableau vide [].',
+      'ui_aiExamVisionPrompt':
+          'Tu extrais de manière structurée les calendriers d’examens scolaires.\\nExtrais tous les examens pertinents de l’image jointe{fileKind}.\\nRéponds UNIQUEMENT dans ce format de tableau JSON (sans bloc Markdown, JSON brut, sans formule de salutation) :\\n[\\n  {\\n    "subject": "Mathématiques",\\n    "examType": "Examen",\\n    "date": "20240325",\\n    "description": "Informations complémentaires ou chaîne vide"\\n  }\\n]\\nIMPORTANT : la date DOIT être une chaîne au format YYYYMMDD. Déduis une année manquante à partir de l’année en cours ({year}). Si le fichier ne contient aucun examen, renvoie un tableau vide [].',
+      'ui_aiExamJsonSystemPrompt':
+          'Extrais les données structurées des examens et réponds uniquement en JSON.',
+      'ui_aiExamImageSystemPrompt':
+          'Extrais les données structurées des examens de l’image. Réponds uniquement sous forme de tableau JSON.',
+      'ui_aiResponseFormat':
+          'FORMAT DE RÉPONSE :\\n- Réponds de façon brève et visuelle.\\n- Privilégie un objet JSON avec headline, summary, tags, metrics et lessons.\\n- metrics est une liste d’objets avec label et value.\\n- lessons est une liste d’objets avec subject, subjectShort, room, teacher, time et status.\\n- Évite les longs textes.\\n- IMPORTANT : ne fournis QUE les champs utiles à la question. Omet metrics ou lessons, ou renvoie des tableaux vides, s’ils ne sont pas demandés.',
       'ui_bgUpdateTitle': 'Mise à jour Untis+ disponible',
-      'ui_bgUpdateBody': 'La version {version} est disponible dans les versions GitHub.',
+      'ui_bgUpdateBody':
+          'La version {version} est disponible dans les versions GitHub.',
       'ui_bgDailyBriefingTitle': 'Ton aperçu de la journée',
-      'ui_bgDailyBriefingBody': '{start}–{end}, {lessons} cours, {breaks} pauses',
-      'ui_bgDailyBriefingExpanded': 'Début : {start}\\nFin : {end}\\nCours : {lessons}\\nPauses : {breaks}\\nSuivant : {next}',
+      'ui_bgDailyBriefingBody':
+          '{start}–{end}, {lessons} cours, {breaks} pauses',
+      'ui_bgDailyBriefingExpanded':
+          'Début : {start}\\nFin : {end}\\nCours : {lessons}\\nPauses : {breaks}\\nSuivant : {next}',
       'ui_bgChangesTitle': 'Emploi du temps mis à jour',
-      'ui_bgChangesBody': 'Il y a de nouveaux changements aujourd’hui. Ouvre ton emploi du temps.',
+      'ui_bgChangesBody':
+          'Il y a de nouveaux changements aujourd’hui. Ouvre ton emploi du temps.',
       'ui_bgCurrentLesson': 'Cours actuel',
       'ui_bgNextLesson': 'Cours suivant',
       'ui_bgNoClasses': 'Plus de cours',
@@ -4337,17 +4643,26 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_aiActionDeleteGrade': 'Supprimer la note : {id}',
       'ui_aiActionUnknown': 'Action inconnue',
       'ui_aiParametersTitle': 'Paramètres IA',
-      'ui_aiPersonaStrict': 'Réponds comme un professeur strict mais juste. Veille à la discipline et à l’ordre.',
-      'ui_aiPersonaBuddy': 'Réponds comme un camarade détendu, avec un langage jeune et naturel.',
-      'ui_aiPersonaHelpful': 'Réponds de façon aimable, professionnelle et utile.',
-      'ui_aiAssistantIntro': 'Tu es un assistant utile pour l’application d’emploi du temps Untis+.',
-      'ui_aiAssistantRules': 'Réponds naturellement et gentiment dans le chat. Tu peux accéder à l’emploi du temps et aux examens de l’utilisateur ci-dessus. Utilise Markdown pour une mise en forme claire. Réponds en langage naturel, jamais en JSON sauf demande explicite. Reste concis et précis, sans te présenter. Pour une modification locale demandée, ajoute un bloc séparé dans ce format exact : ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade","id":"optional id","subject":"subject","text":"text","dueDate":"YYYYMMDD","value":"optional grade","weight":"optional weight","type":"optional type"} ```. Ne propose que des modifications sûres et concrètes ; elles ne sont appliquées qu’après confirmation explicite. N’affirme jamais qu’une modification a été faite sans proposer ce bloc et recevoir la confirmation.',
-      'ui_aiDayDataUnavailable': '{date} : les données de cet emploi du temps ne sont pas encore chargées.',
-      'ui_aiWeekDataUnavailable': 'La semaine correspondante pour {date} n’est pas encore chargée, je ne vais donc pas deviner.',
-      'ui_aiNoScheduledLessons': 'Aucun cours non annulé n’est prévu le {date}.',
+      'ui_aiPersonaStrict':
+          'Réponds comme un professeur strict mais juste. Veille à la discipline et à l’ordre.',
+      'ui_aiPersonaBuddy':
+          'Réponds comme un camarade détendu, avec un langage jeune et naturel.',
+      'ui_aiPersonaHelpful':
+          'Réponds de façon aimable, professionnelle et utile.',
+      'ui_aiAssistantIntro':
+          'Tu es un assistant utile pour l’application d’emploi du temps Untis+.',
+      'ui_aiAssistantRules':
+          'Réponds naturellement et gentiment dans le chat. Tu peux accéder à l’emploi du temps et aux examens de l’utilisateur ci-dessus. Utilise Markdown pour une mise en forme claire. Réponds en langage naturel, jamais en JSON sauf demande explicite. Reste concis et précis, sans te présenter. Pour une modification locale demandée, ajoute un bloc séparé dans ce format exact : ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade","id":"optional id","subject":"subject","text":"text","dueDate":"YYYYMMDD","value":"optional grade","weight":"optional weight","type":"optional type"} ```. Ne propose que des modifications sûres et concrètes ; elles ne sont appliquées qu’après confirmation explicite. N’affirme jamais qu’une modification a été faite sans proposer ce bloc et recevoir la confirmation.',
+      'ui_aiDayDataUnavailable':
+          '{date} : les données de cet emploi du temps ne sont pas encore chargées.',
+      'ui_aiWeekDataUnavailable':
+          'La semaine correspondante pour {date} n’est pas encore chargée, je ne vais donc pas deviner.',
+      'ui_aiNoScheduledLessons':
+          'Aucun cours non annulé n’est prévu le {date}.',
       'ui_aiScheduleReply': 'Oui. Le {date}, tu as : {lessons}.',
       'ui_aiApplyChangesTitle': 'Confirmer les modifications',
-      'ui_aiApplyChangesDesc': 'L’assistant propose les modifications locales suivantes :',
+      'ui_aiApplyChangesDesc':
+          'L’assistant propose les modifications locales suivantes :',
       'ui_aiChangesApplied': 'Modifications appliquées.',
       'ui_apply': 'Appliquer',
       'ui_aiParametersDesc': 'Ajustez finement les réponses du modèle.',
@@ -4661,7 +4976,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'messageSending': 'Enviando…',
       'messageSent': 'Mensaje enviado.',
       'messageSendFailed': 'No se pudo enviar el mensaje.',
-      'messageDemoUnavailable': 'No se pueden enviar mensajes reales en modo demo.',
+      'messageDemoUnavailable':
+          'No se pueden enviar mensajes reales en modo demo.',
       'notificationActionCurrentLesson': 'Clase actual: {lesson}',
       'notificationActionNextLessonLabel': 'Siguiente clase',
       'notificationActionNoNextLesson':
@@ -5130,8 +5446,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsNotifyChangeTeacherDesc':
           'Cuando cambia el profesor de una clase',
       'settingsNotifyChangeOther': 'Otros cambios',
-      'settingsNotifyChangeOtherDesc':
-          'Cambios de hora, de asignatura u otros',
+      'settingsNotifyChangeOtherDesc': 'Cambios de hora, de asignatura u otros',
       'settingsRefreshPushWidgetNow': 'Actualizar push y widget ahora',
       'settingsRefreshPushWidgetNowDesc':
           'Carga inmediatamente los datos más recientes de la caché API y actualiza widget y push',
@@ -5339,7 +5654,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmLead': 'Antelación',
       'ui_alarmLeadValue': '{n} min antes de la primera clase',
       'ui_alarmLeadByStart': 'Margen por hora de inicio',
-      'ui_alarmLeadByStartDesc': 'Configura otro margen o ninguna alarma para determinadas primeras clases.',
+      'ui_alarmLeadByStartDesc':
+          'Configura otro margen o ninguna alarma para determinadas primeras clases.',
       'ui_alarmLeadByStartAdd': 'Añadir hora de inicio',
       'ui_alarmLeadByStartOff': 'Sin alarma',
       'ui_alarmLeadByStartDefault': 'Usar el margen predeterminado',
@@ -5364,7 +5680,8 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_alarmEarlierValue': '{n} min antes',
       'ui_alarmEarlierDesc': 'Solo se aplica a la próxima alarma del horario.',
       'ui_alarmDateActions': 'Alarma para {date}',
-      'ui_alarmDateActionsDesc': 'Esta excepción solo se aplica a este día de clase.',
+      'ui_alarmDateActionsDesc':
+          'Esta excepción solo se aplica a este día de clase.',
       'ui_alarmDisableDate': 'Desactivar alarma este día',
       'ui_alarmCustomTime': 'Hora de alarma personalizada',
       'ui_alarmClearDate': 'Restablecer excepción',
@@ -5493,14 +5810,16 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_appearanceIconChoose': 'Elegir icono de la pantalla de inicio',
       'ui_appearanceIconAndroidOnly': 'Disponible actualmente en Android',
       'ui_nativeAlarmReminderChannel': 'Recordatorios de alarma de Untis+',
-      'ui_nativeAlarmReminderChannelDesc': 'Avisos antes de una alarma de Untis+',
+      'ui_nativeAlarmReminderChannelDesc':
+          'Avisos antes de una alarma de Untis+',
       'ui_nativeAlarmChannel': 'Alarmas de Untis+',
       'ui_nativeAlarmChannelDesc': 'Alarmas de Untis+ sonando',
       'ui_nativeAlarmRefreshChannel': 'Actualización de alarma de Untis+',
       'ui_nativeAlarmReminderTitle': 'Alarma en {minutes} minutos',
       'ui_nativeAlarmDisableToday': 'Desactivar hoy',
       'ui_nativeAlarmTitle': 'Alarma',
-      'ui_nativeAlarmSwipeHint': 'Desliza a la izquierda para posponer y a la derecha para apagar',
+      'ui_nativeAlarmSwipeHint':
+          'Desliza a la izquierda para posponer y a la derecha para apagar',
       'ui_nativeAlarmSnooze': 'Posponer · {minutes} min',
       'ui_nativeAlarmDismiss': 'Apagar',
       'ui_nativeAlarmRefreshing': 'Actualizando alarma',
@@ -5511,26 +5830,37 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_nativeWidgetSetupAccount': 'Cuenta de este widget',
       'ui_nativeWidgetSetupProfile': 'Perfil del widget',
       'ui_nativeWidgetSetupProfileHint': 'Perfil del editor de widgets',
-      'ui_nativeWidgetSetupNoProfile': 'Primero crea un perfil en el editor de widgets de Untis+.',
-      'ui_nativeWidgetSetupNoAccount': 'Abre Untis+ y añade primero una cuenta.',
+      'ui_nativeWidgetSetupNoProfile':
+          'Primero crea un perfil en el editor de widgets de Untis+.',
+      'ui_nativeWidgetSetupNoAccount':
+          'Abre Untis+ y añade primero una cuenta.',
       'ui_nativeWidgetRefreshing': 'Actualizando…',
       'ui_refreshing': 'Actualizando',
       'ui_copyMessage': 'Copiar mensaje',
       'ui_aiAttachmentTooLarge': 'Los adjuntos no pueden superar los 8 MB.',
       'ui_aiAttachFile': 'Adjuntar archivo',
       'ui_aiAttachmentText': '\\n\\nArchivo {name}:\\n{excerpt}',
-      'ui_aiAttachmentUnsupported': 'Este proveedor no puede leer el archivo adjunto {name} ({mimeType}).',
+      'ui_aiAttachmentUnsupported':
+          'Este proveedor no puede leer el archivo adjunto {name} ({mimeType}).',
       'ui_aiFileKindPdf': ' o PDF',
-      'ui_aiHomeworkVisionPrompt': 'Extraes deberes de pizarras, hojas de trabajo y notas.\\nExtrae todas las tareas de la imagen adjunta{fileKind}.\\nResponde SOLO con este formato de matriz JSON (sin bloque Markdown, solo JSON):\\n[\\n  {\\n    "subject": "Matemáticas",\\n    "text": "Página 42, ejercicios 1–5",\\n    "dueDate": "20260905"\\n  }\\n]\\nIMPORTANTE: La fecha DEBE ser una cadena YYYYMMDD. Deduce un año o una fecha faltante si es posible. Si el archivo no contiene deberes, devuelve una matriz vacía [].',
-      'ui_aiExamVisionPrompt': 'Extraes calendarios de exámenes escolares de forma estructurada.\\nExtrae todos los exámenes relevantes de la imagen adjunta{fileKind}.\\nResponde SOLO con este formato de matriz JSON (sin bloque Markdown, solo JSON y sin saludo):\\n[\\n  {\\n    "subject": "Matemáticas",\\n    "examType": "Examen",\\n    "date": "20240325",\\n    "description": "Información adicional o cadena vacía"\\n  }\\n]\\nIMPORTANTE: La fecha DEBE ser una cadena YYYYMMDD. Deduce el año que falte a partir del año actual ({year}). Si el archivo no contiene exámenes, devuelve una matriz vacía [].',
-      'ui_aiExamJsonSystemPrompt': 'Extrae datos estructurados de exámenes y responde solo con JSON.',
-      'ui_aiExamImageSystemPrompt': 'Extrae datos estructurados de exámenes de la imagen. Responde solo como una matriz JSON.',
-      'ui_aiResponseFormat': 'FORMATO DE RESPUESTA:\\n- Responde de forma breve y visual.\\n- Prefiere un objeto JSON con headline, summary, tags, metrics y lessons.\\n- metrics es una lista de objetos con label y value.\\n- lessons es una lista de objetos con subject, subjectShort, room, teacher, time y status.\\n- Evita textos largos.\\n- IMPORTANTE: Incluye SOLO los campos relevantes para la pregunta. Omite metrics o lessons, o usa matrices vacías, cuando no se soliciten.',
+      'ui_aiHomeworkVisionPrompt':
+          'Extraes deberes de pizarras, hojas de trabajo y notas.\\nExtrae todas las tareas de la imagen adjunta{fileKind}.\\nResponde SOLO con este formato de matriz JSON (sin bloque Markdown, solo JSON):\\n[\\n  {\\n    "subject": "Matemáticas",\\n    "text": "Página 42, ejercicios 1–5",\\n    "dueDate": "20260905"\\n  }\\n]\\nIMPORTANTE: La fecha DEBE ser una cadena YYYYMMDD. Deduce un año o una fecha faltante si es posible. Si el archivo no contiene deberes, devuelve una matriz vacía [].',
+      'ui_aiExamVisionPrompt':
+          'Extraes calendarios de exámenes escolares de forma estructurada.\\nExtrae todos los exámenes relevantes de la imagen adjunta{fileKind}.\\nResponde SOLO con este formato de matriz JSON (sin bloque Markdown, solo JSON y sin saludo):\\n[\\n  {\\n    "subject": "Matemáticas",\\n    "examType": "Examen",\\n    "date": "20240325",\\n    "description": "Información adicional o cadena vacía"\\n  }\\n]\\nIMPORTANTE: La fecha DEBE ser una cadena YYYYMMDD. Deduce el año que falte a partir del año actual ({year}). Si el archivo no contiene exámenes, devuelve una matriz vacía [].',
+      'ui_aiExamJsonSystemPrompt':
+          'Extrae datos estructurados de exámenes y responde solo con JSON.',
+      'ui_aiExamImageSystemPrompt':
+          'Extrae datos estructurados de exámenes de la imagen. Responde solo como una matriz JSON.',
+      'ui_aiResponseFormat':
+          'FORMATO DE RESPUESTA:\\n- Responde de forma breve y visual.\\n- Prefiere un objeto JSON con headline, summary, tags, metrics y lessons.\\n- metrics es una lista de objetos con label y value.\\n- lessons es una lista de objetos con subject, subjectShort, room, teacher, time y status.\\n- Evita textos largos.\\n- IMPORTANTE: Incluye SOLO los campos relevantes para la pregunta. Omite metrics o lessons, o usa matrices vacías, cuando no se soliciten.',
       'ui_bgUpdateTitle': 'Actualización de Untis+ disponible',
-      'ui_bgUpdateBody': 'La versión {version} está disponible en las versiones de GitHub.',
+      'ui_bgUpdateBody':
+          'La versión {version} está disponible en las versiones de GitHub.',
       'ui_bgDailyBriefingTitle': 'Resumen de tu día escolar',
-      'ui_bgDailyBriefingBody': '{start}–{end}, {lessons} clases, {breaks} descansos',
-      'ui_bgDailyBriefingExpanded': 'Inicio: {start}\\nFin: {end}\\nClases: {lessons}\\nDescansos: {breaks}\\nSiguiente: {next}',
+      'ui_bgDailyBriefingBody':
+          '{start}–{end}, {lessons} clases, {breaks} descansos',
+      'ui_bgDailyBriefingExpanded':
+          'Inicio: {start}\\nFin: {end}\\nClases: {lessons}\\nDescansos: {breaks}\\nSiguiente: {next}',
       'ui_bgChangesTitle': 'Horario actualizado',
       'ui_bgChangesBody': 'Hay cambios nuevos hoy. Toca para abrir tu horario.',
       'ui_bgCurrentLesson': 'Clase actual',
@@ -5561,17 +5891,25 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'ui_aiActionDeleteGrade': 'Eliminar nota: {id}',
       'ui_aiActionUnknown': 'Acción desconocida',
       'ui_aiParametersTitle': 'Parámetros de IA',
-      'ui_aiPersonaStrict': 'Responde como un profesor estricto pero justo. Presta atención a la disciplina y al orden.',
-      'ui_aiPersonaBuddy': 'Responde como un compañero relajado, con un lenguaje juvenil y natural.',
+      'ui_aiPersonaStrict':
+          'Responde como un profesor estricto pero justo. Presta atención a la disciplina y al orden.',
+      'ui_aiPersonaBuddy':
+          'Responde como un compañero relajado, con un lenguaje juvenil y natural.',
       'ui_aiPersonaHelpful': 'Responde de forma amable, profesional y útil.',
-      'ui_aiAssistantIntro': 'Eres un asistente útil para la aplicación de horario Untis+.',
-      'ui_aiAssistantRules': 'Responde de forma natural y amable en el chat. Puedes acceder al horario y a los exámenes del usuario de arriba. Usa Markdown para un formato claro. Responde en lenguaje natural, nunca en JSON salvo que se solicite expresamente. Sé conciso y preciso, y no te presentes. Para un cambio local solicitado, añade un bloque independiente con este formato exacto: ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade","id":"optional id","subject":"subject","text":"text","dueDate":"YYYYMMDD","value":"optional grade","weight":"optional weight","type":"optional type"} ```. Propón solo cambios seguros y concretos; se aplican únicamente tras una confirmación explícita. Nunca afirmes que se hizo un cambio sin proponer ese bloque y recibir la confirmación.',
-      'ui_aiDayDataUnavailable': '{date}: los datos del horario de este día aún no se han cargado.',
-      'ui_aiWeekDataUnavailable': 'La semana del horario correspondiente a {date} aún no se ha cargado, así que no voy a adivinar.',
-      'ui_aiNoScheduledLessons': 'No hay clases no canceladas previstas para {date}.',
+      'ui_aiAssistantIntro':
+          'Eres un asistente útil para la aplicación de horario Untis+.',
+      'ui_aiAssistantRules':
+          'Responde de forma natural y amable en el chat. Puedes acceder al horario y a los exámenes del usuario de arriba. Usa Markdown para un formato claro. Responde en lenguaje natural, nunca en JSON salvo que se solicite expresamente. Sé conciso y preciso, y no te presentes. Para un cambio local solicitado, añade un bloque independiente con este formato exacto: ```untis-action {"kind":"create_homework|update_homework|delete_homework|complete_homework|create_exam|update_exam|delete_exam|create_grade|update_grade|delete_grade","id":"optional id","subject":"subject","text":"text","dueDate":"YYYYMMDD","value":"optional grade","weight":"optional weight","type":"optional type"} ```. Propón solo cambios seguros y concretos; se aplican únicamente tras una confirmación explícita. Nunca afirmes que se hizo un cambio sin proponer ese bloque y recibir la confirmación.',
+      'ui_aiDayDataUnavailable':
+          '{date}: los datos del horario de este día aún no se han cargado.',
+      'ui_aiWeekDataUnavailable':
+          'La semana del horario correspondiente a {date} aún no se ha cargado, así que no voy a adivinar.',
+      'ui_aiNoScheduledLessons':
+          'No hay clases no canceladas previstas para {date}.',
       'ui_aiScheduleReply': 'Sí. El {date} tienes: {lessons}.',
       'ui_aiApplyChangesTitle': 'Confirmar cambios',
-      'ui_aiApplyChangesDesc': 'El asistente ha propuesto estos cambios locales:',
+      'ui_aiApplyChangesDesc':
+          'El asistente ha propuesto estos cambios locales:',
       'ui_aiChangesApplied': 'Cambios aplicados.',
       'ui_apply': 'Aplicar',
       'ui_aiParametersDesc': 'Ajusta las respuestas del modelo.',

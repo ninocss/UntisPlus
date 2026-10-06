@@ -91,13 +91,12 @@ class _AiComposerState extends State<_AiComposer> {
             scale: focused && !_aiReduceMotion(context) ? 1.005 : 1,
             child: ThemedSurface(
               borderRadius: BorderRadius.circular(_aiRadius(29)),
-              color: (focused
-                      ? cs.surfaceContainerHigh
-                      : cs.surfaceContainer)
+              color: (focused ? cs.surfaceContainerHigh : cs.surfaceContainer)
                   .withValues(alpha: focused ? 0.9 : 0.82),
               border: Border.all(
-                color: (focused ? cs.primary : cs.outlineVariant)
-                    .withValues(alpha: focused ? 0.28 : 0.2),
+                color: (focused ? cs.primary : cs.outlineVariant).withValues(
+                  alpha: focused ? 0.28 : 0.2,
+                ),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(8),
@@ -111,16 +110,16 @@ class _AiComposerState extends State<_AiComposer> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              for (final item in widget.attachments.indexed) ...[
+                              for (final item
+                                  in widget.attachments.indexed) ...[
                                 if (item.$1 > 0) const SizedBox(width: 6),
                                 _AiAttachmentChip(
-                                  key: ValueKey(
-                                    '${item.$2.name}-${item.$1}',
-                                  ),
+                                  key: ValueKey('${item.$2.name}-${item.$1}'),
                                   attachment: item.$2,
                                   onRemove: widget.thinking
                                       ? null
-                                      : () => widget.onRemoveAttachment(item.$1),
+                                      : () =>
+                                            widget.onRemoveAttachment(item.$1),
                                 ),
                               ],
                             ],
@@ -139,7 +138,9 @@ class _AiComposerState extends State<_AiComposer> {
                               appLocaleNotifier.value,
                             ).aiAttachFile,
                             child: IconButton(
-                              onPressed: widget.thinking ? null : widget.onAttach,
+                              onPressed: widget.thinking
+                                  ? null
+                                  : widget.onAttach,
                               constraints: const BoxConstraints(
                                 minWidth: 48,
                                 minHeight: 48,
@@ -246,7 +247,7 @@ class _AiComposerState extends State<_AiComposer> {
                                             key: const ValueKey('thinking'),
                                             width: 20,
                                             height: 20,
-                                            child: CircularProgressIndicator(
+                                            child: ExpressiveLoadingIndicator(
                                               strokeWidth: 2.4,
                                               color: cs.onPrimary,
                                             ),

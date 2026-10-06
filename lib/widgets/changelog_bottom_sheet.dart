@@ -83,7 +83,8 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                       children: [
                         Text(
                           appL10nFor(appLocaleNotifier.value).changelogTitle,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
                             color: cs.onSurface,
@@ -91,7 +92,8 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                         ),
                         Text(
                           'Untis+ $appVersion',
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: cs.primary,
@@ -120,7 +122,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(
-                      child: CircularProgressIndicator(color: cs.primary),
+                      child: ExpressiveLoadingIndicator(color: cs.primary),
                     );
                   }
                   if (snapshot.hasError) {
@@ -140,7 +142,8 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                               appL10nFor(
                                 appLocaleNotifier.value,
                               ).changelogLoadError,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -214,7 +217,8 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                                 releaseDate == null
                                     ? data.version
                                     : '${data.version} · $releaseDate',
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: cs.onPrimaryContainer,
@@ -253,22 +257,26 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                           ),
                           physics: const BouncingScrollPhysics(),
                           styleSheet: MarkdownStyleSheet(
-                            p: GoogleFonts.inter(
+                            p: _appTextStyle(
+                              context,
                               fontSize: 15,
                               color: cs.onSurface.withValues(alpha: 0.85),
                               height: 1.5,
                             ),
-                            h1: GoogleFonts.outfit(
+                            h1: _appTextStyle(
+                              context,
                               fontSize: 24,
                               fontWeight: FontWeight.w800,
                               color: cs.onSurface,
                             ),
-                            h2: GoogleFonts.outfit(
+                            h2: _appTextStyle(
+                              context,
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                               color: cs.onSurface,
                             ),
-                            h3: GoogleFonts.outfit(
+                            h3: _appTextStyle(
+                              context,
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                               color: cs.onSurface,
@@ -284,7 +292,7 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                                 color: cs.outlineVariant.withValues(alpha: 0.5),
                               ),
                             ),
-                            code: GoogleFonts.firaCode(
+                            code: GoogleFonts.ibmPlexMono(
                               fontSize: 13,
                               color: cs.primary,
                               backgroundColor: Colors.transparent,

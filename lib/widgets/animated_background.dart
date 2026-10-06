@@ -6,7 +6,10 @@ class _AnimatedBackground extends StatelessWidget {
   const _AnimatedBackground({required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      AppRouteActivity(child: Builder(builder: _buildBackground));
+
+  Widget _buildBackground(BuildContext context) {
     if (_AnimatedBackgroundScope.maybeOf(context) != null) return child;
     return _AnimatedBackgroundScope(
       child: ValueListenableBuilder<bool>(
@@ -36,7 +39,9 @@ class _AnimatedBackground extends StatelessWidget {
                       return Stack(
                         children: [
                           Positioned.fill(
-                            child: _AnimatedBackgroundScene(style: style),
+                            child: RepaintBoundary(
+                              child: _AnimatedBackgroundScene(style: style),
+                            ),
                           ),
                           if (bgBlurEnabled && bgBlurAmount > 0)
                             Positioned.fill(
@@ -99,10 +104,11 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
       vsync: this,
       duration: const Duration(seconds: 16),
     );
+    _ctrl.addListener(_updateGyroscope);
     backgroundGyroscopeNotifier.addListener(_handleGyroscopeToggle);
   }
 
-  bool get _motionAllowed => !_isPaused && AppMotion.enabled(context);
+  bool get _motionAllowed => !_isPaused && AppMotion.backgroundEnabled(context);
 
   @override
   void didChangeDependencies() {
@@ -147,7 +153,9 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
   }
 
   void _handleGyroscopeToggle() {
-    if (_motionAllowed && backgroundGyroscopeNotifier.value) {
+    if (_motionAllowed &&
+        AppEffects.gyroscope &&
+        backgroundGyroscopeNotifier.value) {
       _startGyroscope();
       return;
     }
@@ -173,15 +181,31 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
     _gyroTargetY = 0;
   }
 
+  void _updateGyroscope() {
+    final enabled = AppEffects.gyroscope && backgroundGyroscopeNotifier.value;
+    _gyroX += ((_gyroTargetX - _gyroX) * (enabled ? 0.1 : 0.06));
+    _gyroY += ((_gyroTargetY - _gyroY) * (enabled ? 0.1 : 0.06));
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    if (const {3, 5, 6, 7, 8, 9}.contains(widget.style)) {
+      return CustomPaint(
+        painter: _BackgroundScenePainter(
+          animation: _ctrl,
+          style: widget.style,
+          colors: cs,
+          full: AppEffects.full,
+          parallax: () => Offset(_gyroX, _gyroY),
+        ),
+      );
+    }
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, _) {
-        final gyroEnabled = backgroundGyroscopeNotifier.value;
-        _gyroX += ((_gyroTargetX - _gyroX) * (gyroEnabled ? 0.1 : 0.06));
-        _gyroY += ((_gyroTargetY - _gyroY) * (gyroEnabled ? 0.1 : 0.06));
+        final gyroEnabled =
+            AppEffects.gyroscope && backgroundGyroscopeNotifier.value;
         final breathe = math.sin(_ctrl.value * math.pi * 2);
         final scale = 1.0 + (breathe * 0.012);
         final opacity = (0.9 + ((breathe + 1) * 0.05)).clamp(0.84, 1.0);
@@ -242,6 +266,62 @@ class _AnimatedBackgroundSceneState extends State<_AnimatedBackgroundScene>
         return _OrbsLayer(t: t, cs: cs);
     }
   }
+}
+
+/// Procedural scenes repaint from the ticker without rebuilding widget trees.
+class _BackgroundScenePainter extends CustomPainter {
+  _BackgroundScenePainter({
+    required this.animation,
+    required this.style,
+    required this.colors,
+    required this.full,
+    required this.parallax,
+  }) : super(repaint: animation);
+
+  final Animation<double> animation;
+  final int style;
+  final ColorScheme colors;
+  final bool full;
+  final Offset Function() parallax;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = animation.value;
+    canvas.save();
+    if (full) {
+      final breathe = math.sin(t * math.pi * 2);
+      final scale = 1 + breathe * .012;
+      final offset = parallax();
+      canvas.saveLayer(
+        Offset.zero & size,
+        Paint()
+          ..color = Colors.white.withValues(alpha: .9 + (breathe + 1) * .05),
+      );
+      canvas.translate(size.width / 2, size.height / 2);
+      canvas.scale(scale);
+      canvas.translate(
+        -size.width / 2 + offset.dx * 16,
+        -size.height / 2 + offset.dy * 14,
+      );
+    }
+    final painter = switch (style) {
+      3 => _LinesPainter(t: t, cs: colors),
+      5 => _NebulaFlowPainter(t: t, cs: colors),
+      6 => _PrismPainter(t: t, cs: colors),
+      7 => _WavesPainter(t: t, cs: colors),
+      8 => _GridPainter(t: t, cs: colors),
+      _ => _RingsPainter(t: t, cs: colors),
+    };
+    painter.paint(canvas, size);
+    if (full) canvas.restore();
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_BackgroundScenePainter oldDelegate) =>
+      style != oldDelegate.style ||
+      colors != oldDelegate.colors ||
+      full != oldDelegate.full;
 }
 
 class _OrbsLayer extends StatelessWidget {

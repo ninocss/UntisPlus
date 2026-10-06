@@ -122,7 +122,8 @@ class SettingsAppearancePage extends StatelessWidget {
               children: [
                 Text(
                   l.settingsCustomColor,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -418,7 +419,7 @@ class SettingsAppearancePage extends StatelessWidget {
                       _settingsSetVisualTheme(theme);
                     },
                     child: AnimatedContainer(
-                      duration: MediaQuery.of(context).disableAnimations
+                      duration: !AppMotion.enabled(context)
                           ? Duration.zero
                           : const Duration(milliseconds: 260),
                       padding: const EdgeInsets.all(10),
@@ -554,7 +555,8 @@ class SettingsAppearancePage extends StatelessWidget {
                           value: ThemeMode.system,
                           label: Text(
                             l.settingsThemeSystem,
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                             ),
@@ -568,7 +570,8 @@ class SettingsAppearancePage extends StatelessWidget {
                           value: ThemeMode.light,
                           label: Text(
                             l.settingsThemeLight,
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                             ),
@@ -579,7 +582,8 @@ class SettingsAppearancePage extends StatelessWidget {
                           value: ThemeMode.dark,
                           label: Text(
                             l.settingsThemeDark,
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                             ),
@@ -656,7 +660,8 @@ class SettingsAppearancePage extends StatelessWidget {
                           children: [
                             Text(
                               l.settingsCustomColorSeed,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13.5,
                                 color: cs.onSurface,
@@ -774,7 +779,8 @@ class SettingsAppearancePage extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       l.settingsHeaderStyle,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                         color: cs.onSurface,
@@ -845,7 +851,8 @@ class SettingsAppearancePage extends StatelessWidget {
                           children: [
                             Text(
                               '${l.settingsGlassEffect}: $percent%',
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
                                 color: cs.onSurface,
@@ -912,7 +919,8 @@ class SettingsAppearancePage extends StatelessWidget {
                         children: [
                           Text(
                             '${l.settingsSurfaceCornerRadius}: $radius px',
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
                               color: cs.onSurface,
@@ -962,7 +970,8 @@ class SettingsAppearancePage extends StatelessWidget {
                       children: [
                         Text(
                           l.settingsAppBgBlurAmount,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                             color: cs.onSurface,
@@ -1078,6 +1087,33 @@ class SettingsAppearancePage extends StatelessWidget {
         SettingsGroup(
           title: l.settingsAppearanceMotion,
           children: [
+            const _EffectQualitySettings(),
+            ValueListenableBuilder<bool>(
+              valueListenable: interactionAnimationsEnabledNotifier,
+              builder: (context, enabled, _) => SettingsSwitchTile(
+                icon: Icons.animation_rounded,
+                title: l.settingsInteractionAnimations,
+                subtitle: l.settingsInteractionAnimationsDesc,
+                showSubtitle: true,
+                value: enabled,
+                onChanged: (value) => SettingsStore.instance.write(
+                  interactionAnimationsPreference,
+                  value,
+                ),
+              ),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: hapticsEnabledNotifier,
+              builder: (context, enabled, _) => SettingsSwitchTile(
+                icon: Icons.vibration_rounded,
+                title: l.settingsHaptics,
+                subtitle: l.settingsHapticsDesc,
+                showSubtitle: true,
+                value: enabled,
+                onChanged: (value) =>
+                    SettingsStore.instance.write(hapticsPreference, value),
+              ),
+            ),
             ValueListenableBuilder<bool>(
               valueListenable: glowEffectsEnabledNotifier,
               builder: (context, glowEnabled, _) {
@@ -1210,6 +1246,87 @@ class SettingsAppearancePage extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _EffectQualitySettings extends StatelessWidget {
+  const _EffectQualitySettings();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final cs = Theme.of(context).colorScheme;
+    return ValueListenableBuilder<AppEffectQuality>(
+      valueListenable: effectQualityNotifier,
+      builder: (context, quality, _) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.settingsEffectQuality,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.settingsEffectQualityDesc,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final option in AppEffectQuality.values)
+                  ChoiceChip(
+                    key: ValueKey('effect-quality-${option.name}'),
+                    avatar: Icon(switch (option) {
+                      AppEffectQuality.full => Icons.auto_awesome_rounded,
+                      AppEffectQuality.balanced => Icons.balance_rounded,
+                      AppEffectQuality.reduced => Icons.speed_rounded,
+                    }, size: 18),
+                    label: Text(switch (option) {
+                      AppEffectQuality.full => l.effectQualityFull,
+                      AppEffectQuality.balanced => l.effectQualityBalanced,
+                      AppEffectQuality.reduced => l.effectQualityReduced,
+                    }),
+                    selected: option == quality,
+                    onSelected: (selected) {
+                      if (!selected || option == quality) return;
+                      AppHaptics.selection();
+                      unawaited(
+                        SettingsStore.instance.write(
+                          effectQualityPreference,
+                          option,
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cs.secondaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                switch (quality) {
+                  AppEffectQuality.full => l.effectQualityFullDesc,
+                  AppEffectQuality.balanced => l.effectQualityBalancedDesc,
+                  AppEffectQuality.reduced => l.effectQualityReducedDesc,
+                },
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: cs.onSecondaryContainer,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

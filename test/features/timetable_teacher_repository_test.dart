@@ -67,4 +67,26 @@ void main() {
       expect(lessons, isEmpty);
     },
   );
+
+  test('requests a whole teacher week in one timetable call', () async {
+    final client = MockClient((request) async {
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      final options =
+          (body['params'] as Map<String, dynamic>)['options']
+              as Map<String, dynamic>;
+      expect(options['element'], {'id': 42, 'type': 2});
+      expect(options['startDate'], 20260928);
+      expect(options['endDate'], 20261004);
+      return http.Response(jsonEncode({'result': []}), 200);
+    });
+    final repository = TimetableRepository(
+      client: WebUntisClient(client: client, maxRetries: 0),
+    );
+    await repository.fetchTeacherTimetable(
+      context: context,
+      teacherId: 42,
+      date: DateTime(2026, 9, 28),
+      endDate: DateTime(2026, 10, 4),
+    );
+  });
 }

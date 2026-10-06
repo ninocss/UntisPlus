@@ -31,9 +31,6 @@ class TeacherSearchIndexService {
 
   DateTime _weekStart(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
-    if (day.weekday >= DateTime.saturday) {
-      return day.add(Duration(days: 8 - day.weekday));
-    }
     return day.subtract(Duration(days: day.weekday - DateTime.monday));
   }
 
@@ -76,7 +73,7 @@ class TeacherSearchIndexService {
     }
 
     final monday = _weekStart(date);
-    final friday = monday.add(const Duration(days: 4));
+    final sunday = monday.add(const Duration(days: 6));
     final catalogContext = context.copyWith(sessionId: catalog.sessionId);
     final teachersById = <int, _TeacherIndexEntry>{};
     var scannedClasses = 0;
@@ -108,7 +105,7 @@ class TeacherSearchIndexService {
               elementId: classId,
               elementType: 1,
               startDate: monday,
-              endDate: friday,
+              endDate: sunday,
               requestId: 'teacher_index_class_$classId',
               showLessonText: false,
               showSubstitutionText: false,

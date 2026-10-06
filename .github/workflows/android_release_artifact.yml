@@ -1,0 +1,106 @@
+name: Android release test artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      retention_days:
+        description: 'How many days to keep the test artifact'
+        required: true
+        default: '3'
+        type: choice
+        options:
+          - '1'
+          - '3'
+          - '5'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build signed Android release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: stable
+          cache: true
+          cache-dependency-path: pubspec.lock
+
+      - name: Cache Gradle
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Cache fllama native builds
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/fllama
+          key: ${{ runner.os }}-fllama-android-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-fllama-android-
+
+      - name: Configure Android signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo 'Android signing secrets are required for a release APK.'
+            exit 1
+          fi
+          signing_dir="$RUNNER_TEMP/android-signing"
+          mkdir -p "$signing_dir"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$signing_dir/upload-keystore.jks"
+          {
+            echo "storePassword=$KEY_STORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=$signing_dir/upload-keystore.jks"
+          } > android/key.properties
+
+      - name: Install dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Analyze and test without the local AI native build
+        run: |
+          flutter analyze --no-fatal-infos
+          pwsh -NoProfile -File tool/test_without_local_ai.ps1
+
+      - name: Build universal release APK
+        run: flutter build apk --release --build-number="${GITHUB_RUN_NUMBER}"
+
+      - name: Prepare private test artifact
+        run: |
+          set -euo pipefail
+          mkdir -p release_artifact
+          cp build/app/outputs/flutter-apk/app-release.apk release_artifact/UntisPlus-release-test.apk
+          sha256sum release_artifact/UntisPlus-release-test.apk > release_artifact/SHA256SUMS.txt
+
+      - name: Upload release APK as Actions artifact only
+        uses: actions/upload-artifact@v7
+        with:
+          name: untisplus-release-test-${{ github.run_number }}
+          path: release_artifact/
+          if-no-files-found: error
+          retention-days: ${{ fromJSON(inputs.retention_days) }}

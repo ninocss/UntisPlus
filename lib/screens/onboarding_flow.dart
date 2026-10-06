@@ -37,6 +37,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   late String _onboardingAiCustomCompatibility;
   Map<String, String> _onboardingProviderApiKeys = {};
 
+  bool _aiConfigurationReady = false;
+  Object? _aiConfigurationError;
   bool _isLogginIn = false;
   bool _requiresTwoFactor = false;
   bool _manualSchoolEntry = false;
@@ -53,6 +55,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   void initState() {
     super.initState();
+    unawaited(_hydrateAiConfiguration());
     _onboardingAiProvider = _normalizeAiProvider(aiProvider);
     _onboardingAiCustomCompatibility = _normalizeAiCustomCompatibility(
       aiCustomCompatibility,
@@ -100,6 +103,29 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         }
       }
     });
+  }
+
+  Future<void> _hydrateAiConfiguration() async {
+    try {
+      await _ensureAiConfigurationReady();
+      if (!mounted) return;
+      setState(() {
+        _onboardingAiProvider = _normalizeAiProvider(aiProvider);
+        _onboardingAiCustomCompatibility = aiCustomCompatibility;
+        _onboardingAiModel = aiModel;
+        _onboardingProviderApiKeys = {
+          'gemini': geminiApiKey,
+          'openai': openAiApiKey,
+          'mistral': mistralApiKey,
+          'custom': customAiApiKey,
+        };
+        _aiCustomBaseUrlController.text = aiCustomBaseUrl;
+        _syncApiKeyControllerForProvider();
+        _aiConfigurationReady = true;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _aiConfigurationError = error);
+    }
   }
 
   void _onPageChanged(int page) {
@@ -532,6 +558,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         l.save,
                         style: untisThemeTextStyle(
                           context,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -607,7 +634,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     controller: ctrl,
                     minLines: 10,
                     maxLines: 18,
-                    style: GoogleFonts.jetBrainsMono(fontSize: 12.5),
+                    style: GoogleFonts.ibmPlexMono(fontSize: 12.5),
                     decoration: InputDecoration(
                       filled: true,
                       border: OutlineInputBorder(
@@ -652,6 +679,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         l.save,
                         style: untisThemeTextStyle(
                           context,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -719,7 +747,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             leading: const Icon(Icons.label_important_outline),
                             title: Text(
                               entry.key,
-                              style: GoogleFonts.jetBrainsMono(
+                              style: GoogleFonts.ibmPlexMono(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,
                               ),
@@ -758,6 +786,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _persistOnboardingAiConfiguration() async {
+    await _ensureAiConfigurationReady();
+    if (!mounted) return;
     _cacheCurrentProviderApiKey();
     aiProvider = _normalizeAiProvider(_onboardingAiProvider);
     aiCustomCompatibility = _normalizeAiCustomCompatibility(
@@ -782,7 +812,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
     if (_currentPage < _totalOnboardingSteps - 1) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 560),
+        duration: AppMotion.duration(context, AppMotionTokens.calmEffects),
         curve: _kSmoothBounce,
       );
     } else {
@@ -929,6 +959,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _completeOnboarding() async {
+    if (!await _prepareAiInteraction(context) && aiEnabledNotifier.value) {
+      return;
+    }
+    if (!mounted) return;
     final prefs = SettingsStore.instance.preferences;
     await _persistOnboardingAiConfiguration();
 
@@ -1662,7 +1696,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final radius = sharp ? 4.0 : 22.0;
     return AnimatedContainer(
       key: const ValueKey('onboarding-theme-preview'),
-      duration: MediaQuery.of(context).disableAnimations
+      duration: !AppMotion.enabled(context)
           ? Duration.zero
           : const Duration(milliseconds: 280),
       height: 132,
@@ -1757,7 +1791,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             },
             borderRadius: BorderRadius.circular(sharp ? 3 : 14),
             child: AnimatedContainer(
-              duration: MediaQuery.of(context).disableAnimations
+              duration: !AppMotion.enabled(context)
                   ? Duration.zero
                   : const Duration(milliseconds: 220),
               padding: const EdgeInsets.all(9),
@@ -2107,7 +2141,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           const SizedBox(height: 10),
           Expanded(
             child: _isSearching
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: ExpressiveLoadingIndicator())
                 : _searchResults.isEmpty
                 ? Center(
                     child: Column(
@@ -2420,7 +2454,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           if (_isLogginIn)
             const SizedBox(
               height: 56,
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: ExpressiveLoadingIndicator()),
             )
           else
             FilledButton(
@@ -2433,6 +2467,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 _requiresTwoFactor ? l.loginVerifyButton : l.loginButton,
                 style: untisThemeTextStyle(
                   context,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                 ),
@@ -2658,6 +2693,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Widget _buildGeminiStep() {
+    if (!_aiConfigurationReady) {
+      return Center(
+        child: _aiConfigurationError == null
+            ? const ExpressiveLoadingIndicator()
+            : Text(
+                '${appL10nFor(appLocaleNotifier.value).settingsSectionAI}: ${_aiConfigurationError.runtimeType}',
+              ),
+      );
+    }
     final l = appL10nFor(appLocaleNotifier.value);
     final colors = Theme.of(context).colorScheme;
     final isCustom = _onboardingAiProvider == 'custom';
@@ -2862,6 +2906,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 l.onboardingNext,
                 style: untisThemeTextStyle(
                   context,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                 ),
@@ -2943,6 +2988,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           l.onboardingFinishSetup,
           style: untisThemeTextStyle(
             context,
+            color: Theme.of(context).colorScheme.onPrimary,
             display: true,
             fontSize: 17,
             fontWeight: FontWeight.w800,
@@ -3089,6 +3135,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         lbl ?? l.onboardingNext,
         style: untisThemeTextStyle(
           context,
+          color: Theme.of(context).colorScheme.onPrimary,
           display: true,
           fontSize: 18,
           fontWeight: FontWeight.w800,
@@ -3179,7 +3226,7 @@ class _StepWrapper extends StatelessWidget {
       builder: (context, constraints) {
         final compact = keyboardOpen || constraints.maxHeight < 680;
         final wide = constraints.maxWidth >= 720 && !keyboardOpen;
-        final reduceMotion = mq.disableAnimations;
+        final reduceMotion = !AppMotion.enabled(context);
 
         Widget header({required bool editorial}) {
           final iconSize = editorial ? 82.0 : (compact ? 52.0 : 64.0);

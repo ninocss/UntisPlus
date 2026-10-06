@@ -1,5 +1,117 @@
 part of '../main.dart';
 
+/// Shared indeterminate loading treatment. Determinate progress stays native.
+class ExpressiveLoadingIndicator extends StatefulWidget {
+  const ExpressiveLoadingIndicator({
+    super.key,
+    this.size = 48,
+    this.color,
+    this.strokeWidth = 4,
+    this.semanticsLabel,
+    this.value,
+  });
+
+  final double size, strokeWidth;
+  final Color? color;
+  final String? semanticsLabel;
+  final double? value;
+
+  @override
+  State<ExpressiveLoadingIndicator> createState() =>
+      _ExpressiveLoadingIndicatorState();
+}
+
+class _ExpressiveLoadingIndicatorState extends State<ExpressiveLoadingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _motion = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+  late final Listenable _preferences = Listenable.merge([
+    interactionAnimationsEnabledNotifier,
+    effectQualityNotifier,
+  ]);
+
+  @override
+  void initState() {
+    super.initState();
+    _preferences.addListener(_preferencesChanged);
+  }
+
+  void _preferencesChanged() {
+    if (!mounted) return;
+    _syncMotion();
+    setState(() {});
+  }
+
+  void _syncMotion() {
+    final animate =
+        widget.value == null &&
+        _usesExpressiveComponents(context) &&
+        AppMotion.enabled(context);
+    if (animate) {
+      if (!_motion.isAnimating) _motion.repeat();
+    } else {
+      _motion.stop();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMotion();
+  }
+
+  @override
+  void didUpdateWidget(ExpressiveLoadingIndicator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncMotion();
+  }
+
+  @override
+  void dispose() {
+    _preferences.removeListener(_preferencesChanged);
+    _motion.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label =
+        widget.semanticsLabel ??
+        appL10nFor(appLocaleNotifier.value).loadingIndicatorLabel;
+    if (!_usesExpressiveComponents(context) || widget.value != null) {
+      return SizedBox.square(
+        dimension: widget.size,
+        child: CircularProgressIndicator(
+          value: widget.value,
+          color: widget.color,
+          strokeWidth: widget.strokeWidth,
+          semanticsLabel: label,
+        ),
+      );
+    }
+    final cs = Theme.of(context).colorScheme;
+    return Semantics(
+      label: label,
+      liveRegion: true,
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _motion,
+          builder: (context, _) => CustomPaint(
+            size: Size.square(widget.size),
+            painter: _ExpressiveLoaderPainter(
+              containerColor: cs.primaryContainer,
+              blobColor: widget.color ?? cs.onPrimaryContainer,
+              turns: _motion.value,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Material's stock refresh interaction with the Material You Expressive
 /// loading treatment. `RefreshIndicator.noSpinner` keeps the platform's
 /// gesture, semantics, and refresh lifecycle while this widget draws the
@@ -39,6 +151,19 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
   );
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!AppMotion.enabled(context)) {
+      _motion.stop();
+      _contentOffset.stop();
+      _contentOffset.value = 0;
+    } else if (_status == RefreshIndicatorStatus.snap ||
+        _status == RefreshIndicatorStatus.refresh) {
+      if (!_motion.isAnimating) _motion.repeat();
+    }
+  }
+
+  @override
   void dispose() {
     _resetTimer?.cancel();
     _pullProgressNotifier.dispose();
@@ -54,9 +179,13 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
       _contentOffset.value = 0;
       return;
     }
+    if (!AppMotion.enabled(context)) {
+      _contentOffset.value = 0;
+      return;
+    }
     _contentOffset.animateWith(
       SpringSimulation(
-        const SpringDescription(mass: 1, stiffness: 520, damping: 28),
+        AppMotion.spring(AppMotionSpeed.standard),
         _contentOffset.value,
         0,
         0,
@@ -70,8 +199,7 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
     setState(() => _status = status);
     if (status == RefreshIndicatorStatus.snap ||
         status == RefreshIndicatorStatus.refresh) {
-      if (context.mounted &&
-          !(MediaQuery.maybeOf(context)?.disableAnimations ?? false)) {
+      if (context.mounted && AppMotion.enabled(context)) {
         if (!_motion.isAnimating) {
           _motion.repeat();
         }
@@ -204,17 +332,26 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
                               : 0.0;
 
                           return AnimatedSlide(
-                            duration: const Duration(milliseconds: 180),
+                            duration: AppMotion.duration(
+                              context,
+                              AppMotionTokens.standardEffects,
+                            ),
                             curve: Curves.easeOutCubic,
                             offset: isVisible
                                 ? Offset.zero
                                 : const Offset(0, -0.45),
                             child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 140),
+                              duration: AppMotion.duration(
+                                context,
+                                AppMotionTokens.fastEffects,
+                              ),
                               opacity: effectiveOpacity,
                               child: Center(
                                 child: AnimatedScale(
-                                  duration: const Duration(milliseconds: 180),
+                                  duration: AppMotion.duration(
+                                    context,
+                                    AppMotionTokens.standardEffects,
+                                  ),
                                   curve: Curves.easeOutBack,
                                   scale: isSpinning || isArmed ? 1.0 : 0.76,
                                   child: AnimatedBuilder(

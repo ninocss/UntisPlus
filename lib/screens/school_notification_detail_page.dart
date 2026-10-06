@@ -129,7 +129,11 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
       appBar: RoundedBlurAppBar(
         title: Text(
           item.title,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 22),
+          style: _appTextStyle(
+            context,
+            fontWeight: FontWeight.w900,
+            fontSize: 22,
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -157,7 +161,9 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
             children: [
               _glassContainer(
                 context: context,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(
+                  _expressiveRadius(context, 24, expressiveRadius: 28),
+                ),
                 color: cs.surfaceContainerLow.withValues(alpha: 0.62),
                 border: Border.all(
                   color: cs.outlineVariant.withValues(alpha: 0.3),
@@ -180,7 +186,8 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                           Expanded(
                             child: Text(
                               item.title,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 height: 1.2,
@@ -221,7 +228,8 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                         const SizedBox(height: 22),
                         Text(
                           l.infoAttachments,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: cs.onSurface,
@@ -231,58 +239,93 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                         for (final attachment in item.attachments)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: _glassContainer(
-                              context: context,
-                              borderRadius: BorderRadius.circular(14),
-                              color: cs.surfaceContainerHigh.withValues(
-                                alpha: 0.45,
-                              ),
-                              border: Border.all(
-                                color: cs.outlineVariant.withValues(alpha: 0.3),
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () =>
-                                    _downloadAttachment(context, attachment),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 12,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        _attachmentIcon(
-                                          attachment.fileExtension,
+                            child: _usesExpressiveComponents(context)
+                                ? UntisActionTile(
+                                    leading: Icon(
+                                      _attachmentIcon(attachment.fileExtension),
+                                    ),
+                                    title: Text(
+                                      attachment.name.isEmpty
+                                          ? l.infoAttachments
+                                          : attachment.name,
+                                    ),
+                                    trailing: const Icon(
+                                      Icons.download_rounded,
+                                    ),
+                                    onTap: () => _downloadAttachment(
+                                      context,
+                                      attachment,
+                                    ),
+                                  )
+                                : _glassContainer(
+                                    context: context,
+                                    borderRadius: BorderRadius.circular(
+                                      _expressiveRadius(
+                                        context,
+                                        14,
+                                        expressiveRadius: 24,
+                                      ),
+                                    ),
+                                    color: cs.surfaceContainerHigh.withValues(
+                                      alpha: 0.45,
+                                    ),
+                                    border: Border.all(
+                                      color: cs.outlineVariant.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(
+                                        _expressiveRadius(
+                                          context,
+                                          14,
+                                          expressiveRadius: 24,
                                         ),
-                                        size: 20,
-                                        color: cs.primary,
                                       ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          attachment.name.isEmpty
-                                              ? 'Attachment'
-                                              : attachment.name,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                      onTap: () => _downloadAttachment(
+                                        context,
+                                        attachment,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 12,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              _attachmentIcon(
+                                                attachment.fileExtension,
+                                              ),
+                                              size: 20,
+                                              color: cs.primary,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                attachment.name.isEmpty
+                                                    ? 'Attachment'
+                                                    : attachment.name,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: _appTextStyle(
+                                                  context,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Icon(
+                                              Icons.download_rounded,
+                                              size: 20,
+                                              color: cs.primary,
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        Icons.download_rounded,
-                                        size: 20,
-                                        color: cs.primary,
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              ),
-                            ),
                           ),
                       ],
                       if (item.url != null) ...[
@@ -320,7 +363,8 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               text,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),

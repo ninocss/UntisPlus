@@ -2,18 +2,25 @@ part of '../main.dart';
 
 // --- HAUSAUFGABEN & PRÜFUNGEN ---
 
-Widget _chip(String label, Color bg, Color fg) => Container(
-  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-  decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-  child: Text(
-    label,
-    style: GoogleFonts.outfit(
-      fontSize: 11,
-      fontWeight: FontWeight.w800,
-      color: fg,
-    ),
-  ),
-);
+Widget _chip(BuildContext context, String label, Color bg, Color fg) =>
+    Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 8, expressiveRadius: 24),
+        ),
+      ),
+      child: Text(
+        label,
+        style: _appTextStyle(
+          context,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: fg,
+        ),
+      ),
+    );
 
 List<DateTime> _findSubjectDates(String subject) {
   if (subject.isEmpty) return [];
@@ -101,7 +108,8 @@ Future<void> _showAddHomeworkDialog(
                           existing == null
                               ? l.homeworkAddTitle
                               : l.homeworkEditTitle,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
@@ -109,7 +117,8 @@ Future<void> _showAddHomeworkDialog(
                         ),
                         Text(
                           l.homeworkAddDesc,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: cs.onSurfaceVariant.withValues(alpha: 0.7),
@@ -142,7 +151,8 @@ Future<void> _showAddHomeworkDialog(
               const SizedBox(height: 32),
               Text(
                 l.homeworkSubjectLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
@@ -164,7 +174,7 @@ Future<void> _showAddHomeworkDialog(
               else
                 TextField(
                   controller: subjectCtrl,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w700),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.book_rounded),
                     hintText: l.homeworkSubjectLabel,
@@ -173,7 +183,9 @@ Future<void> _showAddHomeworkDialog(
                       alpha: 0.4,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(
+                        _expressiveRadius(context, 20, expressiveRadius: 28),
+                      ),
                       borderSide: BorderSide.none,
                     ),
                   ),
@@ -181,7 +193,8 @@ Future<void> _showAddHomeworkDialog(
               const SizedBox(height: 24),
               Text(
                 l.homeworkTaskLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
@@ -192,7 +205,7 @@ Future<void> _showAddHomeworkDialog(
               TextField(
                 controller: taskCtrl,
                 maxLines: 3,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
                 decoration: InputDecoration(
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(bottom: 42),
@@ -202,7 +215,9 @@ Future<void> _showAddHomeworkDialog(
                   filled: true,
                   fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 20, expressiveRadius: 28),
+                    ),
                     borderSide: BorderSide.none,
                   ),
                 ),
@@ -210,7 +225,8 @@ Future<void> _showAddHomeworkDialog(
               const SizedBox(height: 24),
               Text(
                 l.homeworkDueDateLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
@@ -240,7 +256,8 @@ Future<void> _showAddHomeworkDialog(
                                   'E, dd.MM.',
                                   appLocaleNotifier.value,
                                 ).format(d),
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -275,7 +292,9 @@ Future<void> _showAddHomeworkDialog(
                     setDlg(() => selectedDate = picked);
                   }
                 },
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(
+                  _expressiveRadius(context, 20, expressiveRadius: 28),
+                ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -283,7 +302,9 @@ Future<void> _showAddHomeworkDialog(
                   ),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 20, expressiveRadius: 28),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -294,7 +315,8 @@ Future<void> _showAddHomeworkDialog(
                           'dd. MMMM yyyy',
                           _icuLocale(appLocaleNotifier.value),
                         ).format(selectedDate),
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
                         ),
@@ -368,7 +390,8 @@ Future<void> _showAddHomeworkDialog(
                       ),
                       child: Text(
                         l.save,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
                         ),
@@ -388,6 +411,7 @@ Future<void> _showAddHomeworkDialog(
 Future<void> _importHomeworkWithAI(BuildContext context) async {
   if (!aiEnabledNotifier.value) return;
   final l = appL10nFor(appLocaleNotifier.value);
+  if (!await _prepareAiInteraction(context) || !context.mounted) return;
   final runtime = _currentAiRuntimeConfiguration();
   final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
   final capabilities = _aiRequestCoordinator.capabilities(runtime);
@@ -486,11 +510,12 @@ Future<String> _requestAiVisionAnalysisGlobal({
   required String prompt,
   required Uint8List fileBytes,
   required String mimeType,
-}) {
+}) async {
   if (!aiEnabledNotifier.value) {
     return Future<String>.error(StateError('AI is disabled'));
   }
   final l = appL10nFor(appLocaleNotifier.value);
+  await _ensureAiConfigurationReady();
   final runtime = _currentAiRuntimeConfiguration();
   final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
   return _aiRequestCoordinator.generate(
@@ -534,7 +559,11 @@ class HomeworkPage extends StatelessWidget {
       appBar: RoundedBlurAppBar(
         title: Text(
           l.homeworkTitle,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 26),
+          style: _appTextStyle(
+            context,
+            fontWeight: FontWeight.w900,
+            fontSize: 26,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -698,116 +727,120 @@ class _HomeworkViewState extends State<_HomeworkView> {
                 homeworksNotifier.value = res['homeworks']!;
                 lessonNotesNotifier.value = res['lessonNotes']!;
               },
-              child: ListView(
+              child: LazyContentList(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
-                children: [
-                  _buildHomeworkSummaryCard(
-                    context,
-                    cs,
-                    openCount: openItems.length,
-                    dueSoonCount: dueSoonItems.length,
-                  ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: [
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterAll} (${allItems.length})',
-                          Icons.clear_all_rounded,
-                          0,
+                entries: [
+                  (context) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHomeworkSummaryCard(
+                        context,
+                        cs,
+                        openCount: openItems.length,
+                        dueSoonCount: dueSoonItems.length,
+                      ),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          children: [
+                            _filterChip(
+                              context,
+                              cs,
+                              '${l.homeworkFilterAll} (${allItems.length})',
+                              Icons.clear_all_rounded,
+                              0,
+                            ),
+                            const SizedBox(width: 8),
+                            _filterChip(
+                              context,
+                              cs,
+                              '${l.homeworkFilterOpen} (${openItems.length})',
+                              Icons.radio_button_unchecked_rounded,
+                              1,
+                            ),
+                            const SizedBox(width: 8),
+                            _filterChip(
+                              context,
+                              cs,
+                              '${l.homeworkDueSoonFilter} (${dueSoonItems.length})',
+                              Icons.upcoming_rounded,
+                              2,
+                            ),
+                            const SizedBox(width: 8),
+                            _filterChip(
+                              context,
+                              cs,
+                              '${l.homeworkFilterDone} (${doneItems.length})',
+                              Icons.check_circle_rounded,
+                              3,
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterOpen} (${openItems.length})',
-                          Icons.radio_button_unchecked_rounded,
-                          1,
-                        ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkDueSoonFilter} (${dueSoonItems.length})',
-                          Icons.upcoming_rounded,
-                          2,
-                        ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterDone} (${doneItems.length})',
-                          Icons.check_circle_rounded,
-                          3,
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (filtered.isEmpty) ...[
+                        const SizedBox(height: 60),
+                        Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: cs.primary.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.assignment_turned_in_rounded,
+                                  size: 56,
+                                  color: cs.primary.withValues(alpha: 0.6),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                l.homeworkNone,
+                                style: _appTextStyle(
+                                  context,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l.homeworkNoneHint,
+                                textAlign: TextAlign.center,
+                                style: _appTextStyle(
+                                  context,
+                                  fontSize: 14,
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-
-                  if (filtered.isEmpty) ...[
-                    const SizedBox(height: 60),
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: cs.primary.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.assignment_turned_in_rounded,
-                              size: 56,
-                              color: cs.primary.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l.homeworkNone,
-                            style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l.homeworkNoneHint,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                  ...filtered.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final hw = entry.value;
+                    return (context) => _springEntry(
+                      key: ValueKey('hw_${hw['id']}_$idx'),
+                      duration: Duration(
+                        milliseconds: (380 + idx * 40).clamp(380, 580).toInt(),
                       ),
-                    ),
-                  ] else ...[
-                    ...filtered.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final hw = entry.value;
-                      return _springEntry(
-                        key: ValueKey('hw_${hw['id']}_$idx'),
-                        duration: Duration(
-                          milliseconds: (380 + idx * 40)
-                              .clamp(380, 580)
-                              .toInt(),
-                        ),
-                        offsetY: 24,
-                        startScale: 0.94,
-                        curve: _kSmoothBounce,
-                        child: _buildHomeworkCard(context, cs, l, hw),
-                      );
-                    }),
-                  ],
+                      offsetY: 24,
+                      startScale: 0.94,
+                      curve: _kSmoothBounce,
+                      child: _buildHomeworkCard(context, cs, l, hw),
+                    );
+                  }),
                 ],
               ),
             );
@@ -825,9 +858,25 @@ class _HomeworkViewState extends State<_HomeworkView> {
     int index,
   ) {
     final selected = _filterIndex == index;
+    if (_usesExpressiveComponents(context)) {
+      return ChoiceChip(
+        key: ValueKey('homework-filter-$index'),
+        selected: selected,
+        avatar: Icon(icon, size: 18),
+        label: Text(label),
+        onSelected: (_) {
+          if (!selected) {
+            AppHaptics.selection();
+            setState(() => _filterIndex = index);
+          }
+        },
+      );
+    }
     return _glassContainer(
       context: context,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(
+        _expressiveRadius(context, 14, expressiveRadius: 24),
+      ),
       color: selected
           ? cs.primary
           : cs.surfaceContainerHighest.withValues(alpha: 0.4),
@@ -840,7 +889,9 @@ class _HomeworkViewState extends State<_HomeworkView> {
           AppHaptics.selection();
           setState(() => _filterIndex = index);
         },
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 14, expressiveRadius: 24),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Row(
@@ -854,7 +905,8 @@ class _HomeworkViewState extends State<_HomeworkView> {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   fontSize: 13,
                   color: selected ? cs.onPrimary : cs.onSurface,
@@ -883,7 +935,8 @@ class _HomeworkViewState extends State<_HomeworkView> {
       icon: Icons.assignment_turned_in_rounded,
       title: Text(
         title,
-        style: GoogleFonts.outfit(
+        style: _appTextStyle(
+          context,
           fontSize: 17,
           fontWeight: FontWeight.w900,
           color: cs.onSurface,
@@ -897,7 +950,8 @@ class _HomeworkViewState extends State<_HomeworkView> {
           Expanded(
             child: Text(
               detail,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 color: cs.onSurfaceVariant,
@@ -1007,7 +1061,9 @@ class _HomeworkViewState extends State<_HomeworkView> {
       padding: const EdgeInsets.only(bottom: 12),
       child: _glassContainer(
         context: context,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 24, expressiveRadius: 28),
+        ),
         showShadow: false,
         color: isDone
             ? cs.surfaceContainerLowest.withValues(alpha: 0.35)
@@ -1020,62 +1076,85 @@ class _HomeworkViewState extends State<_HomeworkView> {
         ),
         child: Material(
           type: MaterialType.transparency,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(
+            _expressiveRadius(context, 24, expressiveRadius: 28),
+          ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(
+              _expressiveRadius(context, 24, expressiveRadius: 28),
+            ),
             onTap: openHomework,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InkResponse(
-                    onTap: toggleDone,
-                    radius: 22,
-                    containedInkWell: true,
-                    borderRadius: BorderRadius.circular(10),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      width: 28,
-                      height: 28,
-                      margin: const EdgeInsets.only(top: 2),
-                      decoration: BoxDecoration(
-                        color: isDone ? cs.primary : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isDone
-                              ? cs.primary
-                              : accent.withValues(alpha: 0.6),
-                          width: 2,
+                  if (_usesExpressiveComponents(context))
+                    Checkbox(
+                      key: ValueKey('homework-done-${hw['id']}'),
+                      value: isDone,
+                      semanticLabel: isDone
+                          ? l.homeworkReopened
+                          : l.homeworkMarkedDone,
+                      onChanged: (_) => toggleDone(),
+                    )
+                  else
+                    InkResponse(
+                      onTap: toggleDone,
+                      radius: 22,
+                      containedInkWell: true,
+                      borderRadius: BorderRadius.circular(
+                        _expressiveRadius(context, 10, expressiveRadius: 16),
+                      ),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        width: 28,
+                        height: 28,
+                        margin: const EdgeInsets.only(top: 2),
+                        decoration: BoxDecoration(
+                          color: isDone ? cs.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(
+                            _expressiveRadius(
+                              context,
+                              10,
+                              expressiveRadius: 16,
+                            ),
+                          ),
+                          border: Border.all(
+                            color: isDone
+                                ? cs.primary
+                                : accent.withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          boxShadow:
+                              isDone &&
+                                  untisThemeTokensOf(context).glowEffectsEnabled
+                              ? [
+                                  BoxShadow(
+                                    color: cs.primary.withValues(alpha: 0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
                         ),
-                        boxShadow:
-                            isDone &&
-                                untisThemeTokensOf(context).glowEffectsEnabled
-                            ? [
-                                BoxShadow(
-                                  color: cs.primary.withValues(alpha: 0.3),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
+                        child: isDone
+                            ? Icon(
+                                Icons.check_rounded,
+                                size: 20,
+                                color: cs.onPrimary,
+                              )
                             : null,
                       ),
-                      child: isDone
-                          ? Icon(
-                              Icons.check_rounded,
-                              size: 20,
-                              color: cs.onPrimary,
-                            )
-                          : null,
                     ),
-                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        _metadataRow(
+                          context,
                           children: [
                             if (_customSubjectIcon(subject) != null)
                               Icon(
@@ -1084,6 +1163,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
                                 color: accent,
                               ),
                             _chip(
+                              context,
                               _displaySubject(subject),
                               accent.withValues(alpha: 0.2),
                               accent,
@@ -1091,6 +1171,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
                             if (isCustom) ...[
                               const SizedBox(width: 6),
                               _chip(
+                                context,
                                 l.examsOwn,
                                 cs.tertiaryContainer,
                                 cs.tertiary,
@@ -1111,7 +1192,13 @@ class _HomeworkViewState extends State<_HomeworkView> {
                                       : cs.primaryContainer.withValues(
                                           alpha: 0.45,
                                         ),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(
+                                    _expressiveRadius(
+                                      context,
+                                      10,
+                                      expressiveRadius: 16,
+                                    ),
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -1126,7 +1213,8 @@ class _HomeworkViewState extends State<_HomeworkView> {
                                     const SizedBox(width: 4),
                                     Text(
                                       formatDate(dueDateRaw),
-                                      style: GoogleFonts.outfit(
+                                      style: _appTextStyle(
+                                        context,
                                         fontSize: 11.5,
                                         fontWeight: FontWeight.w700,
                                         color: isDone
@@ -1142,7 +1230,8 @@ class _HomeworkViewState extends State<_HomeworkView> {
                         const SizedBox(height: 8),
                         Text(
                           text,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             height: 1.35,
@@ -1225,7 +1314,8 @@ Future<void> _showAddExamDialog(
                       children: [
                         Text(
                           existing == null ? l.examsAddTitle : l.examsEditTitle,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -0.5,
@@ -1233,7 +1323,8 @@ Future<void> _showAddExamDialog(
                         ),
                         Text(
                           l.examsAddDesc,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: cs.onSurfaceVariant.withValues(alpha: 0.7),
@@ -1266,7 +1357,8 @@ Future<void> _showAddExamDialog(
               const SizedBox(height: 32),
               Text(
                 l.examsSubjectLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
@@ -1288,7 +1380,7 @@ Future<void> _showAddExamDialog(
               else
                 TextField(
                   controller: subjectCtrl,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w700),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.book_rounded),
                     hintText: l.examsSubjectLabel,
@@ -1297,7 +1389,9 @@ Future<void> _showAddExamDialog(
                       alpha: 0.4,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(
+                        _expressiveRadius(context, 20, expressiveRadius: 28),
+                      ),
                       borderSide: BorderSide.none,
                     ),
                   ),
@@ -1305,7 +1399,8 @@ Future<void> _showAddExamDialog(
               const SizedBox(height: 24),
               Text(
                 l.examsTypeLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
@@ -1315,14 +1410,16 @@ Future<void> _showAddExamDialog(
               const SizedBox(height: 12),
               TextField(
                 controller: typeCtrl,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.label_important_rounded),
                   hintText: l.examsTypeLabel,
                   filled: true,
                   fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 20, expressiveRadius: 28),
+                    ),
                     borderSide: BorderSide.none,
                   ),
                 ),
@@ -1330,7 +1427,8 @@ Future<void> _showAddExamDialog(
               const SizedBox(height: 24),
               Text(
                 l.gradesDateLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
@@ -1360,7 +1458,8 @@ Future<void> _showAddExamDialog(
                                   'E, dd.MM.',
                                   appLocaleNotifier.value,
                                 ).format(d),
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1395,7 +1494,9 @@ Future<void> _showAddExamDialog(
                     setDlg(() => selectedDate = picked);
                   }
                 },
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(
+                  _expressiveRadius(context, 20, expressiveRadius: 28),
+                ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -1403,7 +1504,9 @@ Future<void> _showAddExamDialog(
                   ),
                   decoration: BoxDecoration(
                     color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 20, expressiveRadius: 28),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -1414,7 +1517,8 @@ Future<void> _showAddExamDialog(
                           'dd. MMMM yyyy',
                           _icuLocale(appLocaleNotifier.value),
                         ).format(selectedDate),
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
                         ),
@@ -1426,7 +1530,8 @@ Future<void> _showAddExamDialog(
               const SizedBox(height: 24),
               Text(
                 l.examsNotesLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
@@ -1437,7 +1542,7 @@ Future<void> _showAddExamDialog(
               TextField(
                 controller: descCtrl,
                 maxLines: 3,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
                 decoration: InputDecoration(
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(bottom: 42),
@@ -1447,7 +1552,9 @@ Future<void> _showAddExamDialog(
                   filled: true,
                   fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 20, expressiveRadius: 28),
+                    ),
                     borderSide: BorderSide.none,
                   ),
                 ),
@@ -1516,7 +1623,8 @@ Future<void> _showAddExamDialog(
                       ),
                       child: Text(
                         l.save,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
                         ),

@@ -945,6 +945,8 @@ class SubjectPresentation {
 
 void _clearTransientSchoolData() {
   currentWeekDataNotifier.value = const {};
+  currentWeekMondayNotifier.value = null;
+  currentWeekIsCachedNotifier.value = false;
   homeworksNotifier.value = const [];
   lessonNotesNotifier.value = const [];
   apiExamsNotifier.value = const [];
@@ -1019,6 +1021,8 @@ final ValueNotifier<String> appIconNotifier = ValueNotifier('default');
 /// Latest loaded timetable week data.
 final ValueNotifier<Map<int, List<dynamic>>> currentWeekDataNotifier =
     ValueNotifier({});
+final ValueNotifier<DateTime?> currentWeekMondayNotifier = ValueNotifier(null);
+final ValueNotifier<bool> currentWeekIsCachedNotifier = ValueNotifier(false);
 
 /// Transitional bridge for the expressive navigation badge. The persisted
 /// source of truth lives in ChangeRepository and remains account-scoped.

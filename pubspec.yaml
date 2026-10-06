@@ -58,6 +58,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/audio/
+    - assets/fonts/
     - changelog.json
 
 flutter_launcher_icons:

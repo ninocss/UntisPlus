@@ -11,6 +11,8 @@ class SettingsAiPage extends StatefulWidget {
 }
 
 class _SettingsAiPageState extends State<SettingsAiPage> {
+  bool _configurationReady = false;
+  Object? _configurationError;
   @override
   void initState() {
     super.initState();
@@ -28,6 +30,12 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   }
 
   Future<void> _reloadFromPrefs() async {
+    try {
+      await _ensureAiConfigurationReady();
+    } catch (error) {
+      if (mounted) setState(() => _configurationError = error);
+      return;
+    }
     final prefs = SettingsStore.instance.preferences;
     await loadAiPreferences(prefs);
 
@@ -42,7 +50,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
       );
       await prefs.setString('aiModel', aiModel);
     }
-    if (mounted) setState(() {});
+    if (mounted) setState(() => _configurationReady = true);
   }
 
   Future<void> _setAiEnabled(bool enabled) async {
@@ -133,7 +141,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         ),
         title: Text(
           l.settingsAiLocalModelDeleteConfirm,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 17),
+          style: _appTextStyle(
+            context,
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+          ),
           textAlign: TextAlign.center,
         ),
         actionsAlignment: MainAxisAlignment.center,
@@ -574,7 +586,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           const SizedBox(width: 5),
           Text(
             label,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
               color: foreground,
@@ -934,7 +947,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               children: [
                 Text(
                   l.settingsAiCustomBaseUrl,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -942,7 +956,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: ctrl,
-                  style: GoogleFonts.outfit(fontSize: 14),
+                  style: _appTextStyle(context, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: l.settingsAiCustomBaseUrlHint,
                     filled: true,
@@ -1003,7 +1017,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               children: [
                 Text(
                   l.settingsAiPromptEditTitle,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -1015,7 +1030,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     controller: ctrl,
                     minLines: 8,
                     maxLines: 16,
-                    style: GoogleFonts.jetBrainsMono(fontSize: 12.5),
+                    style: GoogleFonts.ibmPlexMono(fontSize: 12.5),
                     decoration: InputDecoration(
                       filled: true,
                       border: OutlineInputBorder(
@@ -1087,7 +1102,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 const SizedBox(height: 14),
                 Text(
                   l.settingsAiPromptVariables,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w900,
                     fontSize: 20,
                     letterSpacing: -0.5,
@@ -1096,7 +1112,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 const SizedBox(height: 4),
                 Text(
                   l.settingsAiPromptVariablesDesc,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: 13,
                     color: cs.onSurfaceVariant,
                   ),
@@ -1126,7 +1143,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                               visualDensity: VisualDensity.compact,
                               title: Text(
                                 entry.key,
-                                style: GoogleFonts.jetBrainsMono(
+                                style: GoogleFonts.ibmPlexMono(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 12,
                                   color: cs.primary,
@@ -1134,7 +1151,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                               ),
                               subtitle: Text(
                                 entry.value,
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -1152,7 +1170,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     onPressed: () => Navigator.pop(ctx),
                     child: Text(
                       l.cancel,
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                      style: _appTextStyle(
+                        context,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -1185,7 +1206,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               children: [
                 Text(
                   l.settingsAiApiKey,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -1193,12 +1215,12 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 const SizedBox(height: 8),
                 Text(
                   l.settingsAiApiKeyDialogDesc,
-                  style: GoogleFonts.outfit(fontSize: 13),
+                  style: _appTextStyle(context, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: ctrl,
-                  style: GoogleFonts.jetBrainsMono(fontSize: 12.5),
+                  style: GoogleFonts.ibmPlexMono(fontSize: 12.5),
                   decoration: InputDecoration(
                     hintText: _settingsApiKeyHintForProvider(aiProvider),
                     filled: true,
@@ -1215,7 +1237,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                     icon: const Icon(Icons.open_in_new_rounded, size: 16),
                     label: Text(
                       l.settingsAiApiKeyGet,
-                      style: GoogleFonts.outfit(fontSize: 13),
+                      style: _appTextStyle(context, fontSize: 13),
                     ),
                   ),
                   TextButton(
@@ -1333,7 +1355,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 const SizedBox(height: 20),
                 Text(
                   l.aiParametersTitle,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w900,
                     fontSize: 22,
                     letterSpacing: -0.5,
@@ -1341,7 +1364,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                 ),
                 Text(
                   l.aiParametersDesc,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: 14,
                     color: cs.onSurfaceVariant,
                   ),
@@ -1390,7 +1414,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
                         l.cancel,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1414,7 +1441,10 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                       ),
                       child: Text(
                         l.save,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
@@ -1446,7 +1476,8 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           children: [
             Text(
               label,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontWeight: FontWeight.w800,
                 fontSize: 15,
               ),
@@ -1459,7 +1490,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
               ),
               child: Text(
                 suffix,
-                style: GoogleFonts.jetBrainsMono(
+                style: GoogleFonts.ibmPlexMono(
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                   color: cs.primary,
@@ -1471,7 +1502,11 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         const SizedBox(height: 4),
         Text(
           desc,
-          style: GoogleFonts.outfit(fontSize: 12, color: cs.onSurfaceVariant),
+          style: _appTextStyle(
+            context,
+            fontSize: 12,
+            color: cs.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 8),
         HapticSlider(
@@ -1522,6 +1557,17 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
   @override
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
+    if (!_configurationReady) {
+      return SettingsPageShell(
+        title: l.settingsSectionAI,
+        children: [
+          if (_configurationError == null)
+            const Center(child: ExpressiveLoadingIndicator())
+          else
+            Text('${l.settingsSectionAI}: ${_configurationError.runtimeType}'),
+        ],
+      );
+    }
     final cs = Theme.of(context).colorScheme;
     final isCustom = aiProvider == 'custom';
     final isLocal = aiProvider == 'local';

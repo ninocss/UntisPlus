@@ -169,7 +169,8 @@ class SubjectColorsPage extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   l.settingsColorFor(subject),
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                   ),
@@ -179,14 +180,16 @@ class SubjectColorsPage extends StatelessWidget {
                   height: 66,
                   decoration: BoxDecoration(
                     color: preview,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(
+                      _expressiveRadius(context, 16, expressiveRadius: 24),
+                    ),
                     border: Border.all(color: cs.outlineVariant),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   '${l.settingsColorRed}: ${red.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w600),
                 ),
                 HapticSlider(
                   value: red,
@@ -197,7 +200,7 @@ class SubjectColorsPage extends StatelessWidget {
                 ),
                 Text(
                   '${l.settingsColorGreen}: ${green.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w600),
                 ),
                 HapticSlider(
                   value: green,
@@ -208,7 +211,7 @@ class SubjectColorsPage extends StatelessWidget {
                 ),
                 Text(
                   '${l.settingsColorBlue}: ${blue.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w600),
                 ),
                 HapticSlider(
                   value: blue,
@@ -224,7 +227,10 @@ class SubjectColorsPage extends StatelessWidget {
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
                         l.cancel,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     FilledButton(
@@ -234,7 +240,10 @@ class SubjectColorsPage extends StatelessWidget {
                       },
                       child: Text(
                         l.settingsColorApply,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                        style: _appTextStyle(
+                          context,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -262,7 +271,8 @@ class SubjectColorsPage extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 l.settingsColorFor(subject),
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontWeight: FontWeight.w800,
                   fontSize: 18,
                 ),
@@ -327,7 +337,7 @@ class SubjectColorsPage extends StatelessWidget {
                 icon: const Icon(Icons.tune_rounded, size: 18),
                 label: Text(
                   l.settingsColorCustomPicker,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w600),
                 ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 44),
@@ -344,7 +354,7 @@ class SubjectColorsPage extends StatelessWidget {
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: Text(
                     l.settingsColorReset,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                    style: _appTextStyle(context, fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 44),
@@ -369,7 +379,7 @@ class SubjectColorsPage extends StatelessWidget {
       appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsSectionColors,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          style: _appTextStyle(context, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
       ),
@@ -391,7 +401,8 @@ class SubjectColorsPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text(
                       l.settingsNoSubjectsLoaded,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
@@ -399,7 +410,8 @@ class SubjectColorsPage extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       l.settingsNoSubjectsLoadedDesc,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         color: cs.onSurfaceVariant,
                         fontSize: 13,
                       ),
@@ -431,7 +443,13 @@ class SubjectColorsPage extends StatelessWidget {
                             height: 38,
                             decoration: BoxDecoration(
                               color: subjectColor ?? cs.primaryContainer,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                _expressiveRadius(
+                                  context,
+                                  12,
+                                  expressiveRadius: 20,
+                                ),
+                              ),
                               border: subjectColor != null
                                   ? Border.all(
                                       color: subjectColor.withValues(
@@ -483,7 +501,7 @@ class HiddenSubjectsPage extends StatelessWidget {
       appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsSectionHidden,
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+          style: _appTextStyle(context, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
       ),
@@ -505,7 +523,8 @@ class HiddenSubjectsPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     Text(
                       l.settingsNoHidden,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
@@ -513,7 +532,8 @@ class HiddenSubjectsPage extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       l.settingsNoHiddenDesc,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         color: cs.onSurfaceVariant,
                         fontSize: 13,
                       ),
@@ -539,14 +559,21 @@ class HiddenSubjectsPage extends StatelessWidget {
                             height: 38,
                             decoration: BoxDecoration(
                               color: cs.secondaryContainer,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                _expressiveRadius(
+                                  context,
+                                  12,
+                                  expressiveRadius: 20,
+                                ),
+                              ),
                             ),
                             child: Center(
                               child: Text(
                                 subject.isNotEmpty
                                     ? subject[0].toUpperCase()
                                     : '?',
-                                style: GoogleFonts.outfit(
+                                style: _appTextStyle(
+                                  context,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 16,
                                   color: cs.secondary,
@@ -558,7 +585,8 @@ class HiddenSubjectsPage extends StatelessWidget {
                           Expanded(
                             child: Text(
                               subject,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
                                 color: cs.onSurface,
@@ -576,7 +604,8 @@ class HiddenSubjectsPage extends StatelessWidget {
                             ),
                             child: Text(
                               l.settingsUnhide,
-                              style: GoogleFonts.outfit(
+                              style: _appTextStyle(
+                                context,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
                               ),

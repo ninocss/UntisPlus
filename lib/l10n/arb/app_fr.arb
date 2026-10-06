@@ -129,7 +129,13 @@
   "teacherSearchHint": "Rechercher par nom ou initiales",
   "teacherSearchClear": "Effacer la recherche",
   "teacherSearchResults": "Enseignants ({count})",
-  "@teacherSearchResults": {"placeholders": {"count": {"type": "int"}}},
+  "@teacherSearchResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "teacherSearchNoMatch": "Aucun enseignant correspondant.",
   "teacherSearchUnavailable": "Cette école ne propose pas la recherche d’enseignants.",
   "teacherSearchLoadError": "Impossible de charger les données. Réessaie.",
@@ -143,9 +149,21 @@
   "teacherSearchNoLessons": "Aucun autre cours n’est prévu aujourd’hui.",
   "teacherSearchRefresh": "Actualiser l’emploi du temps",
   "teacherSearchUntil": "Jusqu’à {time}",
-  "@teacherSearchUntil": {"placeholders": {"time": {"type": "String"}}},
+  "@teacherSearchUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "teacherSearchFrom": "À partir de {time}",
-  "@teacherSearchFrom": {"placeholders": {"time": {"type": "String"}}},
+  "@teacherSearchFrom": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "freeRoomsSelectTime": "Choisir une plage horaire",
   "freeRoomsNoneFound": "Aucune salle libre trouvée pour cette plage horaire.",
   "freeRoomsNoRangesHint": "Aucune plage horaire adaptée trouvée pour ce jour.",
@@ -661,7 +679,13 @@
   "settingsSubjectCustomize": "Noms et icônes des matières",
   "settingsSubjectCustomizeDesc": "Choisir des noms et symboles personnalisés pour les matières.",
   "settingsSubjectCustomizeFor": "Personnaliser {subject}",
-  "@settingsSubjectCustomizeFor": {"placeholders": {"subject": {"type": "String"}}},
+  "@settingsSubjectCustomizeFor": {
+    "placeholders": {
+      "subject": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSubjectCustomName": "Nom personnalisé",
   "settingsSubjectIcon": "Icône de la matière",
   "settingsSubjectDefaultIcon": "Par défaut",
@@ -1080,5 +1104,18 @@
   "reload": "Recharger",
   "settingsAppBgBlur": "Flou de l’arrière-plan de l’application",
   "settingsAppBgBlurDesc": "Floute l’arrière-plan de l’application pour un effet de verre dépoli.",
-  "settingsAppBgBlurAmount": "Intensité du flou d’arrière-plan"
+  "settingsAppBgBlurAmount": "Intensité du flou d’arrière-plan",
+  "settingsEffectQuality": "Qualité des effets",
+  "settingsEffectQualityDesc": "Profils manuels. Vos réglages personnels restent enregistrés.",
+  "effectQualityFull": "Complète",
+  "effectQualityBalanced": "Équilibrée",
+  "effectQualityReduced": "Réduite",
+  "effectQualityFullDesc": "Tous les effets choisis, le flou et les arrière-plans animés.",
+  "effectQualityBalancedDesc": "Transitions fluides, flou discret sur la navigation et les en-têtes, cartes sobres.",
+  "effectQualityReducedDesc": "Surfaces nettes sans flou, halo ni arrière-plan animé.",
+  "settingsInteractionAnimations": "Animations des interactions",
+  "settingsInteractionAnimationsDesc": "Changements de forme et transitions. Le réglage système de réduction des animations est prioritaire.",
+  "settingsHaptics": "Retour haptique",
+  "settingsHapticsDesc": "Retour bref pour les sélections, actions et confirmations.",
+  "aiJumpToLatest": "Aller au dernier message"
 }

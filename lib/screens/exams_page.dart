@@ -155,11 +155,12 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     required String prompt,
     required Uint8List fileBytes,
     required String mimeType,
-  }) {
+  }) async {
     if (!aiEnabledNotifier.value) {
       return Future<String>.error(StateError('AI is disabled'));
     }
     final l = appL10nFor(appLocaleNotifier.value);
+    await _ensureAiConfigurationReady();
     final runtime = _currentAiRuntimeConfiguration();
     final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
     final capabilities = _aiRequestCoordinator.capabilities(runtime);
@@ -195,6 +196,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   Future<void> _importExamsWithAI() async {
     if (!aiEnabledNotifier.value) return;
     final l = appL10nFor(appLocaleNotifier.value);
+    if (!await _prepareAiInteraction(context) || !mounted) return;
     final runtime = _currentAiRuntimeConfiguration();
     final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
     final capabilities = _aiRequestCoordinator.capabilities(runtime);
@@ -427,88 +429,107 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
         children: [
           ExpressiveRefreshIndicator(
             onRefresh: _refreshExams,
-            child: ListView(
+            child: LazyContentList(
               padding: UntisLayout.pagePadding(context, bottom: 132),
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
-              children: [
-                _buildExamStatsHeader(cs, l, upcoming),
-                if (_loading) ...[
-                  const SizedBox(height: 140),
-                  const Center(child: CircularProgressIndicator()),
-                ] else if (exams.isEmpty) ...[
-                  const SizedBox(height: 80),
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.assignment_outlined,
-                          size: 80,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          l.examsNone,
-                          style: GoogleFonts.outfit(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          l.examsNoneHint,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: _refreshExams,
-                          icon: const Icon(Icons.refresh_rounded, size: 18),
-                          label: Text(
-                            l.reload,
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
+              entries: [
+                (context) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildExamStatsHeader(cs, l, upcoming),
+                    if (_loading) ...[
+                      const SizedBox(height: 140),
+                      const Center(child: ExpressiveLoadingIndicator()),
+                    ] else if (exams.isEmpty) ...[
+                      const SizedBox(height: 80),
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.assignment_outlined,
+                              size: 80,
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.3),
                             ),
-                          ),
+                            const SizedBox(height: 16),
+                            Text(
+                              l.examsNone,
+                              style: _appTextStyle(
+                                context,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: cs.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              l.examsNoneHint,
+                              textAlign: TextAlign.center,
+                              style: _appTextStyle(
+                                context,
+                                fontSize: 14,
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton.icon(
+                              onPressed: _refreshExams,
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: Text(
+                                l.reload,
+                                style: _appTextStyle(
+                                  context,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (!_loading && upcoming.isNotEmpty) ...[
+                  (context) => _sectionHeader(
+                    cs,
+                    l.examsUpcoming,
+                    Icons.upcoming_rounded,
+                    upcoming.length,
                   ),
-                ] else ...[
-                  if (upcoming.isNotEmpty) ...[
-                    _sectionHeader(
-                      cs,
-                      l.examsUpcoming,
-                      Icons.upcoming_rounded,
-                      upcoming.length,
-                    ),
-                    const SizedBox(height: 8),
-                    ...upcoming.asMap().entries.map(
-                      (e) =>
-                          _animatedExamCard(e.key, context, cs, e.value, true),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  if (past.isNotEmpty) ...[
-                    _sectionHeader(
-                      cs,
-                      l.examsPast,
-                      Icons.history_rounded,
-                      past.length,
-                    ),
-                    const SizedBox(height: 8),
-                    ...past.asMap().entries.map(
-                      (e) =>
-                          _animatedExamCard(e.key, context, cs, e.value, false),
-                    ),
-                  ],
+                  (context) => const SizedBox(height: 8),
+                  ...upcoming.asMap().entries.map(
+                    (entry) =>
+                        (context) => _animatedExamCard(
+                          entry.key,
+                          context,
+                          cs,
+                          entry.value,
+                          true,
+                        ),
+                  ),
+                  (context) => const SizedBox(height: 20),
+                ],
+                if (!_loading && past.isNotEmpty) ...[
+                  (context) => _sectionHeader(
+                    cs,
+                    l.examsPast,
+                    Icons.history_rounded,
+                    past.length,
+                  ),
+                  (context) => const SizedBox(height: 8),
+                  ...past.asMap().entries.map(
+                    (entry) =>
+                        (context) => _animatedExamCard(
+                          entry.key,
+                          context,
+                          cs,
+                          entry.value,
+                          false,
+                        ),
+                  ),
                 ],
               ],
             ),
@@ -539,7 +560,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       icon: Icons.assignment_turned_in_rounded,
       title: Text(
         l.examsUpcomingCount(count),
-        style: GoogleFonts.outfit(
+        style: _appTextStyle(
+          context,
           fontSize: 17,
           fontWeight: FontWeight.w900,
           color: cs.onSurface,
@@ -555,7 +577,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                 Expanded(
                   child: Text(
                     nextSubText,
-                    style: GoogleFonts.outfit(
+                    style: _appTextStyle(
+                      context,
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       color: cs.onSurfaceVariant,
@@ -585,14 +608,17 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: cs.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(
+                _expressiveRadius(context, 10, expressiveRadius: 16),
+              ),
             ),
             child: Icon(icon, size: 16, color: cs.primary),
           ),
           const SizedBox(width: 10),
           Text(
             title,
-            style: GoogleFonts.outfit(
+            style: _appTextStyle(
+              context,
               fontWeight: FontWeight.w800,
               fontSize: 15,
               color: cs.onSurface,
@@ -605,11 +631,14 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: cs.primaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(
+                  _expressiveRadius(context, 10, expressiveRadius: 16),
+                ),
               ),
               child: Text(
                 '$count',
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
@@ -666,11 +695,14 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 12, expressiveRadius: 20),
+        ),
       ),
       child: Text(
         text,
-        style: GoogleFonts.outfit(
+        style: _appTextStyle(
+          context,
           fontSize: 12,
           fontWeight: FontWeight.w800,
           color: fg,
@@ -736,14 +768,20 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       padding: const EdgeInsets.only(bottom: 12),
       child: _glassContainer(
         context: context,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 24, expressiveRadius: 28),
+        ),
         color: accent.withValues(alpha: isDark ? 0.14 : 0.08),
         border: Border.all(color: accent.withValues(alpha: 0.35), width: 1.2),
         child: Material(
           type: MaterialType.transparency,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(
+            _expressiveRadius(context, 24, expressiveRadius: 28),
+          ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(
+              _expressiveRadius(context, 24, expressiveRadius: 28),
+            ),
             onTap: isCustom && customIndex != null
                 ? () {
                     AppHaptics.selection();
@@ -775,7 +813,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          _metadataRow(
+                            context,
                             children: [
                               Wrap(
                                 spacing: 6,
@@ -783,12 +822,14 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                                 children: [
                                   if (type.isNotEmpty)
                                     _chip(
+                                      context,
                                       type,
                                       accent.withValues(alpha: 0.2),
                                       accent,
                                     ),
                                   if (isCustom)
                                     _chip(
+                                      context,
                                       l.examsOwn,
                                       cs.tertiaryContainer,
                                       cs.tertiary,
@@ -807,7 +848,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                             subject.isNotEmpty
                                 ? _displaySubject(subject)
                                 : l.examsUnknown,
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontSize: 19,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.4,
@@ -855,7 +897,13 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                                 color: cs.surfaceContainerHighest.withValues(
                                   alpha: 0.4,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(
+                                  _expressiveRadius(
+                                    context,
+                                    12,
+                                    expressiveRadius: 20,
+                                  ),
+                                ),
                                 border: Border.all(
                                   color: cs.outlineVariant.withValues(
                                     alpha: 0.2,
@@ -874,7 +922,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                                   Expanded(
                                     child: Text(
                                       desc,
-                                      style: GoogleFonts.outfit(
+                                      style: _appTextStyle(
+                                        context,
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.w500,
                                         color: cs.onSurfaceVariant,
@@ -904,7 +953,9 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(
+          _expressiveRadius(context, 10, expressiveRadius: 16),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -916,7 +967,8 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: cs.onSurface,

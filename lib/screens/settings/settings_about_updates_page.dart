@@ -192,7 +192,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
         return AlertDialog(
           title: Text(
             l.settingsGithubUpdateFound(latestVersion),
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+            style: _appTextStyle(context, fontWeight: FontWeight.w800),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -200,12 +200,13 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
             children: [
               Text(
                 '${l.settingsGithubCurrentVersion}: $appVersion',
-                style: GoogleFonts.outfit(),
+                style: _appTextStyle(context),
               ),
               const SizedBox(height: 4),
               Text(
                 '${l.settingsGithubLatestVersion}: $latestVersion',
-                style: GoogleFonts.outfit(
+                style: _appTextStyle(
+                  context,
                   color: cs.primary,
                   fontWeight: FontWeight.w700,
                 ),
@@ -213,7 +214,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
               const SizedBox(height: 12),
               Text(
                 l.settingsGithubInstallQuestion,
-                style: GoogleFonts.outfit(),
+                style: _appTextStyle(context),
               ),
             ],
           ),
@@ -342,7 +343,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
+                      child: ExpressiveLoadingIndicator(strokeWidth: 2.2),
                     )
                   : _downloading
                   ? IconButton(
@@ -364,7 +365,8 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                         Expanded(
                           child: Text(
                             l.settingsGithubDownloading,
-                            style: GoogleFonts.outfit(
+                            style: _appTextStyle(
+                              context,
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
                               color: cs.onSurface,
@@ -375,7 +377,8 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                           _downloadProgress == null
                               ? _formatBytes(_downloadReceived)
                               : '${(_downloadProgress! * 100).clamp(0, 100).toStringAsFixed(0)} %',
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 12,
                             color: cs.onSurfaceVariant,
                           ),
@@ -391,7 +394,8 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                           : _downloadAssetName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 11.5,
                         color: cs.onSurfaceVariant,
                       ),
@@ -452,7 +456,8 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                       children: [
                         Text(
                           l.appName,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
                             color: cs.onSurface,
@@ -461,7 +466,8 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                         const SizedBox(height: 2),
                         Text(
                           '${l.settingsAppVersion} $appVersion (${l.settingsBuild} ${appBuildNumber.isEmpty ? '-' : appBuildNumber})',
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 12.5,
                             color: cs.onSurfaceVariant,
                           ),

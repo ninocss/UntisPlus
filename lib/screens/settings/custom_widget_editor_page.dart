@@ -412,7 +412,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                         _content(config, block),
                         maxLines: block == 'schedule' ? 3 : 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           color: Color(config.textColor),
                           fontSize: 14 * config.textScale,
                           fontWeight: block == 'current'
@@ -530,7 +531,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontSize: 16.5,
                           fontWeight: FontWeight.w800,
                         ),
@@ -539,7 +541,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                         const SizedBox(height: 2),
                         Text(
                           subtitle,
-                          style: GoogleFonts.outfit(
+                          style: _appTextStyle(
+                            context,
                             fontSize: 12.5,
                             color: cs.onSurfaceVariant,
                             height: 1.25,
@@ -577,7 +580,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               Expanded(
                 child: Text(
                   label,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                  style: _appTextStyle(context, fontWeight: FontWeight.w700),
                 ),
               ),
               Container(
@@ -588,7 +591,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 ),
                 child: Text(
                   valueText,
-                  style: GoogleFonts.outfit(
+                  style: _appTextStyle(
+                    context,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: cs.onSurfaceVariant,
@@ -644,7 +648,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                         config.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                         ),
@@ -652,7 +657,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       const SizedBox(height: 2),
                       Text(
                         isSystem ? l.widgetSystemColors : l.widgetCustomColors,
-                        style: GoogleFonts.outfit(
+                        style: _appTextStyle(
+                          context,
                           fontSize: 12.5,
                           color: cs.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
@@ -676,7 +682,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                         : config.layout == 'timeline'
                         ? l.editorTimeline
                         : l.editorStacked,
-                    style: GoogleFonts.outfit(
+                    style: _appTextStyle(
+                      context,
                       color: accent,
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
@@ -700,9 +707,11 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                     ),
                   ),
                   child: Center(
-                    child: Transform.scale(
-                      scale: _previewScale,
-                      child: _preview(config),
+                    child: SingleChildScrollView(
+                      child: Transform.scale(
+                        scale: _previewScale,
+                        child: _preview(config),
+                      ),
                     ),
                   ),
                 ),
@@ -780,7 +789,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontWeight: FontWeight.w700,
                 fontSize: 12.5,
               ),
@@ -797,6 +807,14 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     required VoidCallback onTap,
   }) {
     final cs = Theme.of(context).colorScheme;
+    if (_usesExpressiveComponents(context)) {
+      return FilledButton.tonalIcon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 20),
+        label: Text(label, textAlign: TextAlign.center),
+        style: FilledButton.styleFrom(padding: const EdgeInsets.all(12)),
+      );
+    }
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
@@ -812,7 +830,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             const SizedBox(height: 6),
             Text(
               label,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -831,6 +850,26 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
       Icons.palette_rounded,
     ];
     final labels = [l.editorYourWidgets, l.editorContentLayout, l.editorDesign];
+    if (_usesExpressiveComponents(context)) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var index = 0; index < labels.length; index++)
+            ChoiceChip(
+              selected: _toolIndex == index,
+              avatar: Icon(icons[index], size: 18),
+              label: Text(labels[index], maxLines: 2),
+              onSelected: (_) {
+                if (_toolIndex != index) {
+                  AppHaptics.selection();
+                  setState(() => _toolIndex = index);
+                }
+              },
+            ),
+        ],
+      );
+    }
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -873,7 +912,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                       labels[index],
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
+                      style: _appTextStyle(
+                        context,
                         fontSize: 11.5,
                         fontWeight: selected
                             ? FontWeight.w800
@@ -987,32 +1027,16 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             ),
             if (accounts.isNotEmpty) ...[
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue:
-                    accounts.any((item) => item.id == config.accountId)
-                    ? config.accountId
-                    : null,
-                decoration: InputDecoration(
-                  labelText: l.widgetAccount,
-                  prefixIcon: const Icon(Icons.account_circle_rounded),
-                  filled: true,
-                ),
-                items: accounts
-                    .map(
-                      (account) => DropdownMenuItem(
-                        value: account.id,
-                        child: Text(
-                          account.label,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    _replace(config.copyWith(accountId: value));
-                  }
-                },
+              UntisSelectionField<String>(
+                label: l.widgetAccount,
+                icon: Icons.account_circle_rounded,
+                value: config.accountId,
+                entries: [
+                  for (final account in accounts)
+                    (value: account.id, label: account.label),
+                ],
+                onChanged: (value) =>
+                    _replace(config.copyWith(accountId: value)),
               ),
             ],
             const SizedBox(height: 14),
@@ -1044,7 +1068,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             const SizedBox(height: 14),
             Text(
               l.editorContentLayout,
-              style: GoogleFonts.outfit(
+              style: _appTextStyle(
+                context,
                 fontWeight: FontWeight.w800,
                 color: cs.onSurfaceVariant,
                 fontSize: 12.5,
@@ -1098,7 +1123,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                   ),
                   title: Text(
                     _blockLabel(l, entry.value),
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    style: _appTextStyle(context, fontWeight: FontWeight.w700),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1249,7 +1274,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                                   textAlign: TextAlign.center,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
+                                  style: _appTextStyle(
+                                    context,
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1264,12 +1290,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
               ),
             ],
             const SizedBox(height: 8),
-            SwitchListTile.adaptive(
+            UntisSwitchTile(
               contentPadding: EdgeInsets.zero,
               value: config.showIcons,
               title: Text(
                 l.editorShowIcons,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                style: _appTextStyle(context, fontWeight: FontWeight.w700),
               ),
               onChanged: (value) => _replace(config.copyWith(showIcons: value)),
             ),
@@ -1314,12 +1340,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
           icon: _pinning
               ? const SizedBox.square(
                   dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: ExpressiveLoadingIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.add_to_home_screen_rounded),
           label: Text(
             l.editorAddWidget,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w800),
+            style: _appTextStyle(context, fontWeight: FontWeight.w800),
           ),
         ),
       ],
@@ -1331,7 +1357,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
           icon: Icons.ios_share_rounded,
           child: Text(
             l.editorIosHint,
-            style: GoogleFonts.outfit(color: cs.onSurfaceVariant),
+            style: _appTextStyle(context, color: cs.onSurfaceVariant),
           ),
         ),
       ],
@@ -1344,7 +1370,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     if (_loading) {
       return Scaffold(
         appBar: _settingsHeaderAppBar(context, l.editor),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: ExpressiveLoadingIndicator()),
       );
     }
 
@@ -1429,7 +1455,18 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
                 MediaQuery.paddingOf(context).bottom + 36,
               ),
               children: [
-                SizedBox(height: 470, child: _previewStage(context, config)),
+                SizedBox(
+                  height: _usesExpressiveComponents(context)
+                      ? 470 +
+                            math.max(
+                                  0,
+                                  MediaQuery.textScalerOf(context).scale(14) -
+                                      14,
+                                ) *
+                                18
+                      : 470,
+                  child: _previewStage(context, config),
+                ),
                 const SizedBox(height: 16),
                 ..._editorPanels(context, config, l),
               ],
