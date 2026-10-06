@@ -106,4 +106,4 @@ jobs:
           name: untisplus-release-test-${{ github.run_number }}
           path: release_artifact/
           if-no-files-found: error
-          retention-days: ${{ fromJSON(inputs.retention_days) }}
+          retention-days: ${{ inputs.retention_days || 3 }}
