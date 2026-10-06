@@ -1,6 +1,9 @@
 name: Android release test artifact
 
 on:
+  push:
+    branches:
+      - 'codex/release-apk-test-*'
   workflow_dispatch:
     inputs:
       retention_days:
