@@ -34,7 +34,7 @@ dependencies:
   url_launcher: ^6.3.2
   provider: ^6.1.2
   file_picker: ^13.1.0
-  image_picker: ^1.2.2
+  image_picker: ^1.2.4
   package_info_plus: ^10.2.1
   flutter_markdown_plus: ^1.0.7
   html: ^0.15.7
