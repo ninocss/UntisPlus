@@ -29,7 +29,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   home_widget: 0.10.0
   flutter_local_notifications: ^22.3.0
-  timezone: ^0.11.0
+  timezone: ^0.11.2
   workmanager: 0.10.10
   url_launcher: ^6.3.2
   provider: ^6.1.2
