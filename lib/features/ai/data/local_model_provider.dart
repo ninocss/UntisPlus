@@ -31,6 +31,9 @@ class LocalModelProvider implements AIProvider {
   final LocalModelRuntime runtime;
 
   bool _isLoading = false;
+  bool _disposed = false;
+  Future<int>? _requestId;
+  StreamController<String>? _streamController;
   final StringBuffer _nativeLogs = StringBuffer();
 
   @override
@@ -44,6 +47,7 @@ class LocalModelProvider implements AIProvider {
     if (!await _prepareModel()) {
       throw Exception('AI: ${runtime.loadErrorMessage}');
     }
+    if (_disposed) return;
 
     final attachmentContext = attachments
         .where((attachment) => attachment.isText)
@@ -61,36 +65,38 @@ class LocalModelProvider implements AIProvider {
     final request = _request(messages);
     _isLoading = true;
     final controller = StreamController<String>.broadcast();
+    _streamController = controller;
 
     var previousResponse = '';
-    fllamaChat(request, (
-      String response,
-      String openaiResponseJsonString,
-      bool done,
-    ) {
-      if (controller.isClosed) return;
-      final pending = response.startsWith(previousResponse)
-          ? response.substring(previousResponse.length)
-          : response;
-      previousResponse = response;
-      if (done) {
-        if (isFllamaLoadError(response)) {
-          _reportLoadError();
-          controller.addError(Exception('AI: ${runtime.loadErrorMessage}'));
-        } else if (pending.isNotEmpty) {
-          controller.add(pending);
-        }
-        controller.close();
-      } else if (pending.isNotEmpty && !isFllamaLoadError(response)) {
-        controller.add(pending);
-      }
-    }).catchError((Object error) {
-      if (!controller.isClosed) {
-        controller.addError(error);
-        controller.close();
-      }
-      return -1;
-    });
+    _requestId =
+        fllamaChat(request, (
+          String response,
+          String openaiResponseJsonString,
+          bool done,
+        ) {
+          if (controller.isClosed) return;
+          final pending = response.startsWith(previousResponse)
+              ? response.substring(previousResponse.length)
+              : response;
+          previousResponse = response;
+          if (done) {
+            if (isFllamaLoadError(response)) {
+              _reportLoadError();
+              controller.addError(Exception('AI: ${runtime.loadErrorMessage}'));
+            } else if (pending.isNotEmpty) {
+              controller.add(pending);
+            }
+            controller.close();
+          } else if (pending.isNotEmpty && !isFllamaLoadError(response)) {
+            controller.add(pending);
+          }
+        }).catchError((Object error) {
+          if (!controller.isClosed) {
+            controller.addError(error);
+            controller.close();
+          }
+          return -1;
+        });
 
     try {
       yield* controller.stream;
@@ -139,7 +145,15 @@ class LocalModelProvider implements AIProvider {
 
   @override
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     _isLoading = false;
+    final controller = _streamController;
+    if (controller != null && !controller.isClosed) {
+      unawaited(controller.close());
+    }
+    final id = await _requestId;
+    if (id != null && id >= 0) fllamaCancelInference(id);
   }
 }
 

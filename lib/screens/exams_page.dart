@@ -14,6 +14,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _apiExams = [];
   List<Map<String, dynamic>> _customExams = [];
   bool _loading = true;
+  bool _examsFailed = false;
 
   Future<void> _refreshExams({bool showSpinner = false}) async {
     if (showSpinner && mounted) {
@@ -75,47 +76,60 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   }
 
   Future<void> _fetchApiExams() async {
-    if (demoModeNotifier.value) {
-      _apiExams = DemoModeService.demoExams(locale: appLocaleNotifier.value);
-      return;
-    }
-    if (sessionID.isEmpty) return;
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 14));
-    final end = now.add(const Duration(days: 90));
-    final account = activeUntisAccount;
-    final results = await _webUntisExamRepository.fetch(
-      context: WebUntisRequestContext(
-        schoolUrl: account?.schoolUrl ?? schoolUrl,
-        schoolName: account?.schoolName ?? schoolName,
-        sessionId: sessionID,
-      ),
-      personId: account?.personId ?? personId,
-      start: start,
-      end: end,
-      account: account == null
-          ? null
-          : WebUntisAccountLogin(
-              accountId: account.id,
-              username: account.username,
-              schoolUrl: account.schoolUrl,
-              schoolName: account.schoolName,
-              personId: account.personId,
-              personType: account.personType,
-            ),
-    );
-    _apiExams = results;
-    apiExamsNotifier.value = results;
-    if (activeUntisAccountId != null && results.isNotEmpty) {
-      final wrapped = SchoolWrappedRepository();
-      for (final year in await wrapped.years(activeUntisAccountId!)) {
-        if (year.contains(now)) {
-          await wrapped.recordExams(
-            accountId: activeUntisAccountId!,
-            year: year,
-            items: results,
-          );
+    final requestedAccountId = activeUntisAccountId;
+    try {
+      _examsFailed = false;
+      if (demoModeNotifier.value) {
+        _apiExams = DemoModeService.demoExams(locale: appLocaleNotifier.value);
+        return;
+      }
+      if (sessionID.isEmpty) {
+        _examsFailed = true;
+        return;
+      }
+      final now = DateTime.now();
+      final start = now.subtract(const Duration(days: 14));
+      final end = now.add(const Duration(days: 90));
+      final account = activeUntisAccount;
+      final results = await _webUntisExamRepository.fetch(
+        requireSuccessfulResponse: true,
+        context: WebUntisRequestContext(
+          schoolUrl: account?.schoolUrl ?? schoolUrl,
+          schoolName: account?.schoolName ?? schoolName,
+          sessionId: sessionID,
+        ),
+        personId: account?.personId ?? personId,
+        start: start,
+        end: end,
+        account: account == null
+            ? null
+            : WebUntisAccountLogin(
+                accountId: account.id,
+                username: account.username,
+                schoolUrl: account.schoolUrl,
+                schoolName: account.schoolName,
+                personId: account.personId,
+                personType: account.personType,
+              ),
+      );
+      if (!mounted || requestedAccountId != activeUntisAccountId) return;
+      _apiExams = results;
+      apiExamsNotifier.value = results;
+      if (activeUntisAccountId != null && results.isNotEmpty) {
+        final wrapped = SchoolWrappedRepository();
+        for (final year in await wrapped.years(activeUntisAccountId!)) {
+          if (year.contains(now)) {
+            await wrapped.recordExams(
+              accountId: activeUntisAccountId!,
+              year: year,
+              items: results,
+            );
+          }
         }
+      }
+    } catch (_) {
+      if (mounted && requestedAccountId == activeUntisAccountId) {
+        _examsFailed = true;
       }
     }
   }
@@ -438,11 +452,22 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                 (context) => Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildExamStatsHeader(cs, l, upcoming),
+                    if (!_loading && (!_examsFailed || exams.isNotEmpty))
+                      _buildExamStatsHeader(cs, l, upcoming),
+                    if (_examsFailed)
+                      FeatureFeedback(
+                        kind: FeatureFeedbackKind.error,
+                        title: l.ux('loadError'),
+                        message: l.ux('retainedData'),
+                        actionLabel: l.reload,
+                        onAction: _refreshExams,
+                      ),
                     if (_loading) ...[
-                      const SizedBox(height: 140),
-                      const Center(child: ExpressiveLoadingIndicator()),
-                    ] else if (exams.isEmpty) ...[
+                      FeatureFeedback(
+                        kind: FeatureFeedbackKind.loading,
+                        title: l.loadingIndicatorLabel,
+                      ),
+                    ] else if (exams.isEmpty && !_examsFailed) ...[
                       const SizedBox(height: 80),
                       Center(
                         child: Column(
@@ -475,10 +500,10 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                             ),
                             const SizedBox(height: 12),
                             TextButton.icon(
-                              onPressed: _refreshExams,
-                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              onPressed: () => _showAddExamDialog(context),
+                              icon: const Icon(Icons.add_rounded, size: 18),
                               label: Text(
-                                l.reload,
+                                l.examsAddTitle,
                                 style: _appTextStyle(
                                   context,
                                   fontSize: 13,
@@ -583,7 +608,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                       fontWeight: FontWeight.w600,
                       color: cs.onSurfaceVariant,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

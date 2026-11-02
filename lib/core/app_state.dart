@@ -709,6 +709,11 @@ Future<void> ensureDateFormattingForLocale(String locale) async {
 /// sheets can attach homework to the corresponding lesson.
 final ValueNotifier<List<Map<String, dynamic>>> homeworksNotifier =
     ValueNotifier(const []);
+final ValueNotifier<SyncPhase> homeworkSyncPhaseNotifier = ValueNotifier(
+  SyncPhase.idle,
+);
+final ValueNotifier<bool> homeworkCachedNotifier = ValueNotifier(false);
+int _homeworkRefreshGeneration = 0;
 
 /// Latest fetched lesson notes (class register remarks), available app-wide so
 /// lesson detail sheets can attach register notes to the corresponding lesson.
@@ -944,6 +949,9 @@ class SubjectPresentation {
 }
 
 void _clearTransientSchoolData() {
+  _homeworkRefreshGeneration++;
+  homeworkSyncPhaseNotifier.value = SyncPhase.idle;
+  homeworkCachedNotifier.value = false;
   currentWeekDataNotifier.value = const {};
   currentWeekMondayNotifier.value = null;
   currentWeekIsCachedNotifier.value = false;

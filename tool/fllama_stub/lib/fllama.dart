@@ -44,3 +44,5 @@ Future<int> fllamaChat(OpenAiRequest request, FllamaCallback callback) async {
 }
 
 bool fllamaOutputIndicatesLoadError(String text) => false;
+
+void fllamaCancelInference(int requestId) {}

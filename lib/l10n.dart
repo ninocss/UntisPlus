@@ -6,6 +6,168 @@ export 'l10n/generated/app_l10n.dart';
 
 const _supportedLanguageCodes = <String>{'de', 'en', 'fr', 'es'};
 
+/// Copy shared by the primary destinations and feature-state components.
+/// Keep destination names separate from section names (for example Exams).
+extension AppUxCopy on AppL10n {
+  String ux(String key) {
+    const copy = <String, List<String>>{
+      'more': ['Mehr', 'More', 'Plus', 'Más'],
+      'schoolInfo': [
+        'Schulinfos',
+        'School info',
+        'Infos école',
+        'Info escolar',
+      ],
+      'planner': ['Planer', 'Planner', 'Agenda', 'Agenda'],
+      'loadError': [
+        'Daten konnten nicht aktualisiert werden',
+        'Could not refresh data',
+        'Impossible d’actualiser les données',
+        'No se pudieron actualizar los datos',
+      ],
+      'retainedData': [
+        'Deine vorhandenen Daten bleiben verfügbar. Versuche es erneut.',
+        'Your existing data remains available. Try again.',
+        'Tes données existantes restent disponibles. Réessaie.',
+        'Tus datos existentes siguen disponibles. Inténtalo de nuevo.',
+      ],
+      'cachedData': [
+        'Gespeicherter Stand',
+        'Saved data',
+        'Données enregistrées',
+        'Datos guardados',
+      ],
+      'cachedHint': [
+        'Diese Daten sind möglicherweise nicht aktuell. Du kannst sie weiter nutzen und erneut laden.',
+        'This data may be out of date. You can keep using it and refresh again.',
+        'Ces données peuvent être anciennes. Tu peux les consulter et réessayer.',
+        'Estos datos pueden estar desactualizados. Puedes consultarlos y volver a actualizar.',
+      ],
+      'refreshing': [
+        'Wird aktualisiert …',
+        'Refreshing…',
+        'Actualisation…',
+        'Actualizando…',
+      ],
+      'laterSetup': [
+        'Später einrichten',
+        'Set up later',
+        'Configurer plus tard',
+        'Configurar después',
+      ],
+      'optionalSetup': [
+        'Dein Untis+',
+        'Your Untis+',
+        'Ton Untis+',
+        'Tu Untis+',
+      ],
+      'optionalSetupHint': [
+        'Darstellung und KI freiwillig einrichten',
+        'Optional appearance and AI setup',
+        'Personnaliser le style et l’IA si tu le souhaites',
+        'Personaliza el diseño y la IA si lo deseas',
+      ],
+      'tutorial': [
+        'Einführung öffnen',
+        'Open guided tour',
+        'Ouvrir la visite guidée',
+        'Abrir la visita guiada',
+      ],
+      'quickStart': [
+        'Melde dich bei deiner Schule an oder probiere Untis+ im Demo-Modus aus. Darstellung und KI kannst du später einrichten.',
+        'Sign in to your school or try Untis+ in demo mode. Appearance and AI can be set up later.',
+        'Connecte-toi à ton école ou essaie Untis+ en mode démo. Le style et l’IA peuvent être configurés plus tard.',
+        'Inicia sesión en tu centro o prueba Untis+ en modo demo. Puedes configurar el diseño y la IA después.',
+      ],
+      'aiLocal': [
+        'Lokale KI · auf diesem Gerät',
+        'Local AI · on this device',
+        'IA locale · sur cet appareil',
+        'IA local · en este dispositivo',
+      ],
+      'aiRemote': [
+        'KI-Anbieter',
+        'AI provider',
+        'Fournisseur d’IA',
+        'Proveedor de IA',
+      ],
+      'attachmentLoading': [
+        'Anhang wird geladen …',
+        'Downloading attachment…',
+        'Téléchargement de la pièce jointe…',
+        'Descargando archivo adjunto…',
+      ],
+      'attachmentRetry': [
+        'Erneut herunterladen',
+        'Retry download',
+        'Réessayer le téléchargement',
+        'Reintentar descarga',
+      ],
+      'unread': ['Ungelesen', 'Unread', 'Non lu', 'Sin leer'],
+      'noUnread': [
+        'Alles gelesen',
+        'All caught up',
+        'Tout est lu',
+        'Todo leído',
+      ],
+      'noUnreadHint': [
+        'Hier erscheinen neue ungelesene Nachrichten deiner Schule.',
+        'New unread school messages will appear here.',
+        'Les nouveaux messages non lus de ton école apparaîtront ici.',
+        'Aquí aparecerán los nuevos mensajes sin leer de tu centro.',
+      ],
+      'read': ['Gelesen', 'Read', 'Lu', 'Leído'],
+      'qualityLimit': [
+        'Das Qualitätsprofil begrenzt einige Effekte. Deine persönlichen Werte bleiben gespeichert.',
+        'The quality profile limits some effects. Your personal settings are kept.',
+        'Le profil de qualité limite certains effets. Tes réglages personnels sont conservés.',
+        'El perfil de calidad limita algunos efectos. Se conservan tus ajustes personales.',
+      ],
+      'notificationGroup': [
+        'Benachrichtigungen & Widgets',
+        'Notifications & widgets',
+        'Notifications et widgets',
+        'Notificaciones y widgets',
+      ],
+      'appearanceGroup': [
+        'Darstellung',
+        'Appearance',
+        'Apparence',
+        'Apariencia',
+      ],
+      'aiWorking': [
+        'Antwort wird erstellt',
+        'Generating response',
+        'Génération de la réponse',
+        'Generando respuesta',
+      ],
+      'aiCancelled': [
+        'Anfrage abgebrochen',
+        'Request stopped',
+        'Demande arrêtée',
+        'Solicitud detenida',
+      ],
+      'loginFields': [
+        'Bitte wähle eine Schule und fülle Benutzername und Zugangsdaten aus.',
+        'Choose a school and enter your username and credentials.',
+        'Choisis une école et saisis ton identifiant et tes données de connexion.',
+        'Elige un centro e introduce tu usuario y tus credenciales.',
+      ],
+    };
+    final values = copy[key];
+    if (values == null) {
+      throw ArgumentError.value(key, 'key', 'Unknown UX copy');
+    }
+    final index = switch (localeName.split(RegExp('[-_]')).first) {
+      'en' => 1,
+      'fr' => 2,
+      'es' => 3,
+      _ => 0,
+    };
+    return values[index];
+  }
+}
+
 /// Returns translations outside the widget tree, for example in background
 /// workers and native platform payloads. Unknown locales deliberately use the
 /// German catalog, matching the app's historical behavior.

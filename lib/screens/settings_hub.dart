@@ -1111,13 +1111,13 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       },
     );
 
-    final schoolItems = <_SettingsHubItem>[
-      timetableItem,
-      subjectsItem,
+    final schoolItems = <_SettingsHubItem>[timetableItem, subjectsItem];
+    final notificationItems = <_SettingsHubItem>[
       notificationsItem,
       ?alarmItem,
+      widgetsItem,
     ];
-    final personalizeItems = <_SettingsHubItem>[appearanceItem, widgetsItem];
+    final personalizeItems = <_SettingsHubItem>[appearanceItem];
     final smartItems = <_SettingsHubItem>[aiItem];
     final dataItems = <_SettingsHubItem>[accountItem, backupItem];
     final appItems = <_SettingsHubItem>[
@@ -1152,7 +1152,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           ? 24.0
           : 16.0;
       final bottom = mq.padding.bottom + (expanded ? 28 : 118);
-      final top = expanded ? 14.0 : mq.padding.top + kToolbarHeight + 14;
+      final top = expanded
+          ? 14.0
+          : mq.padding.top + _mainHeaderHeight(context) + 14;
 
       return CustomScrollView(
         key: PageStorageKey<String>(
@@ -1176,7 +1178,15 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 const SizedBox(height: 16),
                 _buildSection(
                   context,
-                  title: _sectionTitle(l, 'personalize'),
+                  title: l.ux('notificationGroup'),
+                  items: notificationItems,
+                  expanded: expanded,
+                  allItems: items,
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  context,
+                  title: l.ux('appearanceGroup'),
                   items: personalizeItems,
                   expanded: expanded,
                   allItems: items,

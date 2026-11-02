@@ -311,8 +311,10 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
                       );
                     },
                     child: Semantics(
-                      liveRegion: true,
-                      label: appL10nFor(appLocaleNotifier.value).refreshing,
+                      liveRegion: isSpinning,
+                      label: isSpinning
+                          ? appL10nFor(appLocaleNotifier.value).refreshing
+                          : null,
                       child: ValueListenableBuilder<double>(
                         valueListenable: _pullProgressNotifier,
                         builder: (context, pullProgress, _) {

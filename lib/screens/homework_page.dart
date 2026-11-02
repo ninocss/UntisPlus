@@ -605,18 +605,25 @@ class _HomeworkView extends StatefulWidget {
   State<_HomeworkView> createState() => _HomeworkViewState();
 }
 
-class _HomeworkViewState extends State<_HomeworkView> {
+class _HomeworkViewState extends State<_HomeworkView>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   int _filterIndex = 0; // 0 = Alle, 1 = Offen, 2 = Bald, 3 = Erledigt
 
   @override
   void initState() {
     super.initState();
+    homeworkSyncPhaseNotifier.addListener(_onHiddenSubjectsChanged);
+    homeworkCachedNotifier.addListener(_onHiddenSubjectsChanged);
     hiddenSubjectsNotifier.addListener(_onHiddenSubjectsChanged);
     subjectPresentationsNotifier.addListener(_onHiddenSubjectsChanged);
   }
 
   @override
   void dispose() {
+    homeworkSyncPhaseNotifier.removeListener(_onHiddenSubjectsChanged);
+    homeworkCachedNotifier.removeListener(_onHiddenSubjectsChanged);
     hiddenSubjectsNotifier.removeListener(_onHiddenSubjectsChanged);
     subjectPresentationsNotifier.removeListener(_onHiddenSubjectsChanged);
     super.dispose();
@@ -628,6 +635,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final cs = Theme.of(context).colorScheme;
     final l = appL10nFor(appLocaleNotifier.value);
 
@@ -697,36 +705,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
                 : (_filterIndex == 3 ? doneItems : allItems);
 
             return ExpressiveRefreshIndicator(
-              onRefresh: () async {
-                final requestAccountId = activeUntisAccountId;
-                final account = activeUntisAccount;
-                final res = demoModeNotifier.value
-                    ? DemoModeService.buildHomeworkAndNotes(
-                        resolveDefaultTimetableMonday(DateTime.now()),
-                        locale: appLocaleNotifier.value,
-                      )
-                    : await HomeworkService.fetchHomeworkAndNotes(
-                        schoolUrl: schoolUrl,
-                        schoolName: schoolName,
-                        sessionId: sessionID,
-                        personId: personId,
-                        personType: personType,
-                        accountId: activeUntisAccountId,
-                        account: account == null
-                            ? null
-                            : WebUntisAccountLogin(
-                                accountId: account.id,
-                                username: account.username,
-                                schoolUrl: account.schoolUrl,
-                                schoolName: account.schoolName,
-                                personId: account.personId,
-                                personType: account.personType,
-                              ),
-                      );
-                if (requestAccountId != activeUntisAccountId) return;
-                homeworksNotifier.value = res['homeworks']!;
-                lessonNotesNotifier.value = res['lessonNotes']!;
-              },
+              onRefresh: _refreshActiveHomework,
               child: LazyContentList(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
                 physics: const AlwaysScrollableScrollPhysics(
@@ -736,6 +715,30 @@ class _HomeworkViewState extends State<_HomeworkView> {
                   (context) => Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if (homeworkSyncPhaseNotifier.value ==
+                          SyncPhase.failed) ...[
+                        FeatureFeedback(
+                          kind: FeatureFeedbackKind.error,
+                          title: l.ux('loadError'),
+                          message: l.ux('retainedData'),
+                          actionLabel: l.reload,
+                          onAction: () => unawaited(_refreshActiveHomework()),
+                        ),
+                        const SizedBox(height: 12),
+                      ] else if (homeworkSyncPhaseNotifier.value ==
+                              SyncPhase.loading ||
+                          homeworkSyncPhaseNotifier.value ==
+                              SyncPhase.refreshing) ...[
+                        FeatureFeedback(
+                          compact: allItems.isNotEmpty,
+                          kind: FeatureFeedbackKind.loading,
+                          title: l.ux('refreshing'),
+                          message: homeworkCachedNotifier.value
+                              ? l.ux('cachedHint')
+                              : null,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       _buildHomeworkSummaryCard(
                         context,
                         cs,
@@ -783,7 +786,10 @@ class _HomeworkViewState extends State<_HomeworkView> {
                       ),
                       const SizedBox(height: 16),
 
-                      if (filtered.isEmpty) ...[
+                      if (filtered.isEmpty &&
+                          (homeworkSyncPhaseNotifier.value == SyncPhase.ready ||
+                              homeworkSyncPhaseNotifier.value ==
+                                  SyncPhase.idle)) ...[
                         const SizedBox(height: 60),
                         Center(
                           child: Column(

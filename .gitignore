@@ -78,3 +78,6 @@ security-results/
 !assets/fonts/*-OFL.txt
 !docs/app_experience.md
 !docs/performance_validation.md
+!DESIGN.md
+!docs/ux-implementation.md
+!docs/bugs.md

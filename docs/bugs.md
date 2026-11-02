@@ -1,35 +1,60 @@
-# Bugs
+# Bug inventory — 26 October 2026
 
-Found 9 verified bugs (analyzer is clean; the test script couldn't run — the `objective_c` native-assets hook fails with a path-with-space parsing error, unrelated to app code).
+This inventory replaces the earlier list of nine allegedly open bugs. Those
+entries referred to older code. A source-level correction is not, by itself,
+physical-device or live-school acceptance.
 
-## Critical
+## Earlier findings reconciled against current source
 
-1. **Local AI output is garbled** — `lib/features/ai/data/local_model_provider.dart:66-88`
-   The pinned fllama sends the **cumulative** full text on every callback (`src/fllama.cpp:473,483,517`). The provider treats it as deltas: the chat UI appends each chunk (`main_navigation_screen.dart:993,1099-1102`), so the answer grows roughly quadratically, and the final text on `done=true` is never emitted to the stream. `requestLocalModelText` (:157-167) likewise concatenates all prefixes → repeated output.
+| Finding | Current implementation | Evidence/remaining boundary |
+| --- | --- | --- |
+| Repeated local AI output | Provider converts cumulative callbacks to new text and emits the final pending text | Adapter tests; real GGUF inference remains a device gate |
+| Background widget overwrites homework | Background computes homework and exam summaries instead of hardcoded empty text | Widget delivery after background execution still needs Android/iOS checks |
+| Absence excuse status | Parser accepts explicit status fields and checked/excused flags | Verify the school's actual payload; a checked flag alone does not establish backend parity |
+| Read changes become unread | Existing change IDs are retained with putIfAbsent | Change/read-state regression; live foreground/background interleaving remains a native check |
+| Smart alarm before all-day bookings | Midnight/nonpositive start times are rejected | Alarm unit tests; physical scheduling remains open |
+| Locale change drops date overrides | refreshNativeCopy reapplies the date override before pushing plans | Alarm regression; native scheduler read-back remains open |
+| Push preference resets | Startup hydrates progressivePush | Existing persistence tests |
+| Blur preference resets | Startup hydrates blurStrength | Existing appearance/persistence tests |
+| Default route transition resets | Startup accepts the complete 0–8 range | Existing preference validation |
 
-2. **Background task erases real widget homework data** — `lib/services/background_service.dart:862`
-   Every 15 min it writes `homeworkSummary: 'Keine offenen Hausaufgaben'` unconditionally (and omits `examSummary`), while the timetable page writes real homework/exams (`weekly_timetable_page.dart:1231,1233`).
+The exam calendar-day countdown and exact lesson-end boundary also use the
+corrected calendar-date/exclusive-end behavior in current source.
 
-3. **Absence status can never be excused/unexcused** — `lib/features/absences/data/absence_repository.dart:69-73` + `lib/features/absences/domain/absence.dart:26-39`
-   `getTimetableWithAbsences` entries only have `checked`; `Absence.fromJson` therefore always yields `unknown`/`open`.
+## Fixed by the Expressive UX implementation
 
-4. **Read timetable changes silently flip back to unread** — `lib/features/changes/data/change_repository.dart:44`
-   Foreground (`timetableSnapshot`) and background (`backgroundSnapshot`) baselines write the same store; `byId.update(..., (_) => change)` replaces a read change with a fresh `isRead:false`/`detectedAt:now` instance on re-detection.
+- Primary navigation has stable visible destination labels, selected semantics,
+  keyboard interaction and intrinsic layout space; disabling AI cannot leave an
+  outdated list of animation controllers behind.
+- First-run setup has two steps and cannot be blocked by optional AI setup.
+  Legacy unfinished checkpoints return to school login. Completed setups remain
+  completed. Initial release notes no longer interrupt first successful entry.
+- Animation-disabled setup uses jumpToPage, avoiding a zero-duration scroll
+  assertion found by the new regression.
+- Timetable day labels and lesson-card space calculations respect text scaling in
+  every theme. Past lessons retain readable opacity and are desaturated.
+- Exam refresh distinguishes failed endpoints from valid empty responses and
+  retains existing assignments instead of presenting failure as no exams.
+- Shared homework refresh retains account-scoped cached/local data, exposes
+  loading/failure state, and offers retry instead of a false empty state.
+- School info separates failed and empty states, exposes read/unread labels and an
+  unread filter, and provides per-attachment loading/error/retry.
+- AI has execution/provider context and a stop action with per-request cancellation
+  and protection against stale responses. Remote resources and local inference IDs
+  are released through their existing provider APIs.
+- iOS notification initialization does not request permission; enabling a
+  notification feature uses the existing explicit permission flow.
+- An idle refresh indicator no longer labels the entire content as refreshing.
 
-5. **Smart alarm fires at ~23:15 the night before all-day bookings** — `lib/services/alarm_service.dart:319-336`
-   `startTime == 0` passes the `time < 0 || time > 2359` check, producing a `00:00 − lead` wake time that wins as the earliest candidate.
+## Explicitly open acceptance gates
 
-6. **Language change resets alarm date overrides** — `lib/services/alarm_service.dart:680-684`
-   `refreshNativeCopy()` pushes `_loadSmartPlan()` without `_applyDateOverride`, unlike `syncStoredPlans()` (:475). After switching locales the native scheduler loses the override/disabled state.
+- Physical Android and iPhone: installation, keyboard/back gestures, TalkBack/
+  VoiceOver, haptics, widgets, notifications, background refresh and native GGUF
+  cancellation.
+- Live WebUntis: credentials, permissions, school-specific absence and exam data,
+  account changes and real message attachments. Demo/mock tests cannot establish
+  backend parity.
+- Performance: matched before/after native profile captures, memory, battery and
+  60/120 Hz measurements. There is no measured native performance improvement claim.
 
-## Settings persistence (restart loses state — `lib/main.dart` seeds bindings by hand)
-
-7. **`progressivePush` never seeded** — main.dart seeds every other push toggle but not `progressivePushNotifier`; disabling it at startup shows the switch ON (defaults `true`, `app_state.dart:596`).
-8. **`blurStrength` never seeded** — runtime blur reads the notifier (`shared_ui.dart:496`), which reverts to 1.0 after restart; stored strength only reloads via backup import.
-9. **"Default" page transition reverts to "Expo"** — main.dart:445-448 clamps `0..7`, but the UI/runtime use index `8` = MaterialPageRoute (`settings_appearance_page.dart:207`, `shared_ui.dart:1265`).
-
-## Minor
-
-- Exam "in N days" countdown off by one across a spring-DST weekend (elapsed-hours → calendar days) — `exams_page.dart:673`.
-- Lesson stays "active" at the exact end minute (`currentTimeInt <= end`) — `background_service.dart:677`.
-- The uncommitted `infoAttachmentLabel` l10n change is consistent (generated code matches the ARB placeholders; `flutter gen-l10n` regenerates clean).
+Current verification and reproducible commands are in docs/ux-implementation.md.

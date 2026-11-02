@@ -26,6 +26,7 @@ class HomeworkService {
     WebUntisAccountLogin? account,
     DateTime? startDate,
     DateTime? endDate,
+    bool allowCachedFallback = true,
   }) async {
     final now = DateTime.now();
     final start = startDate ?? now.subtract(const Duration(days: 30));
@@ -78,13 +79,17 @@ class HomeworkService {
     } on WebUntisFailure catch (failure) {
       if (scopedAccountId.isNotEmpty) {
         await _recordCapabilityFailure(scopedAccountId, schoolUrl, failure);
-        final cached = await _readCached(scopedAccountId, start, end);
+        final cached = allowCachedFallback
+            ? await _readCached(scopedAccountId, start, end)
+            : null;
         if (cached != null) return cached;
       }
       rethrow;
     } catch (_) {
       if (scopedAccountId.isNotEmpty) {
-        final cached = await _readCached(scopedAccountId, start, end);
+        final cached = allowCachedFallback
+            ? await _readCached(scopedAccountId, start, end)
+            : null;
         if (cached != null) return cached;
       }
       rethrow;

@@ -18,6 +18,7 @@ class WebUntisExamRepository {
     required DateTime start,
     required DateTime end,
     WebUntisAccountLogin? account,
+    bool requireSuccessfulResponse = false,
   }) async {
     final query =
         'startDate=${formatUntisDate(start)}&endDate=${formatUntisDate(end)}';
@@ -30,6 +31,8 @@ class WebUntisExamRepository {
     Future<List<Map<String, dynamic>>> request(
       WebUntisRequestContext requestContext,
     ) async {
+      var receivedList = false;
+      Object? lastFailure;
       for (final path in paths) {
         try {
           final decoded = await _client.getJson(
@@ -43,13 +46,23 @@ class WebUntisExamRepository {
             },
           );
           final exams = _decodeExamList(decoded);
-          if (exams.isNotEmpty) return exams;
+          if (exams != null) {
+            receivedList = true;
+            if (exams.isNotEmpty) return exams;
+          } else {
+            lastFailure = const FormatException('Missing exam list');
+          }
         } on WebUntisFailure catch (failure) {
           if (failure.kind == WebUntisFailureKind.authentication) rethrow;
+          lastFailure = failure;
           // Older WebUntis installations expose only one of these endpoints.
-        } catch (_) {
+        } catch (error) {
+          lastFailure = error;
           // Older WebUntis installations expose only one of these endpoints.
         }
+      }
+      if (requireSuccessfulResponse && !receivedList) {
+        throw lastFailure ?? StateError('No exam endpoint available');
       }
       return const [];
     }
@@ -62,13 +75,14 @@ class WebUntisExamRepository {
           request: request,
         );
       } catch (_) {
+        if (requireSuccessfulResponse) rethrow;
         return const [];
       }
     }
     return request(context);
   }
 
-  List<Map<String, dynamic>> _decodeExamList(dynamic decoded) {
+  List<Map<String, dynamic>>? _decodeExamList(dynamic decoded) {
     dynamic findList(dynamic value, [int depth = 0]) {
       if (value is List) return value;
       if (value is! Map || depth >= 5) return null;
@@ -89,16 +103,20 @@ class WebUntisExamRepository {
     }
 
     final raw = findList(decoded);
-    if (raw is! List) return const [];
-    return raw.whereType<Map>().map((value) {
-      final exam = Map<String, dynamic>.from(value);
-      final date = exam['date'] ?? exam['examDate'] ?? exam['startDate'];
-      if (date != null) {
-        exam.putIfAbsent('date', () => date.toString().replaceAll('-', ''));
-      }
-      final subject = exam['subject'] ?? exam['subjectName'] ?? exam['name'];
-      if (subject != null) exam.putIfAbsent('subject', () => subject);
-      return exam;
-    }).toList(growable: false);
+    if (raw is! List) return null;
+    return raw
+        .whereType<Map>()
+        .map((value) {
+          final exam = Map<String, dynamic>.from(value);
+          final date = exam['date'] ?? exam['examDate'] ?? exam['startDate'];
+          if (date != null) {
+            exam.putIfAbsent('date', () => date.toString().replaceAll('-', ''));
+          }
+          final subject =
+              exam['subject'] ?? exam['subjectName'] ?? exam['name'];
+          if (subject != null) exam.putIfAbsent('subject', () => subject);
+          return exam;
+        })
+        .toList(growable: false);
   }
 }

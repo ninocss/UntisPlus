@@ -77,6 +77,7 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
               : actions;
 
           return AppBar(
+            toolbarHeight: height,
             centerTitle: centerTitle,
             leading: headerLeading,
             leadingWidth: useBubbles && leading != null ? 64 : null,

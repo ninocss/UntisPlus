@@ -82,6 +82,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
         attachmentId: attachment.id,
         reauthenticate: () async => await _reAuthenticate() ? sessionID : null,
       );
+      if (!context.mounted) return;
       final result = await FilePicker.saveFile(
         dialogTitle: l.attachmentSave,
         fileName: name,
@@ -91,9 +92,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
         context.showUntisSnackBar(l.attachmentSaved);
       }
     } catch (_) {
-      if (context.mounted) {
-        context.showUntisSnackBar(l.attachmentDownloadFailed);
-      }
+      rethrow; // The attachment tile owns its inline error and retry action.
     }
   }
 
@@ -239,93 +238,25 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                         for (final attachment in item.attachments)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: _usesExpressiveComponents(context)
-                                ? UntisActionTile(
-                                    leading: Icon(
-                                      _attachmentIcon(attachment.fileExtension),
-                                    ),
-                                    title: Text(
-                                      attachment.name.isEmpty
-                                          ? l.infoAttachments
-                                          : attachment.name,
-                                    ),
-                                    trailing: const Icon(
-                                      Icons.download_rounded,
-                                    ),
-                                    onTap: () => _downloadAttachment(
-                                      context,
-                                      attachment,
-                                    ),
-                                  )
-                                : _glassContainer(
-                                    context: context,
-                                    borderRadius: BorderRadius.circular(
-                                      _expressiveRadius(
-                                        context,
-                                        14,
-                                        expressiveRadius: 24,
-                                      ),
-                                    ),
-                                    color: cs.surfaceContainerHigh.withValues(
-                                      alpha: 0.45,
-                                    ),
-                                    border: Border.all(
-                                      color: cs.outlineVariant.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                    ),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(
-                                        _expressiveRadius(
-                                          context,
-                                          14,
-                                          expressiveRadius: 24,
-                                        ),
-                                      ),
-                                      onTap: () => _downloadAttachment(
-                                        context,
-                                        attachment,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 12,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              _attachmentIcon(
-                                                attachment.fileExtension,
-                                              ),
-                                              size: 20,
-                                              color: cs.primary,
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Text(
-                                                attachment.name.isEmpty
-                                                    ? 'Attachment'
-                                                    : attachment.name,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: _appTextStyle(
-                                                  context,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Icon(
-                                              Icons.download_rounded,
-                                              size: 20,
-                                              color: cs.primary,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                            child: AttachmentDownloadTile(
+                              key: ValueKey(
+                                'attachment-${item.id}-${attachment.id}',
+                              ),
+                              name: attachment.name.isEmpty
+                                  ? l.infoAttachments
+                                  : attachment.name,
+                              icon: _attachmentIcon(attachment.fileExtension),
+                              loadingLabel: l.ux('attachmentLoading'),
+                              errorLabel: l.attachmentDownloadFailed,
+                              retryLabel: l.ux('attachmentRetry'),
+                              radius: _expressiveRadius(
+                                context,
+                                14,
+                                expressiveRadius: 24,
+                              ),
+                              onDownload: () =>
+                                  _downloadAttachment(context, attachment),
+                            ),
                           ),
                       ],
                       if (item.url != null) ...[

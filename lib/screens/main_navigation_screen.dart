@@ -42,6 +42,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   bool get _followChat => _chatFollow.shouldFollow;
   bool _chatScrollQueued = false;
   int _searchGeneration = 0;
+  AiRequestCancellation? _activeRequest;
   String _latestQuery = '';
   AiSearchResult? _latestResult;
   List<Map<String, dynamic>> _exams = [];
@@ -157,6 +158,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   void _startNewChat() {
+    _cancelActiveRequest();
     setState(() {
       _currentChatId = null;
       _chatMessages.clear();
@@ -177,6 +179,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   void _loadSession(AiChatSession session) {
+    _cancelActiveRequest();
     setState(() {
       _currentChatId = session.id;
       _chatMessages.clear();
@@ -193,6 +196,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
   @override
   void dispose() {
+    _activeRequest?.cancel();
+    _searchGeneration++;
     pendingAssistantPromptNotifier.removeListener(
       _consumeNativeAssistantPrompt,
     );
@@ -224,6 +229,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   void _selectAiTab(int index, {bool haptic = true}) {
     final chatMode = index == 1;
     final changed = _chatMode != chatMode;
+    if (changed) _cancelActiveRequest();
     if (changed && mounted) {
       setState(() => _chatMode = chatMode);
       if (haptic) _hapticSelection();
@@ -488,6 +494,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
 
   Future<void> _openSettings() async {
     await Navigator.of(context).push(_buildBouncyRoute(const SettingsAiPage()));
+    if (mounted) setState(() {});
   }
 
   Future<void> _openPromptEditor() async {
@@ -630,6 +637,7 @@ ${l.aiAssistantRules}''';
   Future<String> _requestProviderResponse(
     String systemPrompt, {
     required String userQuery,
+    AiRequestCancellation? cancellation,
   }) async {
     final l = appL10nFor(appLocaleNotifier.value);
     await _ensureAiConfigurationReady();
@@ -637,6 +645,7 @@ ${l.aiAssistantRules}''';
     final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
     return _aiRequestCoordinator.generate(
       runtime: runtime,
+      cancellation: cancellation,
       spec: AiRequestSpec(
         systemPrompt: systemPrompt,
         userPrompt: userQuery,
@@ -1213,17 +1222,20 @@ ${l.aiAssistantRules}''';
     _scrollToBottom(animated: false);
   }
 
-  Future<void> _sendChat(String text) async {
+  Future<void> _sendChat(String text, AiRequestCancellation request) async {
     _chatFollow.resume();
     _showChatJump.value = false;
     final requestAccountId = activeUntisAccountId ?? 'legacy';
     await _refreshChatDayContext();
-    if (!mounted || requestAccountId != (activeUntisAccountId ?? 'legacy')) {
+    if (!mounted ||
+        request.isCancelled ||
+        requestAccountId != (activeUntisAccountId ?? 'legacy')) {
       return;
     }
     final l = appL10nFor(appLocaleNotifier.value);
     if (!await _prepareAiInteraction(context) ||
         !mounted ||
+        request.isCancelled ||
         requestAccountId != (activeUntisAccountId ?? 'legacy')) {
       return;
     }
@@ -1311,14 +1323,20 @@ ${l.aiAssistantRules}''';
 
       final stream = _aiRequestCoordinator.stream(
         runtime: runtime,
+        cancellation: request,
         spec: spec,
         history: _chatMessages.sublist(0, _chatMessages.length - 1),
       );
 
       await for (final chunk in stream) {
-        if (!mounted) break;
+        if (!mounted ||
+            request.isCancelled ||
+            requestAccountId != (activeUntisAccountId ?? 'legacy')) {
+          break;
+        }
         _queueStreamingText(chunk);
       }
+      if (!mounted || request.isCancelled) return;
       _flushStreamingText();
       final rawReply = _chatMessages.isNotEmpty
           ? _chatMessages.last['content'] ?? ''
@@ -1337,6 +1355,7 @@ ${l.aiAssistantRules}''';
       }
       _saveChatHistory();
     } catch (e) {
+      if (!mounted || request.isCancelled) return;
       _flushStreamingText();
       final message = e.toString();
       final isApiError = message.contains('API:');
@@ -1356,15 +1375,17 @@ ${l.aiAssistantRules}''';
         }
       });
     } finally {
-      _flushStreamingText();
-      if (mounted) {
-        setState(() {
-          _thinking = false;
-          _attachments.clear();
-        });
-        _hapticSelection();
+      if (identical(_activeRequest, request)) {
+        _flushStreamingText();
+        if (mounted) {
+          setState(() {
+            _thinking = false;
+            _attachments.clear();
+          });
+          _hapticSelection();
+        }
+        _scrollToBottom();
       }
-      _scrollToBottom();
     }
   }
 
@@ -1408,48 +1429,87 @@ ${l.aiAssistantRules}''';
     );
   }
 
+  void _cancelActiveRequest() {
+    final request = _activeRequest;
+    if (request == null) return;
+    _flushStreamingText();
+    request.cancel();
+    _searchGeneration++;
+    _activeRequest = null;
+    final l = appL10nFor(appLocaleNotifier.value);
+    setState(() {
+      _thinking = false;
+      if (_chatMode &&
+          _chatMessages.isNotEmpty &&
+          _chatMessages.last['role'] == 'assistant') {
+        final partial = _chatMessages.last['content'] ?? '';
+        _chatMessages.last['content'] = partial.isEmpty
+            ? l.ux('aiCancelled')
+            : '$partial\n\n${l.ux('aiCancelled')}';
+        _streamRevision.value++;
+        _attachments.clear();
+      } else if (!_chatMode && _latestQuery.isNotEmpty) {
+        _latestResult = _parseSearchResult(
+          query: _latestQuery,
+          reply: l.ux('aiCancelled'),
+        );
+        if (_inputController.text.isEmpty) _inputController.text = _latestQuery;
+      }
+    });
+    unawaited(_saveChatHistory());
+  }
+
   Future<void> _send() async {
     final text = _inputController.text.trim();
-    if (text.isEmpty || _thinking) return;
-
-    if (_chatMode) {
-      await _sendChat(text);
-      return;
-    }
-
+    if (text.isEmpty || _thinking || _activeRequest != null) return;
+    final request = AiRequestCancellation();
+    _activeRequest = request;
     final generation = ++_searchGeneration;
-    _inputController.clear();
-    setState(() {
-      _latestQuery = text;
-      _latestResult = null;
-      _thinking = true;
-    });
-
+    setState(() => _thinking = true);
     try {
-      final reply = await _requestProviderResponse(
-        _resolvedSystemPrompt(),
-        userQuery: text,
-      );
-      if (!mounted || generation != _searchGeneration) return;
+      if (_chatMode) {
+        await _sendChat(text, request);
+        return;
+      }
+      _inputController.clear();
       setState(() {
-        _latestResult = _parseSearchResult(query: text, reply: reply);
+        _latestQuery = text;
+        _latestResult = null;
       });
-    } catch (e) {
-      if (!mounted || generation != _searchGeneration) return;
-      final message = e.toString();
-      final l = appL10nFor(appLocaleNotifier.value);
-      final isApiError = message.contains('API:');
-      final isConfigError = message.contains('CONFIG:');
-      setState(() {
-        final reply = isConfigError
+      try {
+        final reply = await _requestProviderResponse(
+          _resolvedSystemPrompt(),
+          userQuery: text,
+          cancellation: request,
+        );
+        if (!mounted || request.isCancelled || generation != _searchGeneration) {
+          return;
+        }
+        setState(
+          () => _latestResult = _parseSearchResult(query: text, reply: reply),
+        );
+      } catch (error) {
+        if (!mounted || request.isCancelled || generation != _searchGeneration) {
+          return;
+        }
+        final l = appL10nFor(appLocaleNotifier.value);
+        final message = error.toString();
+        final reply = message.contains('CONFIG:')
             ? message.replaceFirst('Exception: CONFIG: ', '')
-            : isApiError
+            : message.contains('API:')
             ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-            : '${l.aiConnectionError} $e';
-        _latestResult = _parseSearchResult(query: text, reply: reply);
-      });
+            : '${l.aiConnectionError} $error';
+        setState(
+          () => _latestResult = _parseSearchResult(query: text, reply: reply),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _thinking = false);
+      if (mounted && identical(_activeRequest, request)) {
+        setState(() {
+          _activeRequest = null;
+          _thinking = false;
+        });
+      }
     }
   }
 
@@ -1474,6 +1534,7 @@ ${l.aiAssistantRules}''';
   Future<void> _handleMenuAction(String action) async {
     switch (action) {
       case 'clear':
+        _cancelActiveRequest();
         if (_chatMode) {
           setState(() => _chatMessages.clear());
         } else {
@@ -1551,6 +1612,7 @@ ${l.aiAssistantRules}''';
         setState(() => _attachments.removeAt(index));
       },
       onSend: () => unawaited(_send()),
+      onStop: _cancelActiveRequest,
       onClear: () => setState(_inputController.clear),
     );
   }
@@ -1925,7 +1987,15 @@ ${l.aiAssistantRules}''';
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final body = _buildBody(cs);
+          final body = Column(
+            children: [
+              _AiExecutionStatus(
+                busy: _thinking,
+                onSettings: () => unawaited(_openSettings()),
+              ),
+              Expanded(child: _buildBody(cs)),
+            ],
+          );
           if (!UntisLayout.isTablet(context)) return body;
           return Align(
             alignment: Alignment.topCenter,
@@ -2273,13 +2343,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     await _finishTutorial();
   }
 
-  bool _isTutorialTarget(int index) {
-    if (!_showTutorial || _tutorialStep >= _tutorialTargets.length) {
-      return false;
-    }
-    return _tutorialTargets[_tutorialStep] == index;
-  }
-
   void _nextTutorialStep() {
     if (_tutorialStep >= _tutorialTargets.length - 1) {
       unawaited(_finishTutorial());
@@ -2364,7 +2427,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             )
           : const SizedBox.shrink(),
       _visitedTabs.contains(3)
-          ? const SettingsHubPage()
+          ? StudentMorePage(
+              openAssistant: () => _onNavTap(4),
+              openTutorial: _startTutorial,
+            )
           : const SizedBox.shrink(),
       aiEnabledNotifier.value && _visitedTabs.contains(4)
           ? AiAssistantPage(
@@ -2397,202 +2463,211 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final l = appL10nFor(appLocaleNotifier.value);
     final isTablet = UntisLayout.isTablet(context);
 
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: _currentDrawer,
-      extendBody: true,
-      resizeToAvoidBottomInset: false,
-      body: _AnimatedBackground(
-        child: Stack(
-          children: [
-            Row(
-              children: [
-                if (isTablet)
-                  SafeArea(
-                    child: NavigationRail(
-                      selectedIndex: _selectedIndex,
-                      onDestinationSelected: _onNavTap,
-                      labelType: NavigationRailLabelType.selected,
-                      groupAlignment: 0,
-                      destinations: [
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.watch_later_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[0],
-                            child: const Icon(Icons.watch_later_rounded),
-                          ),
-                          label: Text(
-                            l.timetableTitle,
-                            key: _tutorialNavLabelKeys[0],
-                          ),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.event_note_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[1],
-                            child: const Icon(Icons.event_note_rounded),
-                          ),
-                          label: Text(
-                            l.examsTitle,
-                            key: _tutorialNavLabelKeys[1],
-                          ),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.campaign_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[2],
-                            child: const Icon(Icons.campaign_rounded),
-                          ),
-                          label: Text(l.navInfo, key: _tutorialNavLabelKeys[2]),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.settings_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[3],
-                            child: const Icon(Icons.settings_rounded),
-                          ),
-                          label: Text(l.navMenu, key: _tutorialNavLabelKeys[3]),
-                        ),
-                        if (aiEnabledNotifier.value)
-                          NavigationRailDestination(
-                            icon: const Icon(Icons.auto_awesome_outlined),
-                            selectedIcon: KeyedSubtree(
-                              key: _tutorialNavKeys[4],
-                              child: const Icon(Icons.auto_awesome_rounded),
-                            ),
-                            label: Text(l.navAi, key: _tutorialNavLabelKeys[4]),
-                          ),
-                      ],
-                    ),
-                  ),
-                Expanded(
-                  child: MediaQuery(
-                    data: mq.copyWith(
-                      padding: mq.padding.copyWith(
-                        bottom: isTablet
-                            ? mq.padding.bottom
-                            : mq.padding.bottom + 104,
-                      ),
-                    ),
-                    child: ValueListenableBuilder<bool>(
-                      valueListenable: mainTabFadeUpEnabledNotifier,
-                      builder: (context, animationsEnabled, _) {
-                        final pages = _pages;
-
-                        return ValueListenableBuilder<int>(
-                          valueListenable: pageTransitionNotifier,
-                          builder: (context, transitionType, _) {
-                            return Stack(
-                              fit: StackFit.expand,
-                              children: pages
-                                  .asMap()
-                                  .entries
-                                  .map((entry) {
-                                    final active = entry.key == _selectedIndex;
-                                    return _MainTabTransitionLayer(
-                                      key: ValueKey(
-                                        'main-tab-layer-${entry.key}',
-                                      ),
-                                      active: active,
-                                      animate: animationsEnabled,
-                                      relativePosition:
-                                          entry.key - _selectedIndex,
-                                      transitionType: transitionType,
-                                      child: TickerMode(
-                                        enabled: active,
-                                        child: _buildPageWithBackground(
-                                          context,
-                                          entry.value,
-                                        ),
-                                      ),
-                                    );
-                                  })
-                                  .toList(growable: false),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            // Floating nav bar
-            if (!isTablet)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: mq.padding.bottom + 16,
+    return PopScope<Object?>(
+      canPop: _selectedIndex == 0 && !_showTutorial,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_showTutorial) {
+          unawaited(_finishTutorial());
+        } else {
+          _onNavTap(0);
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: _currentDrawer,
+        resizeToAvoidBottomInset: true,
+        bottomNavigationBar: isTablet || mq.viewInsets.bottom > 0
+            ? null
+            : SafeArea(
+                top: false,
+                minimum: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                 child: ValueListenableBuilder<String>(
                   valueListenable: appLocaleNotifier,
-                  builder: (context, locale, _) {
-                    return ListenableBuilder(
-                      listenable: Listenable.merge([
-                        unreadTimetableChangesNotifier,
-                        unreadInboxMessagesNotifier,
-                      ]),
-                      builder: (context, _) =>
-                          _buildFloatingNavBar(context, cs),
-                    );
-                  },
+                  builder: (context, _, _) => ListenableBuilder(
+                    listenable: Listenable.merge([
+                      unreadTimetableChangesNotifier,
+                      unreadInboxMessagesNotifier,
+                    ]),
+                    builder: (context, _) => _buildFloatingNavBar(context, cs),
+                  ),
                 ),
               ),
-            if (_showTutorial)
-              Positioned.fill(
-                child: _TutorialSpotlightOverlay(
-                  key: ValueKey(_tutorialStep),
-                  targetKey: _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
-                  labelKey:
-                      _tutorialNavLabelKeys[_tutorialTargets[_tutorialStep]],
-                  step: _tutorialStep,
-                  totalSteps: _tutorialTargets.length,
-                  title: _tutorialTitle(l),
-                  description: _tutorialDesc(l),
-                  onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
-                  onNext: _nextTutorialStep,
-                  onSkip: _skipTutorial,
-                  isLast: _tutorialStep == _tutorialTargets.length - 1,
-                ),
+        body: _AnimatedBackground(
+          child: Stack(
+            children: [
+              Row(
+                children: [
+                  if (isTablet)
+                    SafeArea(
+                      child: NavigationRail(
+                        selectedIndex: _selectedIndex,
+                        onDestinationSelected: _onNavTap,
+                        labelType: NavigationRailLabelType.all,
+                        groupAlignment: 0,
+                        destinations: [
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.watch_later_outlined),
+                            selectedIcon: KeyedSubtree(
+                              key: _tutorialNavKeys[0],
+                              child: const Icon(Icons.watch_later_rounded),
+                            ),
+                            label: Text(
+                              l.timetableTitle,
+                              key: _tutorialNavLabelKeys[0],
+                            ),
+                          ),
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.event_note_outlined),
+                            selectedIcon: KeyedSubtree(
+                              key: _tutorialNavKeys[1],
+                              child: const Icon(Icons.event_note_rounded),
+                            ),
+                            label: Text(
+                              l.ux('planner'),
+                              key: _tutorialNavLabelKeys[1],
+                            ),
+                          ),
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.campaign_outlined),
+                            selectedIcon: KeyedSubtree(
+                              key: _tutorialNavKeys[2],
+                              child: const Icon(Icons.campaign_rounded),
+                            ),
+                            label: Text(
+                              l.ux('schoolInfo'),
+                              key: _tutorialNavLabelKeys[2],
+                            ),
+                          ),
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.grid_view_outlined),
+                            selectedIcon: KeyedSubtree(
+                              key: _tutorialNavKeys[3],
+                              child: const Icon(Icons.grid_view_rounded),
+                            ),
+                            label: Text(
+                              l.ux('more'),
+                              key: _tutorialNavLabelKeys[3],
+                            ),
+                          ),
+                          if (aiEnabledNotifier.value)
+                            NavigationRailDestination(
+                              icon: const Icon(Icons.auto_awesome_outlined),
+                              selectedIcon: KeyedSubtree(
+                                key: _tutorialNavKeys[4],
+                                child: const Icon(Icons.auto_awesome_rounded),
+                              ),
+                              label: Text(
+                                l.navAi,
+                                key: _tutorialNavLabelKeys[4],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: MediaQuery(
+                      data: mq.copyWith(
+                        viewInsets: mq.viewInsets.copyWith(bottom: 0),
+                        padding: mq.padding.copyWith(bottom: mq.padding.bottom),
+                      ),
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: mainTabFadeUpEnabledNotifier,
+                        builder: (context, animationsEnabled, _) {
+                          final pages = _pages;
+
+                          return ValueListenableBuilder<int>(
+                            valueListenable: pageTransitionNotifier,
+                            builder: (context, transitionType, _) {
+                              return Stack(
+                                fit: StackFit.expand,
+                                children: pages
+                                    .asMap()
+                                    .entries
+                                    .map((entry) {
+                                      final active =
+                                          entry.key == _selectedIndex;
+                                      return _MainTabTransitionLayer(
+                                        key: ValueKey(
+                                          'main-tab-layer-${entry.key}',
+                                        ),
+                                        active: active,
+                                        animate: animationsEnabled,
+                                        relativePosition:
+                                            entry.key - _selectedIndex,
+                                        transitionType: transitionType,
+                                        child: TickerMode(
+                                          enabled: active,
+                                          child: _buildPageWithBackground(
+                                            context,
+                                            entry.value,
+                                          ),
+                                        ),
+                                      );
+                                    })
+                                    .toList(growable: false),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               ),
-          ],
+
+              if (_showTutorial)
+                Positioned.fill(
+                  child: _TutorialSpotlightOverlay(
+                    key: ValueKey(_tutorialStep),
+                    targetKey:
+                        _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
+                    labelKey:
+                        _tutorialNavLabelKeys[_tutorialTargets[_tutorialStep]],
+                    step: _tutorialStep,
+                    totalSteps: _tutorialTargets.length,
+                    title: _tutorialTitle(l),
+                    description: _tutorialDesc(l),
+                    onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
+                    onNext: _nextTutorialStep,
+                    onSkip: _skipTutorial,
+                    isLast: _tutorialStep == _tutorialTargets.length - 1,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildFloatingNavBar(BuildContext context, ColorScheme cs) {
-    final timetableSelected = _selectedIndex == 0;
     final l = appL10nFor(appLocaleNotifier.value);
-
-    // ---- Secondary items (indices 1-4) shown in the pill bar ----
     final items = [
       _NavItem(
-        icon: Icons.settings_outlined,
-        selectedIcon: Icons.settings_rounded,
-        label: l.navMenu,
+        icon: Icons.grid_view_outlined,
+        selectedIcon: Icons.grid_view_rounded,
+        label: l.ux('more'),
         pageIndex: 3,
         tutorialKey: _tutorialNavKeys[3],
         tutorialLabelKey: _tutorialNavLabelKeys[3],
-        tutorialHighlight: _isTutorialTarget(3),
       ),
       _NavItem(
         icon: Icons.campaign_outlined,
         selectedIcon: Icons.campaign_rounded,
-        label: l.navInfo,
+        label: l.ux('schoolInfo'),
         pageIndex: 2,
         tutorialKey: _tutorialNavKeys[2],
         tutorialLabelKey: _tutorialNavLabelKeys[2],
-        tutorialHighlight: _isTutorialTarget(2),
         badgeCount: unreadInboxMessagesNotifier.value,
       ),
       _NavItem(
         icon: Icons.assignment_outlined,
         selectedIcon: Icons.assignment_rounded,
-        label: l.navExams,
+        label: l.ux('planner'),
         pageIndex: 1,
         tutorialKey: _tutorialNavKeys[1],
         tutorialLabelKey: _tutorialNavLabelKeys[1],
-        tutorialHighlight: _isTutorialTarget(1),
       ),
       if (aiEnabledNotifier.value)
         _NavItem(
@@ -2602,151 +2677,50 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           pageIndex: 4,
           tutorialKey: _tutorialNavKeys[4],
           tutorialLabelKey: _tutorialNavLabelKeys[4],
-          tutorialHighlight: _isTutorialTarget(4),
         ),
     ];
-
-    // Which item in the secondary bar is selected? -1 = none (timetable active)
-    final selectedBarIndex = items.indexWhere(
-      (item) => item.pageIndex == _selectedIndex,
-    );
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // ---- Pill nav bar ----
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 560),
-              curve: _kSmoothBounce,
-              builder: (context, val, child) {
-                return Transform.translate(
-                  offset: Offset(0, (1 - val) * 26),
-                  child: Opacity(opacity: val.clamp(0, 1), child: child),
-                );
-              },
-              child: _ExpressiveNavBar(
-                items: items,
-                selectedIndex: selectedBarIndex,
-                colorScheme: cs,
-                onTap: (pageIndex) => _onNavTap(pageIndex),
-              ),
+    final radius = untisThemeTokensOf(context).controlRadius;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: _ExpressiveNavBar(
+            items: items,
+            selectedIndex: items.indexWhere(
+              (item) => item.pageIndex == _selectedIndex,
             ),
-
-            const SizedBox(width: 12),
-
-            // ---- FAB timetable button ----
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 620),
-              curve: _kSmoothBounce,
-              builder: (context, value, child) {
-                return Transform.translate(
-                  offset: Offset(0, (1 - value) * 20),
-                  child: Transform.scale(
-                    scale: 0.92 + (value * 0.08),
-                    child: Opacity(opacity: value.clamp(0, 1), child: child),
-                  ),
-                );
-              },
-              child: KeyedSubtree(
-                key: _tutorialNavKeys[0],
-                child: _BouncyButton(
-                  onTap: () => _onNavTap(0),
-                  scaleTarget: 0.88,
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: blurEnabledNotifier,
-                    builder: (context, blurEnabled, _) {
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 480),
-                        curve: _kSoftBounce,
-                        height: _ExpressiveNavBarState._barHeight,
-                        width: _ExpressiveNavBarState._barHeight,
-                        child: ThemedSurface(
-                          blur: !timetableSelected,
-                          respectSurfaceBlurPreference: false,
-                          respectSurfaceCornerPreference: false,
-                          color: timetableSelected
-                              ? cs.primary
-                              : cs.surfaceContainerHigh.withValues(
-                                  alpha: blurEnabled ? 0.72 : 1,
-                                ),
-                          borderRadius: BorderRadius.circular(
-                            timetableSelected ? 22 : 18,
-                          ),
-                          border: Border.all(
-                            color: _isTutorialTarget(0)
-                                ? cs.tertiary
-                                : timetableSelected
-                                ? cs.primary.withValues(alpha: 0.38)
-                                : cs.outlineVariant.withValues(alpha: 0.30),
-                            width: _isTutorialTarget(0) ? 2.0 : 0.8,
-                          ),
-                          child: Center(
-                            child: AnimatedSwitcher(
-                              duration: AppMotion.duration(
-                                context,
-                                AppMotionTokens.calmEffects,
-                              ),
-                              switchInCurve: _kSmoothBounce,
-                              switchOutCurve: _kSoftBounce,
-                              transitionBuilder: (child, anim) {
-                                final slide = Tween<Offset>(
-                                  begin: const Offset(0, 0.15),
-                                  end: Offset.zero,
-                                ).animate(anim);
-                                return FadeTransition(
-                                  opacity: anim,
-                                  child: SlideTransition(
-                                    position: slide,
-                                    child: ScaleTransition(
-                                      scale: Tween<double>(
-                                        begin: 0.85,
-                                        end: 1.0,
-                                      ).animate(anim),
-                                      child: child,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: AnimatedRotation(
-                                turns: timetableSelected ? 0 : -0.03,
-                                duration: const Duration(milliseconds: 400),
-                                curve: _kSmoothBounce,
-                                child: Icon(
-                                  timetableSelected
-                                      ? Icons.watch_later_rounded
-                                      : Icons.watch_later_outlined,
-                                  key: ValueKey('timetable_$timetableSelected'),
-                                  color: timetableSelected
-                                      ? cs.onPrimary
-                                      : cs.onSurfaceVariant,
-                                  size: timetableSelected ? 34 : 28,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ],
+            colorScheme: cs,
+            onTap: _onNavTap,
+          ),
         ),
-      ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 84,
+          child: ThemedSurface(
+            borderRadius: BorderRadius.circular(radius + 8),
+            color: cs.surfaceContainerHigh,
+            child: PrimaryDestinationButton(
+              destination: PrimaryDestination(
+                label: l.timetableTitle,
+                icon: Icons.watch_later_outlined,
+                selectedIcon: Icons.watch_later_rounded,
+                targetKey: _tutorialNavKeys[0],
+                labelKey: _tutorialNavLabelKeys[0],
+              ),
+              selected: _selectedIndex == 0,
+              duration: AppMotion.duration(
+                context,
+                AppMotionTokens.standardEffects,
+              ),
+              radius: radius + 8,
+              onPressed: () => _onNavTap(0),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Material You Expressive Navigation Bar
-// ---------------------------------------------------------------------------
 
 class _TutorialSpotlightOverlay extends StatefulWidget {
   final GlobalKey? targetKey;
@@ -3160,7 +3134,6 @@ class _NavItem {
   final int pageIndex;
   final GlobalKey? tutorialKey;
   final GlobalKey? tutorialLabelKey;
-  final bool tutorialHighlight;
   final int badgeCount;
 
   const _NavItem({
@@ -3170,18 +3143,16 @@ class _NavItem {
     required this.pageIndex,
     this.tutorialKey,
     this.tutorialLabelKey,
-    this.tutorialHighlight = false,
     this.badgeCount = 0,
   });
 }
 
-/// A pill-indicator navigation bar whose indicator morphs via spring physics
-/// between destinations – matching the Material 3 Expressive spec.
-class _ExpressiveNavBar extends StatefulWidget {
+/// Expressive surfaces around equally-sized, permanently labelled destinations.
+class _ExpressiveNavBar extends StatelessWidget {
   final List<_NavItem> items;
-  final int selectedIndex; // -1 = nothing selected
+  final int selectedIndex;
   final ColorScheme colorScheme;
-  final void Function(int pageIndex) onTap;
+  final ValueChanged<int> onTap;
 
   const _ExpressiveNavBar({
     required this.items,
@@ -3191,468 +3162,37 @@ class _ExpressiveNavBar extends StatefulWidget {
   });
 
   @override
-  State<_ExpressiveNavBar> createState() => _ExpressiveNavBarState();
-}
-
-class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
-    with TickerProviderStateMixin {
-  // Morphing stage: a spring simulation drives t (0..1, with slight overshoot)
-  // between the previously rendered layout ("from") and the target layout ("to").
-  late AnimationController _morphController;
-
-  // Alpha animation for the "no selection" state (pill fades out)
-  late AnimationController _visibilityController;
-  late Animation<double> _pillAlpha;
-
-  // Per-item icon wiggle
-  final List<AnimationController> _iconWiggle = [];
-
-  // Per-item label reveal controller. The pill width morphs for both the
-  // outgoing and the incoming tab, so the label must animate out as well –
-  // otherwise a deselected tab's label/width snaps back instantly.
-  final List<AnimationController> _labelControllers = [];
-
-  static const _itemWidth = 46.0;
-  static const _pillBaseWidth = 42.0;
-  static const _pillExpandedExtra = 56.0; // extra px when label visible
-  static const _pillHeight = 44.0;
-  static const _barHeight = 64.0;
-  static const _barHPad = 8.0;
-  static const _itemGap = 2.0;
-
-  // From-state (frozen at the start of the current morph)
-  List<double> _fromWidths = const [];
-  double _fromLeft = 0;
-  double _fromWidth = _pillBaseWidth;
-
-  // Target selection
-  int _targetSel = -1;
-  double _targetFrac = 1.0;
-
-  // Last rendered state (used as the start point of the next morph)
-  List<double> _lastWidths = const [];
-  double _lastLeft = 0;
-  double _lastWidth = _pillBaseWidth;
-
-  @override
-  void initState() {
-    super.initState();
-    _morphController = AnimationController.unbounded(vsync: this);
-
-    _visibilityController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-      value: widget.selectedIndex >= 0 ? 1.0 : 0.0,
-    );
-    _pillAlpha = _visibilityController;
-
-    for (int i = 0; i < widget.items.length; i++) {
-      _iconWiggle.add(
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 380),
-        ),
-      );
-    }
-
-    final initialSel = widget.selectedIndex;
-    for (int i = 0; i < widget.items.length; i++) {
-      _labelControllers.add(
-        AnimationController(
-          vsync: this,
-          duration: const Duration(milliseconds: 260),
-          value: i == initialSel ? 1.0 : 0.0,
-        ),
-      );
-    }
-
-    final sel = widget.selectedIndex;
-    _targetSel = sel;
-    _targetFrac = 1.0;
-    if (sel >= 0) {
-      final layout = _layoutFor(sel, 1.0);
-      _fromLeft = _lastLeft = layout.left;
-      _fromWidth = _lastWidth = layout.width;
-      _fromWidths = _lastWidths = List.of(layout.widths);
-      _morphController.value = 1.0;
-    } else {
-      _fromWidths = _lastWidths = List.generate(
-        widget.items.length,
-        (_) => _itemWidth,
-        growable: false,
-      );
-    }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _visibilityController.duration = AppMotion.duration(
-      context,
-      AppMotionTokens.standardEffects,
-    );
-    for (final controller in _labelControllers) {
-      controller.duration = AppMotion.duration(
-        context,
-        AppMotionTokens.standardEffects,
-      );
-    }
-    if (!AppMotion.enabled(context)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _morphController.value = 1;
-        _visibilityController.value = widget.selectedIndex >= 0 ? 1 : 0;
-        for (var i = 0; i < _labelControllers.length; i++) {
-          _labelControllers[i].value = i == widget.selectedIndex ? 1 : 0;
-        }
-      });
-    }
-  }
-
-  @override
-  void didUpdateWidget(_ExpressiveNavBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedIndex == widget.selectedIndex) return;
-
-    final newSel = widget.selectedIndex;
-    if (!AppMotion.enabled(context)) {
-      for (var i = 0; i < _labelControllers.length; i++) {
-        _labelControllers[i].value = i == newSel ? 1 : 0;
-      }
-      _visibilityController.value = newSel >= 0 ? 1 : 0;
-      _targetSel = newSel >= 0 ? newSel : 0;
-      _targetFrac = newSel >= 0 ? 1 : 0;
-      final layout = _layoutFor(_targetSel, _targetFrac);
-      _fromLeft = _lastLeft = layout.left;
-      _fromWidth = _lastWidth = layout.width;
-      _fromWidths = _lastWidths = List.of(layout.widths);
-      _morphController.value = 1;
-      return;
-    }
-    final wasHidden = _pillAlpha.value < 0.05;
-
-    final oldSel = oldWidget.selectedIndex;
-    if (oldSel >= 0 && oldSel < _labelControllers.length) {
-      // Outgoing tab label slides away while the pill morphs to the new tab.
-      _labelControllers[oldSel].reverse();
-    }
-    if (newSel >= 0 && newSel < _labelControllers.length) {
-      _labelControllers[newSel].forward();
-    }
-
-    // Freeze the currently rendered layout as the morph start point.
-    _fromLeft = _lastLeft;
-    _fromWidth = _lastWidth;
-    _fromWidths = List.of(_lastWidths);
-
-    if (newSel < 0) {
-      // Timetable selected -> fold pill to compact size in place and fade out.
-      _targetSel = _targetSel >= 0 ? _targetSel : 0;
-      _targetFrac = 0.0;
-      _visibilityController.reverse();
-    } else if (wasHidden) {
-      // Coming from a hidden state -> grow the compact pill at the new tab.
-      final compact = _layoutFor(newSel, 0.0);
-      _fromLeft = compact.left;
-      _fromWidth = compact.width;
-      _fromWidths = List.of(compact.widths);
-      _targetSel = newSel;
-      _targetFrac = 1.0;
-      _visibilityController.forward();
-    } else {
-      // Secondary tab -> secondary tab: morph between the two layouts.
-      _targetSel = newSel;
-      _targetFrac = 1.0;
-      _visibilityController.forward();
-    }
-
-    _animateMorph();
-  }
-
-  void _animateMorph() {
-    if (!AppMotion.enabled(context)) {
-      _morphController.value = 1;
-      return;
-    }
-    final velocity = _morphController.velocity;
-    _morphController.value = 0;
-    final spring = AppMotion.spring(AppMotionSpeed.standard);
-    final sim = SpringSimulation(
-      spring,
-      0,
-      1.0,
-      velocity, // Preserve momentum when retargeting.
-    );
-    _morphController.animateWith(sim);
-  }
-
-  ({double left, double width, List<double> widths}) _layoutFor(
-    int sel,
-    double frac,
-  ) {
-    final widths = List.generate(widget.items.length, (i) {
-      if (sel >= 0 && i == sel) {
-        return _pillBaseWidth + frac * _pillExpandedExtra;
-      }
-      return _itemWidth;
-    });
-    var left = _barHPad;
-    if (sel >= 0) {
-      left += widths.take(sel).fold(0.0, (a, b) => a + b) + sel * _itemGap;
-    }
-    final width = sel >= 0 ? widths[sel] : _pillBaseWidth;
-    return (left: left, width: width, widths: widths);
-  }
-
-  @override
-  void dispose() {
-    _morphController.dispose();
-    _visibilityController.dispose();
-    for (final c in _iconWiggle) {
-      c.dispose();
-    }
-    for (final c in _labelControllers) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final cs = widget.colorScheme;
-    final n = widget.items.length;
     final tokens = untisThemeTokensOf(context);
-    final navRadius = BorderRadius.circular(switch (tokens.id) {
-      AppThemeId.defaultTheme => 35,
-      AppThemeId.manga => 2,
-      _ => tokens.controlRadius + 8,
-    });
-
     return ThemedSurface(
       respectSurfaceBlurPreference: false,
       respectSurfaceCornerPreference: false,
-      borderRadius: navRadius,
-      color: cs.surfaceContainerHigh.withValues(
-        alpha:
-            tokens.id == AppThemeId.defaultTheme ||
-                tokens.id == AppThemeId.manga
-            ? 0.66
-            : tokens.navigationOpacity,
-      ),
-      border: Border.all(
-        color: tokens.id == AppThemeId.manga
-            ? cs.outline
-            : cs.outlineVariant.withValues(alpha: 0.32),
-        width: tokens.borderWidth,
-      ),
-      child: Container(
-        height: _barHeight,
-        padding: const EdgeInsets.symmetric(horizontal: _barHPad),
-        child: AnimatedBuilder(
-          animation: Listenable.merge([
-            _morphController,
-            _visibilityController,
-            ..._labelControllers,
-          ]),
-          builder: (context, _) {
-            final t = _morphController.value.clamp(0.0, 1.1);
-            final to = _layoutFor(_targetSel, _targetFrac);
-
-            // Interpolate every item width (and the pill rect) from the frozen
-            // start layout toward the target layout – this keeps the pill glued
-            // to the moving items without the reference-frame jumps.
-            final widths = List.generate(n, (i) {
-              final from = i < _fromWidths.length ? _fromWidths[i] : _itemWidth;
-              return from + (to.widths[i] - from) * t;
-            });
-            final pillLeft = _fromLeft + (to.left - _fromLeft) * t;
-            final pillWidth = _fromWidth + (to.width - _fromWidth) * t;
-
-            // Render snapshot (start point for the next morph).
-            _lastWidths = List.of(widths);
-            _lastLeft = pillLeft;
-            _lastWidth = pillWidth;
-
-            // Total bar content width
-            final totalW =
-                widths.fold(0.0, (a, b) => a + b) +
-                (n - 1) * _itemGap; // gaps between items
-            final pillAlpha = _pillAlpha.value;
-
-            return SizedBox(
-              width: totalW,
-              height: _barHeight,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // ---- Morphing pill indicator ----
-                  Positioned(
-                    left: pillLeft - _barHPad,
-                    child: Opacity(
-                      opacity: pillAlpha.clamp(0.0, 1.0),
-                      child: Container(
-                        width: pillWidth,
-                        height: _pillHeight,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? cs.primaryContainer
-                              : cs.primary,
-                          borderRadius: BorderRadius.circular(
-                            tokens.id == AppThemeId.cyber
-                                ? tokens.controlRadius
-                                : _pillHeight / 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // ---- Items row ----
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (int i = 0; i < n; i++) ...[
-                        if (i > 0) const SizedBox(width: 2),
-                        _buildItem(i, widths[i], t, cs),
-                      ],
-                    ],
-                  ),
-                ],
+      borderRadius: BorderRadius.circular(tokens.controlRadius + 8),
+      color: colorScheme.surfaceContainerHigh,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: PrimaryDestinationBar(
+          destinations: [
+            for (final item in items)
+              PrimaryDestination(
+                label: item.label,
+                icon: item.icon,
+                selectedIcon: item.selectedIcon,
+                badgeCount: item.badgeCount,
+                targetKey: item.tutorialKey,
+                labelKey: item.tutorialLabelKey,
               ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItem(int i, double width, double labelT, ColorScheme cs) {
-    final item = widget.items[i];
-    final selected = widget.selectedIndex == i;
-    final wiggle = _iconWiggle[i];
-
-    return Semantics(
-      key: item.tutorialKey,
-      button: true,
-      selected: selected,
-      label: item.label,
-      value: item.badgeCount > 0 ? '${item.badgeCount}' : null,
-      child: GestureDetector(
-        onTap: () {
-          if (!selected) unawaited(AppHaptics.lightImpact());
-          widget.onTap(item.pageIndex);
-        },
-        behavior: HitTestBehavior.opaque,
-        child: SizedBox(
-          width: width,
-          height: _barHeight,
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // --- Icon with wiggle ---
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    AnimatedBuilder(
-                      animation: wiggle,
-                      builder: (context, child) {
-                        // Spring-style wiggle: sin wave decaying
-                        final t = wiggle.value;
-                        final angle =
-                            math.sin(t * math.pi * 4) * 0.08 * (1 - t);
-                        return Transform.rotate(angle: angle, child: child);
-                      },
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 280),
-                        switchInCurve: _kSmoothBounce,
-                        switchOutCurve: Curves.easeOut,
-                        transitionBuilder: (child, anim) => ScaleTransition(
-                          scale: Tween(begin: 0.7, end: 1.0).animate(anim),
-                          child: FadeTransition(opacity: anim, child: child),
-                        ),
-                        child: Icon(
-                          selected ? item.selectedIcon : item.icon,
-                          key: ValueKey('${item.pageIndex}_$selected'),
-                          size: selected ? 22 : 24,
-                          color: selected
-                              ? (Theme.of(context).brightness == Brightness.dark
-                                    ? cs.onPrimaryContainer
-                                    : cs.onPrimary)
-                              : item.tutorialHighlight
-                              ? cs.tertiary
-                              : cs.onSurfaceVariant.withValues(alpha: 0.8),
-                        ),
-                      ),
-                    ),
-                    if (item.badgeCount > 0)
-                      Positioned(
-                        right: -6,
-                        top: -5,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 3.5,
-                            vertical: 1,
-                          ),
-                          constraints: const BoxConstraints(minWidth: 13),
-                          decoration: BoxDecoration(
-                            color: cs.error,
-                            borderRadius: BorderRadius.circular(9),
-                            border: Border.all(
-                              color: cs.surfaceContainerHigh,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Text(
-                            item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
-                            style: TextStyle(
-                              color: cs.onError,
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w800,
-                              height: 1,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-
-                // --- Label (slides in/out with the morph) ---
-                Flexible(
-                  child: ClipRect(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: _labelControllers[i].value,
-                      child: Opacity(
-                        opacity: _labelControllers[i].value,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 6),
-                          child: Text(
-                            item.label,
-                            key: item.tutorialLabelKey,
-                            style: untisThemeTextStyle(
-                              context,
-                              color:
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? cs.onPrimaryContainer
-                                  : cs.onPrimary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13.5,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.clip,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          ],
+          selectedIndex: selectedIndex,
+          radius: tokens.controlRadius,
+          duration: AppMotion.duration(
+            context,
+            AppMotionTokens.standardEffects,
           ),
+          onSelected: (index) {
+            if (index != selectedIndex) unawaited(AppHaptics.selection());
+            onTap(items[index].pageIndex);
+          },
         ),
       ),
     );
@@ -3663,73 +3203,3 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
 
 // Bouncy press helper (unchanged)
 // ---------------------------------------------------------------------------
-class _BouncyButton extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-  final double scaleTarget;
-
-  const _BouncyButton({
-    required this.child,
-    required this.onTap,
-    this.scaleTarget = 0.9,
-  });
-
-  @override
-  State<_BouncyButton> createState() => _BouncyButtonState();
-}
-
-class _BouncyButtonState extends State<_BouncyButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  bool _tapLocked = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 120),
-      reverseDuration: const Duration(milliseconds: 320),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: widget.scaleTarget)
-        .animate(
-          CurvedAnimation(
-            parent: _controller,
-            curve: _kSoftBounce,
-            reverseCurve: _kSmoothBounce,
-          ),
-        );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) {
-        if (_tapLocked) return;
-        if (AppMotion.enabled(context)) _controller.forward();
-        unawaited(AppHaptics.lightImpact());
-      },
-      onTap: () {
-        if (_tapLocked) return;
-        _tapLocked = true;
-        widget.onTap();
-        if (AppMotion.enabled(context)) _controller.reverse();
-        Future.delayed(const Duration(milliseconds: 140), () {
-          if (!mounted) return;
-          _tapLocked = false;
-        });
-      },
-      onTapCancel: () {
-        if (AppMotion.enabled(context)) _controller.reverse();
-      },
-      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
-    );
-  }
-}

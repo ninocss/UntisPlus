@@ -30,6 +30,7 @@ import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'core/settings_store.dart';
+import 'core/onboarding_progress.dart';
 import 'core/defensive_parsers.dart';
 import 'core/timetable_date_utils.dart';
 import 'core/version_utils.dart';
@@ -68,6 +69,7 @@ import 'features/homework/domain/homework.dart';
 import 'features/timetable/domain/timetable_lesson_status.dart';
 import 'features/ai/domain/ai_models.dart';
 import 'features/ai/application/ai_request_coordinator.dart';
+import 'features/ai/application/ai_request_cancellation.dart';
 import 'features/ai/data/ai_chat_history_store.dart';
 import 'features/ai/data/ai_response_parser.dart';
 import 'features/ai/data/local_model_provider.dart';
@@ -84,6 +86,9 @@ import 'core/bounded_lru_cache.dart';
 import 'core/app_experience.dart';
 import 'widgets/app_experience_scope.dart';
 import 'widgets/lazy_content_list.dart';
+import 'widgets/feature_feedback.dart';
+import 'widgets/attachment_download_tile.dart';
+import 'widgets/primary_destination_bar.dart';
 
 export 'core/app_experience.dart';
 
@@ -101,6 +106,7 @@ part 'screens/onboarding_flow.dart';
 part 'screens/weekly_timetable_page.dart';
 part 'screens/teacher_search_page.dart';
 part 'screens/homework_page.dart';
+part 'features/homework/application/homework_refresh.dart';
 part 'screens/exams_page.dart';
 part 'screens/custom_background_editor_screen.dart';
 part 'screens/main_navigation_screen.dart';
@@ -109,6 +115,7 @@ part 'features/ai/application/ai_prompt_helpers.dart';
 part 'screens/ai/widgets/ai_suggestion_card.dart';
 part 'screens/ai/widgets/ai_attachment_chip.dart';
 part 'screens/ai/widgets/ai_composer.dart';
+part 'screens/ai/widgets/ai_execution_status.dart';
 part 'screens/ai/widgets/ai_typing_indicator.dart';
 part 'screens/ai/widgets/ai_chat_message.dart';
 part 'screens/ai/widgets/ai_metric_tile.dart';
@@ -465,7 +472,6 @@ void main() async {
       );
   final legacyOnboardingCompleted =
       prefs.getBool('onboardingCompleted') ?? false;
-  final legacyTutorialCompleted = prefs.getBool('tutorialCompleted') ?? false;
   var onboardingVersion = prefs.getInt('onboardingVersion') ?? 0;
   var tutorialVersionCompleted = prefs.getInt('tutorialVersionCompleted') ?? 0;
 
@@ -486,9 +492,6 @@ void main() async {
   }
   final onboardingCompleted =
       legacyOnboardingCompleted || onboardingVersion > 0;
-  final tutorialCompleted =
-      legacyTutorialCompleted ||
-      tutorialVersionCompleted >= kCurrentTutorialVersion;
 
   // Account initialization has already hydrated the active session from the
   // native secure store. SharedPreferences now contains public metadata only.
@@ -624,9 +627,7 @@ void main() async {
       child: UntisPlusApp(
         startScreen:
             onboardingCompleted && (isLoggedIn || demoModeNotifier.value)
-            ? MainNavigationScreen(
-                showTutorialOnStart: onboardingCompleted && !tutorialCompleted,
-              )
+            ? const MainNavigationScreen()
             : const OnboardingFlow(),
       ),
     ),

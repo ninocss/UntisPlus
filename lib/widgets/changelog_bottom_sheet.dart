@@ -103,6 +103,9 @@ class _ChangelogWidgetState extends State<ChangelogWidget> {
                     ),
                   ),
                   IconButton(
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
                     onPressed: () => Navigator.pop(context),
                     icon: Icon(Icons.close_rounded, color: cs.onSurfaceVariant),
                     style: IconButton.styleFrom(

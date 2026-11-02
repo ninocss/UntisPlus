@@ -2849,6 +2849,11 @@ class SettingsGroup extends StatelessWidget {
   }
 }
 
+double _mainHeaderHeight(BuildContext context) => math.max(
+  kToolbarHeight,
+  MediaQuery.textScalerOf(context).scale(17) * 2.2 + 8,
+);
+
 PreferredSizeWidget _mainTabHeaderAppBar(
   BuildContext context,
   String title, {
@@ -2857,14 +2862,14 @@ PreferredSizeWidget _mainTabHeaderAppBar(
   PreferredSizeWidget? bottom,
 }) {
   return RoundedBlurAppBar(
-    height: kToolbarHeight,
+    height: _mainHeaderHeight(context),
     centerTitle: true,
     leading: leading,
     actions: actions,
     bottom: bottom,
     title: Text(
       title,
-      maxLines: 1,
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
       style: untisThemeTextStyle(
@@ -2884,7 +2889,12 @@ PreferredSizeWidget _mainSectionTabBar(
   ValueChanged<int>? onTap,
 }) {
   final cs = Theme.of(context).colorScheme;
+  final scrollable = MediaQuery.textScalerOf(context).scale(14) > 18;
+  final showIcons =
+      items.length <= 2 || MediaQuery.sizeOf(context).width >= 480;
   return TabBar(
+    isScrollable: scrollable,
+    tabAlignment: scrollable ? TabAlignment.start : null,
     controller: controller,
     onTap: (index) {
       AppHaptics.selection();
@@ -2929,26 +2939,29 @@ PreferredSizeWidget _mainSectionTabBar(
     tabs: [
       for (final item in items)
         Tab(
-          height: _usesExpressiveComponents(context)
-              ? math.max(
-                  48,
-                  MediaQuery.textScalerOf(context).scale(14) * 2 + 16,
-                )
-              : null,
+          height: math.max(
+            48,
+            MediaQuery.textScalerOf(context).scale(14) * 2 + 16,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.max,
+            mainAxisSize: scrollable ? MainAxisSize.min : MainAxisSize.max,
             children: [
-              Icon(item.icon, size: 18),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  item.label,
-                  maxLines: _usesExpressiveComponents(context) ? 2 : 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
+              if (showIcons) ...[
+                Icon(item.icon, size: 18),
+                const SizedBox(width: 8),
+              ],
+              if (scrollable)
+                Text(item.label, textAlign: TextAlign.center)
+              else
+                Flexible(
+                  child: Text(
+                    item.label,
+                    maxLines: _usesExpressiveComponents(context) ? 2 : 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
             ],
           ),
         ),

@@ -1011,83 +1011,10 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
     await prefs.setInt('timetableViewModeV2', _viewMode);
   }
 
-  Future<void> _fetchHomeworkAndNotes() async {
-    if (!demoModeNotifier.value &&
-        (_currentSessionId.isEmpty || schoolUrl.isEmpty)) {
-      return;
-    }
-    try {
-      final requestAccountId = activeUntisAccountId;
-      final account = activeUntisAccount;
-      final requestStart = _currentMonday;
-      final requestEnd = _currentMonday.add(const Duration(days: 6));
-      final requestSchoolUrl = account?.schoolUrl ?? schoolUrl;
-      final requestSchoolName = account?.schoolName ?? schoolName;
-      final requestSessionId = _currentSessionId;
-      final requestPersonId = account?.personId ?? personId;
-      final requestPersonType = account?.personType ?? personType;
-      if (!demoModeNotifier.value && requestAccountId != null) {
-        final cached = await HomeworkService.loadCachedHomeworkAndNotes(
-          accountId: requestAccountId,
-          startDate: requestStart,
-          endDate: requestEnd,
-        );
-        if (requestAccountId != activeUntisAccountId ||
-            _currentMonday != requestStart) {
-          return;
-        }
-        if (cached != null) {
-          homeworksNotifier.value = cached['homeworks']!;
-          lessonNotesNotifier.value = cached['lessonNotes']!;
-        }
-      }
-      final res = demoModeNotifier.value
-          ? DemoModeService.buildHomeworkAndNotes(
-              requestStart,
-              locale: appLocaleNotifier.value,
-            )
-          : await HomeworkService.fetchHomeworkAndNotes(
-              schoolUrl: requestSchoolUrl,
-              schoolName: requestSchoolName,
-              sessionId: requestSessionId,
-              personId: requestPersonId,
-              personType: requestPersonType,
-              accountId: requestAccountId,
-              account: account == null
-                  ? null
-                  : WebUntisAccountLogin(
-                      accountId: account.id,
-                      username: account.username,
-                      schoolUrl: account.schoolUrl,
-                      schoolName: account.schoolName,
-                      personId: account.personId,
-                      personType: account.personType,
-                    ),
-              startDate: requestStart,
-              endDate: requestEnd,
-            );
-      if (requestAccountId != activeUntisAccountId ||
-          _currentMonday != requestStart) {
-        return;
-      }
-      homeworksNotifier.value = res['homeworks']!;
-      lessonNotesNotifier.value = res['lessonNotes']!;
-      if (!demoModeNotifier.value && requestAccountId != null) {
-        final wrapped = SchoolWrappedRepository();
-        for (final year in await wrapped.years(requestAccountId)) {
-          if (year.contains(requestStart)) {
-            await wrapped.recordHomework(
-              accountId: requestAccountId,
-              year: year,
-              items: res['homeworks']!,
-            );
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching homework and notes: $e');
-    }
-  }
+  Future<void> _fetchHomeworkAndNotes() => _refreshActiveHomework(
+    monday: _currentMonday,
+    sessionId: _currentSessionId,
+  );
 
   void _onLessonTap(BuildContext context, Map<dynamic, dynamic> lesson) {
     _showLessonDetail(
@@ -3205,12 +3132,10 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
 
   Widget _dimPastLesson({required Widget child, required bool dim}) {
     if (!dim || !lessonDimPastNotifier.value) return child;
-    return Opacity(
-      opacity: 0.45,
-      child: ColorFiltered(
-        colorFilter: const ColorFilter.matrix(_grayscaleMatrix),
-        child: child,
-      ),
+    // Desaturate completed lessons without fading their text into the surface.
+    return ColorFiltered(
+      colorFilter: const ColorFilter.matrix(_grayscaleMatrix),
+      child: child,
     );
   }
 
@@ -3266,9 +3191,7 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
         showTeacher && originalTeacher.isNotEmpty && originalTeacher != teacher;
     final compact = lessonCompactModeNotifier.value;
 
-    final textScale = _usesExpressiveComponents(context)
-        ? MediaQuery.textScalerOf(context).scale(14) / 14
-        : 1.0;
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     final logicalHeight = availableHeight == null
         ? null
         : availableHeight / textScale;
@@ -3716,10 +3639,7 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
   }) {
     final wd = weekData ?? _weekData;
     final m = monday ?? _currentMonday;
-    final media = MediaQuery.of(context);
-    final topContentPadding = _isExportingTimetable
-        ? 10.0
-        : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
+    const topContentPadding = 10.0;
 
     int globalMin = 480;
     int globalMax = 1200;
@@ -4161,10 +4081,7 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
     final wd = weekData ?? _weekData;
     final m = monday ?? _currentMonday;
     final shownDays = visibleDays ?? _visibleGridDays;
-    final media = MediaQuery.of(context);
-    final topContentPadding = _isExportingTimetable
-        ? 10.0
-        : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
+    const topContentPadding = 10.0;
 
     int globalMin = 480;
     int globalMax = 900;
@@ -5805,21 +5722,39 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
     );
   }
 
+  void _goToToday() {
+    if (_isDayCarouselAnimating || _isWeekCarouselAnimating) return;
+    final now = DateTime.now();
+    final monday = resolveDefaultTimetableMonday(now);
+    final changedWeek = _currentMonday != monday;
+    AppHaptics.selection();
+    setState(() {
+      if (changedWeek) _stageWeekTarget(monday, _getAdjacentWeekData(monday));
+      _suppressDayTabControllerRebuild = true;
+      _tabController.index = resolveInitialTimetableDayIndex(now);
+      _suppressDayTabControllerRebuild = false;
+    });
+    _onTimetableSwitchAnimationChanged();
+    if (changedWeek) unawaited(_fetchFullWeek());
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(timetableControllerProvider(_controllerOwner));
     final l = appL10nFor(appLocaleNotifier.value);
     final expressiveDays = _usesExpressiveComponents(context);
-    final dayTabHeight = expressiveDays
-        ? math.max(56.0, MediaQuery.textScalerOf(context).scale(24) + 20)
-        : kTextTabBarHeight;
+    final dayTabHeight = math.max(
+      56.0,
+      MediaQuery.textScalerOf(context).scale(12.5) * 2.8 + 12,
+    );
     final dayIndicatorIndex = (_dayCarouselTargetDay ?? _tabController.index)
         .clamp(0, 4)
         .toInt();
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: false,
       backgroundColor: Colors.transparent,
       appBar: RoundedBlurAppBar(
+        height: _mainHeaderHeight(context),
         leading: _untisDropdownMenu(
           context: context,
           menuChildren: [
@@ -5852,24 +5787,21 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
           ),
         ),
         title: GestureDetector(
-          onTap: () {
-            final thisMonday = resolveDefaultTimetableMonday(DateTime.now());
-            if (_currentMonday != thisMonday) {
-              AppHaptics.selection();
-              setState(() => _currentMonday = thisMonday);
-              _fetchFullWeek();
-            }
-          },
+          onTap: _goToToday,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                _viewingClassName ?? l.timetableTitle,
-                style: untisThemeTextStyle(
-                  context,
-                  display: true,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 17,
+              Flexible(
+                child: Text(
+                  _viewingClassName ?? l.timetableTitle,
+                  maxLines: 2,
+                  textAlign: TextAlign.center,
+                  style: untisThemeTextStyle(
+                    context,
+                    display: true,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 17,
+                  ),
                 ),
               ),
               AnimatedSwitcher(
@@ -5908,6 +5840,13 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: l.examsToday,
+            icon: const Icon(Icons.today_rounded),
+            onPressed: _isDayCarouselAnimating || _isWeekCarouselAnimating
+                ? null
+                : _goToToday,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
@@ -5942,9 +5881,16 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
                   child: TabBar(
                     controller: _tabController,
                     onTap: _onDayTabBarTap,
-                    indicator: const BoxDecoration(),
+                    indicator: expressiveDays
+                        ? const BoxDecoration()
+                        : UnderlineTabIndicator(
+                            borderSide: BorderSide(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 3,
+                            ),
+                          ),
                     indicatorWeight: 0,
-                    labelPadding: expressiveDays ? EdgeInsets.zero : null,
+                    labelPadding: EdgeInsets.zero,
                     labelStyle: untisThemeTextStyle(
                       context,
                       fontWeight: FontWeight.bold,
@@ -5970,7 +5916,7 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
                           dayDate.month == now.month &&
                           dayDate.day == now.day;
                       return Tab(
-                        height: expressiveDays ? dayTabHeight - 8 : null,
+                        height: dayTabHeight - 8,
                         child: GestureDetector(
                           key: ValueKey('timetable-day-tab-$i'),
                           behavior: HitTestBehavior.opaque,
@@ -6095,71 +6041,73 @@ class _WeeklyTimetablePageState extends ConsumerState<WeeklyTimetablePage>
           ),
         ),
       ),
-      body:
-          (_loading &&
-              _weekData.values.every((list) => list.isEmpty) &&
-              !_showingCachedWeek)
-          ? const Center(child: ExpressiveLoadingIndicator())
-          : (_loadError != null &&
-                _weekData.values.every((list) => list.isEmpty) &&
-                !_showingCachedWeek)
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.cloud_off_rounded,
-                      size: 80,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l.timetableNotLoaded,
-                      textAlign: TextAlign.center,
-                      style: _appTextStyle(
-                        context,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _loadError!,
-                      textAlign: TextAlign.center,
-                      style: _appTextStyle(
-                        context,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    FilledButton.tonal(
-                      onPressed: _fetchFullWeek,
-                      child: Text(l.reload),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : RepaintBoundary(
-              key: _timetableExportKey,
-              child: _springEntry(
-                key: ValueKey<int>(_viewMode),
-                duration: AppMotion.duration(
-                  context,
-                  AppMotionTokens.calmEffects,
-                ),
-                offsetY: 8,
-                startScale: 0.985,
-                child: _buildTimetableSwitcher(),
+      body: Column(
+        children: [
+          if (_showingCachedWeek ||
+              (_loadError != null &&
+                  _weekData.values.any((lessons) => lessons.isNotEmpty)))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: FeatureFeedback(
+                key: const ValueKey('timetable-data-status'),
+                compact: true,
+                kind: _loadError == null
+                    ? FeatureFeedbackKind.notice
+                    : FeatureFeedbackKind.error,
+                title: _controller.isLoading
+                    ? l.ux('refreshing')
+                    : _loadError != null
+                    ? l.ux('loadError')
+                    : l.ux('cachedData'),
+                message: _loadError != null
+                    ? l.ux('retainedData')
+                    : l.ux('cachedHint'),
+                actionLabel: l.reload,
+                onAction: _controller.isLoading ? null : _fetchFullWeek,
+                icon: Icons.cloud_off_rounded,
               ),
             ),
+          Expanded(
+            child:
+                (_loading &&
+                    _weekData.values.every((list) => list.isEmpty) &&
+                    !_showingCachedWeek)
+                ? SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: FeatureFeedback(
+                      kind: FeatureFeedbackKind.loading,
+                      title: l.loadingIndicatorLabel,
+                    ),
+                  )
+                : (_loadError != null &&
+                      _weekData.values.every((list) => list.isEmpty) &&
+                      !_showingCachedWeek)
+                ? SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: FeatureFeedback(
+                      kind: FeatureFeedbackKind.error,
+                      title: l.timetableNotLoaded,
+                      message: _loadError,
+                      actionLabel: l.reload,
+                      onAction: _fetchFullWeek,
+                    ),
+                  )
+                : RepaintBoundary(
+                    key: _timetableExportKey,
+                    child: _springEntry(
+                      key: ValueKey<int>(_viewMode),
+                      duration: AppMotion.duration(
+                        context,
+                        AppMotionTokens.calmEffects,
+                      ),
+                      offsetY: 8,
+                      startScale: 0.985,
+                      child: _buildTimetableSwitcher(),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

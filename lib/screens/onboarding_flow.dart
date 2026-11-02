@@ -7,7 +7,14 @@ class OnboardingFlow extends StatefulWidget {
   /// appearance and AI setup so adding a second login is a short flow.
   final bool accountOnly;
 
-  const OnboardingFlow({super.key, this.accountOnly = false});
+  /// An optional flow opened from More, never a prerequisite for school login.
+  final bool personalizationOnly;
+
+  const OnboardingFlow({
+    super.key,
+    this.accountOnly = false,
+    this.personalizationOnly = false,
+  }) : assert(!accountOnly || !personalizationOnly);
 
   @override
   State<OnboardingFlow> createState() => _OnboardingFlowState();
@@ -18,7 +25,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       SchoolDirectoryRepository();
   final WebUntisLoginRepository _loginRepository = WebUntisLoginRepository();
   final PageController _pageController = PageController();
-  int get _totalOnboardingSteps => widget.accountOnly ? 1 : 5;
+  int get _totalOnboardingSteps => widget.accountOnly
+      ? 1
+      : widget.personalizationOnly
+      ? 3
+      : 2;
   static const String _credentialModePassword = 'password';
   static const String _credentialModeLoginKey = 'loginKey';
   int _currentPage = 0;
@@ -55,7 +66,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   void initState() {
     super.initState();
-    unawaited(_hydrateAiConfiguration());
+    if (widget.personalizationOnly) unawaited(_hydrateAiConfiguration());
     _onboardingAiProvider = _normalizeAiProvider(aiProvider);
     _onboardingAiCustomCompatibility = _normalizeAiCustomCompatibility(
       aiCustomCompatibility,
@@ -85,14 +96,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _useLoginKey =
             prefs.getString('loginCredentialMode') == _credentialModeLoginKey;
       });
-      if (!widget.accountOnly) {
-        final saved = (prefs.getInt('onboardingCheckpoint') ?? 0).clamp(
-          0,
-          _totalOnboardingSteps - 1,
+      if (!widget.accountOnly && !widget.personalizationOnly) {
+        final restored = shortOnboardingCheckpoint(
+          checkpoint: prefs.getInt('onboardingCheckpoint'),
+          schema: prefs.getInt('onboardingCheckpointSchema'),
         );
-        final canPassLogin =
-            activeUntisAccountId != null || demoModeNotifier.value;
-        final restored = saved > 2 && !canPassLogin ? 2 : saved;
         if (restored != _currentPage) {
           _currentPage = restored;
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -135,13 +143,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _inlineError = null;
       });
     }
-    if (!widget.accountOnly && page == 2) {
+    if (!widget.accountOnly && !widget.personalizationOnly && page == 1) {
       _schoolSearchFocusNode.requestFocus();
     }
-    if (!widget.accountOnly) {
-      Future.value(
-        SettingsStore.instance.preferences,
-      ).then((prefs) => prefs.setInt('onboardingCheckpoint', page));
+    if (!widget.accountOnly && !widget.personalizationOnly) {
+      Future.value(SettingsStore.instance.preferences).then((prefs) async {
+        await prefs.setInt('onboardingCheckpointSchema', 2);
+        await prefs.setInt('onboardingCheckpoint', page);
+      });
     }
   }
 
@@ -806,11 +815,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _nextPage() async {
     FocusScope.of(context).unfocus();
-    if (!widget.accountOnly && _currentPage == 3) {
+    if (widget.personalizationOnly && _currentPage == 1) {
       await _persistOnboardingAiConfiguration();
       if (!mounted) return;
     }
     if (_currentPage < _totalOnboardingSteps - 1) {
+      if (!AppMotion.enabled(context)) {
+        _pageController.jumpToPage(_currentPage + 1);
+        return;
+      }
       _pageController.nextPage(
         duration: AppMotion.duration(context, AppMotionTokens.calmEffects),
         curve: _kSmoothBounce,
@@ -823,8 +836,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void _previousPage() {
     FocusScope.of(context).unfocus();
     if (_currentPage > 0) {
+      if (!AppMotion.enabled(context)) {
+        _pageController.jumpToPage(_currentPage - 1);
+        return;
+      }
       _pageController.previousPage(
-        duration: const Duration(milliseconds: 480),
+        duration: AppMotion.duration(context, AppMotionTokens.calmEffects),
         curve: _kSoftBounce,
       );
     }
@@ -838,7 +855,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _schoolController.text.trim().isEmpty ||
         _userController.text.trim().isEmpty ||
         _passwordController.text.isEmpty) {
-      _showError(l.loginFailed);
+      _showError(l.ux('loginFields'));
       return;
     }
     setState(() {
@@ -894,8 +911,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             (route) => false,
           );
         } else {
-          await prefs.setInt('onboardingCheckpoint', 3);
-          _nextPage();
+          await _completeOnboarding();
         }
       } else {
         switch (authResult.status) {
@@ -937,9 +953,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     await prefs.setInt('personType', personType);
     await prefs.setInt('personId', personId);
     await prefs.remove('sessionId');
-    await prefs.setInt('onboardingCheckpoint', 3);
-
-    if (mounted) _nextPage();
+    if (mounted) await _completeOnboarding();
   }
 
   void _showError(String msg) {
@@ -959,23 +973,31 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _completeOnboarding() async {
-    if (!await _prepareAiInteraction(context) && aiEnabledNotifier.value) {
+    if (widget.personalizationOnly) {
+      if (!await _prepareAiInteraction(context) && aiEnabledNotifier.value) {
+        return;
+      }
+      await _persistOnboardingAiConfiguration();
+      if (mounted) Navigator.of(context).pop();
       return;
     }
     if (!mounted) return;
     final prefs = SettingsStore.instance.preferences;
-    await _persistOnboardingAiConfiguration();
-
     await prefs.setBool('onboardingCompleted', true);
     await prefs.setBool('tutorialCompleted', false);
     await prefs.setInt('onboardingVersion', kCurrentOnboardingVersion);
     await prefs.setInt('tutorialVersionCompleted', 0);
     await prefs.remove('onboardingCheckpoint');
+    await prefs.remove('onboardingCheckpointSchema');
+    // Release notes remain available in Settings, but must not interrupt a
+    // student's first successful login/demo before they see their timetable.
+    showChangelogOnStartup = false;
+    await prefs.remove('showChangelogPending');
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      _buildBouncyRoute(const MainNavigationScreen(showTutorialOnStart: true)),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(_buildBouncyRoute(const MainNavigationScreen()));
   }
 
   String _backgroundStyleLabel(AppL10n l, int style) {
@@ -1209,7 +1231,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         children: [
           // Background gradient
           AnimatedContainer(
-            duration: const Duration(milliseconds: 800),
+            duration: AppMotion.duration(context, AppMotionTokens.calmEffects),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -1269,8 +1291,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             Expanded(
                               child: Text(
                                 _inlineError!,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
                                 style: untisThemeTextStyle(
                                   context,
                                   fontWeight: FontWeight.w600,
@@ -1279,6 +1299,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                               ),
                             ),
                             IconButton(
+                              tooltip: MaterialLocalizations.of(
+                                context,
+                              ).closeButtonTooltip,
                               onPressed: () =>
                                   setState(() => _inlineError = null),
                               icon: Icon(
@@ -1301,12 +1324,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     children: [
                       if (widget.accountOnly)
                         _buildLoginStep()
-                      else ...[
-                        _buildLanguageStep(),
+                      else if (widget.personalizationOnly) ...[
                         _buildThemeStep(),
-                        _buildLoginStep(),
                         _buildGeminiStep(),
                         _buildTutorialStep(),
+                      ] else ...[
+                        _buildLanguageStep(),
+                        _buildLoginStep(),
                       ],
                     ],
                   ),
@@ -1335,8 +1359,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             opacity: _currentPage > 0 ? 1.0 : 0.3,
             duration: const Duration(milliseconds: 200),
             child: SizedBox(
-              width: 36,
-              height: 36,
+              width: 48,
+              height: 48,
               child: IconButton(
                 onPressed: _currentPage > 0 ? _previousPage : null,
                 padding: EdgeInsets.zero,
@@ -2110,7 +2134,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               focusNode: _schoolSearchFocusNode,
               style: untisThemeTextStyle(context, fontSize: 15),
               decoration: InputDecoration(
-                hintText: l.loginSearchHint,
+                labelText: l.loginSearchHint,
+                helperText: l.ux('quickStart'),
+                helperMaxLines: 6,
                 hintStyle: untisThemeTextStyle(
                   context,
                   color: colors.onSurfaceVariant,

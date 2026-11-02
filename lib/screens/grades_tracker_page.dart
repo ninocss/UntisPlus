@@ -65,7 +65,10 @@ class _Grade {
   }
 }
 
-class _GradesTrackerPageState extends State<GradesTrackerPage> {
+class _GradesTrackerPageState extends State<GradesTrackerPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   List<_Grade> _grades = [];
   bool _loading = true;
 
@@ -679,6 +682,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final grouped = _groupedGrades;
@@ -689,7 +693,13 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     );
 
     return _loading
-        ? const Center(child: ExpressiveLoadingIndicator())
+        ? SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: FeatureFeedback(
+              kind: FeatureFeedbackKind.loading,
+              title: l.loadingIndicatorLabel,
+            ),
+          )
         : visibleGradeCount == 0
         ? _buildEmptyState(cs, l)
         : LazyContentList(

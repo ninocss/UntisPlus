@@ -74,6 +74,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   List<_SchoolNotificationItem> _newsItems = const [];
   List<_SchoolNotificationItem> _inboxItems = const [];
   bool _showInbox = false;
+  bool _onlyUnread = false;
   String? _selectedNotificationId;
   bool _loading = true;
   String? _newsError;
@@ -632,7 +633,13 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final activeItems = _showInbox ? _inboxItems : _newsItems;
+    final activeItems = _showInbox
+        ? _inboxItems
+              .where(
+                (item) => !_onlyUnread || _unreadMessageIds.contains(item.id),
+              )
+              .toList(growable: false)
+        : _newsItems;
     final isExpanded = UntisLayout.isExpanded(context);
     final selectedItem = _selectedItem(activeItems);
 
@@ -683,12 +690,17 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: UntisLayout.pagePadding(context, bottom: 150).copyWith(
-                top: MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
+                top:
+                    MediaQuery.paddingOf(context).top +
+                    _mainHeaderHeight(context) +
+                    16,
               ),
               children: [
                 if (_loading && activeItems.isEmpty) ...[
-                  const SizedBox(height: 140),
-                  const Center(child: ExpressiveLoadingIndicator()),
+                  FeatureFeedback(
+                    kind: FeatureFeedbackKind.loading,
+                    title: l.loadingIndicatorLabel,
+                  ),
                 ] else ...[
                   _buildInfoSummaryCard(cs, l, activeItems.length),
                   SegmentedButton<bool>(
@@ -727,65 +739,44 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                       padding: EdgeInsets.only(top: 12),
                       child: LinearProgressIndicator(),
                     ),
+                  if (_showInbox)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: FilterChip(
+                        label: Text(
+                          '${l.ux('unread')} (${_unreadMessageIds.length})',
+                        ),
+                        selected: _onlyUnread,
+                        onSelected: (selected) =>
+                            setState(() => _onlyUnread = selected),
+                      ),
+                    ),
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: _glassContainer(
-                        context: context,
-                        borderRadius: BorderRadius.circular(18),
-                        color: cs.errorContainer.withValues(alpha: 0.55),
-                        border: Border.all(
-                          color: cs.error.withValues(alpha: 0.3),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Text(
-                            _error!,
-                            style: _appTextStyle(
-                              context,
-                              color: cs.onErrorContainer,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
+                      child: FeatureFeedback(
+                        kind: FeatureFeedbackKind.error,
+                        title: _error!,
+                        message: activeItems.isEmpty
+                            ? null
+                            : l.ux('retainedData'),
+                        actionLabel: l.reload,
+                        onAction: _refreshing ? null : _reload,
                       ),
                     ),
                   const SizedBox(height: 16),
-                  if (activeItems.isEmpty)
-                    _glassContainer(
-                      context: context,
-                      borderRadius: BorderRadius.circular(24),
-                      color: cs.primaryContainer.withValues(alpha: 0.2),
-                      border: Border.all(
-                        color: cs.primary.withValues(alpha: 0.24),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l.infoEmpty,
-                              style: _appTextStyle(
-                                context,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              l.infoEmptyHint,
-                              style: _appTextStyle(
-                                context,
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                  if (activeItems.isEmpty && _error == null)
+                    FeatureFeedback(
+                      kind: FeatureFeedbackKind.empty,
+                      title: _showInbox && _onlyUnread
+                          ? l.ux('noUnread')
+                          : l.infoEmpty,
+                      message: _showInbox && _onlyUnread
+                          ? l.ux('noUnreadHint')
+                          : l.infoEmptyHint,
+                      icon: Icons.mark_email_read_outlined,
                     )
-                  else if (isExpanded)
+                  else if (isExpanded && activeItems.isNotEmpty)
                     SizedBox(
                       height: (MediaQuery.sizeOf(context).height - 250).clamp(
                         420.0,
@@ -909,6 +900,14 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                                     spacing: 8,
                                     runSpacing: 6,
                                     children: [
+                                      if (_showInbox)
+                                        _infoChip(
+                                          context,
+                                          l.ux(isUnread ? 'unread' : 'read'),
+                                          isUnread
+                                              ? Icons.mark_email_unread_outlined
+                                              : Icons.mark_email_read_outlined,
+                                        ),
                                       if (item.date != null)
                                         _infoChip(
                                           context,

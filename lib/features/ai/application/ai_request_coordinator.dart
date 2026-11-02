@@ -1,4 +1,5 @@
 import '../data/remote_ai_provider.dart';
+import 'ai_request_cancellation.dart';
 
 typedef AiProviderFactory =
     AIProvider Function(
@@ -209,51 +210,55 @@ class AiRequestCoordinator {
     );
   }
 
-  void validate(
-    AiRuntimeConfiguration runtime,
-    AiRequestSpec spec,
-  ) {
+  void validate(AiRuntimeConfiguration runtime, AiRequestSpec spec) {
     resolve(runtime, spec);
   }
 
   Future<String> generate({
     required AiRuntimeConfiguration runtime,
     required AiRequestSpec spec,
-  }) {
-    final resolved = resolve(runtime, spec);
-    final provider = runtime.providerFactory(
-      resolved.configuration,
-      resolved.generationSettings,
-    );
-    return const AiTextGenerationService().generate(
-      provider: provider,
-      systemPrompt: spec.systemPrompt,
-      userPrompt: spec.userPrompt,
-      model: resolved.model,
-      noReplyMessage: spec.noReplyMessage,
-      attachments: spec.attachments,
-    );
+    AiRequestCancellation? cancellation,
+  }) async {
+    final text = StringBuffer();
+    await for (final chunk in stream(
+      runtime: runtime,
+      spec: spec,
+      history: [
+        {'role': 'user', 'content': spec.userPrompt},
+      ],
+      cancellation: cancellation,
+    )) {
+      text.write(chunk);
+    }
+    final result = text.toString().trim();
+    return result.isEmpty ? spec.noReplyMessage : result;
   }
 
   Stream<String> stream({
     required AiRuntimeConfiguration runtime,
     required AiRequestSpec spec,
     required List<Map<String, String>> history,
+    AiRequestCancellation? cancellation,
   }) async* {
     final resolved = resolve(runtime, spec);
     final provider = runtime.providerFactory(
       resolved.configuration,
       resolved.generationSettings,
     );
+    Future<void>? releaseFuture;
+    Future<void> release() => releaseFuture ??= provider.dispose();
     try {
-      yield* provider.streamResponse(
+      final source = provider.streamResponse(
         systemPrompt: spec.systemPrompt,
         history: history,
         model: resolved.model,
         attachments: spec.attachments,
       );
+      yield* cancellation == null
+          ? source
+          : cancellation.guard(source, release);
     } finally {
-      await provider.dispose();
+      await release();
     }
   }
 }

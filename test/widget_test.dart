@@ -215,8 +215,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.tap(find.byIcon(Icons.campaign_outlined).first);
     await tester.pump(const Duration(milliseconds: 350));
-    final labels = tester.widgetList<Text>(find.text('Info'));
-    final navLabel = labels.where((label) => label.style?.fontSize == 13.5);
+    final labels = tester.widgetList<Text>(
+      find.text(appL10nFor('de').ux('schoolInfo')),
+    );
+    final navLabel = labels.where(
+      (label) =>
+          label.style?.color ==
+          Theme.of(
+            tester.element(find.byType(MainNavigationScreen)),
+          ).colorScheme.onPrimaryContainer,
+    );
     expect(navLabel, isNotEmpty);
     final navText = navLabel.first;
     final context = tester.element(find.byType(MainNavigationScreen));
@@ -250,9 +258,14 @@ void main() {
       );
 
       expect(backgroundScenes(), findsOneWidget);
-      expect(find.bySemanticsLabel('Info'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(appL10nFor('de').ux('schoolInfo')),
+        findsOneWidget,
+      );
 
-      await tester.tap(find.bySemanticsLabel('Info'));
+      await tester.tap(
+        find.bySemanticsLabel(appL10nFor('de').ux('schoolInfo')),
+      );
       await tester.pump(const Duration(milliseconds: 550));
       expect(backgroundScenes(), findsOneWidget);
     },
@@ -412,10 +425,12 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
-    await tester.pumpWidget(const UntisPlusApp(startScreen: OnboardingFlow()));
+    await tester.pumpWidget(
+      const UntisPlusApp(
+        startScreen: OnboardingFlow(personalizationOnly: true),
+      ),
+    );
     await tester.pump();
-    await tester.tap(find.text('Weiter'));
-    await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('onboarding-theme-vivid')), findsNothing);
     expect(find.byKey(const ValueKey('onboarding-theme-paper')), findsNothing);
@@ -463,7 +478,10 @@ void main() {
     });
     await tester.pumpWidget(
       const UntisPlusApp(
-        startScreen: OnboardingFlow(key: ValueKey('theme-layout-onboarding')),
+        startScreen: OnboardingFlow(
+          key: ValueKey('theme-layout-onboarding'),
+          personalizationOnly: true,
+        ),
       ),
     );
 
@@ -504,10 +522,10 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'welcome viewport: $size');
 
       await tapVisible(tester, find.text('Weiter'));
-      final preview = find.byKey(const ValueKey('onboarding-theme-preview'));
-      await pumpUntilFound(tester, preview);
-      expect(preview, findsOneWidget);
-      expect(tester.takeException(), isNull, reason: 'theme viewport: $size');
+      final login = find.text(appL10nFor('de').onboardingUseDemoMode);
+      await pumpUntilFound(tester, login);
+      expect(login, findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'login viewport: $size');
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('onboardingCheckpoint', 0);
     }
@@ -571,21 +589,20 @@ void main() {
     addTearDown(() => aiProvider = 'gemini');
     await tester.pumpWidget(
       const UntisPlusApp(
-        startScreen: OnboardingFlow(key: ValueKey('local-ai-onboarding')),
+        startScreen: OnboardingFlow(
+          key: ValueKey('local-ai-onboarding'),
+          personalizationOnly: true,
+        ),
       ),
     );
     await pumpUntilFound(tester, find.text('Weiter'));
 
-    await tapVisible(tester, find.text('Weiter'));
     await pumpUntilFound(
       tester,
       find.byKey(const ValueKey('onboarding-theme-default')),
     );
     await tapVisible(tester, find.text('Weiter'));
 
-    final demoButton = find.text('Demo-Modus starten');
-    await pumpUntilFound(tester, demoButton);
-    await tapVisible(tester, demoButton);
     await pumpUntilFound(tester, find.text('Lokales Modell'));
 
     expect(find.text('Lokales Modell'), findsWidgets);

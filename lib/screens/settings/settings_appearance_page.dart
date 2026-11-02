@@ -1273,6 +1273,14 @@ class _EffectQualitySettings extends StatelessWidget {
               l.settingsEffectQualityDesc,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            if (quality != AppEffectQuality.full) ...[
+              const SizedBox(height: 12),
+              FeatureFeedback(
+                compact: true,
+                kind: FeatureFeedbackKind.notice,
+                title: l.ux('qualityLimit'),
+              ),
+            ],
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,

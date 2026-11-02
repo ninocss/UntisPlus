@@ -13,9 +13,14 @@ String _studentCopy({
 };
 
 class StudentMorePage extends StatelessWidget {
-  const StudentMorePage({super.key, required this.openAssistant});
+  const StudentMorePage({
+    super.key,
+    required this.openAssistant,
+    this.openTutorial,
+  });
 
   final VoidCallback openAssistant;
+  final VoidCallback? openTutorial;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +28,7 @@ class StudentMorePage extends StatelessWidget {
     return Scaffold(
       appBar: RoundedBlurAppBar(
         title: Text(
-          appL10nFor(appLocaleNotifier.value).aiMore,
+          appL10nFor(appLocaleNotifier.value).ux('more'),
           style: _appTextStyle(context, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
@@ -97,18 +102,38 @@ class StudentMorePage extends StatelessWidget {
             _MoreSection(
               title: 'Untis+',
               children: [
-                _MoreAction(
-                  icon: Icons.auto_awesome_rounded,
-                  color: cs.primary,
-                  title: appL10nFor(appLocaleNotifier.value).navAi,
-                  subtitle: _studentCopy(
-                    de: 'Optionaler Assistent für deinen Schulalltag',
-                    en: 'Optional assistant for your school day',
-                    fr: 'Assistant facultatif pour ta vie scolaire',
-                    es: 'Asistente opcional para tu día escolar',
-                  ),
-                  onTap: openAssistant,
+                _MoreDestination(
+                  icon: Icons.tune_rounded,
+                  color: cs.tertiary,
+                  title: appL10nFor(
+                    appLocaleNotifier.value,
+                  ).ux('optionalSetup'),
+                  subtitle: appL10nFor(
+                    appLocaleNotifier.value,
+                  ).ux('optionalSetupHint'),
+                  page: const OnboardingFlow(personalizationOnly: true),
                 ),
+                if (openTutorial != null)
+                  _MoreAction(
+                    icon: Icons.explore_outlined,
+                    color: cs.secondary,
+                    title: appL10nFor(appLocaleNotifier.value).ux('tutorial'),
+                    subtitle: appL10nFor(appLocaleNotifier.value).tutorialTitle,
+                    onTap: openTutorial!,
+                  ),
+                if (aiEnabledNotifier.value)
+                  _MoreAction(
+                    icon: Icons.auto_awesome_rounded,
+                    color: cs.primary,
+                    title: appL10nFor(appLocaleNotifier.value).navAi,
+                    subtitle: _studentCopy(
+                      de: 'Optionaler Assistent für deinen Schulalltag',
+                      en: 'Optional assistant for your school day',
+                      fr: 'Assistant facultatif pour ta vie scolaire',
+                      es: 'Asistente opcional para tu día escolar',
+                    ),
+                    onTap: openAssistant,
+                  ),
                 _MoreDestination(
                   icon: Icons.settings_rounded,
                   color: cs.onSurfaceVariant,

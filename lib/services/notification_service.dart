@@ -92,6 +92,9 @@ class NotificationService {
       '@mipmap/ic_launcher',
     );
     final iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
       notificationCategories: _iosNotificationCategories(),
     );
     final settings = InitializationSettings(
@@ -439,9 +442,7 @@ class NotificationService {
 
   String get _deviceLocale {
     final code = PlatformDispatcher.instance.locale.languageCode;
-    return AppL10n.supportedLocales.any(
-          (locale) => locale.languageCode == code,
-        )
+    return AppL10n.supportedLocales.any((locale) => locale.languageCode == code)
         ? code
         : 'de';
   }

@@ -10,6 +10,7 @@ class _AiComposer extends StatefulWidget {
   final VoidCallback? onAttach;
   final ValueChanged<int> onRemoveAttachment;
   final VoidCallback onSend;
+  final VoidCallback onStop;
   final VoidCallback onClear;
 
   const _AiComposer({
@@ -22,6 +23,7 @@ class _AiComposer extends StatefulWidget {
     required this.onAttach,
     required this.onRemoveAttachment,
     required this.onSend,
+    required this.onStop,
     required this.onClear,
   });
 
@@ -206,8 +208,10 @@ class _AiComposerState extends State<_AiComposer> {
                         const SizedBox(width: 4),
                         Semantics(
                           button: true,
-                          enabled: canSend,
-                          label: widget.mode == _AiMode.chat
+                          enabled: canSend || widget.thinking,
+                          label: widget.thinking
+                              ? appL10nFor(appLocaleNotifier.value).cancel
+                              : widget.mode == _AiMode.chat
                               ? appL10nFor(appLocaleNotifier.value).aiTabChat
                               : appL10nFor(
                                   appLocaleNotifier.value,
@@ -230,7 +234,11 @@ class _AiComposerState extends State<_AiComposer> {
                                 borderRadius: BorderRadius.circular(
                                   _aiRadius(19),
                                 ),
-                                onTap: canSend ? widget.onSend : null,
+                                onTap: widget.thinking
+                                    ? widget.onStop
+                                    : canSend
+                                    ? widget.onSend
+                                    : null,
                                 child: Center(
                                   child: AnimatedSwitcher(
                                     duration: duration,
@@ -243,14 +251,10 @@ class _AiComposerState extends State<_AiComposer> {
                                           ),
                                         ),
                                     child: widget.thinking
-                                        ? SizedBox(
+                                        ? Icon(
                                             key: const ValueKey('thinking'),
-                                            width: 20,
-                                            height: 20,
-                                            child: ExpressiveLoadingIndicator(
-                                              strokeWidth: 2.4,
-                                              color: cs.onPrimary,
-                                            ),
+                                            Icons.stop_rounded,
+                                            color: cs.onPrimary,
                                           )
                                         : Icon(
                                             widget.mode == _AiMode.chat
