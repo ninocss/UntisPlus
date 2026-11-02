@@ -550,6 +550,7 @@ void main() async {
     0,
     4,
   );
+  lessonCleanDesignNotifier.value = prefs.getBool('lessonCleanDesign') ?? false;
   glowEffectsEnabledNotifier.value =
       prefs.getBool('glowEffectsEnabled') ?? false;
   lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:untisplus/main.dart';
 import 'package:untisplus/core/settings_store.dart';
 
 void main() {
@@ -131,5 +132,26 @@ void main() {
     expect(store.read(binding, accountId: 'b'), 'second');
     expect(prefs.getString('account.a.draft'), 'first');
     expect(prefs.getString('account.b.draft'), 'second');
+  });
+
+  test('persists and loads lessonCleanDesign preference', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final store = await SettingsStore.initialize(preferences: prefs);
+    final binding = boolPreference(
+      key: 'lessonCleanDesign',
+      defaultValue: false,
+      notifier: lessonCleanDesignNotifier,
+    );
+
+    expect(store.read(binding), isFalse);
+    expect(lessonCleanDesignNotifier.value, isFalse);
+
+    await store.write(binding, true);
+    expect(store.read(binding), isTrue);
+    expect(lessonCleanDesignNotifier.value, isTrue);
+    expect(prefs.getBool('lessonCleanDesign'), isTrue);
+
+    await store.write(binding, false);
+    expect(lessonCleanDesignNotifier.value, isFalse);
   });
 }

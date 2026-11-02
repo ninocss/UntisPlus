@@ -683,6 +683,7 @@ final ValueNotifier<bool> isAmoledNotifier = ValueNotifier(false);
 final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
 
 final ValueNotifier<int> lessonCardStyleNotifier = ValueNotifier(0);
+final ValueNotifier<bool> lessonCleanDesignNotifier = ValueNotifier(false);
 final ValueNotifier<bool> glowEffectsEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonBlurEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<double> lessonBlurAmountNotifier = ValueNotifier(12.0);

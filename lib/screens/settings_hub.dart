@@ -161,6 +161,11 @@ final _lessonCardStylePreference = intPreference(
   notifier: lessonCardStyleNotifier,
   normalize: (value) => value.clamp(0, 4).toInt(),
 );
+final _lessonCleanDesignPreference = boolPreference(
+  key: 'lessonCleanDesign',
+  defaultValue: false,
+  notifier: lessonCleanDesignNotifier,
+);
 final _glowEffectsPreference = boolPreference(
   key: 'glowEffectsEnabled',
   defaultValue: false,
@@ -497,6 +502,9 @@ Future<void> _settingsSetMonochromeLessonColor(int value) =>
 Future<void> _settingsSetLessonCardStyle(int value) =>
     SettingsStore.instance.write(_lessonCardStylePreference, value);
 
+Future<void> _settingsSetLessonCleanDesign(bool value) =>
+    SettingsStore.instance.write(_lessonCleanDesignPreference, value);
+
 Future<void> _settingsSetGlowEffectsEnabled(bool value) =>
     SettingsStore.instance.write(_glowEffectsPreference, value);
 
@@ -775,6 +783,7 @@ Future<void> _settingsSyncFromPrefs() async {
   await store.load(_monochromeLessonsPreference);
   await store.load(_monochromeLessonColorPreference);
   await store.load(_lessonCardStylePreference);
+  await store.load(_lessonCleanDesignPreference);
   await store.load(_glowEffectsPreference);
   await store.load(_lessonBlurEnabledPreference);
   await store.load(_lessonBlurAmountPreference);
