@@ -28,6 +28,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
+import 'widgets/progressive_edge_blur.dart';
 import 'core/settings_store.dart';
 import 'core/defensive_parsers.dart';
 import 'core/timetable_date_utils.dart';
@@ -326,6 +327,28 @@ Future<void> _initializeDeferredAccountData() async {
       .length;
 }
 
+/// Migrates legacy AI keys into the secure store and returns the stored keys.
+///
+/// Started early in [main] so the keystore round-trips overlap with account
+/// initialization. Failures fall back to empty keys instead of aborting the
+/// app launch.
+Future<Map<String, String>> _loadSecureAiKeys(SharedPreferences prefs) async {
+  try {
+    final hasProviderConfig = prefs.containsKey('aiProvider');
+    if (!hasProviderConfig && (prefs.getString('geminiApiKey') ?? '').isEmpty) {
+      // Legacy migration: old versions stored the Gemini key under openAiApiKey.
+      final legacy = prefs.getString('openAiApiKey') ?? '';
+      if (legacy.isNotEmpty) {
+        await CredentialVault.instance.writeAiApiKey('gemini', legacy);
+        await prefs.remove('openAiApiKey');
+      }
+    }
+    return await CredentialVault.instance.loadAndMigrateAiKeys(prefs);
+  } catch (_) {
+    return const <String, String>{};
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -368,12 +391,19 @@ void main() async {
     pendingAssistantOpenNotifier.value = true;
   });
 
+  // Independent platform lookups overlap instead of running back to back.
+  final packageInfoFuture = PackageInfo.fromPlatform();
   final settingsStore = await SettingsStore.initialize();
   final prefs = settingsStore.preferences;
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
-  await ensureDateFormattingForLocale(appLocaleNotifier.value);
+  final dateFormattingFuture = ensureDateFormattingForLocale(
+    appLocaleNotifier.value,
+  );
   unawaited(WidgetService.publishNativeCopy(appLocaleNotifier.value));
-  final packageInfo = await PackageInfo.fromPlatform();
+  // AI keys live in the keystore and do not depend on the account setup, so
+  // load them while the accounts are being initialized.
+  final aiKeysFuture = _loadSecureAiKeys(prefs);
+  final packageInfo = await packageInfoFuture;
   appVersion = packageInfo.version;
   appBuildNumber = packageInfo.buildNumber;
   final previousAppVersion = prefs.getString('installedAppVersion');
@@ -387,9 +417,13 @@ void main() async {
   // Demo mode is an explicit temporary choice; do not silently replace it
   // with the last saved account during startup.
   if (!demoModeNotifier.value) {
-    await initializeUntisAccounts(prefs);
+    await Future.wait([
+      dateFormattingFuture,
+      initializeUntisAccounts(prefs),
+    ]);
   } else {
     untisAccountsNotifier.value = List.unmodifiable(_readUntisAccounts(prefs));
+    await dateFormattingFuture;
   }
   final bool isLoggedIn =
       activeUntisAccountId != null &&
@@ -550,18 +584,7 @@ void main() async {
 
   await loadCustomBackgroundsFromPrefs(prefs);
 
-  final hasProviderConfig = prefs.containsKey('aiProvider');
-  if (!hasProviderConfig && (prefs.getString('geminiApiKey') ?? '').isEmpty) {
-    // Legacy migration: old versions stored the Gemini key under openAiApiKey.
-    final legacy = prefs.getString('openAiApiKey') ?? '';
-    if (legacy.isNotEmpty) {
-      await CredentialVault.instance.writeAiApiKey('gemini', legacy);
-      await prefs.remove('openAiApiKey');
-    }
-  }
-  final secureAiKeys = await CredentialVault.instance.loadAndMigrateAiKeys(
-    prefs,
-  );
+  final secureAiKeys = await aiKeysFuture;
   geminiApiKey = secureAiKeys['gemini'] ?? '';
 
   openAiApiKey = secureAiKeys['openai'] ?? '';

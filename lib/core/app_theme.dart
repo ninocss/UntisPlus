@@ -389,8 +389,19 @@ ColorScheme untisThemeScheme(AppThemeId id, Brightness brightness, int seed) {
   return scheme;
 }
 
+final TextTheme _baseLightTextTheme = ThemeData(
+  brightness: Brightness.light,
+  useMaterial3: true,
+).textTheme;
+final TextTheme _baseDarkTextTheme = ThemeData(
+  brightness: Brightness.dark,
+  useMaterial3: true,
+).textTheme;
+
 TextTheme untisThemeTextTheme(AppThemeId id, Brightness brightness) {
-  final base = ThemeData(brightness: brightness, useMaterial3: true).textTheme;
+  final base = brightness == Brightness.dark
+      ? _baseDarkTextTheme
+      : _baseLightTextTheme;
   final body = base.apply(fontFamily: 'sans-serif');
   if (id != AppThemeId.manga && id != AppThemeId.cyber) {
     return body;
@@ -525,9 +536,11 @@ class ThemedBackdrop extends StatelessWidget {
         ),
         if (sceneStyle >= 0 && animate && !reduceMotion)
           Positioned.fill(
-            child: Opacity(
-              opacity: tokens.id == AppThemeId.cyber ? 0.22 : 0.46,
-              child: _AnimatedBackgroundScene(style: sceneStyle),
+            child: RepaintBoundary(
+              child: Opacity(
+                opacity: tokens.id == AppThemeId.cyber ? 0.22 : 0.46,
+                child: _AnimatedBackgroundScene(style: sceneStyle),
+              ),
             ),
           ),
         if (tokens.id == AppThemeId.manga || tokens.id == AppThemeId.cyber)

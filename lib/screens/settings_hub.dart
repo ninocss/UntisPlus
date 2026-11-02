@@ -298,12 +298,13 @@ final _devServerPasswordPreference = stringPreference(
   defaultValue: '',
   notifier: devServerPasswordNotifier,
 );
-final _devModeNotificationStylePreference = enumPreference<DevModeNotificationStyle>(
-  key: 'devModeNotificationStyle',
-  defaultValue: DevModeNotificationStyle.popup,
-  notifier: devModeNotificationStyleNotifier,
-  values: DevModeNotificationStyle.values,
-);
+final _devModeNotificationStylePreference =
+    enumPreference<DevModeNotificationStyle>(
+      key: 'devModeNotificationStyle',
+      defaultValue: DevModeNotificationStyle.popup,
+      notifier: devModeNotificationStyleNotifier,
+      values: DevModeNotificationStyle.values,
+    );
 final _showFullTeacherNamesPreference = boolPreference(
   key: 'showFullTeacherNames',
   defaultValue: true,
@@ -358,8 +359,9 @@ Future<void> _settingsSetDevServerUsername(String value) =>
 Future<void> _settingsSetDevServerPassword(String value) =>
     SettingsStore.instance.write(_devServerPasswordPreference, value);
 
-Future<void> _settingsSetDevModeNotificationStyle(DevModeNotificationStyle value) =>
-    SettingsStore.instance.write(_devModeNotificationStylePreference, value);
+Future<void> _settingsSetDevModeNotificationStyle(
+  DevModeNotificationStyle value,
+) => SettingsStore.instance.write(_devModeNotificationStylePreference, value);
 
 Future<void> _settingsSetLocale(String code) async {
   await ensureDateFormattingForLocale(code);
@@ -383,7 +385,6 @@ Future<void> _settingsSetVisualTheme(AppThemeId theme) async {
 
 Future<void> _settingsSetShowCancelled(bool value) =>
     SettingsStore.instance.write(_showCancelledPreference, value);
-
 
 Future<void> _settingsSetTimetableDaySpan(int value) async {
   final normalized = value.clamp(1, 3).toInt();
@@ -423,8 +424,6 @@ Future<void> _settingsSetSwipeBackGesture(bool value) async {
   swipeBackGestureNotifier.value = value;
   await SettingsStore.instance.writeRaw('swipeBackGesture', value);
 }
-
-
 
 Future<void> _settingsSetTimetableSwitchAnimation(int value) =>
     SettingsStore.instance.write(_timetableSwitchAnimationPreference, value);
@@ -760,8 +759,6 @@ Future<void> _settingsSyncFromPrefs() async {
       prefs.getBool('swipeBackGesture') ??
       (defaultTargetPlatform == TargetPlatform.iOS);
 
-
-
   await store.load(_blurStrengthPreference);
   await store.load(_headerStylePreference);
   await store.load(_surfaceBlurEnabledPreference);
@@ -828,36 +825,52 @@ class SettingsHubPage extends StatefulWidget {
 
 class _SettingsHubPageState extends State<SettingsHubPage> {
   int _selectedDetail = 0;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
-  String _sectionTitle(AppL10n l, String key) {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  String _hubLabel(AppL10n l, String key) {
     const labels = <String, Map<String, String>>{
       'de': {
-        'school': 'Schule & Stundenplan',
-        'personalize': 'Darstellung & Widgets',
-        'smart': 'KI & Automatisierung',
-        'data': 'Account & Daten',
-        'app': 'App & Support',
+        'teaching': 'Unterricht & Alltag',
+        'design': 'Design & System',
+        'ai': 'KI & Smarte Features',
+        'data_support': 'Daten, App & Support',
+        'search_hint': 'Einstellungen durchsuchen…',
+        'search_empty': 'Keine passenden Einstellungen gefunden',
+        'feedback_report': 'Feedback & Problem melden',
       },
       'en': {
-        'school': 'School & timetable',
-        'personalize': 'Appearance & widgets',
-        'smart': 'AI & automation',
-        'data': 'Account & data',
-        'app': 'App & support',
+        'teaching': 'Classes & daily life',
+        'design': 'Design & system',
+        'ai': 'AI & smart features',
+        'data_support': 'Data, app & support',
+        'search_hint': 'Search settings…',
+        'search_empty': 'No matching settings found',
+        'feedback_report': 'Feedback & report issue',
       },
       'fr': {
-        'school': 'École & emploi du temps',
-        'personalize': 'Apparence & widgets',
-        'smart': 'IA & automatisation',
-        'data': 'Compte & données',
-        'app': 'App & assistance',
+        'teaching': 'Cours & quotidien',
+        'design': 'Design & système',
+        'ai': 'IA & fonctions intelligentes',
+        'data_support': 'Données, app & support',
+        'search_hint': 'Rechercher dans les paramètres…',
+        'search_empty': 'Aucun paramètre correspondant',
+        'feedback_report': 'Avis & signaler un problème',
       },
       'es': {
-        'school': 'Escuela y horario',
-        'personalize': 'Apariencia y widgets',
-        'smart': 'IA y automatización',
-        'data': 'Cuenta y datos',
-        'app': 'App y soporte',
+        'teaching': 'Clases y día a día',
+        'design': 'Diseño y sistema',
+        'ai': 'IA y funciones inteligentes',
+        'data_support': 'Datos, app y soporte',
+        'search_hint': 'Buscar ajustes…',
+        'search_empty': 'No se encontraron ajustes',
+        'feedback_report': 'Comentarios y reportar problema',
       },
     };
     return (labels[l.locale] ?? labels['en']!)[key] ?? key;
@@ -889,119 +902,439 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     Navigator.push(context, _buildBouncyRoute(item.pageBuilder!()));
   }
 
+  Future<void> _showFeedbackAndIssueSheet(BuildContext context, AppL10n l) async {
+    final choice = await _showUnifiedOptionSheet<String>(
+      context: context,
+      title: _hubLabel(l, 'feedback_report'),
+      subtitle: l.settingsGiveFeedbackDesc,
+      options: [
+        _SheetOption(
+          value: 'feedback',
+          title: l.settingsGiveFeedback,
+          subtitle: l.settingsGiveFeedbackDesc,
+          icon: Icons.feedback_rounded,
+        ),
+        _SheetOption(
+          value: 'issue',
+          title: l.settingsReportIssue,
+          subtitle: l.settingsReportIssueDesc,
+          icon: Icons.bug_report_rounded,
+        ),
+      ],
+    );
+    if (!context.mounted || choice == null) return;
+    if (choice == 'issue') {
+      await url_launcher.launchUrlString(
+        'https://github.com/ninocss/UntisPlus/issues',
+        mode: url_launcher.LaunchMode.externalApplication,
+      );
+      return;
+    }
+    if (!WishKit.isConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l.settingsFeedbackNotConfigured),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: l.settingsOpenGitHub,
+            onPressed: () => url_launcher.launchUrlString(
+              'https://github.com/ninocss/UntisPlus/issues',
+              mode: url_launcher.LaunchMode.externalApplication,
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => WishKit.feedbackPage()));
+  }
+
+  Widget _buildCompactAccountHeader(
+    BuildContext context, {
+    required AppL10n l,
+    required _SettingsHubItem accountItem,
+    required bool expanded,
+    required List<_SettingsHubItem> allItems,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    final accountIndex = allItems.indexOf(accountItem);
+    final selected = expanded && accountIndex == _selectedDetail;
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        untisAccountsNotifier,
+        demoModeNotifier,
+        devModeNotifier,
+      ]),
+      builder: (context, _) {
+        final prefs = SettingsStore.instance.preferences;
+        final accounts = untisAccountsNotifier.value;
+        UntisAccount? activeAccount;
+        for (final acc in accounts) {
+          if (acc.id == activeUntisAccountId) {
+            activeAccount = acc;
+            break;
+          }
+        }
+        final rawUser =
+            activeAccount?.username ?? (prefs.getString('username') ?? '');
+        final rawSchool =
+            activeAccount?.schoolName.isNotEmpty == true
+                ? activeAccount!.schoolName
+                : (schoolName.isNotEmpty
+                      ? schoolName
+                      : (prefs.getString('schoolName') ?? ''));
+        final isDemo = demoModeNotifier.value;
+        final isDev = devModeNotifier.value;
+
+        final displayUser = rawUser.trim().isNotEmpty
+            ? rawUser.trim()
+            : (isDemo ? l.settingsDemoMode : l.settingsHubAccount);
+        final displaySchool = rawSchool.trim().isNotEmpty
+            ? rawSchool.trim()
+            : (isDemo ? 'demo.school' : l.settingsDemoMode);
+
+        final initials = rawUser.trim().isNotEmpty
+            ? rawUser
+                  .trim()
+                  .split(RegExp(r'[\s._-]+'))
+                  .where((part) => part.isNotEmpty)
+                  .take(2)
+                  .map((part) => part[0].toUpperCase())
+                  .join()
+            : '';
+
+        return Semantics(
+          button: true,
+          selected: selected,
+          label: '${l.settingsHubAccount}: $displayUser, $displaySchool',
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              key: const ValueKey('settings-compact-account-header'),
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _activateItem(
+                context,
+                accountItem,
+                expanded: expanded,
+                allItems: allItems,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 6,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? cs.primary
+                            : cs.primaryContainer.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: initials.isNotEmpty
+                          ? Text(
+                              initials,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: selected
+                                    ? cs.onPrimary
+                                    : cs.onPrimaryContainer,
+                              ),
+                            )
+                          : Icon(
+                              isDemo
+                                  ? Icons.science_rounded
+                                  : Icons.person_rounded,
+                              size: 20,
+                              color: selected
+                                  ? cs.onPrimary
+                                  : cs.onPrimaryContainer,
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  displayUser,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                    color: cs.onSurface,
+                                  ),
+                                ),
+                              ),
+                              if (isDemo || isDev) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDev
+                                        ? cs.tertiaryContainer
+                                        : cs.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    isDev ? 'DEV' : 'DEMO',
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 10,
+                                      letterSpacing: 0.4,
+                                      color: isDev
+                                          ? cs.onTertiaryContainer
+                                          : cs.onSecondaryContainer,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Text(
+                            displaySchool,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12.5,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? cs.secondaryContainer
+                            : cs.surfaceContainerHighest.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            l.settingsHubAccount,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: selected
+                                  ? cs.onSecondaryContainer
+                                  : cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            selected
+                                ? Icons.check_rounded
+                                : Icons.chevron_right_rounded,
+                            size: 16,
+                            color: selected ? cs.primary : cs.onSurfaceVariant,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context, AppL10n l) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
+    final radius = BorderRadius.circular(
+      _resolvedSurfaceCornerRadius(tokens.surfaceRadius).clamp(16.0, 24.0),
+    );
+
+    return ThemedSurface(
+      borderRadius: radius,
+      border: Border.all(
+        color: tokens.id == AppThemeId.manga
+            ? cs.outline
+            : cs.outlineVariant.withValues(alpha: 0.32),
+        width: tokens.borderWidth,
+      ),
+      respectSurfaceCornerPreference: false,
+      showShadow: false,
+      child: TextField(
+        key: const ValueKey('settings-search-field'),
+        controller: _searchController,
+        onChanged: (value) => setState(() => _searchQuery = value),
+        textAlignVertical: TextAlignVertical.center,
+        style: GoogleFonts.outfit(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w500,
+          color: cs.onSurface,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: false,
+          fillColor: Colors.transparent,
+          hintText: _hubLabel(l, 'search_hint'),
+          hintStyle: GoogleFonts.outfit(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w500,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+          ),
+          prefixIcon: Icon(Icons.search_rounded, size: 20, color: cs.primary),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 44,
+            minHeight: 44,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 11,
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+      ),
+    );
+  }
+
   Widget _buildHubItem(
     BuildContext context,
     _SettingsHubItem item, {
     required bool expanded,
     required List<_SettingsHubItem> allItems,
-    required bool isFirst,
-    required bool isLast,
   }) {
     final cs = Theme.of(context).colorScheme;
     final itemIndex = allItems.indexOf(item);
     final selected =
         expanded && item.pageBuilder != null && itemIndex == _selectedDetail;
-    final radius = _settingsSegmentRadius(
-      context,
-      isFirst: isFirst,
-      isLast: isLast,
-    );
 
     final tile = Semantics(
       button: true,
       selected: selected,
       label: '${item.title}. ${item.subtitle}',
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
+        margin: selected
+            ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4)
+            : EdgeInsets.zero,
         decoration: BoxDecoration(
           color: selected
-              ? cs.secondaryContainer.withValues(alpha: 0.78)
-              : cs.surfaceContainerLow.withValues(alpha: 0.82),
-          borderRadius: radius,
-          border: Border.all(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.42)
-                : cs.outlineVariant.withValues(alpha: 0.30),
-          ),
+              ? cs.secondaryContainer.withValues(alpha: 0.76)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Material(
-          type: MaterialType.transparency,
-          borderRadius: radius,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _activateItem(
-              context,
-              item,
-              expanded: expanded,
-              allItems: allItems,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _activateItem(
+            context,
+            item,
+            expanded: expanded,
+            allItems: allItems,
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: selected ? 10 : 14,
+              vertical: 10,
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              child: Row(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? item.iconColor.withValues(alpha: 0.20)
-                          : item.iconBackground,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(item.icon, color: item.iconColor, size: 21),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? item.iconColor.withValues(alpha: 0.22)
+                        : item.iconBackground,
+                    borderRadius: BorderRadius.circular(13),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            fontWeight: selected
-                                ? FontWeight.w800
-                                : FontWeight.w600,
-                            fontSize: 15,
-                            color: selected
-                                ? cs.onSecondaryContainer
-                                : cs.onSurface,
-                          ),
+                  child: Icon(item.icon, color: item.iconColor, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          fontSize: 15,
+                          color: selected
+                              ? cs.onSecondaryContainer
+                              : cs.onSurface,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12.5,
-                            color: selected
-                                ? cs.onSecondaryContainer.withValues(
-                                    alpha: 0.75,
-                                  )
-                                : cs.onSurfaceVariant,
-                          ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12.5,
+                          color: selected
+                              ? cs.onSecondaryContainer.withValues(alpha: 0.78)
+                              : cs.onSurfaceVariant,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Icon(
-                    item.pageBuilder != null
-                        ? (selected
-                              ? Icons.check_rounded
-                              : Icons.chevron_right_rounded)
-                        : Icons.open_in_new_rounded,
-                    size: 22,
-                    color: selected ? cs.primary : cs.onSurfaceVariant,
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  item.pageBuilder != null
+                      ? (selected
+                            ? Icons.check_rounded
+                            : Icons.chevron_right_rounded)
+                      : Icons.open_in_new_rounded,
+                  size: 21,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                ),
+              ],
             ),
           ),
         ),
@@ -1025,41 +1358,83 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     required bool expanded,
     required List<_SettingsHubItem> allItems,
   }) {
+    if (items.isEmpty) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 7),
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
           child: Text(
             title,
             style: GoogleFonts.outfit(
               fontWeight: FontWeight.w800,
-              fontSize: 13,
+              fontSize: tokens.id == AppThemeId.manga ? 20 : 13,
               color: cs.primary,
-              letterSpacing: 0.15,
+              letterSpacing: tokens.id == AppThemeId.cyber ? 1.1 : 0.25,
             ),
           ),
         ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var index = 0; index < items.length; index++) ...[
-              _buildHubItem(
-                context,
-                items[index],
-                expanded: expanded,
-                allItems: allItems,
-                isFirst: index == 0,
-                isLast: index == items.length - 1,
+        AnimatedBuilder(
+          animation: Listenable.merge([
+            surfaceCornerModeNotifier,
+            surfaceCornerRadiusNotifier,
+          ]),
+          builder: (context, _) {
+            final groupRadius = BorderRadius.circular(
+              _resolvedSurfaceCornerRadius(tokens.surfaceRadius),
+            );
+            return ThemedSurface(
+              borderRadius: groupRadius,
+              border: Border.all(
+                color: tokens.id == AppThemeId.manga
+                    ? cs.outline
+                    : cs.outlineVariant.withValues(alpha: 0.30),
+                width: tokens.borderWidth,
               ),
-              if (index < items.length - 1) const SizedBox(height: 4),
-            ],
-          ],
+              respectSurfaceCornerPreference: false,
+              showShadow: false,
+              child: Material(
+                type: MaterialType.transparency,
+                borderRadius: groupRadius,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var index = 0; index < items.length; index++) ...[
+                      _buildHubItem(
+                        context,
+                        items[index],
+                        expanded: expanded,
+                        allItems: allItems,
+                      ),
+                      if (index < items.length - 1)
+                        Divider(
+                          height: 1,
+                          thickness: 0.7,
+                          indent: 68,
+                          endIndent: 16,
+                          color: cs.outlineVariant.withValues(alpha: 0.26),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
+  }
+
+  bool _matchesQuery(_SettingsHubItem item, String query) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) return true;
+    final terms = normalized.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+    final haystack =
+        '${item.title} ${item.subtitle} ${item.searchKeywords}'.toLowerCase();
+    return terms.every(haystack.contains);
   }
 
   @override
@@ -1070,126 +1445,145 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final expanded = UntisLayout.isExpanded(context);
 
-    Color getAccent(int index) {
-      return switch (index % 6) {
-        0 => cs.primary,
-        1 => cs.tertiary,
-        2 => cs.secondary,
-        3 => cs.error,
-        4 => cs.inversePrimary,
-        _ => isDark ? cs.onTertiaryContainer : cs.tertiary,
-      };
-    }
-
     _SettingsHubItem makeItem({
-      required int index,
+      required Color semanticColor,
       required IconData icon,
       required String title,
       required String subtitle,
+      String searchKeywords = '',
       Widget Function()? pageBuilder,
       VoidCallback? onTap,
     }) {
-      final accent = getAccent(index);
+      final harmonized = Color.alphaBlend(
+        cs.primary.withValues(alpha: 0.22),
+        semanticColor,
+      );
       final iconColor = isDark
-          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.12), accent)
-          : accent;
+          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.22), harmonized)
+          : harmonized;
       return _SettingsHubItem(
         icon: icon,
-        iconBackground: accent.withValues(alpha: isDark ? 0.20 : 0.12),
+        iconBackground: harmonized.withValues(alpha: isDark ? 0.22 : 0.14),
         iconColor: iconColor,
         title: title,
         subtitle: subtitle,
+        searchKeywords: searchKeywords,
         pageBuilder: pageBuilder,
         onTap: onTap,
       );
     }
 
     final timetableItem = makeItem(
-      index: 0,
+      semanticColor: cs.primary,
       icon: Icons.calendar_view_week_rounded,
       title: l.settingsSectionTimetable,
       subtitle: l.settingsShowCancelled,
+      searchKeywords:
+          'stundenplan timetable raster woche tag ausfall lehrer animation karten design',
       pageBuilder: () => const SettingsTimetablePage(),
     );
     final subjectsItem = makeItem(
-      index: 1,
+      semanticColor: const Color(0xFF00897B),
       icon: Icons.school_rounded,
       title: l.settingsSectionSubjects,
       subtitle: l.settingsSectionColors,
+      searchKeywords: 'fächer subjects farben colors icons verstecken kürzel',
       pageBuilder: () => const SettingsSubjectsPage(),
     );
     final wrappedItem = makeItem(
-      index: 12,
-      icon: Icons.auto_awesome_rounded,
+      semanticColor: const Color(0xFFD81B60),
+      icon: Icons.insights_rounded,
       title: l.wrapped('title'),
       subtitle: l.wrapped('settingsDesc'),
+      searchKeywords: 'wrapped rückblick statistik jahresrückblick analyse',
       pageBuilder: () => const SchoolWrappedHub(),
     );
+    final appearanceItem = makeItem(
+      semanticColor: const Color(0xFF7E57C2),
+      icon: Icons.palette_rounded,
+      title: l.settingsAppearance,
+      subtitle: l.settingsCustomBackgrounds,
+      searchKeywords:
+          'darstellung erscheinungsbild design theme dark mode amoled blur hintergrund icon sprache language material you',
+      pageBuilder: () => const SettingsAppearancePage(),
+    );
+    final widgetsItem = makeItem(
+      semanticColor: const Color(0xFF3949AB),
+      icon: Icons.widgets_rounded,
+      title: l.widgets,
+      subtitle: l.widgetAccount,
+      searchKeywords: 'widgets homescreen startbildschirm editor',
+      pageBuilder: () => const SettingsWidgetsPage(),
+    );
     final notificationsItem = makeItem(
-      index: 2,
+      semanticColor: const Color(0xFFF57C00),
       icon: Icons.notifications_active_rounded,
       title: l.settingsHubNotifications,
       subtitle: l.settingsProgressivePush,
+      searchKeywords:
+          'benachrichtigungen push notifications briefing vertretung raumwechsel',
       pageBuilder: () => const SettingsNotificationsPage(),
     );
     final alarmItem = !kIsWeb && Platform.isAndroid
         ? makeItem(
-            index: 3,
+            semanticColor: const Color(0xFFE64A19),
             icon: Icons.alarm_rounded,
             title: l.alarmTitle,
             subtitle: l.alarmScheduleDesc,
+            searchKeywords: 'wecker alarm aufstehen klingeln',
             pageBuilder: () => const SettingsAlarmPage(),
           )
         : null;
-    final appearanceItem = makeItem(
-      index: 4,
-      icon: Icons.palette_rounded,
-      title: l.settingsAppearance,
-      subtitle: l.settingsCustomBackgrounds,
-      pageBuilder: () => const SettingsAppearancePage(),
-    );
-    final widgetsItem = makeItem(
-      index: 5,
-      icon: Icons.widgets_rounded,
-      title: l.widgets,
-      subtitle: l.widgetAccount,
-      pageBuilder: () => const SettingsWidgetsPage(),
-    );
     final aiItem = makeItem(
-      index: 6,
+      semanticColor: const Color(0xFF8E24AA),
       icon: Icons.auto_awesome_rounded,
       title: l.settingsSectionAI,
       subtitle: l.settingsAiProvider,
+      searchKeywords:
+          'ki ai gemini openai mistral api key modell prompt assistent lokal',
       pageBuilder: () => const SettingsAiPage(),
     );
     final accountItem = makeItem(
-      index: 7,
+      semanticColor: cs.primary,
       icon: Icons.manage_accounts_rounded,
       title: l.settingsHubAccount,
       subtitle: l.settingsDemoMode,
+      searchKeywords:
+          'konto account schule login abmelden wechseln demo entwickler dev server',
       pageBuilder: () => const SettingsAccountPage(),
     );
     final backupItem = makeItem(
-      index: 8,
+      semanticColor: const Color(0xFF1E88E5),
       icon: Icons.cloud_sync_rounded,
       title: l.settingsHubDataBackup,
       subtitle: l.settingsHubDataBackupDesc,
+      searchKeywords: 'backup daten export import sichern wiederherstellen',
       pageBuilder: () => const SettingsBackupPage(),
     );
     final updatesItem = kIsWeb || !Platform.isIOS
         ? makeItem(
-            index: 9,
+            semanticColor: const Color(0xFF2E7D32),
             icon: Icons.system_update_alt_rounded,
             title: l.settingsHubUpdatesAbout,
             subtitle: l.settingsAppVersion,
+            searchKeywords: 'updates version über about changelog github lizenz',
             pageBuilder: () => const SettingsAboutUpdatesPage(),
           )
         : null;
+    final feedbackReportItem = makeItem(
+      semanticColor: const Color(0xFF00ACC1),
+      icon: Icons.rate_review_rounded,
+      title: _hubLabel(l, 'feedback_report'),
+      subtitle: l.settingsGiveFeedbackDesc,
+      searchKeywords: 'feedback bug fehler problem melden ideen github wishkit',
+      onTap: () => _showFeedbackAndIssueSheet(context, l),
+    );
     final supportItem = makeItem(
-      index: 10,
+      semanticColor: const Color(0xFFEC407A),
       icon: Icons.volunteer_activism_rounded,
       title: l.settingsSupport,
       subtitle: l.settingsSupportDesc,
+      searchKeywords: 'support unterstützen spenden kofi',
       onTap: () {
         url_launcher.launchUrlString(
           'https://ko-fi.com/nino161er',
@@ -1197,62 +1591,34 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         );
       },
     );
-    final feedbackItem = makeItem(
-      index: 11,
-      icon: Icons.feedback_rounded,
-      title: l.settingsGiveFeedback,
-      subtitle: l.settingsGiveFeedbackDesc,
-      onTap: () {
-        if (!WishKit.isConfigured) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l.settingsFeedbackNotConfigured),
-              behavior: SnackBarBehavior.floating,
-              action: SnackBarAction(
-                label: l.settingsOpenGitHub,
-                onPressed: () => url_launcher.launchUrlString(
-                  'https://github.com/ninocss/UntisPlus/issues',
-                  mode: url_launcher.LaunchMode.externalApplication,
-                ),
-              ),
-            ),
-          );
-          return;
-        }
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => WishKit.feedbackPage()),
-        );
-      },
-    );
-    final reportItem = makeItem(
-      index: 11,
-      icon: Icons.bug_report_rounded,
-      title: l.settingsReportIssue,
-      subtitle: l.settingsReportIssueDesc,
-      onTap: () {
-        url_launcher.launchUrlString(
-          'https://github.com/ninocss/UntisPlus/issues',
-          mode: url_launcher.LaunchMode.externalApplication,
-        );
-      },
-    );
 
-    final schoolItems = <_SettingsHubItem>[
+    final teachingItems = <_SettingsHubItem>[
       timetableItem,
       subjectsItem,
+      wrappedItem,
+    ].where((item) => _matchesQuery(item, _searchQuery)).toList();
+
+    final designItems = <_SettingsHubItem>[
+      appearanceItem,
+      widgetsItem,
       notificationsItem,
       ?alarmItem,
-    ];
-    final personalizeItems = <_SettingsHubItem>[appearanceItem, widgetsItem];
-    final smartItems = <_SettingsHubItem>[aiItem];
-    final dataItems = <_SettingsHubItem>[accountItem, backupItem];
-    final appItems = <_SettingsHubItem>[
+    ].where((item) => _matchesQuery(item, _searchQuery)).toList();
+
+    final aiItems = <_SettingsHubItem>[
+      aiItem,
+    ].where((item) => _matchesQuery(item, _searchQuery)).toList();
+
+    final dataSupportItems = <_SettingsHubItem>[
+      if (_searchQuery.trim().isNotEmpty &&
+          _matchesQuery(accountItem, _searchQuery))
+        accountItem,
+      backupItem,
       ?updatesItem,
+      feedbackReportItem,
       supportItem,
-      feedbackItem,
-      reportItem,
-      wrappedItem,
-    ];
+    ].where((item) => _matchesQuery(item, _searchQuery)).toList();
+
     // Keep the internal detail indices stable for existing tablet navigation
     // and widget tests. Visual grouping is independent from this order.
     final items = <_SettingsHubItem>[
@@ -1267,10 +1633,15 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
       ?alarmItem,
       ?updatesItem,
       supportItem,
-      feedbackItem,
-      reportItem,
+      feedbackReportItem,
       wrappedItem,
     ];
+
+    final hasAnySearchMatch =
+        teachingItems.isNotEmpty ||
+        designItems.isNotEmpty ||
+        aiItems.isNotEmpty ||
+        dataSupportItems.isNotEmpty;
 
     Widget settingsList({required bool expanded}) {
       final width = MediaQuery.sizeOf(context).width;
@@ -1280,7 +1651,27 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           ? 24.0
           : 16.0;
       final bottom = mq.padding.bottom + (expanded ? 28 : 118);
-      final top = expanded ? 14.0 : mq.padding.top + kToolbarHeight + 14;
+      final top = mq.padding.top + kToolbarHeight + 10;
+
+      final sections = <Widget>[];
+      void addSection(String key, List<_SettingsHubItem> sectionItems) {
+        if (sectionItems.isEmpty) return;
+        if (sections.isNotEmpty) sections.add(const SizedBox(height: 16));
+        sections.add(
+          _buildSection(
+            context,
+            title: _hubLabel(l, key),
+            items: sectionItems,
+            expanded: expanded,
+            allItems: items,
+          ),
+        );
+      }
+
+      addSection('teaching', teachingItems);
+      addSection('design', designItems);
+      addSection('ai', aiItems);
+      addSection('data_support', dataSupportItems);
 
       return CustomScrollView(
         key: PageStorageKey<String>(
@@ -1294,45 +1685,41 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             padding: EdgeInsets.fromLTRB(horizontal, top, horizontal, bottom),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _buildSection(
+                _buildCompactAccountHeader(
                   context,
-                  title: _sectionTitle(l, 'school'),
-                  items: schoolItems,
+                  l: l,
+                  accountItem: accountItem,
                   expanded: expanded,
                   allItems: items,
                 ),
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'personalize'),
-                  items: personalizeItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'smart'),
-                  items: smartItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'data'),
-                  items: dataItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  title: _sectionTitle(l, 'app'),
-                  items: appItems,
-                  expanded: expanded,
-                  allItems: items,
-                ),
+                const SizedBox(height: 10),
+                _buildSearchBar(context, l),
+                const SizedBox(height: 14),
+                if (hasAnySearchMatch)
+                  ...sections
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 36),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.search_off_rounded,
+                          size: 36,
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _hubLabel(l, 'search_empty'),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ]),
             ),
           ),
@@ -1341,7 +1728,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     }
 
     return Scaffold(
-      extendBodyBehindAppBar: !expanded,
+      extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
       appBar: _mainTabHeaderAppBar(context, l.settingsTitle),
       body: LayoutBuilder(
@@ -1367,9 +1754,14 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 color: cs.outlineVariant.withValues(alpha: 0.45),
               ),
               Expanded(
-                child: KeyedSubtree(
-                  key: ValueKey('settings-detail-$detailIndex'),
-                  child: detail,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: KeyedSubtree(
+                    key: ValueKey('settings-detail-$detailIndex'),
+                    child: SafeArea(bottom: false, child: detail),
+                  ),
                 ),
               ),
             ],
@@ -1386,6 +1778,7 @@ class _SettingsHubItem {
   final Color iconColor;
   final String title;
   final String subtitle;
+  final String searchKeywords;
   final Widget Function()? pageBuilder;
   final VoidCallback? onTap;
 
@@ -1395,6 +1788,7 @@ class _SettingsHubItem {
     required this.iconColor,
     required this.title,
     required this.subtitle,
+    this.searchKeywords = '',
     this.pageBuilder,
     this.onTap,
   });
@@ -1417,4 +1811,3 @@ Future<void> _settingsSetAppIcon(String icon) async {
   final prefs = SettingsStore.instance.preferences;
   await prefs.setString('appIcon', icon);
 }
-

@@ -21,6 +21,7 @@ class StudentMorePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: RoundedBlurAppBar(
         title: Text(
           appL10nFor(appLocaleNotifier.value).aiMore,
@@ -32,7 +33,7 @@ class StudentMorePage extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.fromLTRB(
             16,
-            16,
+            MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
             16,
             MediaQuery.paddingOf(context).bottom + 132,
           ),
@@ -330,6 +331,7 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
       ),
     ];
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: RoundedBlurAppBar(
         title: Text(
           _studentCopy(
@@ -346,7 +348,12 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
           onRefresh: _load,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
+              16,
+              32,
+            ),
             children: [
               _SyncStatusBanner(state: _state),
               const SizedBox(height: 12),
@@ -432,6 +439,7 @@ class _ChangeCenterPageState extends State<ChangeCenterPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    extendBodyBehindAppBar: true,
     appBar: RoundedBlurAppBar(
       title: Text(
         _studentCopy(
@@ -477,7 +485,12 @@ class _ChangeCenterPageState extends State<ChangeCenterPage> {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
+                16,
+                32,
+              ),
               itemCount: _changes!.length,
               itemBuilder: (context, index) => _ChangeTile(_changes![index]),
             ),

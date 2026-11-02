@@ -611,7 +611,7 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
     final snapshot = _snapshot;
     if (snapshot == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l.wrapped('title'))),
+        appBar: RoundedBlurAppBar(title: Text(l.wrapped('title'))),
         body: Center(
           child: FilledButton(
             onPressed: () {
@@ -630,7 +630,7 @@ class _SchoolWrappedStoryState extends State<SchoolWrappedStory>
         snapshot.homework == 0 &&
         !demoModeNotifier.value) {
       return Scaffold(
-        appBar: AppBar(title: Text(l.wrapped('title'))),
+        appBar: RoundedBlurAppBar(title: Text(l.wrapped('title'))),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),

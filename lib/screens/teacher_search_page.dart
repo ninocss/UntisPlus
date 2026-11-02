@@ -277,8 +277,11 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
     final cs = Theme.of(context).colorScheme;
     final selected = _selectedTeacher;
     final filtered = _filteredTeachers;
+    final searchHeight =
+        math.max(56.0, MediaQuery.textScalerOf(context).scale(24) + 32) + 20;
     return Scaffold(
-      appBar: AppBar(
+      extendBodyBehindAppBar: true,
+      appBar: RoundedBlurAppBar(
         title: Text(l.teacherSearchTitle),
         actions: [
           IconButton(
@@ -295,12 +298,11 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Padding(
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(searchHeight),
+          child: SizedBox(
+            height: searchHeight,
+            child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
                 controller: _queryController,
@@ -328,6 +330,22 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            MediaQuery.paddingOf(context).top +
+                kToolbarHeight +
+                searchHeight +
+                8,
+            16,
+            24,
+          ),
+          children: [
             if (_loadingTeachers) const LinearProgressIndicator(),
             if (_usingClassFallback)
               Padding(
@@ -342,57 +360,49 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                   ),
                 ),
               ),
-            Expanded(
-              child: _teacherError != null
-                  ? _messageState(_teacherError!, cs)
-                  : _loadingTeachers
-                  ? const SizedBox.shrink()
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      children: [
-                        if (selected != null) ...[
-                          _buildScheduleCard(selected, cs, l),
-                          const SizedBox(height: 14),
-                        ],
-                        if (filtered.isEmpty)
-                          _messageState(l.teacherSearchNoMatch, cs)
-                        else ...[
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
-                            child: Text(
-                              l.teacherSearchResults(filtered.length),
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                          ),
-                          for (final teacher in filtered)
-                            Card(
-                              elevation: 0,
-                              color: selected?.id == teacher.id
-                                  ? cs.secondaryContainer
-                                  : cs.surfaceContainerLow,
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: cs.primaryContainer,
-                                  foregroundColor: cs.onPrimaryContainer,
-                                  child: const Icon(Icons.person_rounded),
-                                ),
-                                title: Text(teacher.name),
-                                subtitle:
-                                    teacher.abbreviation.isEmpty ||
-                                        teacher.abbreviation == teacher.name
-                                    ? null
-                                    : Text(teacher.abbreviation),
-                                trailing: const Icon(
-                                  Icons.chevron_right_rounded,
-                                ),
-                                onTap: () => _selectTeacher(teacher),
-                              ),
-                            ),
-                        ],
-                      ],
+            if (_teacherError != null)
+              _messageState(_teacherError!, cs)
+            else if (!_loadingTeachers) ...[
+              if (selected != null) ...[
+                _buildScheduleCard(selected, cs, l),
+                const SizedBox(height: 14),
+              ],
+              if (filtered.isEmpty)
+                _messageState(l.teacherSearchNoMatch, cs)
+              else ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+                  child: Text(
+                    l.teacherSearchResults(filtered.length),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: cs.onSurfaceVariant,
                     ),
-            ),
+                  ),
+                ),
+                for (final teacher in filtered)
+                  Card(
+                    elevation: 0,
+                    color: selected?.id == teacher.id
+                        ? cs.secondaryContainer
+                        : cs.surfaceContainerLow,
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: cs.primaryContainer,
+                        foregroundColor: cs.onPrimaryContainer,
+                        child: const Icon(Icons.person_rounded),
+                      ),
+                      title: Text(teacher.name),
+                      subtitle:
+                          teacher.abbreviation.isEmpty ||
+                              teacher.abbreviation == teacher.name
+                          ? null
+                          : Text(teacher.abbreviation),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => _selectTeacher(teacher),
+                    ),
+                  ),
+              ],
+            ],
           ],
         ),
       ),

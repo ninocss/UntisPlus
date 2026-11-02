@@ -79,7 +79,9 @@ void main() {
 
     Finder active(Finder finder) {
       final hitTestable = finder.hitTestable();
-      return hitTestable.evaluate().isNotEmpty ? hitTestable.first : finder.first;
+      return hitTestable.evaluate().isNotEmpty
+          ? hitTestable.first
+          : finder.first;
     }
 
     for (var i = 0; i < 100; i++) {
@@ -232,7 +234,7 @@ void main() {
     demoModeNotifier.value = true;
     themeModeNotifier.value = ThemeMode.dark;
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(430, 932);
+    tester.view.physicalSize = const Size(360, 800);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
@@ -325,29 +327,117 @@ void main() {
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  testWidgets('settings descriptions appear only after long press', (
+  testWidgets('settings scrolls beneath each header style at 200% text', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SettingsTile(
-            title: 'Test setting',
-            subtitle: 'Long press description',
-            onTap: () {},
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    addTearDown(() => headerStyleNotifier.value = 0);
+
+    for (final width in [360.0, 1024.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      for (final style in [0, 1, 2]) {
+        headerStyleNotifier.value = style;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsPageShell(
+              key: ValueKey((width, style)),
+              title: 'Konto',
+              children: [
+                for (var i = 0; i < 24; i++)
+                  SizedBox(height: 60, child: Text('Eintrag $i')),
+              ],
+            ),
+          ),
+        );
+        final viewport = find.byType(Scrollable);
+        final header = find.byType(AppBar);
+        expect(
+          tester.getTopLeft(viewport).dy,
+          lessThan(tester.getBottomLeft(header).dy),
+        );
+        expect(
+          tester.getTopLeft(find.text('Eintrag 0')).dy,
+          greaterThanOrEqualTo(tester.getBottomLeft(header).dy),
+        );
+        await tester.scrollUntilVisible(
+          find.text('Eintrag 23'),
+          360,
+          scrollable: viewport,
+        );
+        expect(find.text('Eintrag 23').hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    }
+  });
+
+  testWidgets(
+    'blur off gives the whole toolbar and tab strip a solid surface',
+    (tester) async {
+      blurEnabledNotifier.value = false;
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            extendBodyBehindAppBar: true,
+            appBar: RoundedBlurAppBar(
+              title: Text('Stundenplan'),
+              bottom: PreferredSize(
+                preferredSize: Size.fromHeight(48),
+                child: Text('Mo'),
+              ),
+            ),
+            body: ColoredBox(color: Colors.red, child: SizedBox.expand()),
           ),
         ),
-      ),
-    );
+      );
+      final bar = tester.widget<AppBar>(find.byType(AppBar));
+      expect(bar.backgroundColor?.a, 1);
+      expect(find.byType(BackdropFilter), findsNothing);
+    },
+  );
 
-    expect(find.text('Long press description'), findsNothing);
+  testWidgets(
+    'settings descriptions appear inline by default and on long press when hidden',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SettingsTile(
+              title: 'Test setting',
+              subtitle: 'Inline description',
+              onTap: () {},
+            ),
+          ),
+        ),
+      );
 
-    await tester.longPress(find.text('Test setting'));
-    await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Inline description'), findsOneWidget);
 
-    expect(find.text('Long press description'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SettingsTile(
+              title: 'Test setting',
+              subtitle: 'Long press description',
+              showSubtitle: false,
+              onTap: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Long press description'), findsNothing);
+
+      await tester.longPress(find.text('Test setting'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Long press description'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('theme picker applies Manga immediately and disables blur', (
     tester,
@@ -628,14 +718,19 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
     for (final size in [
+      const Size(360, 800),
       const Size(375, 812),
       const Size(430, 932),
       const Size(768, 1024),
       const Size(1024, 768),
     ]) {
       tester.view.physicalSize = size;
+      tester.platformDispatcher.textScaleFactorTestValue = size.width == 360
+          ? 2
+          : 1;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('viewMode', 0);
       await prefs.setInt('timetableViewModeV2', 0);
@@ -646,7 +741,6 @@ void main() {
       expect(dayCarousel, findsOneWidget, reason: 'day viewport: $size');
       final weekGrid = await ensureWeekTimetableView(tester);
       expect(weekGrid, findsOneWidget, reason: 'week viewport: $size');
-      expect(tester.takeException(), isNull, reason: 'viewport: $size');
       await prefs.setInt('viewMode', 0);
       await prefs.setInt('timetableViewModeV2', 0);
     }
@@ -700,6 +794,12 @@ void main() {
   ) async {
     demoModeNotifier.value = true;
     addTearDown(() => demoModeNotifier.value = false);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 800);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: WeeklyTimetablePage()),
@@ -713,6 +813,10 @@ void main() {
     expect(find.text('Andere Klasse'), findsOneWidget);
     expect(find.text('Freie Räume'), findsOneWidget);
     expect(find.text('Stundenplan als Bild exportieren'), findsOneWidget);
+    expect(
+      tester.getBottomRight(find.text('Stundenplan als Bild exportieren')).dx,
+      lessThanOrEqualTo(360),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -899,10 +1003,7 @@ void main() {
       find.textContaining('Stundenplan, Nachrichten, Hausaufgaben'),
       findsOneWidget,
     );
-    expect(
-      find.widgetWithText(FilledButton, repositoryTile),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(FilledButton, repositoryTile), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

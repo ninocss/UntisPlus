@@ -166,6 +166,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
     showUntisModalBottomSheet(
       context: context,
+      blurBarrier: false,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
@@ -627,7 +628,12 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
         : visibleGradeCount == 0
         ? _buildEmptyState(cs, l)
         : ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 132),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.paddingOf(context).top + 12,
+              16,
+              132,
+            ),
             children: [
               _buildGradesSummaryCard(cs, l),
               SingleChildScrollView(

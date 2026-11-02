@@ -49,9 +49,15 @@ class WebUntisClient {
     http.Client? client,
     this.timeout = const Duration(seconds: 15),
     this.maxRetries = 1,
-  }) : _client = client ?? http.Client();
+  }) : _client = client ?? _sharedHttpClient,
+       _ownsClient = client != null;
+
+  /// Shared transport pool for default clients so repositories reuse TCP/TLS
+  /// connections instead of performing a fresh handshake per repository.
+  static final http.Client _sharedHttpClient = http.Client();
 
   final http.Client _client;
+  final bool _ownsClient;
   final Duration timeout;
   final int maxRetries;
   final Map<String, Future<dynamic>> _inFlight = {};
@@ -286,5 +292,9 @@ class WebUntisClient {
     return future.whenComplete(() => _inFlight.remove(key));
   }
 
-  void close() => _client.close();
+  void close() {
+    if (_ownsClient) {
+      _client.close();
+    }
+  }
 }

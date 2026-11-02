@@ -21,7 +21,12 @@ class _AiAnalysisResult extends StatelessWidget {
     final l = appL10nFor(appLocaleNotifier.value);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.paddingOf(context).top + 8,
+        16,
+        20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -86,28 +91,37 @@ class _AiAnalysisResult extends StatelessWidget {
                       Wrap(
                         spacing: 7,
                         runSpacing: 7,
-                        children: result.tags.take(4).map((tag) {
-                          return Container(
-                            constraints: const BoxConstraints(minHeight: 32),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: cs.primaryContainer.withValues(alpha: 0.66),
-                              borderRadius: BorderRadius.circular(_aiRadius(14)),
-                            ),
-                            child: Text(
-                              tag,
-                              style: untisThemeTextStyle(
-                                context,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                color: cs.onPrimaryContainer,
-                              ),
-                            ),
-                          );
-                        }).toList(growable: false),
+                        children: result.tags
+                            .take(4)
+                            .map((tag) {
+                              return Container(
+                                constraints: const BoxConstraints(
+                                  minHeight: 32,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: cs.primaryContainer.withValues(
+                                    alpha: 0.66,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    _aiRadius(14),
+                                  ),
+                                ),
+                                child: Text(
+                                  tag,
+                                  style: untisThemeTextStyle(
+                                    context,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: cs.onPrimaryContainer,
+                                  ),
+                                ),
+                              );
+                            })
+                            .toList(growable: false),
                       ),
                     ],
                   ],
@@ -212,10 +226,7 @@ class _AiResultSectionHeader extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  const _AiResultSectionHeader({
-    required this.icon,
-    required this.title,
-  });
+  const _AiResultSectionHeader({required this.icon, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -242,10 +253,7 @@ class _AiResultEntrance extends StatelessWidget {
   final int index;
   final Widget child;
 
-  const _AiResultEntrance({
-    required this.index,
-    required this.child,
-  });
+  const _AiResultEntrance({required this.index, required this.child});
 
   @override
   Widget build(BuildContext context) {

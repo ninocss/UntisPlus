@@ -544,6 +544,7 @@ class StudentNotesPage extends StatelessWidget {
     final l = appL10nFor(appLocaleNotifier.value);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: RoundedBlurAppBar(
         title: Text(
           l.detailNotesForStudents,
@@ -558,7 +559,12 @@ class StudentNotesPage extends StatelessWidget {
           ),
           Positioned.fill(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
+                20,
+                120,
+              ),
               child: _withOptionalBackdropBlur(
                 sigma: 24,
                 child: const SizedBox.shrink(),

@@ -2193,6 +2193,7 @@ class _CustomBackgroundEditorScreenState
       },
       child: Scaffold(
         backgroundColor: cs.surface,
+        extendBodyBehindAppBar: true,
         appBar: _settingsHeaderAppBar(
           context,
           l.bgEditorTitle,
@@ -2266,7 +2267,12 @@ class _CustomBackgroundEditorScreenState
               final wide = constraints.maxWidth >= 1040;
               if (wide) {
                 return Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    MediaQuery.paddingOf(context).top + 18,
+                    20,
+                    24,
+                  ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -2308,7 +2314,7 @@ class _CustomBackgroundEditorScreenState
                 controller: _scrollController,
                 padding: EdgeInsets.fromLTRB(
                   16,
-                  14,
+                  MediaQuery.paddingOf(context).top + 14,
                   16,
                   MediaQuery.paddingOf(context).bottom + 44,
                 ),

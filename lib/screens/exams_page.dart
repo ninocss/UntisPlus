@@ -346,6 +346,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: _mainTabHeaderAppBar(
         context,
         _tabController.index == 0
@@ -422,100 +423,115 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          ExpressiveRefreshIndicator(
-            onRefresh: _refreshExams,
-            child: ListView(
-              padding: UntisLayout.pagePadding(context, bottom: 132),
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              children: [
-                _buildExamStatsHeader(cs, l, upcoming),
-                if (_loading) ...[
-                  const SizedBox(height: 140),
-                  const Center(child: CircularProgressIndicator()),
-                ] else if (exams.isEmpty) ...[
-                  const SizedBox(height: 80),
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.assignment_outlined,
-                          size: 80,
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          l.examsNone,
-                          style: GoogleFonts.outfit(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: cs.onSurface,
+      body: Builder(
+        builder: (context) => TabBarView(
+          controller: _tabController,
+          children: [
+            ExpressiveRefreshIndicator(
+              onRefresh: _refreshExams,
+              child: ListView(
+                padding: UntisLayout.pagePadding(
+                  context,
+                  bottom: 132,
+                ).copyWith(top: MediaQuery.paddingOf(context).top + 16),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                children: [
+                  _buildExamStatsHeader(cs, l, upcoming),
+                  if (_loading) ...[
+                    const SizedBox(height: 140),
+                    const Center(child: CircularProgressIndicator()),
+                  ] else if (exams.isEmpty) ...[
+                    const SizedBox(height: 80),
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.assignment_outlined,
+                            size: 80,
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          l.examsNoneHint,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: _refreshExams,
-                          icon: const Icon(Icons.refresh_rounded, size: 18),
-                          label: Text(
-                            l.reload,
+                          const SizedBox(height: 16),
+                          Text(
+                            l.examsNone,
                             style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: cs.onSurface,
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            l.examsNoneHint,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton.icon(
+                            onPressed: _refreshExams,
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: Text(
+                              l.reload,
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    if (upcoming.isNotEmpty) ...[
+                      _sectionHeader(
+                        cs,
+                        l.examsUpcoming,
+                        Icons.upcoming_rounded,
+                        upcoming.length,
+                      ),
+                      const SizedBox(height: 8),
+                      ...upcoming.asMap().entries.map(
+                        (e) => _animatedExamCard(
+                          e.key,
+                          context,
+                          cs,
+                          e.value,
+                          true,
                         ),
-                      ],
-                    ),
-                  ),
-                ] else ...[
-                  if (upcoming.isNotEmpty) ...[
-                    _sectionHeader(
-                      cs,
-                      l.examsUpcoming,
-                      Icons.upcoming_rounded,
-                      upcoming.length,
-                    ),
-                    const SizedBox(height: 8),
-                    ...upcoming.asMap().entries.map(
-                      (e) =>
-                          _animatedExamCard(e.key, context, cs, e.value, true),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  if (past.isNotEmpty) ...[
-                    _sectionHeader(
-                      cs,
-                      l.examsPast,
-                      Icons.history_rounded,
-                      past.length,
-                    ),
-                    const SizedBox(height: 8),
-                    ...past.asMap().entries.map(
-                      (e) =>
-                          _animatedExamCard(e.key, context, cs, e.value, false),
-                    ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (past.isNotEmpty) ...[
+                      _sectionHeader(
+                        cs,
+                        l.examsPast,
+                        Icons.history_rounded,
+                        past.length,
+                      ),
+                      const SizedBox(height: 8),
+                      ...past.asMap().entries.map(
+                        (e) => _animatedExamCard(
+                          e.key,
+                          context,
+                          cs,
+                          e.value,
+                          false,
+                        ),
+                      ),
+                    ],
                   ],
                 ],
-              ],
+              ),
             ),
-          ),
-          const _HomeworkView(),
-          GradesTrackerPage(key: _gradesTrackerKey),
-        ],
+            const _HomeworkView(),
+            GradesTrackerPage(key: _gradesTrackerKey),
+          ],
+        ),
       ),
     );
   }

@@ -72,6 +72,7 @@ changelog.json
 !fastlane/**/*.txt
 !fastlane/**/*.png
 !fastlane/**/*.md
+docs/
 security-results/
 
 # API Keys

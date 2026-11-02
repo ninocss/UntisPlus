@@ -1422,6 +1422,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
 
     final config = _selected;
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: _settingsHeaderAppBar(
         context,
         l.editor,
@@ -1475,7 +1476,12 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
 
             if (wide) {
               return Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.paddingOf(context).top + 18,
+                  20,
+                  24,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -1496,7 +1502,7 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
             return ListView(
               padding: EdgeInsets.fromLTRB(
                 16,
-                14,
+                MediaQuery.paddingOf(context).top + 14,
                 16,
                 MediaQuery.paddingOf(context).bottom + 36,
               ),

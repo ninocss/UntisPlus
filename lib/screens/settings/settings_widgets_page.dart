@@ -453,6 +453,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
     final isIOS = !kIsWeb && Platform.isIOS;
     final selected = _types.firstWhere((type) => type.id == _selectedType);
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: _settingsHeaderAppBar(
         context,
         l.widgetPreviewTitle,
@@ -466,7 +467,12 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
       ),
       body: _AnimatedBackground(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 40),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            mq.padding.top + 64 + 12,
+            16,
+            mq.padding.bottom + 40,
+          ),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 4, 10),

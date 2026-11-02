@@ -3,9 +3,7 @@ part of '../../../main.dart';
 class _AiAnalysisLoadingState extends StatelessWidget {
   final String query;
 
-  const _AiAnalysisLoadingState({
-    required this.query,
-  });
+  const _AiAnalysisLoadingState({required this.query});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +11,12 @@ class _AiAnalysisLoadingState extends StatelessWidget {
     final l = appL10nFor(appLocaleNotifier.value);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.paddingOf(context).top + 8,
+        16,
+        20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

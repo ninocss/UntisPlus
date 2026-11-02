@@ -35,8 +35,12 @@ class _AnimatedBackground extends StatelessWidget {
                     builder: (context, bgBlurAmount, _) {
                       return Stack(
                         children: [
+                          // The scene repaints every frame; isolating it keeps
+                          // the app content above from being repainted too.
                           Positioned.fill(
-                            child: _AnimatedBackgroundScene(style: style),
+                            child: RepaintBoundary(
+                              child: _AnimatedBackgroundScene(style: style),
+                            ),
                           ),
                           if (bgBlurEnabled && bgBlurAmount > 0)
                             Positioned.fill(

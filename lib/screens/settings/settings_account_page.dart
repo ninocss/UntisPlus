@@ -159,6 +159,7 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
   Future<void> _showDevServerAboutSheet(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     return showUntisModalBottomSheet(
+      blurBarrier: false,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -380,6 +381,7 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
   Future<void> _selectDevModeNotificationStyle(BuildContext context) async {
     final l = appL10nFor(appLocaleNotifier.value);
     await showUntisModalBottomSheet(
+      blurBarrier: false,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

@@ -153,10 +153,20 @@ Future<void> initializeUntisAccounts(SharedPreferences prefs) async {
 
   // Rewriting strips secrets from legacy account JSON after they have been
   // verified in the native secure store.
+  final accountsWithSecrets = accounts
+      .where(
+        (account) => account.password.isNotEmpty || account.sessionId.isNotEmpty,
+      )
+      .toList(growable: false);
+  final verifiedCredentials = await Future.wait(
+    accountsWithSecrets.map(
+      (account) => CredentialVault.instance.readAccount(account.id),
+    ),
+  );
   var canStripSecrets = true;
-  for (final account in accounts) {
-    if (account.password.isEmpty && account.sessionId.isEmpty) continue;
-    final stored = await CredentialVault.instance.readAccount(account.id);
+  for (var index = 0; index < accountsWithSecrets.length; index++) {
+    final account = accountsWithSecrets[index];
+    final stored = verifiedCredentials[index];
     if (stored.password != account.password ||
         stored.sessionId != account.sessionId) {
       canStripSecrets = false;
@@ -506,7 +516,7 @@ List<String> _modelsForProvider(
           'gemini') {
         return const [
           'gemini-3.6-flash',
-          'gemini-3.6-pro',
+          'gemini-4-argon (paid)',
           'gemini-3.6-flash-lite',
         ];
       }
@@ -515,7 +525,7 @@ List<String> _modelsForProvider(
     default:
       return const [
         'gemini-3.6-flash',
-        'gemini-3.6-pro',
+        'gemini-4-argon',
         'gemini-3.6-flash-lite',
       ];
   }

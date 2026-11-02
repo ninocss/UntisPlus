@@ -1393,11 +1393,11 @@ ${l.aiAssistantRules}''';
     );
   }
 
-  Widget _buildResultHeader(ColorScheme cs) {
+  Widget _buildResultHeader(BuildContext context, ColorScheme cs) {
     final result = _latestResult;
     if (result == null) {
       if (_thinking) return _buildSearchLoadingState();
-      return _buildEmptyState(cs);
+      return _buildEmptyState(context, cs);
     }
 
     return _AiAnalysisResult(
@@ -1412,9 +1412,9 @@ ${l.aiAssistantRules}''';
     );
   }
 
-  Widget _buildChatView(ColorScheme cs) {
+  Widget _buildChatView(BuildContext context, ColorScheme cs) {
     if (_chatMessages.isEmpty && !_thinking) {
-      return _buildEmptyState(cs);
+      return _buildEmptyState(context, cs);
     }
 
     String? activeTitle;
@@ -1435,7 +1435,12 @@ ${l.aiAssistantRules}''';
 
     return ListView(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.paddingOf(context).top + 8,
+        16,
+        12,
+      ),
       children: [
         if (activeTitle != null && activeTitle.trim().isNotEmpty) ...[
           Padding(
@@ -1468,7 +1473,7 @@ ${l.aiAssistantRules}''';
     );
   }
 
-  Widget _buildBody(ColorScheme cs) {
+  Widget _buildBody(BuildContext context, ColorScheme cs) {
     final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
     final reduceMotion = _aiReduceMotion(context);
 
@@ -1504,7 +1509,9 @@ ${l.aiAssistantRules}''';
                     ? '${mode.name}_${_chatMessages.isEmpty && !_thinking}'
                     : mode.name,
               ),
-              child: _chatMode ? _buildChatView(cs) : _buildResultHeader(cs),
+              child: _chatMode
+                  ? _buildChatView(context, cs)
+                  : _buildResultHeader(context, cs),
             ),
           ),
         ),
@@ -1513,7 +1520,7 @@ ${l.aiAssistantRules}''';
     );
   }
 
-  Widget _buildEmptyState(ColorScheme cs) {
+  Widget _buildEmptyState(BuildContext context, ColorScheme cs) {
     final l = appL10nFor(appLocaleNotifier.value);
     final analysisSuggestions = _buildContextualChips();
     const suggestionIcons = <IconData>[
@@ -1523,7 +1530,12 @@ ${l.aiAssistantRules}''';
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.paddingOf(context).top + 16,
+        16,
+        20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1664,6 +1676,7 @@ ${l.aiAssistantRules}''';
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
+      extendBodyBehindAppBar: true,
       appBar: _mainTabHeaderAppBar(
         context,
         l.aiTitle,
@@ -1687,7 +1700,7 @@ ${l.aiAssistantRules}''';
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final body = _buildBody(cs);
+          final body = _buildBody(context, cs);
           if (!UntisLayout.isTablet(context)) return body;
           return Align(
             alignment: Alignment.topCenter,
@@ -1774,7 +1787,7 @@ class _MainTabTransitionLayer extends StatelessWidget {
       ignoring: !active,
       child: ExcludeSemantics(
         excluding: !active,
-        child: RepaintBoundary(child: content),
+        child: content,
       ),
     );
   }
@@ -1814,6 +1827,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
     aiEnabledNotifier.addListener(_onAiEnabledChanged);
+    _scheduleTabWarmup();
     if (pendingAssistantOpenNotifier.value) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _openAssistantFromNative(),
@@ -1897,7 +1911,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         if (!mounted) return;
         final reachable = await checkDevServerReachable();
         if (!mounted) return;
-        if (reachable && devModeNotificationStyleNotifier.value == DevModeNotificationStyle.popup) {
+        if (reachable &&
+            devModeNotificationStyleNotifier.value ==
+                DevModeNotificationStyle.popup) {
           _showDevModePopup(context);
         }
       });
@@ -1917,7 +1933,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Text(l.settingsDevModeUsingDevServer),
           ],
         ),
-        content: Text(l.settingsDevModeUsingDevServerDesc.replaceAll('{url}', url)),
+        content: Text(
+          l.settingsDevModeUsingDevServerDesc.replaceAll('{url}', url),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -2100,27 +2118,98 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     return page;
   }
 
-  List<Widget> get _pages => <Widget>[
-    WeeklyTimetablePage(key: ValueKey(activeUntisAccountId ?? 'active')),
-    const ExamsPage(),
-    SchoolNotificationsPage(isActive: _selectedIndex == 2),
-    const SettingsHubPage(),
-    aiEnabledNotifier.value
-        ? AiAssistantPage(
-            key: ValueKey(activeUntisAccountId ?? 'active'),
-            onBackToTimetable: () => _onNavTap(0),
-            onOpenDrawer: (drawer) {
-              setState(() => _currentDrawer = drawer);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _scaffoldKey.currentState?.openDrawer();
-              });
-            },
-          )
-        : const SizedBox.shrink(),
-  ];
+  // Tabs are created the first time they are shown (or by the idle warm-up
+  // below) and are then kept alive exactly like before. Not-yet-built tabs are
+  // empty placeholders, so launching no longer initializes every page at once.
+  final Set<int> _builtTabs = <int>{0};
+  Timer? _tabWarmupTimer;
+
+  // Widget instances are cached so unchanged tabs are not rebuilt whenever this
+  // screen calls setState (Flutter skips identical widget instances).
+  String? _timetablePageAccountId;
+  Widget? _timetablePage;
+  bool? _notificationsPageActive;
+  Widget? _notificationsPage;
+  String? _aiPageAccountId;
+  bool? _aiPageEnabled;
+  Widget? _aiPage;
+
+  /// Builds the remaining tabs one by one shortly after startup so that the
+  /// first visit to them is as instant as before, without delaying launch.
+  void _scheduleTabWarmup() {
+    var next = 1;
+    _tabWarmupTimer = Timer(const Duration(milliseconds: 1500), () {
+      _tabWarmupTimer = Timer.periodic(const Duration(milliseconds: 350), (
+        timer,
+      ) {
+        if (!mounted || next > 4) {
+          timer.cancel();
+          return;
+        }
+        final index = next++;
+        if (_builtTabs.add(index)) setState(() {});
+      });
+    });
+  }
+
+  Widget _cachedTimetablePage() {
+    final accountId = activeUntisAccountId ?? 'active';
+    if (_timetablePage == null || _timetablePageAccountId != accountId) {
+      _timetablePageAccountId = accountId;
+      _timetablePage = WeeklyTimetablePage(key: ValueKey(accountId));
+    }
+    return _timetablePage!;
+  }
+
+  Widget _cachedNotificationsPage() {
+    final active = _selectedIndex == 2;
+    if (_notificationsPage == null || _notificationsPageActive != active) {
+      _notificationsPageActive = active;
+      _notificationsPage = SchoolNotificationsPage(isActive: active);
+    }
+    return _notificationsPage!;
+  }
+
+  Widget _cachedAiPage() {
+    final enabled = aiEnabledNotifier.value;
+    final accountId = activeUntisAccountId ?? 'active';
+    if (_aiPage == null ||
+        _aiPageEnabled != enabled ||
+        _aiPageAccountId != accountId) {
+      _aiPageEnabled = enabled;
+      _aiPageAccountId = accountId;
+      _aiPage = enabled
+          ? AiAssistantPage(
+              key: ValueKey(accountId),
+              onBackToTimetable: () => _onNavTap(0),
+              onOpenDrawer: (drawer) {
+                setState(() => _currentDrawer = drawer);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _scaffoldKey.currentState?.openDrawer();
+                });
+              },
+            )
+          : const SizedBox.shrink();
+    }
+    return _aiPage!;
+  }
+
+  List<Widget> get _pages {
+    _builtTabs.add(_selectedIndex);
+    Widget tab(int index, Widget Function() build) =>
+        _builtTabs.contains(index) ? build() : const SizedBox.shrink();
+    return <Widget>[
+      tab(0, _cachedTimetablePage),
+      tab(1, () => const ExamsPage()),
+      tab(2, _cachedNotificationsPage),
+      tab(3, () => const SettingsHubPage()),
+      tab(4, _cachedAiPage),
+    ];
+  }
 
   @override
   void dispose() {
+    _tabWarmupTimer?.cancel();
     _notificationActionSub?.cancel();
     pendingAssistantOpenNotifier.removeListener(_openAssistantFromNative);
     aiEnabledNotifier.removeListener(_onAiEnabledChanged);
@@ -2180,10 +2269,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             key: _tutorialNavKeys[2],
                             child: const Icon(Icons.campaign_rounded),
                           ),
-                          label: Text(
-                            l.navInfo,
-                            key: _tutorialNavLabelKeys[2],
-                          ),
+                          label: Text(l.navInfo, key: _tutorialNavLabelKeys[2]),
                         ),
                         NavigationRailDestination(
                           icon: const Icon(Icons.settings_outlined),
@@ -2191,10 +2277,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             key: _tutorialNavKeys[3],
                             child: const Icon(Icons.settings_rounded),
                           ),
-                          label: Text(
-                            l.navMenu,
-                            key: _tutorialNavLabelKeys[3],
-                          ),
+                          label: Text(l.navMenu, key: _tutorialNavLabelKeys[3]),
                         ),
                         if (aiEnabledNotifier.value)
                           NavigationRailDestination(
@@ -2203,10 +2286,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                               key: _tutorialNavKeys[4],
                               child: const Icon(Icons.auto_awesome_rounded),
                             ),
-                            label: Text(
-                              l.navAi,
-                              key: _tutorialNavLabelKeys[4],
-                            ),
+                            label: Text(l.navAi, key: _tutorialNavLabelKeys[4]),
                           ),
                       ],
                     ),
@@ -2405,21 +2485,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             // ---- Pill nav bar ----
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 560),
-              curve: _kSmoothBounce,
-              builder: (context, val, child) {
-                return Transform.translate(
-                  offset: Offset(0, (1 - val) * 26),
-                  child: Opacity(opacity: val.clamp(0, 1), child: child),
-                );
-              },
-              child: _ExpressiveNavBar(
-                items: items,
-                selectedIndex: selectedBarIndex,
-                colorScheme: cs,
-                onTap: (pageIndex) => _onNavTap(pageIndex),
+            Flexible(
+              child: LayoutBuilder(
+                builder: (context, bounds) => TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 560),
+                  curve: _kSmoothBounce,
+                  builder: (context, val, child) {
+                    return Transform.translate(
+                      offset: Offset(0, (1 - val) * 26),
+                      child: Opacity(opacity: val.clamp(0, 1), child: child),
+                    );
+                  },
+                  child: _ExpressiveNavBar(
+                    maxWidth: bounds.maxWidth,
+                    items: items,
+                    selectedIndex: selectedBarIndex,
+                    colorScheme: cs,
+                    onTap: (pageIndex) => _onNavTap(pageIndex),
+                  ),
+                ),
               ),
             ),
 
@@ -2565,6 +2650,7 @@ class _TutorialSpotlightOverlay extends StatefulWidget {
 class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
   bool _expandToLabel = false;
   bool _labelExpansionScheduled = false;
+  Timer? _labelExpansionTimer;
 
   GlobalKey? get targetKey => widget.targetKey;
   GlobalKey? get labelKey => widget.labelKey;
@@ -2587,9 +2673,15 @@ class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
     final delay = isTablet
         ? Duration.zero
         : AppMotion.duration(context, const Duration(milliseconds: 560));
-    Future<void>.delayed(delay, () {
+    _labelExpansionTimer = Timer(delay, () {
       if (mounted) setState(() => _expandToLabel = true);
     });
+  }
+
+  @override
+  void dispose() {
+    _labelExpansionTimer?.cancel();
+    super.dispose();
   }
 
   Rect? _rectForKey(GlobalKey? key) {
@@ -2649,61 +2741,61 @@ class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
           curve: Curves.easeOutCubic,
           builder: (context, target, _) => Stack(
             children: [
-            if (useBackdropBlur)
+              if (useBackdropBlur)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ClipPath(
+                      clipper: _TutorialSpotlightClipper(target),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: math.min(tokens.blurSigma, 5),
+                          sigmaY: math.min(tokens.blurSigma, 5),
+                        ),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned.fill(
                 child: IgnorePointer(
-                  child: ClipPath(
-                    clipper: _TutorialSpotlightClipper(target),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: math.min(tokens.blurSigma, 5),
-                        sigmaY: math.min(tokens.blurSigma, 5),
-                      ),
-                      child: const SizedBox.expand(),
+                  child: CustomPaint(
+                    painter: _TutorialSpotlightPainter(
+                      target: target,
+                      scrim: useBackdropBlur
+                          ? Colors.black.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.58),
+                      accent: cs.primary,
                     ),
                   ),
                 ),
               ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _TutorialSpotlightPainter(
-                    target: target,
-                    scrim: useBackdropBlur
-                        ? Colors.black.withValues(alpha: 0.12)
-                        : Colors.black.withValues(alpha: 0.58),
-                    accent: cs.primary,
+              if (tablet)
+                Positioned(
+                  left: math.min(
+                    math.max(target.right + 18, 94),
+                    math.max(16, size.width - 406),
                   ),
+                  top: (target.center.dy - 130).clamp(
+                    mq.padding.top + 16,
+                    math.max(mq.padding.top + 16, size.height - 310),
+                  ),
+                  width: math.min(380, size.width - 110),
+                  child: callout,
+                )
+              else if (target.top > size.height * 0.48)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: size.height - target.top + 16,
+                  child: callout,
+                )
+              else
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: target.bottom + 16,
+                  child: callout,
                 ),
-              ),
-            ),
-            if (tablet)
-              Positioned(
-                left: math.min(
-                  math.max(target.right + 18, 94),
-                  math.max(16, size.width - 406),
-                ),
-                top: (target.center.dy - 130).clamp(
-                  mq.padding.top + 16,
-                  math.max(mq.padding.top + 16, size.height - 310),
-                ),
-                width: math.min(380, size.width - 110),
-                child: callout,
-              )
-            else if (target.top > size.height * 0.48)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: size.height - target.top + 16,
-                child: callout,
-              )
-            else
-              Positioned(
-                left: 16,
-                right: 16,
-                top: target.bottom + 16,
-                child: callout,
-              ),
             ],
           ),
         );
@@ -2938,12 +3030,14 @@ class _NavItem {
 /// A pill-indicator navigation bar whose indicator morphs via spring physics
 /// between destinations – matching the Material 3 Expressive spec.
 class _ExpressiveNavBar extends StatefulWidget {
+  final double maxWidth;
   final List<_NavItem> items;
   final int selectedIndex; // -1 = nothing selected
   final ColorScheme colorScheme;
   final void Function(int pageIndex) onTap;
 
   const _ExpressiveNavBar({
+    required this.maxWidth,
     required this.items,
     required this.selectedIndex,
     required this.colorScheme,
@@ -3134,9 +3228,16 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     int sel,
     double frac,
   ) {
+    final remainingWidth =
+        widget.maxWidth -
+        2 * _barHPad -
+        (widget.items.length - 1) * (_itemWidth + _itemGap);
     final widths = List.generate(widget.items.length, (i) {
       if (sel >= 0 && i == sel) {
-        return _pillBaseWidth + frac * _pillExpandedExtra;
+        return math.min(
+          _pillBaseWidth + frac * _pillExpandedExtra,
+          remainingWidth.clamp(_pillBaseWidth, double.infinity),
+        );
       }
       return _itemWidth;
     });
@@ -3199,7 +3300,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
             ..._labelControllers,
           ]),
           builder: (context, _) {
-            final t = _morphController.value.clamp(0.0, 1.1);
+            final t = _morphController.value.clamp(0.0, 1.0);
             final to = _layoutFor(_targetSel, _targetFrac);
 
             // Interpolate every item width (and the pill rect) from the frozen
@@ -3522,7 +3623,10 @@ class _DevModeIndicatorBar extends StatelessWidget {
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                   ),
                   child: Text(
                     l.settingsHubAccount,

@@ -537,9 +537,11 @@ class SettingsAppearancePage extends StatelessWidget {
       children: [
         _buildThemePicker(context, l, selectedTheme),
         // ── GROUP 1: THEME & COLOR SCHEME ──
-        SettingsGroup(
-          title: l.settingsThemeMode,
-          children: [
+        ValueListenableBuilder<bool>(
+          valueListenable: useMaterialYouNotifier,
+          builder: (context, useMaterialYou, _) => SettingsGroup(
+            title: l.settingsThemeMode,
+            children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: ValueListenableBuilder<ThemeMode>(
@@ -641,13 +643,9 @@ class SettingsAppearancePage extends StatelessWidget {
                   );
                 },
               ),
-            if (capabilities.supportsMaterialYou)
-              ValueListenableBuilder<bool>(
-                valueListenable: useMaterialYouNotifier,
-                builder: (context, useMaterialYou, _) {
-                  if (useMaterialYou) return const SizedBox.shrink();
-                  return ValueListenableBuilder<int>(
-                    valueListenable: customColorSeedNotifier,
+            if (capabilities.supportsMaterialYou && !useMaterialYou)
+              ValueListenableBuilder<int>(
+                valueListenable: customColorSeedNotifier,
                     builder: (context, seed, _) {
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
@@ -755,16 +753,25 @@ class SettingsAppearancePage extends StatelessWidget {
                         ),
                       );
                     },
-                  );
-                },
-              ),
+                  ),
           ],
+        ),
         ),
 
         // ── SURFACES ──
-        SettingsGroup(
-          title: l.settingsAppearanceSurfaces,
-          children: [
+        AnimatedBuilder(
+          animation: Listenable.merge([
+            blurEnabledNotifier,
+            surfaceCornerModeNotifier,
+            appBgBlurEnabledNotifier,
+          ]),
+          builder: (context, _) {
+            final blurEnabled = blurEnabledNotifier.value;
+            final cornerMode = surfaceCornerModeNotifier.value;
+            final appBgBlurEnabled = appBgBlurEnabledNotifier.value;
+            return SettingsGroup(
+              title: l.settingsAppearanceSurfaces,
+              children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: Column(
@@ -829,44 +836,38 @@ class SettingsAppearancePage extends StatelessWidget {
                   );
                 },
               ),
-            if (capabilities.supportsBlur)
-              ValueListenableBuilder<bool>(
-                valueListenable: blurEnabledNotifier,
-                builder: (context, blurEnabled, _) {
-                  if (!blurEnabled) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                    child: ValueListenableBuilder<double>(
-                      valueListenable: blurStrengthNotifier,
-                      builder: (context, strength, _) {
-                        final percent = (strength * 100).round();
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${l.settingsGlassEffect}: $percent%',
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                            HapticSlider(
-                              value: strength,
-                              min: 0.25,
-                              max: 2.0,
-                              divisions: 35,
-                              label: '$percent%',
-                              onChanged: _settingsSetBlurStrength,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  );
-                },
+            if (capabilities.supportsBlur && blurEnabled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                child: ValueListenableBuilder<double>(
+                  valueListenable: blurStrengthNotifier,
+                  builder: (context, strength, _) {
+                    final percent = (strength * 100).round();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${l.settingsGlassEffect}: $percent%',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        HapticSlider(
+                          value: strength,
+                          min: 0.25,
+                          max: 2.0,
+                          divisions: 35,
+                          label: '$percent%',
+                          onChanged: _settingsSetBlurStrength,
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
-            if (capabilities.supportsBlur)
+            if (capabilities.supportsBlur && blurEnabled)
               ValueListenableBuilder<bool>(
                 valueListenable: surfaceBlurEnabledNotifier,
                 builder: (context, value, _) {
@@ -883,116 +884,99 @@ class SettingsAppearancePage extends StatelessWidget {
                   );
                 },
               ),
-            ValueListenableBuilder<int>(
-              valueListenable: surfaceCornerModeNotifier,
-              builder: (context, mode, _) {
-                return SettingsTile(
-                  icon: Icons.rounded_corner_rounded,
-                  iconBackgroundColor: cs.primaryContainer.withValues(
-                    alpha: 0.7,
-                  ),
-                  iconColor: cs.onPrimaryContainer,
-                  title: l.settingsSurfaceCorners,
-                  subtitle: _surfaceCornerModeLabel(l, mode),
-                  onTap: () => _showSurfaceCornerModeDialog(context),
-                );
-              },
-            ),
-            ValueListenableBuilder<int>(
-              valueListenable: surfaceCornerModeNotifier,
-              builder: (context, mode, _) {
-                if (mode != 2) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: surfaceCornerRadiusNotifier,
-                    builder: (context, radius, _) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${l.settingsSurfaceCornerRadius}: $radius px',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: cs.onSurface,
-                            ),
-                          ),
-                          HapticSlider(
-                            value: radius.toDouble(),
-                            min: 0,
-                            max: 48,
-                            divisions: 48,
-                            label: '$radius px',
-                            onChanged: _settingsSetSurfaceCornerRadius,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            if (capabilities.supportsBlur)
-              ValueListenableBuilder<bool>(
-                valueListenable: appBgBlurEnabledNotifier,
-                builder: (context, value, _) {
-                  return SettingsSwitchTile(
-                    icon: Icons.blur_linear_rounded,
-                    iconBackgroundColor: cs.secondaryContainer.withValues(
-                      alpha: 0.7,
-                    ),
-                    iconColor: cs.onSecondaryContainer,
-                    title: l.settingsAppBgBlur,
-                    subtitle: l.settingsAppBgBlurDesc,
-                    value: value,
-                    onChanged: _settingsSetAppBgBlurEnabled,
-                  );
-                },
+            SettingsTile(
+              icon: Icons.rounded_corner_rounded,
+              iconBackgroundColor: cs.primaryContainer.withValues(
+                alpha: 0.7,
               ),
-            if (capabilities.supportsBlur)
-              ValueListenableBuilder<bool>(
-                valueListenable: appBgBlurEnabledNotifier,
-                builder: (context, blurEnabled, _) {
-                  if (!blurEnabled) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-                    child: Column(
+              iconColor: cs.onPrimaryContainer,
+              title: l.settingsSurfaceCorners,
+              subtitle: _surfaceCornerModeLabel(l, cornerMode),
+              onTap: () => _showSurfaceCornerModeDialog(context),
+            ),
+            if (cornerMode == 2)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                child: ValueListenableBuilder<int>(
+                  valueListenable: surfaceCornerRadiusNotifier,
+                  builder: (context, radius, _) {
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l.settingsAppBgBlurAmount,
+                          '${l.settingsSurfaceCornerRadius}: $radius px',
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                             color: cs.onSurface,
                           ),
                         ),
-                        ValueListenableBuilder<double>(
-                          valueListenable: appBgBlurAmountNotifier,
-                          builder: (context, amount, _) {
-                            return HapticSlider(
-                              value: amount,
-                              min: 0,
-                              max: 40,
-                              onChanged: _settingsSetAppBgBlurAmount,
-                            );
-                          },
+                        HapticSlider(
+                          value: radius.toDouble(),
+                          min: 0,
+                          max: 48,
+                          divisions: 48,
+                          label: '$radius px',
+                          onChanged: _settingsSetSurfaceCornerRadius,
                         ),
                       ],
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-          ],
+            if (capabilities.supportsBlur)
+              SettingsSwitchTile(
+                icon: Icons.blur_linear_rounded,
+                iconBackgroundColor: cs.secondaryContainer.withValues(
+                  alpha: 0.7,
+                ),
+                iconColor: cs.onSecondaryContainer,
+                title: l.settingsAppBgBlur,
+                subtitle: l.settingsAppBgBlurDesc,
+                value: appBgBlurEnabled,
+                onChanged: _settingsSetAppBgBlurEnabled,
+              ),
+            if (capabilities.supportsBlur && appBgBlurEnabled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.settingsAppBgBlurAmount,
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    ValueListenableBuilder<double>(
+                      valueListenable: appBgBlurAmountNotifier,
+                      builder: (context, amount, _) {
+                        return HapticSlider(
+                          value: amount,
+                          min: 0,
+                          max: 40,
+                          onChanged: _settingsSetAppBgBlurAmount,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              ],
+            );
+          },
         ),
 
         // ── BACKGROUND ──
         if (capabilities.supportsBackgroundMotion ||
             capabilities.supportsCustomBackgrounds)
-          SettingsGroup(
-            title: l.settingsBackgroundAnimations,
-            children: [
+          ValueListenableBuilder<bool>(
+            valueListenable: backgroundAnimationsNotifier,
+            builder: (context, animationsEnabled, _) => SettingsGroup(
+              title: l.settingsBackgroundAnimations,
+              children: [
               if (capabilities.supportsCustomBackgrounds)
                 SettingsTile(
                   icon: Icons.wallpaper_rounded,
@@ -1026,52 +1010,41 @@ class SettingsAppearancePage extends StatelessWidget {
                     );
                   },
                 ),
-              if (capabilities.supportsBackgroundMotion)
-                ValueListenableBuilder<bool>(
-                  valueListenable: backgroundAnimationsNotifier,
-                  builder: (context, animationsEnabled, _) {
-                    if (!animationsEnabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<int>(
-                      valueListenable: backgroundAnimationStyleNotifier,
-                      builder: (context, style, _) {
-                        return SettingsTile(
-                          icon: Icons.style_rounded,
-                          iconBackgroundColor: cs.tertiaryContainer.withValues(
-                            alpha: 0.7,
-                          ),
-                          iconColor: cs.onTertiaryContainer,
-                          title: l.settingsBackgroundStyle,
-                          subtitle: _backgroundStyleLabel(l, style),
-                          onTap: () => _showBackgroundStyleDialog(context),
-                        );
-                      },
+              if (capabilities.supportsBackgroundMotion && animationsEnabled)
+                ValueListenableBuilder<int>(
+                  valueListenable: backgroundAnimationStyleNotifier,
+                  builder: (context, style, _) {
+                    return SettingsTile(
+                      icon: Icons.style_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsBackgroundStyle,
+                      subtitle: _backgroundStyleLabel(l, style),
+                      onTap: () => _showBackgroundStyleDialog(context),
                     );
                   },
                 ),
-              if (capabilities.supportsBackgroundMotion)
+              if (capabilities.supportsBackgroundMotion && animationsEnabled)
                 ValueListenableBuilder<bool>(
-                  valueListenable: backgroundAnimationsNotifier,
-                  builder: (context, animationsEnabled, _) {
-                    if (!animationsEnabled) return const SizedBox.shrink();
-                    return ValueListenableBuilder<bool>(
-                      valueListenable: backgroundGyroscopeNotifier,
-                      builder: (context, value, _) {
-                        return SettingsSwitchTile(
-                          icon: Icons.screen_rotation_rounded,
-                          iconBackgroundColor: cs.tertiaryContainer.withValues(
-                            alpha: 0.7,
-                          ),
-                          iconColor: cs.onTertiaryContainer,
-                          title: l.settingsBackgroundGyroscope,
-                          subtitle: l.settingsBackgroundGyroscopeDesc,
-                          value: value,
-                          onChanged: _settingsSetBackgroundGyroscope,
-                        );
-                      },
+                  valueListenable: backgroundGyroscopeNotifier,
+                  builder: (context, value, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.screen_rotation_rounded,
+                      iconBackgroundColor: cs.tertiaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onTertiaryContainer,
+                      title: l.settingsBackgroundGyroscope,
+                      subtitle: l.settingsBackgroundGyroscopeDesc,
+                      value: value,
+                      onChanged: _settingsSetBackgroundGyroscope,
                     );
                   },
                 ),
             ],
+          ),
           ),
 
         // ── MOTION & EFFECTS ──
@@ -1145,28 +1118,22 @@ class SettingsAppearancePage extends StatelessWidget {
         ),
 
         // ── TIMETABLE COLORS ──
-        SettingsGroup(
-          title: l.settingsAppearanceTimetable,
-          children: [
-            ValueListenableBuilder<bool>(
-              valueListenable: monochromeLessonsNotifier,
-              builder: (context, value, _) {
-                return SettingsSwitchTile(
-                  icon: Icons.tonality_rounded,
-                  iconBackgroundColor: cs.surfaceContainerHighest,
-                  iconColor: cs.onSurfaceVariant,
-                  title: l.settingsMonochromeLessons,
-                  subtitle: l.settingsMonochromeLessonsDesc,
-                  value: value,
-                  onChanged: _settingsSetMonochromeLessons,
-                );
-              },
-            ),
-            ValueListenableBuilder<bool>(
-              valueListenable: monochromeLessonsNotifier,
-              builder: (context, enabled, _) {
-                if (!enabled) return const SizedBox.shrink();
-                return ValueListenableBuilder<int>(
+        ValueListenableBuilder<bool>(
+          valueListenable: monochromeLessonsNotifier,
+          builder: (context, monochromeEnabled, _) => SettingsGroup(
+            title: l.settingsAppearanceTimetable,
+            children: [
+              SettingsSwitchTile(
+                icon: Icons.tonality_rounded,
+                iconBackgroundColor: cs.surfaceContainerHighest,
+                iconColor: cs.onSurfaceVariant,
+                title: l.settingsMonochromeLessons,
+                subtitle: l.settingsMonochromeLessonsDesc,
+                value: monochromeEnabled,
+                onChanged: _settingsSetMonochromeLessons,
+              ),
+              if (monochromeEnabled)
+                ValueListenableBuilder<int>(
                   valueListenable: monochromeLessonColorNotifier,
                   builder: (context, color, _) => SettingsTile(
                     icon: Icons.palette_rounded,
@@ -1177,10 +1144,9 @@ class SettingsAppearancePage extends StatelessWidget {
                         '#${color.toRadixString(16).substring(2).toUpperCase()}',
                     onTap: () => _showMonochromeLessonColorDialog(context),
                   ),
-                );
-              },
-            ),
-          ],
+                ),
+            ],
+          ),
         ),
 
         // ── APP ──

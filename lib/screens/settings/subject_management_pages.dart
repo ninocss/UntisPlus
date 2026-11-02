@@ -366,6 +366,7 @@ class SubjectColorsPage extends StatelessWidget {
     final mq = MediaQuery.of(context);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsSectionColors,
@@ -414,7 +415,7 @@ class SubjectColorsPage extends StatelessWidget {
                 return ListView(
                   padding: EdgeInsets.fromLTRB(
                     16,
-                    12,
+                    MediaQuery.paddingOf(context).top + 12,
                     16,
                     mq.padding.bottom + 120,
                   ),
@@ -480,6 +481,7 @@ class HiddenSubjectsPage extends StatelessWidget {
     final mq = MediaQuery.of(context);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: RoundedBlurAppBar(
         title: Text(
           l.settingsSectionHidden,
@@ -523,7 +525,12 @@ class HiddenSubjectsPage extends StatelessWidget {
               );
             }
             return ListView(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                MediaQuery.paddingOf(context).top + 12,
+                16,
+                mq.padding.bottom + 120,
+              ),
               children: [
                 SettingsGroup(
                   children: hidden.map((subject) {

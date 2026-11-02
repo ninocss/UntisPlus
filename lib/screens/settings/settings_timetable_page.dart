@@ -824,10 +824,16 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
       visualThemeNotifier.value,
     ).supportsAdvancedLessonStyle) {
       return Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: _settingsHeaderAppBar(context, l.settingsLessonDesignTitle),
         body: _AnimatedBackground(
           child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 80),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              mq.padding.top + 64 + 12,
+              16,
+              mq.padding.bottom + 80,
+            ),
             children: [
               SettingsGroup(
                 title: l.settingsLessonDesignTitle,
@@ -912,10 +918,16 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
     }
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: _settingsHeaderAppBar(context, l.settingsLessonDesignTitle),
       body: _AnimatedBackground(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            mq.padding.top + 64 + 12,
+            16,
+            mq.padding.bottom + 120,
+          ),
           children: [
             // ── LIVE PREVIEW ──
             _buildLivePreview(context, l, cs, isDark),
@@ -1182,7 +1194,9 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     return _buildShowFullTeacherNamesTile(
                       l: l,
                       cs: cs,
-                      iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onPrimaryContainer,
                     );
                   },

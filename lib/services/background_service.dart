@@ -1439,6 +1439,69 @@ Future<void> syncProgressiveNotification({
   }
 }
 
+/// Today's unfiltered lessons, memoized until the cache store is written to.
+/// This runs every minute while the app is open, so avoiding a repeated JSON
+/// decode of the cached weeks matters.
+({String prefix, int date, int revision, List<Map> lessons})?
+_todaysLessonsMemo;
+
+/// Reads the raw lessons of [todayDate] from the cached weeks, decoding only
+/// the weeks that can contain that day. Returns null when nothing is cached.
+Future<List<Map>?> _loadRawTodaysLessons(
+  String accountPrefix,
+  int todayDate,
+  DateTime now,
+) async {
+  final store = OfflineCacheStore.instance;
+  final memo = _todaysLessonsMemo;
+  if (memo != null &&
+      memo.prefix == accountPrefix &&
+      memo.date == todayDate &&
+      memo.revision == store.revision) {
+    return memo.lessons;
+  }
+
+  // Week documents are keyed `...|<monday as yyyyMMdd>`. A lesson dated today
+  // can only live in this week's documents, so skip decoding all others.
+  final monday = now.subtract(Duration(days: now.weekday - 1));
+  final mondayStamp = untisDateString(monday);
+  final revisionBeforeRead = store.revision;
+  final docs = await store.readAllWithPrefix(
+    accountPrefix,
+    keyFilter: (key) {
+      final tail = key.substring(key.lastIndexOf('|') + 1);
+      // Keys without a trailing date are not week-addressed; keep them.
+      if (tail.length != 8 || int.tryParse(tail) == null) return true;
+      return tail == mondayStamp;
+    },
+  );
+  if (docs.isEmpty) {
+    // Other weeks may be cached even though this one is not. That is an empty
+    // day, not a missing cache, so callers can still clear stale notifications.
+    return await store.hasKeyWithPrefix(accountPrefix) ? <Map>[] : null;
+  }
+
+  final lessons = <Map>[];
+  for (final doc in docs) {
+    final week = doc.value['weekData'];
+    if (week is! Map) continue;
+    for (final dayRaw in week.values) {
+      if (dayRaw is! List) continue;
+      for (final lesson in dayRaw.whereType<Map>()) {
+        if ((lesson['date'] as num?)?.toInt() != todayDate) continue;
+        lessons.add(lesson);
+      }
+    }
+  }
+  _todaysLessonsMemo = (
+    prefix: accountPrefix,
+    date: todayDate,
+    revision: revisionBeforeRead,
+    lessons: lessons,
+  );
+  return lessons;
+}
+
 /// Loads today's lessons from the offline cache, applying user filters.
 Future<List<dynamic>?> _loadTodaysLessonsFromCache(
   SharedPreferences prefs,
@@ -1447,32 +1510,24 @@ Future<List<dynamic>?> _loadTodaysLessonsFromCache(
 ) async {
   final accountPrefix =
       '${(accountId?.trim().isNotEmpty ?? false) ? accountId!.trim() : 'legacy'}|timetableWeek|';
-  final docs = await OfflineCacheStore.instance.readAllWithPrefix(
-    accountPrefix,
-  );
-  if (docs.isEmpty) return null;
-
   final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
+  final todaysLessons = await _loadRawTodaysLessons(
+    accountPrefix,
+    todayDate,
+    now,
+  );
+  if (todaysLessons == null) return null;
+
   final hiddenSubjects = prefs.getStringList('hiddenSubjects') ?? <String>[];
   final showCancelled = prefs.getBool('showCancelled') ?? true;
 
   final lessons = <dynamic>[];
-  for (final doc in docs) {
-    final week = doc.value['weekData'];
-    if (week is! Map) continue;
-    for (final dayRaw in week.values) {
-      if (dayRaw is! List) continue;
-      for (final lesson in dayRaw.whereType<Map>()) {
-        if ((lesson['date'] as num?)?.toInt() != todayDate) continue;
-        if (hiddenSubjects.contains(
-          lesson['_subjectShort']?.toString() ?? '',
-        )) {
-          continue;
-        }
-        if (!showCancelled && (lesson['code'] ?? '') == 'cancelled') continue;
-        lessons.add(lesson);
-      }
+  for (final lesson in todaysLessons) {
+    if (hiddenSubjects.contains(lesson['_subjectShort']?.toString() ?? '')) {
+      continue;
     }
+    if (!showCancelled && (lesson['code'] ?? '') == 'cancelled') continue;
+    lessons.add(lesson);
   }
 
   lessons.sort(

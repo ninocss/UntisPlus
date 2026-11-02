@@ -128,7 +128,16 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     sessionId: _currentSessionId,
   );
 
-  static const double _ppm = 1.5;
+  double get _gridTextScale =>
+      math.max(1.0, MediaQuery.textScalerOf(context).scale(11) / 11);
+
+  double get _dayTabsHeight {
+    final scaler = MediaQuery.textScalerOf(context);
+    return math.max(
+      kTextTabBarHeight,
+      scaler.scale(13) * 1.1 + scaler.scale(11) * 1.2 + 10,
+    );
+  }
 
   List<String> get _dayShort =>
       appL10nFor(appLocaleNotifier.value).weekDayShort;
@@ -323,27 +332,44 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         entityKey: key,
       );
       await OfflineCacheStore.instance.write(storeKey, payload);
+      // Remove a migrated legacy JSON cache only after the Hive write succeeds.
+      await prefs.remove(key);
       if (!demoModeNotifier.value &&
           requestPersonId == personId &&
           requestPersonType == personType) {
-        final wrapped = SchoolWrappedRepository();
-        for (final year in await wrapped.years(
-          activeUntisAccountId ?? 'legacy',
-        )) {
-          final weekStart = monday ?? _currentMonday;
-          if (year.contains(weekStart.add(const Duration(days: 4))) ||
-              year.contains(weekStart)) {
-            await wrapped.recordWeek(
-              accountId: activeUntisAccountId ?? 'legacy',
-              year: year,
-              monday: weekStart,
-              days: weekData,
-            );
-          }
+        // The recap statistics are bookkeeping; they must not hold up the
+        // caller (e.g. the adjacent-week prefetch loop).
+        final recordAccountId = activeUntisAccountId ?? 'legacy';
+        final weekStart = monday ?? _currentMonday;
+        unawaited(
+          _recordWeekForWrapped(
+            accountId: recordAccountId,
+            weekStart: weekStart,
+            weekData: weekData,
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _recordWeekForWrapped({
+    required String accountId,
+    required DateTime weekStart,
+    required Map<int, List<dynamic>> weekData,
+  }) async {
+    try {
+      final wrapped = SchoolWrappedRepository();
+      for (final year in await wrapped.years(accountId)) {
+        if (year.contains(weekStart.add(const Duration(days: 4))) ||
+            year.contains(weekStart)) {
+          await wrapped.recordWeek(
+            accountId: accountId,
+            year: year,
+            monday: weekStart,
+            days: weekData,
+          );
         }
       }
-      // Remove a migrated legacy JSON cache only after the Hive write succeeds.
-      await prefs.remove(key);
     } catch (_) {}
   }
 
@@ -674,9 +700,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       'EEEE, d. MMMM',
       _icuLocale(appLocaleNotifier.value),
     ).format(date);
-    await showUntisModalBottomSheet<void>(
+    await _showUnifiedSheet<void>(
       context: context,
-      showDragHandle: true,
+      useSafeArea: false,
       builder: (sheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -1311,7 +1337,18 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
   }
 
-  void _onHiddenSubjectsChanged() => setState(() {});
+  bool _displaySettingsRebuildScheduled = false;
+
+  /// Many display settings notify this page. Changes that arrive together
+  /// (theme presets, account switches) are merged into a single rebuild.
+  void _onHiddenSubjectsChanged() {
+    if (!mounted || _displaySettingsRebuildScheduled) return;
+    _displaySettingsRebuildScheduled = true;
+    scheduleMicrotask(() {
+      _displaySettingsRebuildScheduled = false;
+      if (mounted) setState(() {});
+    });
+  }
 
   void _replaceMaterialDayCarouselController(int initialItem) {
     final previous = _materialDayCarouselController;
@@ -1420,52 +1457,60 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     // this page is still alive. Reconcile that durable cache before a swipe so
     // cancellations/room changes are visible during the gesture, not only
     // after the new week has been committed or the app has been restarted.
-    for (final delta in [-1, 1, 2]) {
-      final adjMonday = _weekMondayFromDelta(delta);
-      final key = _mondayKey(adjMonday);
-      if (!refreshFromDisk && _adjacentWeekCache.containsKey(key)) continue;
+    // The three weeks are independent, so read them from disk together.
+    await Future.wait([
+      for (final delta in const [-1, 1, 2])
+        () async {
+          final adjMonday = _weekMondayFromDelta(delta);
+          final key = _mondayKey(adjMonday);
+          if (!refreshFromDisk && _adjacentWeekCache.containsKey(key)) return;
 
-      final cached = await _loadWeekFromCache(
-        requestPersonId: pid,
-        requestPersonType: pType,
-        monday: adjMonday,
-      );
-      if (cached != null && cached.values.any((l) => l.isNotEmpty)) {
-        _adjacentWeekCache[key] = cached;
-        _notifyAdjacentWeekCacheChanged();
-      }
-    }
+          final cached = await _loadWeekFromCache(
+            requestPersonId: pid,
+            requestPersonType: pType,
+            monday: adjMonday,
+          );
+          if (cached != null && cached.values.any((l) => l.isNotEmpty)) {
+            _adjacentWeekCache[key] = cached;
+            _notifyAdjacentWeekCacheChanged();
+          }
+        }(),
+    ]);
 
     if (!allowNetwork) return;
 
     await _fetchMasterData();
-    for (final delta in [-1, 1, 2]) {
-      final adjMonday = _weekMondayFromDelta(delta);
-      final key = _mondayKey(adjMonday);
-      if (_adjacentWeekCache.containsKey(key)) continue;
-      try {
-        final friday = adjMonday.add(const Duration(days: 4));
-        final lessons = await _timetableRepository.fetchTimetable(
-          context: _timetableRequestContext,
-          elementId: pid,
-          elementType: pType,
-          startDate: adjMonday,
-          endDate: friday,
-          requestId: 'week_prefetch',
-        );
-        final tempWeek = _parseWeekResult(lessons);
-        if (tempWeek != null) {
-          _adjacentWeekCache[key] = tempWeek;
-          await _saveWeekToCache(
-            requestPersonId: pid,
-            requestPersonType: pType,
-            weekData: tempWeek,
-            monday: adjMonday,
-          );
-          _notifyAdjacentWeekCacheChanged();
-        }
-      } catch (_) {}
-    }
+    // Likewise fetch the weeks that are still missing in parallel.
+    await Future.wait([
+      for (final delta in const [-1, 1, 2])
+        () async {
+          final adjMonday = _weekMondayFromDelta(delta);
+          final key = _mondayKey(adjMonday);
+          if (_adjacentWeekCache.containsKey(key)) return;
+          try {
+            final friday = adjMonday.add(const Duration(days: 4));
+            final lessons = await _timetableRepository.fetchTimetable(
+              context: _timetableRequestContext,
+              elementId: pid,
+              elementType: pType,
+              startDate: adjMonday,
+              endDate: friday,
+              requestId: 'week_prefetch',
+            );
+            final tempWeek = _parseWeekResult(lessons);
+            if (tempWeek != null) {
+              _adjacentWeekCache[key] = tempWeek;
+              await _saveWeekToCache(
+                requestPersonId: pid,
+                requestPersonType: pType,
+                weekData: tempWeek,
+                monday: adjMonday,
+              );
+              _notifyAdjacentWeekCacheChanged();
+            }
+          } catch (_) {}
+        }(),
+    ]);
   }
 
   Map<int, List<dynamic>>? _parseWeekResult(dynamic result) {
@@ -2954,6 +2999,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
+      blurBarrier: false,
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
@@ -2962,7 +3008,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
             final freeRooms = freeRoomsForRange[selectedIndex];
             final dayName = _dayShort[dayIndex];
 
-            return _glassContainer(
+            return _sheetSurface(
               context: ctx,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(32),
@@ -3597,9 +3643,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final wd = weekData ?? _weekData;
     final m = monday ?? _currentMonday;
     final media = MediaQuery.of(context);
+    final pixelsPerMinute = 1.5 * _gridTextScale;
     final topContentPadding = _isExportingTimetable
         ? 10.0
-        : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
+        : media.padding.top + kToolbarHeight + _dayTabsHeight + 10;
 
     final lessons = (wd[dayIndex] ?? [])
         .where(
@@ -3624,14 +3671,14 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     globalMax = globalMax + 15;
 
     final totalMinutes = globalMax - globalMin;
-    final totalHeight = totalMinutes * _ppm;
+    final totalHeight = totalMinutes * pixelsPerMinute;
 
     final List<int> ticks = [];
     for (int m = globalMin - (globalMin % 60) + 60; m < globalMax; m += 60) {
       ticks.add(m);
     }
 
-    const double timeColWidth = 40;
+    final timeColWidth = 40 * _gridTextScale;
     // During a week swipe, render time and date labels from the incoming
     // cached week as well. Reading the active week here made those rails lag
     // behind the cards until the snap animation had already completed.
@@ -3646,7 +3693,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         dayDate.day == now.day;
     final nowMin = now.hour * 60 + now.minute;
     final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
-    final nowTop = (nowMin - globalMin) * _ppm;
+    final nowTop = (nowMin - globalMin) * pixelsPerMinute;
     final visibleLessons = lessons
         .where((l) => showCancelledNotifier.value || !isTimetableCancelled(l))
         .toList();
@@ -3672,7 +3719,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               child: Stack(
                 children: filteredTimeLabels.isNotEmpty
                     ? filteredTimeLabels.map((value) {
-                        final top = (value - globalMin) * _ppm - 9;
+                        final top = (value - globalMin) * pixelsPerMinute - 9;
                         return Positioned(
                           top: top,
                           left: 0,
@@ -3691,7 +3738,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         );
                       }).toList()
                     : ticks.map((tick) {
-                        final top = (tick - globalMin) * _ppm - 9;
+                        final top = (tick - globalMin) * pixelsPerMinute - 9;
                         return Positioned(
                           top: top,
                           left: 0,
@@ -3720,7 +3767,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     return Stack(
                       children: [
                         ...ticks.map((tick) {
-                          final top = (tick - globalMin) * _ppm;
+                          final top = (tick - globalMin) * pixelsPerMinute;
                           return Positioned(
                             top: top,
                             left: 0,
@@ -3734,12 +3781,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         ..._getHolidaysForDay(dayDate).map((holiday) {
                           final holidayStartMin = _toMinutes(800);
                           final holidayEndMin = _toMinutes(1800);
-                          final top = (holidayStartMin - globalMin) * _ppm;
+                          final top =
+                              (holidayStartMin - globalMin) * pixelsPerMinute;
                           final height =
-                              ((holidayEndMin - holidayStartMin) * _ppm).clamp(
-                                28.0,
-                                9999.0,
-                              );
+                              ((holidayEndMin - holidayStartMin) *
+                                      pixelsPerMinute)
+                                  .clamp(28.0, 9999.0);
                           final holidayName =
                               (holiday['longName'] ?? holiday['name'] ?? '')
                                   .toString();
@@ -3791,11 +3838,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           final l = slot.lesson;
                           final startMin = slot.startMin;
                           final endMin = slot.endMin;
-                          final top = (startMin - globalMin) * _ppm;
-                          final height = ((endMin - startMin) * _ppm).clamp(
-                            28.0,
-                            9999.0,
-                          );
+                          final top = (startMin - globalMin) * pixelsPerMinute;
+                          final height = ((endMin - startMin) * pixelsPerMinute)
+                              .clamp(28.0, 9999.0);
                           final dim = isToday && endMin <= nowMin;
 
                           const horizontalInset = 2.0;
@@ -4024,9 +4069,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final m = monday ?? _currentMonday;
     final shownDays = visibleDays ?? _visibleGridDays;
     final media = MediaQuery.of(context);
+    final pixelsPerMinute = 1.5 * _gridTextScale;
     final topContentPadding = _isExportingTimetable
         ? 10.0
-        : media.padding.top + kToolbarHeight + kTextTabBarHeight + 10;
+        : media.padding.top + kToolbarHeight + _dayTabsHeight + 10;
 
     int globalMin = 480;
     int globalMax = 900;
@@ -4042,7 +4088,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     globalMin = (globalMin - 15).clamp(0, 23 * 60);
     globalMax = globalMax + 15;
 
-    final totalHeight = (globalMax - globalMin) * _ppm;
+    final totalHeight = (globalMax - globalMin) * pixelsPerMinute;
 
     final List<int> ticks = [];
     for (
@@ -4053,7 +4099,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ticks.add(min);
     }
 
-    const double timeColWidth = 40.0;
+    final timeColWidth = 40 * _gridTextScale;
     const double minDayColWidth = 56.0;
     const double dayColGap = 4.0;
     // Leave a real trailing gutter inside the horizontal viewport. Without
@@ -4078,7 +4124,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         shownDays.contains(todayIndex) &&
         nowMin >= globalMin &&
         nowMin <= globalMax;
-    final nowTop = (nowMin - globalMin) * _ppm;
+    final nowTop = (nowMin - globalMin) * pixelsPerMinute;
 
     return ExpressiveRefreshIndicator(
       onRefresh: _onRefresh,
@@ -4124,7 +4170,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           child: Stack(
                             children: filteredTimeLabels.isNotEmpty
                                 ? filteredTimeLabels.map((value) {
-                                    final top = (value - globalMin) * _ppm - 9;
+                                    final top =
+                                        (value - globalMin) * pixelsPerMinute -
+                                        9;
                                     return Positioned(
                                       top: top,
                                       left: 0,
@@ -4143,7 +4191,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                     );
                                   }).toList()
                                 : ticks.map((tick) {
-                                    final top = (tick - globalMin) * _ppm - 9;
+                                    final top =
+                                        (tick - globalMin) * pixelsPerMinute -
+                                        9;
                                     return Positioned(
                                       top: top,
                                       left: 0,
@@ -4206,7 +4256,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   return Stack(
                                     children: [
                                       ...ticks.map((tick) {
-                                        final top = (tick - globalMin) * _ppm;
+                                        final top =
+                                            (tick - globalMin) *
+                                            pixelsPerMinute;
                                         return Positioned(
                                           top: top,
                                           left: 0,
@@ -4226,10 +4278,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         final holidayEndMin = _toMinutes(1800);
                                         final top2 =
                                             (holidayStartMin - globalMin) *
-                                            _ppm;
+                                            pixelsPerMinute;
                                         final height2 =
                                             ((holidayEndMin - holidayStartMin) *
-                                                    _ppm)
+                                                    pixelsPerMinute)
                                                 .clamp(24.0, 9999.0);
                                         final holidayName =
                                             (holiday['longName'] ??
@@ -4290,12 +4342,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                         final startMin = slot.startMin;
                                         final endMin = slot.endMin;
                                         final top =
-                                            (startMin - globalMin) * _ppm;
+                                            (startMin - globalMin) *
+                                            pixelsPerMinute;
                                         final height =
-                                            ((endMin - startMin) * _ppm).clamp(
-                                              24.0,
-                                              9999.0,
-                                            );
+                                            ((endMin - startMin) *
+                                                    pixelsPerMinute)
+                                                .clamp(24.0, 9999.0);
                                         final dim =
                                             (dayIndex == todayIndex) &&
                                             endMin <= nowMin;
@@ -5244,6 +5296,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
+      blurBarrier: false,
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
@@ -5268,7 +5321,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               maxChildSize: 0.9,
               expand: false,
               builder: (_, scrollController) {
-                return _glassContainer(
+                return _sheetSurface(
                   context: ctx,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(32),
@@ -5691,13 +5744,17 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                _viewingClassName ?? l.timetableTitle,
-                style: untisThemeTextStyle(
-                  context,
-                  display: true,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 17,
+              Flexible(
+                child: Text(
+                  _viewingClassName ?? l.timetableTitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: untisThemeTextStyle(
+                    context,
+                    display: true,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 17,
+                  ),
                 ),
               ),
               AnimatedSwitcher(
@@ -5756,12 +5813,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(kTextTabBarHeight),
+          preferredSize: Size.fromHeight(_dayTabsHeight),
           child: SizedBox(
-            height: kTextTabBarHeight,
+            height: _dayTabsHeight,
             child: Stack(
               fit: StackFit.expand,
+              clipBehavior: Clip.none,
               children: [
+                IgnorePointer(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final tabWidth = constraints.maxWidth / 5;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutCubic,
+                            left:
+                                (tabWidth * dayIndicatorIndex) +
+                                ((tabWidth - 38) / 2),
+                            top: 2,
+                            width: 38,
+                            height: 32,
+                            child: _DayTabGlowIndicator(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
                 AbsorbPointer(
                   absorbing:
                       _isDayCarouselAnimating || _isWeekCarouselAnimating,
@@ -5770,6 +5853,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     onTap: _onDayTabBarTap,
                     indicator: const BoxDecoration(),
                     indicatorWeight: 0,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 2),
                     labelStyle: untisThemeTextStyle(
                       context,
                       fontWeight: FontWeight.bold,
@@ -5790,6 +5874,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           dayDate.month == now.month &&
                           dayDate.day == now.day;
                       return Tab(
+                        height: _dayTabsHeight,
                         child: GestureDetector(
                           key: ValueKey('timetable-day-tab-$i'),
                           behavior: HitTestBehavior.opaque,
@@ -5881,31 +5966,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     }),
                   ),
                 ),
-                IgnorePointer(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final tabWidth = constraints.maxWidth / 5;
-                      return Stack(
-                        children: [
-                          AnimatedPositioned(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOutCubic,
-                            left:
-                                (tabWidth * dayIndicatorIndex) +
-                                ((tabWidth - 38) / 2),
-                            bottom: 0,
-                            width: 38,
-                            height: 3,
-                            child: ColoredBox(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
+                              ],
             ),
           ),
         ),
@@ -5960,9 +6021,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                 ),
               ),
             )
-          : RepaintBoundary(
+          : _isExportingTimetable
+          ? RepaintBoundary(
               key: _timetableExportKey,
-              child: AnimatedSwitcher(
+              child: _buildTimetableSwitcher(),
+            )
+          : AnimatedSwitcher(
                 duration: AppMotion.duration(
                   context,
                   const Duration(milliseconds: 560),
@@ -5974,7 +6038,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   fit: StackFit.passthrough,
                   children: <Widget>[
                     ...previousChildren,
-                    if (currentChild != null) currentChild,
+                    ?currentChild,
                   ],
                 ),
                 transitionBuilder: (child, animation) {
@@ -5998,10 +6062,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     ),
                   );
                 },
-                child: RepaintBoundary(
-                  key: ValueKey<int>(_viewMode),
-                  child: _buildTimetableSwitcher(),
-                ),
+              child: KeyedSubtree(
+                key: ValueKey<int>(_viewMode),
+                child: _buildTimetableSwitcher(),
               ),
             ),
     );
@@ -6047,3 +6110,66 @@ class _CacheRefreshIconState extends State<_CacheRefreshIcon>
     child: Icon(Icons.sync_rounded, size: 18, color: widget.color),
   );
 }
+
+class _DayTabGlowIndicator extends StatelessWidget {
+  const _DayTabGlowIndicator({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        // Ultra-soft diffuse Gaussian glow bloom (no hard edges or visible container borders)
+        Positioned(
+          top: 0,
+          width: 38,
+          height: 3,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(1.5),
+              boxShadow: _glowShadows(context, [
+                // Deep atmospheric aura fading downwards
+                BoxShadow(
+                  color: color.withValues(alpha: 0.22),
+                  blurRadius: 28,
+                  spreadRadius: 6,
+                  offset: const Offset(0, 10),
+                ),
+                // Medium ambient soft glow
+                BoxShadow(
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 5),
+                ),
+                // Core light right at the bar
+                BoxShadow(
+                  color: color.withValues(alpha: 0.50),
+                  blurRadius: 8,
+                  spreadRadius: 0.5,
+                  offset: const Offset(0, 2),
+                ),
+              ]),
+            ),
+          ),
+        ),
+        // Rounded solid indicator bar (sleek 3dp bar with subtle 1.5 radius)
+        Positioned(
+          top: 0,
+          width: 38,
+          height: 3,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

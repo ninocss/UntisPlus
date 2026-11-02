@@ -79,20 +79,33 @@ class SettingsPageShell extends StatelessWidget {
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: _settingsHeaderAppBar(context, title),
-    body: _AnimatedBackground(
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          12,
-          16,
-          MediaQuery.paddingOf(context).bottom + 120,
+  Widget build(BuildContext context) {
+    final inMasterDetail = _AnimatedBackgroundScope.maybeOf(context) != null;
+    return Scaffold(
+      backgroundColor: inMasterDetail ? Colors.transparent : null,
+      body: _AnimatedBackground(
+        child: CustomScrollView(
+          slivers: [
+            PinnedHeaderSliver(
+              child: SizedBox(
+                height: MediaQuery.paddingOf(context).top + 64,
+                child: _settingsHeaderAppBar(context, title),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                MediaQuery.paddingOf(context).bottom + 120,
+              ),
+              sliver: SliverList.list(children: children),
+            ),
+          ],
         ),
-        children: children,
       ),
-    ),
-  );
+    );
+  }
 }
 
 class FeatureSummaryCard extends StatelessWidget {
@@ -712,6 +725,7 @@ Future<T?> showUntisModalBottomSheet<T>({
   Color? barrierColor,
   bool isScrollControlled = false,
   double scrollControlDisabledMaxHeightRatio = 9 / 16,
+  bool blurBarrier = true,
   bool useRootNavigator = false,
   bool isDismissible = true,
   bool enableDrag = true,
@@ -728,7 +742,7 @@ Future<T?> showUntisModalBottomSheet<T>({
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
   final localizations = MaterialLocalizations.of(context);
   final tokens = untisThemeTokensOf(context);
-  final useBackdropBlur = _usesModalBackdropBlur(context);
+  final useBackdropBlur = blurBarrier && _usesModalBackdropBlur(context);
   return navigator.push(
     _UntisModalBottomSheetRoute<T>(
       builder: builder,
@@ -776,10 +790,11 @@ Future<T?> showUntisAdaptiveSheet<T>({
   bool showDragHandle = false,
 }) {
   if (!UntisLayout.isTablet(context)) {
-    return showUntisModalBottomSheet<T>(
+    return _showUnifiedSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,
-      showDragHandle: showDragHandle,
+      useSafeArea: false,
+      showHandle: showDragHandle,
       builder: builder,
     );
   }
@@ -969,6 +984,31 @@ class _SpringEntryState extends State<_SpringEntry>
   }
 }
 
+class _ChromeEdge extends StatelessWidget {
+  const _ChromeEdge({required this.strongAtTop, required this.tint});
+
+  final bool strongAtTop;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = untisThemeTokensOf(context);
+    return ListenableBuilder(
+      listenable: Listenable.merge([blurStrengthNotifier, blurEnabledNotifier]),
+      builder: (context, _) {
+        final active = tokens.blurActive;
+        final cs = Theme.of(context).colorScheme;
+        return ProgressiveEdgeBlur(
+          strongAtTop: strongAtTop,
+          transitionExtent: strongAtTop ? ProgressiveEdgeBlur.chromeExtent : 32,
+          sigma: active ? _resolvedBlurSigma(tokens.blurSigma) : 0,
+          tint: active ? tint : Color.alphaBlend(tint, cs.surface),
+        );
+      },
+    );
+  }
+}
+
 Widget _blurEffect({
   required Widget child,
   double sigma = 30,
@@ -1042,25 +1082,6 @@ BorderRadiusGeometry _resolvedSurfaceBorderRadius(
     topRight: resolve(baseRadius.topRight),
     bottomLeft: resolve(baseRadius.bottomLeft),
     bottomRight: resolve(baseRadius.bottomRight),
-  );
-}
-
-BorderRadius _settingsSegmentRadius(
-  BuildContext context, {
-  required bool isFirst,
-  required bool isLast,
-}) {
-  final tokens = untisThemeTokensOf(context);
-  final outer = _resolvedSurfaceCornerRadius(tokens.surfaceRadius);
-  final inner = math.min(outer, 8.0);
-  final outerRadius = Radius.circular(outer);
-  final innerRadius = Radius.circular(inner);
-
-  return BorderRadius.only(
-    topLeft: isFirst ? outerRadius : innerRadius,
-    topRight: isFirst ? outerRadius : innerRadius,
-    bottomLeft: isLast ? outerRadius : innerRadius,
-    bottomRight: isLast ? outerRadius : innerRadius,
   );
 }
 
@@ -1182,26 +1203,24 @@ class ThemedSurface extends StatelessWidget {
               : surface,
         );
 
-        return RepaintBoundary(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: radius,
-              boxShadow: showShadow
-                  ? [
-                      BoxShadow(
-                        color:
-                            !tokens.glowEffectsEnabled &&
-                                tokens.id == AppThemeId.cyber
-                            ? cs.shadow.withValues(alpha: 0.12)
-                            : tokens.shadowColor,
-                        offset: tokens.shadowOffset,
-                        blurRadius: tokens.hardShadow ? 0 : 20,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: surface,
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: showShadow
+                ? [
+                    BoxShadow(
+                      color:
+                          !tokens.glowEffectsEnabled &&
+                              tokens.id == AppThemeId.cyber
+                          ? cs.shadow.withValues(alpha: 0.12)
+                          : tokens.shadowColor,
+                      offset: tokens.shadowOffset,
+                      blurRadius: tokens.hardShadow ? 0 : 20,
+                    ),
+                  ]
+                : null,
           ),
+          child: surface,
         );
       },
     );
@@ -1803,6 +1822,9 @@ MenuStyle _untisMenuStyle(BuildContext context) {
     elevation: const WidgetStatePropertyAll(0),
     shadowColor: const WidgetStatePropertyAll(Colors.transparent),
     minimumSize: const WidgetStatePropertyAll(Size(224, 0)),
+    maximumSize: WidgetStatePropertyAll(
+      Size(MediaQuery.sizeOf(context).width - 16, double.infinity),
+    ),
     padding: const WidgetStatePropertyAll(EdgeInsets.zero),
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(
@@ -1836,6 +1858,7 @@ Widget _untisDropdownMenu({
   );
   return MenuAnchor(
     controller: controller,
+    crossAxisUnconstrained: false,
     style: _untisMenuStyle(context),
     alignmentOffset: alignmentOffset,
     consumeOutsideTap: consumeOutsideTap,
@@ -1981,6 +2004,7 @@ Future<T?> _showUnifiedSheet<T>({
     context: context,
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
+    blurBarrier: false,
     backgroundColor: Colors.transparent,
     elevation: 0,
     sheetAnimationStyle: _kBottomSheetAnimationStyle,
@@ -2264,14 +2288,14 @@ class SettingsGroup extends StatelessWidget {
         children: [
           if (title != null) ...[
             Padding(
-              padding: const EdgeInsets.only(left: 12, bottom: 7, top: 4),
+              padding: const EdgeInsets.only(left: 14, bottom: 8, top: 4),
               child: Text(
                 title!,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontSize: tokens.id == AppThemeId.manga ? 21 : 13,
                   fontWeight: FontWeight.w800,
                   color: cs.primary,
-                  letterSpacing: tokens.id == AppThemeId.cyber ? 1.2 : 0.2,
+                  letterSpacing: tokens.id == AppThemeId.cyber ? 1.2 : 0.25,
                 ),
               ),
             ),
@@ -2282,36 +2306,42 @@ class SettingsGroup extends StatelessWidget {
               surfaceCornerRadiusNotifier,
             ]),
             builder: (context, _) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (int i = 0; i < validChildren.length; i++) ...[
-                    ThemedSurface(
-                      borderRadius: _settingsSegmentRadius(
-                        context,
-                        isFirst: i == 0,
-                        isLast: i == validChildren.length - 1,
-                      ),
-                      color: cs.surfaceContainerLow.withValues(alpha: 0.78),
-                      border: Border.all(
-                        color: tokens.id == AppThemeId.manga
-                            ? cs.outline
-                            : cs.outlineVariant.withValues(alpha: 0.30),
-                        width: tokens.borderWidth,
-                      ),
-                      respectSurfaceCornerPreference: false,
-                      showShadow: false,
-                      child: Padding(
-                        padding: padding ?? EdgeInsets.zero,
-                        child: Material(
-                          type: MaterialType.transparency,
+              final groupRadius = BorderRadius.circular(
+                _resolvedSurfaceCornerRadius(tokens.surfaceRadius),
+              );
+              return ThemedSurface(
+                borderRadius: groupRadius,
+                border: Border.all(
+                  color: tokens.id == AppThemeId.manga
+                      ? cs.outline
+                      : cs.outlineVariant.withValues(alpha: 0.30),
+                  width: tokens.borderWidth,
+                ),
+                respectSurfaceCornerPreference: false,
+                showShadow: false,
+                child: Material(
+                  type: MaterialType.transparency,
+                  borderRadius: groupRadius,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < validChildren.length; i++) ...[
+                        Padding(
+                          padding: padding ?? EdgeInsets.zero,
                           child: validChildren[i],
                         ),
-                      ),
-                    ),
-                    if (i < validChildren.length - 1) const SizedBox(height: 4),
-                  ],
-                ],
+                        if (i < validChildren.length - 1)
+                          Divider(
+                            height: 1,
+                            thickness: 0.7,
+                            indent: 68,
+                            endIndent: 16,
+                            color: cs.outlineVariant.withValues(alpha: 0.26),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
               );
             },
           ),
@@ -2509,7 +2539,7 @@ class SettingsTile extends StatelessWidget {
     this.trailing = const Icon(Icons.chevron_right_rounded),
     this.onTap,
     this.destructive = false,
-    this.showSubtitle = false,
+    this.showSubtitle = true,
   });
 
   @override
@@ -2520,19 +2550,19 @@ class SettingsTile extends StatelessWidget {
         leading ??
         (icon != null
             ? Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color:
                       iconBackgroundColor ??
                       (destructive
                           ? cs.errorContainer
                           : cs.primary.withValues(alpha: 0.14)),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(
                   icon,
-                  size: 21,
+                  size: 20,
                   color:
                       iconColor ??
                       (destructive ? cs.onErrorContainer : cs.primary),
@@ -2549,7 +2579,7 @@ class SettingsTile extends StatelessWidget {
           _expressiveRadius(context, 16, expressiveRadius: 20),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
               if (effectiveLeading != null) ...[
@@ -2572,9 +2602,11 @@ class SettingsTile extends StatelessWidget {
                       ),
                     ),
                     if (showSubtitle && hasSubtitle) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         subtitle!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontSize: 12.5,
                           color: cs.onSurfaceVariant,
@@ -2627,7 +2659,7 @@ class SettingsSwitchTile extends StatelessWidget {
     this.subtitle,
     required this.value,
     required this.onChanged,
-    this.showSubtitle = false,
+    this.showSubtitle = true,
   });
 
   @override
@@ -2638,14 +2670,14 @@ class SettingsSwitchTile extends StatelessWidget {
         leading ??
         (icon != null
             ? Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color:
                       iconBackgroundColor ?? cs.primary.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(icon, size: 21, color: iconColor ?? cs.primary),
+                child: Icon(icon, size: 20, color: iconColor ?? cs.primary),
               )
             : null);
 
@@ -2661,7 +2693,7 @@ class SettingsSwitchTile extends StatelessWidget {
           _expressiveRadius(context, 16, expressiveRadius: 20),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           child: Row(
             children: [
               if (effectiveLeading != null) ...[
@@ -2684,9 +2716,11 @@ class SettingsSwitchTile extends StatelessWidget {
                       ),
                     ),
                     if (showSubtitle && hasSubtitle) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         subtitle!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontSize: 12.5,
                           color: cs.onSurfaceVariant,

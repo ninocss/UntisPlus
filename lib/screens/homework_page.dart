@@ -70,6 +70,7 @@ Future<void> _showAddHomeworkDialog(
   }();
 
   await showUntisModalBottomSheet<void>(
+    blurBarrier: false,
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -530,6 +531,7 @@ class HomeworkPage extends StatelessWidget {
     final l = appL10nFor(appLocaleNotifier.value);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: cs.surface,
       appBar: RoundedBlurAppBar(
         title: Text(
@@ -699,7 +701,12 @@ class _HomeworkViewState extends State<_HomeworkView> {
                 lessonNotesNotifier.value = res['lessonNotes']!;
               },
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 132),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  MediaQuery.paddingOf(context).top + 16,
+                  16,
+                  132,
+                ),
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
@@ -1195,6 +1202,7 @@ Future<void> _showAddExamDialog(
   }();
 
   await showUntisModalBottomSheet<void>(
+    blurBarrier: false,
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
