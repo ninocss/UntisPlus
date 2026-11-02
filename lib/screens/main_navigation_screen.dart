@@ -2641,7 +2641,7 @@ class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
         );
 
         return TweenAnimationBuilder<Rect>(
-          tween: RectTween(begin: startTarget, end: endTarget),
+          tween: _SpotlightRectTween(begin: startTarget, end: endTarget),
           duration: AppMotion.duration(
             context,
             const Duration(milliseconds: 360),
@@ -3539,4 +3539,12 @@ class _DevModeIndicatorBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Interpolates between two non-null [Rect]s for the tutorial spotlight.
+class _SpotlightRectTween extends Tween<Rect> {
+  _SpotlightRectTween({required Rect super.begin, required Rect super.end});
+
+  @override
+  Rect lerp(double t) => Rect.lerp(begin, end, t)!;
 }
