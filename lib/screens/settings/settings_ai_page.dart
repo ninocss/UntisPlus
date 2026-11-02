@@ -780,13 +780,13 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
             Icon(Icons.speed_rounded, size: 14, color: cs.onSurfaceVariant),
             const SizedBox(width: 4),
             Text(
-              '${_formatBytes(speed.round())}/s',
+              '${_formatByteSize(speed.round())}/s',
               style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(width: 12),
             if (total > 0)
               Text(
-                '${_formatBytes(received)} / ${_formatBytes(total)}',
+                '${_formatByteSize(received)} / ${_formatByteSize(total)}',
                 style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
               ),
             const Spacer(),
@@ -799,19 +799,6 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
         ),
       ],
     );
-  }
-
-  String _formatBytes(int bytes) {
-    if (bytes >= 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-    }
-    if (bytes >= 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    if (bytes >= 1024) {
-      return '${(bytes / 1024).toStringAsFixed(0)} KB';
-    }
-    return '$bytes B';
   }
 
   void _showProviderDialog() {

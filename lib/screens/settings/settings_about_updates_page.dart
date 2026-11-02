@@ -53,12 +53,6 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
     return nativeUiGateway.supportedAbis();
   }
 
-  String _formatBytes(int value) {
-    if (value < 1024) return '$value B';
-    if (value < 1024 * 1024) return '${(value / 1024).toStringAsFixed(1)} KB';
-    return '${(value / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
-
   Future<bool> _isApkFile(File file) async {
     if (!await file.exists() || await file.length() < 1024) return false;
     final handle = await file.open();
@@ -373,7 +367,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                         ),
                         Text(
                           _downloadProgress == null
-                              ? _formatBytes(_downloadReceived)
+                              ? _formatByteSize(_downloadReceived)
                               : '${(_downloadProgress! * 100).clamp(0, 100).toStringAsFixed(0)} %',
                           style: GoogleFonts.outfit(
                             fontSize: 12,
@@ -387,7 +381,7 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                     const SizedBox(height: 5),
                     Text(
                       _downloadTotal > 0
-                          ? '${_formatBytes(_downloadReceived)} / ${_formatBytes(_downloadTotal)} · $_downloadAssetName'
+                          ? '${_formatByteSize(_downloadReceived)} / ${_formatByteSize(_downloadTotal)} · $_downloadAssetName'
                           : _downloadAssetName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

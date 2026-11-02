@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import '../core/sync_state.dart';
 import '../core/time_utils.dart';
+import '../core/timetable_date_utils.dart';
 import '../core/version_utils.dart';
 import '../data/cache/offline_cache_store.dart';
 import '../data/security/credential_vault.dart';
@@ -74,10 +75,7 @@ Future<void> refreshTeacherSearchIndexIfMorning({DateTime? now}) async {
   if (prefs.getBool('demoMode') ?? false) return;
   final accountId = prefs.getString('activeUntisAccountId') ?? '';
   final effectiveAccountId = accountId.isEmpty ? 'legacy' : accountId;
-  final dateKey =
-      '${time.year.toString().padLeft(4, '0')}'
-      '${time.month.toString().padLeft(2, '0')}'
-      '${time.day.toString().padLeft(2, '0')}';
+  final dateKey = untisDateString(time);
   final refreshKey = 'teacherSearchMorningRefresh.$effectiveAccountId';
   if (prefs.getString(refreshKey) == dateKey) return;
 
@@ -318,6 +316,41 @@ String _localizedFallbackLessonName(String locale, String start, String end) {
   return appL10nFor(locale).bgFallbackLesson(start, end);
 }
 
+DateTime _untisTimeToDate(DateTime referenceDate, int timeStr) {
+  final hour = timeStr ~/ 100;
+  final minute = timeStr % 100;
+  return DateTime(
+    referenceDate.year,
+    referenceDate.month,
+    referenceDate.day,
+    hour,
+    minute,
+  );
+}
+
+String _lessonDisplayName(Map<dynamic, dynamic> lesson, String locale) {
+  final subjectList = lesson['su'];
+  if (subjectList is List && subjectList.isNotEmpty) {
+    final first = subjectList.first;
+    if (first is Map) {
+      final raw =
+          first['longName'] ?? first['longname'] ?? first['name'] ?? '';
+      final label = raw.toString().trim();
+      if (label.isNotEmpty) return label;
+    }
+  }
+
+  final start = lesson['startTime'];
+  final end = lesson['endTime'];
+  if (start is int && end is int) {
+    final startStr = formatUntisTime(start.toString());
+    final endStr = formatUntisTime(end.toString());
+    return _localizedFallbackLessonName(locale, startStr, endStr);
+  }
+
+  return _localizedStatusCurrentLesson(locale);
+}
+
 Map<String, int> _detectChangeCounts({
   required String previousSignature,
   required String currentSignature,
@@ -438,7 +471,7 @@ Future<bool> _notifyNewlyDetectedChanges({
   for (final lesson in fullLessons) {
     final day = parseUntisDate(lesson['date']);
     if (day == null) continue;
-    final monday = day.subtract(Duration(days: day.weekday - 1));
+    final monday = mondayOfWeek(day);
     byMonday
         .putIfAbsent(untisDateString(monday), () => <Map<dynamic, dynamic>>[])
         .add(lesson);
@@ -682,7 +715,7 @@ Future<bool> updateUntisData() async {
     final firstDay = DateTime(now.year, now.month, now.day);
     for (var offset = 0; offset < 15; offset++) {
       final day = firstDay.add(Duration(days: offset));
-      final monday = day.subtract(Duration(days: day.weekday - 1));
+      final monday = mondayOfWeek(day);
       lessons.addAll(
         DemoModeService.buildWeek(monday, locale: locale)[day.weekday - 1] ??
             const [],
@@ -692,9 +725,9 @@ Future<bool> updateUntisData() async {
     final personId = prefs.getInt('personId') ?? 0;
     final personType = prefs.getInt('personType') ?? 5;
     if (personId == 0) return false;
-    final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
-    final finalPlanningDate = int.parse(
-      DateFormat('yyyyMMdd').format(now.add(const Duration(days: 14))),
+    final todayDate = untisDateInt(now);
+    final finalPlanningDate = untisDateInt(
+      now.add(const Duration(days: 14)),
     );
 
     try {
@@ -777,7 +810,7 @@ Future<bool> updateUntisData() async {
   await AlarmService.instance.syncSmartAlarmWithTimetable(lessons, now: now);
 
   // The notification/status UI below intentionally remains limited to today.
-  final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
+  final todayDate = untisDateInt(now);
   lessons = lessons
       .whereType<Map>()
       .where(
@@ -852,41 +885,12 @@ Future<bool> updateUntisData() async {
     return breaks;
   }
 
-  DateTime untisTimeToDate(int timeStr) {
-    final hour = timeStr ~/ 100;
-    final minute = timeStr % 100;
-    return DateTime(now.year, now.month, now.day, hour, minute);
-  }
-
-  String lessonDisplayName(Map<dynamic, dynamic> lesson) {
-    final subjectList = lesson['su'];
-    if (subjectList is List && subjectList.isNotEmpty) {
-      final first = subjectList.first;
-      if (first is Map) {
-        final raw =
-            first['longName'] ?? first['longname'] ?? first['name'] ?? '';
-        final label = raw.toString().trim();
-        if (label.isNotEmpty) return label;
-      }
-    }
-
-    final start = lesson['startTime'];
-    final end = lesson['endTime'];
-    if (start is int && end is int) {
-      final startStr = formatUntisTime(start.toString());
-      final endStr = formatUntisTime(end.toString());
-      return _localizedFallbackLessonName(locale, startStr, endStr);
-    }
-
-    return _localizedStatusCurrentLesson(locale);
-  }
-
   for (int i = 0; i < lessons.length; i++) {
     var l = lessons[i];
     int start = l['startTime'] as int;
     int end = l['endTime'] as int;
 
-    final name = lessonDisplayName(l);
+    final name = _lessonDisplayName(l, locale);
 
     String startStr = formatUntisTime(start.toString());
     String endStr = formatUntisTime(end.toString());
@@ -896,8 +900,8 @@ Future<bool> updateUntisData() async {
       currentLessonName = name;
       timeRemaining = _localizedUntilTime(locale, endStr);
 
-      final startTimeDate = untisTimeToDate(start);
-      final endTimeDate = untisTimeToDate(end);
+      final startTimeDate = _untisTimeToDate(now, start);
+      final endTimeDate = _untisTimeToDate(now, end);
 
       maxProgress = endTimeDate.difference(startTimeDate).inMinutes;
       currentProgress = now.difference(startTimeDate).inMinutes;
@@ -906,7 +910,7 @@ Future<bool> updateUntisData() async {
 
       if (i + 1 < lessons.length) {
         final nextL = lessons[i + 1];
-        nextLessonName = lessonDisplayName(nextL);
+        nextLessonName = _lessonDisplayName(nextL, locale);
       } else {
         nextLessonName = _localizedClosedLabel(locale);
       }
@@ -916,7 +920,7 @@ Future<bool> updateUntisData() async {
     if (currentTimeInt < start) {
       timeRemaining = _localizedLessonStartsAt(locale, startStr);
       nextLessonName = name;
-      endTimeMs = untisTimeToDate(start).millisecondsSinceEpoch;
+      endTimeMs = _untisTimeToDate(now, start).millisecondsSinceEpoch;
       break;
     }
   }
@@ -943,7 +947,7 @@ Future<bool> updateUntisData() async {
       prefs.getBool('importantChangesPush') ?? true;
   await NotificationService().init();
 
-  final todayKey = DateFormat('yyyyMMdd').format(now);
+  final todayKey = untisDateString(now);
   final lastBriefingDate = prefs.getString('lastDailyBriefingDate') ?? '';
   final firstStartInt = firstLesson['startTime'] as int;
   final canSendBriefingNow = currentTimeInt <= firstStartInt && now.hour < 12;
@@ -1083,7 +1087,7 @@ Future<bool> updateUntisData() async {
         .take(3)
         .map(
           (lesson) =>
-              '${formatUntisTime(lesson['startTime'].toString())} · ${lessonDisplayName(lesson)}',
+              '${formatUntisTime(lesson['startTime'].toString())} · ${_lessonDisplayName(lesson, locale)}',
         )
         .join('\n'),
     homeworkSummary: widgetSummaries.homeworkSummary,
@@ -1121,7 +1125,7 @@ Future<void> _refreshInactiveWidgetAccounts(
     return;
   }
   if (decoded is! List) return;
-  final today = int.parse(DateFormat('yyyyMMdd').format(now));
+  final today = untisDateInt(now);
   final entries = decoded.whereType<Map>().toList(growable: false);
   for (var offset = 0; offset < entries.length; offset += 2) {
     final batch = entries.skip(offset).take(2);
@@ -1334,39 +1338,12 @@ Future<void> syncProgressiveNotification({
   int? endTimeMs;
   bool hasActiveLesson = false;
 
-  DateTime untisTimeToDate(int timeStr) {
-    final hour = timeStr ~/ 100;
-    final minute = timeStr % 100;
-    return DateTime(now.year, now.month, now.day, hour, minute);
-  }
-
-  String lessonDisplayName(Map<dynamic, dynamic> lesson) {
-    final subjectList = lesson['su'];
-    if (subjectList is List && subjectList.isNotEmpty) {
-      final first = subjectList.first;
-      if (first is Map) {
-        final raw =
-            first['longName'] ?? first['longname'] ?? first['name'] ?? '';
-        final label = raw.toString().trim();
-        if (label.isNotEmpty) return label;
-      }
-    }
-    final start = lesson['startTime'];
-    final end = lesson['endTime'];
-    if (start is int && end is int) {
-      final startStr = formatUntisTime(start.toString());
-      final endStr = formatUntisTime(end.toString());
-      return _localizedFallbackLessonName(locale, startStr, endStr);
-    }
-    return _localizedStatusCurrentLesson(locale);
-  }
-
   for (int i = 0; i < lessons.length; i++) {
     var lesson = lessons[i];
     int start = lesson['startTime'] as int;
     int end = lesson['endTime'] as int;
 
-    final name = lessonDisplayName(lesson);
+    final name = _lessonDisplayName(lesson, locale);
 
     String startStr = formatUntisTime(start.toString());
     String endStr = formatUntisTime(end.toString());
@@ -1376,8 +1353,8 @@ Future<void> syncProgressiveNotification({
       currentLessonName = name;
       timeRemaining = _localizedUntilTime(locale, endStr);
 
-      final startTimeDate = untisTimeToDate(start);
-      final endTimeDate = untisTimeToDate(end);
+      final startTimeDate = _untisTimeToDate(now, start);
+      final endTimeDate = _untisTimeToDate(now, end);
 
       maxProgress = endTimeDate.difference(startTimeDate).inMinutes;
       currentProgress = now.difference(startTimeDate).inMinutes;
@@ -1386,7 +1363,7 @@ Future<void> syncProgressiveNotification({
 
       if (i + 1 < lessons.length) {
         final nextL = lessons[i + 1];
-        nextLessonName = lessonDisplayName(nextL);
+        nextLessonName = _lessonDisplayName(nextL, locale);
       } else {
         nextLessonName = _localizedClosedLabel(locale);
       }
@@ -1396,7 +1373,7 @@ Future<void> syncProgressiveNotification({
     if (currentTimeInt < start) {
       timeRemaining = _localizedLessonStartsAt(locale, startStr);
       nextLessonName = name;
-      endTimeMs = untisTimeToDate(start).millisecondsSinceEpoch;
+      endTimeMs = _untisTimeToDate(now, start).millisecondsSinceEpoch;
       break;
     }
   }
@@ -1463,7 +1440,7 @@ Future<List<Map>?> _loadRawTodaysLessons(
 
   // Week documents are keyed `...|<monday as yyyyMMdd>`. A lesson dated today
   // can only live in this week's documents, so skip decoding all others.
-  final monday = now.subtract(Duration(days: now.weekday - 1));
+  final monday = mondayOfWeek(now);
   final mondayStamp = untisDateString(monday);
   final revisionBeforeRead = store.revision;
   final docs = await store.readAllWithPrefix(
@@ -1510,7 +1487,7 @@ Future<List<dynamic>?> _loadTodaysLessonsFromCache(
 ) async {
   final accountPrefix =
       '${(accountId?.trim().isNotEmpty ?? false) ? accountId!.trim() : 'legacy'}|timetableWeek|';
-  final todayDate = int.parse(DateFormat('yyyyMMdd').format(now));
+  final todayDate = untisDateInt(now);
   final todaysLessons = await _loadRawTodaysLessons(
     accountPrefix,
     todayDate,
@@ -1554,7 +1531,7 @@ void _scheduleProgressiveBoundaryRefresh({
 
     if (nowInt >= start && nowInt <= end) {
       // Currently in a lesson: schedule for 1 minute after it ends
-      final endMinutes = (end ~/ 100) * 60 + (end % 100);
+      final endMinutes = untisClockToMinutes(end);
       final nowMinutes = now.hour * 60 + now.minute;
       delay = Duration(minutes: endMinutes - nowMinutes + 1);
       break;
@@ -1562,7 +1539,7 @@ void _scheduleProgressiveBoundaryRefresh({
 
     if (nowInt < start) {
       // Next lesson hasn't started yet: schedule for its start
-      final startMinutes = (start ~/ 100) * 60 + (start % 100);
+      final startMinutes = untisClockToMinutes(start);
       final nowMinutes = now.hour * 60 + now.minute;
       delay = Duration(minutes: startMinutes - nowMinutes);
       break;
@@ -1606,38 +1583,4 @@ Future<void> refreshProgressiveNotificationFromCache({DateTime? now}) async {
   );
 
   _scheduleProgressiveBoundaryRefresh(lessons: lessons, now: time);
-}
-
-@Deprecated('Use DemoModeService.buildWeek instead.')
-List<Map<String, dynamic>> buildLegacyDemoLessons24x7(
-  DateTime now,
-  String locale,
-) {
-  final date = int.parse(DateFormat('yyyyMMdd').format(now));
-  final blocks = <Map<String, dynamic>>[];
-
-  // 8 x 3h Bloecke decken den ganzen Tag ab (00:00-23:59).
-  const starts = <int>[0, 300, 600, 900, 1200, 1500, 1800, 2100];
-  const ends = <int>[259, 559, 859, 1159, 1459, 1759, 2059, 2359];
-  const codes = <String>['DM', 'MA', 'EN', 'IF', 'PH', 'CH', 'GE', 'SP'];
-
-  for (var i = 0; i < starts.length; i++) {
-    final short = codes[i % codes.length];
-    blocks.add({
-      'date': date,
-      'startTime': starts[i],
-      'endTime': ends[i],
-      '_subjectShort': short,
-      '_subjectLong': _demoSubjectName(short, locale),
-      '_teacher': 'Demo',
-      '_room': 'D${(i + 1).toString().padLeft(2, '0')}',
-      'code': '',
-    });
-  }
-
-  return blocks;
-}
-
-String _demoSubjectName(String code, String locale) {
-  return appL10nFor(locale).bgDemoLesson(code);
 }

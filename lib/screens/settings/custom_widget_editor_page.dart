@@ -31,13 +31,6 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     _ => block,
   };
 
-  String _colorChannelLabel(AppL10n l, String channel) => switch (channel) {
-    'colorRed' => l.colorRed,
-    'colorGreen' => l.colorGreen,
-    'colorBlue' => l.colorBlue,
-    _ => channel,
-  };
-
   String _editorColorLabel(AppL10n l, String field) => switch (field) {
     'editorBackground' => l.editorBackground,
     'editorAccent' => l.editorAccent,
@@ -278,132 +271,25 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     required ValueChanged<int> onChanged,
   }) async {
     final l = appL10nFor(appLocaleNotifier.value);
-    var color = Color(current);
-    await _showUnifiedSheet<void>(
+    final picked = await _showUntisRgbColorPickerSheet(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Material-Farben',
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final swatch in const <int>[
-                    0xFF6750A4,
-                    0xFF005AC1,
-                    0xFF386A20,
-                    0xFF8A4F00,
-                    0xFF984061,
-                    0xFF006A6A,
-                    0xFFBA1A1A,
-                    0xFF45464F,
-                  ])
-                    Tooltip(
-                      message:
-                          '#${swatch.toRadixString(16).substring(2).toUpperCase()}',
-                      child: InkWell(
-                        onTap: () => setSheetState(() => color = Color(swatch)),
-                        customBorder: const CircleBorder(),
-                        child: Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: Color(swatch),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: color.toARGB32() == swatch
-                                  ? Theme.of(context).colorScheme.onSurface
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.outlineVariant,
-                              width: color.toARGB32() == swatch ? 2 : 1,
-                            ),
-                          ),
-                          child: color.toARGB32() == swatch
-                              ? const Icon(
-                                  Icons.check_rounded,
-                                  size: 18,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              for (final channel in <String>[
-                'colorRed',
-                'colorGreen',
-                'colorBlue',
-              ])
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 42,
-                      child: Text(_colorChannelLabel(l, channel)),
-                    ),
-                    Expanded(
-                      child: HapticSlider(
-                        value: channel == 'colorRed'
-                            ? color.r * 255
-                            : channel == 'colorGreen'
-                            ? color.g * 255
-                            : color.b * 255,
-                        min: 0,
-                        max: 255,
-                        onChanged: (value) => setSheetState(() {
-                          color = Color.fromARGB(
-                            255,
-                            channel == 'colorRed'
-                                ? value.round()
-                                : (color.r * 255).round(),
-                            channel == 'colorGreen'
-                                ? value.round()
-                                : (color.g * 255).round(),
-                            channel == 'colorBlue'
-                                ? value.round()
-                                : (color.b * 255).round(),
-                          );
-                        }),
-                      ),
-                    ),
-                  ],
-                ),
-              FilledButton(
-                onPressed: () {
-                  onChanged(color.toARGB32());
-                  Navigator.pop(context);
-                },
-                child: Text(l.editorApplyColor),
-              ),
-            ],
-          ),
-        ),
-      ),
+      initialColor: Color(current),
+      swatches: const <int>[
+        0xFF6750A4,
+        0xFF005AC1,
+        0xFF386A20,
+        0xFF8A4F00,
+        0xFF984061,
+        0xFF006A6A,
+        0xFFBA1A1A,
+        0xFF45464F,
+      ],
+      swatchesTitle: 'Material-Farben',
+      applyLabel: l.editorApplyColor,
     );
+    if (picked != null) {
+      onChanged(picked.toARGB32());
+    }
   }
 
   String _content(WidgetConfiguration config, String block) {
@@ -506,8 +392,8 @@ class _CustomWidgetEditorPageState extends State<CustomWidgetEditorPage> {
     );
     if (mounted) {
       setState(() => _pinning = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ok ? l.widgetPickerSent : l.widgetPickerHint)),
+      context.showUntisSnackBar(
+        ok ? l.widgetPickerSent : l.widgetPickerHint,
       );
     }
   }

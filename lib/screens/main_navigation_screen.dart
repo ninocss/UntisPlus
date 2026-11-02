@@ -1,6 +1,5 @@
 part of '../main.dart';
 
-// --- HAUPT NAVIGATION ---
 class MainNavigationScreen extends StatefulWidget {
   final bool showTutorialOnStart;
 
@@ -303,7 +302,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           null,
           (min, value) => min == null || value < min ? value : min,
         );
-    return firstStart != null && nowMin < _toMinutes(firstStart);
+    return firstStart != null && nowMin < untisClockToMinutes(firstStart);
   }
 
   bool get _isDuringSchool {
@@ -312,8 +311,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     final nowMin = DateTime.now().hour * 60 + DateTime.now().minute;
     for (final lesson in lessons) {
       final map = lesson.cast<dynamic, dynamic>();
-      final start = _toMinutes((map['startTime'] as int?) ?? 800);
-      final end = _toMinutes((map['endTime'] as int?) ?? 845);
+      final start = untisClockToMinutes((map['startTime'] as int?) ?? 800);
+      final end = untisClockToMinutes((map['endTime'] as int?) ?? 845);
       if (nowMin >= start && nowMin <= end) return true;
     }
     return false;
@@ -330,16 +329,12 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           null,
           (max, value) => max == null || value > max ? value : max,
         );
-    return lastEnd != null && nowMin > _toMinutes(lastEnd);
+    return lastEnd != null && nowMin > untisClockToMinutes(lastEnd);
   }
 
   Future<void> _loadContext() async {
     final now = DateTime.now();
-    final monday = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
+    final monday = mondayOfWeek(now);
 
     // The timetable tab is the source of truth while it is alive. Reading its
     // published snapshot avoids an outdated SharedPreferences cache claiming
@@ -465,11 +460,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     });
   }
 
-  String _resolvedSystemPrompt() {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final template = aiSystemPromptTemplate.trim().isNotEmpty
-        ? aiSystemPromptTemplate
-        : _buildDefaultAiPromptTemplate(l);
+  String _replaceAiPromptVariables(String template) {
     final friday = _currentMonday.add(const Duration(days: 4));
     final vars = <String, String>{
       '[today]': DateFormat(
@@ -503,6 +494,15 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     for (final entry in entries) {
       resolved = resolved.replaceAll(entry.key, entry.value);
     }
+    return resolved;
+  }
+
+  String _resolvedSystemPrompt() {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final template = aiSystemPromptTemplate.trim().isNotEmpty
+        ? aiSystemPromptTemplate
+        : _buildDefaultAiPromptTemplate(l);
+    final resolved = _replaceAiPromptVariables(template);
     return '''$resolved
 
 ${l.aiResponseFormat}''';
@@ -513,39 +513,7 @@ ${l.aiResponseFormat}''';
     final template = aiSystemPromptTemplate.trim().isNotEmpty
         ? aiSystemPromptTemplate
         : _buildDefaultAiPromptTemplate(l);
-    final friday = _currentMonday.add(const Duration(days: 4));
-    final vars = <String, String>{
-      '[today]': DateFormat(
-        'EEEE, dd. MMMM yyyy',
-        _icuLocale(appLocaleNotifier.value),
-      ).format(DateTime.now()),
-      '[today_iso]': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      '[locale]': appLocaleNotifier.value,
-      '[school_name]': schoolName.isEmpty ? '-' : schoolName,
-      '[school_url]': schoolUrl.isEmpty ? '-' : schoolUrl,
-      '[person_type]': '$personType',
-      '[person_id]': '$personId',
-      '[demo_mode]': '${demoModeNotifier.value}',
-      '[current_monday]': DateFormat('dd.MM.yyyy').format(_currentMonday),
-      '[current_friday]': DateFormat('dd.MM.yyyy').format(friday),
-      '[day_summary_today]': _daySummaryForPrompt(DateTime.now()),
-      '[day_summary_tomorrow]': _daySummaryForPrompt(
-        DateTime.now().add(const Duration(days: 1)),
-      ),
-      '[timetable]': _formatWeekForAi(_weekData, _currentMonday),
-      '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
-      '[exams]': _formatExamsForAi(),
-      '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
-      '[current_lesson]': _currentLessonSummary(),
-      '[next_lesson]': _nextLessonSummary(),
-    };
-
-    var resolved = template;
-    final entries = vars.entries.toList()
-      ..sort((a, b) => b.key.length.compareTo(a.key.length));
-    for (final entry in entries) {
-      resolved = resolved.replaceAll(entry.key, entry.value);
-    }
+    final resolved = _replaceAiPromptVariables(template);
 
     String personaInstruction = '';
     switch (aiPersona) {
@@ -605,8 +573,8 @@ ${l.aiAssistantRules}''';
     final buf = StringBuffer('$dateLabel:\n');
     for (final lsn in lessons.whereType<Map>()) {
       final lesson = lsn.cast<dynamic, dynamic>();
-      final start = _formatUntisTime(lesson['startTime'].toString());
-      final end = _formatUntisTime(lesson['endTime'].toString());
+      final start = formatUntisTime(lesson['startTime'].toString());
+      final end = formatUntisTime(lesson['endTime'].toString());
       final subj = lesson['_subjectLong']?.toString().isNotEmpty == true
           ? lesson['_subjectLong'].toString()
           : lesson['_subjectShort']?.toString() ?? '?';
@@ -655,7 +623,7 @@ ${l.aiAssistantRules}''';
         .map((lesson) {
           final subject =
               lesson['_subjectLong'] ?? lesson['_subjectShort'] ?? '?';
-          return '${_formatUntisTime(lesson['startTime'].toString())} $subject';
+          return '${formatUntisTime(lesson['startTime'].toString())} $subject';
         })
         .join(', ');
     return appL10nFor(
@@ -695,7 +663,7 @@ ${l.aiAssistantRules}''';
         return l.aiCurrentLessonSummary(
           subj.toString(),
           room.toString(),
-          _formatUntisTime(end.toString()),
+          formatUntisTime(end.toString()),
         );
       }
     }
@@ -719,7 +687,7 @@ ${l.aiAssistantRules}''';
         return l.aiNextLessonSummary(
           subj.toString(),
           room.toString(),
-          _formatUntisTime(start.toString()),
+          formatUntisTime(start.toString()),
         );
       }
     }
@@ -835,12 +803,8 @@ ${l.aiAssistantRules}''';
     if (bytes.isEmpty) return;
     if (bytes.length > 8 * 1024 * 1024) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              appL10nFor(appLocaleNotifier.value).aiAttachmentTooLarge,
-            ),
-          ),
+        context.showUntisSnackBar(
+          appL10nFor(appLocaleNotifier.value).aiAttachmentTooLarge,
         );
       }
       return;
@@ -1030,9 +994,7 @@ ${l.aiAssistantRules}''';
     if (approved != true) return;
     await _applyActions(actions);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.aiChangesApplied)));
+      context.showUntisSnackBar(l.aiChangesApplied);
     }
   }
 
@@ -1176,17 +1138,10 @@ ${l.aiAssistantRules}''';
       _saveChatHistory();
     } catch (e) {
       _flushStreamingText();
-      final message = e.toString();
-      final isApiError = message.contains('API:');
-      final isConfigError = message.contains('CONFIG:');
       setState(() {
         if (_chatMessages.isNotEmpty &&
             _chatMessages.last['role'] == 'assistant') {
-          final errorText = isConfigError
-              ? message.replaceFirst('Exception: CONFIG: ', '')
-              : isApiError
-              ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-              : '${l.aiConnectionError} $e';
+          final errorText = _formatAiErrorDetail(e, l);
           final current = _chatMessages.last['content'] ?? '';
           _chatMessages.last['content'] = current.isEmpty
               ? errorText
@@ -1274,16 +1229,9 @@ ${l.aiAssistantRules}''';
       });
     } catch (e) {
       if (!mounted || generation != _searchGeneration) return;
-      final message = e.toString();
       final l = appL10nFor(appLocaleNotifier.value);
-      final isApiError = message.contains('API:');
-      final isConfigError = message.contains('CONFIG:');
       setState(() {
-        final reply = isConfigError
-            ? message.replaceFirst('Exception: CONFIG: ', '')
-            : isApiError
-            ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-            : '${l.aiConnectionError} $e';
+        final reply = _formatAiErrorDetail(e, l);
         _latestResult = _parseSearchResult(query: text, reply: reply);
       });
     } finally {
@@ -2430,7 +2378,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final timetableSelected = _selectedIndex == 0;
     final l = appL10nFor(appLocaleNotifier.value);
 
-    // ---- Secondary items (indices 1-4) shown in the pill bar ----
     final items = [
       _NavItem(
         icon: Icons.settings_outlined,
@@ -2484,7 +2431,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // ---- Pill nav bar ----
             Flexible(
               child: LayoutBuilder(
                 builder: (context, bounds) => TweenAnimationBuilder<double>(
@@ -2510,7 +2456,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
             const SizedBox(width: 12),
 
-            // ---- FAB timetable button ----
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 620),
@@ -2611,10 +2556,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Material You Expressive Navigation Bar
-// ---------------------------------------------------------------------------
 
 class _TutorialSpotlightOverlay extends StatefulWidget {
   final GlobalKey? targetKey;
@@ -3330,7 +3271,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // ---- Morphing pill indicator ----
                   Positioned(
                     left: pillLeft - _barHPad,
                     child: Opacity(
@@ -3352,7 +3292,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                     ),
                   ),
 
-                  // ---- Items row ----
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -3396,7 +3335,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // --- Icon with wiggle ---
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -3464,7 +3402,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                   ],
                 ),
 
-                // --- Label (slides in/out with the morph) ---
                 Flexible(
                   child: ClipRect(
                     child: Align(
@@ -3504,10 +3441,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   }
 }
 
-// ---------------------------------------------------------------------------
-
-// Bouncy press helper (unchanged)
-// ---------------------------------------------------------------------------
 class _BouncyButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

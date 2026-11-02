@@ -5,6 +5,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/defensive_parsers.dart';
 import '../data/security/credential_vault.dart';
 import 'alarm_service.dart';
 
@@ -126,12 +127,7 @@ class BackupService {
       }
       final secrets = <String, String>{};
       for (final key in _sensitiveStringKeys) {
-        final provider = switch (key) {
-          'openAiApiKey' => 'openai',
-          'mistralApiKey' => 'mistral',
-          'customAiApiKey' => 'custom',
-          _ => 'gemini',
-        };
+        final provider = _aiProviderForKey(key);
         final value = await CredentialVault.instance.readAiApiKey(provider);
         if (value.isNotEmpty) secrets[key] = value;
       }
@@ -160,12 +156,12 @@ class BackupService {
     }
 
     final decoded = jsonDecode(normalizedText);
-    final root = _asStringDynamicMap(decoded);
+    final root = tryAsStringDynamicMap(decoded);
     if (root == null) {
       throw const FormatException('Invalid backup format');
     }
 
-    final version = _parseSchemaVersion(root['schemaVersion']);
+    final version = asIntOrNull(root['schemaVersion']);
     if (version == null) {
       throw const FormatException('Missing schemaVersion');
     }
@@ -173,7 +169,7 @@ class BackupService {
       throw const FormatException('Unsupported schemaVersion');
     }
 
-    final prefsRoot = _asStringDynamicMap(root['prefs']);
+    final prefsRoot = tryAsStringDynamicMap(root['prefs']);
     if (prefsRoot == null) {
       throw const FormatException('Missing prefs');
     }
@@ -274,12 +270,7 @@ class BackupService {
 
     if (decryptedSecrets != null) {
       for (final entry in decryptedSecrets.entries) {
-        final provider = switch (entry.key) {
-          'openAiApiKey' => 'openai',
-          'mistralApiKey' => 'mistral',
-          'customAiApiKey' => 'custom',
-          _ => 'gemini',
-        };
+        final provider = _aiProviderForKey(entry.key);
         await CredentialVault.instance.writeAiApiKey(provider, entry.value);
       }
     } else if (version == 1) {
@@ -288,12 +279,7 @@ class BackupService {
       for (final key in _sensitiveStringKeys) {
         final value = stringValues[key];
         if (value == null || value.isEmpty) continue;
-        final provider = switch (key) {
-          'openAiApiKey' => 'openai',
-          'mistralApiKey' => 'mistral',
-          'customAiApiKey' => 'custom',
-          _ => 'gemini',
-        };
+        final provider = _aiProviderForKey(key);
         await CredentialVault.instance.writeAiApiKey(provider, value);
       }
     }
@@ -302,6 +288,13 @@ class BackupService {
     // it immediately after restoring a backup instead of waiting for restart.
     await AlarmService.instance.restore();
   }
+
+  static String _aiProviderForKey(String key) => switch (key) {
+    'openAiApiKey' => 'openai',
+    'mistralApiKey' => 'mistral',
+    'customAiApiKey' => 'custom',
+    _ => 'gemini',
+  };
 
   Map<String, T> _readTypedMap<T>(dynamic value) {
     final map = <String, T>{};
@@ -335,24 +328,6 @@ class BackupService {
       }
     });
     return normalized;
-  }
-
-  Map<String, dynamic>? _asStringDynamicMap(dynamic value) {
-    if (value is! Map) return null;
-    final map = <String, dynamic>{};
-    value.forEach((key, val) {
-      if (key is String) {
-        map[key] = val;
-      }
-    });
-    return map;
-  }
-
-  int? _parseSchemaVersion(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value.trim());
-    return null;
   }
 
   Future<Map<String, dynamic>> _encryptSecrets(

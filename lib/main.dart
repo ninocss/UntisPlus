@@ -146,8 +146,6 @@ part 'widgets/changelog_bottom_sheet.dart';
 part 'widgets/rounded_blur_app_bar.dart';
 part 'services/local_model_download.dart';
 
-int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
-
 final WebUntisExamRepository _webUntisExamRepository = WebUntisExamRepository();
 final TimetableRepository _timetableRepository = TimetableRepository();
 
@@ -583,77 +581,10 @@ void main() async {
   notifyChangeOtherNotifier.value = prefs.getBool('notifyChangeOther') ?? true;
 
   await loadCustomBackgroundsFromPrefs(prefs);
+  await loadAiPreferences(prefs, preloadedKeys: await aiKeysFuture);
 
-  final secureAiKeys = await aiKeysFuture;
-  geminiApiKey = secureAiKeys['gemini'] ?? '';
-
-  openAiApiKey = secureAiKeys['openai'] ?? '';
-  mistralApiKey = secureAiKeys['mistral'] ?? '';
-  customAiApiKey = secureAiKeys['custom'] ?? '';
-  aiProvider = _normalizeAiProvider(prefs.getString('aiProvider') ?? 'gemini');
-  aiCustomCompatibility = _normalizeAiCustomCompatibility(
-    prefs.getString('aiCustomCompatibility') ?? 'openai',
-  );
-  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? '';
-  aiSystemPromptTemplate = prefs.getString('aiSystemPromptTemplate') ?? '';
-  aiTemperature = prefs.getDouble('aiTemperature') ?? 0.2;
-  aiMaxTokens = prefs.getInt('aiMaxTokens') ?? 2600;
-  aiTopP = prefs.getDouble('aiTopP') ?? 0.95;
-  aiPersona = prefs.getString('aiPersona') ?? 'helpful';
-  aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
-  if (aiLocalModelPath.isNotEmpty) {
-    // A stale or tampered path (file deleted, moved, truncated or replaced
-    // with something that is not a GGUF) must never reach the native
-    // llama.cpp parser. Validate it with the same magic/size rules used on
-    // download and fall back to a cleared path on failure.
-    if (!await _isValidLocalModelFile(
-      aiLocalModelPath,
-      model: _localModelForPath(aiLocalModelPath),
-    )) {
-      aiLocalModelPath = '';
-      await prefs.setString('aiLocalModelPath', '');
-      // With no usable model file a 'local' provider is a broken state.
-      // Mirror _deleteLocalModel and fall back to Gemini.
-      if (_normalizeAiProvider(aiProvider) == 'local') {
-        aiProvider = 'gemini';
-        aiModel = _defaultModelForProvider('gemini');
-        await prefs.setString('aiProvider', aiProvider);
-        await prefs.setString('aiModel', aiModel);
-      }
-    }
-  }
-  final savedModel = prefs.getString('aiModel') ?? '';
-  final availableModels = _modelsForProvider(
-    aiProvider,
-    customCompatibility: aiCustomCompatibility,
-  );
-  aiModel = savedModel.isNotEmpty
-      ? savedModel
-      : _defaultModelForProvider(
-          aiProvider,
-          customCompatibility: aiCustomCompatibility,
-        );
-  if (!availableModels.contains(aiModel)) {
-    aiModel = _defaultModelForProvider(
-      aiProvider,
-      customCompatibility: aiCustomCompatibility,
-    );
-    await prefs.setString('aiModel', aiModel);
-  }
-
-  // Check dev server reachability on startup if dev mode is enabled.
-  // This runs asynchronously so it doesn't block the first frame.
   if (devModeNotifier.value) {
-    unawaited(() async {
-      final reachable = await checkDevServerReachable();
-      if (reachable && devServerReachableNotifier.value) {
-        // Dev server is reachable - show notification based on user preference.
-        if (devModeNotificationStyleNotifier.value == DevModeNotificationStyle.popup) {
-          // We'll show the popup after the app is built, via a post-frame callback.
-          // For now, just mark it reachable.
-        }
-      }
-    }());
+    unawaited(checkDevServerReachable());
   }
 
   runApp(

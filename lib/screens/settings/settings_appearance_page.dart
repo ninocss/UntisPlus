@@ -1,4 +1,3 @@
-// settings_appearance_page.dart
 part of '../../main.dart';
 
 class SettingsAppearancePage extends StatelessWidget {
@@ -76,114 +75,16 @@ class SettingsAppearancePage extends StatelessWidget {
 
   void _showMonochromeLessonColorDialog(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final current = Color(monochromeLessonColorNotifier.value);
-    var red = current.r * 255.0;
-    var green = current.g * 255.0;
-    var blue = current.b * 255.0;
-    _showUnifiedSheet<void>(
+    _showUntisRgbColorPickerSheet(
       context: context,
-      isScrollControlled: true,
-      child: StatefulBuilder(
-        builder: (ctx, setPickerState) {
-          final preview = Color.fromARGB(
-            255,
-            red.round(),
-            green.round(),
-            blue.round(),
-          );
-          Widget slider(
-            String label,
-            double value,
-            Color color,
-            ValueChanged<double> onChanged,
-          ) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('$label: ${value.round()}'),
-              HapticSlider(
-                value: value,
-                min: 0,
-                max: 255,
-                activeColor: color,
-                onChanged: onChanged,
-              ),
-            ],
-          );
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              12,
-              20,
-              MediaQuery.of(ctx).viewInsets.bottom + 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.settingsCustomColor,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: preview,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                slider(
-                  l.settingsColorRed,
-                  red,
-                  Colors.red,
-                  (value) => setPickerState(() => red = value),
-                ),
-                slider(
-                  l.settingsColorGreen,
-                  green,
-                  Colors.green,
-                  (value) => setPickerState(() => green = value),
-                ),
-                slider(
-                  l.settingsColorBlue,
-                  blue,
-                  Colors.blue,
-                  (value) => setPickerState(() => blue = value),
-                ),
-                Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 8,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(l.cancel),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        _settingsSetMonochromeLessonColor(0xFF757575);
-                        Navigator.pop(ctx);
-                      },
-                      child: Text(l.settingsColorReset),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        _settingsSetMonochromeLessonColor(preview.toARGB32());
-                        Navigator.pop(ctx);
-                      },
-                      child: Text(l.settingsColorApply),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+      title: l.settingsCustomColor,
+      initialColor: Color(monochromeLessonColorNotifier.value),
+      onReset: () => _settingsSetMonochromeLessonColor(0xFF757575),
+    ).then((picked) {
+      if (picked != null) {
+        _settingsSetMonochromeLessonColor(picked.toARGB32());
+      }
+    });
   }
 
   String _transitionLabel(AppL10n l, int index) {
@@ -536,7 +437,6 @@ class SettingsAppearancePage extends StatelessWidget {
       title: l.settingsAppearance,
       children: [
         _buildThemePicker(context, l, selectedTheme),
-        // ── GROUP 1: THEME & COLOR SCHEME ──
         ValueListenableBuilder<bool>(
           valueListenable: useMaterialYouNotifier,
           builder: (context, useMaterialYou, _) => SettingsGroup(
@@ -758,7 +658,6 @@ class SettingsAppearancePage extends StatelessWidget {
         ),
         ),
 
-        // ── SURFACES ──
         AnimatedBuilder(
           animation: Listenable.merge([
             blurEnabledNotifier,
@@ -969,7 +868,6 @@ class SettingsAppearancePage extends StatelessWidget {
           },
         ),
 
-        // ── BACKGROUND ──
         if (capabilities.supportsBackgroundMotion ||
             capabilities.supportsCustomBackgrounds)
           ValueListenableBuilder<bool>(
@@ -1047,7 +945,6 @@ class SettingsAppearancePage extends StatelessWidget {
           ),
           ),
 
-        // ── MOTION & EFFECTS ──
         SettingsGroup(
           title: l.settingsAppearanceMotion,
           children: [
@@ -1117,7 +1014,6 @@ class SettingsAppearancePage extends StatelessWidget {
           ],
         ),
 
-        // ── TIMETABLE COLORS ──
         ValueListenableBuilder<bool>(
           valueListenable: monochromeLessonsNotifier,
           builder: (context, monochromeEnabled, _) => SettingsGroup(
@@ -1149,7 +1045,6 @@ class SettingsAppearancePage extends StatelessWidget {
           ),
         ),
 
-        // ── APP ──
         SettingsGroup(
           title: l.settingsAppearanceApp,
           children: [

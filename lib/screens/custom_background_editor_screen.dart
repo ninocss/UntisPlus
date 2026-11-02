@@ -500,19 +500,15 @@ class _CustomBackgroundEditorScreenState
       await upsertCustomBackground(normalized);
       if (!mounted) return;
       _commitDraft(normalized);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaved),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        appL10nFor(appLocaleNotifier.value).bgEditorSaved,
+        behavior: SnackBarBehavior.floating,
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(appL10nFor(appLocaleNotifier.value).bgEditorSaveFailed),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        appL10nFor(appLocaleNotifier.value).bgEditorSaveFailed,
+        behavior: SnackBarBehavior.floating,
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -533,11 +529,9 @@ class _CustomBackgroundEditorScreenState
     await prefs.setInt('backgroundAnimationStyle', 10);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(appL10nFor(appLocaleNotifier.value).bgEditorApplied),
-        behavior: SnackBarBehavior.floating,
-      ),
+    context.showUntisSnackBar(
+      appL10nFor(appLocaleNotifier.value).bgEditorApplied,
+      behavior: SnackBarBehavior.floating,
     );
   }
 
@@ -588,11 +582,9 @@ class _CustomBackgroundEditorScreenState
     final jsonText = exportCustomBackgroundSpecPretty(_draft);
     await Clipboard.setData(ClipboardData(text: jsonText));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l.bgEditorExported),
-        behavior: SnackBarBehavior.floating,
-      ),
+    context.showUntisSnackBar(
+      l.bgEditorExported,
+      behavior: SnackBarBehavior.floating,
     );
   }
 
@@ -603,11 +595,9 @@ class _CustomBackgroundEditorScreenState
     );
     await Clipboard.setData(ClipboardData(text: jsonText));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(l.bgEditorExportedAll),
-        behavior: SnackBarBehavior.floating,
-      ),
+    context.showUntisSnackBar(
+      l.bgEditorExportedAll,
+      behavior: SnackBarBehavior.floating,
     );
   }
 
@@ -617,11 +607,9 @@ class _CustomBackgroundEditorScreenState
     final text = data?.text ?? '';
     if (text.trim().isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.bgEditorImportClipboardEmpty),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        l.bgEditorImportClipboardEmpty,
+        behavior: SnackBarBehavior.floating,
       );
       return;
     }
@@ -629,19 +617,15 @@ class _CustomBackgroundEditorScreenState
     try {
       final count = await importCustomBackgroundsFromJsonText(text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.bgEditorImportedCount(count)),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        l.bgEditorImportedCount(count),
+        behavior: SnackBarBehavior.floating,
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.bgEditorImportFailed),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        l.bgEditorImportFailed,
+        behavior: SnackBarBehavior.floating,
       );
     }
   }
@@ -663,19 +647,15 @@ class _CustomBackgroundEditorScreenState
       final text = utf8.decode(bytes);
       final count = await importCustomBackgroundsFromJsonText(text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.bgEditorImportedCount(count)),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        l.bgEditorImportedCount(count),
+        behavior: SnackBarBehavior.floating,
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.bgEditorImportFailed),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        l.bgEditorImportFailed,
+        behavior: SnackBarBehavior.floating,
       );
     }
   }
@@ -737,113 +717,11 @@ class _CustomBackgroundEditorScreenState
   Future<Color?> _pickRgbColor({
     required String title,
     required Color initial,
-  }) async {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final cs = Theme.of(context).colorScheme;
-
-    double red = (initial.r * 255.0).round().clamp(0, 255).toDouble();
-    double green = (initial.g * 255.0).round().clamp(0, 255).toDouble();
-    double blue = (initial.b * 255.0).round().clamp(0, 255).toDouble();
-
-    return _showUnifiedSheet<Color>(
-      context: context,
-      isScrollControlled: true,
-      child: StatefulBuilder(
-        builder: (ctx, setStateDialog) {
-          final preview = Color.fromARGB(
-            255,
-            red.round(),
-            green.round(),
-            blue.round(),
-          );
-          return Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              12,
-              16,
-              MediaQuery.of(ctx).viewInsets.bottom + 16,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  height: 66,
-                  decoration: BoxDecoration(
-                    color: preview,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: cs.outlineVariant),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '${l.settingsColorRed}: ${red.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-                HapticSlider(
-                  value: red,
-                  min: 0,
-                  max: 255,
-                  activeColor: Colors.red,
-                  onChanged: (v) => setStateDialog(() => red = v),
-                ),
-                Text(
-                  '${l.settingsColorGreen}: ${green.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-                HapticSlider(
-                  value: green,
-                  min: 0,
-                  max: 255,
-                  activeColor: Colors.green,
-                  onChanged: (v) => setStateDialog(() => green = v),
-                ),
-                Text(
-                  '${l.settingsColorBlue}: ${blue.round()}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                ),
-                HapticSlider(
-                  value: blue,
-                  min: 0,
-                  max: 255,
-                  activeColor: Colors.blue,
-                  onChanged: (v) => setStateDialog(() => blue = v),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(
-                        l.cancel,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(ctx, preview),
-                      child: Text(
-                        l.settingsColorApply,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
+  }) => _showUntisRgbColorPickerSheet(
+    context: context,
+    title: title,
+    initialColor: initial,
+  );
 
   List<int> _ensureAtLeastNColors(List<int> colors, int n, Color fallback) {
     final out = [...colors];
@@ -928,11 +806,9 @@ class _CustomBackgroundEditorScreenState
       if (!mounted) return;
       _commitDraft(created);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.bgEditorAiSuccess),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        l.bgEditorAiSuccess,
+        behavior: SnackBarBehavior.floating,
       );
     } catch (e) {
       if (!mounted) return;
@@ -944,11 +820,9 @@ class _CustomBackgroundEditorScreenState
           : isApiError
           ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
           : '${l.aiConnectionError} $e';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${l.bgEditorAiError}$detail'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      context.showUntisSnackBar(
+        '${l.bgEditorAiError}$detail',
+        behavior: SnackBarBehavior.floating,
       );
     } finally {
       if (mounted) setState(() => _aiBusy = false);

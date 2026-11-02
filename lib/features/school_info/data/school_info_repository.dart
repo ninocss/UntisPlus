@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../../core/defensive_parsers.dart';
 import '../../../core/sync_state.dart';
 import '../../../core/time_utils.dart';
 import '../../../data/webuntis/untis_endpoint.dart';
@@ -113,7 +113,9 @@ class SchoolInfoRepository {
       '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/messageFileRequest.do'
       '?file=${Uri.encodeQueryComponent(attachmentId)}',
     );
-    for (final cookie in _schoolCookies(schoolName)) {
+    for (final cookie in WebUntisMessageContextResolver.schoolCookies(
+      schoolName,
+    )) {
       try {
         return await _client.getBytes(
           uri: uri,
@@ -138,7 +140,7 @@ class SchoolInfoRepository {
     required String schoolName,
     required String sessionId,
   }) async {
-    final cookies = _schoolCookies(schoolName);
+    final cookies = WebUntisMessageContextResolver.schoolCookies(schoolName);
     WebUntisFailure? inboxFailure;
     WebUntisFailure? newsFailure;
     final initial = await Future.wait<List<Map<String, dynamic>>>([
@@ -236,7 +238,7 @@ class SchoolInfoRepository {
         if (result.isEmpty) continue;
         news = result
             .whereType<Map>()
-            .map(_stringKeyedMap)
+            .map(asStringDynamicMap)
             .toList(growable: false);
         break;
       }
@@ -292,9 +294,9 @@ class SchoolInfoRepository {
     return incoming
         .whereType<Map>()
         .map((raw) {
-          final rawMap = _stringKeyedMap(raw);
+          final rawMap = asStringDynamicMap(raw);
           final nestedMessage = rawMap['message'] is Map
-              ? _stringKeyedMap(rawMap['message'] as Map)
+              ? asStringDynamicMap(rawMap['message'] as Map)
               : null;
           final map = <String, dynamic>{...rawMap};
           if (nestedMessage != null) {
@@ -338,7 +340,7 @@ class SchoolInfoRepository {
         if (value is! List) continue;
         for (final rawAttachment in value) {
           if (rawAttachment is! Map) continue;
-          final attachment = _stringKeyedMap(rawAttachment);
+          final attachment = asStringDynamicMap(rawAttachment);
           final id =
               (attachment['fileId'] ??
                       attachment['attachmentId'] ??
@@ -377,7 +379,7 @@ class SchoolInfoRepository {
       final messages = data is Map ? data['messagesOfDay'] : null;
       if (messages is! List) continue;
       for (final raw in messages.whereType<Map>()) {
-        final map = _stringKeyedMap(raw);
+        final map = asStringDynamicMap(raw);
         output.add({
           ...map,
           'date': map['date'] ?? date,
@@ -468,18 +470,4 @@ class SchoolInfoRepository {
     }
     return const [];
   }
-
-  static List<String> _schoolCookies(String schoolName) {
-    final values = <String>[];
-    if (schoolName.isNotEmpty) {
-      try {
-        values.add('_${base64Encode(utf8.encode(schoolName))}');
-      } catch (_) {}
-      values.add(schoolName);
-    }
-    return values.toSet().toList(growable: false);
-  }
-
-  static Map<String, dynamic> _stringKeyedMap(Map raw) =>
-      raw.map((key, value) => MapEntry(key.toString(), value));
 }

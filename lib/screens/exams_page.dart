@@ -1,7 +1,5 @@
 part of '../main.dart';
 
-// --- PRÜFUNGEN PAGE ---
-
 class ExamsPage extends StatefulWidget {
   const ExamsPage({super.key});
 
@@ -151,114 +149,32 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
   String _examType(Map<String, dynamic> e) =>
       (e['examType'] ?? e['type'] ?? e['typeName'] ?? '').toString();
 
-  Future<String> _requestExamImportResponse({
-    required String prompt,
-    required Uint8List fileBytes,
-    required String mimeType,
-  }) {
-    if (!aiEnabledNotifier.value) {
-      return Future<String>.error(StateError('AI is disabled'));
-    }
-    final l = appL10nFor(appLocaleNotifier.value);
-    final runtime = _currentAiRuntimeConfiguration();
-    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
-    final capabilities = _aiRequestCoordinator.capabilities(runtime);
-    final attachment = AiChatAttachment(
-      name: 'exam-import',
-      mimeType: mimeType,
-      bytes: fileBytes,
-    );
-    return _aiRequestCoordinator.generate(
-      runtime: runtime,
-      spec: AiRequestSpec(
-        systemPrompt: capabilities.pdf
-            ? l.aiExamJsonSystemPrompt
-            : l.aiExamImageSystemPrompt,
-        userPrompt: prompt,
-        temperature: 0.1,
-        maxTokens: 2200,
-        topP: 1,
-        requiresImages: mimeType.startsWith('image/'),
-        requiresPdf: mimeType == 'application/pdf',
-        allowLocal: false,
-        attachments: [attachment],
-        noReplyMessage: l.aiNoReply,
-        missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
-        customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
-        localProviderUnsupportedMessage: l.aiLocalModelExamNotSupported,
-        unsupportedAttachmentMessage: (type) =>
-            'Unsupported file type for this provider: $type',
-      ),
-    );
-  }
-
+  // Uses [AiRequestSpec] via [_requestAiVisionImportText].
   Future<void> _importExamsWithAI() async {
-    if (!aiEnabledNotifier.value) return;
     final l = appL10nFor(appLocaleNotifier.value);
-    final runtime = _currentAiRuntimeConfiguration();
-    final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
-    final capabilities = _aiRequestCoordinator.capabilities(runtime);
-    final preflight = AiRequestSpec(
-      systemPrompt: '',
-      userPrompt: '',
-      noReplyMessage: l.aiNoReply,
-      allowLocal: true,
-      requireLocalModel: false,
-      missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
-      customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
-    );
-    try {
-      _aiRequestCoordinator.validate(runtime, preflight);
-    } catch (e) {
-      final message = e.toString().replaceFirst('Exception: CONFIG: ', '');
-      if (mounted) context.showUntisSnackBar(message);
-      return;
-    }
-    final providerUsesGeminiProtocol = capabilities.pdf;
-
-    final source = await _showUnifiedOptionSheet<String>(
+    final picked = await _pickAiImportFileFromSheet(
       context: context,
-      title: l.examsImportTitle,
-      options: [
-        _SheetOption(
-          value: 'camera',
-          title: l.examsImportCamera,
-          icon: Icons.camera_alt_rounded,
-        ),
-        _SheetOption(
-          value: 'gallery',
-          title: l.examsImportGallery,
-          icon: Icons.image_rounded,
-        ),
-        _SheetOption(
-          value: 'file',
-          title: l.examsImportFile,
-          icon: Icons.picture_as_pdf_rounded,
-        ),
-      ],
+      sheetTitle: l.examsImportTitle,
     );
-
-    if (source == null) return;
-    final importFile = await _pickAiImportFile(
-      source,
-      allowPdf: providerUsesGeminiProtocol,
-    );
-    if (importFile == null) return;
-
-    if (!mounted) return;
+    if (picked == null || !mounted) return;
 
     try {
       final prompt = l.aiExamVisionPrompt(
-        providerUsesGeminiProtocol ? l.aiFileKindPdf : '',
+        picked.supportsPdf ? l.aiFileKindPdf : '',
         DateTime.now().year,
       );
 
       final text = await runWithUntisBlockingLoader(
         context,
-        () => _requestExamImportResponse(
+        () => _requestAiVisionImportText(
           prompt: prompt,
-          fileBytes: importFile.bytes,
-          mimeType: importFile.mimeType,
+          fileBytes: picked.file.bytes,
+          mimeType: picked.file.mimeType,
+          attachmentName: 'exam-import',
+          systemPromptBuilder: (capabilities, l) => capabilities.pdf
+              ? l.aiExamJsonSystemPrompt
+              : l.aiExamImageSystemPrompt,
+          localProviderUnsupportedMessage: l.aiLocalModelExamNotSupported,
         ),
       );
       if (!mounted) return;
@@ -285,24 +201,16 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       context.showUntisSnackBar(l.examsImportSuccess);
     } catch (e) {
       if (!mounted) return;
-      final message = e.toString();
-      final isApiError = message.contains('API:');
-      final isConfigError = message.contains('CONFIG:');
-      final detail = isConfigError
-          ? message.replaceFirst('Exception: CONFIG: ', '')
-          : isApiError
-          ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-          : '${l.aiConnectionError} $e';
-      context.showUntisSnackBar('${l.examsImportError}$detail');
+      context.showUntisSnackBar(
+        '${l.examsImportError}${_formatAiErrorDetail(e, l)}',
+      );
     }
   }
 
   Future<void> _exportCustomExams() async {
     final l = appL10nFor(appLocaleNotifier.value);
     if (_customExams.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.examsExportEmpty)));
+      context.showUntisSnackBar(l.examsExportEmpty);
       return;
     }
 
@@ -321,9 +229,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final jsonText = const JsonEncoder.withIndent('  ').convert(exportPayload);
     await Clipboard.setData(ClipboardData(text: jsonText));
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(l.examsExportSuccess)));
+    context.showUntisSnackBar(l.examsExportSuccess);
   }
 
   @override
@@ -709,7 +615,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     final timeStart = exam['startTime'];
     final timeEnd = exam['endTime'];
     final timeStr = timeStart != null
-        ? '${_formatUntisTime(timeStart.toString())} – ${_formatUntisTime((timeEnd ?? timeStart).toString())}'
+        ? '${formatUntisTime(timeStart.toString())} – ${formatUntisTime((timeEnd ?? timeStart).toString())}'
         : '';
     final teachers = () {
       final t = exam['teachers'] ?? exam['teacher'];

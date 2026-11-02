@@ -234,13 +234,7 @@ class _AbsencesPageState extends ConsumerState<AbsencesPage> {
       sessionManager: ref.read(webUntisSessionManagerProvider),
       capabilities: ref.read(webUntisCapabilitiesProvider),
     );
-    UntisAccount? activeAccount;
-    for (final account in untisAccountsNotifier.value) {
-      if (account.id == activeUntisAccountId) {
-        activeAccount = account;
-        break;
-      }
-    }
+    final activeAccount = activeUntisAccount;
     final requestSchoolUrl = activeAccount?.schoolUrl ?? schoolUrl;
     final requestSchoolName = activeAccount?.schoolName ?? schoolName;
     final requestSessionId = activeAccount?.sessionId ?? sessionID;
@@ -739,7 +733,7 @@ class _AbsenceTile extends StatelessWidget {
         subtitle: Text(
           [
             if (absence.subject.isNotEmpty) formattedDate,
-            '${_formatUntisTime('${absence.startTime}')}–${_formatUntisTime('${absence.endTime}')}',
+            '${formatUntisTime('${absence.startTime}')}–${formatUntisTime('${absence.endTime}')}',
             status.$1,
             if (absence.reason.isNotEmpty) absence.reason,
           ].join(' · '),

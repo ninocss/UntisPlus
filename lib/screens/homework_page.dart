@@ -1,7 +1,5 @@
 part of '../main.dart';
 
-// --- HAUSAUFGABEN & PRÜFUNGEN ---
-
 Widget _chip(String label, Color bg, Color fg) => Container(
   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
   decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
@@ -37,6 +35,56 @@ List<DateTime> _findSubjectDates(String subject) {
   }
   final list = dates.toList()..sort();
   return list.take(4).toList();
+}
+
+Widget _buildSuggestedSubjectDatesBar({
+  required BuildContext context,
+  required String subject,
+  required DateTime selectedDate,
+  required ValueChanged<DateTime> onDateSelected,
+}) {
+  final suggested = _findSubjectDates(subject);
+  if (suggested.isEmpty) return const SizedBox.shrink();
+  final cs = Theme.of(context).colorScheme;
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: suggested.map((d) {
+          final isSelected =
+              d.year == selectedDate.year &&
+              d.month == selectedDate.month &&
+              d.day == selectedDate.day;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(
+                DateFormat(
+                  'E, dd.MM.',
+                  _icuLocale(appLocaleNotifier.value),
+                ).format(d),
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              selected: isSelected,
+              onSelected: (val) {
+                if (val) onDateSelected(d);
+              },
+              selectedColor: cs.primaryContainer,
+              labelStyle: TextStyle(
+                color: isSelected
+                    ? cs.onPrimaryContainer
+                    : cs.onSurfaceVariant,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    ),
+  );
 }
 
 Future<void> _showAddHomeworkDialog(
@@ -141,168 +189,53 @@ Future<void> _showAddHomeworkDialog(
                 ],
               ),
               const SizedBox(height: 32),
-              Text(
-                l.homeworkSubjectLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              _sheetSectionLabel(ctx, l.homeworkSubjectLabel),
               const SizedBox(height: 12),
-              if (subjects.isNotEmpty)
-                _m3SelectionMenu(
-                  context: ctx,
-                  value: selectedSubject,
-                  entries: subjects,
-                  icon: Icons.book_rounded,
-                  onSelected: (value) => setDlg(() {
-                    selectedSubject = value;
-                    subjectCtrl.text = selectedSubject;
-                  }),
-                )
-              else
-                TextField(
-                  controller: subjectCtrl,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.book_rounded),
-                    hintText: l.homeworkSubjectLabel,
-                    filled: true,
-                    fillColor: cs.surfaceContainerHighest.withValues(
-                      alpha: 0.4,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 24),
-              Text(
-                l.homeworkTaskLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
+              _untisSheetSubjectSelector(
+                context: ctx,
+                subjects: subjects,
+                selectedSubject: selectedSubject,
+                onSelected: (value) => setDlg(() {
+                  selectedSubject = value;
+                  subjectCtrl.text = selectedSubject;
+                }),
+                fallbackController: subjectCtrl,
+                fallbackHint: l.homeworkSubjectLabel,
               ),
+              const SizedBox(height: 24),
+              _sheetSectionLabel(ctx, l.homeworkTaskLabel),
               const SizedBox(height: 12),
               TextField(
                 controller: taskCtrl,
                 maxLines: 3,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                decoration: InputDecoration(
+                decoration: _untisSheetInputDecoration(
+                  ctx,
+                  prefixIcon: Icons.assignment_rounded,
+                  hintText: l.homeworkTaskLabel,
+                ).copyWith(
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(bottom: 42),
                     child: Icon(Icons.assignment_rounded),
                   ),
-                  hintText: l.homeworkTaskLabel,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                l.homeworkDueDateLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              _sheetSectionLabel(ctx, l.homeworkDueDateLabel),
               const SizedBox(height: 12),
-              Builder(
-                builder: (context) {
-                  final suggested = _findSubjectDates(selectedSubject);
-                  if (suggested.isEmpty) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: suggested.map((d) {
-                          final isSelected =
-                              d.year == selectedDate.year &&
-                              d.month == selectedDate.month &&
-                              d.day == selectedDate.day;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              label: Text(
-                                DateFormat(
-                                  'E, dd.MM.',
-                                  appLocaleNotifier.value,
-                                ).format(d),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              selected: isSelected,
-                              onSelected: (val) {
-                                if (val) setDlg(() => selectedDate = d);
-                              },
-                              selectedColor: cs.primaryContainer,
-                              labelStyle: TextStyle(
-                                color: isSelected
-                                    ? cs.onPrimaryContainer
-                                    : cs.onSurfaceVariant,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  );
-                },
+              _buildSuggestedSubjectDatesBar(
+                context: ctx,
+                subject: selectedSubject,
+                selectedDate: selectedDate,
+                onDateSelected: (d) => setDlg(() => selectedDate = d),
               ),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) {
-                    setDlg(() => selectedDate = picked);
-                  }
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today_rounded, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        DateFormat(
-                          'dd. MMMM yyyy',
-                          _icuLocale(appLocaleNotifier.value),
-                        ).format(selectedDate),
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _untisSheetDatePickerField(
+                context: ctx,
+                selectedDate: selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                onDateSelected: (picked) =>
+                    setDlg(() => selectedDate = picked),
               ),
               const SizedBox(height: 40),
               Row(
@@ -386,72 +319,27 @@ Future<void> _showAddHomeworkDialog(
   );
 }
 
+// Uses [AiRequestSpec] via [_requestAiVisionImportText].
 Future<void> _importHomeworkWithAI(BuildContext context) async {
-  if (!aiEnabledNotifier.value) return;
   final l = appL10nFor(appLocaleNotifier.value);
-  final runtime = _currentAiRuntimeConfiguration();
-  final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
-  final capabilities = _aiRequestCoordinator.capabilities(runtime);
-  final preflight = AiRequestSpec(
-    systemPrompt: '',
-    userPrompt: '',
-    noReplyMessage: l.aiNoReply,
-    allowLocal: true,
-    requireLocalModel: false,
-    missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
-    customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
-  );
-  try {
-    _aiRequestCoordinator.validate(runtime, preflight);
-  } catch (e) {
-    final message = e.toString().replaceFirst('Exception: CONFIG: ', '');
-    if (context.mounted) context.showUntisSnackBar(message);
-    return;
-  }
-  final providerUsesGeminiProtocol = capabilities.pdf;
-
-  final source = await _showUnifiedOptionSheet<String>(
+  final picked = await _pickAiImportFileFromSheet(
     context: context,
-    title: l.homeworkImportTitle,
-    options: [
-      _SheetOption(
-        value: 'camera',
-        title: l.examsImportCamera,
-        icon: Icons.camera_alt_rounded,
-      ),
-      _SheetOption(
-        value: 'gallery',
-        title: l.examsImportGallery,
-        icon: Icons.image_rounded,
-      ),
-      _SheetOption(
-        value: 'file',
-        title: l.examsImportFile,
-        icon: Icons.picture_as_pdf_rounded,
-      ),
-    ],
+    sheetTitle: l.homeworkImportTitle,
   );
-
-  if (source == null) return;
-  final importFile = await _pickAiImportFile(
-    source,
-    allowPdf: providerUsesGeminiProtocol,
-  );
-  if (importFile == null) return;
-
-  if (!context.mounted) return;
+  if (picked == null || !context.mounted) return;
 
   try {
     final prompt = l.aiHomeworkVisionPrompt(
-      providerUsesGeminiProtocol ? l.aiFileKindPdf : '',
+      picked.supportsPdf ? l.aiFileKindPdf : '',
     );
 
     final text = await runWithUntisBlockingLoader(
       context,
-      () => _requestAiVisionAnalysisGlobal(
+      () => _requestAiVisionImportText(
         prompt: prompt,
-        fileBytes: importFile.bytes,
-        mimeType: importFile.mimeType,
+        fileBytes: picked.file.bytes,
+        mimeType: picked.file.mimeType,
+        attachmentName: 'homework-import',
       ),
     );
     if (!context.mounted) return;
@@ -479,47 +367,10 @@ Future<void> _importHomeworkWithAI(BuildContext context) async {
     context.showUntisSnackBar(l.homeworkImportSuccess);
   } catch (e) {
     if (!context.mounted) return;
-    context.showUntisSnackBar('${l.homeworkImportError}$e');
+    context.showUntisSnackBar(
+      '${l.homeworkImportError}${_formatAiErrorDetail(e, l)}',
+    );
   }
-}
-
-Future<String> _requestAiVisionAnalysisGlobal({
-  required String prompt,
-  required Uint8List fileBytes,
-  required String mimeType,
-}) {
-  if (!aiEnabledNotifier.value) {
-    return Future<String>.error(StateError('AI is disabled'));
-  }
-  final l = appL10nFor(appLocaleNotifier.value);
-  final runtime = _currentAiRuntimeConfiguration();
-  final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
-  return _aiRequestCoordinator.generate(
-    runtime: runtime,
-    spec: AiRequestSpec(
-      systemPrompt: '',
-      userPrompt: prompt,
-      temperature: 0.1,
-      maxTokens: 2200,
-      topP: 1,
-      requiresImages: mimeType.startsWith('image/'),
-      requiresPdf: mimeType == 'application/pdf',
-      allowLocal: false,
-      attachments: [
-        AiChatAttachment(
-          name: 'homework-import',
-          mimeType: mimeType,
-          bytes: fileBytes,
-        ),
-      ],
-      noReplyMessage: l.aiNoReply,
-      missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
-      customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
-      localProviderUnsupportedMessage: 'Unsupported provider for vision: local',
-      unsupportedAttachmentMessage: (type) =>
-          'Unsupported file type for this provider: $type',
-    ),
-  );
 }
 
 class HomeworkPage extends StatelessWidget {
@@ -975,15 +826,11 @@ class _HomeworkViewState extends State<_HomeworkView> {
       AppHaptics.selection();
       await setDone(!isDone);
       if (!context.mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(!isDone ? l.homeworkMarkedDone : l.homeworkReopened),
-          action: SnackBarAction(
-            label: l.commonUndo,
-            onPressed: () => unawaited(setDone(isDone)),
-          ),
+      context.showUntisSnackBar(
+        !isDone ? l.homeworkMarkedDone : l.homeworkReopened,
+        action: SnackBarAction(
+          label: l.commonUndo,
+          onPressed: () => unawaited(setDone(isDone)),
         ),
       );
     }
@@ -991,9 +838,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
     Future<void> openHomework() async {
       AppHaptics.selection();
       if (!isCustom) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l.homeworkManaged)));
+        context.showUntisSnackBar(l.homeworkManaged);
         return;
       }
       final list = List<Map<String, dynamic>>.from(
@@ -1272,191 +1117,63 @@ Future<void> _showAddExamDialog(
                 ],
               ),
               const SizedBox(height: 32),
-              Text(
-                l.examsSubjectLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              _sheetSectionLabel(ctx, l.examsSubjectLabel),
               const SizedBox(height: 12),
-              if (subjects.isNotEmpty)
-                _m3SelectionMenu(
-                  context: ctx,
-                  value: selectedSubject,
-                  entries: subjects,
-                  icon: Icons.book_rounded,
-                  onSelected: (value) => setDlg(() {
-                    selectedSubject = value;
-                    subjectCtrl.text = selectedSubject;
-                  }),
-                )
-              else
-                TextField(
-                  controller: subjectCtrl,
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.book_rounded),
-                    hintText: l.examsSubjectLabel,
-                    filled: true,
-                    fillColor: cs.surfaceContainerHighest.withValues(
-                      alpha: 0.4,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 24),
-              Text(
-                l.examsTypeLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
+              _untisSheetSubjectSelector(
+                context: ctx,
+                subjects: subjects,
+                selectedSubject: selectedSubject,
+                onSelected: (value) => setDlg(() {
+                  selectedSubject = value;
+                  subjectCtrl.text = selectedSubject;
+                }),
+                fallbackController: subjectCtrl,
+                fallbackHint: l.examsSubjectLabel,
               ),
+              const SizedBox(height: 24),
+              _sheetSectionLabel(ctx, l.examsTypeLabel),
               const SizedBox(height: 12),
               TextField(
                 controller: typeCtrl,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.label_important_rounded),
+                decoration: _untisSheetInputDecoration(
+                  ctx,
+                  prefixIcon: Icons.label_important_rounded,
                   hintText: l.examsTypeLabel,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                l.gradesDateLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              _sheetSectionLabel(ctx, l.gradesDateLabel),
               const SizedBox(height: 12),
-              Builder(
-                builder: (context) {
-                  final suggested = _findSubjectDates(selectedSubject);
-                  if (suggested.isEmpty) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: suggested.map((d) {
-                          final isSelected =
-                              d.year == selectedDate.year &&
-                              d.month == selectedDate.month &&
-                              d.day == selectedDate.day;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ChoiceChip(
-                              label: Text(
-                                DateFormat(
-                                  'E, dd.MM.',
-                                  appLocaleNotifier.value,
-                                ).format(d),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              selected: isSelected,
-                              onSelected: (val) {
-                                if (val) setDlg(() => selectedDate = d);
-                              },
-                              selectedColor: cs.primaryContainer,
-                              labelStyle: TextStyle(
-                                color: isSelected
-                                    ? cs.onPrimaryContainer
-                                    : cs.onSurfaceVariant,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  );
-                },
+              _buildSuggestedSubjectDatesBar(
+                context: ctx,
+                subject: selectedSubject,
+                selectedDate: selectedDate,
+                onDateSelected: (d) => setDlg(() => selectedDate = d),
               ),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) {
-                    setDlg(() => selectedDate = picked);
-                  }
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today_rounded, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        DateFormat(
-                          'dd. MMMM yyyy',
-                          _icuLocale(appLocaleNotifier.value),
-                        ).format(selectedDate),
-                        style: GoogleFonts.outfit(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _untisSheetDatePickerField(
+                context: ctx,
+                selectedDate: selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                onDateSelected: (picked) =>
+                    setDlg(() => selectedDate = picked),
               ),
               const SizedBox(height: 24),
-              Text(
-                l.examsNotesLabel.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              _sheetSectionLabel(ctx, l.examsNotesLabel),
               const SizedBox(height: 12),
               TextField(
                 controller: descCtrl,
                 maxLines: 3,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                decoration: InputDecoration(
+                decoration: _untisSheetInputDecoration(
+                  ctx,
+                  prefixIcon: Icons.notes_rounded,
+                  hintText: l.examsNotesLabel,
+                ).copyWith(
                   prefixIcon: const Padding(
                     padding: EdgeInsets.only(bottom: 42),
                     child: Icon(Icons.notes_rounded),
-                  ),
-                  hintText: l.examsNotesLabel,
-                  filled: true,
-                  fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
                   ),
                 ),
               ),

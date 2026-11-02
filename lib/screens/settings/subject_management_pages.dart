@@ -415,7 +415,7 @@ class SubjectColorsPage extends StatelessWidget {
                 return ListView(
                   padding: EdgeInsets.fromLTRB(
                     16,
-                    MediaQuery.paddingOf(context).top + 12,
+                    MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
                     16,
                     mq.padding.bottom + 120,
                   ),
@@ -527,7 +527,7 @@ class HiddenSubjectsPage extends StatelessWidget {
             return ListView(
               padding: EdgeInsets.fromLTRB(
                 16,
-                MediaQuery.paddingOf(context).top + 12,
+                MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
                 16,
                 mq.padding.bottom + 120,
               ),

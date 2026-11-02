@@ -5,8 +5,7 @@ enum _AiMode { analysis, chat }
 const Duration _kAiStandardMotion = Duration(milliseconds: 280);
 const Duration _kAiReducedMotion = Duration(milliseconds: 120);
 
-bool _aiReduceMotion(BuildContext context) =>
-    MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+bool _aiReduceMotion(BuildContext context) => !AppMotion.enabled(context);
 
 Duration _aiMotionDuration(
   BuildContext context, {

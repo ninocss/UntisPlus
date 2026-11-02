@@ -466,17 +466,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
                 Text(
                   l.settingsAiCustomBaseUrl,
                   style: untisThemeTextStyle(
@@ -572,17 +561,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
                 Text(
                   l.settingsAiPromptEditTitle,
                   style: untisThemeTextStyle(
@@ -679,17 +657,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(ctx).colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
                 Text(
                   l.settingsAiPromptVariables,
                   style: untisThemeTextStyle(
@@ -1016,151 +983,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<int?> _showBackgroundStylePicker(int currentStyle) {
     final l = appL10nFor(appLocaleNotifier.value);
-    final mq = MediaQuery.of(context);
-    final safeViewportHeight =
-        mq.size.height -
-        mq.padding.top -
-        mq.padding.bottom -
-        mq.viewInsets.bottom;
-    final sheetHeight = safeViewportHeight.clamp(340.0, 620.0).toDouble();
-
-    return _showUnifiedSheet<int>(
+    return _showUnifiedOptionSheet<int>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      child: Builder(
-        builder: (sheetContext) {
-          final colors = Theme.of(sheetContext).colorScheme;
-          final blurOn = blurEnabledNotifier.value;
-
-          return _sheetSurface(
-            context: sheetContext,
-            blur: blurOn,
-            child: SizedBox(
-              height: sheetHeight,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: colors.onSurfaceVariant.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      l.settingsBackgroundStyle,
-                      style: untisThemeTextStyle(
-                        context,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 22,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: ListView.separated(
-                        physics: const ClampingScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 12),
-                        itemCount: 11,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 10),
-                        itemBuilder: (ctx, idx) {
-                          final selected = idx == currentStyle;
-                          final baseColor = colors.primary;
-                          final tileColor = selected
-                              ? baseColor.withValues(
-                                  alpha: blurOn ? 0.22 : 0.16,
-                                )
-                              : colors.surfaceContainerHigh.withValues(
-                                  alpha: blurOn ? 0.78 : 0.9,
-                                );
-                          final borderColor = selected
-                              ? baseColor.withValues(alpha: 0.55)
-                              : colors.outlineVariant.withValues(alpha: 0.5);
-
-                          return Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(18),
-                              onTap: () {
-                                AppHaptics.selection();
-                                Navigator.pop(sheetContext, idx);
-                              },
-                              child: Ink(
-                                decoration: BoxDecoration(
-                                  color: tileColor,
-                                  borderRadius: BorderRadius.circular(18),
-                                  border: Border.all(
-                                    color: borderColor,
-                                    width: selected ? 1.4 : 1,
-                                  ),
-                                ),
-                                child: ListTile(
-                                  minTileHeight: 56,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 2,
-                                  ),
-                                  leading: Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      color: colors.primary.withValues(
-                                        alpha: selected ? 0.24 : 0.12,
-                                      ),
-                                      borderRadius: BorderRadius.circular(11),
-                                    ),
-                                    child: Icon(
-                                      _backgroundStyleIcon(idx),
-                                      color: colors.primary.withValues(
-                                        alpha: 0.96,
-                                      ),
-                                      size: 19,
-                                    ),
-                                  ),
-                                  title: Text(
-                                    _backgroundStyleLabel(l, idx),
-                                    style: untisThemeTextStyle(
-                                      context,
-                                      fontWeight: selected
-                                          ? FontWeight.w700
-                                          : FontWeight.w600,
-                                      fontSize: 15.2,
-                                      color: colors.onSurface.withValues(
-                                        alpha: 0.98,
-                                      ),
-                                    ),
-                                  ),
-                                  trailing: selected
-                                      ? Icon(
-                                          Icons.check_circle_rounded,
-                                          color: colors.primary.withValues(
-                                            alpha: 0.98,
-                                          ),
-                                        )
-                                      : Icon(
-                                          Icons.chevron_right_rounded,
-                                          color: colors.onSurfaceVariant
-                                              .withValues(alpha: 0.86),
-                                        ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
+      title: l.settingsBackgroundStyle,
+      options: [
+        for (var idx = 0; idx <= 10; idx++)
+          _SheetOption(
+            value: idx,
+            title: _backgroundStyleLabel(l, idx),
+            icon: _backgroundStyleIcon(idx),
+            selected: idx == currentStyle,
+          ),
+      ],
     );
   }
 
@@ -1392,7 +1226,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               children: [
                 for (final (code, name, flag) in langs) ...[
                   _buildLangBtn(code, name, flag, currentLang),
-                  if (code != 'el') const SizedBox(height: 10),
+                  if (code != langs.last.$1) const SizedBox(height: 10),
                 ],
               ],
             ),

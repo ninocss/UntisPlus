@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 import '../data/webuntis/untis_endpoint.dart';
+import '../data/webuntis/webuntis_message_context.dart';
 
 class WebUntisMessageFailure implements Exception {
   const WebUntisMessageFailure(this.message, {this.statusCode});
@@ -73,41 +74,8 @@ class WebUntisComposeData {
   final WebUntisMessagePermissions permissions;
 }
 
-class _MessageWriteContext {
-  const _MessageWriteContext({
-    required this.cookie,
-    required this.token,
-    required this.schoolYearId,
-    required this.tenantId,
-  });
-
-  final String cookie;
-  final String token;
-  final int? schoolYearId;
-  final String? tenantId;
-
-  Map<String, String> get headers => {
-    'Cookie': cookie,
-    'Accept': 'application/json',
-    'Authorization': 'Bearer $token',
-    if (tenantId != null && tenantId!.isNotEmpty) 'Tenant-Id': tenantId!,
-    if (schoolYearId != null) 'X-Webuntis-Api-School-Year-Id': '$schoolYearId',
-  };
-}
-
 String _cookie(String sessionId, String schoolCookie) =>
     'JSESSIONID=$sessionId; schoolname=$schoolCookie';
-
-List<String> _schoolCookies(String schoolName) {
-  final values = <String>[];
-  if (schoolName.isNotEmpty) {
-    try {
-      values.add('_${base64Encode(utf8.encode(schoolName))}');
-    } catch (_) {}
-    values.add(schoolName);
-  }
-  return values.toSet().toList(growable: false);
-}
 
 /// Minimal MessageCenter 2021 client.
 ///
@@ -120,7 +88,7 @@ class WebUntisMessageService {
 
   final http.Client _client;
 
-  Future<_MessageWriteContext> _writeContext({
+  Future<WebUntisMessageContext> _writeContext({
     required String schoolUrl,
     required String schoolName,
     required String sessionId,
@@ -131,19 +99,23 @@ class WebUntisMessageService {
 
     String? token;
     String? selectedCookie;
-    for (final schoolCookie in _schoolCookies(schoolName)) {
+    for (final schoolCookie in WebUntisMessageContextResolver.schoolCookies(
+      schoolName,
+    )) {
       final cookie = _cookie(sessionId, schoolCookie);
       try {
         final response = await _client
             .get(
-              Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/token/new'),
+              Uri.parse(
+                '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/token/new',
+              ),
               headers: {'Cookie': cookie, 'Accept': 'application/json'},
             )
             .timeout(const Duration(seconds: 12));
         if (response.statusCode != 200) continue;
         final raw = response.body.trim();
         if (raw.isEmpty || raw.startsWith('<')) continue;
-        token = _tokenFromResponse(raw);
+        token = WebUntisMessageContextResolver.parseToken(raw);
         if (token != null && token.isNotEmpty) {
           selectedCookie = cookie;
           break;
@@ -164,54 +136,12 @@ class WebUntisMessageService {
       cookie: selectedCookie,
     );
 
-    return _MessageWriteContext(
+    return WebUntisMessageContext(
       cookie: selectedCookie,
       token: token,
       schoolYearId: schoolYearId,
-      tenantId: _tenantId(token),
+      tenantId: WebUntisMessageContextResolver.parseTenantId(token),
     );
-  }
-
-  String? _tokenFromResponse(String raw) {
-    if (!raw.startsWith('{')) {
-      return raw.replaceAll('"', '').trim();
-    }
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is String) return decoded.trim();
-      if (decoded is Map) {
-        for (final key in const [
-          'accessToken',
-          'token',
-          'access_token',
-          'jwt',
-          'jwt_token',
-        ]) {
-          final value = decoded[key]?.toString().trim();
-          if (value != null && value.isNotEmpty) return value;
-        }
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  String? _tenantId(String token) {
-    final parts = token.split('.');
-    if (parts.length < 2) return null;
-    try {
-      var payloadPart = parts[1].replaceAll('-', '+').replaceAll('_', '/');
-      while (payloadPart.length % 4 != 0) {
-        payloadPart += '=';
-      }
-      final payload = utf8.decode(base64Decode(payloadPart));
-      final decoded = jsonDecode(payload);
-      if (decoded is! Map) return null;
-      final value = decoded['tenant_id'] ?? decoded['tenantId'];
-      final tenant = value?.toString().trim();
-      return tenant == null || tenant.isEmpty ? null : tenant;
-    } catch (_) {
-      return null;
-    }
   }
 
   Future<int?> _schoolYearId({
@@ -270,7 +200,7 @@ class WebUntisMessageService {
 
   Future<WebUntisMessagePermissions> _fetchPermissions(
     String schoolUrl,
-    _MessageWriteContext context,
+    WebUntisMessageContext context,
   ) async {
     try {
       final response = await _client
@@ -310,7 +240,7 @@ class WebUntisMessageService {
 
   Future<List<WebUntisMessageRecipient>> _fetchRecipients(
     String schoolUrl,
-    _MessageWriteContext context,
+    WebUntisMessageContext context,
   ) async {
     final paths = const [
       '/WebUntis/api/rest/view/v2/messages/recipients/static/persons',

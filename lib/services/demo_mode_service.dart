@@ -1,4 +1,4 @@
-import 'package:intl/intl.dart';
+import '../core/time_utils.dart';
 
 class DemoModeService {
   static const int demoPersonType = 5;
@@ -375,7 +375,7 @@ class DemoModeService {
           fr: 'Examen',
           es: 'Examen parcial',
         ),
-        'date': _dateInt(
+        'date': untisDateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 3)),
         ),
         'description': _copy(
@@ -401,7 +401,7 @@ class DemoModeService {
           fr: 'Contrôle de vocabulaire',
           es: 'Prueba de vocabulario',
         ),
-        'date': _dateInt(
+        'date': untisDateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 8)),
         ),
         'description': _copy(
@@ -427,7 +427,7 @@ class DemoModeService {
           fr: 'Évaluation de laboratoire',
           es: 'Evaluación de laboratorio',
         ),
-        'date': _dateInt(
+        'date': untisDateInt(
           DateTime(y, now.month, now.day).add(const Duration(days: 12)),
         ),
         'description': _copy(
@@ -550,7 +550,7 @@ class DemoModeService {
           fr: 'Le mode démo présente toutes les fonctions avec des données locales.',
           es: 'El modo demo muestra todas las funciones con datos locales de ejemplo.',
         ),
-        'date': _dateInt(today),
+        'date': untisDateInt(today),
         'author': 'Untis+',
       },
       {
@@ -569,7 +569,7 @@ class DemoModeService {
           fr: 'Le cours de chimie du vendredi aura lieu comme prévu.',
           es: 'La clase de química del viernes tendrá lugar según lo previsto.',
         ),
-        'date': _dateInt(today.subtract(const Duration(days: 1))),
+        'date': untisDateInt(today.subtract(const Duration(days: 1))),
         'author': _copy(
           locale,
           de: 'Sekretariat',
@@ -658,11 +658,11 @@ class DemoModeService {
     String room, {
     String code = '',
   }) {
-    final id = _dateInt(date) * 10000 + startTime;
+    final id = untisDateInt(date) * 10000 + startTime;
     return {
       'id': id,
       'lsid': id,
-      'date': _dateInt(date),
+      'date': untisDateInt(date),
       'startTime': startTime,
       'endTime': endTime,
       '_subjectShort': subjectShort,
@@ -676,10 +676,6 @@ class DemoModeService {
       'lstext': '',
       'homework': '',
     };
-  }
-
-  static int _dateInt(DateTime date) {
-    return int.parse(DateFormat('yyyyMMdd').format(date));
   }
 
   static String _subjectName(String code, String locale) {

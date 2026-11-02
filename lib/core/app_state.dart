@@ -1,6 +1,5 @@
 part of '../main.dart';
 
-// ── APP VERSION ────────────────────────────────────────────────────────────
 String appVersion = '0.0.0';
 String appBuildNumber = '0';
 bool showChangelogOnStartup = false;
@@ -174,18 +173,6 @@ Future<void> initializeUntisAccounts(SharedPreferences prefs) async {
     }
   }
   await _writeUntisAccounts(prefs, accounts, includeSecrets: !canStripSecrets);
-  untisAccountsNotifier.value = List.unmodifiable(accounts);
-  unawaited(
-    WidgetService.publishAccountCatalog(
-      accounts.map(
-        (account) => {
-          'id': account.id,
-          'label': account.label,
-          'school': account.schoolName,
-        },
-      ),
-    ),
-  );
   if (accounts.isEmpty) return;
   final requestedId = prefs.getString(activeUntisAccountStorageKey);
   UntisAccount active = accounts.first;
@@ -338,14 +325,24 @@ double aiTopP = 0.95;
 String aiPersona = 'helpful';
 final ValueNotifier<bool> aiEnabledNotifier = ValueNotifier(true);
 
-Future<void> loadAiPreferences(SharedPreferences prefs) async {
+Future<void> loadAiPreferences(
+  SharedPreferences prefs, {
+  Map<String, String>? preloadedKeys,
+}) async {
+  if (preloadedKeys != null) {
+    geminiApiKey = preloadedKeys['gemini'] ?? '';
+    openAiApiKey = preloadedKeys['openai'] ?? '';
+    mistralApiKey = preloadedKeys['mistral'] ?? '';
+    customAiApiKey = preloadedKeys['custom'] ?? '';
+  } else {
+    await loadSecureAiApiKeys(prefs);
+  }
   aiProvider = _normalizeAiProvider(
     prefs.getString('aiProvider') ?? aiProvider,
   );
   aiCustomCompatibility = _normalizeAiCustomCompatibility(
     prefs.getString('aiCustomCompatibility') ?? aiCustomCompatibility,
   );
-  aiModel = prefs.getString('aiModel') ?? aiModel;
   aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? aiCustomBaseUrl;
   aiSystemPromptTemplate =
       prefs.getString('aiSystemPromptTemplate') ?? aiSystemPromptTemplate;
@@ -354,7 +351,43 @@ Future<void> loadAiPreferences(SharedPreferences prefs) async {
   aiMaxTokens = prefs.getInt('aiMaxTokens') ?? aiMaxTokens;
   aiTopP = prefs.getDouble('aiTopP') ?? aiTopP;
   aiPersona = prefs.getString('aiPersona') ?? aiPersona;
-  await loadSecureAiApiKeys(prefs);
+  if (aiLocalModelPath.isNotEmpty) {
+    // A stale or tampered path (file deleted, moved, truncated or replaced
+    // with something that is not a GGUF) must never reach the native
+    // llama.cpp parser. Validate it with the same magic/size rules used on
+    // download and fall back to a cleared path on failure.
+    if (!await _isValidLocalModelFile(
+      aiLocalModelPath,
+      model: _localModelForPath(aiLocalModelPath),
+    )) {
+      aiLocalModelPath = '';
+      await prefs.setString('aiLocalModelPath', '');
+      if (_normalizeAiProvider(aiProvider) == 'local') {
+        aiProvider = 'gemini';
+        aiModel = _defaultModelForProvider('gemini');
+        await prefs.setString('aiProvider', aiProvider);
+        await prefs.setString('aiModel', aiModel);
+      }
+    }
+  }
+  final savedModel = prefs.getString('aiModel') ?? '';
+  final availableModels = _modelsForProvider(
+    aiProvider,
+    customCompatibility: aiCustomCompatibility,
+  );
+  aiModel = savedModel.isNotEmpty
+      ? savedModel
+      : _defaultModelForProvider(
+          aiProvider,
+          customCompatibility: aiCustomCompatibility,
+        );
+  if (!availableModels.contains(aiModel)) {
+    aiModel = _defaultModelForProvider(
+      aiProvider,
+      customCompatibility: aiCustomCompatibility,
+    );
+    await prefs.setString('aiModel', aiModel);
+  }
 }
 
 Future<void> saveAiProviderPreferences(SharedPreferences prefs) async {
@@ -649,7 +682,6 @@ final ValueNotifier<bool> useMaterialYouNotifier = ValueNotifier(true);
 final ValueNotifier<bool> isAmoledNotifier = ValueNotifier(false);
 final ValueNotifier<int> customColorSeedNotifier = ValueNotifier(0xFF0F766E);
 
-// ── LESSON DESIGN & STYLING NOTIFIERS ───────────────────────────────────────
 final ValueNotifier<int> lessonCardStyleNotifier = ValueNotifier(0);
 final ValueNotifier<bool> glowEffectsEnabledNotifier = ValueNotifier(false);
 final ValueNotifier<bool> lessonBlurEnabledNotifier = ValueNotifier(false);
@@ -738,13 +770,7 @@ final ValueNotifier<List<Map<String, dynamic>>> customGradesNotifier =
     ValueNotifier(const []);
 
 List<Map<String, dynamic>> _decodeStoredMapList(List<String> values) => values
-    .map((value) {
-      try {
-        return Map<String, dynamic>.from(jsonDecode(value) as Map);
-      } catch (_) {
-        return <String, dynamic>{};
-      }
-    })
+    .map(decodeJsonMap)
     .where((value) => value.isNotEmpty)
     .toList(growable: false);
 
@@ -1058,10 +1084,6 @@ Future<void> _setSubjectColor(String key, int colorValue) => key.isEmpty
 Future<void> _clearSubjectColor(String key) =>
     _updateSubjectColors((values) => values.remove(key));
 
-String _formatUntisTime(String time) {
-  return formatUntisTime(time);
-}
-
 /// Resolves which timetable element an authenticated account should use.
 ///
 /// A guardian login (person type 3) has no timetable of its own, so the stored
@@ -1154,7 +1176,7 @@ Future<bool> _performReAuthentication() async {
       );
       if (index >= 0) {
         var corrected = accounts[index];
-// Guardian accounts target a parent element that has no timetable.
+        // Guardian accounts target a parent element that has no timetable.
         // Every re-authentication is another chance to redirect the stored
         // element to the first linked student.
         if (corrected.personType == 3) {
@@ -1163,8 +1185,14 @@ Future<bool> _performReAuthentication() async {
             corrected.personId,
             corrected.personType,
           );
-          final childId = element['personId'] as int?;
-          final childType = element['personType'] as int?;
+          var childId = element['personId'] as int?;
+          var childType = element['personType'] as int?;
+          if ((childId == null || childType != 5) &&
+              authResult.personId > 0 &&
+              authResult.personType == 5) {
+            childId = authResult.personId;
+            childType = authResult.personType;
+          }
           if (childId != null &&
               childType != null &&
               (childId != corrected.personId ||
@@ -1172,18 +1200,6 @@ Future<bool> _performReAuthentication() async {
             corrected = corrected.copyWith(
               personId: childId,
               personType: childType,
-            );
-          }
-        } else if (corrected.personType == 3 &&
-            authResult.personId > 0 &&
-            authResult.personType == 5) {
-          // The login repository resolves linked student accounts when the
-          // WebUntis response includes them.
-          if (authResult.personId != corrected.personId ||
-              authResult.personType != corrected.personType) {
-            corrected = corrected.copyWith(
-              personId: authResult.personId,
-              personType: authResult.personType,
             );
           }
         }
@@ -1212,7 +1228,6 @@ Future<bool> _performReAuthentication() async {
   return false;
 }
 
-// ── CLASS FAVORITES & DEFAULTS ──────────────────────────────────────────────
 int? defaultClassId;
 String? defaultClassName;
 Set<int> favoriteClassIds = {};

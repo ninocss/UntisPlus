@@ -1251,7 +1251,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final schedule = todayLessons
         .take(7)
         .map((lesson) {
-          final time = _formatUntisTime(lesson['startTime']?.toString() ?? '');
+          final time = formatUntisTime(lesson['startTime']?.toString() ?? '');
           return '$time · ${label(lesson)}';
         })
         .join('\n');

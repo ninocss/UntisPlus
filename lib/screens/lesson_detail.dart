@@ -14,7 +14,6 @@ String displayTeacherForLesson(Map<Object?, Object?> lesson) {
   return short.isEmpty ? full : short;
 }
 
-// --- DETAIL BOTTOM SHEET OPENER ---
 void _showLessonDetail(
   BuildContext context,
   dynamic lesson, {
@@ -34,7 +33,7 @@ void _showLessonDetail(
       : '---';
   final teacher = displayTeacherForLesson(lesson);
   final time =
-      '${_formatUntisTime(lesson['startTime'].toString())} – ${_formatUntisTime(lesson['endTime'].toString())}';
+      '${formatUntisTime(lesson['startTime'].toString())} – ${formatUntisTime(lesson['endTime'].toString())}';
   final isSubstitution = isTimetableSubstitution(lesson);
   final isCancelled = isTimetableCancelled(lesson);
   final info = (lesson['info'] ?? lesson['substText'] ?? '').toString().trim();
@@ -490,8 +489,6 @@ class _LessonDetailSheet extends StatelessWidget {
   }
 }
 
-// --- NOTIZEN DETAIL SEITE ---
-
 class StudentNotesPage extends StatelessWidget {
   /// Planned lesson text from the timetable (`lsText`).
   final String notes;
@@ -632,7 +629,6 @@ class StudentNotesPage extends StatelessWidget {
   }
 }
 
-// --- EXPRESSIVE CARD DESIGN ---
 class LessonCard extends StatelessWidget {
   final String subject, subjectShort, room, teacher, time;
   final bool isCancelled;

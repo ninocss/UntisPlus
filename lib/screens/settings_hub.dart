@@ -1065,10 +1065,13 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
                                   displayUser,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -1078,34 +1081,34 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                                     color: cs.onSurface,
                                   ),
                                 ),
-                              ),
-                              if (isDemo || isDev) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 7,
-                                    vertical: 1.5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isDev
-                                        ? cs.tertiaryContainer
-                                        : cs.secondaryContainer,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    isDev ? 'DEV' : 'DEMO',
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 10,
-                                      letterSpacing: 0.4,
+                                if (isDemo || isDev) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
                                       color: isDev
-                                          ? cs.onTertiaryContainer
-                                          : cs.onSecondaryContainer,
+                                          ? cs.tertiaryContainer
+                                          : cs.secondaryContainer,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      isDev ? 'DEV' : 'DEMO',
+                                      style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 10,
+                                        letterSpacing: 0.4,
+                                        color: isDev
+                                            ? cs.onTertiaryContainer
+                                            : cs.onSecondaryContainer,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                           Text(
                             displaySchool,

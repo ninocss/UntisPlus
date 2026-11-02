@@ -1,4 +1,5 @@
 import '../../../core/sync_state.dart';
+import '../../../core/time_utils.dart';
 import '../../../data/cache/offline_cache_store.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 import '../../../data/webuntis/webuntis_capabilities.dart';
@@ -59,17 +60,18 @@ class AbsenceRepository {
     required DateTime end,
   }) async {
     final cached = await loadCached(accountId);
-    int dateInt(DateTime value) =>
-        value.year * 10000 + value.month * 100 + value.day;
     try {
       Future<Map<String, dynamic>> request(
         WebUntisRequestContext requestContext,
       ) => _client.rpc(
         context: requestContext,
         method: 'getTimetableWithAbsences',
-        requestId: 'absences_${dateInt(start)}_${dateInt(end)}',
+        requestId: 'absences_${untisDateInt(start)}_${untisDateInt(end)}',
         params: {
-          'options': {'startDate': dateInt(start), 'endDate': dateInt(end)},
+          'options': {
+            'startDate': untisDateInt(start),
+            'endDate': untisDateInt(end),
+          },
         },
       );
       final response = _sessionManager != null && account != null

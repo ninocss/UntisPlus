@@ -1,6 +1,5 @@
 part of '../main.dart';
 
-// ── Reusable animated background wrapper ───────────────────────────────────────
 class _AnimatedBackground extends StatelessWidget {
   final Widget child;
   const _AnimatedBackground({required this.child});

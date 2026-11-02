@@ -68,15 +68,140 @@ Future<_AiImportFile?> _pickAiImportFile(
   );
 }
 
+String _formatByteSize(int bytes) {
+  if (bytes <= 0) return '0 MB';
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    final mb = bytes / (1024 * 1024);
+    return '${mb.toStringAsFixed(mb >= 100 ? 0 : 1)} MB';
+  }
+  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+}
+
+String _formatAiErrorDetail(Object error, AppL10n l) {
+  final message = error.toString();
+  if (message.contains('CONFIG:')) {
+    return message.replaceFirst('Exception: CONFIG: ', '');
+  }
+  if (message.contains('API:')) {
+    return '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}';
+  }
+  return '${l.aiConnectionError} $error';
+}
+
+Future<String> _requestAiVisionImportText({
+  required String prompt,
+  required Uint8List fileBytes,
+  required String mimeType,
+  required String attachmentName,
+  String Function(AiProviderCapabilities capabilities, AppL10n l)?
+      systemPromptBuilder,
+  String? localProviderUnsupportedMessage,
+}) {
+  if (!aiEnabledNotifier.value) {
+    return Future<String>.error(StateError('AI is disabled'));
+  }
+  final l = appL10nFor(appLocaleNotifier.value);
+  final runtime = _currentAiRuntimeConfiguration();
+  final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+  final capabilities = _aiRequestCoordinator.capabilities(runtime);
+  return _aiRequestCoordinator.generate(
+    runtime: runtime,
+    spec: AiRequestSpec(
+      systemPrompt: systemPromptBuilder?.call(capabilities, l) ?? '',
+      userPrompt: prompt,
+      temperature: 0.1,
+      maxTokens: 2200,
+      topP: 1,
+      requiresImages: mimeType.startsWith('image/'),
+      requiresPdf: mimeType == 'application/pdf',
+      allowLocal: false,
+      attachments: [
+        AiChatAttachment(
+          name: attachmentName,
+          mimeType: mimeType,
+          bytes: fileBytes,
+        ),
+      ],
+      noReplyMessage: l.aiNoReply,
+      missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+      customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+      localProviderUnsupportedMessage:
+          localProviderUnsupportedMessage ??
+          'Unsupported provider for vision: local',
+      unsupportedAttachmentMessage: (type) =>
+          'Unsupported file type for this provider: $type',
+    ),
+  );
+}
+
+Future<({ _AiImportFile file, bool supportsPdf })?> _pickAiImportFileFromSheet({
+  required BuildContext context,
+  required String sheetTitle,
+}) async {
+  if (!aiEnabledNotifier.value) return null;
+  final l = appL10nFor(appLocaleNotifier.value);
+  final runtime = _currentAiRuntimeConfiguration();
+  final provider = _aiRequestCoordinator.normalizeProvider(runtime.provider);
+  final capabilities = _aiRequestCoordinator.capabilities(runtime);
+  final preflight = AiRequestSpec(
+    systemPrompt: '',
+    userPrompt: '',
+    noReplyMessage: l.aiNoReply,
+    allowLocal: true,
+    requireLocalModel: false,
+    missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
+    customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+  );
+  try {
+    _aiRequestCoordinator.validate(runtime, preflight);
+  } catch (e) {
+    final message = e.toString().replaceFirst('Exception: CONFIG: ', '');
+    if (context.mounted) context.showUntisSnackBar(message);
+    return null;
+  }
+  final supportsPdf = capabilities.pdf;
+  final source = await _showUnifiedOptionSheet<String>(
+    context: context,
+    title: sheetTitle,
+    options: [
+      _SheetOption(
+        value: 'camera',
+        title: l.examsImportCamera,
+        icon: Icons.camera_alt_rounded,
+      ),
+      _SheetOption(
+        value: 'gallery',
+        title: l.examsImportGallery,
+        icon: Icons.image_rounded,
+      ),
+      _SheetOption(
+        value: 'file',
+        title: l.examsImportFile,
+        icon: Icons.picture_as_pdf_rounded,
+      ),
+    ],
+  );
+  if (source == null) return null;
+  final file = await _pickAiImportFile(source, allowPdf: supportsPdf);
+  if (file == null || !context.mounted) return null;
+  return (file: file, supportsPdf: supportsPdf);
+}
+
 class SettingsPageShell extends StatelessWidget {
   const SettingsPageShell({
     required this.title,
     required this.children,
+    this.actions,
     super.key,
   });
 
   final String title;
   final List<Widget> children;
+  final List<Widget>? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +214,11 @@ class SettingsPageShell extends StatelessWidget {
             PinnedHeaderSliver(
               child: SizedBox(
                 height: MediaQuery.paddingOf(context).top + 64,
-                child: _settingsHeaderAppBar(context, title),
+                child: _settingsHeaderAppBar(
+                  context,
+                  title,
+                  actions: actions,
+                ),
               ),
             ),
             SliverPadding(
@@ -675,14 +804,20 @@ extension UntisSnackBarContext on BuildContext {
     String message, {
     SnackBarBehavior? behavior,
     Duration? duration,
+    Color? backgroundColor,
+    SnackBarAction? action,
   }) {
-    ScaffoldMessenger.of(this).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: behavior,
-        duration: duration ?? const Duration(seconds: 4),
-      ),
-    );
+    ScaffoldMessenger.of(this)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: behavior,
+          backgroundColor: backgroundColor,
+          action: action,
+          duration: duration ?? const Duration(seconds: 4),
+        ),
+      );
   }
 }
 
@@ -2199,7 +2334,291 @@ Future<T?> _showUnifiedOptionSheet<T>({
   );
 }
 
-// ── Settings UI Components (Material You Expressive Grouped Sections) ────────
+Widget _sheetSectionLabel(BuildContext context, String label) {
+  final cs = Theme.of(context).colorScheme;
+  return Text(
+    label.toUpperCase(),
+    style: GoogleFonts.outfit(
+      fontSize: 11,
+      fontWeight: FontWeight.w800,
+      color: cs.primary,
+      letterSpacing: 1.2,
+    ),
+  );
+}
+
+InputDecoration _untisSheetInputDecoration(
+  BuildContext context, {
+  required IconData prefixIcon,
+  String? hintText,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return InputDecoration(
+    prefixIcon: Icon(prefixIcon),
+    hintText: hintText,
+    filled: true,
+    fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(20),
+      borderSide: BorderSide.none,
+    ),
+  );
+}
+
+Widget _untisSheetSubjectSelector({
+  required BuildContext context,
+  required List<String> subjects,
+  required String selectedSubject,
+  required ValueChanged<String> onSelected,
+  required TextEditingController fallbackController,
+  required String fallbackHint,
+}) {
+  if (subjects.isNotEmpty) {
+    return _m3SelectionMenu(
+      context: context,
+      value: selectedSubject,
+      entries: subjects,
+      icon: Icons.book_rounded,
+      onSelected: onSelected,
+    );
+  }
+  return TextField(
+    controller: fallbackController,
+    style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+    decoration: _untisSheetInputDecoration(
+      context,
+      prefixIcon: Icons.book_rounded,
+      hintText: fallbackHint,
+    ),
+  );
+}
+
+Widget _untisSheetDatePickerField({
+  required BuildContext context,
+  required DateTime selectedDate,
+  required DateTime firstDate,
+  required DateTime lastDate,
+  required ValueChanged<DateTime> onDateSelected,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return InkWell(
+    onTap: () async {
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: selectedDate,
+        firstDate: firstDate,
+        lastDate: lastDate,
+      );
+      if (picked != null) onDateSelected(picked);
+    },
+    borderRadius: BorderRadius.circular(20),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.calendar_today_rounded, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            DateFormat(
+              'dd. MMMM yyyy',
+              _icuLocale(appLocaleNotifier.value),
+            ).format(selectedDate),
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Future<Color?> _showUntisRgbColorPickerSheet({
+  required BuildContext context,
+  String? title,
+  required Color initialColor,
+  List<int>? swatches,
+  String? swatchesTitle,
+  VoidCallback? onReset,
+  String? applyLabel,
+}) {
+  final l = appL10nFor(appLocaleNotifier.value);
+  final cs = Theme.of(context).colorScheme;
+  var red = (initialColor.r * 255.0).round().clamp(0, 255).toDouble();
+  var green = (initialColor.g * 255.0).round().clamp(0, 255).toDouble();
+  var blue = (initialColor.b * 255.0).round().clamp(0, 255).toDouble();
+
+  return _showUnifiedSheet<Color>(
+    context: context,
+    isScrollControlled: true,
+    child: StatefulBuilder(
+      builder: (ctx, setPickerState) {
+        final preview = Color.fromARGB(
+          255,
+          red.round(),
+          green.round(),
+          blue.round(),
+        );
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (title != null && title.isNotEmpty) ...[
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  color: preview,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              if (swatches != null && swatches.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                if (swatchesTitle != null && swatchesTitle.isNotEmpty) ...[
+                  Text(
+                    swatchesTitle,
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final swatch in swatches)
+                      Tooltip(
+                        message:
+                            '#${swatch.toRadixString(16).substring(2).toUpperCase()}',
+                        child: InkWell(
+                          onTap: () => setPickerState(() {
+                            final c = Color(swatch);
+                            red = (c.r * 255.0).round().toDouble();
+                            green = (c.g * 255.0).round().toDouble();
+                            blue = (c.b * 255.0).round().toDouble();
+                          }),
+                          customBorder: const CircleBorder(),
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: Color(swatch),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: preview.toARGB32() == swatch
+                                    ? cs.onSurface
+                                    : cs.outlineVariant,
+                                width: preview.toARGB32() == swatch ? 2 : 1,
+                              ),
+                            ),
+                            child: preview.toARGB32() == swatch
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    size: 18,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 16),
+              Text(
+                '${l.settingsColorRed}: ${red.round()}',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              HapticSlider(
+                value: red,
+                min: 0,
+                max: 255,
+                activeColor: Colors.red,
+                onChanged: (v) => setPickerState(() => red = v),
+              ),
+              Text(
+                '${l.settingsColorGreen}: ${green.round()}',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              HapticSlider(
+                value: green,
+                min: 0,
+                max: 255,
+                activeColor: Colors.green,
+                onChanged: (v) => setPickerState(() => green = v),
+              ),
+              Text(
+                '${l.settingsColorBlue}: ${blue.round()}',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              ),
+              HapticSlider(
+                value: blue,
+                min: 0,
+                max: 255,
+                activeColor: Colors.blue,
+                onChanged: (v) => setPickerState(() => blue = v),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                      l.cancel,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (onReset != null)
+                    TextButton(
+                      onPressed: () {
+                        onReset();
+                        Navigator.pop(ctx);
+                      },
+                      child: Text(l.settingsColorReset),
+                    ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, preview),
+                    child: Text(
+                      applyLabel ?? l.settingsColorApply,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
 
 /// A non-scrolling choice grid whose cards keep a predictable height on every
 /// form factor. Using an aspect ratio here made the theme cards grow vertically
@@ -2527,6 +2946,8 @@ class SettingsTile extends StatelessWidget {
   final VoidCallback? onTap;
   final bool destructive;
   final bool showSubtitle;
+  final bool? semanticsToggled;
+  final EdgeInsetsGeometry padding;
 
   const SettingsTile({
     super.key,
@@ -2540,6 +2961,8 @@ class SettingsTile extends StatelessWidget {
     this.onTap,
     this.destructive = false,
     this.showSubtitle = true,
+    this.semanticsToggled,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
   });
 
   @override
@@ -2571,7 +2994,8 @@ class SettingsTile extends StatelessWidget {
             : null);
 
     final tile = Semantics(
-      button: onTap != null,
+      button: semanticsToggled == null ? onTap != null : null,
+      toggled: semanticsToggled,
       label: hasSubtitle ? '$title. $subtitle' : title,
       child: InkWell(
         onTap: onTap,
@@ -2579,7 +3003,7 @@ class SettingsTile extends StatelessWidget {
           _expressiveRadius(context, 16, expressiveRadius: 20),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: padding,
           child: Row(
             children: [
               if (effectiveLeading != null) ...[
@@ -2664,97 +3088,33 @@ class SettingsSwitchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
-    final effectiveLeading =
-        leading ??
-        (icon != null
-            ? Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color:
-                      iconBackgroundColor ?? cs.primary.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(icon, size: 20, color: iconColor ?? cs.primary),
-              )
-            : null);
-
-    final tile = Semantics(
-      toggled: value,
-      label: hasSubtitle ? '$title. $subtitle' : title,
-      child: InkWell(
-        onTap: () {
+    return SettingsTile(
+      icon: icon,
+      iconColor: iconColor,
+      iconBackgroundColor: iconBackgroundColor,
+      leading: leading,
+      title: title,
+      subtitle: subtitle,
+      showSubtitle: showSubtitle,
+      semanticsToggled: value,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      onTap: () {
+        AppHaptics.selection();
+        onChanged(!value);
+      },
+      trailing: Switch(
+        value: value,
+        onChanged: (val) {
           AppHaptics.selection();
-          onChanged(!value);
+          onChanged(val);
         },
-        borderRadius: BorderRadius.circular(
-          _expressiveRadius(context, 16, expressiveRadius: 20),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          child: Row(
-            children: [
-              if (effectiveLeading != null) ...[
-                effectiveLeading,
-                const SizedBox(width: 14),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                    if (showSubtitle && hasSubtitle) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontSize: 12.5,
-                          color: cs.onSurfaceVariant,
-                          height: 1.25,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Switch(
-                value: value,
-                onChanged: (val) {
-                  AppHaptics.selection();
-                  onChanged(val);
-                },
-                thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return const Icon(Icons.check, size: 14);
-                  }
-                  return const Icon(Icons.close, size: 14);
-                }),
-              ),
-            ],
-          ),
-        ),
+        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const Icon(Icons.check, size: 14);
+          }
+          return const Icon(Icons.close, size: 14);
+        }),
       ),
-    );
-
-    return _settingsTooltip(
-      message: subtitle,
-      showInline: showSubtitle,
-      child: tile,
     );
   }
 }

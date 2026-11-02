@@ -1,7 +1,5 @@
 part of '../../../main.dart';
 
-// --- KI-ASSISTENT HILFSFUNKTIONEN ---
-
 String _formatWeekForAi(Map<int, List<dynamic>> weekData, DateTime monday) {
   final l = appL10nFor(appLocaleNotifier.value);
   final days = l.weekDayFull;
@@ -15,8 +13,8 @@ String _formatWeekForAi(Map<int, List<dynamic>> weekData, DateTime monday) {
       buf.writeln('  ${l.noLesson}');
     } else {
       for (final lsn in lessons) {
-        final start = _formatUntisTime(lsn['startTime'].toString());
-        final end = _formatUntisTime(lsn['endTime'].toString());
+        final start = formatUntisTime(lsn['startTime'].toString());
+        final end = formatUntisTime(lsn['endTime'].toString());
         final subj = lsn['_subjectLong']?.toString().isNotEmpty == true
             ? lsn['_subjectLong'].toString()
             : lsn['_subjectShort']?.toString() ?? '?';
