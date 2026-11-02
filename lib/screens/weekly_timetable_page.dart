@@ -633,6 +633,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     demoModeNotifier.addListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonCleanDesignNotifier.addListener(_onHiddenSubjectsChanged);
     glowEffectsEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.addListener(_onHiddenSubjectsChanged);
@@ -2499,6 +2500,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     demoModeNotifier.removeListener(_onDemoModeChanged);
     pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonCleanDesignNotifier.removeListener(_onHiddenSubjectsChanged);
     glowEffectsEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -3244,6 +3246,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+
+
   Widget _buildTimetableLessonCard({
     required BuildContext context,
     required bool isCancelled,
@@ -3270,265 +3274,30 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     double? availableWidth,
     double? availableHeight,
   }) {
-    final tokens = untisThemeTokensOf(context);
-    final visuals = LessonCardVisualsResolver.resolve(
-      context: context,
-      tokens: tokens,
-      isDark: isDark,
+    return TimetableLessonCard(
       isCancelled: isCancelled,
+      isSubstitution: isSubstitution,
+      isDark: isDark,
+      fgColor: fgColor,
+      bgColor: bgColor,
+      subject: subject,
+      teacher: teacher,
+      room: room,
       isNow: isNow,
-      foregroundColor: fgColor,
-      backgroundColor: bgColor,
+      subjectIcon: subjectIcon,
       isTeacherMissing: isTeacherMissing,
-      usePattern: useStripes,
+      hasHomework: hasHomework,
+      hasExam: hasExam,
+      originalTeacher: originalTeacher,
       borderRadius: borderRadius,
+      padding: padding,
       accentWidth: accentWidth,
-    );
-    final effectiveRadius = visuals.radius;
-    final cardRadius = visuals.borderRadius;
-    final blurEnabled = visuals.blurEnabled;
-    final blurSigma = visuals.blurSigma;
-    final accentStyle = visuals.accentStyle;
-    final showPattern = visuals.showPattern;
-    final showTeacher = lessonShowTeacherNotifier.value;
-    final showRoom = lessonShowRoomNotifier.value;
-    final isSubstituted =
-        showTeacher && originalTeacher.isNotEmpty && originalTeacher != teacher;
-    final compact = lessonCompactModeNotifier.value;
-
-    final heightCompact = availableHeight != null && availableHeight < 58;
-    final heightMinimal = availableHeight != null && availableHeight < 40;
-    final widthCompact = availableWidth != null && availableWidth < 54;
-    final effectivePadding = heightMinimal
-        ? const EdgeInsets.fromLTRB(5, 2, 4, 2)
-        : heightCompact
-        ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
-        : padding != null
-        ? (compact
-              ? EdgeInsets.fromLTRB(
-                  padding.left.clamp(3.0, 6.0),
-                  (padding.top * 0.7).clamp(2.0, 5.0),
-                  padding.right.clamp(3.0, 6.0),
-                  (padding.bottom * 0.7).clamp(2.0, 5.0),
-                )
-              : padding)
-        : (compact
-              ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
-              : const EdgeInsets.fromLTRB(8, 5, 6, 5));
-
-    final effectiveSubjectFontSize = compact || widthCompact || heightCompact
-        ? (subjectFontSize * 0.92).clamp(8.5, 14.0)
-        : subjectFontSize;
-    final effectiveTeacherFontSize = compact
-        ? (teacherFontSize * 0.90).clamp(7.5, 12.0)
-        : teacherFontSize;
-    final effectiveRoomFontSize = compact
-        ? (roomFontSize * 0.90).clamp(7.5, 12.0)
-        : roomFontSize;
-
-    final shadows = visuals.shadows;
-    final effectiveFillColor = visuals.fillColor;
-    final effectiveGradient = visuals.gradient;
-    final effectiveBorder = visuals.border;
-    final effectiveTextColor = visuals.textColor;
-    final effectiveSecondaryTextColor = visuals.secondaryTextColor;
-    final effectiveAccentWidth = visuals.accentWidth;
-
-    Widget cardContent = Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: effectiveFillColor,
-            gradient: effectiveGradient,
-            borderRadius: cardRadius,
-            border: effectiveBorder,
-          ),
-        ),
-        if (showPattern)
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _StripedHatchPainter(
-                color: fgColor.withValues(alpha: isDark ? 0.18 : 0.12),
-                stripeWidth: 2.0,
-                gap: 7.0,
-              ),
-            ),
-          ),
-        if (accentStyle == 0 || accentStyle == 1)
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: effectiveAccentWidth,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [fgColor, fgColor.withValues(alpha: 0.7)],
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(effectiveRadius),
-                  bottomLeft: Radius.circular(effectiveRadius),
-                ),
-              ),
-            ),
-          ),
-        Padding(
-          padding: effectivePadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (accentStyle == 2) ...[
-                    Container(
-                      width: 6.5,
-                      height: 6.5,
-                      margin: const EdgeInsets.only(right: 4.5),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: fgColor,
-                        boxShadow: _glowShadows(context, [
-                          BoxShadow(
-                            color: fgColor.withValues(alpha: 0.6),
-                            blurRadius: 4,
-                          ),
-                        ]),
-                      ),
-                    ),
-                  ],
-                  Flexible(
-                    child: Text(
-                      subject,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: untisThemeTextStyle(
-                        context,
-                        display: true,
-                        fontSize: effectiveSubjectFontSize,
-                        fontWeight: FontWeight.w800,
-                        color: effectiveTextColor,
-                        decoration: isCancelled
-                            ? TextDecoration.lineThrough
-                            : null,
-                        decorationColor: fgColor.withValues(alpha: 0.6),
-                        decorationThickness: 1.6,
-                      ),
-                    ),
-                  ),
-                  if (lessonShowSubjectIconsNotifier.value &&
-                      subjectIcon != null &&
-                      !widthCompact &&
-                      !heightMinimal) ...[
-                    Icon(
-                      subjectIcon,
-                      size: (effectiveSubjectFontSize * 1.15).clamp(11.0, 17.0),
-                      color: effectiveTextColor.withValues(alpha: 0.85),
-                    ),
-                    const SizedBox(width: 3.5),
-                  ],
-                  if ((hasExam || hasHomework) && !widthCompact) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      hasExam
-                          ? Icons.assignment_turned_in_rounded
-                          : Icons.assignment_rounded,
-                      size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
-                      color: effectiveTextColor.withValues(alpha: 0.8),
-                    ),
-                  ],
-                  if (isTeacherMissing && !widthCompact) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.person_off_rounded,
-                      size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
-                      color: Colors.deepOrange.withValues(alpha: 0.9),
-                    ),
-                  ],
-                  if (isSubstitution && !widthCompact && !heightMinimal) ...[
-                    const SizedBox(width: 3),
-                    Icon(
-                      Icons.swap_horiz_rounded,
-                      size: (effectiveSubjectFontSize * 0.95).clamp(10.0, 15.0),
-                      color: effectiveTextColor.withValues(alpha: 0.9),
-                    ),
-                  ],
-                ],
-              ),
-              if (!heightMinimal &&
-                  showTeacher &&
-                  teacher.isNotEmpty &&
-                  (availableHeight == null || availableHeight >= 42))
-                Text(
-                  teacher,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: untisThemeTextStyle(
-                    context,
-                    fontSize: effectiveTeacherFontSize,
-                    fontWeight: isSubstituted
-                        ? FontWeight.w800
-                        : FontWeight.w600,
-                    color: isSubstituted
-                        ? effectiveTextColor
-                        : effectiveSecondaryTextColor,
-                  ),
-                ),
-              if (isSubstituted &&
-                  (availableHeight == null || availableHeight >= 54))
-                Text(
-                  originalTeacher,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: untisThemeTextStyle(
-                    context,
-                    fontSize: effectiveTeacherFontSize * 0.9,
-                    fontWeight: FontWeight.w500,
-                    color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
-                    decoration: TextDecoration.lineThrough,
-                    decorationColor: fgColor.withValues(alpha: 0.55),
-                    decorationThickness: 1.4,
-                  ),
-                ),
-              if (!heightCompact &&
-                  showRoom &&
-                  room.isNotEmpty &&
-                  (availableHeight == null || availableHeight >= 58))
-                Text(
-                  room,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: untisThemeTextStyle(
-                    context,
-                    fontSize: effectiveRoomFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: effectiveSecondaryTextColor,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    if (blurEnabled) {
-      cardContent = ClipRRect(
-        borderRadius: cardRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: cardContent,
-        ),
-      );
-    } else {
-      cardContent = ClipRRect(borderRadius: cardRadius, child: cardContent);
-    }
-
-    return Container(
-      decoration: BoxDecoration(borderRadius: cardRadius, boxShadow: shadows),
-      child: cardContent,
+      subjectFontSize: subjectFontSize,
+      teacherFontSize: teacherFontSize,
+      roomFontSize: roomFontSize,
+      useStripes: useStripes,
+      availableWidth: availableWidth,
+      availableHeight: availableHeight,
     );
   }
 
@@ -6168,6 +5937,578 @@ class _DayTabGlowIndicator extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class TimetableLessonCard extends StatelessWidget {
+  final bool isCancelled;
+  final bool isSubstitution;
+  final bool isDark;
+  final Color fgColor;
+  final Color bgColor;
+  final String subject;
+  final String teacher;
+  final String room;
+  final bool isNow;
+  final IconData? subjectIcon;
+  final bool isTeacherMissing;
+  final bool hasHomework;
+  final bool hasExam;
+  final String originalTeacher;
+  final double? borderRadius;
+  final EdgeInsets? padding;
+  final double accentWidth;
+  final double subjectFontSize;
+  final double teacherFontSize;
+  final double roomFontSize;
+  final bool useStripes;
+  final double? availableWidth;
+  final double? availableHeight;
+
+  const TimetableLessonCard({
+    super.key,
+    required this.isCancelled,
+    this.isSubstitution = false,
+    required this.isDark,
+    required this.fgColor,
+    required this.bgColor,
+    required this.subject,
+    required this.teacher,
+    required this.room,
+    required this.isNow,
+    this.subjectIcon,
+    this.isTeacherMissing = false,
+    this.hasHomework = false,
+    this.hasExam = false,
+    this.originalTeacher = '',
+    this.borderRadius,
+    this.padding,
+    this.accentWidth = 3.5,
+    this.subjectFontSize = 11.5,
+    this.teacherFontSize = 9.5,
+    this.roomFontSize = 9.5,
+    this.useStripes = true,
+    this.availableWidth,
+    this.availableHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = untisThemeTokensOf(context);
+    final isClean = lessonCleanDesignNotifier.value;
+    final effectiveAccentWidthProp =
+        isClean ? (accentWidth * 0.7).clamp(1.8, 2.5) : accentWidth;
+    final visuals = LessonCardVisualsResolver.resolve(
+      context: context,
+      tokens: tokens,
+      isDark: isDark,
+      isCancelled: isCancelled,
+      isNow: isNow,
+      foregroundColor: fgColor,
+      backgroundColor: bgColor,
+      isTeacherMissing: isTeacherMissing,
+      usePattern: useStripes,
+      borderRadius: borderRadius,
+      accentWidth: effectiveAccentWidthProp,
+    );
+    final effectiveRadius = visuals.radius;
+    final cardRadius = visuals.borderRadius;
+    final blurEnabled = visuals.blurEnabled;
+    final blurSigma = visuals.blurSigma;
+    final accentStyle = visuals.accentStyle;
+    final showPattern = visuals.showPattern;
+    final showTeacher = lessonShowTeacherNotifier.value;
+    final showRoom = lessonShowRoomNotifier.value;
+    final isSubstituted =
+        showTeacher && originalTeacher.isNotEmpty && originalTeacher != teacher;
+    final compact = lessonCompactModeNotifier.value;
+
+    final heightCompact = availableHeight != null && availableHeight! < 58;
+    final heightMinimal = availableHeight != null && availableHeight! < 40;
+    final widthCompact = availableWidth != null && availableWidth! < 54;
+    final effectivePadding = heightMinimal
+        ? const EdgeInsets.fromLTRB(5, 2, 4, 2)
+        : heightCompact
+        ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
+        : padding != null
+        ? (compact
+              ? EdgeInsets.fromLTRB(
+                  padding!.left.clamp(3.0, 6.0),
+                  (padding!.top * 0.7).clamp(2.0, 5.0),
+                  padding!.right.clamp(3.0, 6.0),
+                  (padding!.bottom * 0.7).clamp(2.0, 5.0),
+                )
+              : padding!)
+        : (compact
+              ? const EdgeInsets.fromLTRB(6, 3, 5, 3)
+              : const EdgeInsets.fromLTRB(8, 5, 6, 5));
+
+    final effectiveSubjectFontSize = compact || widthCompact || heightCompact
+        ? (subjectFontSize * 0.92).clamp(8.5, 14.0)
+        : subjectFontSize;
+    final effectiveTeacherFontSize = compact
+        ? (teacherFontSize * 0.90).clamp(7.5, 12.0)
+        : teacherFontSize;
+    final effectiveRoomFontSize = compact
+        ? (roomFontSize * 0.90).clamp(7.5, 12.0)
+        : roomFontSize;
+
+    final shadows = visuals.shadows;
+    final effectiveFillColor = visuals.fillColor;
+    final effectiveGradient = visuals.gradient;
+    final effectiveBorder = visuals.border;
+    final effectiveTextColor = visuals.textColor;
+    final effectiveSecondaryTextColor = visuals.secondaryTextColor;
+    final effectiveAccentWidth = visuals.accentWidth;
+
+    Widget cardContent = Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: effectiveFillColor,
+            gradient: effectiveGradient,
+            borderRadius: cardRadius,
+            border: effectiveBorder,
+          ),
+        ),
+        if (showPattern)
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _StripedHatchPainter(
+                color: fgColor.withValues(alpha: isDark ? 0.18 : 0.12),
+                stripeWidth: 2.0,
+                gap: 7.0,
+              ),
+            ),
+          ),
+        if (accentStyle == 0 || accentStyle == 1)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: effectiveAccentWidth,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [fgColor, fgColor.withValues(alpha: 0.7)],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(effectiveRadius),
+                  bottomLeft: Radius.circular(effectiveRadius),
+                ),
+              ),
+            ),
+          ),
+        if (isClean && subjectIcon != null)
+          Positioned(
+            right: -4,
+            top: -2,
+            bottom: -2,
+            child: IgnorePointer(
+              child: ShaderMask(
+                key: const ValueKey('lesson-watermark-icon'),
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) {
+                  return const LinearGradient(
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
+                    colors: [
+                      Colors.white,
+                      Colors.transparent,
+                    ],
+                    stops: [0.15, 0.95],
+                  ).createShader(bounds);
+                },
+                child: Icon(
+                  subjectIcon,
+                  size: ((availableHeight ?? 75.0) * 0.92).clamp(32.0, 72.0),
+                  color: fgColor.withValues(alpha: isDark ? 0.22 : 0.17),
+                ),
+              ),
+            ),
+          ),
+        Padding(
+          padding: effectivePadding,
+          child: isClean
+              ? _buildCleanContent(
+                  context: context,
+                  accentStyle: accentStyle,
+                  fgColor: fgColor,
+                  effectiveRadius: effectiveRadius,
+                  effectiveSubjectFontSize: effectiveSubjectFontSize,
+                  effectiveTeacherFontSize: effectiveTeacherFontSize,
+                  effectiveRoomFontSize: effectiveRoomFontSize,
+                  effectiveTextColor: effectiveTextColor,
+                  effectiveSecondaryTextColor: effectiveSecondaryTextColor,
+                  widthCompact: widthCompact,
+                  heightCompact: heightCompact,
+                  heightMinimal: heightMinimal,
+                  showTeacher: showTeacher,
+                  showRoom: showRoom,
+                  isSubstituted: isSubstituted,
+                )
+              : _buildClassicContent(
+                  context: context,
+                  accentStyle: accentStyle,
+                  fgColor: fgColor,
+                  effectiveRadius: effectiveRadius,
+                  effectiveSubjectFontSize: effectiveSubjectFontSize,
+                  effectiveTeacherFontSize: effectiveTeacherFontSize,
+                  effectiveRoomFontSize: effectiveRoomFontSize,
+                  effectiveTextColor: effectiveTextColor,
+                  effectiveSecondaryTextColor: effectiveSecondaryTextColor,
+                  widthCompact: widthCompact,
+                  heightCompact: heightCompact,
+                  heightMinimal: heightMinimal,
+                  showTeacher: showTeacher,
+                  showRoom: showRoom,
+                  isSubstituted: isSubstituted,
+                ),
+        ),
+      ],
+    );
+
+    if (blurEnabled) {
+      cardContent = ClipRRect(
+        borderRadius: cardRadius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+          child: cardContent,
+        ),
+      );
+    } else {
+      cardContent = ClipRRect(borderRadius: cardRadius, child: cardContent);
+    }
+
+    return Container(
+      decoration: BoxDecoration(borderRadius: cardRadius, boxShadow: shadows),
+      child: cardContent,
+    );
+  }
+
+  Widget _buildCleanContent({
+    required BuildContext context,
+    required int accentStyle,
+    required Color fgColor,
+    required double effectiveRadius,
+    required double effectiveSubjectFontSize,
+    required double effectiveTeacherFontSize,
+    required double effectiveRoomFontSize,
+    required Color effectiveTextColor,
+    required Color effectiveSecondaryTextColor,
+    required bool widthCompact,
+    required bool heightCompact,
+    required bool heightMinimal,
+    required bool showTeacher,
+    required bool showRoom,
+    required bool isSubstituted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (accentStyle == 2) ...[
+              Container(
+                width: 6.5,
+                height: 6.5,
+                margin: const EdgeInsets.only(right: 4.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: fgColor,
+                  boxShadow: _glowShadows(context, [
+                    BoxShadow(
+                      color: fgColor.withValues(alpha: 0.6),
+                      blurRadius: 4,
+                    ),
+                  ]),
+                ),
+              ),
+            ],
+            Flexible(
+              child: Text(
+                subject,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: untisThemeTextStyle(
+                  context,
+                  display: true,
+                  fontSize: effectiveSubjectFontSize,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                  color: effectiveTextColor,
+                  decoration: isCancelled
+                      ? TextDecoration.lineThrough
+                      : null,
+                  decorationColor: fgColor.withValues(alpha: 0.6),
+                  decorationThickness: 1.6,
+                ),
+              ),
+            ),
+            if ((hasExam || hasHomework) && !widthCompact) ...[
+              const SizedBox(width: 4),
+              Icon(
+                hasExam
+                    ? Icons.assignment_turned_in_rounded
+                    : Icons.assignment_rounded,
+                size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                color: effectiveTextColor.withValues(alpha: 0.85),
+              ),
+            ],
+            if (isTeacherMissing && !widthCompact) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.person_off_rounded,
+                size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                color: Colors.deepOrange.withValues(alpha: 0.9),
+              ),
+            ],
+            if (isSubstitution && !widthCompact && !heightMinimal) ...[
+              const SizedBox(width: 3),
+              Icon(
+                Icons.swap_horiz_rounded,
+                size: (effectiveSubjectFontSize * 0.95).clamp(10.0, 15.0),
+                color: effectiveTextColor.withValues(alpha: 0.9),
+              ),
+            ],
+          ],
+        ),
+        if (!heightMinimal &&
+            ((showRoom && room.isNotEmpty) ||
+                (showTeacher && teacher.isNotEmpty))) ...[
+          const SizedBox(height: 2),
+          Row(
+            key: const ValueKey('lesson-clean-meta-row'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showRoom && room.isNotEmpty) ...[
+                Flexible(
+                  child: Text(
+                    room,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: untisThemeTextStyle(
+                      context,
+                      fontSize: effectiveRoomFontSize,
+                      fontWeight: FontWeight.w700,
+                      color: effectiveSecondaryTextColor,
+                    ),
+                  ),
+                ),
+              ],
+              if (showRoom &&
+                  room.isNotEmpty &&
+                  showTeacher &&
+                  teacher.isNotEmpty) ...[
+                Text(
+                  ' • ',
+                  style: untisThemeTextStyle(
+                    context,
+                    fontSize: effectiveRoomFontSize * 0.9,
+                    fontWeight: FontWeight.w400,
+                    color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+              if (showTeacher && teacher.isNotEmpty) ...[
+                Flexible(
+                  child: Text(
+                    teacher,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: untisThemeTextStyle(
+                      context,
+                      fontSize: effectiveTeacherFontSize,
+                      fontWeight: isSubstituted
+                          ? FontWeight.w800
+                          : FontWeight.w600,
+                      color: isSubstituted
+                          ? effectiveTextColor
+                          : effectiveSecondaryTextColor,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+        if (isSubstituted &&
+            (availableHeight == null || availableHeight! >= 54)) ...[
+          Text(
+            originalTeacher,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: untisThemeTextStyle(
+              context,
+              fontSize: effectiveTeacherFontSize * 0.88,
+              fontWeight: FontWeight.w500,
+              color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
+              decoration: TextDecoration.lineThrough,
+              decorationColor: fgColor.withValues(alpha: 0.55),
+              decorationThickness: 1.4,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildClassicContent({
+    required BuildContext context,
+    required int accentStyle,
+    required Color fgColor,
+    required double effectiveRadius,
+    required double effectiveSubjectFontSize,
+    required double effectiveTeacherFontSize,
+    required double effectiveRoomFontSize,
+    required Color effectiveTextColor,
+    required Color effectiveSecondaryTextColor,
+    required bool widthCompact,
+    required bool heightCompact,
+    required bool heightMinimal,
+    required bool showTeacher,
+    required bool showRoom,
+    required bool isSubstituted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (accentStyle == 2) ...[
+              Container(
+                width: 6.5,
+                height: 6.5,
+                margin: const EdgeInsets.only(right: 4.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: fgColor,
+                  boxShadow: _glowShadows(context, [
+                    BoxShadow(
+                      color: fgColor.withValues(alpha: 0.6),
+                      blurRadius: 4,
+                    ),
+                  ]),
+                ),
+              ),
+            ],
+            Flexible(
+              child: Text(
+                subject,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: untisThemeTextStyle(
+                  context,
+                  display: true,
+                  fontSize: effectiveSubjectFontSize,
+                  fontWeight: FontWeight.w800,
+                  color: effectiveTextColor,
+                  decoration: isCancelled
+                      ? TextDecoration.lineThrough
+                      : null,
+                  decorationColor: fgColor.withValues(alpha: 0.6),
+                  decorationThickness: 1.6,
+                ),
+              ),
+            ),
+            if (lessonShowSubjectIconsNotifier.value &&
+                subjectIcon != null &&
+                !widthCompact &&
+                !heightMinimal) ...[
+              Icon(
+                subjectIcon,
+                key: const ValueKey('lesson-inline-subject-icon'),
+                size: (effectiveSubjectFontSize * 1.15).clamp(11.0, 17.0),
+                color: effectiveTextColor.withValues(alpha: 0.85),
+              ),
+              const SizedBox(width: 3.5),
+            ],
+            if ((hasExam || hasHomework) && !widthCompact) ...[
+              const SizedBox(width: 4),
+              Icon(
+                hasExam
+                    ? Icons.assignment_turned_in_rounded
+                    : Icons.assignment_rounded,
+                size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                color: effectiveTextColor.withValues(alpha: 0.8),
+              ),
+            ],
+            if (isTeacherMissing && !widthCompact) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.person_off_rounded,
+                size: (effectiveSubjectFontSize * 0.9).clamp(10.0, 16.0),
+                color: Colors.deepOrange.withValues(alpha: 0.9),
+              ),
+            ],
+            if (isSubstitution && !widthCompact && !heightMinimal) ...[
+              const SizedBox(width: 3),
+              Icon(
+                Icons.swap_horiz_rounded,
+                size: (effectiveSubjectFontSize * 0.95).clamp(10.0, 15.0),
+                color: effectiveTextColor.withValues(alpha: 0.9),
+              ),
+            ],
+          ],
+        ),
+        if (!heightMinimal &&
+            showTeacher &&
+            teacher.isNotEmpty &&
+            (availableHeight == null || availableHeight! >= 42))
+          Text(
+            teacher,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: untisThemeTextStyle(
+              context,
+              fontSize: effectiveTeacherFontSize,
+              fontWeight: isSubstituted
+                  ? FontWeight.w800
+                  : FontWeight.w600,
+              color: isSubstituted
+                  ? effectiveTextColor
+                  : effectiveSecondaryTextColor,
+            ),
+          ),
+        if (isSubstituted &&
+            (availableHeight == null || availableHeight! >= 54))
+          Text(
+            originalTeacher,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: untisThemeTextStyle(
+              context,
+              fontSize: effectiveTeacherFontSize * 0.9,
+              fontWeight: FontWeight.w500,
+              color: effectiveSecondaryTextColor.withValues(alpha: 0.6),
+              decoration: TextDecoration.lineThrough,
+              decorationColor: fgColor.withValues(alpha: 0.55),
+              decorationThickness: 1.4,
+            ),
+          ),
+        if (!heightCompact &&
+            showRoom &&
+            room.isNotEmpty &&
+            (availableHeight == null || availableHeight! >= 58))
+          Text(
+            room,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: untisThemeTextStyle(
+              context,
+              fontSize: effectiveRoomFontSize,
+              fontWeight: FontWeight.w600,
+              color: effectiveSecondaryTextColor,
+            ),
+          ),
       ],
     );
   }
