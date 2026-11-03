@@ -108,6 +108,7 @@ part 'screens/onboarding/welcome_hero_step.dart';
 part 'screens/onboarding/appearance_step.dart';
 part 'screens/onboarding/school_login_step.dart';
 part 'screens/onboarding/ai_copilot_step.dart';
+part 'screens/onboarding/features_ready_step.dart';
 part 'screens/weekly_timetable_page.dart';
 part 'screens/teacher_search_page.dart';
 part 'screens/room_search_page.dart';
