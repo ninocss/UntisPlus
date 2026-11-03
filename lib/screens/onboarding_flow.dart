@@ -330,26 +330,29 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          // Background gradient
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 800),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  _currentPage % 2 == 0
-                      ? colors.primaryContainer.withValues(alpha: 0.35)
-                      : colors.secondaryContainer.withValues(alpha: 0.35),
-                  colors.surface,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return ValueListenableBuilder<String>(
+      valueListenable: appLocaleNotifier,
+      builder: (context, currentLocale, _) {
+        return Scaffold(
+          resizeToAvoidBottomInset: true,
+          body: Stack(
+            children: [
+              // Background gradient
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 800),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _currentPage % 2 == 0
+                          ? colors.primaryContainer.withValues(alpha: 0.35)
+                          : colors.secondaryContainer.withValues(alpha: 0.35),
+                      colors.surface,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
               ),
-            ),
-          ),
           // Animated background scene
           ValueListenableBuilder<AppThemeId>(
             valueListenable: visualThemeNotifier,
@@ -519,6 +522,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

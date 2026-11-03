@@ -1,7 +1,7 @@
 part of '../../main.dart';
 
 /// Step 0: Emotional M3 Expressive Welcome Stage with dynamic branding,
-/// instant language switcher, and rapid entry actions.
+/// vertical language selector cards, and rapid entry actions.
 class WelcomeHeroStep extends StatelessWidget {
   final VoidCallback onGetStarted;
   final VoidCallback? onTryDemo;
@@ -33,12 +33,12 @@ class WelcomeHeroStep extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 20),
-                // Expressive Emblem with squircle shape & dynamic tonal gradient
+                const SizedBox(height: 16),
+                // App Icon emblem with squircle container & subtle glow
                 Container(
-                  width: 104,
-                  height: 104,
-                  padding: const EdgeInsets.all(12),
+                  width: 96,
+                  height: 96,
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -48,33 +48,33 @@ class WelcomeHeroStep extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(32),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: colors.primary.withValues(alpha: 0.15),
+                        color: colors.primary.withValues(alpha: 0.18),
                         blurRadius: 24,
-                        offset: const Offset(0, 10),
+                        offset: const Offset(0, 8),
                       ),
                     ],
                     border: Border.all(
-                      color: colors.primary.withValues(alpha: 0.2),
+                      color: colors.primary.withValues(alpha: 0.25),
                       width: 1.5,
                     ),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(24),
                     child: Image.asset(
-                      'assets/icons/icon_3D.png',
-                      fit: BoxFit.contain,
+                      'assets/icons/icon.png',
+                      fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.auto_awesome_rounded,
+                        Icons.school_rounded,
                         size: 48,
                         color: colors.primary,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
                 // Emphasized Display Headline
                 Text(
                   l.onboardingWelcomeTitle,
@@ -82,7 +82,7 @@ class WelcomeHeroStep extends StatelessWidget {
                   style: untisThemeTextStyle(
                     context,
                     display: true,
-                    fontSize: 32,
+                    fontSize: 30,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.8,
                     color: colors.onSurface,
@@ -92,93 +92,33 @@ class WelcomeHeroStep extends StatelessWidget {
                 const SizedBox(height: 8),
                 // Subtitle
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
                     l.onboardingChooseLanguageSubtitle,
                     textAlign: TextAlign.center,
                     style: untisThemeTextStyle(
                       context,
-                      fontSize: 15,
+                      fontSize: 14.5,
                       fontWeight: FontWeight.w500,
                       color: colors.onSurfaceVariant,
                       height: 1.4,
                     ),
                   ),
                 ),
-                const SizedBox(height: 28),
-                // Interactive Language Pill Switcher
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: languages.map((lang) {
-                    final isSelected = currentLocale == lang.$1;
-                    return Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () async {
-                          AppHaptics.selection();
-                          await ensureDateFormattingForLocale(lang.$1);
-                          appLocaleNotifier.value = lang.$1;
-                          final prefs = SettingsStore.instance.preferences;
-                          await prefs.setString('appLocale', lang.$1);
-                          unawaited(WidgetService.publishNativeCopy(lang.$1));
-                          unawaited(AlarmService.instance.refreshNativeCopy());
-                        },
-                        borderRadius: BorderRadius.circular(99),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOutBack,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? colors.primaryContainer
-                                : colors.surfaceContainerHigh.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(99),
-                            border: Border.all(
-                              color: isSelected
-                                  ? colors.primary
-                                  : colors.outlineVariant.withValues(alpha: 0.35),
-                              width: isSelected ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(lang.$3, style: const TextStyle(fontSize: 16)),
-                              const SizedBox(width: 8),
-                              Text(
-                                lang.$2,
-                                style: untisThemeTextStyle(
-                                  context,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  fontSize: 14,
-                                  color: isSelected
-                                      ? colors.onPrimaryContainer
-                                      : colors.onSurface,
-                                ),
-                              ),
-                              if (isSelected) ...[
-                                const SizedBox(width: 6),
-                                Icon(
-                                  Icons.check_rounded,
-                                  size: 16,
-                                  color: colors.primary,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+                // Vertical Language Selection Cards
+                for (int i = 0; i < languages.length; i++) ...[
+                  _buildLanguageCard(
+                    context,
+                    code: languages[i].$1,
+                    name: languages[i].$2,
+                    flag: languages[i].$3,
+                    isSelected: currentLocale == languages[i].$1,
+                    colors: colors,
+                  ),
+                  if (i < languages.length - 1) const SizedBox(height: 10),
+                ],
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -203,6 +143,94 @@ class WelcomeHeroStep extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLanguageCard(
+    BuildContext context, {
+    required String code,
+    required String name,
+    required String flag,
+    required bool isSelected,
+    required ColorScheme colors,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          AppHaptics.selection();
+          await ensureDateFormattingForLocale(code);
+          appLocaleNotifier.value = code;
+          final prefs = SettingsStore.instance.preferences;
+          await prefs.setString('appLocale', code);
+          unawaited(WidgetService.publishNativeCopy(code));
+          unawaited(AlarmService.instance.refreshNativeCopy());
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? colors.primaryContainer.withValues(alpha: 0.85)
+                : colors.surfaceContainerHigh.withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected
+                  ? colors.primary
+                  : colors.outlineVariant.withValues(alpha: 0.35),
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? colors.primary.withValues(alpha: 0.14)
+                      : colors.surface.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(flag, style: const TextStyle(fontSize: 22)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  name,
+                  style: untisThemeTextStyle(
+                    context,
+                    fontSize: 15.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? colors.onPrimaryContainer
+                        : colors.onSurface,
+                  ),
+                ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: isSelected
+                    ? Icon(
+                        Icons.check_circle_rounded,
+                        key: const ValueKey('checked'),
+                        color: colors.primary,
+                        size: 22,
+                      )
+                    : Icon(
+                        Icons.radio_button_unchecked_rounded,
+                        key: const ValueKey('unchecked'),
+                        color: colors.outlineVariant.withValues(alpha: 0.7),
+                        size: 22,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

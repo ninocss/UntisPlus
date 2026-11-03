@@ -53,15 +53,15 @@ void main() {
 
     // Initial search view
     expect(find.byType(TextField), findsOneWidget); // School search field
-    expect(find.text('Demo-Modus starten'), findsOneWidget);
-    expect(find.text('Manuelle Eingabe'), findsOneWidget);
+    expect(find.text('Demo'), findsOneWidget);
+    expect(find.text('Manuell'), findsOneWidget);
 
     // Tap Demo
-    await tester.tap(find.text('Demo-Modus starten'));
+    await tester.tap(find.text('Demo'));
     expect(demoSelected, isTrue);
 
     // Switch to manual school entry
-    await tester.tap(find.text('Manuelle Eingabe'));
+    await tester.tap(find.text('Manuell'));
     await tester.pumpAndSettle();
 
     // Now credentials view is visible with server, school, username, password fields

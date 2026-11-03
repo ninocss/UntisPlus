@@ -751,6 +751,19 @@ extension AppL10nCollections on AppL10n {
       _t('aiNoiseLevel').replaceAll('{pct}', '${pct.round()}');
   String get aiGradientType => _t('aiGradientType');
 
+  // ── M3 Onboarding Expressive Strings ──────────────────────────────────────
+  String get loginDemoShort => _t('loginDemoShort');
+  String get loginManualShort => _t('loginManualShort');
+  String get onboardingAiGeminiDesc => _t('onboardingAiGeminiDesc');
+  String get onboardingAiLocalDesc => _t('onboardingAiLocalDesc');
+  String get onboardingAiOpenAiDesc => _t('onboardingAiOpenAiDesc');
+  String get onboardingAiCustomDesc => _t('onboardingAiCustomDesc');
+  String get onboardingAiBadgeRecommended => _t('onboardingAiBadgeRecommended');
+  String get onboardingAiBadgePrivate => _t('onboardingAiBadgePrivate');
+  String get onboardingContinueWithoutAi => _t('onboardingContinueWithoutAi');
+  String get onboardingSelectModel => _t('onboardingSelectModel');
+  String get onboardingGeminiGetApiKeyLink => _t('onboardingGeminiGetApiKeyLink');
+
   String _t(String key) =>
       (_strings[locale]?[key] ?? _strings['de']?[key] ?? key).toString();
 
@@ -853,12 +866,23 @@ extension AppL10nCollections on AppL10n {
           'Bitte gib einen Schlüssel ein oder überspringe diesen Schritt',
       'onboardingReadyTitle': 'Bereit zum Start!',
       'onboardingReadySubtitle': 'Das kannst du alles in Untis+ machen',
+      'loginDemoShort': 'Demo',
+      'loginManualShort': 'Manuell',
+      'onboardingAiGeminiDesc': 'Schnell, präzise & kostenloser API-Schlüssel',
+      'onboardingAiLocalDesc': '100% offline & auf deinem Gerät ausgeführt',
+      'onboardingAiOpenAiDesc': 'GPT-4o, GPT-4o mini mit eigenem API-Key',
+      'onboardingAiCustomDesc': 'Ollama, vLLM oder kompatible Proxies',
+      'onboardingAiBadgeRecommended': 'Empfohlen',
+      'onboardingAiBadgePrivate': 'Privat',
+      'onboardingContinueWithoutAi': 'Ohne KI fortfahren',
+      'onboardingSelectModel': 'Modell auswählen',
+      'onboardingGeminiGetApiKeyLink': 'API-Key kostenlos bei Google AI Studio holen',
       'onboardingFeatureTimetableTitle': 'Stundenplan & Kalender',
       'onboardingFeatureTimetableDesc':
           'Behalte deinen Stundenplan perfekt im Blick.',
       'onboardingFeatureExamsTitle': 'Prüfungen & Hausaufgaben',
       'onboardingFeatureExamsDesc':
-          'Verfolge deinen Lernstand, importiere Klausuren und exportiere sie als JSON.',
+          'Verfolge deinen Lernstand, behalte Hausaufgaben und Klausuren im Blick.',
       'onboardingFeatureAiTitle': 'KI-Assistent',
       'onboardingFeatureAiDesc':
           'Frag Gemini nach deinem Tag, Hausaufgaben oder Prüfungen.',
@@ -2085,7 +2109,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingFeatureTimetableDesc': 'View your schedule flawlessly.',
       'onboardingFeatureExamsTitle': 'Exams & Homework',
       'onboardingFeatureExamsDesc':
-          'Track progress, import exams, and export them as JSON.',
+          'Track your progress and stay on top of homework and upcoming exams.',
       'onboardingFeatureAiTitle': 'AI Assistant',
       'onboardingFeatureAiDesc':
           'Ask Gemini about your day, homework or exams.',
@@ -3298,7 +3322,7 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingFeatureTimetableDesc': 'Consulte ton planning sans effort.',
       'onboardingFeatureExamsTitle': 'Examens & Devoirs',
       'onboardingFeatureExamsDesc':
-          'Suis ta progression, importe des examens et exporte-les en JSON.',
+          'Suis ta progression et reste à jour sur tes devoirs et examens.',
       'onboardingFeatureAiTitle': 'Assistant IA',
       'onboardingFeatureAiDesc':
           'Demande à Gemini des infos sur ta journée, tes devoirs ou tes examens.',

@@ -1,6 +1,6 @@
 part of '../../main.dart';
 
-/// Step 4: Material 3 Expressive Launch & Celebration Stage with feature cards
+/// Step 4: Material 3 Expressive Launch & Celebration Stage with clean highlights
 /// and completion action leading smoothly into the main application.
 class FeaturesReadyStep extends StatelessWidget {
   final VoidCallback onComplete;
@@ -28,60 +28,43 @@ class FeaturesReadyStep extends StatelessWidget {
         l.onboardingFeatureExamsDesc,
         colors.secondary,
       ),
-      (
-        Icons.auto_awesome_rounded,
-        l.onboardingFeatureAiTitle,
-        l.onboardingFeatureAiDesc,
-        colors.tertiary,
-      ),
-      (
-        Icons.notifications_active_rounded,
-        l.onboardingFeatureNotifyTitle,
-        l.onboardingFeatureNotifyDesc,
-        colors.primary,
-      ),
-      (
-        Icons.system_update_alt_rounded,
-        l.onboardingFeatureUpdatesTitle,
-        l.onboardingFeatureUpdatesDesc,
-        colors.secondary,
-      ),
-      (
-        Icons.backup_rounded,
-        l.onboardingFeatureBackupTitle,
-        l.onboardingFeatureBackupDesc,
-        colors.tertiary,
-      ),
     ];
 
     return M3StepContainer(
       content: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             // Celebration Emblem
             Container(
-              width: 80,
-              height: 80,
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [colors.primaryContainer, colors.tertiaryContainer],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(26),
+                borderRadius: BorderRadius.circular(28),
                 border: Border.all(
                   color: colors.primary.withValues(alpha: 0.25),
                   width: 1.5,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.primary.withValues(alpha: 0.2),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Icon(
                 Icons.rocket_launch_rounded,
-                size: 38,
+                size: 42,
                 color: colors.primary,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 22),
             Text(
               l.onboardingReadyTitle,
               textAlign: TextAlign.center,
@@ -94,9 +77,9 @@ class FeaturesReadyStep extends StatelessWidget {
                 color: colors.onSurface,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 l.onboardingReadySubtitle,
                 textAlign: TextAlign.center,
@@ -105,21 +88,22 @@ class FeaturesReadyStep extends StatelessWidget {
                   fontSize: 14.5,
                   fontWeight: FontWeight.w500,
                   color: colors.onSurfaceVariant,
+                  height: 1.4,
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
-            // Expressive Feature Cards
+            // Clean, essential highlight cards
             ...features.map((feature) {
               final (icon, title, desc, accent) = feature;
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: colors.surfaceContainerHigh.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(22),
                     border: Border.all(
                       color: colors.outlineVariant.withValues(alpha: 0.28),
                     ),
@@ -127,8 +111,8 @@ class FeaturesReadyStep extends StatelessWidget {
                   child: Row(
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
                           color: accent.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(14),
@@ -145,7 +129,7 @@ class FeaturesReadyStep extends StatelessWidget {
                               style: untisThemeTextStyle(
                                 context,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 14.5,
+                                fontSize: 15,
                                 color: colors.onSurface,
                               ),
                             ),
@@ -167,7 +151,7 @@ class FeaturesReadyStep extends StatelessWidget {
                 ),
               );
             }),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
           ],
         ),
       ),

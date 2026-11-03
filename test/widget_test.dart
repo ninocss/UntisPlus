@@ -746,7 +746,7 @@ void main() {
     );
     await tapVisible(tester, find.text('Weiter'));
 
-    final demoButton = find.text('Demo-Modus starten');
+    final demoButton = find.widgetWithText(OutlinedButton, 'Demo');
     await pumpUntilFound(tester, demoButton);
     await tapVisible(tester, demoButton);
     await pumpUntilFound(tester, find.text('Lokales Modell'));

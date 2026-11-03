@@ -96,6 +96,171 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
     widget.onNext();
   }
 
+  String _getLocalModelDescription(LocalModelInfo model, AppL10n l) {
+    switch (model.id) {
+      case 'qwen3-0.6b-q4_k_m':
+      case 'lfm2-1.2b-q4_k_m':
+        return l.aiLocalModelDescSmall;
+      case 'qwen3-1.7b-q4_k_m':
+      case 'granite-4.0-h-micro-q4_k_m':
+        return l.aiLocalModelDescBalanced;
+      case 'qwen3-4b-instruct-2507-q4_k_m':
+        return l.aiLocalModelDescMultilingual;
+      case 'gemma-4-e2b-it-q4_k_m':
+        return l.aiLocalModelDescHighQuality;
+      case 'gemma-4-e4b-it-q4_k_m':
+        return l.aiLocalModelDescStrong;
+      default:
+        return model.description;
+    }
+  }
+
+  void _showModelPicker(BuildContext context, AppL10n l) {
+    final colors = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colors.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.outlineVariant.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  l.onboardingSelectModel,
+                  style: untisThemeTextStyle(
+                    ctx,
+                    display: true,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.55,
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: kLocalModels.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (_, index) {
+                      final model = kLocalModels[index];
+                      final isSelected = model.id == _model;
+
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            AppHaptics.selection();
+                            setState(() {
+                              _model = model.id;
+                            });
+                            Navigator.of(ctx).pop();
+                          },
+                          borderRadius: BorderRadius.circular(18),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? colors.primaryContainer.withValues(alpha: 0.7)
+                                  : colors.surfaceContainerHigh.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isSelected
+                                    ? colors.primary
+                                    : colors.outlineVariant.withValues(alpha: 0.3),
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? colors.primary.withValues(alpha: 0.15)
+                                        : colors.surface.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.memory_rounded,
+                                    color: isSelected ? colors.primary : colors.onSurfaceVariant,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        model.name,
+                                        style: untisThemeTextStyle(
+                                          ctx,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14.5,
+                                          color: isSelected
+                                              ? colors.onPrimaryContainer
+                                              : colors.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${l.settingsAiLocalModelSize(model.sizeGb)} · ${_getLocalModelDescription(model, l)}',
+                                        style: untisThemeTextStyle(
+                                          ctx,
+                                          fontSize: 12,
+                                          color: colors.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  isSelected
+                                      ? Icons.check_circle_rounded
+                                      : Icons.radio_button_unchecked_rounded,
+                                  color: isSelected ? colors.primary : colors.outlineVariant,
+                                  size: 22,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -163,8 +328,8 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
             _buildProviderBento(
               id: 'gemini',
               title: 'Google Gemini',
-              subtitle: 'Schnell, präzise & kostenloser API-Schlüssel',
-              badge: 'Empfohlen',
+              subtitle: l.onboardingAiGeminiDesc,
+              badge: l.onboardingAiBadgeRecommended,
               icon: Icons.auto_awesome_rounded,
               colors: colors,
             ),
@@ -173,8 +338,8 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
             _buildProviderBento(
               id: 'local',
               title: l.settingsAiLocalModel,
-              subtitle: '100% offline & auf deinem Gerät ausgeführt',
-              badge: 'Privat',
+              subtitle: l.onboardingAiLocalDesc,
+              badge: l.onboardingAiBadgePrivate,
               icon: Icons.memory_rounded,
               colors: colors,
             ),
@@ -183,7 +348,7 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
             _buildProviderBento(
               id: 'openai',
               title: 'OpenAI (ChatGPT)',
-              subtitle: 'GPT-4o, GPT-4o mini mit eigenem API-Key',
+              subtitle: l.onboardingAiOpenAiDesc,
               icon: Icons.chat_bubble_outline_rounded,
               colors: colors,
             ),
@@ -192,7 +357,7 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
             _buildProviderBento(
               id: 'custom',
               title: 'Custom Endpoint',
-              subtitle: 'Ollama, vLLM oder kompatible Proxies',
+              subtitle: l.onboardingAiCustomDesc,
               icon: Icons.settings_ethernet_rounded,
               colors: colors,
             ),
@@ -200,7 +365,7 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
 
             // Provider-specific details / inputs
             if (isLocal) ...[
-              // Local Model Download Card
+              // Local Model Selection & Download Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -215,7 +380,7 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.download_rounded, color: colors.primary, size: 22),
+                        Icon(Icons.memory_rounded, color: colors.primary, size: 22),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -228,20 +393,37 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
                             ),
                           ),
                         ),
+                        // Choose model trigger button
+                        OutlinedButton.icon(
+                          onPressed: () => _showModelPicker(context, l),
+                          icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                          label: Text(
+                            l.onboardingSelectModel,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            minimumSize: const Size(0, 32),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Text(
                       _selectedLocalModel.name,
                       style: untisThemeTextStyle(
                         context,
                         fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                        fontSize: 15,
                         color: colors.onSurface,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      l.settingsAiLocalModelSize(_selectedLocalModel.sizeGb),
+                      '${l.settingsAiLocalModelSize(_selectedLocalModel.sizeGb)} · ${_getLocalModelDescription(_selectedLocalModel, l)}',
                       style: untisThemeTextStyle(
                         context,
                         fontSize: 12.5,
@@ -301,10 +483,45 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
                       context,
                       color: colors.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
+                    filled: false,
+                    fillColor: Colors.transparent,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                   ),
                 ),
               ),
+              if (_provider == 'gemini' || _provider == 'openai' || _provider == 'mistral') ...[
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final url = _settingsApiKeyPortalUrlForProvider(_provider);
+                      if (url.isNotEmpty) {
+                        await url_launcher.launchUrlString(
+                          url,
+                          mode: url_launcher.LaunchMode.externalApplication,
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: Text(
+                      _provider == 'gemini'
+                          ? l.onboardingGeminiGetApiKeyLink
+                          : l.settingsAiApiKeyGet,
+                      style: untisThemeTextStyle(
+                        context,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (isCustom) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -328,7 +545,13 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
                         fontSize: 13,
                       ),
                       hintText: 'https://api.openai.com/v1',
+                      filled: false,
+                      fillColor: Colors.transparent,
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
                     ),
                   ),
                 ),
@@ -348,7 +571,7 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
           ),
           const SizedBox(height: 8),
           M3PillButton(
-            label: 'Ohne KI fortfahren',
+            label: l.onboardingContinueWithoutAi,
             icon: Icons.chevron_right_rounded,
             isPrimary: false,
             onPressed: () {

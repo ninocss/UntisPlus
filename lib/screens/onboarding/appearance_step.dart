@@ -373,7 +373,7 @@ class AppearanceStep extends StatelessWidget {
               builder: (context, bgActive, _) {
                 return _buildM3Toggle(
                   context,
-                  title: 'Hintergrundanimationen',
+                  title: l.settingsBackgroundAnimations,
                   subtitle: l.settingsBackgroundAnimationsDesc,
                   icon: Icons.animation_rounded,
                   value: bgActive,
@@ -390,7 +390,7 @@ class AppearanceStep extends StatelessWidget {
               builder: (context, blurActive, _) {
                 return _buildM3Toggle(
                   context,
-                  title: 'Blur-Effekt',
+                  title: l.settingsGlassEffect,
                   subtitle: l.settingsGlassEffectDesc,
                   icon: Icons.blur_on_rounded,
                   value: blurActive,

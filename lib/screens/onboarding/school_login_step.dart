@@ -142,7 +142,13 @@ class _SchoolLoginStepState extends State<SchoolLoginStep> {
                       ),
                     ),
                     prefixIconConstraints: const BoxConstraints(minWidth: 0),
+                    filled: false,
+                    fillColor: Colors.transparent,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 16,
@@ -425,27 +431,41 @@ class _SchoolLoginStepState extends State<SchoolLoginStep> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => setState(() => _manualSchoolEntry = true),
-                    icon: const Icon(Icons.edit_rounded, size: 17),
-                    label: Text(l.loginManualEntry),
+                    icon: const Icon(Icons.edit_rounded, size: 18),
+                    label: Text(
+                      l.loginManualShort,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 48),
+                      minimumSize: const Size(0, 52),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                      side: BorderSide(
+                        color: colors.outlineVariant.withValues(alpha: 0.6),
+                        width: 1.2,
                       ),
                     ),
                   ),
                 ),
                 if (!widget.accountOnly) ...[
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: widget.isLoggingIn ? null : widget.onDemoModeSelected,
-                      icon: const Icon(Icons.science_rounded, size: 17),
-                      label: Text(l.onboardingUseDemoMode),
+                      icon: const Icon(Icons.science_rounded, size: 18),
+                      label: Text(
+                        l.loginDemoShort,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 48),
+                        minimumSize: const Size(0, 52),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(26),
+                        ),
+                        side: BorderSide(
+                          color: colors.outlineVariant.withValues(alpha: 0.6),
+                          width: 1.2,
                         ),
                       ),
                     ),
@@ -517,7 +537,13 @@ class _SchoolLoginStepState extends State<SchoolLoginStep> {
             color: colors.onSurfaceVariant.withValues(alpha: 0.6),
             fontSize: 14,
           ),
+          filled: false,
+          fillColor: Colors.transparent,
           border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
         ),
       ),
     );
