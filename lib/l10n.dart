@@ -121,6 +121,31 @@ extension AppL10nCollections on AppL10n {
       'Aus den erreichbaren Klassen-Stundenplänen konnten keine Lehrkräfte gelesen werden. Prüfe den Zugriff und aktualisiere erneut.',
   };
 
+  String get roomSearchRefreshAll => switch (locale) {
+    'en' => 'Refresh rooms and timetable',
+    'es' => 'Actualizar aulas y horario',
+    'fr' => 'Actualiser les salles et l’emploi du temps',
+    _ => 'Räume und Stundenplan aktualisieren',
+  };
+
+  String roomSearchClassFallback(int count) => switch (locale) {
+    'en' => 'Rooms from $count accessible class timetables',
+    'es' => 'Aulas de $count horarios de clase accesibles',
+    'fr' => 'Salles issues de $count emplois du temps de classe accessibles',
+    _ => 'Räume aus $count erreichbaren Klassen-Stundenplänen',
+  };
+
+  String get roomSearchClassFallbackUnavailable => switch (locale) {
+    'en' =>
+      'No rooms could be read from accessible class timetables. Check class timetable access and try refreshing again.',
+    'es' =>
+      'No se pudieron obtener aulas de los horarios accesibles. Comprueba el acceso y vuelve a actualizar.',
+    'fr' =>
+      'Aucune salle n’a pu être récupérée depuis les emplois du temps accessibles. Vérifie les accès puis réessaie.',
+    _ =>
+      'Aus den erreichbaren Klassen-Stundenplänen konnten keine Räume gelesen werden. Prüfe den Zugriff und aktualisiere erneut.',
+  };
+
   String get settingsAiAvailability => switch (locale) {
     'en' => 'AI features',
     'es' => 'Funciones de IA',
