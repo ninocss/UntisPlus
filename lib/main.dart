@@ -103,6 +103,7 @@ part 'core/shared_ui.dart';
 part 'core/app_state.dart';
 part 'core/custom_backgrounds.dart';
 part 'screens/onboarding_flow.dart';
+part 'screens/onboarding/onboarding_shared_widgets.dart';
 part 'screens/weekly_timetable_page.dart';
 part 'screens/teacher_search_page.dart';
 part 'screens/room_search_page.dart';
