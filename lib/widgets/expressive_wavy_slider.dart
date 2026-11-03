@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../main.dart' show AppMotion;
 
+bool debugDisableWavyTickers = false;
+
 bool _isUnderFlutterTest() {
+  if (debugDisableWavyTickers) return true;
   if (kIsWeb) return false;
   try {
     return Platform.environment.containsKey('FLUTTER_TEST');
@@ -94,36 +97,42 @@ class WavySliderTrackShape extends SliderTrackShape {
       ..strokeWidth = strokeW
       ..style = PaintingStyle.stroke;
 
+    final bool isRtl = textDirection == TextDirection.rtl;
+
     final double x0 = trackRect.left;
     final double x1 = thumbCenter.dx.clamp(x0, trackRect.right);
     final double xEnd = trackRect.right;
 
-    // Draw inactive track (straight line right of thumb)
-    if (x1 < xEnd) {
+    final double activeStart = isRtl ? x1 : x0;
+    final double activeEnd = isRtl ? xEnd : x1;
+    final double inactiveStart = isRtl ? x0 : x1;
+    final double inactiveEnd = isRtl ? x1 : xEnd;
+
+    // Draw inactive track (straight line)
+    if (inactiveEnd > inactiveStart) {
       final Path inactivePath = Path();
-      inactivePath.moveTo(x1, y0);
-      inactivePath.lineTo(xEnd, y0);
+      inactivePath.moveTo(inactiveStart, y0);
+      inactivePath.lineTo(inactiveEnd, y0);
       canvas.drawPath(inactivePath, inactivePaint);
     }
 
-    // Draw active track (wavy sine line left of thumb)
-    if (x1 > x0) {
+    // Draw active track (wavy sine line)
+    if (activeEnd > activeStart) {
       final Path activePath = Path();
-      activePath.moveTo(x0, y0);
+      activePath.moveTo(activeStart, y0);
 
       const double step = 2.0;
-      final double totalActive = x1 - x0;
-      for (double x = x0; x <= x1; x += step) {
-        final double distFromEdge = math.min(x - x0, x1 - x);
+      for (double x = activeStart; x <= activeEnd; x += step) {
+        final double distFromEdge = math.min(x - activeStart, activeEnd - x);
         final double edgeEnvelope =
             (distFromEdge / (wavelength * 0.4)).clamp(0.0, 1.0);
         final double currentAmp = amplitude * edgeEnvelope;
         final double wave =
             currentAmp *
-            math.sin(((x - x0) / wavelength) * 2 * math.pi - phase);
+            math.sin(((x - activeStart) / wavelength) * 2 * math.pi - phase);
         activePath.lineTo(x, y0 + wave);
       }
-      activePath.lineTo(x1, y0);
+      activePath.lineTo(activeEnd, y0);
       canvas.drawPath(activePath, activePaint);
     }
   }

@@ -970,7 +970,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final cs = Theme.of(context).colorScheme;
     final accountIndex = allItems.indexOf(accountItem);
     final selected = expanded && accountIndex == _selectedDetail;
-    final isCompact = MediaQuery.sizeOf(context).width < 420;
+    final isCompact = !expanded || MediaQuery.sizeOf(context).width < 600;
 
     return AnimatedBuilder(
       animation: Listenable.merge([
@@ -1622,7 +1622,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           ? 24.0
           : 16.0;
       final bottom = mq.padding.bottom + (expanded ? 28 : 118);
-      final top = mq.padding.top + kToolbarHeight + 10;
+      final top = expanded ? 10.0 : (mq.padding.top + kToolbarHeight + 10);
 
       final sections = <Widget>[];
       void addSection(String key, List<_SettingsHubItem> sectionItems) {
@@ -1691,21 +1691,23 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     }
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: !expanded,
       backgroundColor: Colors.transparent,
-      appBar: _mainTabHeaderAppBar(
-        context,
-        l.settingsTitle,
-        actions: [
-          _buildAppBarAccountBadge(
-            context,
-            l: l,
-            accountItem: accountItem,
-            expanded: expanded,
-            allItems: items,
-          ),
-        ],
-      ),
+      appBar: expanded
+          ? null
+          : _mainTabHeaderAppBar(
+              context,
+              l.settingsTitle,
+              actions: [
+                _buildAppBarAccountBadge(
+                  context,
+                  l: l,
+                  accountItem: accountItem,
+                  expanded: false,
+                  allItems: items,
+                ),
+              ],
+            ),
       body: LayoutBuilder(
         builder: (context, _) {
           if (!expanded) return settingsList(expanded: false);
@@ -1723,7 +1725,33 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           return Row(
             key: const ValueKey('settings-master-detail'),
             children: [
-              SizedBox(width: masterWidth, child: settingsList(expanded: true)),
+              SizedBox(
+                width: masterWidth,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: mq.padding.top + kToolbarHeight,
+                      child: Padding(
+                        padding: EdgeInsets.only(top: mq.padding.top),
+                        child: _mainTabHeaderAppBar(
+                          context,
+                          l.settingsTitle,
+                          actions: [
+                            _buildAppBarAccountBadge(
+                              context,
+                              l: l,
+                              accountItem: accountItem,
+                              expanded: true,
+                              allItems: items,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(child: settingsList(expanded: true)),
+                  ],
+                ),
+              ),
               VerticalDivider(
                 width: 1,
                 color: cs.outlineVariant.withValues(alpha: 0.45),

@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../main.dart' show AppMotion;
+import 'expressive_wavy_slider.dart' show debugDisableWavyTickers;
 
 bool _isUnderFlutterTest() {
+  if (debugDisableWavyTickers) return true;
   if (kIsWeb) return false;
   try {
     return Platform.environment.containsKey('FLUTTER_TEST');
