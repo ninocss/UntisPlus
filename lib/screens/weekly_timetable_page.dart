@@ -2874,8 +2874,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
-
-
   Widget _buildTimetableLessonCard({
     required BuildContext context,
     required bool isCancelled,
@@ -4693,7 +4691,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       context: context,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
-      blurBarrier: false,
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
       builder: (ctx) {
         final cs = Theme.of(ctx).colorScheme;
@@ -5369,7 +5366,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                     }),
                   ),
                 ),
-                              ],
+              ],
             ),
           ),
         ),
@@ -5430,41 +5427,38 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               child: _buildTimetableSwitcher(),
             )
           : AnimatedSwitcher(
-                duration: AppMotion.duration(
-                  context,
-                  const Duration(milliseconds: 560),
-                ),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                layoutBuilder: (currentChild, previousChildren) => Stack(
-                  alignment: Alignment.topCenter,
-                  fit: StackFit.passthrough,
-                  children: <Widget>[
-                    ...previousChildren,
-                    ?currentChild,
-                  ],
-                ),
-                transitionBuilder: (child, animation) {
-                  final curved = CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeInOutCubic,
-                  );
-                  return FadeTransition(
-                    opacity: curved,
-                    child: AnimatedBuilder(
-                      animation: curved,
-                      child: child,
-                      builder: (context, child) => Transform.translate(
-                        offset: Offset(0, 8 * (1 - curved.value)),
-                        child: Transform.scale(
-                          alignment: Alignment.topCenter,
-                          scale: 0.985 + (0.015 * curved.value),
-                          child: child,
-                        ),
+              duration: AppMotion.duration(
+                context,
+                const Duration(milliseconds: 560),
+              ),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              layoutBuilder: (currentChild, previousChildren) => Stack(
+                alignment: Alignment.topCenter,
+                fit: StackFit.passthrough,
+                children: <Widget>[...previousChildren, ?currentChild],
+              ),
+              transitionBuilder: (child, animation) {
+                final curved = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeInOutCubic,
+                );
+                return FadeTransition(
+                  opacity: curved,
+                  child: AnimatedBuilder(
+                    animation: curved,
+                    child: child,
+                    builder: (context, child) => Transform.translate(
+                      offset: Offset(0, 8 * (1 - curved.value)),
+                      child: Transform.scale(
+                        alignment: Alignment.topCenter,
+                        scale: 0.985 + (0.015 * curved.value),
+                        child: child,
                       ),
                     ),
-                  );
-                },
+                  ),
+                );
+              },
               child: KeyedSubtree(
                 key: ValueKey<int>(_viewMode),
                 child: _buildTimetableSwitcher(),
@@ -5632,8 +5626,9 @@ class TimetableLessonCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = untisThemeTokensOf(context);
     final isClean = lessonCleanDesignNotifier.value;
-    final effectiveAccentWidthProp =
-        isClean ? (accentWidth * 0.7).clamp(1.8, 2.5) : accentWidth;
+    final effectiveAccentWidthProp = isClean
+        ? (accentWidth * 0.7).clamp(1.8, 2.5)
+        : accentWidth;
     final visuals = LessonCardVisualsResolver.resolve(
       context: context,
       tokens: tokens,
@@ -5750,10 +5745,7 @@ class TimetableLessonCard extends StatelessWidget {
                   return const LinearGradient(
                     begin: Alignment.centerRight,
                     end: Alignment.centerLeft,
-                    colors: [
-                      Colors.white,
-                      Colors.transparent,
-                    ],
+                    colors: [Colors.white, Colors.transparent],
                     stops: [0.15, 0.95],
                   ).createShader(bounds);
                 },
@@ -5877,9 +5869,7 @@ class TimetableLessonCard extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
                   color: effectiveTextColor,
-                  decoration: isCancelled
-                      ? TextDecoration.lineThrough
-                      : null,
+                  decoration: isCancelled ? TextDecoration.lineThrough : null,
                   decorationColor: fgColor.withValues(alpha: 0.6),
                   decorationThickness: 1.6,
                 ),
@@ -6045,9 +6035,7 @@ class TimetableLessonCard extends StatelessWidget {
                   fontSize: effectiveSubjectFontSize,
                   fontWeight: FontWeight.w800,
                   color: effectiveTextColor,
-                  decoration: isCancelled
-                      ? TextDecoration.lineThrough
-                      : null,
+                  decoration: isCancelled ? TextDecoration.lineThrough : null,
                   decorationColor: fgColor.withValues(alpha: 0.6),
                   decorationThickness: 1.6,
                 ),
@@ -6104,9 +6092,7 @@ class TimetableLessonCard extends StatelessWidget {
             style: untisThemeTextStyle(
               context,
               fontSize: effectiveTeacherFontSize,
-              fontWeight: isSubstituted
-                  ? FontWeight.w800
-                  : FontWeight.w600,
+              fontWeight: isSubstituted ? FontWeight.w800 : FontWeight.w600,
               color: isSubstituted
                   ? effectiveTextColor
                   : effectiveSecondaryTextColor,
@@ -6147,4 +6133,3 @@ class TimetableLessonCard extends StatelessWidget {
     );
   }
 }
-

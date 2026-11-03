@@ -288,17 +288,17 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
 
   String _getLocalModelDescription(LocalModelInfo model, AppL10n l) {
     switch (model.id) {
-      case 'gemma-3-1b-it-q4_k_m':
+      case 'qwen3-0.6b-q4_k_m':
+      case 'lfm2-1.2b-q4_k_m':
         return l.aiLocalModelDescSmall;
-      case 'gemma-4-e4b-it-q4_k_m':
+      case 'qwen3-1.7b-q4_k_m':
+      case 'granite-4.0-h-micro-q4_k_m':
         return l.aiLocalModelDescBalanced;
-      case 'llama-3.2-1b-instruct-q4_k_m':
-        return l.aiLocalModelDescBalanced;
-      case 'qwen-2.5-1.5b-instruct-q4_k_m':
+      case 'qwen3-4b-instruct-2507-q4_k_m':
         return l.aiLocalModelDescMultilingual;
-      case 'llama-3.2-3b-instruct-q4_k_m':
+      case 'gemma-4-e2b-it-q4_k_m':
         return l.aiLocalModelDescHighQuality;
-      case 'phi-3.5-mini-instruct-q4_k_m':
+      case 'gemma-4-e4b-it-q4_k_m':
         return l.aiLocalModelDescStrong;
       default:
         return model.description;
@@ -455,7 +455,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${model.sizeGb.toStringAsFixed(1)} GB',
+                                '${model.sizeGb < 1.0 ? model.sizeGb.toStringAsFixed(2) : model.sizeGb.toStringAsFixed(1)} GB',
                                 style: tt.labelSmall?.copyWith(
                                   color: cs.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,

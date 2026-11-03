@@ -302,14 +302,60 @@ void main() {
     }
 
     await pumpHost();
+    final barrierBackdropFinder = find.ancestor(
+      of: find.byType(ModalBarrier),
+      matching: find.byType(BackdropFilter),
+    );
+
     await tester.tap(find.byKey(const ValueKey('modal-test-sheet')));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(barrierBackdropFinder, findsOneWidget);
+    final sheetFilter = tester
+        .widget<BackdropFilter>(barrierBackdropFinder)
+        .filter;
+    expect(sheetFilter.toString(), contains('15.0'));
+    final sheetBarrier = tester.widget<ModalBarrier>(
+      find.descendant(
+        of: barrierBackdropFinder,
+        matching: find.byType(ModalBarrier),
+      ),
+    );
+    expect(
+      sheetBarrier.color == null || sheetBarrier.color == Colors.transparent,
+      isTrue,
+    );
+    await closeModal();
+
+    await tester.tap(find.byKey(const ValueKey('modal-test-unified-sheet')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(barrierBackdropFinder, findsOneWidget);
+    final unifiedFilter = tester
+        .widget<BackdropFilter>(barrierBackdropFinder)
+        .filter;
+    expect(unifiedFilter.toString(), contains('15.0'));
+    final unifiedBarrier = tester.widget<ModalBarrier>(
+      find.descendant(
+        of: barrierBackdropFinder,
+        matching: find.byType(ModalBarrier),
+      ),
+    );
+    expect(
+      unifiedBarrier.color == null ||
+          unifiedBarrier.color == Colors.transparent,
+      isTrue,
+    );
     await closeModal();
 
     await tester.tap(find.byKey(const ValueKey('modal-test-dialog')));
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(barrierBackdropFinder, findsOneWidget);
+    final dialogFilter = tester
+        .widget<BackdropFilter>(barrierBackdropFinder)
+        .filter;
+    expect(dialogFilter.toString(), contains('30.0'));
     await closeModal();
 
     blurEnabledNotifier.value = false;
@@ -317,6 +363,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('modal-test-sheet')));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(AnimatedModalBarrier), findsOneWidget);
     await closeModal();
 
     blurEnabledNotifier.value = true;
@@ -1165,6 +1212,14 @@ class _ModalBackdropTestHost extends StatelessWidget {
               builder: (_) => const SizedBox(height: 120),
             ),
             child: const Text('Open sheet'),
+          ),
+          FilledButton(
+            key: const ValueKey('modal-test-unified-sheet'),
+            onPressed: () => showUntisUnifiedSheet<void>(
+              context: context,
+              child: const SizedBox(height: 120),
+            ),
+            child: const Text('Open unified sheet'),
           ),
           FilledButton(
             key: const ValueKey('modal-test-dialog'),

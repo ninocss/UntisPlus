@@ -75,9 +75,7 @@ Widget _buildSuggestedSubjectDatesBar({
               },
               selectedColor: cs.primaryContainer,
               labelStyle: TextStyle(
-                color: isSelected
-                    ? cs.onPrimaryContainer
-                    : cs.onSurfaceVariant,
+                color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
               ),
             ),
           );
@@ -118,7 +116,6 @@ Future<void> _showAddHomeworkDialog(
   }();
 
   await showUntisModalBottomSheet<void>(
-    blurBarrier: false,
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -209,16 +206,17 @@ Future<void> _showAddHomeworkDialog(
                 controller: taskCtrl,
                 maxLines: 3,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                decoration: _untisSheetInputDecoration(
-                  ctx,
-                  prefixIcon: Icons.assignment_rounded,
-                  hintText: l.homeworkTaskLabel,
-                ).copyWith(
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.only(bottom: 42),
-                    child: Icon(Icons.assignment_rounded),
-                  ),
-                ),
+                decoration:
+                    _untisSheetInputDecoration(
+                      ctx,
+                      prefixIcon: Icons.assignment_rounded,
+                      hintText: l.homeworkTaskLabel,
+                    ).copyWith(
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(bottom: 42),
+                        child: Icon(Icons.assignment_rounded),
+                      ),
+                    ),
               ),
               const SizedBox(height: 24),
               _sheetSectionLabel(ctx, l.homeworkDueDateLabel),
@@ -234,8 +232,7 @@ Future<void> _showAddHomeworkDialog(
                 selectedDate: selectedDate,
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2030),
-                onDateSelected: (picked) =>
-                    setDlg(() => selectedDate = picked),
+                onDateSelected: (picked) => setDlg(() => selectedDate = picked),
               ),
               const SizedBox(height: 40),
               Row(
@@ -1047,7 +1044,6 @@ Future<void> _showAddExamDialog(
   }();
 
   await showUntisModalBottomSheet<void>(
-    blurBarrier: false,
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -1156,8 +1152,7 @@ Future<void> _showAddExamDialog(
                 selectedDate: selectedDate,
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2030),
-                onDateSelected: (picked) =>
-                    setDlg(() => selectedDate = picked),
+                onDateSelected: (picked) => setDlg(() => selectedDate = picked),
               ),
               const SizedBox(height: 24),
               _sheetSectionLabel(ctx, l.examsNotesLabel),
@@ -1166,16 +1161,17 @@ Future<void> _showAddExamDialog(
                 controller: descCtrl,
                 maxLines: 3,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-                decoration: _untisSheetInputDecoration(
-                  ctx,
-                  prefixIcon: Icons.notes_rounded,
-                  hintText: l.examsNotesLabel,
-                ).copyWith(
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.only(bottom: 42),
-                    child: Icon(Icons.notes_rounded),
-                  ),
-                ),
+                decoration:
+                    _untisSheetInputDecoration(
+                      ctx,
+                      prefixIcon: Icons.notes_rounded,
+                      hintText: l.examsNotesLabel,
+                    ).copyWith(
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(bottom: 42),
+                        child: Icon(Icons.notes_rounded),
+                      ),
+                    ),
               ),
               const SizedBox(height: 40),
               Row(

@@ -24,4 +24,19 @@ void main() {
       expect(detail, hasLength(200));
     });
   });
+
+  group('stripThinkingBlocks', () {
+    test('removes closed and unclosed reasoning', () {
+      expect(stripThinkingBlocks('<think>a</think>\n\nHi'), 'Hi');
+      expect(stripThinkingBlocks('<think>still'), '');
+      expect(stripThinkingBlocks('Hi <think>x'), 'Hi ');
+      expect(stripThinkingBlocks('plain'), 'plain');
+      expect(
+        stripThinkingBlocks(
+          '<think>internal reasoning\nstep 2</think>Answer text',
+        ),
+        'Answer text',
+      );
+    });
+  });
 }

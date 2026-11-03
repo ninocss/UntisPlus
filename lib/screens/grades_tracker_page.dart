@@ -166,7 +166,6 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
 
     showUntisModalBottomSheet(
       context: context,
-      blurBarrier: false,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       sheetAnimationStyle: _kBottomSheetAnimationStyle,
@@ -207,9 +206,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                             style: GoogleFonts.outfit(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: cs.onSurfaceVariant.withValues(
-                                alpha: 0.7,
-                              ),
+                              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -269,10 +266,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           const SizedBox(height: 12),
                           TextField(
                             controller: valueController,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             onChanged: (_) => setDlg(() {}),
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.w800,
@@ -296,10 +292,9 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                           const SizedBox(height: 12),
                           TextField(
                             controller: weightController,
-                            keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.w800,
                               fontSize: 18,

@@ -98,7 +98,7 @@ Future<String> _requestAiVisionImportText({
   required String mimeType,
   required String attachmentName,
   String Function(AiProviderCapabilities capabilities, AppL10n l)?
-      systemPromptBuilder,
+  systemPromptBuilder,
   String? localProviderUnsupportedMessage,
 }) {
   if (!aiEnabledNotifier.value) {
@@ -138,7 +138,7 @@ Future<String> _requestAiVisionImportText({
   );
 }
 
-Future<({ _AiImportFile file, bool supportsPdf })?> _pickAiImportFileFromSheet({
+Future<({_AiImportFile file, bool supportsPdf})?> _pickAiImportFileFromSheet({
   required BuildContext context,
   required String sheetTitle,
 }) async {
@@ -214,11 +214,7 @@ class SettingsPageShell extends StatelessWidget {
             PinnedHeaderSliver(
               child: SizedBox(
                 height: MediaQuery.paddingOf(context).top + 64,
-                child: _settingsHeaderAppBar(
-                  context,
-                  title,
-                  actions: actions,
-                ),
+                child: _settingsHeaderAppBar(context, title, actions: actions),
               ),
             ),
             SliverPadding(
@@ -861,6 +857,7 @@ Future<T?> showUntisModalBottomSheet<T>({
   bool isScrollControlled = false,
   double scrollControlDisabledMaxHeightRatio = 9 / 16,
   bool blurBarrier = true,
+  double blurMultiplier = 0.5,
   bool useRootNavigator = false,
   bool isDismissible = true,
   bool enableDrag = true,
@@ -910,7 +907,7 @@ Future<T?> showUntisModalBottomSheet<T>({
       sheetAnimationStyle: sheetAnimationStyle,
       requestFocus: requestFocus,
       useBackdropBlur: useBackdropBlur,
-      blurSigma: _resolvedBlurSigma(tokens.blurSigma),
+      blurSigma: _resolvedBlurSigma(tokens.blurSigma) * blurMultiplier,
     ),
   );
 }
@@ -2122,6 +2119,28 @@ Widget _sheetActionIcon(
   );
 }
 
+Future<T?> showUntisUnifiedSheet<T>({
+  required BuildContext context,
+  Widget? child,
+  WidgetBuilder? builder,
+  bool isScrollControlled = false,
+  bool useSafeArea = true,
+  bool showHandle = true,
+  EdgeInsetsGeometry? outerPadding,
+  bool blurBarrier = true,
+  double blurMultiplier = 0.5,
+}) => _showUnifiedSheet<T>(
+  context: context,
+  child: child,
+  builder: builder,
+  isScrollControlled: isScrollControlled,
+  useSafeArea: useSafeArea,
+  showHandle: showHandle,
+  outerPadding: outerPadding,
+  blurBarrier: blurBarrier,
+  blurMultiplier: blurMultiplier,
+);
+
 Future<T?> _showUnifiedSheet<T>({
   required BuildContext context,
   Widget? child,
@@ -2130,6 +2149,8 @@ Future<T?> _showUnifiedSheet<T>({
   bool useSafeArea = true,
   bool showHandle = true,
   EdgeInsetsGeometry? outerPadding,
+  bool blurBarrier = true,
+  double blurMultiplier = 0.5,
 }) {
   assert(
     (child == null) != (builder == null),
@@ -2139,7 +2160,8 @@ Future<T?> _showUnifiedSheet<T>({
     context: context,
     isScrollControlled: isScrollControlled,
     useSafeArea: useSafeArea,
-    blurBarrier: false,
+    blurBarrier: blurBarrier,
+    blurMultiplier: blurMultiplier,
     backgroundColor: Colors.transparent,
     elevation: 0,
     sheetAnimationStyle: _kBottomSheetAnimationStyle,

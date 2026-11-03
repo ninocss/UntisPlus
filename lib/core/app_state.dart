@@ -154,7 +154,8 @@ Future<void> initializeUntisAccounts(SharedPreferences prefs) async {
   // verified in the native secure store.
   final accountsWithSecrets = accounts
       .where(
-        (account) => account.password.isNotEmpty || account.sessionId.isNotEmpty,
+        (account) =>
+            account.password.isNotEmpty || account.sessionId.isNotEmpty,
       )
       .toList(growable: false);
   final verifiedCredentials = await Future.wait(
@@ -451,49 +452,58 @@ class LocalModelInfo {
 
 const List<LocalModelInfo> kLocalModels = [
   LocalModelInfo(
-    id: 'gemma-3-1b-it-q4_k_m',
-    name: 'Gemma 3 1B-IT (Q4_K_M)',
+    id: 'qwen3-1.7b-q4_k_m',
+    name: 'Qwen3 1.7B (Q4_K_M)',
     url:
-        'https://huggingface.co/bartowski/google_gemma-3-1b-it-GGUF/resolve/main/google_gemma-3-1b-it-Q4_K_M.gguf',
-    sizeGb: 0.8,
+        'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf',
+    sizeGb: 1.03,
     description: '',
-    sha256: '12bf0fff8815d5f73a3c9b586bd8fee8e7b248c935de70dec367679873d0f29d',
+    sha256: 'b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897',
   ),
   LocalModelInfo(
-    id: 'llama-3.2-1b-instruct-q4_k_m',
-    name: 'Llama 3.2 1B-Instruct (Q4_K_M)',
+    id: 'qwen3-0.6b-q4_k_m',
+    name: 'Qwen3 0.6B (Q4_K_M)',
     url:
-        'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
-    sizeGb: 0.8,
+        'https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf',
+    sizeGb: 0.37,
     description: '',
-    sha256: '6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83',
+    sha256: 'ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a',
   ),
   LocalModelInfo(
-    id: 'qwen-2.5-1.5b-instruct-q4_k_m',
-    name: 'Qwen 2.5 1.5B-Instruct (Q4_K_M)',
+    id: 'lfm2-1.2b-q4_k_m',
+    name: 'LFM2 1.2B (Q4_K_M)',
     url:
-        'https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
-    sizeGb: 1.0,
+        'https://huggingface.co/unsloth/LFM2-1.2B-GGUF/resolve/main/LFM2-1.2B-Q4_K_M.gguf',
+    sizeGb: 0.68,
     description: '',
-    sha256: '1adf0b11065d8ad2e8123ea110d1ec956dab4ab038eab665614adba04b6c3370',
+    sha256: 'ac63aeef935e5a4ca147ad6d966487bb0c23220ea20a5f49ad315614392f104e',
   ),
   LocalModelInfo(
-    id: 'llama-3.2-3b-instruct-q4_k_m',
-    name: 'Llama 3.2 3B-Instruct (Q4_K_M)',
+    id: 'granite-4.0-h-micro-q4_k_m',
+    name: 'Granite 4.0 H Micro (Q4_K_M)',
     url:
-        'https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf',
-    sizeGb: 2.0,
+        'https://huggingface.co/unsloth/granite-4.0-h-micro-GGUF/resolve/main/granite-4.0-h-micro-Q4_K_M.gguf',
+    sizeGb: 1.81,
     description: '',
-    sha256: '6c1a2b41161032677be168d354123594c0e6e67d2b9227c84f296ad037c728ff',
+    sha256: '1f21ba20ca249f6de1b7fcc436d95bba80a11d40060532bf6eb0c6a9e54e5d28',
   ),
   LocalModelInfo(
-    id: 'phi-3.5-mini-instruct-q4_k_m',
-    name: 'Phi-3.5-mini-Instruct (Q4_K_M)',
+    id: 'qwen3-4b-instruct-2507-q4_k_m',
+    name: 'Qwen3 4B Instruct 2507 (Q4_K_M)',
     url:
-        'https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf',
-    sizeGb: 2.4,
+        'https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf',
+    sizeGb: 2.33,
     description: '',
-    sha256: 'e4165e3a71af97f1b4820da61079826d8752a2088e313af0c7d346796c38eff5',
+    sha256: '3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597',
+  ),
+  LocalModelInfo(
+    id: 'gemma-4-e2b-it-q4_k_m',
+    name: 'Gemma 4 E2B-IT (Q4_K_M)',
+    url:
+        'https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf',
+    sizeGb: 2.89,
+    description: '',
+    sha256: '740185b21d22ceb83a11c3aa62ad5842ef32c70f6096d756bbee85a1e4ec34b8',
   ),
   LocalModelInfo(
     id: 'gemma-4-e4b-it-q4_k_m',

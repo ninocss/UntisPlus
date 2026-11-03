@@ -3,7 +3,6 @@ part of '../main.dart';
 Future<void> showChangelogSheet(BuildContext context) {
   return showUntisModalBottomSheet(
     context: context,
-    blurBarrier: false,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     useSafeArea: true,

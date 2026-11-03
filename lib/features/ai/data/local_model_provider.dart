@@ -64,11 +64,12 @@ class LocalModelProvider implements AIProvider {
 
     var previousResponse = '';
     fllamaChat(request, (
-      String response,
+      String rawResponse,
       String openaiResponseJsonString,
       bool done,
     ) {
       if (controller.isClosed) return;
+      final response = stripThinkingBlocks(rawResponse);
       final pending = response.startsWith(previousResponse)
           ? response.substring(previousResponse.length)
           : response;
@@ -104,7 +105,7 @@ class LocalModelProvider implements AIProvider {
     return OpenAiRequest(
       messages: messages,
       modelPath: modelPath,
-      contextSize: 1024,
+      contextSize: 2048,
       maxTokens: settings.maxTokens,
       numGpuLayers: 0,
       temperature: settings.temperature,
@@ -190,8 +191,9 @@ Future<String> requestLocalModelText({
           : 'AI: ${runtime.loadErrorMessage}\n($detail)',
     );
   }
-  if (result.isEmpty) throw Exception('API: ${runtime.noReplyMessage}');
-  return result;
+  final cleanResult = stripThinkingBlocks(result).trim();
+  if (cleanResult.isEmpty) throw Exception('API: ${runtime.noReplyMessage}');
+  return cleanResult;
 }
 
 /// fllama does not currently classify every llama.cpp load failure itself.
@@ -208,4 +210,17 @@ String? lastMeaningfulNativeLine(String log) {
   if (lines.isEmpty) return null;
   final last = lines.last.trim();
   return last.length > 200 ? last.substring(last.length - 200) : last;
+}
+
+/// Removes Qwen3-style `<think>` reasoning from [text]. An unclosed
+/// block (still streaming) is hidden until its closing tag arrives, so the
+/// user never sees the raw reasoning.
+@visibleForTesting
+String stripThinkingBlocks(String text) {
+  final withoutClosed = text.replaceAll(
+    RegExp(r'<think>[\s\S]*?</think>\s*'),
+    '',
+  );
+  final open = withoutClosed.indexOf('<think>');
+  return open == -1 ? withoutClosed : withoutClosed.substring(0, open);
 }
