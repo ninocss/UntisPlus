@@ -333,10 +333,15 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
               title: l.settingsGithubUpdateCheck,
               subtitle: l.settingsGithubUpdateCheckDesc,
               trailing: _checking
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.2),
+                      child: _usesExpressiveComponents(context)
+                          ? const ExpressiveWavyCircularProgressIndicator(
+                              size: 20,
+                              strokeWidth: 2.2,
+                            )
+                          : const CircularProgressIndicator(strokeWidth: 2.2),
                     )
                   : _downloading
                   ? IconButton(
@@ -377,7 +382,12 @@ class _SettingsAboutUpdatesPageState extends State<SettingsAboutUpdatesPage>
                       ],
                     ),
                     const SizedBox(height: 6),
-                    LinearProgressIndicator(value: _downloadProgress),
+                    _usesExpressiveComponents(context)
+                        ? ExpressiveWavyLinearProgressIndicator(
+                            value: _downloadProgress,
+                            color: cs.primary,
+                          )
+                        : LinearProgressIndicator(value: _downloadProgress),
                     const SizedBox(height: 5),
                     Text(
                       _downloadTotal > 0
