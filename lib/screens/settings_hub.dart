@@ -1134,16 +1134,21 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
   Widget _buildSearchBar(BuildContext context, AppL10n l) {
     final cs = Theme.of(context).colorScheme;
     final tokens = untisThemeTokensOf(context);
+    final isExpressive = _usesExpressiveComponents(context);
+    final double defaultRadius = isExpressive ? 28.0 : tokens.surfaceRadius;
     final radius = BorderRadius.circular(
-      _resolvedSurfaceCornerRadius(tokens.surfaceRadius).clamp(16.0, 24.0),
+      _resolvedSurfaceCornerRadius(defaultRadius),
     );
 
     return ThemedSurface(
       borderRadius: radius,
+      color: isExpressive
+          ? cs.surfaceContainerHigh.withValues(alpha: 0.55)
+          : null,
       border: Border.all(
         color: tokens.id == AppThemeId.manga
             ? cs.outline
-            : cs.outlineVariant.withValues(alpha: 0.32),
+            : cs.outlineVariant.withValues(alpha: isExpressive ? 0.20 : 0.32),
         width: tokens.borderWidth,
       ),
       respectSurfaceCornerPreference: false,
@@ -1154,7 +1159,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         onChanged: (value) => setState(() => _searchQuery = value),
         textAlignVertical: TextAlignVertical.center,
         style: GoogleFonts.outfit(
-          fontSize: 14.5,
+          fontSize: 15,
           fontWeight: FontWeight.w500,
           color: cs.onSurface,
         ),
@@ -1164,11 +1169,11 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           fillColor: Colors.transparent,
           hintText: _hubLabel(l, 'search_hint'),
           hintStyle: GoogleFonts.outfit(
-            fontSize: 14.5,
+            fontSize: 15,
             fontWeight: FontWeight.w500,
-            color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+            color: cs.onSurfaceVariant.withValues(alpha: 0.75),
           ),
-          prefixIcon: Icon(Icons.search_rounded, size: 20, color: cs.primary),
+          prefixIcon: Icon(Icons.search_rounded, size: 21, color: cs.primary),
           prefixIconConstraints: const BoxConstraints(
             minWidth: 44,
             minHeight: 44,
@@ -1188,8 +1193,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                 )
               : null,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 11,
+            horizontal: 16,
+            vertical: 12,
           ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -1209,6 +1214,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final itemIndex = allItems.indexOf(item);
     final selected =
         expanded && item.pageBuilder != null && itemIndex == _selectedDetail;
+    final isExpressive = _usesExpressiveComponents(context);
 
     final tile = Semantics(
       button: true,
@@ -1222,12 +1228,12 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             : EdgeInsets.zero,
         decoration: BoxDecoration(
           color: selected
-              ? cs.secondaryContainer.withValues(alpha: 0.76)
+              ? cs.secondaryContainer.withValues(alpha: 0.85)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(isExpressive ? 20 : 16),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(isExpressive ? 20 : 16),
           onTap: () => _activateItem(
             context,
             item,
@@ -1236,22 +1242,22 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           ),
           child: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: selected ? 10 : 14,
-              vertical: 10,
+              horizontal: selected ? 12 : 16,
+              vertical: isExpressive ? 11 : 10,
             ),
             child: Row(
               children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 40,
-                  height: 40,
+                  width: isExpressive ? 44 : 40,
+                  height: isExpressive ? 44 : 40,
                   decoration: BoxDecoration(
                     color: selected
-                        ? item.iconColor.withValues(alpha: 0.22)
+                        ? item.iconColor.withValues(alpha: 0.24)
                         : item.iconBackground,
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(isExpressive ? 14 : 13),
                   ),
-                  child: Icon(item.icon, color: item.iconColor, size: 20),
+                  child: Icon(item.icon, color: item.iconColor, size: isExpressive ? 22 : 20),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1266,8 +1272,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                         style: GoogleFonts.outfit(
                           fontWeight: selected
                               ? FontWeight.w800
-                              : FontWeight.w600,
-                          fontSize: 15,
+                              : FontWeight.w700,
+                          fontSize: 15.5,
                           color: selected
                               ? cs.onSecondaryContainer
                               : cs.onSurface,
@@ -1280,9 +1286,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.w500,
-                          fontSize: 12.5,
+                          fontSize: 13,
                           color: selected
-                              ? cs.onSecondaryContainer.withValues(alpha: 0.78)
+                              ? cs.onSecondaryContainer.withValues(alpha: 0.8)
                               : cs.onSurfaceVariant,
                         ),
                       ),
@@ -1297,7 +1303,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                             : Icons.chevron_right_rounded)
                       : Icons.open_in_new_rounded,
                   size: 21,
-                  color: selected ? cs.primary : cs.onSurfaceVariant,
+                  color: selected ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.8),
                 ),
               ],
             ),
@@ -1336,9 +1342,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             title,
             style: GoogleFonts.outfit(
               fontWeight: FontWeight.w800,
-              fontSize: tokens.id == AppThemeId.manga ? 20 : 13,
+              fontSize: tokens.id == AppThemeId.manga ? 20 : 13.5,
               color: cs.primary,
-              letterSpacing: tokens.id == AppThemeId.cyber ? 1.1 : 0.25,
+              letterSpacing: tokens.id == AppThemeId.cyber ? 1.1 : 0.3,
             ),
           ),
         ),
@@ -1348,15 +1354,17 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             surfaceCornerRadiusNotifier,
           ]),
           builder: (context, _) {
+            final isExpressive = _usesExpressiveComponents(context);
+            final double defaultRadius = isExpressive ? 26.0 : tokens.surfaceRadius;
             final groupRadius = BorderRadius.circular(
-              _resolvedSurfaceCornerRadius(tokens.surfaceRadius),
+              _resolvedSurfaceCornerRadius(defaultRadius),
             );
             return ThemedSurface(
               borderRadius: groupRadius,
               border: Border.all(
                 color: tokens.id == AppThemeId.manga
                     ? cs.outline
-                    : cs.outlineVariant.withValues(alpha: 0.30),
+                    : cs.outlineVariant.withValues(alpha: isExpressive ? 0.20 : 0.30),
                 width: tokens.borderWidth,
               ),
               respectSurfaceCornerPreference: false,
@@ -1378,9 +1386,9 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                         Divider(
                           height: 1,
                           thickness: 0.7,
-                          indent: 68,
+                          indent: isExpressive ? 74 : 68,
                           endIndent: 16,
-                          color: cs.outlineVariant.withValues(alpha: 0.26),
+                          color: cs.outlineVariant.withValues(alpha: isExpressive ? 0.20 : 0.26),
                         ),
                     ],
                   ],
