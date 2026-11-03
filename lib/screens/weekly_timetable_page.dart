@@ -249,18 +249,24 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         dataset: 'timetableWeek',
         entityKey: key,
       );
-      final stored = await OfflineCacheStore.instance.read(storeKey);
+      final stored = await OfflineCacheStore.instance
+          .read(storeKey)
+          .timeout(const Duration(milliseconds: 800), onTimeout: () => null);
       dynamic decoded = stored?.value;
       if (decoded == null) {
         final raw = prefs.getString(key);
         if (raw == null || raw.isEmpty) return null;
         decoded = jsonDecode(raw);
         if (decoded is Map) {
-          await OfflineCacheStore.instance.write(
-            storeKey,
-            Map<String, dynamic>.from(decoded),
-          );
-          await prefs.remove(key);
+          unawaited(() async {
+            try {
+              await OfflineCacheStore.instance.write(
+                storeKey,
+                Map<String, dynamic>.from(decoded),
+              );
+              await prefs.remove(key);
+            } catch (_) {}
+          }());
         }
       }
       if (decoded is! Map) return null;
@@ -2866,7 +2872,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
   Widget _dimPastLesson({required Widget child, required bool dim}) {
     if (!dim || !lessonDimPastNotifier.value) return child;
     return Opacity(
-      opacity: 0.45,
+      opacity: 0.58,
       child: ColorFiltered(
         colorFilter: const ColorFilter.matrix(_grayscaleMatrix),
         child: child,
@@ -3081,11 +3087,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final filteredTimeLabels = _filterTimeLabels(timeRanges);
 
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final dayDate = m.add(Duration(days: dayIndex));
-    final isToday =
-        dayDate.year == now.year &&
-        dayDate.month == now.month &&
-        dayDate.day == now.day;
+    final dayOnly = DateTime(dayDate.year, dayDate.month, dayDate.day);
+    final isToday = dayOnly.isAtSameMomentAs(today);
     final nowMin = now.hour * 60 + now.minute;
     final showNowLine = isToday && nowMin >= globalMin && nowMin <= globalMax;
     final nowTop = (nowMin - globalMin) * pixelsPerMinute;
@@ -3236,7 +3241,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                           final top = (startMin - globalMin) * pixelsPerMinute;
                           final height = ((endMin - startMin) * pixelsPerMinute)
                               .clamp(28.0, 9999.0);
-                          final dim = isToday && endMin <= nowMin;
+                          final dim = isTimetableLessonPast(dayDate: dayDate, endMin: endMin, now: now);
 
                           const horizontalInset = 2.0;
                           const columnGap = 4.0;
@@ -3743,9 +3748,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                             ((endMin - startMin) *
                                                     pixelsPerMinute)
                                                 .clamp(24.0, 9999.0);
-                                        final dim =
-                                            (dayIndex == todayIndex) &&
-                                            endMin <= nowMin;
+                                        final dayOnly = mondayDate.add(Duration(days: dayIndex));
+                                        final dim = isTimetableLessonPast(
+                                          dayDate: dayOnly,
+                                          endMin: endMin,
+                                          now: today,
+                                        );
                                         const horizontalInset = 1.0;
                                         const columnGap = 2.0;
                                         final columns = slot.columnCount;
@@ -4142,6 +4150,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ? await _loadWeekFromCache(
             requestPersonId: requestPersonId,
             requestPersonType: requestPersonType,
+            monday: requestedMonday,
           )
         : null;
     if (!isCurrentRequest()) return;
@@ -4181,7 +4190,33 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
 
     if ((_currentSessionId.isEmpty || _isSessionExpired()) && !isDemoMode) {
       final ok = await _reAuthenticate();
-      if (!ok && !hasCachedWeek) {
+      if (!ok) {
+        if (hasCachedWeek || _weekData.values.any((l) => l.isNotEmpty)) {
+          if (!mounted) return;
+          setState(() {
+            _showingCachedWeek = true;
+            _loading = false;
+            _loadError = null;
+          });
+          return;
+        }
+        final fallback = await _loadWeekFromCache(
+          requestPersonId: requestPersonId,
+          requestPersonType: requestPersonType,
+          monday: requestedMonday,
+        );
+        if (fallback != null && fallback.values.any((l) => l.isNotEmpty)) {
+          if (!mounted) return;
+          _applyKnownSubjectsFromWeek(fallback);
+          setState(() {
+            _weekData = fallback;
+            _displayedMonday = requestedMonday;
+            _showingCachedWeek = true;
+            _loading = false;
+            _loadError = null;
+          });
+          return;
+        }
         if (!mounted) return;
         setState(() {
           _loadError = l.timetableNotSignedIn;
@@ -4417,12 +4452,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       }
 
       if (!isCurrentRequest()) return;
-      if (hasCachedWeek) {
+      if (hasCachedWeek || _weekData.values.any((l) => l.isNotEmpty)) {
         if (!mounted) return;
         setState(() {
           _loadError = null;
           _showingCachedWeek = true;
           _loading = false;
+        });
+        return;
+      }
+
+      final fallbackAfterApiError = await _loadWeekFromCache(
+        requestPersonId: requestPersonId,
+        requestPersonType: requestPersonType,
+        monday: requestedMonday,
+      );
+      if (fallbackAfterApiError != null &&
+          fallbackAfterApiError.values.any((l) => l.isNotEmpty)) {
+        if (!mounted) return;
+        _applyKnownSubjectsFromWeek(fallbackAfterApiError);
+        setState(() {
+          _weekData = fallbackAfterApiError;
+          _displayedMonday = requestedMonday;
+          _showingCachedWeek = true;
+          _loading = false;
+          _loadError = null;
         });
         return;
       }
@@ -4452,12 +4506,31 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     } catch (e) {
       debugPrint("Fehler beim Laden: $e");
       if (!isCurrentRequest()) return;
-      if (hasCachedWeek) {
+      if (hasCachedWeek || _weekData.values.any((l) => l.isNotEmpty)) {
         if (!mounted) return;
         setState(() {
           _loadError = null;
           _showingCachedWeek = true;
           _loading = false;
+        });
+        return;
+      }
+
+      final fallbackAfterError = await _loadWeekFromCache(
+        requestPersonId: requestPersonId,
+        requestPersonType: requestPersonType,
+        monday: requestedMonday,
+      );
+      if (fallbackAfterError != null &&
+          fallbackAfterError.values.any((l) => l.isNotEmpty)) {
+        if (!mounted) return;
+        _applyKnownSubjectsFromWeek(fallbackAfterError);
+        setState(() {
+          _weekData = fallbackAfterError;
+          _displayedMonday = requestedMonday;
+          _showingCachedWeek = true;
+          _loading = false;
+          _loadError = null;
         });
         return;
       }
@@ -5426,44 +5499,92 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               key: _timetableExportKey,
               child: _buildTimetableSwitcher(),
             )
-          : AnimatedSwitcher(
-              duration: AppMotion.duration(
-                context,
-                const Duration(milliseconds: 560),
-              ),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              layoutBuilder: (currentChild, previousChildren) => Stack(
-                alignment: Alignment.topCenter,
-                fit: StackFit.passthrough,
-                children: <Widget>[...previousChildren, ?currentChild],
-              ),
-              transitionBuilder: (child, animation) {
-                final curved = CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeInOutCubic,
-                );
-                return FadeTransition(
-                  opacity: curved,
-                  child: AnimatedBuilder(
-                    animation: curved,
-                    child: child,
-                    builder: (context, child) => Transform.translate(
-                      offset: Offset(0, 8 * (1 - curved.value)),
-                      child: Transform.scale(
-                        alignment: Alignment.topCenter,
-                        scale: 0.985 + (0.015 * curved.value),
-                        child: child,
-                      ),
+          : Column(
+              children: [
+                if (_showingCachedWeek) _buildOfflineNoticeBanner(l),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.duration(
+                      context,
+                      const Duration(milliseconds: 560),
+                    ),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    layoutBuilder: (currentChild, previousChildren) => Stack(
+                      alignment: Alignment.topCenter,
+                      fit: StackFit.passthrough,
+                      children: <Widget>[...previousChildren, ?currentChild],
+                    ),
+                    transitionBuilder: (child, animation) {
+                      final curved = CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeInOutCubic,
+                      );
+                      return FadeTransition(
+                        opacity: curved,
+                        child: AnimatedBuilder(
+                          animation: curved,
+                          child: child,
+                          builder: (context, child) => Transform.translate(
+                            offset: Offset(0, 8 * (1 - curved.value)),
+                            child: Transform.scale(
+                              alignment: Alignment.topCenter,
+                              scale: 0.985 + (0.015 * curved.value),
+                              child: child,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: KeyedSubtree(
+                      key: ValueKey<int>(_viewMode),
+                      child: _buildTimetableSwitcher(),
                     ),
                   ),
-                );
-              },
-              child: KeyedSubtree(
-                key: ValueKey<int>(_viewMode),
-                child: _buildTimetableSwitcher(),
-              ),
+                ),
+              ],
             ),
+    );
+  }
+
+  Widget _buildOfflineNoticeBanner(AppL10n l) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return Container(
+      key: const ValueKey('timetable-offline-banner'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      margin: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_off_rounded,
+            size: 16,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l.timetableOfflineNotice,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

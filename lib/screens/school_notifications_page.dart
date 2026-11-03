@@ -4,11 +4,15 @@ class _MessageAttachment {
   final String id;
   final String name;
   final bool isDemo;
+  final String? messageId;
+  final String? url;
 
   const _MessageAttachment({
     required this.id,
     required this.name,
     this.isDemo = false,
+    this.messageId,
+    this.url,
   });
 
   String get fileExtension {
@@ -344,40 +348,60 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   _fetchSchoolNotifications() async {
     List<_MessageAttachment> parseMessageAttachments(Map<String, dynamic> map) {
       final out = <_MessageAttachment>[];
-      dynamic rawAttachments;
+      final messageId =
+          (map['id'] ?? map['messageId'] ?? '').toString().trim();
+      final entries = <dynamic>[];
       for (final key in const [
         'attachments',
         'fileAttachments',
         'attachmentList',
         'files',
+        'attachedFiles',
+        'messageAttachments',
       ]) {
         final value = map[key];
         if (value is List) {
-          rawAttachments = value;
-          break;
+          entries.addAll(value);
         }
       }
-      if (rawAttachments is! List) return out;
-      for (final entry in rawAttachments) {
+      for (final key in const ['attachment', 'fileAttachment', 'file']) {
+        final value = map[key];
+        if (value is Map) entries.add(value);
+      }
+      for (final entry in entries) {
         if (entry is! Map) continue;
         final attachment = Map<String, dynamic>.from(entry);
-        final id =
-            (attachment['fileId'] ??
-                    attachment['attachmentId'] ??
-                    attachment['fileAttachmentId'] ??
-                    attachment['id'] ??
-                    '')
-                .toString();
-        final name =
-            (attachment['fileRegularName'] ??
-                    attachment['fileName'] ??
-                    attachment['regularName'] ??
-                    attachment['name'] ??
-                    '')
-                .toString()
-                .trim();
+        final id = (attachment['fileId'] ??
+                attachment['attachmentId'] ??
+                attachment['fileAttachmentId'] ??
+                attachment['id'] ??
+                attachment['uuid'] ??
+                attachment['storageId'] ??
+                '')
+            .toString()
+            .trim();
+        final name = (attachment['fileRegularName'] ??
+                attachment['fileName'] ??
+                attachment['filename'] ??
+                attachment['regularName'] ??
+                attachment['name'] ??
+                attachment['displayName'] ??
+                attachment['title'] ??
+                attachment['originalName'] ??
+                attachment['originalFileName'] ??
+                '')
+            .toString()
+            .trim();
+        final url = attachment['url']?.toString();
         if (id.isEmpty && name.isEmpty) continue;
-        out.add(_MessageAttachment(id: id, name: name));
+        out.add(
+          _MessageAttachment(
+            id: id,
+            name: name.isNotEmpty ? name : 'Attachment',
+            messageId: messageId.isNotEmpty ? messageId : null,
+            url: url,
+          ),
+        );
       }
       return out;
     }

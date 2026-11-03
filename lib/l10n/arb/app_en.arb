@@ -7,6 +7,7 @@
   "navMenu": "Menu",
   "navAi": "AI",
   "timetableOfflineCache": "Offline cache active",
+  "timetableOfflineNotice": "You are offline. Your schedule might not be up to date.",
   "timetableNotSignedIn": "Not signed in",
   "timetableHttpError": "HTTP {status}: The timetable could not be loaded.",
   "timetableUnknownApiError": "Unknown WebUntis error",

@@ -432,6 +432,39 @@ class AlarmPlanner {
         ),
       );
     }
+
+    final candidateDateKeys = candidates.map((c) => c.dateKey).toSet();
+    for (final entry in dateOverrides.entries) {
+      final override = entry.value;
+      if (override.disabled) continue;
+      final customMinutes = override.customTimeOfDayMinutes;
+      if (customMinutes == null) continue;
+      final dateKey = entry.key;
+      if (candidateDateKeys.contains(dateKey)) continue;
+      final date = parseUntisDateString(dateKey);
+      if (date == null) continue;
+      var wakeAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        customMinutes ~/ 60,
+        customMinutes % 60,
+      );
+      if (override.earlierMinutes != null) {
+        wakeAt = wakeAt.subtract(Duration(minutes: override.earlierMinutes!));
+      }
+      if (!wakeAt.isAfter(now)) continue;
+      candidates.add(
+        AlarmPlanCandidate(
+          at: wakeAt,
+          baseAt: wakeAt,
+          lessonStartsAt: wakeAt,
+          dateKey: dateKey,
+          label: appL10nFor(locale).alarmCustomTime,
+        ),
+      );
+    }
+
     if (candidates.isEmpty) return null;
     candidates.sort((a, b) => a.at.compareTo(b.at));
     return candidates.first;
@@ -524,8 +557,78 @@ class AlarmService {
   Future<AlarmSchedulingResult?> syncStoredPlans() async {
     if (!_supported) return null;
     final config = await loadConfig();
-    final smartPlan = _applyDateOverride(await _loadSmartPlan(), config);
+    final prefs = await SharedPreferences.getInstance();
+    final locale = prefs.getString('appLocale') ?? 'de';
+    final now = DateTime.now();
+
+    final overridePlan = _findUpcomingOverridePlan(config, now, locale);
+    final rawStoredPlan = await _loadRawSmartPlan();
+    final appliedPlan = _applyDateOverride(rawStoredPlan, config);
+
+    _SmartAlarmPlan? smartPlan;
+    if (overridePlan != null && appliedPlan != null) {
+      smartPlan =
+          overridePlan.at.isBefore(appliedPlan.at) ? overridePlan : appliedPlan;
+    } else {
+      smartPlan = overridePlan ?? appliedPlan;
+    }
+
+    if (smartPlan != null) {
+      await prefs.setString(_smartPlanKey, jsonEncode(smartPlan.toJson()));
+    } else {
+      await prefs.remove(_smartPlanKey);
+    }
     return _pushPlans(config, smartPlan);
+  }
+
+  _SmartAlarmPlan? _findUpcomingOverridePlan(
+    AlarmConfig config,
+    DateTime now,
+    String locale,
+  ) {
+    _SmartAlarmPlan? earliest;
+    for (final entry in config.dateOverrides.entries) {
+      final override = entry.value;
+      if (override.disabled) continue;
+      final customMinutes = override.customTimeOfDayMinutes;
+      if (customMinutes == null) continue;
+      final date = parseUntisDateString(entry.key);
+      if (date == null) continue;
+      var at = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        customMinutes ~/ 60,
+        customMinutes % 60,
+      );
+      if (override.earlierMinutes != null) {
+        at = at.subtract(Duration(minutes: override.earlierMinutes!));
+      }
+      if (!at.isAfter(now)) continue;
+      final plan = _SmartAlarmPlan(
+        at: at,
+        baseAt: at,
+        dateKey: entry.key,
+        label: appL10nFor(locale).alarmCustomTime,
+      );
+      if (earliest == null || plan.at.isBefore(earliest.at)) {
+        earliest = plan;
+      }
+    }
+    return earliest;
+  }
+
+  Future<_SmartAlarmPlan?> _loadRawSmartPlan() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_smartPlanKey);
+    if (raw == null) return null;
+    try {
+      return _SmartAlarmPlan.fromJson(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Persists a visible day marker immediately. The caller can then refresh
@@ -580,6 +683,13 @@ class AlarmService {
         now ?? DateTime.now(),
         locale,
       );
+    }
+    final overridePlan =
+        _findUpcomingOverridePlan(config, now ?? DateTime.now(), locale);
+    if (overridePlan != null) {
+      if (smartPlan == null || overridePlan.at.isBefore(smartPlan.at)) {
+        smartPlan = overridePlan;
+      }
     }
     if (smartPlan == null) {
       await prefs.remove(_smartPlanKey);
@@ -637,7 +747,9 @@ class AlarmService {
   ) {
     if (plan == null) return null;
     final override = config.dateOverrides[plan.dateKey];
-    if (override == null) return plan;
+    if (override == null) {
+      return plan.at.isAfter(DateTime.now()) ? plan : null;
+    }
     if (override.disabled) return null;
     var at = override.customTimeOfDayMinutes == null
         ? plan.baseAt
@@ -667,6 +779,9 @@ class AlarmService {
     final prefs = await SharedPreferences.getInstance();
     final locale = prefs.getString('appLocale') ?? 'de';
     final nativeCopy = appL10nFor(locale).nativeAlarmCopy();
+    final isCustomOverride = smartPlan != null &&
+        config.dateOverrides[smartPlan.dateKey]?.customTimeOfDayMinutes !=
+            null;
     final plans = <Map<String, dynamic>>[
       for (final alarm in config.manualAlarms)
         if (alarm.enabled && alarm.weekdays.isNotEmpty)
@@ -682,13 +797,15 @@ class AlarmService {
             'locale': locale,
             'nativeCopy': nativeCopy,
           },
-      if (config.smartEnabled && smartPlan != null)
+      if (smartPlan != null && (config.smartEnabled || isCustomOverride))
         {
           'id': 'smart-primary',
           'kind': 'smart',
           'label': smartPlan.label,
           'triggerAtMillis': smartPlan.at.millisecondsSinceEpoch,
           'dateKey': smartPlan.dateKey,
+          'isOverride': isCustomOverride,
+          'clearSuppression': isCustomOverride,
           'preAlarmNotificationMinutes': config.preAlarmNotificationMinutes,
           // The background refresh runs shortly before the heads-up. It can
           // cancel or move the plan before Android ever posts that message.

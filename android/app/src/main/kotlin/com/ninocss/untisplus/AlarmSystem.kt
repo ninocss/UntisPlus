@@ -82,6 +82,12 @@ object AlarmScheduler {
         val previous = storedPlans(context)
         // Desired state is durable before PendingIntents are changed.
         prefs(context).edit().putString(plansKey, plans.toString()).commit()
+        for (index in 0 until plans.length()) {
+            val p = plans.optJSONObject(index) ?: continue
+            if (p.optBoolean("isOverride", false) || p.optBoolean("clearSuppression", false)) {
+                prefs(context).edit().remove(suppressedSmartDateKey).commit()
+            }
+        }
         val missing = missingRequiredPermissions(context)
         if (missing.isNotEmpty()) {
             cancelPlans(context, previous)
@@ -200,7 +206,11 @@ object AlarmScheduler {
     private fun schedulePlan(context: Context, plan: JSONObject): Boolean {
         val id = plan.optString("id")
         if (id.isBlank()) return false
-        if (plan.optString("kind") == "smart" &&
+        val isOverride = plan.optBoolean("isOverride", false) || plan.optBoolean("clearSuppression", false)
+        if (isOverride) {
+            prefs(context).edit().remove(suppressedSmartDateKey).commit()
+        }
+        if (plan.optString("kind") == "smart" && !isOverride &&
             plan.optString("dateKey") == prefs(context).getString(suppressedSmartDateKey, "")) {
             return false
         }

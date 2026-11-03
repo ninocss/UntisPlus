@@ -80,6 +80,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
         schoolName: schoolName,
         sessionId: sessionID,
         attachmentId: attachment.id,
+        messageId: attachment.messageId ?? item.id,
         reauthenticate: () async => await _reAuthenticate() ? sessionID : null,
       );
       final result = await FilePicker.saveFile(

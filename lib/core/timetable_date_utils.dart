@@ -21,3 +21,18 @@ int resolveInitialTimetableDayIndex(DateTime referenceDate) {
   if (referenceDate.weekday >= DateTime.saturday) return 0;
   return (referenceDate.weekday - DateTime.monday).clamp(0, 4);
 }
+
+bool isTimetableLessonPast({
+  required DateTime dayDate,
+  required int endMin,
+  required DateTime now,
+}) {
+  final today = DateTime(now.year, now.month, now.day);
+  final dayOnly = DateTime(dayDate.year, dayDate.month, dayDate.day);
+  if (dayOnly.isBefore(today)) return true;
+  if (dayOnly.isAtSameMomentAs(today)) {
+    final nowMin = now.hour * 60 + now.minute;
+    return endMin <= nowMin;
+  }
+  return false;
+}

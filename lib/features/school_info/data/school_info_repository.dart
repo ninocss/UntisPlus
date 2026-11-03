@@ -73,6 +73,7 @@ class SchoolInfoRepository {
     required String schoolName,
     required String sessionId,
     required String attachmentId,
+    String? messageId,
     Future<String?> Function()? reauthenticate,
   }) async {
     var activeSession = sessionId;
@@ -83,6 +84,7 @@ class SchoolInfoRepository {
           schoolName: schoolName,
           sessionId: activeSession,
           attachmentId: attachmentId,
+          messageId: messageId,
         );
       } on WebUntisFailure catch (failure) {
         final canRetry =
@@ -107,21 +109,46 @@ class SchoolInfoRepository {
     required String schoolName,
     required String sessionId,
     required String attachmentId,
+    String? messageId,
   }) async {
     WebUntisFailure? lastFailure;
-    final uri = Uri.parse(
+    final cookies = WebUntisMessageContextResolver.schoolCookies(schoolName);
+
+    if (messageId != null && messageId.isNotEmpty) {
+      final restPaths = [
+        '/WebUntis/api/rest/view/v3/messages/${Uri.encodeComponent(messageId)}/attachments/${Uri.encodeComponent(attachmentId)}',
+        '/WebUntis/api/rest/view/v2/messages/${Uri.encodeComponent(messageId)}/attachments/${Uri.encodeComponent(attachmentId)}',
+        '/WebUntis/api/rest/view/v1/messages/${Uri.encodeComponent(messageId)}/attachments/${Uri.encodeComponent(attachmentId)}',
+      ];
+      for (final path in restPaths) {
+        final uri = Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}$path');
+        for (final cookie in cookies) {
+          try {
+            return await _client.getBytes(
+              uri: uri,
+              headers: {
+                'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
+                'Accept': 'application/octet-stream, application/json, */*',
+              },
+            );
+          } on WebUntisFailure catch (failure) {
+            lastFailure = failure;
+          } catch (_) {}
+        }
+      }
+    }
+
+    final fallbackUri = Uri.parse(
       '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/messageFileRequest.do'
       '?file=${Uri.encodeQueryComponent(attachmentId)}',
     );
-    for (final cookie in WebUntisMessageContextResolver.schoolCookies(
-      schoolName,
-    )) {
+    for (final cookie in cookies) {
       try {
         return await _client.getBytes(
-          uri: uri,
+          uri: fallbackUri,
           headers: {
             'Cookie': 'JSESSIONID=$sessionId; schoolname=$cookie',
-            'Accept': 'application/octet-stream',
+            'Accept': 'application/octet-stream, */*',
           },
         );
       } on WebUntisFailure catch (failure) {
@@ -336,20 +363,70 @@ class SchoolInfoRepository {
         'fileAttachments',
         'attachmentList',
         'files',
+        'attachedFiles',
+        'messageAttachments',
       ]) {
         final value = source[key];
-        if (value is! List) continue;
-        for (final rawAttachment in value) {
-          if (rawAttachment is! Map) continue;
-          final attachment = asStringDynamicMap(rawAttachment);
-          final id =
-              (attachment['fileId'] ??
-                      attachment['attachmentId'] ??
-                      attachment['fileAttachmentId'] ??
-                      attachment['id'] ??
-                      '')
-                  .toString()
-                  .trim();
+        if (value is List) {
+          for (final rawAttachment in value) {
+            if (rawAttachment is! Map) continue;
+            final attachment = asStringDynamicMap(rawAttachment);
+            final id = (attachment['fileId'] ??
+                    attachment['attachmentId'] ??
+                    attachment['fileAttachmentId'] ??
+                    attachment['id'] ??
+                    attachment['uuid'] ??
+                    attachment['storageId'] ??
+                    '')
+                .toString()
+                .trim();
+            final name = (attachment['fileRegularName'] ??
+                    attachment['fileName'] ??
+                    attachment['filename'] ??
+                    attachment['regularName'] ??
+                    attachment['name'] ??
+                    attachment['displayName'] ??
+                    attachment['title'] ??
+                    attachment['originalName'] ??
+                    attachment['originalFileName'] ??
+                    '')
+                .toString()
+                .trim();
+            if (id.isEmpty && name.isEmpty) continue;
+            if (id.isEmpty || seen.add(id)) attachments.add(attachment);
+          }
+        }
+      }
+      for (final key in const [
+        'attachment',
+        'fileAttachment',
+        'file',
+      ]) {
+        final value = source[key];
+        if (value is Map) {
+          final attachment = asStringDynamicMap(value);
+          final id = (attachment['fileId'] ??
+                  attachment['attachmentId'] ??
+                  attachment['fileAttachmentId'] ??
+                  attachment['id'] ??
+                  attachment['uuid'] ??
+                  attachment['storageId'] ??
+                  '')
+              .toString()
+              .trim();
+          final name = (attachment['fileRegularName'] ??
+                  attachment['fileName'] ??
+                  attachment['filename'] ??
+                  attachment['regularName'] ??
+                  attachment['name'] ??
+                  attachment['displayName'] ??
+                  attachment['title'] ??
+                  attachment['originalName'] ??
+                  attachment['originalFileName'] ??
+                  '')
+              .toString()
+              .trim();
+          if (id.isEmpty && name.isEmpty) continue;
           if (id.isEmpty || seen.add(id)) attachments.add(attachment);
         }
       }

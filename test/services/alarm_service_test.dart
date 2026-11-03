@@ -196,4 +196,41 @@ void main() {
     expect(candidate?.at, DateTime(2026, 9, 9, 7, 30));
     expect(candidate?.label, 'Deutsch');
   });
+
+  test('schedules custom time on current day even when morning lesson has passed', () {
+    final candidate = AlarmPlanner.nextSmartAlarm(
+      [
+        lesson(date: 20260907, start: 800),
+        lesson(date: 20260908, start: 745, subject: 'Biologie'),
+      ],
+      leadMinutes: 30,
+      now: DateTime(2026, 9, 7, 10, 0),
+      dateOverrides: const {
+        '20260907': AlarmDateOverride(
+          customTimeOfDayMinutes: 14 * 60, // 14:00
+        ),
+      },
+    );
+
+    expect(candidate?.at, DateTime(2026, 9, 7, 14, 0));
+    expect(candidate?.dateKey, '20260907');
+  });
+
+  test('schedules custom time override even when day has no timetable lessons', () {
+    final candidate = AlarmPlanner.nextSmartAlarm(
+      [
+        lesson(date: 20260908, start: 745, subject: 'Biologie'),
+      ],
+      leadMinutes: 30,
+      now: DateTime(2026, 9, 7, 10, 0),
+      dateOverrides: const {
+        '20260907': AlarmDateOverride(
+          customTimeOfDayMinutes: 15 * 60 + 30, // 15:30
+        ),
+      },
+    );
+
+    expect(candidate?.at, DateTime(2026, 9, 7, 15, 30));
+    expect(candidate?.dateKey, '20260907');
+  });
 }
