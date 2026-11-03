@@ -12,6 +12,7 @@
   "navMenu": "Menú",
   "navAi": "IA",
   "timetableOfflineCache": "Caché sin conexión activo",
+  "timetableOfflineNotice": "Estás sin conexión. Es posible que tu horario no esté actualizado.",
   "timetableNotSignedIn": "Sesión no iniciada",
   "timetableHttpError": "HTTP {status}: no se pudo cargar el horario.",
   "timetableUnknownApiError": "Error de WebUntis desconocido",

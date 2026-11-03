@@ -7,6 +7,7 @@
   "navMenu": "Menü",
   "navAi": "KI",
   "timetableOfflineCache": "Offline-Cache aktiv",
+  "timetableOfflineNotice": "Du bist offline. Dein Stundenplan ist möglicherweise nicht aktuell.",
   "timetableNotSignedIn": "Nicht angemeldet",
   "timetableHttpError": "HTTP {status}: Der Stundenplan konnte nicht geladen werden.",
   "@timetableHttpError": {

@@ -12,6 +12,7 @@
   "navMenu": "Menu",
   "navAi": "IA",
   "timetableOfflineCache": "Cache hors ligne actif",
+  "timetableOfflineNotice": "Tu es hors ligne. Ton emploi du temps n'est peut-être pas à jour.",
   "timetableNotSignedIn": "Non connecté",
   "timetableHttpError": "HTTP {status} : impossible de charger l’emploi du temps.",
   "timetableUnknownApiError": "Erreur WebUntis inconnue",
