@@ -648,6 +648,68 @@ class DemoModeService {
     return List<String>.from(rooms[rangeIndex % rooms.length]);
   }
 
+  static List<Map<String, dynamic>> demoRooms() => const [
+    {'id': 888001, 'name': 'A102', 'longName': 'Raum A102', 'building': 'Haus A'},
+    {'id': 888002, 'name': 'B201', 'longName': 'Physiksaal B201', 'building': 'Haus B'},
+    {'id': 888003, 'name': 'C104', 'longName': 'Chemieraum C104', 'building': 'Haus C'},
+    {'id': 888004, 'name': 'Bibliothek', 'longName': 'Schulbibliothek', 'building': 'Zentral'},
+    {'id': 888005, 'name': 'Medienraum', 'longName': 'Informatik-Labor', 'building': 'Haus B'},
+    {'id': 888006, 'name': 'Musikraum', 'longName': 'Musiksaal M1', 'building': 'Haus C'},
+    {'id': 888007, 'name': 'Sporthalle', 'longName': 'Sporthalle groß', 'building': 'Sport'},
+  ];
+
+  static List<dynamic> demoRoomLessons({
+    required int roomId,
+    required DateTime date,
+  }) {
+    final d = untisDateInt(date);
+    switch (roomId) {
+      case 888001:
+        return [
+          {
+            'date': d,
+            'startTime': 755,
+            'endTime': 840,
+            'su': [{'name': 'Mathe'}],
+            'te': [{'name': 'Müller'}],
+            'kl': [{'name': '10A'}],
+          },
+          {
+            'date': d,
+            'startTime': 945,
+            'endTime': 1030,
+            'su': [{'name': 'Deutsch'}],
+            'te': [{'name': 'Becker'}],
+            'kl': [{'name': '10B'}],
+          },
+        ];
+      case 888002:
+        return [
+          {
+            'date': d,
+            'startTime': 845,
+            'endTime': 930,
+            'su': [{'name': 'Physik'}],
+            'te': [{'name': 'Schmidt'}],
+            'kl': [{'name': 'Q1'}],
+          },
+        ];
+      case 888003:
+        return [
+          {
+            'date': d,
+            'startTime': 1045,
+            'endTime': 1130,
+            'su': [{'name': 'Chemie'}],
+            'te': [{'name': 'Wagner'}],
+            'kl': [{'name': '10A'}],
+          },
+        ];
+      default:
+        return const <dynamic>[];
+    }
+  }
+
   static Map<String, dynamic> _lesson(
     DateTime date,
     int startTime,
