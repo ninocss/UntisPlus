@@ -145,7 +145,12 @@ class AppearanceStep extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Mathematik',
+                                      switch (l.locale) {
+                                        'en' => 'Mathematics',
+                                        'fr' => 'Mathématiques',
+                                        'es' => 'Matemáticas',
+                                        _ => 'Mathematik',
+                                      },
                                       overflow: TextOverflow.ellipsis,
                                       style: untisThemeTextStyle(
                                         context,
