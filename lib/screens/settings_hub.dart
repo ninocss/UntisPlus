@@ -960,7 +960,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     ).push(MaterialPageRoute(builder: (_) => WishKit.feedbackPage()));
   }
 
-  Widget _buildCompactAccountHeader(
+  Widget _buildAppBarAccountBadge(
     BuildContext context, {
     required AppL10n l,
     required _SettingsHubItem accountItem,
@@ -970,6 +970,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final cs = Theme.of(context).colorScheme;
     final accountIndex = allItems.indexOf(accountItem);
     final selected = expanded && accountIndex == _selectedDetail;
+    final isCompact = MediaQuery.sizeOf(context).width < 420;
 
     return AnimatedBuilder(
       animation: Listenable.merge([
@@ -989,62 +990,65 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
         }
         final rawUser =
             activeAccount?.username ?? (prefs.getString('username') ?? '');
-        final rawSchool =
-            activeAccount?.schoolName.isNotEmpty == true
-                ? activeAccount!.schoolName
-                : (schoolName.isNotEmpty
-                      ? schoolName
-                      : (prefs.getString('schoolName') ?? ''));
         final isDemo = demoModeNotifier.value;
         final isDev = devModeNotifier.value;
 
         final displayUser = rawUser.trim().isNotEmpty
             ? rawUser.trim()
             : (isDemo ? l.settingsDemoMode : l.settingsHubAccount);
-        final displaySchool = rawSchool.trim().isNotEmpty
-            ? rawSchool.trim()
-            : (isDemo ? 'demo.school' : l.settingsDemoMode);
 
         final initials = rawUser.trim().isNotEmpty
             ? rawUser
-                  .trim()
-                  .split(RegExp(r'[\s._-]+'))
-                  .where((part) => part.isNotEmpty)
-                  .take(2)
-                  .map((part) => part[0].toUpperCase())
-                  .join()
+                .trim()
+                .split(RegExp(r'[\s._-]+'))
+                .where((part) => part.isNotEmpty)
+                .take(2)
+                .map((part) => part[0].toUpperCase())
+                .join()
             : '';
 
-        return Semantics(
-          button: true,
-          selected: selected,
-          label: '${l.settingsHubAccount}: $displayUser, $displaySchool',
+        return Padding(
+          padding: const EdgeInsets.only(right: 12),
           child: Material(
             type: MaterialType.transparency,
             child: InkWell(
               key: const ValueKey('settings-compact-account-header'),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
               onTap: () => _activateItem(
                 context,
                 accountItem,
                 expanded: expanded,
                 allItems: allItems,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 6,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isCompact ? 4 : 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? cs.primaryContainer
+                      : cs.surfaceContainerHighest.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: selected
+                        ? cs.primary.withValues(alpha: 0.35)
+                        : cs.outlineVariant.withValues(alpha: 0.22),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 38,
-                      height: 38,
+                      width: 30,
+                      height: 30,
                       decoration: BoxDecoration(
                         color: selected
                             ? cs.primary
-                            : cs.primaryContainer.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(12),
+                            : cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       alignment: Alignment.center,
                       child: initials.isNotEmpty
@@ -1052,7 +1056,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                               initials,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.w800,
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: selected
                                     ? cs.onPrimary
                                     : cs.onPrimaryContainer,
@@ -1062,112 +1066,61 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
                               isDemo
                                   ? Icons.science_rounded
                                   : Icons.person_rounded,
-                              size: 20,
+                              size: 16,
                               color: selected
                                   ? cs.onPrimary
                                   : cs.onPrimaryContainer,
                             ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  displayUser,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                    color: cs.onSurface,
-                                  ),
-                                ),
-                                if (isDemo || isDev) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 7,
-                                      vertical: 1.5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isDev
-                                          ? cs.tertiaryContainer
-                                          : cs.secondaryContainer,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      isDev ? 'DEV' : 'DEMO',
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 10,
-                                        letterSpacing: 0.4,
-                                        color: isDev
-                                            ? cs.onTertiaryContainer
-                                            : cs.onSecondaryContainer,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
+                    if (isDev || isDemo) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDev
+                              ? cs.tertiaryContainer
+                              : cs.secondaryContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isDev ? 'DEV' : 'DEMO',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 9,
+                            color: isDev
+                                ? cs.onTertiaryContainer
+                                : cs.onSecondaryContainer,
                           ),
-                          Text(
-                            displaySchool,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12.5,
-                              color: cs.onSurfaceVariant,
-                            ),
+                        ),
+                      ),
+                    ],
+                    if (!isCompact) ...[
+                      const SizedBox(width: 6),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 100),
+                        child: Text(
+                          displayUser,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                            color: selected
+                                ? cs.onPrimaryContainer
+                                : cs.onSurface,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                      const SizedBox(width: 2),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: cs.onSurfaceVariant,
                       ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? cs.secondaryContainer
-                            : cs.surfaceContainerHighest.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            l.settingsHubAccount,
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: selected
-                                  ? cs.onSecondaryContainer
-                                  : cs.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: 2),
-                          Icon(
-                            selected
-                                ? Icons.check_rounded
-                                : Icons.chevron_right_rounded,
-                            size: 16,
-                            color: selected ? cs.primary : cs.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -1622,9 +1575,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     ].where((item) => _matchesQuery(item, _searchQuery)).toList();
 
     final dataSupportItems = <_SettingsHubItem>[
-      if (_searchQuery.trim().isNotEmpty &&
-          _matchesQuery(accountItem, _searchQuery))
-        accountItem,
+      accountItem,
       backupItem,
       ?updatesItem,
       feedbackReportItem,
@@ -1697,14 +1648,6 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
             padding: EdgeInsets.fromLTRB(horizontal, top, horizontal, bottom),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                _buildCompactAccountHeader(
-                  context,
-                  l: l,
-                  accountItem: accountItem,
-                  expanded: expanded,
-                  allItems: items,
-                ),
-                const SizedBox(height: 10),
                 _buildSearchBar(context, l),
                 const SizedBox(height: 14),
                 if (hasAnySearchMatch)
@@ -1742,7 +1685,19 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: _mainTabHeaderAppBar(context, l.settingsTitle),
+      appBar: _mainTabHeaderAppBar(
+        context,
+        l.settingsTitle,
+        actions: [
+          _buildAppBarAccountBadge(
+            context,
+            l: l,
+            accountItem: accountItem,
+            expanded: expanded,
+            allItems: items,
+          ),
+        ],
+      ),
       body: LayoutBuilder(
         builder: (context, _) {
           if (!expanded) return settingsList(expanded: false);

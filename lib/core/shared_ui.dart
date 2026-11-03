@@ -224,18 +224,7 @@ class SettingsPageShell extends StatelessWidget {
                 16,
                 MediaQuery.paddingOf(context).bottom + 120,
               ),
-              sliver: SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 840),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: children,
-                    ),
-                  ),
-                ),
-              ),
+              sliver: SliverList.list(children: children),
             ),
           ],
         ),

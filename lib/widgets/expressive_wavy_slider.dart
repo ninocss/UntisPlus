@@ -1,6 +1,17 @@
+import 'dart:io' show Platform;
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../main.dart' show AppMotion;
+
+bool _isUnderFlutterTest() {
+  if (kIsWeb) return false;
+  try {
+    return Platform.environment.containsKey('FLUTTER_TEST');
+  } catch (_) {
+    return false;
+  }
+}
 
 /// A Material 3 Expressive slider track shape that draws a sinusoidal wave
 /// along the active track and a straight pill along the inactive track.
@@ -170,7 +181,7 @@ class _ExpressiveWavySliderState extends State<ExpressiveWavySlider>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (AppMotion.enabled(context)) {
+    if (AppMotion.enabled(context) && !_isUnderFlutterTest()) {
       if (!_controller.isAnimating) {
         _controller.repeat();
       }

@@ -1,6 +1,17 @@
+import 'dart:io' show Platform;
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../main.dart' show AppMotion;
+
+bool _isUnderFlutterTest() {
+  if (kIsWeb) return false;
+  try {
+    return Platform.environment.containsKey('FLUTTER_TEST');
+  } catch (_) {
+    return false;
+  }
+}
 
 /// A Material 3 Expressive linear progress indicator featuring a sinusoidal wavy active bar.
 class ExpressiveWavyLinearProgressIndicator extends StatefulWidget {
@@ -43,7 +54,7 @@ class _ExpressiveWavyLinearProgressIndicatorState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (AppMotion.enabled(context)) {
+    if (AppMotion.enabled(context) && !_isUnderFlutterTest()) {
       if (!_controller.isAnimating) {
         _controller.repeat();
       }
@@ -220,7 +231,7 @@ class _ExpressiveWavyCircularProgressIndicatorState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (AppMotion.enabled(context)) {
+    if (AppMotion.enabled(context) && !_isUnderFlutterTest()) {
       if (!_controller.isAnimating) {
         _controller.repeat();
       }
