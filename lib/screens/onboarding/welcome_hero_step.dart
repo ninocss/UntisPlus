@@ -4,12 +4,12 @@ part of '../../main.dart';
 /// instant language switcher, and rapid entry actions.
 class WelcomeHeroStep extends StatelessWidget {
   final VoidCallback onGetStarted;
-  final VoidCallback onTryDemo;
+  final VoidCallback? onTryDemo;
 
   const WelcomeHeroStep({
     super.key,
     required this.onGetStarted,
-    required this.onTryDemo,
+    this.onTryDemo,
   });
 
   @override
@@ -66,7 +66,7 @@ class WelcomeHeroStep extends StatelessWidget {
                     child: Image.asset(
                       'assets/icons/icon_3D.png',
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Icon(
+                      errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.auto_awesome_rounded,
                         size: 48,
                         color: colors.primary,
@@ -190,13 +190,15 @@ class WelcomeHeroStep extends StatelessWidget {
                 icon: Icons.arrow_forward_rounded,
                 onPressed: onGetStarted,
               ),
-              const SizedBox(height: 8),
-              M3PillButton(
-                label: l.onboardingUseDemoMode,
-                icon: Icons.science_rounded,
-                isPrimary: false,
-                onPressed: onTryDemo,
-              ),
+              if (onTryDemo != null) ...[
+                const SizedBox(height: 8),
+                M3PillButton(
+                  label: l.onboardingUseDemoMode,
+                  icon: Icons.science_rounded,
+                  isPrimary: false,
+                  onPressed: onTryDemo,
+                ),
+              ],
             ],
           ),
         );

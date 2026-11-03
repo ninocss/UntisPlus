@@ -58,5 +58,6 @@ void main() {
     // Tap skip
     await tester.tap(find.text('Ohne KI fortfahren'));
     expect(skipTapped, isTrue);
+    expect(selectedProvider, 'disabled');
   });
 }

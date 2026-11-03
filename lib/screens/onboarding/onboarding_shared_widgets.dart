@@ -186,14 +186,20 @@ class M3PillButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                label,
-                style: untisThemeTextStyle(
-                  context,
-                  display: true,
-                  fontSize: 16.5,
-                  fontWeight: FontWeight.w700,
-                  color: isPrimary ? colors.onPrimary : colors.onSecondaryContainer,
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: untisThemeTextStyle(
+                    context,
+                    display: true,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    color: isPrimary
+                        ? colors.onPrimary
+                        : colors.onSecondaryContainer,
+                  ),
                 ),
               ),
               if (icon != null) ...[
@@ -204,7 +210,7 @@ class M3PillButton extends StatelessWidget {
           );
 
     return SizedBox(
-      height: 56,
+      height: 54,
       width: double.infinity,
       child: isPrimary
           ? FilledButton(
@@ -214,16 +220,19 @@ class M3PillButton extends StatelessWidget {
                 foregroundColor: colors.onPrimary,
                 shape: shape,
                 elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
               child: child,
             )
           : FilledButton.tonal(
               onPressed: isLoading ? null : onPressed,
               style: FilledButton.styleFrom(
-                backgroundColor: colors.secondaryContainer.withValues(alpha: 0.8),
+                backgroundColor:
+                    colors.secondaryContainer.withValues(alpha: 0.8),
                 foregroundColor: colors.onSecondaryContainer,
                 shape: shape,
                 elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
               child: child,
             ),
