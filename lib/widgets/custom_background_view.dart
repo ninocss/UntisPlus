@@ -1,7 +1,5 @@
 part of '../main.dart';
 
-// ── Custom Background Rendering ──────────────────────────────────────────────
-
 class CustomBackgroundView extends StatelessWidget {
   final CustomBackgroundSpec? spec;
   final double t;
@@ -213,7 +211,6 @@ class _CustomBackgroundPainter extends CustomPainter {
       return;
     }
 
-    // Lines
     final rad = (pattern.angleDeg % 360) * math.pi / 180.0;
     final diag = math.sqrt(rect.width * rect.width + rect.height * rect.height);
     final spacing = 34.0 * scale;

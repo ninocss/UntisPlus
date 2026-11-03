@@ -121,6 +121,31 @@ extension AppL10nCollections on AppL10n {
       'Aus den erreichbaren Klassen-Stundenplänen konnten keine Lehrkräfte gelesen werden. Prüfe den Zugriff und aktualisiere erneut.',
   };
 
+  String get roomSearchRefreshAll => switch (locale) {
+    'en' => 'Refresh rooms and timetable',
+    'es' => 'Actualizar aulas y horario',
+    'fr' => 'Actualiser les salles et l’emploi du temps',
+    _ => 'Räume und Stundenplan aktualisieren',
+  };
+
+  String roomSearchClassFallback(int count) => switch (locale) {
+    'en' => 'Rooms from $count accessible class timetables',
+    'es' => 'Aulas de $count horarios de clase accesibles',
+    'fr' => 'Salles issues de $count emplois du temps de classe accessibles',
+    _ => 'Räume aus $count erreichbaren Klassen-Stundenplänen',
+  };
+
+  String get roomSearchClassFallbackUnavailable => switch (locale) {
+    'en' =>
+      'No rooms could be read from accessible class timetables. Check class timetable access and try refreshing again.',
+    'es' =>
+      'No se pudieron obtener aulas de los horarios accesibles. Comprueba el acceso y vuelve a actualizar.',
+    'fr' =>
+      'Aucune salle n’a pu être récupérée depuis les emplois du temps accessibles. Vérifie les accès puis réessaie.',
+    _ =>
+      'Aus den erreichbaren Klassen-Stundenplänen konnten keine Räume gelesen werden. Prüfe den Zugriff und aktualisiere erneut.',
+  };
+
   String get settingsAiAvailability => switch (locale) {
     'en' => 'AI features',
     'es' => 'Funciones de IA',
@@ -347,6 +372,9 @@ extension AppL10nCollections on AppL10n {
   String get settingsLessonStyleGradient => _t('settingsLessonStyleGradient');
   String get settingsLessonStyleOutline => _t('settingsLessonStyleOutline');
   String get settingsLessonStyleSolid => _t('settingsLessonStyleSolid');
+  String get settingsLessonCleanDesign => _t('settingsLessonCleanDesign');
+  String get settingsLessonCleanDesignDesc =>
+      _t('settingsLessonCleanDesignDesc');
   String get settingsLessonBlur => _t('settingsLessonBlur');
   String get settingsLessonBlurDesc => _t('settingsLessonBlurDesc');
   String get settingsLessonBlurAmount => _t('settingsLessonBlurAmount');
@@ -1240,6 +1268,9 @@ extension AppL10nCollections on AppL10n {
       'settingsLessonStyleGradient': 'Farbverlauf',
       'settingsLessonStyleOutline': 'Kontur / Minimal',
       'settingsLessonStyleSolid': 'Kräftig / Vollton',
+      'settingsLessonCleanDesign': 'Modernes Clean-Design',
+      'settingsLessonCleanDesignDesc':
+          'Elegantes Layout mit dezentem Fach-Wasserzeichen und aufgeräumter Info-Zeile',
       'settingsLessonBlur': 'Milchglas-Unschärfe (Blur)',
       'settingsLessonBlurDesc':
           'Hintergrund hinter den Stundenkarten weichzeichnen.',
@@ -2445,6 +2476,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonStyleGradient': 'Gradient',
       'settingsLessonStyleOutline': 'Outline / Minimal',
       'settingsLessonStyleSolid': 'Solid Fill',
+      'settingsLessonCleanDesign': 'Modern Clean Design',
+      'settingsLessonCleanDesignDesc':
+          'Sleek layout with subtle subject watermark and streamlined info line',
       'settingsLessonBlur': 'Frosted Glass Blur',
       'settingsLessonBlurDesc':
           'Blur the wallpaper background behind lesson cards.',
@@ -3673,6 +3707,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonStyleGradient': 'Dégradé',
       'settingsLessonStyleOutline': 'Contour / Minimal',
       'settingsLessonStyleSolid': 'Plein / Contrasté',
+      'settingsLessonCleanDesign': 'Design épuré moderne',
+      'settingsLessonCleanDesignDesc':
+          'Mise en page élégante avec filigrane discret de la matière et ligne d\'info épurée',
       'settingsLessonBlur': 'Flou de verre (Blur)',
       'settingsLessonBlurDesc': 'Flouter l\'arrière-plan derrière les cartes.',
       'settingsLessonBlurAmount': 'Force du flou',
@@ -4904,6 +4941,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonStyleGradient': 'Degradado',
       'settingsLessonStyleOutline': 'Contorno / Minimal',
       'settingsLessonStyleSolid': 'Sólido',
+      'settingsLessonCleanDesign': 'Diseño limpio moderno',
+      'settingsLessonCleanDesignDesc':
+          'Diseño elegante con marca de agua sutil de la asignatura y línea de info despejada',
       'settingsLessonBlur': 'Desenfoque de cristal',
       'settingsLessonBlurDesc':
           'Desenfoca el fondo detrás de las tarjetas de clase.',

@@ -57,8 +57,15 @@ class UntisAccountStore {
       activeUntisAccountStorageKey,
     );
     final hydrated = <UntisAccount>[];
-    for (final account in readPublicAccounts()) {
-      var credentials = await _credentials.read(account.id);
+    final publicAccounts = readPublicAccounts();
+    // Read every account's secure credentials together; the migration writes
+    // below still run sequentially in account order.
+    final storedCredentials = await Future.wait(
+      publicAccounts.map((account) => _credentials.read(account.id)),
+    );
+    for (var index = 0; index < publicAccounts.length; index++) {
+      final account = publicAccounts[index];
+      var credentials = storedCredentials[index];
       final isRequestedActive = account.id == requestedActiveId;
       final legacyPassword = account.password.isNotEmpty
           ? account.password

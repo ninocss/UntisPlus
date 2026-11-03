@@ -104,7 +104,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
 
   Future<void> _selectAccount(String accountId) async {
     if (_accountId == accountId) return;
-    HapticFeedback.selectionClick();
+    AppHaptics.selection();
     setState(() => _accountId = accountId);
     await _reloadPreview();
   }
@@ -136,9 +136,7 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
     if (kIsWeb || !Platform.isAndroid || _pinning) return;
     final accountId = _accountId;
     if (accountId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.widgetAddAccountFirst)));
+      context.showUntisSnackBar(l.widgetAddAccountFirst);
       return;
     }
     final name = switch (_selectedType) {
@@ -155,16 +153,12 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
         preferredAccountId: accountId,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(supported ? l.widgetPickerSent : l.widgetPickerHint),
-        ),
+      context.showUntisSnackBar(
+        supported ? l.widgetPickerSent : l.widgetPickerHint,
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.widgetPickerFailed)));
+      context.showUntisSnackBar(l.widgetPickerFailed);
     } finally {
       if (mounted) setState(() => _pinning = false);
     }
@@ -448,168 +442,159 @@ class _SettingsWidgetsPageState extends State<SettingsWidgetsPage> {
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
     final isAndroid = !kIsWeb && Platform.isAndroid;
     final isIOS = !kIsWeb && Platform.isIOS;
     final selected = _types.firstWhere((type) => type.id == _selectedType);
-    return Scaffold(
-      appBar: _settingsHeaderAppBar(
-        context,
-        l.widgetPreviewTitle,
-        actions: [
-          IconButton(
-            tooltip: l.widgetRefresh,
-            onPressed: _loadingPreview ? null : _reloadPreview,
-            icon: const Icon(Icons.refresh_rounded),
+    return SettingsPageShell(
+      title: l.widgetPreviewTitle,
+      actions: [
+        IconButton(
+          tooltip: l.widgetRefresh,
+          onPressed: _loadingPreview ? null : _reloadPreview,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 4, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l.widgetPreview,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (_loadingPreview)
+                const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
           ),
-        ],
-      ),
-      body: _AnimatedBackground(
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 40),
+        ),
+        Center(child: _preview(context, cs)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+          child: Text(
+            _previewData.hasPublishedData
+                ? l.widgetSyncedPreview
+                : l.widgetOpenTimetable,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+        ),
+        SettingsGroup(
+          title: l.widgetOwn,
+          children: [
+            SettingsTile(
+              icon: Icons.dashboard_customize_rounded,
+              title: l.widgetEditorOpen,
+              subtitle: l.widgetEditorDesc,
+              trailing: const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(_buildBouncyRoute(const CustomWidgetEditorPage())),
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: l.widgetChoose,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 4, 10),
-              child: Row(
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Expanded(
-                    child: Text(
-                      l.widgetPreview,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: cs.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  if (_loadingPreview)
-                    const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                  for (final type in _types)
+                    ChoiceChip(
+                      avatar: Icon(type.icon, size: 18),
+                      label: Text(_typeText(l, type.label)),
+                      selected: _selectedType == type.id,
+                      onSelected: (_) {
+                        AppHaptics.selection();
+                        setState(() => _selectedType = type.id);
+                      },
                     ),
                 ],
               ),
             ),
-            Center(child: _preview(context, cs)),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-              child: Text(
-                _previewData.hasPublishedData
-                    ? l.widgetSyncedPreview
-                    : l.widgetOpenTimetable,
-                textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-              ),
-            ),
-            SettingsGroup(
-              title: l.widgetOwn,
-              children: [
-                SettingsTile(
-                  icon: Icons.dashboard_customize_rounded,
-                  title: l.widgetEditorOpen,
-                  subtitle: l.widgetEditorDesc,
-                  trailing: const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                  ),
-                  onTap: () => Navigator.of(
-                    context,
-                  ).push(_buildBouncyRoute(const CustomWidgetEditorPage())),
-                ),
-              ],
-            ),
-            SettingsGroup(
-              title: l.widgetChoose,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final type in _types)
-                        ChoiceChip(
-                          avatar: Icon(type.icon, size: 18),
-                          label: Text(_typeText(l, type.label)),
-                          selected: _selectedType == type.id,
-                          onSelected: (_) {
-                            HapticFeedback.selectionClick();
-                            setState(() => _selectedType = type.id);
-                          },
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(selected.icon, size: 20, color: cs.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _typeText(l, selected.description),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(selected.icon, size: 20, color: cs.primary),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _typeText(l, selected.description),
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _typeText(l, selected.size),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: cs.onSurfaceVariant),
-                            ),
-                          ],
+                        const SizedBox(height: 3),
+                        Text(
+                          _typeText(l, selected.size),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            ValueListenableBuilder<List<UntisAccount>>(
-              valueListenable: untisAccountsNotifier,
-              builder: (context, accounts, _) => SettingsGroup(
-                title: l.widgetAccount,
-                children: accounts.isEmpty
-                    ? [
-                        SettingsTile(
-                          icon: Icons.person_off_outlined,
-                          title: l.widgetNoAccount,
-                          subtitle: l.widgetAddAccountFirst,
-                          trailing: null,
-                        ),
-                      ]
-                    : [
-                        for (final account in accounts)
-                          SettingsTile(
-                            icon: account.id == _accountId
-                                ? Icons.check_circle_rounded
-                                : Icons.account_circle_outlined,
-                            iconBackgroundColor: account.id == _accountId
-                                ? cs.primaryContainer
-                                : null,
-                            iconColor: account.id == _accountId
-                                ? cs.onPrimaryContainer
-                                : null,
-                            title: account.label,
-                            subtitle: account.schoolName,
-                            trailing: account.id == _accountId
-                                ? const Icon(Icons.check_rounded)
-                                : null,
-                            onTap: () => _selectAccount(account.id),
-                          ),
                       ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            _platformInstructions(isAndroid, isIOS),
           ],
         ),
-      ),
+        ValueListenableBuilder<List<UntisAccount>>(
+          valueListenable: untisAccountsNotifier,
+          builder: (context, accounts, _) => SettingsGroup(
+            title: l.widgetAccount,
+            children: accounts.isEmpty
+                ? [
+                    SettingsTile(
+                      icon: Icons.person_off_outlined,
+                      title: l.widgetNoAccount,
+                      subtitle: l.widgetAddAccountFirst,
+                      trailing: null,
+                    ),
+                  ]
+                : [
+                    for (final account in accounts)
+                      SettingsTile(
+                        icon: account.id == _accountId
+                            ? Icons.check_circle_rounded
+                            : Icons.account_circle_outlined,
+                        iconBackgroundColor: account.id == _accountId
+                            ? cs.primaryContainer
+                            : null,
+                        iconColor: account.id == _accountId
+                            ? cs.onPrimaryContainer
+                            : null,
+                        title: account.label,
+                        subtitle: account.schoolName,
+                        trailing: account.id == _accountId
+                            ? const Icon(Icons.check_rounded)
+                            : null,
+                        onTap: () => _selectAccount(account.id),
+                      ),
+                  ],
+          ),
+        ),
+        _platformInstructions(isAndroid, isIOS),
+      ],
     );
   }
 }

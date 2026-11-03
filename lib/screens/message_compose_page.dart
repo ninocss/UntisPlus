@@ -391,6 +391,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: RoundedBlurAppBar(
         title: Text(
           l.messageComposeTitle,
@@ -408,7 +409,7 @@ class _MessageComposePageState extends State<_MessageComposePage>
         child: ListView(
           padding: EdgeInsets.fromLTRB(
             16,
-            16,
+            MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
             16,
             MediaQuery.paddingOf(context).bottom + 120,
           ),

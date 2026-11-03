@@ -1,6 +1,5 @@
 part of '../main.dart';
 
-// --- HAUPT NAVIGATION ---
 class MainNavigationScreen extends StatefulWidget {
   final bool showTutorialOnStart;
 
@@ -197,11 +196,11 @@ class _AiAssistantPageState extends State<AiAssistantPage>
   }
 
   void _hapticSelection() {
-    unawaited(HapticFeedback.selectionClick());
+    unawaited(AppHaptics.selection());
   }
 
   void _hapticAction() {
-    unawaited(HapticFeedback.mediumImpact());
+    unawaited(AppHaptics.confirmation());
   }
 
   void _selectAiTab(int index, {bool haptic = true}) {
@@ -303,7 +302,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           null,
           (min, value) => min == null || value < min ? value : min,
         );
-    return firstStart != null && nowMin < _toMinutes(firstStart);
+    return firstStart != null && nowMin < untisClockToMinutes(firstStart);
   }
 
   bool get _isDuringSchool {
@@ -312,8 +311,8 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     final nowMin = DateTime.now().hour * 60 + DateTime.now().minute;
     for (final lesson in lessons) {
       final map = lesson.cast<dynamic, dynamic>();
-      final start = _toMinutes((map['startTime'] as int?) ?? 800);
-      final end = _toMinutes((map['endTime'] as int?) ?? 845);
+      final start = untisClockToMinutes((map['startTime'] as int?) ?? 800);
+      final end = untisClockToMinutes((map['endTime'] as int?) ?? 845);
       if (nowMin >= start && nowMin <= end) return true;
     }
     return false;
@@ -330,16 +329,12 @@ class _AiAssistantPageState extends State<AiAssistantPage>
           null,
           (max, value) => max == null || value > max ? value : max,
         );
-    return lastEnd != null && nowMin > _toMinutes(lastEnd);
+    return lastEnd != null && nowMin > untisClockToMinutes(lastEnd);
   }
 
   Future<void> _loadContext() async {
     final now = DateTime.now();
-    final monday = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
+    final monday = mondayOfWeek(now);
 
     // The timetable tab is the source of truth while it is alive. Reading its
     // published snapshot avoids an outdated SharedPreferences cache claiming
@@ -465,11 +460,7 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     });
   }
 
-  String _resolvedSystemPrompt() {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final template = aiSystemPromptTemplate.trim().isNotEmpty
-        ? aiSystemPromptTemplate
-        : _buildDefaultAiPromptTemplate(l);
+  String _replaceAiPromptVariables(String template) {
     final friday = _currentMonday.add(const Duration(days: 4));
     final vars = <String, String>{
       '[today]': DateFormat(
@@ -503,6 +494,15 @@ class _AiAssistantPageState extends State<AiAssistantPage>
     for (final entry in entries) {
       resolved = resolved.replaceAll(entry.key, entry.value);
     }
+    return resolved;
+  }
+
+  String _resolvedSystemPrompt() {
+    final l = appL10nFor(appLocaleNotifier.value);
+    final template = aiSystemPromptTemplate.trim().isNotEmpty
+        ? aiSystemPromptTemplate
+        : _buildDefaultAiPromptTemplate(l);
+    final resolved = _replaceAiPromptVariables(template);
     return '''$resolved
 
 ${l.aiResponseFormat}''';
@@ -513,39 +513,7 @@ ${l.aiResponseFormat}''';
     final template = aiSystemPromptTemplate.trim().isNotEmpty
         ? aiSystemPromptTemplate
         : _buildDefaultAiPromptTemplate(l);
-    final friday = _currentMonday.add(const Duration(days: 4));
-    final vars = <String, String>{
-      '[today]': DateFormat(
-        'EEEE, dd. MMMM yyyy',
-        _icuLocale(appLocaleNotifier.value),
-      ).format(DateTime.now()),
-      '[today_iso]': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      '[locale]': appLocaleNotifier.value,
-      '[school_name]': schoolName.isEmpty ? '-' : schoolName,
-      '[school_url]': schoolUrl.isEmpty ? '-' : schoolUrl,
-      '[person_type]': '$personType',
-      '[person_id]': '$personId',
-      '[demo_mode]': '${demoModeNotifier.value}',
-      '[current_monday]': DateFormat('dd.MM.yyyy').format(_currentMonday),
-      '[current_friday]': DateFormat('dd.MM.yyyy').format(friday),
-      '[day_summary_today]': _daySummaryForPrompt(DateTime.now()),
-      '[day_summary_tomorrow]': _daySummaryForPrompt(
-        DateTime.now().add(const Duration(days: 1)),
-      ),
-      '[timetable]': _formatWeekForAi(_weekData, _currentMonday),
-      '[timetable_json]': jsonEncode(_jsonSafeValue(_weekData)),
-      '[exams]': _formatExamsForAi(),
-      '[exams_json]': jsonEncode(_jsonSafeValue(_exams)),
-      '[current_lesson]': _currentLessonSummary(),
-      '[next_lesson]': _nextLessonSummary(),
-    };
-
-    var resolved = template;
-    final entries = vars.entries.toList()
-      ..sort((a, b) => b.key.length.compareTo(a.key.length));
-    for (final entry in entries) {
-      resolved = resolved.replaceAll(entry.key, entry.value);
-    }
+    final resolved = _replaceAiPromptVariables(template);
 
     String personaInstruction = '';
     switch (aiPersona) {
@@ -605,8 +573,8 @@ ${l.aiAssistantRules}''';
     final buf = StringBuffer('$dateLabel:\n');
     for (final lsn in lessons.whereType<Map>()) {
       final lesson = lsn.cast<dynamic, dynamic>();
-      final start = _formatUntisTime(lesson['startTime'].toString());
-      final end = _formatUntisTime(lesson['endTime'].toString());
+      final start = formatUntisTime(lesson['startTime'].toString());
+      final end = formatUntisTime(lesson['endTime'].toString());
       final subj = lesson['_subjectLong']?.toString().isNotEmpty == true
           ? lesson['_subjectLong'].toString()
           : lesson['_subjectShort']?.toString() ?? '?';
@@ -655,7 +623,7 @@ ${l.aiAssistantRules}''';
         .map((lesson) {
           final subject =
               lesson['_subjectLong'] ?? lesson['_subjectShort'] ?? '?';
-          return '${_formatUntisTime(lesson['startTime'].toString())} $subject';
+          return '${formatUntisTime(lesson['startTime'].toString())} $subject';
         })
         .join(', ');
     return appL10nFor(
@@ -695,7 +663,7 @@ ${l.aiAssistantRules}''';
         return l.aiCurrentLessonSummary(
           subj.toString(),
           room.toString(),
-          _formatUntisTime(end.toString()),
+          formatUntisTime(end.toString()),
         );
       }
     }
@@ -719,7 +687,7 @@ ${l.aiAssistantRules}''';
         return l.aiNextLessonSummary(
           subj.toString(),
           room.toString(),
-          _formatUntisTime(start.toString()),
+          formatUntisTime(start.toString()),
         );
       }
     }
@@ -835,12 +803,8 @@ ${l.aiAssistantRules}''';
     if (bytes.isEmpty) return;
     if (bytes.length > 8 * 1024 * 1024) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              appL10nFor(appLocaleNotifier.value).aiAttachmentTooLarge,
-            ),
-          ),
+        context.showUntisSnackBar(
+          appL10nFor(appLocaleNotifier.value).aiAttachmentTooLarge,
         );
       }
       return;
@@ -1030,9 +994,7 @@ ${l.aiAssistantRules}''';
     if (approved != true) return;
     await _applyActions(actions);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l.aiChangesApplied)));
+      context.showUntisSnackBar(l.aiChangesApplied);
     }
   }
 
@@ -1062,7 +1024,7 @@ ${l.aiAssistantRules}''';
       return;
     }
     _lastStreamingHapticAt = now;
-    unawaited(HapticFeedback.lightImpact());
+    unawaited(AppHaptics.lightImpact());
   }
 
   Future<void> _sendChat(String text) async {
@@ -1176,17 +1138,10 @@ ${l.aiAssistantRules}''';
       _saveChatHistory();
     } catch (e) {
       _flushStreamingText();
-      final message = e.toString();
-      final isApiError = message.contains('API:');
-      final isConfigError = message.contains('CONFIG:');
       setState(() {
         if (_chatMessages.isNotEmpty &&
             _chatMessages.last['role'] == 'assistant') {
-          final errorText = isConfigError
-              ? message.replaceFirst('Exception: CONFIG: ', '')
-              : isApiError
-              ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-              : '${l.aiConnectionError} $e';
+          final errorText = _formatAiErrorDetail(e, l);
           final current = _chatMessages.last['content'] ?? '';
           _chatMessages.last['content'] = current.isEmpty
               ? errorText
@@ -1274,16 +1229,9 @@ ${l.aiAssistantRules}''';
       });
     } catch (e) {
       if (!mounted || generation != _searchGeneration) return;
-      final message = e.toString();
       final l = appL10nFor(appLocaleNotifier.value);
-      final isApiError = message.contains('API:');
-      final isConfigError = message.contains('CONFIG:');
       setState(() {
-        final reply = isConfigError
-            ? message.replaceFirst('Exception: CONFIG: ', '')
-            : isApiError
-            ? '${l.aiApiError} ${message.replaceFirst('Exception: API: ', '')}'
-            : '${l.aiConnectionError} $e';
+        final reply = _formatAiErrorDetail(e, l);
         _latestResult = _parseSearchResult(query: text, reply: reply);
       });
     } finally {
@@ -1393,11 +1341,11 @@ ${l.aiAssistantRules}''';
     );
   }
 
-  Widget _buildResultHeader(ColorScheme cs) {
+  Widget _buildResultHeader(BuildContext context, ColorScheme cs) {
     final result = _latestResult;
     if (result == null) {
       if (_thinking) return _buildSearchLoadingState();
-      return _buildEmptyState(cs);
+      return _buildEmptyState(context, cs);
     }
 
     return _AiAnalysisResult(
@@ -1412,9 +1360,9 @@ ${l.aiAssistantRules}''';
     );
   }
 
-  Widget _buildChatView(ColorScheme cs) {
+  Widget _buildChatView(BuildContext context, ColorScheme cs) {
     if (_chatMessages.isEmpty && !_thinking) {
-      return _buildEmptyState(cs);
+      return _buildEmptyState(context, cs);
     }
 
     String? activeTitle;
@@ -1435,7 +1383,12 @@ ${l.aiAssistantRules}''';
 
     return ListView(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.paddingOf(context).top + 8,
+        16,
+        12,
+      ),
       children: [
         if (activeTitle != null && activeTitle.trim().isNotEmpty) ...[
           Padding(
@@ -1468,7 +1421,7 @@ ${l.aiAssistantRules}''';
     );
   }
 
-  Widget _buildBody(ColorScheme cs) {
+  Widget _buildBody(BuildContext context, ColorScheme cs) {
     final mode = _chatMode ? _AiMode.chat : _AiMode.analysis;
     final reduceMotion = _aiReduceMotion(context);
 
@@ -1504,7 +1457,9 @@ ${l.aiAssistantRules}''';
                     ? '${mode.name}_${_chatMessages.isEmpty && !_thinking}'
                     : mode.name,
               ),
-              child: _chatMode ? _buildChatView(cs) : _buildResultHeader(cs),
+              child: _chatMode
+                  ? _buildChatView(context, cs)
+                  : _buildResultHeader(context, cs),
             ),
           ),
         ),
@@ -1513,7 +1468,7 @@ ${l.aiAssistantRules}''';
     );
   }
 
-  Widget _buildEmptyState(ColorScheme cs) {
+  Widget _buildEmptyState(BuildContext context, ColorScheme cs) {
     final l = appL10nFor(appLocaleNotifier.value);
     final analysisSuggestions = _buildContextualChips();
     const suggestionIcons = <IconData>[
@@ -1523,7 +1478,12 @@ ${l.aiAssistantRules}''';
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.paddingOf(context).top + 16,
+        16,
+        20,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1664,6 +1624,7 @@ ${l.aiAssistantRules}''';
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
+      extendBodyBehindAppBar: true,
       appBar: _mainTabHeaderAppBar(
         context,
         l.aiTitle,
@@ -1687,7 +1648,7 @@ ${l.aiAssistantRules}''';
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final body = _buildBody(cs);
+          final body = _buildBody(context, cs);
           if (!UntisLayout.isTablet(context)) return body;
           return Align(
             alignment: Alignment.topCenter,
@@ -1774,7 +1735,7 @@ class _MainTabTransitionLayer extends StatelessWidget {
       ignoring: !active,
       child: ExcludeSemantics(
         excluding: !active,
-        child: RepaintBoundary(child: content),
+        child: content,
       ),
     );
   }
@@ -1795,10 +1756,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     3: GlobalKey(debugLabel: 'tutorial-settings'),
     4: GlobalKey(debugLabel: 'tutorial-ai'),
   };
+  final Map<int, GlobalKey> _tutorialNavLabelKeys = {
+    0: GlobalKey(debugLabel: 'tutorial-timetable-label'),
+    1: GlobalKey(debugLabel: 'tutorial-exams-label'),
+    2: GlobalKey(debugLabel: 'tutorial-info-label'),
+    3: GlobalKey(debugLabel: 'tutorial-settings-label'),
+    4: GlobalKey(debugLabel: 'tutorial-ai-label'),
+  };
 
-  List<int> get _tutorialTargets => aiEnabledNotifier.value
-      ? const [0, 1, 2, 4, 3]
-      : const [0, 1, 2, 3];
+  List<int> get _tutorialTargets =>
+      aiEnabledNotifier.value ? const [0, 1, 2, 4, 3] : const [0, 1, 2, 3];
 
   @override
   void initState() {
@@ -1808,6 +1775,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     pendingAssistantOpenNotifier.addListener(_openAssistantFromNative);
     aiEnabledNotifier.addListener(_onAiEnabledChanged);
+    _scheduleTabWarmup();
     if (pendingAssistantOpenNotifier.value) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _openAssistantFromNative(),
@@ -1845,15 +1813,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     if (account == null || demoModeNotifier.value) return;
     final wrapped = SchoolWrappedRepository();
     final remoteYear = await wrapped.refreshSchoolYear(account);
-    final currentYear = remoteYear ??
-        (await wrapped.years(account.id))
-            .where((year) => year.contains(DateTime.now()))
-            .firstOrNull;
+    final currentYear =
+        remoteYear ??
+        (await wrapped.years(
+          account.id,
+        )).where((year) => year.contains(DateTime.now())).firstOrNull;
     if (currentYear != null) {
-      unawaited(wrapped.captureCurrent(account, currentYear).catchError((_) {}));
+      unawaited(
+        wrapped.captureCurrent(account, currentYear).catchError((_) {}),
+      );
     }
     final pending = await wrapped.pendingAnnouncement(account.id);
-    if (!mounted || account.id != activeUntisAccountId || pending == null) return;
+    if (!mounted || account.id != activeUntisAccountId || pending == null) {
+      return;
+    }
     final l = appL10nFor(appLocaleNotifier.value);
     final open = await showDialog<bool>(
       context: context,
@@ -1875,9 +1848,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     await wrapped.markAnnouncementSeen(account.id, pending);
     if (open == true && mounted && account.id == activeUntisAccountId) {
-      Navigator.of(context).push(_buildBouncyRoute(
-        SchoolWrappedStory(year: pending, account: account),
-      ));
+      Navigator.of(context).push(
+        _buildBouncyRoute(SchoolWrappedStory(year: pending, account: account)),
+      );
     }
 
     // Dev mode: show popup if dev server is reachable and style is 'popup'
@@ -1886,7 +1859,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         if (!mounted) return;
         final reachable = await checkDevServerReachable();
         if (!mounted) return;
-        if (reachable && devModeNotificationStyleNotifier.value == DevModeNotificationStyle.popup) {
+        if (reachable &&
+            devModeNotificationStyleNotifier.value ==
+                DevModeNotificationStyle.popup) {
           _showDevModePopup(context);
         }
       });
@@ -1906,7 +1881,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Text(l.settingsDevModeUsingDevServer),
           ],
         ),
-        content: Text(l.settingsDevModeUsingDevServerDesc.replaceAll('{url}', url)),
+        content: Text(
+          l.settingsDevModeUsingDevServerDesc.replaceAll('{url}', url),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -2086,76 +2063,101 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Widget _buildPageWithBackground(BuildContext context, Widget page) {
-    final cs = Theme.of(context).colorScheme;
-    final tokens = untisThemeTokensOf(context);
-    if (tokens.id != AppThemeId.defaultTheme) {
-      return ValueListenableBuilder<int>(
-        valueListenable: backgroundAnimationStyleNotifier,
-        builder: (context, style, _) => ValueListenableBuilder<bool>(
-          valueListenable: backgroundAnimationsNotifier,
-          builder: (context, enabled, _) => ThemedBackdrop(
-            animate: enabled,
-            backgroundStyle: style,
-            child: page,
-          ),
-        ),
-      );
-    }
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(decoration: BoxDecoration(color: cs.surface)),
-        ),
-        Positioned.fill(
-          child: ValueListenableBuilder<bool>(
-            valueListenable: backgroundAnimationsNotifier,
-            builder: (context, enabled, _) {
-              if (!enabled) return const SizedBox.shrink();
-              return ValueListenableBuilder<int>(
-                valueListenable: backgroundAnimationStyleNotifier,
-                builder: (context, style, _) {
-                  return IgnorePointer(
-                    ignoring: true,
-                    child: Opacity(
-                      opacity: Theme.of(context).brightness == Brightness.dark
-                          ? 0.28
-                          : 0.2,
-                      child: _AnimatedBackgroundScene(style: style),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        Positioned.fill(child: page),
-      ],
-    );
+    return page;
   }
 
-  List<Widget> get _pages => <Widget>[
-    WeeklyTimetablePage(key: ValueKey(activeUntisAccountId ?? 'active')),
-    const ExamsPage(),
-    SchoolNotificationsPage(isActive: _selectedIndex == 2),
-    const SettingsHubPage(),
-    aiEnabledNotifier.value
-        ? AiAssistantPage(
-            key: ValueKey(activeUntisAccountId ?? 'active'),
-            onBackToTimetable: () => _onNavTap(0),
-            onOpenDrawer: (drawer) {
-              setState(() => _currentDrawer = drawer);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) _scaffoldKey.currentState?.openDrawer();
-              });
-            },
-          )
-        : const SizedBox.shrink(),
-  ];
+  // Tabs are created the first time they are shown (or by the idle warm-up
+  // below) and are then kept alive exactly like before. Not-yet-built tabs are
+  // empty placeholders, so launching no longer initializes every page at once.
+  final Set<int> _builtTabs = <int>{0};
+  Timer? _tabWarmupTimer;
+
+  // Widget instances are cached so unchanged tabs are not rebuilt whenever this
+  // screen calls setState (Flutter skips identical widget instances).
+  String? _timetablePageAccountId;
+  Widget? _timetablePage;
+  bool? _notificationsPageActive;
+  Widget? _notificationsPage;
+  String? _aiPageAccountId;
+  bool? _aiPageEnabled;
+  Widget? _aiPage;
+
+  /// Builds the remaining tabs one by one shortly after startup so that the
+  /// first visit to them is as instant as before, without delaying launch.
+  void _scheduleTabWarmup() {
+    var next = 1;
+    _tabWarmupTimer = Timer(const Duration(milliseconds: 1500), () {
+      _tabWarmupTimer = Timer.periodic(const Duration(milliseconds: 350), (
+        timer,
+      ) {
+        if (!mounted || next > 4) {
+          timer.cancel();
+          return;
+        }
+        final index = next++;
+        if (_builtTabs.add(index)) setState(() {});
+      });
+    });
+  }
+
+  Widget _cachedTimetablePage() {
+    final accountId = activeUntisAccountId ?? 'active';
+    if (_timetablePage == null || _timetablePageAccountId != accountId) {
+      _timetablePageAccountId = accountId;
+      _timetablePage = WeeklyTimetablePage(key: ValueKey(accountId));
+    }
+    return _timetablePage!;
+  }
+
+  Widget _cachedNotificationsPage() {
+    final active = _selectedIndex == 2;
+    if (_notificationsPage == null || _notificationsPageActive != active) {
+      _notificationsPageActive = active;
+      _notificationsPage = SchoolNotificationsPage(isActive: active);
+    }
+    return _notificationsPage!;
+  }
+
+  Widget _cachedAiPage() {
+    final enabled = aiEnabledNotifier.value;
+    final accountId = activeUntisAccountId ?? 'active';
+    if (_aiPage == null ||
+        _aiPageEnabled != enabled ||
+        _aiPageAccountId != accountId) {
+      _aiPageEnabled = enabled;
+      _aiPageAccountId = accountId;
+      _aiPage = enabled
+          ? AiAssistantPage(
+              key: ValueKey(accountId),
+              onBackToTimetable: () => _onNavTap(0),
+              onOpenDrawer: (drawer) {
+                setState(() => _currentDrawer = drawer);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _scaffoldKey.currentState?.openDrawer();
+                });
+              },
+            )
+          : const SizedBox.shrink();
+    }
+    return _aiPage!;
+  }
+
+  List<Widget> get _pages {
+    _builtTabs.add(_selectedIndex);
+    Widget tab(int index, Widget Function() build) =>
+        _builtTabs.contains(index) ? build() : const SizedBox.shrink();
+    return <Widget>[
+      tab(0, _cachedTimetablePage),
+      tab(1, () => const ExamsPage()),
+      tab(2, _cachedNotificationsPage),
+      tab(3, () => const SettingsHubPage()),
+      tab(4, _cachedAiPage),
+    ];
+  }
 
   @override
   void dispose() {
+    _tabWarmupTimer?.cancel();
     _notificationActionSub?.cancel();
     pendingAssistantOpenNotifier.removeListener(_openAssistantFromNative);
     aiEnabledNotifier.removeListener(_onAiEnabledChanged);
@@ -2174,185 +2176,200 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       drawer: _currentDrawer,
       extendBody: true,
       resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          Row(
-            children: [
-              if (isTablet)
-                SafeArea(
-                  child: NavigationRail(
-                    selectedIndex: _selectedIndex,
-                    onDestinationSelected: _onNavTap,
-                    labelType: NavigationRailLabelType.selected,
-                    groupAlignment: 0,
-                    destinations: [
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.watch_later_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[0],
-                          child: const Icon(Icons.watch_later_rounded),
-                        ),
-                        label: Text(l.timetableTitle),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.event_note_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[1],
-                          child: const Icon(Icons.event_note_rounded),
-                        ),
-                        label: Text(l.examsTitle),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.campaign_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[2],
-                          child: const Icon(Icons.campaign_rounded),
-                        ),
-                        label: Text(l.navInfo),
-                      ),
-                      NavigationRailDestination(
-                        icon: const Icon(Icons.settings_outlined),
-                        selectedIcon: KeyedSubtree(
-                          key: _tutorialNavKeys[3],
-                          child: const Icon(Icons.settings_rounded),
-                        ),
-                        label: Text(l.navMenu),
-                      ),
-                      if (aiEnabledNotifier.value)
+      body: _AnimatedBackground(
+        child: Stack(
+          children: [
+            Row(
+              children: [
+                if (isTablet)
+                  SafeArea(
+                    child: NavigationRail(
+                      selectedIndex: _selectedIndex,
+                      onDestinationSelected: _onNavTap,
+                      labelType: NavigationRailLabelType.selected,
+                      groupAlignment: 0,
+                      destinations: [
                         NavigationRailDestination(
-                          icon: const Icon(Icons.auto_awesome_outlined),
+                          icon: const Icon(Icons.watch_later_outlined),
                           selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[4],
-                            child: const Icon(Icons.auto_awesome_rounded),
+                            key: _tutorialNavKeys[0],
+                            child: const Icon(Icons.watch_later_rounded),
                           ),
-                          label: Text(l.navAi),
+                          label: Text(
+                            l.timetableTitle,
+                            key: _tutorialNavLabelKeys[0],
+                          ),
                         ),
-                    ],
-                  ),
-                ),
-              Expanded(
-                child: MediaQuery(
-                  data: mq.copyWith(
-                    padding: mq.padding.copyWith(
-                      bottom: isTablet
-                          ? mq.padding.bottom
-                          : mq.padding.bottom + 104,
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.event_note_outlined),
+                          selectedIcon: KeyedSubtree(
+                            key: _tutorialNavKeys[1],
+                            child: const Icon(Icons.event_note_rounded),
+                          ),
+                          label: Text(
+                            l.examsTitle,
+                            key: _tutorialNavLabelKeys[1],
+                          ),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.campaign_outlined),
+                          selectedIcon: KeyedSubtree(
+                            key: _tutorialNavKeys[2],
+                            child: const Icon(Icons.campaign_rounded),
+                          ),
+                          label: Text(l.navInfo, key: _tutorialNavLabelKeys[2]),
+                        ),
+                        NavigationRailDestination(
+                          icon: const Icon(Icons.settings_outlined),
+                          selectedIcon: KeyedSubtree(
+                            key: _tutorialNavKeys[3],
+                            child: const Icon(Icons.settings_rounded),
+                          ),
+                          label: Text(l.navMenu, key: _tutorialNavLabelKeys[3]),
+                        ),
+                        if (aiEnabledNotifier.value)
+                          NavigationRailDestination(
+                            icon: const Icon(Icons.auto_awesome_outlined),
+                            selectedIcon: KeyedSubtree(
+                              key: _tutorialNavKeys[4],
+                              child: const Icon(Icons.auto_awesome_rounded),
+                            ),
+                            label: Text(l.navAi, key: _tutorialNavLabelKeys[4]),
+                          ),
+                      ],
                     ),
                   ),
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: mainTabFadeUpEnabledNotifier,
-                    builder: (context, animationsEnabled, _) {
-                      final pages = _pages;
+                Expanded(
+                  child: MediaQuery(
+                    data: mq.copyWith(
+                      padding: mq.padding.copyWith(
+                        bottom: isTablet
+                            ? mq.padding.bottom
+                            : mq.padding.bottom + 104,
+                      ),
+                    ),
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: mainTabFadeUpEnabledNotifier,
+                      builder: (context, animationsEnabled, _) {
+                        final pages = _pages;
 
-                      if (!animationsEnabled ||
-                          MediaQuery.of(context).disableAnimations) {
-                        return IndexedStack(
-                          index: _selectedIndex,
-                          children: pages
-                              .asMap()
-                              .entries
-                              .map((entry) {
-                                final active = entry.key == _selectedIndex;
-                                return TickerMode(
-                                  enabled: active,
-                                  child: _buildPageWithBackground(
-                                    context,
-                                    entry.value,
-                                  ),
-                                );
-                              })
-                              .toList(growable: false),
-                        );
-                      }
-
-                      return ValueListenableBuilder<int>(
-                        valueListenable: pageTransitionNotifier,
-                        builder: (context, transitionType, _) {
-                          return Stack(
-                            fit: StackFit.expand,
+                        if (!animationsEnabled ||
+                            MediaQuery.of(context).disableAnimations) {
+                          return IndexedStack(
+                            index: _selectedIndex,
                             children: pages
                                 .asMap()
                                 .entries
                                 .map((entry) {
                                   final active = entry.key == _selectedIndex;
-                                  return _MainTabTransitionLayer(
-                                    key: ValueKey(
-                                      'main-tab-layer-${entry.key}',
-                                    ),
-                                    active: active,
-                                    relativePosition:
-                                        entry.key - _selectedIndex,
-                                    transitionType: transitionType,
-                                    child: TickerMode(
-                                      enabled: active,
-                                      child: _buildPageWithBackground(
-                                        context,
-                                        entry.value,
-                                      ),
+                                  return TickerMode(
+                                    enabled: active,
+                                    child: _buildPageWithBackground(
+                                      context,
+                                      entry.value,
                                     ),
                                   );
                                 })
                                 .toList(growable: false),
                           );
-                        },
-                      );
-                    },
+                        }
+
+                        return ValueListenableBuilder<int>(
+                          valueListenable: pageTransitionNotifier,
+                          builder: (context, transitionType, _) {
+                            return Stack(
+                              fit: StackFit.expand,
+                              children: pages
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                    final active = entry.key == _selectedIndex;
+                                    return _MainTabTransitionLayer(
+                                      key: ValueKey(
+                                        'main-tab-layer-${entry.key}',
+                                      ),
+                                      active: active,
+                                      relativePosition:
+                                          entry.key - _selectedIndex,
+                                      transitionType: transitionType,
+                                      child: TickerMode(
+                                        enabled: active,
+                                        child: _buildPageWithBackground(
+                                          context,
+                                          entry.value,
+                                        ),
+                                      ),
+                                    );
+                                  })
+                                  .toList(growable: false),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          // Floating nav bar
-          if (!isTablet)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: mq.padding.bottom + 16,
-              child: ValueListenableBuilder<String>(
-                valueListenable: appLocaleNotifier,
-                builder: (context, locale, _) {
-                  return ListenableBuilder(
-                    listenable: Listenable.merge([
-                      unreadTimetableChangesNotifier,
-                      unreadInboxMessagesNotifier,
-                    ]),
-                    builder: (context, _) => _buildFloatingNavBar(context, cs),
-                  );
-                },
-              ),
+              ],
             ),
-          if (_showTutorial)
-            Positioned.fill(
-              child: _TutorialSpotlightOverlay(
-                key: ValueKey(_tutorialStep),
-                targetKey: _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
-                step: _tutorialStep,
-                totalSteps: _tutorialTargets.length,
-                title: _tutorialTitle(l),
-                description: _tutorialDesc(l),
-                onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
-                onNext: _nextTutorialStep,
-                onSkip: _skipTutorial,
-                isLast: _tutorialStep == _tutorialTargets.length - 1,
+            // Floating nav bar
+            if (!isTablet)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: mq.padding.bottom + 16,
+                child: ValueListenableBuilder<String>(
+                  valueListenable: appLocaleNotifier,
+                  builder: (context, locale, _) {
+                    return ListenableBuilder(
+                      listenable: Listenable.merge([
+                        unreadTimetableChangesNotifier,
+                        unreadInboxMessagesNotifier,
+                      ]),
+                      builder: (context, _) =>
+                          _buildFloatingNavBar(context, cs),
+                    );
+                  },
+                ),
               ),
+            if (_showTutorial)
+              Positioned.fill(
+                child: _TutorialSpotlightOverlay(
+                  key: ValueKey(_tutorialStep),
+                  targetKey: _tutorialNavKeys[_tutorialTargets[_tutorialStep]],
+                  labelKey:
+                      _tutorialNavLabelKeys[_tutorialTargets[_tutorialStep]],
+                  step: _tutorialStep,
+                  totalSteps: _tutorialTargets.length,
+                  title: _tutorialTitle(l),
+                  description: _tutorialDesc(l),
+                  onBack: _tutorialStep == 0 ? null : _previousTutorialStep,
+                  onNext: _nextTutorialStep,
+                  onSkip: _skipTutorial,
+                  isLast: _tutorialStep == _tutorialTargets.length - 1,
+                ),
+              ),
+            // Dev mode indicator bar (green bar at top when dev server is reachable)
+            ValueListenableBuilder<bool>(
+              valueListenable: devServerReachableNotifier,
+              builder: (context, reachable, _) {
+                if (!reachable) return const SizedBox.shrink();
+                return ValueListenableBuilder<DevModeNotificationStyle>(
+                  valueListenable: devModeNotificationStyleNotifier,
+                  builder: (context, style, _) {
+                    if (style != DevModeNotificationStyle.bar) {
+                      return const SizedBox.shrink();
+                    }
+                    return _DevModeIndicatorBar(
+                      serverUrl: normalizeDevServerUrl(
+                        devServerUrlNotifier.value,
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-          // Dev mode indicator bar (green bar at top when dev server is reachable)
-          ValueListenableBuilder<bool>(
-            valueListenable: devServerReachableNotifier,
-            builder: (context, reachable, _) {
-              if (!reachable) return const SizedBox.shrink();
-              return ValueListenableBuilder<DevModeNotificationStyle>(
-                valueListenable: devModeNotificationStyleNotifier,
-                builder: (context, style, _) {
-                  if (style != DevModeNotificationStyle.bar) return const SizedBox.shrink();
-                  return _DevModeIndicatorBar(
-                    serverUrl: normalizeDevServerUrl(devServerUrlNotifier.value),
-                  );
-                },
-              );
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2361,7 +2378,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final timetableSelected = _selectedIndex == 0;
     final l = appL10nFor(appLocaleNotifier.value);
 
-    // ---- Secondary items (indices 1-4) shown in the pill bar ----
     final items = [
       _NavItem(
         icon: Icons.settings_outlined,
@@ -2369,6 +2385,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navMenu,
         pageIndex: 3,
         tutorialKey: _tutorialNavKeys[3],
+        tutorialLabelKey: _tutorialNavLabelKeys[3],
         tutorialHighlight: _isTutorialTarget(3),
       ),
       _NavItem(
@@ -2377,6 +2394,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navInfo,
         pageIndex: 2,
         tutorialKey: _tutorialNavKeys[2],
+        tutorialLabelKey: _tutorialNavLabelKeys[2],
         tutorialHighlight: _isTutorialTarget(2),
         badgeCount: unreadInboxMessagesNotifier.value,
       ),
@@ -2386,6 +2404,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         label: l.navExams,
         pageIndex: 1,
         tutorialKey: _tutorialNavKeys[1],
+        tutorialLabelKey: _tutorialNavLabelKeys[1],
         tutorialHighlight: _isTutorialTarget(1),
       ),
       if (aiEnabledNotifier.value)
@@ -2395,6 +2414,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           label: l.navAi,
           pageIndex: 4,
           tutorialKey: _tutorialNavKeys[4],
+          tutorialLabelKey: _tutorialNavLabelKeys[4],
           tutorialHighlight: _isTutorialTarget(4),
         ),
     ];
@@ -2411,28 +2431,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // ---- Pill nav bar ----
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 560),
-              curve: _kSmoothBounce,
-              builder: (context, val, child) {
-                return Transform.translate(
-                  offset: Offset(0, (1 - val) * 26),
-                  child: Opacity(opacity: val.clamp(0, 1), child: child),
-                );
-              },
-              child: _ExpressiveNavBar(
-                items: items,
-                selectedIndex: selectedBarIndex,
-                colorScheme: cs,
-                onTap: (pageIndex) => _onNavTap(pageIndex),
+            Flexible(
+              child: LayoutBuilder(
+                builder: (context, bounds) => TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 560),
+                  curve: _kSmoothBounce,
+                  builder: (context, val, child) {
+                    return Transform.translate(
+                      offset: Offset(0, (1 - val) * 26),
+                      child: Opacity(opacity: val.clamp(0, 1), child: child),
+                    );
+                  },
+                  child: _ExpressiveNavBar(
+                    maxWidth: bounds.maxWidth,
+                    items: items,
+                    selectedIndex: selectedBarIndex,
+                    colorScheme: cs,
+                    onTap: (pageIndex) => _onNavTap(pageIndex),
+                  ),
+                ),
               ),
             ),
 
             const SizedBox(width: 12),
 
-            // ---- FAB timetable button ----
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 620),
@@ -2534,12 +2557,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Material You Expressive Navigation Bar
-// ---------------------------------------------------------------------------
-
-class _TutorialSpotlightOverlay extends StatelessWidget {
+class _TutorialSpotlightOverlay extends StatefulWidget {
   final GlobalKey? targetKey;
+  final GlobalKey? labelKey;
   final int step;
   final int totalSteps;
   final String title;
@@ -2552,6 +2572,7 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
   const _TutorialSpotlightOverlay({
     super.key,
     required this.targetKey,
+    this.labelKey,
     required this.step,
     required this.totalSteps,
     required this.title,
@@ -2562,8 +2583,50 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
     required this.isLast,
   });
 
-  Rect? _targetRect() {
-    final targetContext = targetKey?.currentContext;
+  @override
+  State<_TutorialSpotlightOverlay> createState() =>
+      _TutorialSpotlightOverlayState();
+}
+
+class _TutorialSpotlightOverlayState extends State<_TutorialSpotlightOverlay> {
+  bool _expandToLabel = false;
+  bool _labelExpansionScheduled = false;
+  Timer? _labelExpansionTimer;
+
+  GlobalKey? get targetKey => widget.targetKey;
+  GlobalKey? get labelKey => widget.labelKey;
+  int get step => widget.step;
+  int get totalSteps => widget.totalSteps;
+  String get title => widget.title;
+  String get description => widget.description;
+  VoidCallback? get onBack => widget.onBack;
+  VoidCallback get onNext => widget.onNext;
+  VoidCallback get onSkip => widget.onSkip;
+  bool get isLast => widget.isLast;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_labelExpansionScheduled || labelKey == null) return;
+    _labelExpansionScheduled = true;
+
+    final isTablet = MediaQuery.sizeOf(context).width >= 720;
+    final delay = isTablet
+        ? Duration.zero
+        : AppMotion.duration(context, const Duration(milliseconds: 560));
+    _labelExpansionTimer = Timer(delay, () {
+      if (mounted) setState(() => _expandToLabel = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _labelExpansionTimer?.cancel();
+    super.dispose();
+  }
+
+  Rect? _rectForKey(GlobalKey? key) {
+    final targetContext = key?.currentContext;
     final renderObject = targetContext?.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) return null;
     return renderObject.localToGlobal(Offset.zero) & renderObject.size;
@@ -2589,14 +2652,14 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
           height: 56,
         );
         final bounds = Offset.zero & size;
-        final rawTarget = _targetRect() ?? fallback;
-        final target = (tablet
-                ? Rect.fromCenter(
-                    center: rawTarget.center,
-                    width: 72,
-                    height: 76,
-                  ).inflate(2)
-                : rawTarget.inflate(5))
+        final rawTarget = _rectForKey(targetKey) ?? fallback;
+        final labelTarget = _rectForKey(labelKey);
+        final combinedTarget = labelTarget == null
+            ? rawTarget
+            : rawTarget.expandToInclude(labelTarget);
+        final startTarget = rawTarget.inflate(tablet ? 8 : 5).intersect(bounds);
+        final endTarget = (_expandToLabel ? combinedTarget : rawTarget)
+            .inflate(tablet ? 8 : 5)
             .intersect(bounds);
 
         final callout = _TutorialCallout(
@@ -2610,64 +2673,72 @@ class _TutorialSpotlightOverlay extends StatelessWidget {
           nextLabel: isLast ? l.tutorialDone : l.onboardingNext,
         );
 
-        return Stack(
-          children: [
-            if (useBackdropBlur)
+        return TweenAnimationBuilder<Rect>(
+          tween: _SpotlightRectTween(begin: startTarget, end: endTarget),
+          duration: AppMotion.duration(
+            context,
+            const Duration(milliseconds: 360),
+          ),
+          curve: Curves.easeOutCubic,
+          builder: (context, target, _) => Stack(
+            children: [
+              if (useBackdropBlur)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ClipPath(
+                      clipper: _TutorialSpotlightClipper(target),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: math.min(tokens.blurSigma, 5),
+                          sigmaY: math.min(tokens.blurSigma, 5),
+                        ),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned.fill(
                 child: IgnorePointer(
-                  child: ClipPath(
-                    clipper: _TutorialSpotlightClipper(target),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: math.min(tokens.blurSigma, 5),
-                        sigmaY: math.min(tokens.blurSigma, 5),
-                      ),
-                      child: const SizedBox.expand(),
+                  child: CustomPaint(
+                    painter: _TutorialSpotlightPainter(
+                      target: target,
+                      scrim: useBackdropBlur
+                          ? Colors.black.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.58),
+                      accent: cs.primary,
                     ),
                   ),
                 ),
               ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _TutorialSpotlightPainter(
-                    target: target,
-                    scrim: useBackdropBlur
-                        ? Colors.black.withValues(alpha: 0.12)
-                        : Colors.black.withValues(alpha: 0.58),
-                    accent: cs.primary,
+              if (tablet)
+                Positioned(
+                  left: math.min(
+                    math.max(target.right + 18, 94),
+                    math.max(16, size.width - 406),
                   ),
+                  top: (target.center.dy - 130).clamp(
+                    mq.padding.top + 16,
+                    math.max(mq.padding.top + 16, size.height - 310),
+                  ),
+                  width: math.min(380, size.width - 110),
+                  child: callout,
+                )
+              else if (target.top > size.height * 0.48)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: size.height - target.top + 16,
+                  child: callout,
+                )
+              else
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: target.bottom + 16,
+                  child: callout,
                 ),
-              ),
-            ),
-            if (tablet)
-              Positioned(
-                left: math.min(
-                  math.max(target.right + 18, 94),
-                  math.max(16, size.width - 406),
-                ),
-                top: (target.center.dy - 130).clamp(
-                  mq.padding.top + 16,
-                  math.max(mq.padding.top + 16, size.height - 310),
-                ),
-                width: math.min(380, size.width - 110),
-                child: callout,
-              )
-            else if (target.top > size.height * 0.48)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: size.height - target.top + 16,
-                child: callout,
-              )
-            else
-              Positioned(
-                left: 16,
-                right: 16,
-                top: target.bottom + 16,
-                child: callout,
-              ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -2881,6 +2952,7 @@ class _NavItem {
   final String label;
   final int pageIndex;
   final GlobalKey? tutorialKey;
+  final GlobalKey? tutorialLabelKey;
   final bool tutorialHighlight;
   final int badgeCount;
 
@@ -2890,6 +2962,7 @@ class _NavItem {
     required this.label,
     required this.pageIndex,
     this.tutorialKey,
+    this.tutorialLabelKey,
     this.tutorialHighlight = false,
     this.badgeCount = 0,
   });
@@ -2898,12 +2971,14 @@ class _NavItem {
 /// A pill-indicator navigation bar whose indicator morphs via spring physics
 /// between destinations – matching the Material 3 Expressive spec.
 class _ExpressiveNavBar extends StatefulWidget {
+  final double maxWidth;
   final List<_NavItem> items;
   final int selectedIndex; // -1 = nothing selected
   final ColorScheme colorScheme;
   final void Function(int pageIndex) onTap;
 
   const _ExpressiveNavBar({
+    required this.maxWidth,
     required this.items,
     required this.selectedIndex,
     required this.colorScheme,
@@ -3010,6 +3085,20 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     if (oldWidget.selectedIndex == widget.selectedIndex) return;
 
     final newSel = widget.selectedIndex;
+    if (!AppMotion.enabled(context)) {
+      for (var i = 0; i < _labelControllers.length; i++) {
+        _labelControllers[i].value = i == newSel ? 1 : 0;
+      }
+      _visibilityController.value = newSel >= 0 ? 1 : 0;
+      _targetSel = newSel >= 0 ? newSel : 0;
+      _targetFrac = newSel >= 0 ? 1 : 0;
+      final layout = _layoutFor(_targetSel, _targetFrac);
+      _fromLeft = _lastLeft = layout.left;
+      _fromWidth = _lastWidth = layout.width;
+      _fromWidths = _lastWidths = List.of(layout.widths);
+      _morphController.value = 1;
+      return;
+    }
     final wasHidden = _pillAlpha.value < 0.05;
 
     final oldSel = oldWidget.selectedIndex;
@@ -3047,7 +3136,9 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
       _visibilityController.forward();
     }
 
-    if (newSel >= 0 && newSel < _iconWiggle.length) {
+    if (AppMotion.enabled(context) &&
+        newSel >= 0 &&
+        newSel < _iconWiggle.length) {
       _iconWiggle[newSel].forward(from: 0);
     }
 
@@ -3055,6 +3146,10 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   }
 
   void _animateMorph() {
+    if (!AppMotion.enabled(context)) {
+      _morphController.value = 1;
+      return;
+    }
     _morphController.value = 0;
     final spring = SpringDescription.withDampingRatio(
       mass: 1,
@@ -3074,9 +3169,16 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     int sel,
     double frac,
   ) {
+    final remainingWidth =
+        widget.maxWidth -
+        2 * _barHPad -
+        (widget.items.length - 1) * (_itemWidth + _itemGap);
     final widths = List.generate(widget.items.length, (i) {
       if (sel >= 0 && i == sel) {
-        return _pillBaseWidth + frac * _pillExpandedExtra;
+        return math.min(
+          _pillBaseWidth + frac * _pillExpandedExtra,
+          remainingWidth.clamp(_pillBaseWidth, double.infinity),
+        );
       }
       return _itemWidth;
     });
@@ -3139,7 +3241,7 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
             ..._labelControllers,
           ]),
           builder: (context, _) {
-            final t = _morphController.value.clamp(0.0, 1.1);
+            final t = _morphController.value.clamp(0.0, 1.0);
             final to = _layoutFor(_targetSel, _targetFrac);
 
             // Interpolate every item width (and the pill rect) from the frozen
@@ -3169,7 +3271,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // ---- Morphing pill indicator ----
                   Positioned(
                     left: pillLeft - _barHPad,
                     child: Opacity(
@@ -3191,7 +3292,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
                     ),
                   ),
 
-                  // ---- Items row ----
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -3215,118 +3315,125 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
     final selected = widget.selectedIndex == i;
     final wiggle = _iconWiggle[i];
 
-    return GestureDetector(
+    return Semantics(
       key: item.tutorialKey,
-      onTap: () {
-        HapticFeedback.lightImpact();
-        widget.onTap(item.pageIndex);
-      },
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: width,
-        height: _barHeight,
-        child: Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // --- Icon with wiggle ---
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AnimatedBuilder(
-                    animation: wiggle,
-                    builder: (context, child) {
-                      // Spring-style wiggle: sin wave decaying
-                      final t = wiggle.value;
-                      final angle = math.sin(t * math.pi * 4) * 0.08 * (1 - t);
-                      return Transform.rotate(angle: angle, child: child);
-                    },
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 280),
-                      switchInCurve: _kSmoothBounce,
-                      switchOutCurve: Curves.easeOut,
-                      transitionBuilder: (child, anim) => ScaleTransition(
-                        scale: Tween(begin: 0.7, end: 1.0).animate(anim),
-                        child: FadeTransition(opacity: anim, child: child),
-                      ),
-                      child: Icon(
-                        selected ? item.selectedIcon : item.icon,
-                        key: ValueKey('${item.pageIndex}_$selected'),
-                        size: selected ? 22 : 24,
-                        color: selected
-                            ? (Theme.of(context).brightness == Brightness.dark
-                                  ? cs.onPrimaryContainer
-                                  : cs.onPrimary)
-                            : item.tutorialHighlight
-                            ? cs.tertiary
-                            : cs.onSurfaceVariant.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ),
-                  if (item.badgeCount > 0)
-                    Positioned(
-                      right: -6,
-                      top: -5,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 3.5,
-                          vertical: 1,
+      button: true,
+      selected: selected,
+      label: item.label,
+      value: item.badgeCount > 0 ? '${item.badgeCount}' : null,
+      child: GestureDetector(
+        onTap: () {
+          if (!selected) unawaited(AppHaptics.lightImpact());
+          widget.onTap(item.pageIndex);
+        },
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: width,
+          height: _barHeight,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AnimatedBuilder(
+                      animation: wiggle,
+                      builder: (context, child) {
+                        // Spring-style wiggle: sin wave decaying
+                        final t = wiggle.value;
+                        final angle =
+                            math.sin(t * math.pi * 4) * 0.08 * (1 - t);
+                        return Transform.rotate(angle: angle, child: child);
+                      },
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: _kSmoothBounce,
+                        switchOutCurve: Curves.easeOut,
+                        transitionBuilder: (child, anim) => ScaleTransition(
+                          scale: Tween(begin: 0.7, end: 1.0).animate(anim),
+                          child: FadeTransition(opacity: anim, child: child),
                         ),
-                        constraints: const BoxConstraints(minWidth: 13),
-                        decoration: BoxDecoration(
-                          color: cs.error,
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(
-                            color: cs.surfaceContainerHigh,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
-                          style: TextStyle(
-                            color: cs.onError,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
-                          ),
-                          textAlign: TextAlign.center,
+                        child: Icon(
+                          selected ? item.selectedIcon : item.icon,
+                          key: ValueKey('${item.pageIndex}_$selected'),
+                          size: selected ? 22 : 24,
+                          color: selected
+                              ? (Theme.of(context).brightness == Brightness.dark
+                                    ? cs.onPrimaryContainer
+                                    : cs.onPrimary)
+                              : item.tutorialHighlight
+                              ? cs.tertiary
+                              : cs.onSurfaceVariant.withValues(alpha: 0.8),
                         ),
                       ),
                     ),
-                ],
-              ),
+                    if (item.badgeCount > 0)
+                      Positioned(
+                        right: -6,
+                        top: -5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 3.5,
+                            vertical: 1,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 13),
+                          decoration: BoxDecoration(
+                            color: cs.error,
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: cs.surfaceContainerHigh,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
+                            style: TextStyle(
+                              color: cs.onError,
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
 
-              // --- Label (slides in/out with the morph) ---
-              Flexible(
-                child: ClipRect(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: _labelControllers[i].value,
-                    child: Opacity(
-                      opacity: _labelControllers[i].value,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Text(
-                          item.label,
-                          style: untisThemeTextStyle(
-                            context,
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? cs.onPrimaryContainer
-                                : cs.onPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13.5,
+                Flexible(
+                  child: ClipRect(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: _labelControllers[i].value,
+                      child: Opacity(
+                        opacity: _labelControllers[i].value,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Text(
+                            item.label,
+                            key: item.tutorialLabelKey,
+                            style: untisThemeTextStyle(
+                              context,
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? cs.onPrimaryContainer
+                                  : cs.onPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.clip,
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -3334,10 +3441,6 @@ class _ExpressiveNavBarState extends State<_ExpressiveNavBar>
   }
 }
 
-// ---------------------------------------------------------------------------
-
-// Bouncy press helper (unchanged)
-// ---------------------------------------------------------------------------
 class _BouncyButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
@@ -3388,21 +3491,21 @@ class _BouncyButtonState extends State<_BouncyButton>
     return GestureDetector(
       onTapDown: (_) {
         if (_tapLocked) return;
-        _controller.forward();
-        HapticFeedback.lightImpact();
+        if (AppMotion.enabled(context)) _controller.forward();
+        unawaited(AppHaptics.lightImpact());
       },
       onTap: () {
         if (_tapLocked) return;
         _tapLocked = true;
         widget.onTap();
-        _controller.reverse();
+        if (AppMotion.enabled(context)) _controller.reverse();
         Future.delayed(const Duration(milliseconds: 140), () {
           if (!mounted) return;
           _tapLocked = false;
         });
       },
       onTapCancel: () {
-        _controller.reverse();
+        if (AppMotion.enabled(context)) _controller.reverse();
       },
       child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
@@ -3453,7 +3556,10 @@ class _DevModeIndicatorBar extends StatelessWidget {
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                   ),
                   child: Text(
                     l.settingsHubAccount,
@@ -3470,4 +3576,12 @@ class _DevModeIndicatorBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Interpolates between two non-null [Rect]s for the tutorial spotlight.
+class _SpotlightRectTween extends Tween<Rect> {
+  _SpotlightRectTween({required Rect super.begin, required Rect super.end});
+
+  @override
+  Rect lerp(double t) => Rect.lerp(begin, end, t)!;
 }

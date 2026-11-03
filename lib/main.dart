@@ -28,6 +28,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
+import 'widgets/progressive_edge_blur.dart';
 import 'core/settings_store.dart';
 import 'core/defensive_parsers.dart';
 import 'core/timetable_date_utils.dart';
@@ -52,6 +53,8 @@ import 'features/exams/data/webuntis_exam_repository.dart';
 import 'features/timetable/data/timetable_repository.dart';
 import 'features/timetable/data/teacher_search_index_service.dart';
 import 'features/timetable/domain/teacher_schedule.dart';
+import 'features/timetable/data/room_search_service.dart';
+import 'features/timetable/domain/room_schedule.dart';
 import 'features/wrapped/school_wrapped.dart';
 import 'features/updates/data/github_release_repository.dart';
 import 'features/updates/data/changelog_repository.dart';
@@ -102,6 +105,7 @@ part 'core/custom_backgrounds.dart';
 part 'screens/onboarding_flow.dart';
 part 'screens/weekly_timetable_page.dart';
 part 'screens/teacher_search_page.dart';
+part 'screens/room_search_page.dart';
 part 'screens/homework_page.dart';
 part 'screens/exams_page.dart';
 part 'screens/custom_background_editor_screen.dart';
@@ -144,8 +148,6 @@ part 'widgets/custom_background_view.dart';
 part 'widgets/changelog_bottom_sheet.dart';
 part 'widgets/rounded_blur_app_bar.dart';
 part 'services/local_model_download.dart';
-
-int _toMinutes(int t) => (t ~/ 100) * 60 + (t % 100);
 
 final WebUntisExamRepository _webUntisExamRepository = WebUntisExamRepository();
 final TimetableRepository _timetableRepository = TimetableRepository();
@@ -326,6 +328,28 @@ Future<void> _initializeDeferredAccountData() async {
       .length;
 }
 
+/// Migrates legacy AI keys into the secure store and returns the stored keys.
+///
+/// Started early in [main] so the keystore round-trips overlap with account
+/// initialization. Failures fall back to empty keys instead of aborting the
+/// app launch.
+Future<Map<String, String>> _loadSecureAiKeys(SharedPreferences prefs) async {
+  try {
+    final hasProviderConfig = prefs.containsKey('aiProvider');
+    if (!hasProviderConfig && (prefs.getString('geminiApiKey') ?? '').isEmpty) {
+      // Legacy migration: old versions stored the Gemini key under openAiApiKey.
+      final legacy = prefs.getString('openAiApiKey') ?? '';
+      if (legacy.isNotEmpty) {
+        await CredentialVault.instance.writeAiApiKey('gemini', legacy);
+        await prefs.remove('openAiApiKey');
+      }
+    }
+    return await CredentialVault.instance.loadAndMigrateAiKeys(prefs);
+  } catch (_) {
+    return const <String, String>{};
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -368,12 +392,19 @@ void main() async {
     pendingAssistantOpenNotifier.value = true;
   });
 
+  // Independent platform lookups overlap instead of running back to back.
+  final packageInfoFuture = PackageInfo.fromPlatform();
   final settingsStore = await SettingsStore.initialize();
   final prefs = settingsStore.preferences;
   appLocaleNotifier.value = prefs.getString('appLocale') ?? 'de';
-  await ensureDateFormattingForLocale(appLocaleNotifier.value);
+  final dateFormattingFuture = ensureDateFormattingForLocale(
+    appLocaleNotifier.value,
+  );
   unawaited(WidgetService.publishNativeCopy(appLocaleNotifier.value));
-  final packageInfo = await PackageInfo.fromPlatform();
+  // AI keys live in the keystore and do not depend on the account setup, so
+  // load them while the accounts are being initialized.
+  final aiKeysFuture = _loadSecureAiKeys(prefs);
+  final packageInfo = await packageInfoFuture;
   appVersion = packageInfo.version;
   appBuildNumber = packageInfo.buildNumber;
   final previousAppVersion = prefs.getString('installedAppVersion');
@@ -387,9 +418,13 @@ void main() async {
   // Demo mode is an explicit temporary choice; do not silently replace it
   // with the last saved account during startup.
   if (!demoModeNotifier.value) {
-    await initializeUntisAccounts(prefs);
+    await Future.wait([
+      dateFormattingFuture,
+      initializeUntisAccounts(prefs),
+    ]);
   } else {
     untisAccountsNotifier.value = List.unmodifiable(_readUntisAccounts(prefs));
+    await dateFormattingFuture;
   }
   final bool isLoggedIn =
       activeUntisAccountId != null &&
@@ -518,6 +553,7 @@ void main() async {
     0,
     4,
   );
+  lessonCleanDesignNotifier.value = prefs.getBool('lessonCleanDesign') ?? false;
   glowEffectsEnabledNotifier.value =
       prefs.getBool('glowEffectsEnabled') ?? false;
   lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;
@@ -549,88 +585,10 @@ void main() async {
   notifyChangeOtherNotifier.value = prefs.getBool('notifyChangeOther') ?? true;
 
   await loadCustomBackgroundsFromPrefs(prefs);
+  await loadAiPreferences(prefs, preloadedKeys: await aiKeysFuture);
 
-  final hasProviderConfig = prefs.containsKey('aiProvider');
-  if (!hasProviderConfig && (prefs.getString('geminiApiKey') ?? '').isEmpty) {
-    // Legacy migration: old versions stored the Gemini key under openAiApiKey.
-    final legacy = prefs.getString('openAiApiKey') ?? '';
-    if (legacy.isNotEmpty) {
-      await CredentialVault.instance.writeAiApiKey('gemini', legacy);
-      await prefs.remove('openAiApiKey');
-    }
-  }
-  final secureAiKeys = await CredentialVault.instance.loadAndMigrateAiKeys(
-    prefs,
-  );
-  geminiApiKey = secureAiKeys['gemini'] ?? '';
-
-  openAiApiKey = secureAiKeys['openai'] ?? '';
-  mistralApiKey = secureAiKeys['mistral'] ?? '';
-  customAiApiKey = secureAiKeys['custom'] ?? '';
-  aiProvider = _normalizeAiProvider(prefs.getString('aiProvider') ?? 'gemini');
-  aiCustomCompatibility = _normalizeAiCustomCompatibility(
-    prefs.getString('aiCustomCompatibility') ?? 'openai',
-  );
-  aiCustomBaseUrl = prefs.getString('aiCustomBaseUrl') ?? '';
-  aiSystemPromptTemplate = prefs.getString('aiSystemPromptTemplate') ?? '';
-  aiTemperature = prefs.getDouble('aiTemperature') ?? 0.2;
-  aiMaxTokens = prefs.getInt('aiMaxTokens') ?? 2600;
-  aiTopP = prefs.getDouble('aiTopP') ?? 0.95;
-  aiPersona = prefs.getString('aiPersona') ?? 'helpful';
-  aiLocalModelPath = prefs.getString('aiLocalModelPath') ?? aiLocalModelPath;
-  if (aiLocalModelPath.isNotEmpty) {
-    // A stale or tampered path (file deleted, moved, truncated or replaced
-    // with something that is not a GGUF) must never reach the native
-    // llama.cpp parser. Validate it with the same magic/size rules used on
-    // download and fall back to a cleared path on failure.
-    if (!await _isValidLocalModelFile(
-      aiLocalModelPath,
-      model: _localModelForPath(aiLocalModelPath),
-    )) {
-      aiLocalModelPath = '';
-      await prefs.setString('aiLocalModelPath', '');
-      // With no usable model file a 'local' provider is a broken state.
-      // Mirror _deleteLocalModel and fall back to Gemini.
-      if (_normalizeAiProvider(aiProvider) == 'local') {
-        aiProvider = 'gemini';
-        aiModel = _defaultModelForProvider('gemini');
-        await prefs.setString('aiProvider', aiProvider);
-        await prefs.setString('aiModel', aiModel);
-      }
-    }
-  }
-  final savedModel = prefs.getString('aiModel') ?? '';
-  final availableModels = _modelsForProvider(
-    aiProvider,
-    customCompatibility: aiCustomCompatibility,
-  );
-  aiModel = savedModel.isNotEmpty
-      ? savedModel
-      : _defaultModelForProvider(
-          aiProvider,
-          customCompatibility: aiCustomCompatibility,
-        );
-  if (!availableModels.contains(aiModel)) {
-    aiModel = _defaultModelForProvider(
-      aiProvider,
-      customCompatibility: aiCustomCompatibility,
-    );
-    await prefs.setString('aiModel', aiModel);
-  }
-
-  // Check dev server reachability on startup if dev mode is enabled.
-  // This runs asynchronously so it doesn't block the first frame.
   if (devModeNotifier.value) {
-    unawaited(() async {
-      final reachable = await checkDevServerReachable();
-      if (reachable && devServerReachableNotifier.value) {
-        // Dev server is reachable - show notification based on user preference.
-        if (devModeNotificationStyleNotifier.value == DevModeNotificationStyle.popup) {
-          // We'll show the popup after the app is built, via a post-frame callback.
-          // For now, just mark it reachable.
-        }
-      }
-    }());
+    unawaited(checkDevServerReachable());
   }
 
   runApp(
@@ -646,7 +604,6 @@ void main() async {
     ),
   );
 
-  // Native integrations are important but do not need to delay the first UI.
   unawaited(_initializeDeferredNativeServices());
   unawaited(_initializeDeferredAccountData());
   if (!kIsWeb && !Platform.isIOS) {

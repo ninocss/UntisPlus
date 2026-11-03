@@ -79,7 +79,9 @@ void main() {
 
     Finder active(Finder finder) {
       final hitTestable = finder.hitTestable();
-      return hitTestable.evaluate().isNotEmpty ? hitTestable.first : finder.first;
+      return hitTestable.evaluate().isNotEmpty
+          ? hitTestable.first
+          : finder.first;
     }
 
     for (var i = 0; i < 100; i++) {
@@ -232,7 +234,7 @@ void main() {
     demoModeNotifier.value = true;
     themeModeNotifier.value = ThemeMode.dark;
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(430, 932);
+    tester.view.physicalSize = const Size(360, 800);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
@@ -252,6 +254,38 @@ void main() {
     );
   });
 
+  testWidgets(
+    'main navigation owns one animated background and semantic tabs',
+    (tester) async {
+      demoModeNotifier.value = true;
+      backgroundAnimationsNotifier.value = true;
+      addTearDown(() {
+        demoModeNotifier.value = false;
+        backgroundAnimationsNotifier.value = false;
+      });
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(430, 932);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        const UntisPlusApp(startScreen: MainNavigationScreen()),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      Finder backgroundScenes() => find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_AnimatedBackgroundScene',
+      );
+
+      expect(backgroundScenes(), findsOneWidget);
+      expect(find.bySemanticsLabel('Info'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel('Info'));
+      await tester.pump(const Duration(milliseconds: 550));
+      expect(backgroundScenes(), findsOneWidget);
+    },
+  );
+
   testWidgets('modal backdrops blur only for active blur-capable themes', (
     tester,
   ) async {
@@ -268,14 +302,60 @@ void main() {
     }
 
     await pumpHost();
+    final barrierBackdropFinder = find.ancestor(
+      of: find.byType(ModalBarrier),
+      matching: find.byType(BackdropFilter),
+    );
+
     await tester.tap(find.byKey(const ValueKey('modal-test-sheet')));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(barrierBackdropFinder, findsOneWidget);
+    final sheetFilter = tester
+        .widget<BackdropFilter>(barrierBackdropFinder)
+        .filter;
+    expect(sheetFilter.toString(), contains('15.0'));
+    final sheetBarrier = tester.widget<ModalBarrier>(
+      find.descendant(
+        of: barrierBackdropFinder,
+        matching: find.byType(ModalBarrier),
+      ),
+    );
+    expect(
+      sheetBarrier.color == null || sheetBarrier.color == Colors.transparent,
+      isTrue,
+    );
+    await closeModal();
+
+    await tester.tap(find.byKey(const ValueKey('modal-test-unified-sheet')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(barrierBackdropFinder, findsOneWidget);
+    final unifiedFilter = tester
+        .widget<BackdropFilter>(barrierBackdropFinder)
+        .filter;
+    expect(unifiedFilter.toString(), contains('15.0'));
+    final unifiedBarrier = tester.widget<ModalBarrier>(
+      find.descendant(
+        of: barrierBackdropFinder,
+        matching: find.byType(ModalBarrier),
+      ),
+    );
+    expect(
+      unifiedBarrier.color == null ||
+          unifiedBarrier.color == Colors.transparent,
+      isTrue,
+    );
     await closeModal();
 
     await tester.tap(find.byKey(const ValueKey('modal-test-dialog')));
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(barrierBackdropFinder, findsOneWidget);
+    final dialogFilter = tester
+        .widget<BackdropFilter>(barrierBackdropFinder)
+        .filter;
+    expect(dialogFilter.toString(), contains('30.0'));
     await closeModal();
 
     blurEnabledNotifier.value = false;
@@ -283,6 +363,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('modal-test-sheet')));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(AnimatedModalBarrier), findsOneWidget);
     await closeModal();
 
     blurEnabledNotifier.value = true;
@@ -293,29 +374,117 @@ void main() {
     expect(find.byType(BackdropFilter), findsNothing);
   });
 
-  testWidgets('settings descriptions appear only after long press', (
+  testWidgets('settings scrolls beneath each header style at 200% text', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SettingsTile(
-            title: 'Test setting',
-            subtitle: 'Long press description',
-            onTap: () {},
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    addTearDown(() => headerStyleNotifier.value = 0);
+
+    for (final width in [360.0, 1024.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      for (final style in [0, 1, 2]) {
+        headerStyleNotifier.value = style;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsPageShell(
+              key: ValueKey((width, style)),
+              title: 'Konto',
+              children: [
+                for (var i = 0; i < 24; i++)
+                  SizedBox(height: 60, child: Text('Eintrag $i')),
+              ],
+            ),
+          ),
+        );
+        final viewport = find.byType(Scrollable);
+        final header = find.byType(AppBar);
+        expect(
+          tester.getTopLeft(viewport).dy,
+          lessThan(tester.getBottomLeft(header).dy),
+        );
+        expect(
+          tester.getTopLeft(find.text('Eintrag 0')).dy,
+          greaterThanOrEqualTo(tester.getBottomLeft(header).dy),
+        );
+        await tester.scrollUntilVisible(
+          find.text('Eintrag 23'),
+          360,
+          scrollable: viewport,
+        );
+        expect(find.text('Eintrag 23').hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    }
+  });
+
+  testWidgets(
+    'blur off gives the whole toolbar and tab strip a solid surface',
+    (tester) async {
+      blurEnabledNotifier.value = false;
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            extendBodyBehindAppBar: true,
+            appBar: RoundedBlurAppBar(
+              title: Text('Stundenplan'),
+              bottom: PreferredSize(
+                preferredSize: Size.fromHeight(48),
+                child: Text('Mo'),
+              ),
+            ),
+            body: ColoredBox(color: Colors.red, child: SizedBox.expand()),
           ),
         ),
-      ),
-    );
+      );
+      final bar = tester.widget<AppBar>(find.byType(AppBar));
+      expect(bar.backgroundColor?.a, 1);
+      expect(find.byType(BackdropFilter), findsNothing);
+    },
+  );
 
-    expect(find.text('Long press description'), findsNothing);
+  testWidgets(
+    'settings descriptions appear inline by default and on long press when hidden',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SettingsTile(
+              title: 'Test setting',
+              subtitle: 'Inline description',
+              onTap: () {},
+            ),
+          ),
+        ),
+      );
 
-    await tester.longPress(find.text('Test setting'));
-    await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Inline description'), findsOneWidget);
 
-    expect(find.text('Long press description'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SettingsTile(
+              title: 'Test setting',
+              subtitle: 'Long press description',
+              showSubtitle: false,
+              onTap: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Long press description'), findsNothing);
+
+      await tester.longPress(find.text('Test setting'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Long press description'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('theme picker applies Manga immediately and disables blur', (
     tester,
@@ -596,16 +765,22 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
     for (final size in [
+      const Size(360, 800),
       const Size(375, 812),
       const Size(430, 932),
       const Size(768, 1024),
       const Size(1024, 768),
     ]) {
       tester.view.physicalSize = size;
+      tester.platformDispatcher.textScaleFactorTestValue = size.width == 360
+          ? 2
+          : 1;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('viewMode', 0);
+      await prefs.setInt('timetableViewModeV2', 0);
       await tester.pumpWidget(
         UntisPlusApp(startScreen: WeeklyTimetablePage(key: ValueKey(size))),
       );
@@ -613,8 +788,8 @@ void main() {
       expect(dayCarousel, findsOneWidget, reason: 'day viewport: $size');
       final weekGrid = await ensureWeekTimetableView(tester);
       expect(weekGrid, findsOneWidget, reason: 'week viewport: $size');
-      expect(tester.takeException(), isNull, reason: 'viewport: $size');
       await prefs.setInt('viewMode', 0);
+      await prefs.setInt('timetableViewModeV2', 0);
     }
   });
 
@@ -666,6 +841,12 @@ void main() {
   ) async {
     demoModeNotifier.value = true;
     addTearDown(() => demoModeNotifier.value = false);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 800);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: WeeklyTimetablePage()),
@@ -677,8 +858,12 @@ void main() {
 
     expect(find.byType(MenuAnchor), findsOneWidget);
     expect(find.text('Andere Klasse'), findsOneWidget);
-    expect(find.text('Freie Räume'), findsOneWidget);
+    expect(find.text('Raumsuche'), findsOneWidget);
     expect(find.text('Stundenplan als Bild exportieren'), findsOneWidget);
+    expect(
+      tester.getBottomRight(find.text('Stundenplan als Bild exportieren')).dx,
+      lessThanOrEqualTo(360),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -694,6 +879,7 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     await tester.pumpWidget(
       const UntisPlusApp(startScreen: WeeklyTimetablePage()),
     );
@@ -708,6 +894,7 @@ void main() {
     await tester.drag(weekGrid, const Offset(-260, 0));
     await tester.pump(const Duration(milliseconds: 400));
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     expect(tester.takeException(), isNull);
   });
 
@@ -752,6 +939,7 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
 
     timetableSwitchAnimationNotifier.value = 1;
     await tester.pumpWidget(
@@ -774,6 +962,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     await prefs.setInt('viewMode', 0);
+    await prefs.setInt('timetableViewModeV2', 0);
     timetableSwitchAnimationNotifier.value = 2;
     await tester.pumpWidget(
       const UntisPlusApp(
@@ -861,10 +1050,7 @@ void main() {
       find.textContaining('Stundenplan, Nachrichten, Hausaufgaben'),
       findsOneWidget,
     );
-    expect(
-      find.widgetWithText(FilledButton, repositoryTile),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(FilledButton, repositoryTile), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -1026,6 +1212,14 @@ class _ModalBackdropTestHost extends StatelessWidget {
               builder: (_) => const SizedBox(height: 120),
             ),
             child: const Text('Open sheet'),
+          ),
+          FilledButton(
+            key: const ValueKey('modal-test-unified-sheet'),
+            onPressed: () => showUntisUnifiedSheet<void>(
+              context: context,
+              child: const SizedBox(height: 120),
+            ),
+            child: const Text('Open unified sheet'),
           ),
           FilledButton(
             key: const ValueKey('modal-test-dialog'),

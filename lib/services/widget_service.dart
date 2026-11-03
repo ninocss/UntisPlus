@@ -259,31 +259,7 @@ class WidgetService {
       await HomeWidget.saveWidgetData<String>(entry.key, entry.value);
     }
 
-    await HomeWidget.updateWidget(
-      name: 'UntisWidgetCurrentLesson',
-      iOSName: iOSWidgetName,
-      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetCurrentLesson',
-    );
-    await HomeWidget.updateWidget(
-      name: 'UntisWidgetHomework',
-      iOSName: iOSHomeworkWidgetName,
-      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetHomework',
-    );
-    await HomeWidget.updateWidget(
-      name: 'UntisWidgetNotifications',
-      iOSName: iOSNotificationsWidgetName,
-      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetNotifications',
-    );
-    await HomeWidget.updateWidget(
-      name: 'UntisWidgetDailySchedule',
-      iOSName: iOSScheduleWidgetName,
-      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetDailySchedule',
-    );
-    await HomeWidget.updateWidget(
-      name: 'UntisWidgetCustom',
-      iOSName: 'UntisWidgetCustom',
-      qualifiedAndroidName: 'com.ninocss.untisplus.UntisWidgetCustom',
-    );
+    await reloadAllTimelines();
   }
 
   static Future<bool> requestPinWidget({

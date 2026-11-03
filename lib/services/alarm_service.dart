@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/time_utils.dart';
 import '../l10n.dart';
 import '../platform/native_channel_names.dart';
 
@@ -247,10 +248,9 @@ class AlarmDateOverride {
       );
 }
 
-bool _isAlarmDateKey(String value) => RegExp(r'^\d{8}$').hasMatch(value);
+bool _isAlarmDateKey(String value) => parseUntisDateString(value) != null;
 
-String alarmDateKey(DateTime value) =>
-    '${value.year.toString().padLeft(4, '0')}${value.month.toString().padLeft(2, '0')}${value.day.toString().padLeft(2, '0')}';
+String alarmDateKey(DateTime value) => untisDateString(value);
 
 class AlarmReadiness {
   const AlarmReadiness({
@@ -360,14 +360,15 @@ class AlarmPlanner {
       final startNumber = lesson['startTime'];
       if (dateNumber is! num || startNumber is! num) continue;
       final dateText = dateNumber.toInt().toString().padLeft(8, '0');
+      final lessonDate = parseUntisDateString(dateText);
       final time = startNumber.toInt();
       // All-day bookings are reported with a zero start time. They are not a
       // real lesson a wake-up alarm should be planned for.
-      if (dateText.length != 8 || time <= 0 || time > 2359) continue;
+      if (lessonDate == null || time <= 0 || time > 2359) continue;
       final start = DateTime(
-        int.parse(dateText.substring(0, 4)),
-        int.parse(dateText.substring(4, 6)),
-        int.parse(dateText.substring(6, 8)),
+        lessonDate.year,
+        lessonDate.month,
+        lessonDate.day,
         time ~/ 100,
         time % 100,
       );
@@ -388,11 +389,13 @@ class AlarmPlanner {
         8,
         '0',
       );
+      final lessonDate = parseUntisDateString(dateText);
+      if (lessonDate == null) continue;
       final time = (lesson['startTime'] as num).toInt();
       final start = DateTime(
-        int.parse(dateText.substring(0, 4)),
-        int.parse(dateText.substring(4, 6)),
-        int.parse(dateText.substring(6, 8)),
+        lessonDate.year,
+        lessonDate.month,
+        lessonDate.day,
         time ~/ 100,
         time % 100,
       );

@@ -126,6 +126,7 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: cs.surface,
+      extendBodyBehindAppBar: true,
       appBar: RoundedBlurAppBar(
         title: Text(
           item.title,
@@ -153,7 +154,12 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
           ),
           ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 150),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
+              16,
+              150,
+            ),
             children: [
               _glassContainer(
                 context: context,

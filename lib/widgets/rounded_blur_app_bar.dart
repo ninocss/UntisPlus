@@ -39,6 +39,7 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
           final isBlurActive = useBlur && tokens.supportsBlur && blurEnabled;
           final useFade = headerStyle == 1;
           final useBubbles = headerStyle == 2;
+          final solid = !isBlurActive && (!useBubbles || bottom != null);
           final headerTitle = useBubbles && title != null
               ? _headerBubble(
                   context,
@@ -56,70 +57,64 @@ class RoundedBlurAppBar extends StatelessWidget implements PreferredSizeWidget {
                 )
               : leading;
           final headerActions = useBubbles && actions != null
-              ? actions!.map((action) {
-                  final content = _unwrapHeaderActionPadding(action);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _headerBubble(
-                      context,
-                      Center(child: content),
-                      circular: _isIconHeaderAction(content),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  );
-                }).toList(growable: false)
+              ? actions!
+                    .map((action) {
+                      final content = _unwrapHeaderActionPadding(action);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _headerBubble(
+                          context,
+                          Center(child: content),
+                          circular: _isIconHeaderAction(content),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                      );
+                    })
+                    .toList(growable: false)
               : actions;
 
-          return AppBar(
+          final bar = AppBar(
             centerTitle: centerTitle,
             leading: headerLeading,
             leadingWidth: useBubbles && leading != null ? 64 : null,
             actions: headerActions,
             title: headerTitle,
             bottom: bottom,
-            backgroundColor: useFade || useBubbles
-                ? Colors.transparent
-                : isBlurActive
-                ? cs.surface.withValues(
-                    alpha: tokens.id == AppThemeId.glass
-                        ? tokens.navigationOpacity
-                        : 0.62,
-                  )
-                : (blurEnabled ? Colors.transparent : cs.surface),
+            toolbarHeight: height,
+            systemOverlayStyle: Theme.of(context).brightness == Brightness.dark
+                ? SystemUiOverlayStyle.light
+                : SystemUiOverlayStyle.dark,
+            backgroundColor: solid ? cs.surface : Colors.transparent,
+            shape: solid
+                ? Border(bottom: BorderSide(color: cs.outlineVariant))
+                : null,
+            surfaceTintColor: Colors.transparent,
             elevation: 0,
-            scrolledUnderElevation: isBlurActive || useFade || useBubbles
-                ? 0
-                : 4,
-            flexibleSpace: useFade
-                ? ShaderMask(
-                    blendMode: BlendMode.dstIn,
-                    shaderCallback: (bounds) => const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0, 0.72, 1],
-                    ).createShader(bounds),
-                    child: _blurEffect(
-                      enabled: useBlur && tokens.supportsBlur,
-                      sigma: tokens.blurSigma,
-                      child: Container(
-                        color: cs.surface.withValues(
-                          alpha: isBlurActive
-                              ? (tokens.id == AppThemeId.glass
-                                    ? tokens.navigationOpacity
-                                    : 0.62)
-                              : 1,
-                        ),
-                      ),
+            scrolledUnderElevation: 0,
+          );
+          return Stack(
+            fit: StackFit.expand,
+            clipBehavior: Clip.none,
+            children: [
+              if (isBlurActive)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: -32,
+                  child: _ChromeEdge(
+                    strongAtTop: true,
+                    tint: cs.surface.withValues(
+                      alpha: useBubbles
+                          ? 0.10
+                          : useFade
+                          ? 0.54
+                          : tokens.navigationOpacity,
                     ),
-                  )
-                : useBubbles
-                ? const SizedBox.expand()
-                : _blurEffect(
-                    enabled: useBlur,
-                    sigma: tokens.blurSigma,
-                    child: Container(color: Colors.transparent),
                   ),
+                ),
+              bar,
+            ],
           );
         },
       ),

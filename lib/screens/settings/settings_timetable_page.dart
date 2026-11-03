@@ -579,7 +579,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                   ],
                   selected: {_previewState},
                   onSelectionChanged: (set) {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selection();
                     setState(() => _previewState = set.first);
                   },
                 ),
@@ -603,6 +603,7 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       lessonShowTeacherNotifier,
                       lessonShowRoomNotifier,
                       lessonCompactModeNotifier,
+                      lessonCleanDesignNotifier,
                       lessonCancelledPatternNotifier,
                       cancelledLessonColorNotifier,
                       monochromeLessonsNotifier,
@@ -641,175 +642,32 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
     required String room,
     required bool isNow,
   }) {
-    final tokens = untisThemeTokensOf(context);
-    final visuals = LessonCardVisualsResolver.resolve(
-      context: context,
-      tokens: tokens,
-      isDark: isDark,
-      isCancelled: isCancelled,
-      isNow: isNow,
-      foregroundColor: fgColor,
-      backgroundColor: bgColor,
-      accentWidth: 4.0,
-    );
-    final effectiveRadius = visuals.radius;
-    final cardRadius = visuals.borderRadius;
-    final blurEnabled = visuals.blurEnabled;
-    final blurSigma = visuals.blurSigma;
-    final accentStyle = visuals.accentStyle;
-    final showPattern = visuals.showPattern;
-    final showTeacher = lessonShowTeacherNotifier.value;
-    final showRoom = lessonShowRoomNotifier.value;
-    final compact = lessonCompactModeNotifier.value;
-
-    final effectivePadding = compact
-        ? const EdgeInsets.fromLTRB(10, 6, 8, 6)
-        : const EdgeInsets.fromLTRB(12, 9, 10, 9);
-
-    final subjectFontSize = compact ? 13.0 : 15.0;
-    final teacherFontSize = compact ? 10.5 : 12.0;
-    final roomFontSize = compact ? 10.5 : 12.0;
-
-    final shadows = visuals.shadows;
-    final effectiveFillColor = visuals.fillColor;
-    final effectiveGradient = visuals.gradient;
-    final effectiveBorder = visuals.border;
-    final effectiveTextColor = visuals.textColor;
-    final effectiveSecondaryTextColor = visuals.secondaryTextColor;
-    final effectiveAccentWidth = visuals.accentWidth;
-
-    Widget cardContent = Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: effectiveFillColor,
-            gradient: effectiveGradient,
-            borderRadius: cardRadius,
-            border: effectiveBorder,
-          ),
-        ),
-        if (showPattern)
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _StripedHatchPainter(
-                color: fgColor.withValues(alpha: isDark ? 0.18 : 0.12),
-                stripeWidth: 2.0,
-                gap: 7.0,
-              ),
-            ),
-          ),
-        if (accentStyle == 0 || accentStyle == 1)
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: effectiveAccentWidth,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [fgColor, fgColor.withValues(alpha: 0.7)],
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(effectiveRadius),
-                  bottomLeft: Radius.circular(effectiveRadius),
-                ),
-              ),
-            ),
-          ),
-        Padding(
-          padding: effectivePadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (accentStyle == 2) ...[
-                    Container(
-                      width: 7.5,
-                      height: 7.5,
-                      margin: const EdgeInsets.only(right: 6),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: fgColor,
-                        boxShadow: _glowShadows(context, [
-                          BoxShadow(
-                            color: fgColor.withValues(alpha: 0.6),
-                            blurRadius: 5,
-                          ),
-                        ]),
-                      ),
-                    ),
-                  ],
-                  Flexible(
-                    child: Text(
-                      subject,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: subjectFontSize,
-                        fontWeight: FontWeight.w800,
-                        color: effectiveTextColor,
-                        decoration: isCancelled
-                            ? TextDecoration.lineThrough
-                            : null,
-                        decorationColor: fgColor.withValues(alpha: 0.6),
-                        decorationThickness: 1.6,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (showTeacher && teacher.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  teacher,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: teacherFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: effectiveSecondaryTextColor,
-                  ),
-                ),
-              ],
-              if (showRoom && room.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  room,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: roomFontSize,
-                    fontWeight: FontWeight.w600,
-                    color: effectiveSecondaryTextColor,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-
-    if (blurEnabled) {
-      cardContent = ClipRRect(
-        borderRadius: cardRadius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-          child: cardContent,
-        ),
-      );
+    IconData? icon;
+    if (subject == 'Informatik') {
+      icon = Icons.computer_rounded;
+    } else if (subject == 'Sport') {
+      icon = Icons.fitness_center_rounded;
     } else {
-      cardContent = ClipRRect(borderRadius: cardRadius, child: cardContent);
+      icon = Icons.calculate_rounded;
     }
 
-    return Container(
-      decoration: BoxDecoration(borderRadius: cardRadius, boxShadow: shadows),
-      child: cardContent,
+    return TimetableLessonCard(
+      isCancelled: isCancelled,
+      isDark: isDark,
+      fgColor: fgColor,
+      bgColor: bgColor,
+      subject: subject,
+      teacher: teacher,
+      room: room,
+      isNow: isNow,
+      subjectIcon: icon,
+      accentWidth: 4.0,
+      subjectFontSize: lessonCompactModeNotifier.value ? 13.0 : 15.0,
+      teacherFontSize: lessonCompactModeNotifier.value ? 10.5 : 12.0,
+      roomFontSize: lessonCompactModeNotifier.value ? 10.5 : 12.0,
+      padding: lessonCompactModeNotifier.value
+          ? const EdgeInsets.fromLTRB(10, 6, 8, 6)
+          : const EdgeInsets.fromLTRB(12, 9, 10, 9),
     );
   }
 
@@ -824,10 +682,16 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
       visualThemeNotifier.value,
     ).supportsAdvancedLessonStyle) {
       return Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: _settingsHeaderAppBar(context, l.settingsLessonDesignTitle),
         body: _AnimatedBackground(
           child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 80),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              mq.padding.top + 64 + 12,
+              16,
+              mq.padding.bottom + 80,
+            ),
             children: [
               SettingsGroup(
                 title: l.settingsLessonDesignTitle,
@@ -912,10 +776,16 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
     }
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: _settingsHeaderAppBar(context, l.settingsLessonDesignTitle),
       body: _AnimatedBackground(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, mq.padding.bottom + 120),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            mq.padding.top + 64 + 12,
+            16,
+            mq.padding.bottom + 120,
+          ),
           children: [
             // ── LIVE PREVIEW ──
             _buildLivePreview(context, l, cs, isDark),
@@ -936,6 +806,22 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                       title: l.settingsLessonStyle,
                       subtitle: _styleLabel(l, style),
                       onTap: () => _showCardStyleDialog(context),
+                    );
+                  },
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: lessonCleanDesignNotifier,
+                  builder: (context, cleanDesign, _) {
+                    return SettingsSwitchTile(
+                      icon: Icons.auto_awesome_rounded,
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
+                      iconColor: cs.onPrimaryContainer,
+                      title: l.settingsLessonCleanDesign,
+                      subtitle: l.settingsLessonCleanDesignDesc,
+                      value: cleanDesign,
+                      onChanged: _settingsSetLessonCleanDesign,
                     );
                   },
                 ),
@@ -1182,7 +1068,9 @@ class _SettingsLessonDesignPageState extends State<SettingsLessonDesignPage> {
                     return _buildShowFullTeacherNamesTile(
                       l: l,
                       cs: cs,
-                      iconBackgroundColor: cs.primaryContainer.withValues(alpha: 0.7),
+                      iconBackgroundColor: cs.primaryContainer.withValues(
+                        alpha: 0.7,
+                      ),
                       iconColor: cs.onPrimaryContainer,
                     );
                   },

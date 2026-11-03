@@ -150,14 +150,12 @@ class _ExpressiveRefreshIndicatorState extends State<ExpressiveRefreshIndicator>
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            RepaintBoundary(
-              child: AnimatedBuilder(
-                animation: _contentOffset,
-                child: widget.child,
-                builder: (context, child) => Transform.translate(
-                  offset: Offset(0, _contentOffset.value),
-                  child: child,
-                ),
+            AnimatedBuilder(
+              animation: _contentOffset,
+              child: widget.child,
+              builder: (context, child) => Transform.translate(
+                offset: Offset(0, _contentOffset.value),
+                child: child,
               ),
             ),
             Positioned(

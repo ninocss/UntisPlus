@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -108,6 +109,94 @@ void main() {
           (failure) => failure.kind,
           'kind',
           WebUntisFailureKind.authentication,
+        ),
+      ),
+    );
+  });
+
+  test('retries on SocketException and succeeds', () async {
+    var requests = 0;
+    final client = WebUntisClient(
+      client: MockClient((request) async {
+        requests++;
+        if (requests == 1) {
+          throw const SocketException('Connection reset by peer');
+        }
+        return http.Response(jsonEncode({'result': ['recovered']}), 200);
+      }),
+      maxRetries: 2,
+    );
+
+    final res = await client.rpc(
+      context: _context,
+      method: 'getTimetable',
+      params: const {},
+    );
+    expect(res['result'], ['recovered']);
+    expect(requests, 2);
+  });
+
+  test('retries on HttpException and succeeds', () async {
+    var requests = 0;
+    final client = WebUntisClient(
+      client: MockClient((request) async {
+        requests++;
+        if (requests == 1) {
+          throw const HttpException(
+            'Connection closed before full header was received',
+          );
+        }
+        return http.Response(jsonEncode({'result': ['ok']}), 200);
+      }),
+      maxRetries: 2,
+    );
+
+    final res = await client.rpc(
+      context: _context,
+      method: 'getTimetable',
+      params: const {},
+    );
+    expect(res['result'], ['ok']);
+    expect(requests, 2);
+  });
+
+  test('retries on HTTP 429 rate limit and succeeds', () async {
+    var requests = 0;
+    final client = WebUntisClient(
+      client: MockClient((request) async {
+        requests++;
+        if (requests == 1) {
+          return http.Response('Too Many Requests', 429);
+        }
+        return http.Response(jsonEncode({'result': ['rate_limited_ok']}), 200);
+      }),
+      maxRetries: 2,
+    );
+
+    final res = await client.rpc(
+      context: _context,
+      method: 'getTimetable',
+      params: const {},
+    );
+    expect(res['result'], ['rate_limited_ok']);
+    expect(requests, 2);
+  });
+
+  test('maps SocketException to offline failure kind on exhaustion', () async {
+    final client = WebUntisClient(
+      client: MockClient((request) async {
+        throw const SocketException('Failed host lookup');
+      }),
+      maxRetries: 1,
+    );
+
+    await expectLater(
+      client.rpc(context: _context, method: 'getTimetable', params: const {}),
+      throwsA(
+        isA<WebUntisFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          WebUntisFailureKind.offline,
         ),
       ),
     );

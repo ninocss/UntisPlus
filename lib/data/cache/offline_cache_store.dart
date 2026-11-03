@@ -18,6 +18,11 @@ class OfflineCacheStore {
   static const String _boxName = 'offline_documents_v1';
   Future<Box<String>>? _boxFuture;
 
+  /// Incremented on every mutation made through this store instance. Callers
+  /// can use it to know whether previously decoded documents are still valid.
+  int get revision => _revision;
+  int _revision = 0;
+
   Future<Box<String>> _box() => _boxFuture ??= _open();
 
   Future<Box<String>> _open() async {
@@ -62,13 +67,31 @@ class OfflineCacheStore {
     }
   }
 
+  /// Whether any document key starts with [prefix]. Does not decode anything.
+  Future<bool> hasKeyWithPrefix(String prefix) async {
+    try {
+      final box = await _box();
+      return box.keys.whereType<String>().any((key) => key.startsWith(prefix));
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Returns all cached documents whose keys start with [prefix].
-  Future<List<CachedDocument>> readAllWithPrefix(String prefix) async {
+  ///
+  /// [keyFilter] is evaluated on the key *before* the (comparatively costly)
+  /// JSON decode, so callers that only need some documents avoid decoding the
+  /// rest.
+  Future<List<CachedDocument>> readAllWithPrefix(
+    String prefix, {
+    bool Function(String key)? keyFilter,
+  }) async {
     try {
       final box = await _box();
       final docs = <CachedDocument>[];
       for (final key in box.keys.whereType<String>()) {
         if (!key.startsWith(prefix)) continue;
+        if (keyFilter != null && !keyFilter(key)) continue;
         final candidate = _decode(box.get(key));
         if (candidate != null) {
           docs.add(candidate);
@@ -103,6 +126,7 @@ class OfflineCacheStore {
       'value': value,
     });
     await (await _box()).put(key, payload);
+    _revision++;
   }
 
   Future<void> deletePrefix(String prefix) async {
@@ -111,6 +135,7 @@ class OfflineCacheStore {
       (key) => key.startsWith(prefix),
     );
     await box.deleteAll(keys);
+    _revision++;
   }
 
   CachedDocument? _decode(String? raw) {

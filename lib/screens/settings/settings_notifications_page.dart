@@ -1,4 +1,3 @@
-// settings_notifications_page.dart
 part of '../../main.dart';
 
 class SettingsNotificationsPage extends StatelessWidget {
@@ -14,12 +13,8 @@ class SettingsNotificationsPage extends StatelessWidget {
       final granted = await NotificationService().requestPermissions();
       if (!granted) {
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              appL10nFor(appLocaleNotifier.value).notificationsDenied,
-            ),
-          ),
+        context.showUntisSnackBar(
+          appL10nFor(appLocaleNotifier.value).notificationsDenied,
         );
         return;
       }

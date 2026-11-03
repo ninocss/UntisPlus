@@ -1,3 +1,6 @@
+import '../../../core/defensive_parsers.dart';
+import '../../../core/time_utils.dart';
+
 class SchoolTeacher {
   const SchoolTeacher({
     required this.id,
@@ -24,7 +27,7 @@ class SchoolTeacher {
             'name',
             'shortName',
           ]);
-    final id = _asInt(json['id']);
+    final id = asIntOrNull(json['id']);
     return SchoolTeacher(
       id: id ?? 0,
       name: name,
@@ -67,15 +70,15 @@ class TeacherScheduleSnapshot {
     Iterable<dynamic> lessons, {
     required DateTime now,
   }) {
-    final today = now.year * 10000 + now.month * 100 + now.day;
+    final today = untisDateInt(now);
     final currentMinute = now.hour * 60 + now.minute;
     final parsed = <TeacherLessonLocation>[];
     for (final raw in lessons) {
       if (raw is! Map) continue;
       final lesson = raw.map((key, value) => MapEntry(key.toString(), value));
       if (_isCancelled(lesson) || !_isToday(lesson['date'], today)) continue;
-      final start = _untisMinute(lesson['startTime']);
-      final end = _untisMinute(lesson['endTime']);
+      final start = untisTimeToMinutes(lesson['startTime']);
+      final end = untisTimeToMinutes(lesson['endTime']);
       if (start == null || end == null || end <= start) continue;
       parsed.add(
         TeacherLessonLocation(
@@ -111,11 +114,6 @@ String _firstText(Map<String, dynamic> json, List<String> keys) {
   return '';
 }
 
-int? _asInt(dynamic value) {
-  if (value is num) return value.toInt();
-  return int.tryParse(value?.toString() ?? '');
-}
-
 String _text(dynamic value) => value?.toString().trim() ?? '';
 
 bool _isCancelled(Map<String, dynamic> lesson) =>
@@ -125,27 +123,8 @@ bool _isCancelled(Map<String, dynamic> lesson) =>
 
 bool _isToday(dynamic value, int today) {
   if (value == null) return true;
-  if (value is DateTime) {
-    return value.year * 10000 + value.month * 100 + value.day == today;
-  }
-  final text = _text(value);
-  if (text.contains('-')) {
-    final date = DateTime.tryParse(text);
-    if (date != null) {
-      return date.year * 10000 + date.month * 100 + date.day == today;
-    }
-  }
-  final parsed = _asInt(value);
-  return parsed == null || parsed == today;
-}
-
-int? _untisMinute(dynamic value) {
-  final time = _asInt(value);
-  if (time == null || time < 0) return null;
-  final hour = time ~/ 100;
-  final minute = time % 100;
-  if (hour > 23 || minute > 59) return null;
-  return hour * 60 + minute;
+  final normalized = normalizeUntisDateInt(value);
+  return normalized == null || normalized == today;
 }
 
 String? _elementName(dynamic value) {
@@ -163,5 +142,4 @@ String? _elementName(dynamic value) {
   return null;
 }
 
-String _formatTime(int minute) =>
-    '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+String _formatTime(int minute) => formatMinutesOfDay(minute);
