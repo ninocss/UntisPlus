@@ -2,7 +2,6 @@ import '../../../core/defensive_parsers.dart';
 import '../../../core/time_utils.dart';
 import '../../../core/timetable_date_utils.dart';
 import '../../../data/cache/offline_cache_store.dart';
-import '../../../data/webuntis/untis_endpoint.dart';
 import '../../../data/webuntis/webuntis_client.dart';
 import '../domain/room_schedule.dart';
 import 'timetable_repository.dart';

@@ -811,7 +811,7 @@ void main() {
 
     expect(find.byType(MenuAnchor), findsOneWidget);
     expect(find.text('Andere Klasse'), findsOneWidget);
-    expect(find.text('Freie Räume'), findsOneWidget);
+    expect(find.text('Raumsuche'), findsOneWidget);
     expect(find.text('Stundenplan als Bild exportieren'), findsOneWidget);
     expect(
       tester.getBottomRight(find.text('Stundenplan als Bild exportieren')).dx,

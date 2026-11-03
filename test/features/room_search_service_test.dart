@@ -1,10 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:untisplus/data/cache/offline_cache_store.dart';
-import 'package:untisplus/data/webuntis/untis_endpoint.dart';
 import 'package:untisplus/data/webuntis/webuntis_client.dart';
 import 'package:untisplus/features/timetable/data/room_search_service.dart';
 import 'package:untisplus/features/timetable/data/timetable_repository.dart';
-import 'package:untisplus/features/timetable/domain/room_schedule.dart';
 import 'package:untisplus/services/demo_mode_service.dart';
 
 class _FakeClient extends WebUntisClient {

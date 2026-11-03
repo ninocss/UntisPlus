@@ -823,7 +823,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     pendingTimetableActionNotifier.value = null;
 
     if (action == 'open_free_rooms') {
-      _showFreeRoomsDialog();
+      unawaited(_openRoomSearch());
       return;
     }
 
@@ -2827,95 +2827,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     return ranges;
   }
 
-  List<_TimeRangeLabel> _collectTimeRangesFromDay(int dayIndex) {
-    final dayLessons = _weekData[dayIndex] ?? const <dynamic>[];
-    final ranges = <_TimeRangeLabel>[];
-    final seen = <String>{};
-
-    for (final lesson in dayLessons.whereType<Map>()) {
-      final map = lesson.cast<dynamic, dynamic>();
-      if (isTimetableCancelled(map)) continue;
-      final start = _lessonStartMinutes(map);
-      final end = _lessonEndMinutes(map);
-      if (end <= start) continue;
-      final key = '$start-$end';
-      if (seen.add(key)) {
-        ranges.add(_TimeRangeLabel(startMin: start, endMin: end));
-      }
-    }
-
-    ranges.sort((a, b) {
-      final byStart = a.startMin.compareTo(b.startMin);
-      if (byStart != 0) return byStart;
-      return a.endMin.compareTo(b.endMin);
-    });
-    return ranges;
-  }
-
-  Set<int> _lessonRoomIds(Map<dynamic, dynamic> lesson) {
-    final ids = <int>{};
-    final ro = lesson['ro'];
-    if (ro is List) {
-      for (final entry in ro.whereType<Map>()) {
-        final id = entry['id'];
-        if (id is int) {
-          ids.add(id);
-        } else {
-          final parsed = int.tryParse(id?.toString() ?? '');
-          if (parsed != null) ids.add(parsed);
-        }
-      }
-    }
-
-    if (ids.isEmpty) {
-      final roomName = (lesson['_room'] ?? '').toString().trim();
-      if (roomName.isNotEmpty) {
-        _roomMap.forEach((id, name) {
-          if (name.trim().toLowerCase() == roomName.toLowerCase()) {
-            ids.add(id);
-          }
-        });
-      }
-    }
-
-    return ids;
-  }
-
-  List<String> _computeFreeRooms({
-    required List<List<dynamic>> timetables,
-    required int startMin,
-    required int endMin,
-  }) {
-    final occupiedIds = <int>{};
-    for (final periods in timetables) {
-      for (final raw in periods) {
-        if (raw is! Map) continue;
-        final lesson = raw.cast<dynamic, dynamic>();
-        if (isTimetableCancelled(lesson)) continue;
-        final lessonStart = _lessonStartMinutes(lesson);
-        final lessonEnd = _lessonEndMinutes(lesson);
-        if (lessonStart < endMin && lessonEnd > startMin) {
-          occupiedIds.addAll(_lessonRoomIds(lesson));
-        }
-      }
-    }
-
-    final freeRooms = <String>[];
-    final seenNames = <String>{};
-    final sortedEntries = _roomMap.entries.toList()
-      ..sort((a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()));
-
-    for (final entry in sortedEntries) {
-      if (occupiedIds.contains(entry.key)) continue;
-      final name = entry.value.trim();
-      if (name.isEmpty) continue;
-      if (seenNames.add(name.toLowerCase())) {
-        freeRooms.add(name);
-      }
-    }
-    return freeRooms;
-  }
-
   List<Map<String, dynamic>> _getHolidaysForDay(DateTime day) {
     final dayInt = untisDateInt(day);
     return _holidays.where((h) {
@@ -2927,289 +2838,6 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       if (s == null || e == null) return false;
       return dayInt >= s && dayInt <= e;
     }).toList();
-  }
-
-  Future<void> _showFreeRoomsDialog() async {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final dayIndex = _tabController.index.clamp(0, 4);
-    final ranges = _collectTimeRangesFromDay(dayIndex);
-
-    if (ranges.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.freeRoomsNoRangesHint),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    final dayDate = _currentMonday.add(Duration(days: dayIndex));
-    int selectedIndex = 0;
-    final now = DateTime.now();
-    final isToday =
-        dayDate.year == now.year &&
-        dayDate.month == now.month &&
-        dayDate.day == now.day;
-
-    if (isToday) {
-      final nowMin = now.hour * 60 + now.minute;
-      final idx = ranges.indexWhere(
-        (r) => nowMin >= r.startMin && nowMin < r.endMin,
-      );
-      if (idx >= 0) selectedIndex = idx;
-    }
-
-    if (!mounted) return;
-    showUntisDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    final List<List<String>> freeRoomsForRange;
-    if (demoModeNotifier.value) {
-      freeRoomsForRange = List.generate(
-        ranges.length,
-        DemoModeService.demoFreeRooms,
-      );
-    } else {
-      final classes = await _fetchClasses();
-      List<List<dynamic>> timetables = [];
-      if (classes.isNotEmpty) {
-        final results = await Future.wait(
-          classes.map((c) => _fetchClassTimetable(c['id'] as int, dayDate)),
-          eagerError: false,
-        );
-        timetables = results.whereType<List<dynamic>>().toList();
-      }
-      freeRoomsForRange = [
-        for (final range in ranges)
-          _computeFreeRooms(
-            timetables: timetables,
-            startMin: range.startMin,
-            endMin: range.endMin,
-          ),
-      ];
-    }
-
-    if (!mounted) return;
-    if (context.mounted) Navigator.of(context).pop();
-
-    await showUntisModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      blurBarrier: false,
-      sheetAnimationStyle: _kBottomSheetAnimationStyle,
-      builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-        return StatefulBuilder(
-          builder: (ctx, setDlg) {
-            final freeRooms = freeRoomsForRange[selectedIndex];
-            final dayName = _dayShort[dayIndex];
-
-            return _sheetSurface(
-              context: ctx,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(32),
-              ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: cs.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                      children: [
-                        Text(
-                          l.freeRoomsTitle,
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '$dayName • ${_formatMinutes(ranges[selectedIndex].startMin)} - ${_formatMinutes(ranges[selectedIndex].endMin)}',
-                          style: GoogleFonts.outfit(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          l.freeRoomsSelectTime,
-                          style: GoogleFonts.outfit(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (int i = 0; i < ranges.length; i++)
-                              ChoiceChip(
-                                selected: i == selectedIndex,
-                                showCheckmark: true,
-                                side: BorderSide(
-                                  color:
-                                      (i == selectedIndex
-                                              ? cs.primary
-                                              : cs.outlineVariant)
-                                          .withValues(
-                                            alpha: i == selectedIndex
-                                                ? 0.48
-                                                : 0.65,
-                                          ),
-                                ),
-                                backgroundColor: cs.surfaceContainerHigh
-                                    .withValues(
-                                      alpha: blurEnabledNotifier.value
-                                          ? 0.86
-                                          : 0.92,
-                                    ),
-                                selectedColor: cs.primaryContainer.withValues(
-                                  alpha: 0.92,
-                                ),
-                                label: Text(
-                                  '${_formatMinutes(ranges[i].startMin)} - ${_formatMinutes(ranges[i].endMin)}',
-                                  style: GoogleFonts.outfit(
-                                    fontWeight: i == selectedIndex
-                                        ? FontWeight.w700
-                                        : FontWeight.w600,
-                                    color: i == selectedIndex
-                                        ? cs.onPrimaryContainer
-                                        : cs.onSurface.withValues(alpha: 0.98),
-                                  ),
-                                ),
-                                onSelected: (_) {
-                                  setDlg(() => selectedIndex = i);
-                                },
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          l.freeRoomsCount(freeRooms.length),
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w700,
-                            color: cs.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        if (freeRooms.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: cs.surfaceContainerHigh.withValues(
-                                alpha: blurEnabledNotifier.value ? 0.88 : 0.94,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: cs.outlineVariant.withValues(
-                                  alpha: 0.55,
-                                ),
-                              ),
-                            ),
-                            child: Text(
-                              l.freeRoomsNoneFound,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurfaceVariant.withValues(
-                                  alpha: 0.96,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          ...freeRooms.asMap().entries.map((entry) {
-                            final i = entry.key;
-                            final room = entry.value;
-                            return _springEntry(
-                              duration: Duration(
-                                milliseconds: (300 + i * 40)
-                                    .clamp(300, 520)
-                                    .toInt(),
-                              ),
-                              offsetY: 16,
-                              startScale: 0.95,
-                              curve: _kSmoothBounce,
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  color: cs.surfaceContainerHigh.withValues(
-                                    alpha: blurEnabledNotifier.value
-                                        ? 0.86
-                                        : 0.92,
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: cs.outlineVariant.withValues(
-                                      alpha: 0.56,
-                                    ),
-                                  ),
-                                ),
-                                child: ListTile(
-                                  leading: Icon(
-                                    Icons.meeting_room_outlined,
-                                    color: cs.primary,
-                                  ),
-                                  title: Text(
-                                    room,
-                                    style: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchClasses() async {
-    final catalog = await _timetableRepository.fetchClassCatalog(
-      WebUntisRequestContext(
-        schoolUrl: schoolUrl,
-        schoolName: schoolName,
-        sessionId: sessionID,
-      ),
-    );
-    return catalog.classes;
-  }
-
-  Future<List<dynamic>> _fetchClassTimetable(int classId, DateTime date) async {
-    try {
-      return await _timetableRepository.fetchClassTimetable(
-        context: _timetableRequestContext,
-        classId: classId,
-        date: date,
-      );
-    } catch (_) {
-      return const <dynamic>[];
-    }
   }
 
   static const List<double> _grayscaleMatrix = <double>[
@@ -5460,6 +5088,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     );
   }
 
+  Future<void> _openRoomSearch() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const RoomSearchPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
@@ -5484,9 +5118,9 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               child: Text(l.timetableSelectAnother),
             ),
             MenuItemButton(
-              leadingIcon: const Icon(Icons.meeting_room_outlined),
-              onPressed: _showFreeRoomsDialog,
-              child: Text(l.freeRoomsTitle),
+              leadingIcon: const Icon(Icons.meeting_room_rounded),
+              onPressed: _openRoomSearch,
+              child: Text(l.roomSearchTitle),
             ),
             MenuItemButton(
               leadingIcon: const Icon(Icons.ios_share_rounded),
