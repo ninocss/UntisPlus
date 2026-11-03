@@ -105,6 +105,7 @@ part 'core/custom_backgrounds.dart';
 part 'screens/onboarding_flow.dart';
 part 'screens/onboarding/onboarding_shared_widgets.dart';
 part 'screens/onboarding/welcome_hero_step.dart';
+part 'screens/onboarding/appearance_step.dart';
 part 'screens/weekly_timetable_page.dart';
 part 'screens/teacher_search_page.dart';
 part 'screens/room_search_page.dart';
