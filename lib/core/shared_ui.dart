@@ -2911,46 +2911,24 @@ class HapticSlider extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (_usesExpressiveComponents(context)) {
-      return ExpressiveWavySlider(
-        value: value,
-        min: min,
-        max: max,
-        divisions: divisions,
-        label: label,
-        activeColor: activeColor,
-        semanticFormatterCallback: semanticFormatterCallback,
-        onChangeStart: (val) {
-          AppHaptics.selection();
-          onChangeStart?.call(val);
-        },
-        onChanged: onChanged,
-        onChangeEnd: (val) {
-          AppHaptics.selection();
-          onChangeEnd?.call(val);
-        },
-      );
-    }
-    return Slider(
-      value: value,
-      min: min,
-      max: max,
-      divisions: divisions,
-      label: label,
-      activeColor: activeColor,
-      semanticFormatterCallback: semanticFormatterCallback,
-      onChangeStart: (value) {
-        AppHaptics.selection();
-        onChangeStart?.call(value);
-      },
-      onChanged: onChanged,
-      onChangeEnd: (value) {
-        AppHaptics.selection();
-        onChangeEnd?.call(value);
-      },
-    );
-  }
+  Widget build(BuildContext context) => Slider(
+    value: value,
+    min: min,
+    max: max,
+    divisions: divisions,
+    label: label,
+    activeColor: activeColor,
+    semanticFormatterCallback: semanticFormatterCallback,
+    onChangeStart: (value) {
+      AppHaptics.selection();
+      onChangeStart?.call(value);
+    },
+    onChanged: onChanged,
+    onChangeEnd: (value) {
+      AppHaptics.selection();
+      onChangeEnd?.call(value);
+    },
+  );
 }
 
 PreferredSizeWidget _settingsHeaderAppBar(

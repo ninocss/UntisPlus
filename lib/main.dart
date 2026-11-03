@@ -29,7 +29,6 @@ import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'widgets/progressive_edge_blur.dart';
-import 'widgets/expressive_wavy_slider.dart';
 import 'core/settings_store.dart';
 import 'core/defensive_parsers.dart';
 import 'core/timetable_date_utils.dart';
@@ -97,7 +96,6 @@ export 'features/accounts/domain/untis_account.dart';
 export 'core/school_models.dart';
 export 'core/design_tokens.dart';
 export 'features/updates/data/github_release_repository.dart';
-export 'widgets/expressive_wavy_slider.dart';
 
 part 'core/app_theme.dart';
 part 'app/untis_plus_app.dart';
