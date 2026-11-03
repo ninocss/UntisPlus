@@ -745,6 +745,14 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeOutCubic,
           builder: (context, value, _) {
+            if (_usesExpressiveComponents(context)) {
+              return ExpressiveWavyLinearProgressIndicator(
+                value: value.clamp(0.0, 1.0),
+                color: cs.primary,
+                minHeight: 8.0,
+                amplitude: 3.5,
+              );
+            }
             return ClipRRect(
               borderRadius: BorderRadius.circular(999),
               child: Stack(
