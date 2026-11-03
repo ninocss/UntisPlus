@@ -442,15 +442,10 @@ class _SettingsAccountPageState extends State<SettingsAccountPage> {
                   title: account.label,
                   subtitle: '${account.schoolName} · ${account.schoolUrl}',
                   trailing: _switchingAccountId == account.id
-                      ? SizedBox(
+                      ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: _usesExpressiveComponents(context)
-                              ? const ExpressiveWavyCircularProgressIndicator(
-                                  size: 20,
-                                  strokeWidth: 2.2,
-                                )
-                              : const CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : account.id == activeUntisAccountId
                       ? const Icon(Icons.check_rounded)
