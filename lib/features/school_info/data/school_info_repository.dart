@@ -267,6 +267,7 @@ class SchoolInfoRepository {
     );
 
     final messagePaths = const [
+      '/WebUntis/api/rest/view/v3/messages',
       '/WebUntis/api/rest/view/v2/messages',
       '/WebUntis/api/rest/view/v1/messages',
     ];

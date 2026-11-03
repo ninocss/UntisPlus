@@ -202,40 +202,44 @@ class WebUntisMessageService {
     String schoolUrl,
     WebUntisMessageContext context,
   ) async {
-    try {
-      final response = await _client
-          .get(
-            Uri.parse(
-              '${untisBaseUrl(schoolUrl: schoolUrl)}/WebUntis/api/rest/view/v1/messages/permissions',
-            ),
-            headers: context.headers,
-          )
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode == 401 || response.statusCode == 403) {
-        throw WebUntisMessageFailure(
-          'WebUntis session expired.',
-          statusCode: response.statusCode,
+    final paths = const [
+      '/WebUntis/api/rest/view/v3/messages/permissions',
+      '/WebUntis/api/rest/view/v2/messages/permissions',
+      '/WebUntis/api/rest/view/v1/messages/permissions',
+    ];
+    for (final path in paths) {
+      try {
+        final response = await _client
+            .get(
+              Uri.parse('${untisBaseUrl(schoolUrl: schoolUrl)}$path'),
+              headers: context.headers,
+            )
+            .timeout(const Duration(seconds: 10));
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          throw WebUntisMessageFailure(
+            'WebUntis session expired.',
+            statusCode: response.statusCode,
+          );
+        }
+        if (response.statusCode != 200 || response.body.trim().startsWith('<')) {
+          continue;
+        }
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map) continue;
+        final options = (decoded['recipientOptions'] as List? ?? const [])
+            .map((value) => value.toString())
+            .where((value) => value.isNotEmpty)
+            .toList(growable: false);
+        return WebUntisMessagePermissions(
+          recipientOptions: options.isEmpty ? const ['TEACHER'] : options,
+          maxFileSize: (decoded['maxFileSize'] as num?)?.toInt() ?? 7000000,
+          maxFileCount: (decoded['maxFileCount'] as num?)?.toInt() ?? 5,
         );
-      }
-      if (response.statusCode != 200 || response.body.trim().startsWith('<')) {
-        return const WebUntisMessagePermissions();
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map) return const WebUntisMessagePermissions();
-      final options = (decoded['recipientOptions'] as List? ?? const [])
-          .map((value) => value.toString())
-          .where((value) => value.isNotEmpty)
-          .toList(growable: false);
-      return WebUntisMessagePermissions(
-        recipientOptions: options.isEmpty ? const ['TEACHER'] : options,
-        maxFileSize: (decoded['maxFileSize'] as num?)?.toInt() ?? 7000000,
-        maxFileCount: (decoded['maxFileCount'] as num?)?.toInt() ?? 5,
-      );
-    } on WebUntisMessageFailure {
-      rethrow;
-    } catch (_) {
-      return const WebUntisMessagePermissions();
+      } on WebUntisMessageFailure {
+        rethrow;
+      } catch (_) {}
     }
+    return const WebUntisMessagePermissions();
   }
 
   Future<List<WebUntisMessageRecipient>> _fetchRecipients(
@@ -243,6 +247,7 @@ class WebUntisMessageService {
     WebUntisMessageContext context,
   ) async {
     final paths = const [
+      '/WebUntis/api/rest/view/v3/messages/recipients/static/persons',
       '/WebUntis/api/rest/view/v2/messages/recipients/static/persons',
       '/WebUntis/api/rest/view/v1/messages/recipients/static/persons',
     ];
@@ -360,6 +365,7 @@ class WebUntisMessageService {
     };
 
     final paths = const [
+      '/WebUntis/api/rest/view/v3/messages',
       '/WebUntis/api/rest/view/v2/messages',
       '/WebUntis/api/rest/view/v1/messages',
     ];
@@ -428,14 +434,32 @@ class WebUntisMessageService {
     }
     text('--$boundary--\r\n');
 
-    final request = http.Request('POST', uri)
-      ..headers.addAll(headers)
-      ..headers['Content-Type'] = 'multipart/form-data; boundary=$boundary'
-      ..bodyBytes = builder.takeBytes();
-    final streamed = await _client
-        .send(request)
-        .timeout(const Duration(seconds: 30));
-    return http.Response.fromStream(streamed);
+    final payloadBytes = builder.takeBytes();
+    http.Response? lastResponse;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        final request = http.Request('POST', uri)
+          ..headers.addAll(headers)
+          ..headers['Content-Type'] = 'multipart/form-data; boundary=$boundary'
+          ..bodyBytes = payloadBytes;
+        final streamed = await _client
+            .send(request)
+            .timeout(const Duration(seconds: 30));
+        final response = await http.Response.fromStream(streamed);
+        if (response.statusCode >= 500 && attempt == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
+        return response;
+      } on Exception {
+        if (attempt == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          continue;
+        }
+        rethrow;
+      }
+    }
+    return lastResponse ?? http.Response('Connection failed', 500);
   }
 
   String? _serverMessage(String body) {
