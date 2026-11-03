@@ -1,7 +1,9 @@
 part of '../main.dart';
 
 class RoomSearchPage extends StatefulWidget {
-  const RoomSearchPage({super.key});
+  const RoomSearchPage({super.key, this.initialDate});
+
+  final DateTime? initialDate;
 
   @override
   State<RoomSearchPage> createState() => _RoomSearchPageState();
@@ -52,6 +54,7 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
   List<_TimeSlot> _timeSlots = const [];
 
   AppL10n get _l => appL10nFor(appLocaleNotifier.value);
+  DateTime get _now => widget.initialDate ?? DateTime.now();
 
   @override
   void initState() {
@@ -63,11 +66,13 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
     );
     _queryController.addListener(_onQueryChanged);
     _initTimeSlots();
-    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (!mounted) return;
-      _updateActiveSlotIfToday();
-      setState(() {});
-    });
+    if (widget.initialDate == null) {
+      _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted) return;
+        _updateActiveSlotIfToday();
+        setState(() {});
+      });
+    }
     unawaited(_loadRooms());
   }
 
@@ -97,7 +102,7 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
   }
 
   void _updateActiveSlotIfToday() {
-    final now = DateTime.now();
+    final now = _now;
     final nowMin = now.hour * 60 + now.minute;
     final activeIdx = _timeSlots.indexWhere(
       (slot) => nowMin >= slot.startMin && nowMin < slot.endMin,
@@ -109,19 +114,18 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
 
   Future<void> _loadRooms({bool manualRefresh = false}) async {
     if (demoModeNotifier.value) {
-      final demoList = DemoModeService.demoRooms()
-          .map(SchoolRoom.fromJson)
-          .toList()
-        ..sort(
-          (a, b) =>
-              a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
-        );
+      final demoList =
+          DemoModeService.demoRooms().map(SchoolRoom.fromJson).toList()..sort(
+            (a, b) => a.displayName.toLowerCase().compareTo(
+              b.displayName.toLowerCase(),
+            ),
+          );
 
       final demoLessons = <int, List<dynamic>>{};
       for (final r in demoList) {
         demoLessons[r.id] = DemoModeService.demoRoomLessons(
           roomId: r.id,
-          date: DateTime.now(),
+          date: _now,
         );
       }
 
@@ -155,7 +159,7 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
         final cached = await _roomSearchService.read(
           accountId: activeUntisAccountId ?? 'legacy',
           context: _requestContext,
-          date: DateTime.now(),
+          date: _now,
         );
         if (cached != null && cached.rooms.isNotEmpty) {
           _applyIndex(cached);
@@ -168,7 +172,7 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
       final index = await _roomSearchService.refresh(
         accountId: activeUntisAccountId ?? 'legacy',
         context: _requestContext,
-        date: DateTime.now(),
+        date: _now,
       );
       _applyIndex(index);
     } catch (error) {
@@ -237,7 +241,7 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
       final lessons = await _roomSearchService.fetchRoomTimetable(
         context: _requestContext,
         roomId: room.id,
-        date: DateTime.now(),
+        date: _now,
       );
       if (!mounted || _selectedRoom?.id != room.id) return;
       setState(() {
@@ -292,14 +296,15 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
 
   _TimeSlot get _currentSlot =>
       _timeSlots.isNotEmpty && _selectedSlotIndex < _timeSlots.length
-          ? _timeSlots[_selectedSlotIndex]
-          : const _TimeSlot(startMin: 480, endMin: 525, label: '1. Std');
+      ? _timeSlots[_selectedSlotIndex]
+      : const _TimeSlot(startMin: 480, endMin: 525, label: '1. Std');
 
   RoomScheduleSnapshot _snapshotForRoom(SchoolRoom room) {
-    final lessons = _selectedRoom?.id == room.id && _selectedRoomLessons.isNotEmpty
+    final lessons =
+        _selectedRoom?.id == room.id && _selectedRoomLessons.isNotEmpty
         ? _selectedRoomLessons
         : (_fallbackLessonsByRoomId[room.id] ?? const <dynamic>[]);
-    return RoomScheduleSnapshot.fromLessons(lessons, now: DateTime.now());
+    return RoomScheduleSnapshot.fromLessons(lessons, now: _now);
   }
 
   List<SchoolRoom> get _filteredRooms {
@@ -370,7 +375,8 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
             onPressed:
                 _loadingRooms ||
                     _loadingSchedule ||
-                    (!demoModeNotifier.value && _requestContext.sessionId.isEmpty)
+                    (!demoModeNotifier.value &&
+                        _requestContext.sessionId.isEmpty)
                 ? null
                 : () {
                     AppHaptics.selection();
@@ -415,7 +421,10 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
                 height: slotBarHeight,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   children: [
                     FilterChip(
                       label: Text(l.roomSearchOnlyFree),
@@ -502,7 +511,13 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
                   ),
                 ),
                 for (final room in filtered)
-                  _buildRoomCard(room, cs, l, slot, isSelected: selected?.id == room.id),
+                  _buildRoomCard(
+                    room,
+                    cs,
+                    l,
+                    slot,
+                    isSelected: selected?.id == room.id,
+                  ),
               ],
             ],
           ],
@@ -537,9 +552,7 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: cs.outlineVariant.withValues(
-            alpha: isSelected ? 0.75 : 0.45,
-          ),
+          color: cs.outlineVariant.withValues(alpha: isSelected ? 0.75 : 0.45),
         ),
       ),
       child: ListTile(
@@ -547,7 +560,9 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
           backgroundColor: isFree
               ? Colors.green.withValues(alpha: 0.15)
               : cs.primaryContainer,
-          foregroundColor: isFree ? Colors.green.shade700 : cs.onPrimaryContainer,
+          foregroundColor: isFree
+              ? Colors.green.shade700
+              : cs.onPrimaryContainer,
           child: const Icon(Icons.meeting_room_rounded),
         ),
         title: Text(
@@ -599,16 +614,15 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
     final snapshot = _loadingSchedule || _scheduleError != null
         ? null
         : _snapshotForRoom(room);
-    final isFreeInSlot = snapshot?.isFreeDuring(slot.startMin, slot.endMin) ?? false;
+    final isFreeInSlot =
+        snapshot?.isFreeDuring(slot.startMin, slot.endMin) ?? false;
 
     return Card(
       elevation: 0,
       color: cs.surfaceContainerHigh,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(
-          color: cs.outlineVariant.withValues(alpha: 0.55),
-        ),
+        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.55)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -631,9 +645,8 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
                       if (room.building.isNotEmpty)
                         Text(
                           room.building,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
                     ],
                   ),
@@ -650,11 +663,15 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    isFreeInSlot ? l.roomSearchStatusFree : l.roomSearchStatusOccupied,
+                    isFreeInSlot
+                        ? l.roomSearchStatusFree
+                        : l.roomSearchStatusOccupied,
                     style: GoogleFonts.outfit(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: isFreeInSlot ? Colors.green.shade800 : cs.onSurfaceVariant,
+                      color: isFreeInSlot
+                          ? Colors.green.shade800
+                          : cs.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -706,8 +723,11 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     children: [
-                      Icon(Icons.check_circle_outline_rounded,
-                          size: 18, color: Colors.green.shade700),
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 18,
+                        color: Colors.green.shade700,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -741,7 +761,10 @@ class _RoomSearchPageState extends State<RoomSearchPage> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: colors.primary),
-      title: Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+      title: Text(
+        title,
+        style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+      ),
       subtitle: Text([if (details.isNotEmpty) details, detail].join('\n')),
       isThreeLine: details.isNotEmpty,
     );
