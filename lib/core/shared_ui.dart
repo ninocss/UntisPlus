@@ -224,7 +224,18 @@ class SettingsPageShell extends StatelessWidget {
                 16,
                 MediaQuery.paddingOf(context).bottom + 120,
               ),
-              sliver: SliverList.list(children: children),
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 840),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: children,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -2747,15 +2758,18 @@ class SettingsGroup extends StatelessWidget {
               surfaceCornerRadiusNotifier,
             ]),
             builder: (context, _) {
+              final isExpressive = _usesExpressiveComponents(context);
+              final double defaultRadius =
+                  isExpressive ? 26.0 : tokens.surfaceRadius;
               final groupRadius = BorderRadius.circular(
-                _resolvedSurfaceCornerRadius(tokens.surfaceRadius),
+                _resolvedSurfaceCornerRadius(defaultRadius),
               );
               return ThemedSurface(
                 borderRadius: groupRadius,
                 border: Border.all(
                   color: tokens.id == AppThemeId.manga
                       ? cs.outline
-                      : cs.outlineVariant.withValues(alpha: 0.30),
+                      : cs.outlineVariant.withValues(alpha: isExpressive ? 0.22 : 0.30),
                   width: tokens.borderWidth,
                 ),
                 respectSurfaceCornerPreference: false,
@@ -2777,7 +2791,7 @@ class SettingsGroup extends StatelessWidget {
                             thickness: 0.7,
                             indent: 68,
                             endIndent: 16,
-                            color: cs.outlineVariant.withValues(alpha: 0.26),
+                            color: cs.outlineVariant.withValues(alpha: isExpressive ? 0.20 : 0.26),
                           ),
                       ],
                     ],
