@@ -710,6 +710,64 @@ class DemoModeService {
     }
   }
 
+  static List<Map<String, dynamic>> demoTeachers() => const [
+    {'id': 777001, 'name': 'BEC', 'foreName': 'Anna', 'longName': 'Becker'},
+    {'id': 777002, 'name': 'MUE', 'foreName': 'Thomas', 'longName': 'Müller'},
+    {'id': 777003, 'name': 'SCH', 'foreName': 'Sarah', 'longName': 'Schmidt'},
+    {'id': 777004, 'name': 'WAG', 'foreName': 'Michael', 'longName': 'Wagner'},
+  ];
+
+  static List<dynamic> demoTeacherLessons({
+    required int teacherId,
+    required DateTime date,
+  }) {
+    final d = untisDateInt(date);
+    switch (teacherId) {
+      case 777001: // Becker
+        return [
+          {
+            'date': d,
+            'startTime': 945,
+            'endTime': 1030,
+            'su': [{'name': 'Deutsch'}],
+            'ro': [{'name': 'A102'}],
+          },
+        ];
+      case 777002: // Müller
+        return [
+          {
+            'date': d,
+            'startTime': 755,
+            'endTime': 840,
+            'su': [{'name': 'Mathe'}],
+            'ro': [{'name': 'A102'}],
+          },
+        ];
+      case 777003: // Schmidt
+        return [
+          {
+            'date': d,
+            'startTime': 845,
+            'endTime': 930,
+            'su': [{'name': 'Physik'}],
+            'ro': [{'name': 'B201'}],
+          },
+        ];
+      case 777004: // Wagner
+        return [
+          {
+            'date': d,
+            'startTime': 1045,
+            'endTime': 1130,
+            'su': [{'name': 'Chemie'}],
+            'ro': [{'name': 'C104'}],
+          },
+        ];
+      default:
+        return const <dynamic>[];
+    }
+  }
+
   static Map<String, dynamic> _lesson(
     DateTime date,
     int startTime,

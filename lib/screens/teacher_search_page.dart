@@ -49,9 +49,28 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
 
   Future<void> _loadTeachers({bool manualRefresh = false}) async {
     if (demoModeNotifier.value) {
+      final demoList = DemoModeService.demoTeachers()
+          .map(SchoolTeacher.fromJson)
+          .toList()
+        ..sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+
+      final demoLessons = <int, List<dynamic>>{};
+      for (final t in demoList) {
+        demoLessons[t.id] = DemoModeService.demoTeacherLessons(
+          teacherId: t.id,
+          date: DateTime.now(),
+        );
+      }
+
       setState(() {
+        _teachers
+          ..clear()
+          ..addAll(demoList);
+        _fallbackLessonsByTeacherId = demoLessons;
         _loadingTeachers = false;
-        _teacherError = _l.teacherSearchDemoUnavailable;
+        _teacherError = null;
       });
       return;
     }
@@ -181,6 +200,16 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
 
   Future<void> _selectTeacher(SchoolTeacher teacher) async {
     _searchFocusNode.unfocus();
+    if (demoModeNotifier.value) {
+      setState(() {
+        _selectedTeacher = teacher;
+        _scheduleLessons =
+            _fallbackLessonsByTeacherId[teacher.id] ?? const <dynamic>[];
+        _scheduleError = null;
+        _loadingSchedule = false;
+      });
+      return;
+    }
     if (_usingClassFallback) {
       setState(() {
         _selectedTeacher = teacher;
@@ -380,31 +409,102 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
                   ),
                 ),
                 for (final teacher in filtered)
-                  Card(
-                    elevation: 0,
-                    color: selected?.id == teacher.id
-                        ? cs.secondaryContainer
-                        : cs.surfaceContainerLow,
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: cs.primaryContainer,
-                        foregroundColor: cs.onPrimaryContainer,
-                        child: const Icon(Icons.person_rounded),
-                      ),
-                      title: Text(teacher.name),
-                      subtitle:
-                          teacher.abbreviation.isEmpty ||
-                              teacher.abbreviation == teacher.name
-                          ? null
-                          : Text(teacher.abbreviation),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => _selectTeacher(teacher),
-                    ),
-                  ),
+                  _buildTeacherCard(teacher, cs, l, isSelected: selected?.id == teacher.id),
               ],
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  TeacherScheduleSnapshot _snapshotForTeacher(SchoolTeacher teacher) {
+    final lessons = _selectedTeacher?.id == teacher.id && _scheduleLessons.isNotEmpty
+        ? _scheduleLessons
+        : (_fallbackLessonsByTeacherId[teacher.id] ?? const <dynamic>[]);
+    return TeacherScheduleSnapshot.fromLessons(lessons, now: DateTime.now());
+  }
+
+  Widget _buildTeacherCard(
+    SchoolTeacher teacher,
+    ColorScheme cs,
+    AppL10n l, {
+    required bool isSelected,
+  }) {
+    final snapshot = _snapshotForTeacher(teacher);
+    final isTeaching = snapshot.current != null;
+    final hasLessons = _fallbackLessonsByTeacherId.containsKey(teacher.id) ||
+        (isSelected && _scheduleLessons.isNotEmpty);
+
+    final subtitleParts = <String>[
+      if (teacher.abbreviation.isNotEmpty && teacher.abbreviation != teacher.name)
+        teacher.abbreviation,
+      if (isTeaching && snapshot.current?.subject != null && snapshot.current!.subject.isNotEmpty)
+        snapshot.current!.subject,
+      if (isTeaching && snapshot.current?.room != null && snapshot.current!.room.isNotEmpty)
+        snapshot.current!.room,
+    ];
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 8),
+      color: isSelected ? cs.secondaryContainer : cs.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: cs.outlineVariant.withValues(
+            alpha: isSelected ? 0.75 : 0.45,
+          ),
+        ),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: isTeaching
+              ? cs.primaryContainer
+              : Colors.green.withValues(alpha: 0.15),
+          foregroundColor: isTeaching
+              ? cs.onPrimaryContainer
+              : Colors.green.shade700,
+          child: const Icon(Icons.person_rounded),
+        ),
+        title: Text(
+          teacher.name,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+        ),
+        subtitle: subtitleParts.isEmpty
+            ? null
+            : Text(
+                subtitleParts.join(' • '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasLessons) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isTeaching
+                      ? cs.surfaceContainerHighest
+                      : Colors.green.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isTeaching ? l.teacherStatusTeaching : l.teacherStatusFree,
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isTeaching ? cs.onSurfaceVariant : Colors.green.shade800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+        onTap: () => _selectTeacher(teacher),
       ),
     );
   }
@@ -433,9 +533,17 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
             _scheduleLessons,
             now: DateTime.now(),
           );
+    final isTeaching = schedule?.current != null;
+
     return Card(
       elevation: 0,
       color: colors.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(
+          color: colors.outlineVariant.withValues(alpha: 0.55),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -444,12 +552,50 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    teacher.name,
-                    style: Theme.of(context).textTheme.titleLarge,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        teacher.name,
+                        style: GoogleFonts.outfit(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (teacher.abbreviation.isNotEmpty &&
+                          teacher.abbreviation != teacher.name)
+                        Text(
+                          teacher.abbreviation,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                const Icon(Icons.today_rounded),
+                if (schedule != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isTeaching
+                          ? colors.primaryContainer
+                          : Colors.green.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      isTeaching ? l.teacherStatusTeaching : l.teacherStatusFree,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: isTeaching
+                            ? colors.onPrimaryContainer
+                            : Colors.green.shade800,
+                      ),
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
@@ -514,7 +660,7 @@ class _TeacherSearchPageState extends State<TeacherSearchPage> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: colors.primary),
-      title: Text(title),
+      title: Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
       subtitle: Text([if (details.isNotEmpty) details, detail].join('\n')),
       isThreeLine: details.isNotEmpty,
     );
