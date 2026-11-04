@@ -74,7 +74,6 @@ import 'package:wishkit/l10n/generated/wishkit_localizations.dart';
 import 'package:provider/provider.dart' show ChangeNotifierProvider;
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
-import 'features/homework/domain/homework.dart';
 import 'features/timetable/domain/timetable_lesson_status.dart';
 import 'features/ai/domain/ai_models.dart';
 import 'features/ai/application/ai_request_coordinator.dart';
