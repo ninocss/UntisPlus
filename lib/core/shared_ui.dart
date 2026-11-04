@@ -129,6 +129,7 @@ Future<String> _requestAiVisionImportText({
       noReplyMessage: l.aiNoReply,
       missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
       customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+      customModelMissingMessage: l.settingsAiStatusNeedsCustomModel,
       localProviderUnsupportedMessage:
           localProviderUnsupportedMessage ??
           'Unsupported provider for vision: local',
@@ -155,6 +156,7 @@ Future<({_AiImportFile file, bool supportsPdf})?> _pickAiImportFileFromSheet({
     requireLocalModel: false,
     missingApiKeyMessage: _providerAwareMissingApiKeyMessage(l, provider),
     customBaseUrlMissingMessage: l.aiCustomBaseUrlMissing,
+    customModelMissingMessage: l.settingsAiStatusNeedsCustomModel,
   );
   try {
     _aiRequestCoordinator.validate(runtime, preflight);
@@ -3156,3 +3158,154 @@ class SettingsSwitchTile extends StatelessWidget {
     );
   }
 }
+
+Widget buildSectionHeader(
+  BuildContext context,
+  String title,
+  IconData icon, {
+  int? count,
+  Widget? trailing,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: cs.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 16, color: cs.primary),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.w800,
+            fontSize: 15,
+            color: cs.onSurface,
+            letterSpacing: -0.2,
+          ),
+        ),
+        if (count != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: cs.primary,
+              ),
+            ),
+          ),
+        ],
+        if (trailing != null) ...[
+          const Spacer(),
+          trailing,
+        ],
+      ],
+    ),
+  );
+}
+
+Widget _sectionHeader(
+  BuildContext context,
+  String title,
+  IconData icon, {
+  int? count,
+  Widget? trailing,
+}) => buildSectionHeader(
+  context,
+  title,
+  icon,
+  count: count,
+  trailing: trailing,
+);
+
+Widget buildUnifiedEmptyState({
+  required BuildContext context,
+  required IconData icon,
+  required String title,
+  required String hint,
+  Widget? action,
+}) {
+  final cs = Theme.of(context).colorScheme;
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: cs.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: cs.primary.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 52,
+              color: cs.primary.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: cs.onSurface,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 320),
+            child: Text(
+              hint,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                color: cs.onSurfaceVariant,
+                height: 1.35,
+              ),
+            ),
+          ),
+          if (action != null) ...[
+            const SizedBox(height: 16),
+            action,
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildUnifiedEmptyState({
+  required BuildContext context,
+  required IconData icon,
+  required String title,
+  required String hint,
+  Widget? action,
+}) => buildUnifiedEmptyState(
+  context: context,
+  icon: icon,
+  title: title,
+  hint: hint,
+  action: action,
+);
+
