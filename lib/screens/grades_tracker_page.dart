@@ -494,125 +494,74 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     return _loading
         ? const Center(child: CircularProgressIndicator())
         : visibleGradeCount == 0
-        ? _buildEmptyState(cs, l)
-        : ListView(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              MediaQuery.paddingOf(context).top + 12,
-              16,
-              132,
-            ),
-            children: [
-              _buildGradesSummaryCard(cs, l),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                child: Row(
-                  children: [
-                    // Stats
-                    _buildStatBadge(
-                      cs,
-                      l.gradesAverage,
-                      _overallAverage.toStringAsFixed(2),
-                      Icons.analytics_rounded,
-                      _colorForGrade(_overallAverage),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildStatBadge(
-                      cs,
-                      l.gradesTotal,
-                      visibleGradeCount.toString(),
-                      Icons.numbers_rounded,
-                      cs.primary,
-                    ),
-
-                    // Best Subject (if any)
-                    ...(() {
-                      final grouped = _groupedGrades;
-                      if (grouped.length < 2) return <Widget>[];
-                      String bestSubject = "";
-                      double bestAvg = 99;
-                      grouped.forEach((s, g) {
-                        final a = _calculateAverage(g);
-                        if (a < bestAvg) {
-                          bestAvg = a;
-                          bestSubject = s;
-                        }
-                      });
-                      if (bestSubject.isEmpty) return <Widget>[];
-                      return [
-                        const SizedBox(width: 8),
-                        _buildStatBadge(
-                          cs,
-                          l.gradesBestSubject,
-                          bestSubject,
-                          Icons.workspace_premium_rounded,
-                          Colors.amber,
-                        ),
-                      ];
-                    })(),
-
-                    // Subject quick filters
-                    if (subjects.length > 2) ...[
-                      const SizedBox(width: 16),
-                      Container(
-                        width: 1,
-                        height: 16,
-                        color: cs.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(width: 16),
-                      ...subjects.map((s) {
-                        final isDark =
-                            Theme.of(context).brightness == Brightness.dark;
-                        final color = _autoLessonColor(s, isDark);
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _glassContainer(
-                            context: context,
-                            borderRadius: BorderRadius.circular(12),
-                            color: color.withValues(alpha: 0.1),
-                            border: Border.all(
-                              color: color.withValues(alpha: 0.2),
-                            ),
-                            child: InkWell(
-                              onTap: () => AppHaptics.selection(),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.book_rounded,
-                                      size: 13,
-                                      color: color,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      s,
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 11,
-                                        color: isDark
-                                            ? color.withValues(alpha: 0.9)
-                                            : color,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
-                  ],
+        ? _buildUnifiedEmptyState(
+            context: context,
+            icon: Icons.auto_graph_rounded,
+            title: l.gradesNone,
+            hint: l.gradesNoneHint,
+            action: FilledButton.icon(
+              onPressed: () {
+                AppHaptics.selection();
+                showAddGradeDialog();
+              },
+              icon: const Icon(Icons.add_rounded),
+              label: Text(
+                l.gradesAddTitle,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
                 ),
               ),
-              const SizedBox(height: 16),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: _legacyButtonShape(context, 20),
+              ),
+            ),
+          )
+        : ListView(
+            padding: UntisLayout.pagePadding(
+              context,
+              bottom: 132,
+            ).copyWith(top: MediaQuery.paddingOf(context).top + 16),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            children: [
+              _sectionHeader(
+                context,
+                l.gradesAverage,
+                Icons.auto_graph_rounded,
+                count: visibleGradeCount,
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _colorForGrade(_overallAverage).withValues(
+                      alpha: 0.16,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _colorForGrade(_overallAverage).withValues(
+                        alpha: 0.35,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    _overallAverage.toStringAsFixed(2),
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: _colorForGrade(_overallAverage),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               ...subjects.asMap().entries.map((entry) {
                 final index = entry.key;
                 final subj = entry.value;
@@ -632,172 +581,6 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
           );
   }
 
-  Widget _buildGradesSummaryCard(ColorScheme cs, AppL10n l) {
-    final averageColor = _colorForGrade(_overallAverage);
-    return FeatureSummaryCard(
-      icon: Icons.auto_graph_rounded,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l.gradesAverage,
-            style: GoogleFonts.outfit(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _overallAverage.toStringAsFixed(2),
-            style: GoogleFonts.outfit(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: averageColor,
-              letterSpacing: -0.4,
-            ),
-          ),
-        ],
-      ),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: cs.primary.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
-        ),
-        child: Text(
-          '${_grades.length} ${l.gradesTotal}',
-          style: GoogleFonts.outfit(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: cs.primary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatBadge(
-    ColorScheme cs,
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return _glassContainer(
-      context: context,
-      borderRadius: BorderRadius.circular(14),
-      color: cs.surfaceContainerLow.withValues(alpha: 0.5),
-      border: Border.all(
-        color: cs.outlineVariant.withValues(alpha: 0.25),
-        width: 1,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color, size: 14),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              "$label: ",
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            Text(
-              value,
-              style: GoogleFonts.outfit(
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                color: cs.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(ColorScheme cs, AppL10n l) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 60),
-          _glassContainer(
-            context: context,
-            borderRadius: BorderRadius.circular(32),
-            color: cs.primary.withValues(alpha: 0.12),
-            border: Border.all(
-              color: cs.primary.withValues(alpha: 0.3),
-              width: 1.5,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Icon(
-                Icons.auto_graph_rounded,
-                size: 64,
-                color: cs.primary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            l.gradesNone,
-            style: GoogleFonts.outfit(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              color: cs.onSurface,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            l.gradesNoneHint,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w500,
-              color: cs.onSurfaceVariant,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 32),
-          FilledButton.icon(
-            onPressed: () {
-              AppHaptics.selection();
-              showAddGradeDialog();
-            },
-            icon: const Icon(Icons.add_rounded),
-            label: Text(
-              l.gradesAddTitle,
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-              ),
-            ),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: _legacyButtonShape(context, 20),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSubjectCard(
     ColorScheme cs,
     String subject,
@@ -813,14 +596,14 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
       padding: const EdgeInsets.only(bottom: 16),
       child: _glassContainer(
         context: context,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         color: cs.surfaceContainerLow.withValues(alpha: 0.5),
         border: Border.all(
           color: cs.outlineVariant.withValues(alpha: 0.3),
           width: 1.2,
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
           child: Column(
             children: [
               Container(
