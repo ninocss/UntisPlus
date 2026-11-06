@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untisplus/l10n.dart';
 import 'package:untisplus/main.dart';
-import 'package:untisplus/widgets/tablet_glass_sidebar.dart';
 import 'package:untisplus/widgets/untis_account_switcher_sheet.dart';
 
 UntisAccount _createAccount({
