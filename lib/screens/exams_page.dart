@@ -374,14 +374,17 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                         count: upcoming.length,
                       ),
                       const SizedBox(height: 8),
-                      ...upcoming.asMap().entries.map(
-                        (e) => _animatedExamCard(
-                          e.key,
-                          context,
-                          cs,
-                          e.value,
-                          true,
-                        ),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        upcoming.asMap().entries.map(
+                          (e) => _animatedExamCard(
+                            e.key,
+                            context,
+                            cs,
+                            e.value,
+                            true,
+                          ),
+                        ).toList(),
                       ),
                       const SizedBox(height: 20),
                     ],
@@ -393,14 +396,17 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                         count: past.length,
                       ),
                       const SizedBox(height: 8),
-                      ...past.asMap().entries.map(
-                        (e) => _animatedExamCard(
-                          e.key,
-                          context,
-                          cs,
-                          e.value,
-                          false,
-                        ),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        past.asMap().entries.map(
+                          (e) => _animatedExamCard(
+                            e.key,
+                            context,
+                            cs,
+                            e.value,
+                            false,
+                          ),
+                        ).toList(),
                       ),
                     ],
                   ],
@@ -571,28 +577,32 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: [
-                                  if (type.isNotEmpty)
-                                    _chip(
-                                      type,
-                                      accent.withValues(alpha: 0.2),
-                                      accent,
-                                    ),
-                                  if (isCustom)
-                                    _chip(
-                                      l.examsOwn,
-                                      cs.tertiaryContainer,
-                                      cs.tertiary,
-                                    ),
-                                ],
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    if (type.isNotEmpty)
+                                      _chip(
+                                        type,
+                                        accent.withValues(alpha: 0.2),
+                                        accent,
+                                      ),
+                                    if (isCustom)
+                                      _chip(
+                                        l.examsOwn,
+                                        cs.tertiaryContainer,
+                                        cs.tertiary,
+                                      ),
+                                  ],
+                                ),
                               ),
-                              const Spacer(),
-                              if (showCountdown && daysUntil != null)
+                              if (showCountdown && daysUntil != null) ...[
+                                const SizedBox(width: 8),
                                 _countdownChip(cs, daysUntil),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -722,4 +732,32 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       ),
     );
   }
+}
+
+Widget _buildAdaptiveCardGrid(
+  BuildContext context,
+  List<Widget> cards, {
+  double spacing = 12,
+  double runSpacing = 0,
+}) {
+  if (cards.isEmpty) return const SizedBox.shrink();
+  if (!UntisLayout.isTablet(context)) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: cards,
+    );
+  }
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final itemWidth = (constraints.maxWidth - spacing) / 2;
+      return Wrap(
+        spacing: spacing,
+        runSpacing: runSpacing,
+        children: cards
+            .map((card) => SizedBox(width: itemWidth, child: card))
+            .toList(),
+      );
+    },
+  );
 }

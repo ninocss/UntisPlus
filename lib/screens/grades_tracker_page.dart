@@ -562,21 +562,24 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              ...subjects.asMap().entries.map((entry) {
-                final index = entry.key;
-                final subj = entry.value;
-                final subjGrades = grouped[subj]!
-                  ..sort((a, b) => b.date.compareTo(a.date));
-                final avg = _calculateAverage(subjGrades);
-                return _springEntry(
-                  key: ValueKey('grade_subject_$subj'),
-                  duration: Duration(
-                    milliseconds: (400 + index * 45).clamp(400, 600).toInt(),
-                  ),
-                  offsetY: 20,
-                  child: _buildSubjectCard(cs, subj, subjGrades, avg),
-                );
-              }),
+              _buildAdaptiveCardGrid(
+                context,
+                subjects.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final subj = entry.value;
+                  final subjGrades = grouped[subj]!
+                    ..sort((a, b) => b.date.compareTo(a.date));
+                  final avg = _calculateAverage(subjGrades);
+                  return _springEntry(
+                    key: ValueKey('grade_subject_$subj'),
+                    duration: Duration(
+                      milliseconds: (400 + index * 45).clamp(400, 600).toInt(),
+                    ),
+                    offsetY: 20,
+                    child: _buildSubjectCard(cs, subj, subjGrades, avg),
+                  );
+                }).toList(),
+              ),
             ],
           );
   }
@@ -593,7 +596,7 @@ class _GradesTrackerPageState extends State<GradesTrackerPage> {
     final gradeColor = _colorForGrade(average);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: _glassContainer(
         context: context,
         borderRadius: BorderRadius.circular(24),

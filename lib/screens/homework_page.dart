@@ -572,22 +572,25 @@ class _HomeworkViewState extends State<_HomeworkView> {
                         count: openItems.length,
                       ),
                       const SizedBox(height: 8),
-                      ...openItems.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final hw = entry.value;
-                        return _springEntry(
-                          key: ValueKey('hw_open_${hw['id']}_$idx'),
-                          duration: Duration(
-                            milliseconds: (380 + idx * 40)
-                                .clamp(380, 580)
-                                .toInt(),
-                          ),
-                          offsetY: 24,
-                          startScale: 0.94,
-                          curve: _kSmoothBounce,
-                          child: _buildHomeworkCard(context, cs, l, hw),
-                        );
-                      }),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        openItems.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final hw = entry.value;
+                          return _springEntry(
+                            key: ValueKey('hw_open_${hw['id']}_$idx'),
+                            duration: Duration(
+                              milliseconds: (380 + idx * 40)
+                                  .clamp(380, 580)
+                                  .toInt(),
+                            ),
+                            offsetY: 24,
+                            startScale: 0.94,
+                            curve: _kSmoothBounce,
+                            child: _buildHomeworkCard(context, cs, l, hw),
+                          );
+                        }).toList(),
+                      ),
                       const SizedBox(height: 20),
                     ],
                     if (doneItems.isNotEmpty) ...[
@@ -598,22 +601,25 @@ class _HomeworkViewState extends State<_HomeworkView> {
                         count: doneItems.length,
                       ),
                       const SizedBox(height: 8),
-                      ...doneItems.asMap().entries.map((entry) {
-                        final idx = entry.key;
-                        final hw = entry.value;
-                        return _springEntry(
-                          key: ValueKey('hw_done_${hw['id']}_$idx'),
-                          duration: Duration(
-                            milliseconds: (380 + idx * 40)
-                                .clamp(380, 580)
-                                .toInt(),
-                          ),
-                          offsetY: 24,
-                          startScale: 0.94,
-                          curve: _kSmoothBounce,
-                          child: _buildHomeworkCard(context, cs, l, hw),
-                        );
-                      }),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        doneItems.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final hw = entry.value;
+                          return _springEntry(
+                            key: ValueKey('hw_done_${hw['id']}_$idx'),
+                            duration: Duration(
+                              milliseconds: (380 + idx * 40)
+                                  .clamp(380, 580)
+                                  .toInt(),
+                            ),
+                            offsetY: 24,
+                            startScale: 0.94,
+                            curve: _kSmoothBounce,
+                            child: _buildHomeworkCard(context, cs, l, hw),
+                          );
+                        }).toList(),
+                      ),
                     ],
                   ],
                 ],
@@ -784,28 +790,36 @@ class _HomeworkViewState extends State<_HomeworkView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (_customSubjectIcon(subject) != null)
-                              Icon(
-                                _customSubjectIcon(subject),
-                                size: 16,
-                                color: accent,
+                            Expanded(
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (_customSubjectIcon(subject) != null)
+                                    Icon(
+                                      _customSubjectIcon(subject),
+                                      size: 16,
+                                      color: accent,
+                                    ),
+                                  _chip(
+                                    _displaySubject(subject),
+                                    accent.withValues(alpha: 0.2),
+                                    accent,
+                                  ),
+                                  if (isCustom)
+                                    _chip(
+                                      l.examsOwn,
+                                      cs.tertiaryContainer,
+                                      cs.tertiary,
+                                    ),
+                                ],
                               ),
-                            _chip(
-                              _displaySubject(subject),
-                              accent.withValues(alpha: 0.2),
-                              accent,
                             ),
-                            if (isCustom) ...[
-                              const SizedBox(width: 6),
-                              _chip(
-                                l.examsOwn,
-                                cs.tertiaryContainer,
-                                cs.tertiary,
-                              ),
-                            ],
-                            const Spacer(),
-                            if (dueDateRaw.isNotEmpty)
+                            if (dueDateRaw.isNotEmpty) ...[
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 9,
@@ -845,6 +859,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
                                   ],
                                 ),
                               ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 8),
