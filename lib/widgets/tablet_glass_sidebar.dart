@@ -258,11 +258,13 @@ class TabletGlassSidebar extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      // Header: Stylized app logo
-                      Container(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isConstrained =
+                          !constraints.hasBoundedHeight ||
+                          constraints.maxHeight < 460;
+
+                      final headerWidget = Container(
                         key: const ValueKey('tablet-sidebar-header'),
                         width: 44,
                         height: 44,
@@ -276,20 +278,17 @@ class TabletGlassSidebar extends StatelessWidget {
                           size: 24,
                           color: cs.primary,
                         ),
-                      ),
-                      const SizedBox(height: 18),
+                      );
 
-                      // Navigation Items
-                      for (int i = 0; i < destinations.length; i++) ...[
-                        destinations[i],
-                        if (i < destinations.length - 1)
-                          const SizedBox(height: 8),
-                      ],
+                      final destinationItems = <Widget>[
+                        for (int i = 0; i < destinations.length; i++) ...[
+                          destinations[i],
+                          if (i < destinations.length - 1)
+                            const SizedBox(height: 8),
+                        ],
+                      ];
 
-                      const Spacer(),
-
-                      // Footer: Account switcher avatar
-                      Tooltip(
+                      final footerAvatar = Tooltip(
                         message: accountTooltip,
                         preferBelow: false,
                         child: Material(
@@ -306,39 +305,69 @@ class TabletGlassSidebar extends StatelessWidget {
                                 UntisAccountSwitcherSheet.show(context);
                               }
                             },
-                            child: Container(
-                              width: 42,
-                              height: 42,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: cs.primaryContainer,
-                                border: Border.all(
-                                  color: cs.outlineVariant.withValues(
-                                    alpha: 0.3,
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: cs.primaryContainer,
+                                  border: Border.all(
+                                    color: cs.outlineVariant.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                    width: 1,
                                   ),
-                                  width: 1,
                                 ),
-                              ),
-                              alignment: Alignment.center,
-                              child: initials.isNotEmpty
-                                  ? Text(
-                                      initials,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13,
+                                alignment: Alignment.center,
+                                child: initials.isNotEmpty
+                                    ? Text(
+                                        initials,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13,
+                                          color: cs.onPrimaryContainer,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.person_rounded,
+                                        size: 20,
                                         color: cs.onPrimaryContainer,
                                       ),
-                                    )
-                                  : Icon(
-                                      Icons.person_rounded,
-                                      size: 20,
-                                      color: cs.onPrimaryContainer,
-                                    ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (isConstrained) {
+                        return SingleChildScrollView(
+                          physics: const ClampingScrollPhysics(),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              headerWidget,
+                              const SizedBox(height: 12),
+                              ...destinationItems,
+                              const SizedBox(height: 12),
+                              footerAvatar,
+                            ],
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        mainAxisSize: MainAxisSize.max,
+                        children: [
+                          headerWidget,
+                          const SizedBox(height: 18),
+                          ...destinationItems,
+                          const Spacer(),
+                          footerAvatar,
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),

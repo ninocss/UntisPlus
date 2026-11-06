@@ -7,6 +7,16 @@ extension UntisAccountSwitcherSheetAccountX on UntisAccount {
   String get displayName => label;
 }
 
+extension UntisAccountSwitcherSheetL10nX on AppL10n {
+  /// Localized label for managing accounts button.
+  String get accountManage => switch (locale) {
+    'en' => 'Manage accounts',
+    'fr' => 'Gérer les comptes',
+    'es' => 'Gestionar cuentas',
+    _ => 'Konten verwalten',
+  };
+}
+
 /// A modal sheet (or popover) that allows instant switching between WebUntis
 /// accounts and direct navigation to account management.
 class UntisAccountSwitcherSheet extends StatelessWidget {
@@ -51,6 +61,7 @@ class UntisAccountSwitcherSheet extends StatelessWidget {
     bool isActive,
   ) async {
     if (isActive) return;
+    final nav = Navigator.of(context, rootNavigator: true);
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
@@ -58,42 +69,48 @@ class UntisAccountSwitcherSheet extends StatelessWidget {
       await onSelectAccount!(account);
     } else {
       await switchUntisAccount(account.id);
+      nav.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+        (route) => false,
+      );
     }
   }
 
   void _handleManageAccounts(BuildContext context) {
+    final nav = Navigator.of(context, rootNavigator: true);
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
     if (onManageAccounts != null) {
       onManageAccounts!();
     } else {
-      Navigator.of(context).push(
+      nav.push(
         MaterialPageRoute(builder: (_) => const SettingsAccountPage()),
       );
     }
   }
 
-  String _resolveTitle() {
+  String _resolveTitle(AppL10n l) {
     try {
-      final l = appL10nFor(appLocaleNotifier.value);
       return l.accounts;
     } catch (_) {
       return 'Konten';
     }
   }
 
-  String _resolveManageAccountsLabel() {
+  String _resolveManageAccountsLabel(AppL10n l) {
     try {
-      final lang = appLocaleNotifier.value.split('_').first.toLowerCase();
-      return switch (lang) {
-        'en' => 'Manage accounts',
-        'fr' => 'Gérer les comptes',
-        'es' => 'Gestionar cuentas',
-        _ => 'Konten verwalten',
-      };
+      return l.accountManage;
     } catch (_) {
       return 'Konten verwalten';
+    }
+  }
+
+  String _resolveNoAccountsLabel(AppL10n l) {
+    try {
+      return l.widgetNoAccount;
+    } catch (_) {
+      return 'Kein Konto verfügbar';
     }
   }
 
@@ -108,10 +125,12 @@ class UntisAccountSwitcherSheet extends StatelessWidget {
         appLocaleNotifier,
       ]),
       builder: (context, _) {
+        final l = appL10nFor(appLocaleNotifier.value);
         final effectiveAccounts = accounts ?? untisAccountsNotifier.value;
         final effectiveActiveId = activeId ?? activeUntisAccountId;
-        final title = _resolveTitle();
-        final manageLabel = _resolveManageAccountsLabel();
+        final title = _resolveTitle(l);
+        final manageLabel = _resolveManageAccountsLabel(l);
+        final noAccountsLabel = _resolveNoAccountsLabel(l);
 
         return Align(
           alignment: Alignment.bottomCenter,
@@ -202,7 +221,7 @@ class UntisAccountSwitcherSheet extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
                             child: Text(
-                              'Keine Konten vorhanden',
+                              noAccountsLabel,
                               style: TextStyle(
                                 color: cs.onSurfaceVariant,
                                 fontSize: 14,

@@ -317,5 +317,44 @@ void main() {
       expect(find.byKey(tutKey1), findsOneWidget);
       expect(find.byKey(tutLabelKey0), findsOneWidget);
     });
+
+    testWidgets('footer avatar has at least 48x48 px touch target', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(buildSidebarHarness());
+
+      final avatarSize = tester.getSize(
+        find.byKey(const ValueKey('tablet-sidebar-account-avatar')),
+      );
+      expect(avatarSize.width, greaterThanOrEqualTo(48.0));
+      expect(avatarSize.height, greaterThanOrEqualTo(48.0));
+    });
+
+    testWidgets(
+      'renders without overflow on low-height constrained windows (< 460px)',
+      (tester) async {
+        tester.view.physicalSize = const Size(1024, 400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(buildSidebarHarness());
+
+        expect(tester.takeException(), isNull);
+        expect(
+          find.byKey(const ValueKey('tablet-sidebar-header')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('tablet-sidebar-account-avatar')),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

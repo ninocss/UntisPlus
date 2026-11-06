@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:untisplus/core/settings_store.dart';
 import 'package:untisplus/main.dart';
 import 'package:untisplus/widgets/untis_account_switcher_sheet.dart';
 
@@ -24,6 +29,10 @@ UntisAccount _createAccount({
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late Directory tempDir;
+
   final account1 = _createAccount(
     id: 'acc-1',
     username: 'max.mustermann',
@@ -35,10 +44,39 @@ void main() {
     schoolName: 'Realschule Beta',
   );
 
+  setUpAll(() async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    tempDir = await Directory.systemTemp.createTemp('untisplus_sheet_test_');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (call) async => tempDir.path,
+        );
+  });
+
+  tearDownAll(() async {
+    try {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    } catch (_) {}
+  });
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await SettingsStore.initialize(preferences: prefs);
+    activeUntisAccountId = null;
+    untisAccountsNotifier.value = [];
+    blurEnabledNotifier.value = true;
+    appLocaleNotifier.value = 'de';
+  });
+
   tearDown(() {
     untisAccountsNotifier.value = [];
     activeUntisAccountId = null;
     blurEnabledNotifier.value = true;
+    appLocaleNotifier.value = 'de';
   });
 
   group('UntisAccountSwitcherSheet widget', () {
@@ -257,5 +295,81 @@ void main() {
       expect(manageCalled, isTrue);
       expect(find.text('Gymnasium Alpha'), findsNothing);
     });
+
+    testWidgets(
+      'tapping inactive account without onSelectAccount switches account and mounts MainNavigationScreen',
+      (tester) async {
+        untisAccountsNotifier.value = [account1, account2];
+        activeUntisAccountId = 'acc-1';
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => UntisAccountSwitcherSheet.show(
+                    context,
+                    accounts: [account1, account2],
+                    activeId: 'acc-1',
+                  ),
+                  child: const Text('Open Switcher'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Open Switcher'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(UntisAccountSwitcherSheet), findsOneWidget);
+
+        await tester.tap(find.text('Realschule Beta'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 2));
+
+        // Sheet is dismissed and MainNavigationScreen is pushed
+        expect(find.byType(UntisAccountSwitcherSheet), findsNothing);
+        expect(find.byType(MainNavigationScreen), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'displays localized empty message when accounts list is empty',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: UntisAccountSwitcherSheet(
+                accounts: [],
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('Kein Konto verfügbar'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'renders localized labels for English locale',
+      (tester) async {
+        appLocaleNotifier.value = 'en';
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: UntisAccountSwitcherSheet(
+                accounts: [account1],
+                activeId: 'acc-1',
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('Accounts'), findsOneWidget);
+        expect(find.text('Manage accounts'), findsOneWidget);
+      },
+    );
   });
 }
