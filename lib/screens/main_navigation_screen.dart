@@ -2182,62 +2182,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             Row(
               children: [
                 if (isTablet)
-                  SafeArea(
-                    child: NavigationRail(
-                      selectedIndex: _selectedIndex,
-                      onDestinationSelected: _onNavTap,
-                      labelType: NavigationRailLabelType.selected,
-                      groupAlignment: 0,
-                      destinations: [
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.watch_later_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[0],
-                            child: const Icon(Icons.watch_later_rounded),
-                          ),
-                          label: Text(
-                            l.timetableTitle,
-                            key: _tutorialNavLabelKeys[0],
-                          ),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.event_note_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[1],
-                            child: const Icon(Icons.event_note_rounded),
-                          ),
-                          label: Text(
-                            l.examsTitle,
-                            key: _tutorialNavLabelKeys[1],
-                          ),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.campaign_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[2],
-                            child: const Icon(Icons.campaign_rounded),
-                          ),
-                          label: Text(l.navInfo, key: _tutorialNavLabelKeys[2]),
-                        ),
-                        NavigationRailDestination(
-                          icon: const Icon(Icons.settings_outlined),
-                          selectedIcon: KeyedSubtree(
-                            key: _tutorialNavKeys[3],
-                            child: const Icon(Icons.settings_rounded),
-                          ),
-                          label: Text(l.navMenu, key: _tutorialNavLabelKeys[3]),
-                        ),
-                        if (aiEnabledNotifier.value)
-                          NavigationRailDestination(
-                            icon: const Icon(Icons.auto_awesome_outlined),
-                            selectedIcon: KeyedSubtree(
-                              key: _tutorialNavKeys[4],
-                              child: const Icon(Icons.auto_awesome_rounded),
-                            ),
-                            label: Text(l.navAi, key: _tutorialNavLabelKeys[4]),
-                          ),
-                      ],
-                    ),
+                  TabletGlassSidebar(
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: _onNavTap,
+                    showAi: aiEnabledNotifier.value,
+                    tutorialKeys: _tutorialNavKeys,
+                    tutorialLabelKeys: _tutorialNavLabelKeys,
                   ),
                 Expanded(
                   child: MediaQuery(
@@ -2314,6 +2264,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             // Floating nav bar
             if (!isTablet)
               Positioned(
+                key: const ValueKey('main-floating-nav-bar'),
                 left: 16,
                 right: 16,
                 bottom: mq.padding.bottom + 16,

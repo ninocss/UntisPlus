@@ -29,6 +29,8 @@ import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'widgets/progressive_edge_blur.dart';
+import 'widgets/tablet_glass_sidebar.dart';
+export 'widgets/tablet_glass_sidebar.dart';
 import 'core/settings_store.dart';
 import 'core/defensive_parsers.dart';
 import 'core/timetable_date_utils.dart';
