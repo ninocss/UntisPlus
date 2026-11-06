@@ -1416,7 +1416,7 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
     final cs = Theme.of(context).colorScheme;
     final mq = MediaQuery.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final expanded = UntisLayout.isExpanded(context);
+    final expanded = UntisLayout.isTablet(context);
 
     _SettingsHubItem makeItem({
       required Color semanticColor,
@@ -1718,8 +1718,8 @@ class _SettingsHubPageState extends State<SettingsHubPage> {
           final detail =
               items[detailIndex].pageBuilder?.call() ??
               const SettingsTimetablePage();
-          final masterWidth = (MediaQuery.sizeOf(context).width * 0.34)
-              .clamp(350.0, 420.0)
+          final masterWidth = (MediaQuery.sizeOf(context).width * 0.32)
+              .clamp(280.0, 380.0)
               .toDouble();
 
           return Row(

@@ -655,7 +655,10 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
     final activeItems = _showInbox ? _inboxItems : _newsItems;
-    final isExpanded = UntisLayout.isExpanded(context);
+    final isExpanded = UntisLayout.isTablet(context);
+    final masterWidth = (MediaQuery.sizeOf(context).width * 0.34)
+        .clamp(280.0, 360.0)
+        .toDouble();
     final selectedItem = _selectedItem(activeItems);
 
     return Scaffold(
@@ -815,7 +818,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           SizedBox(
-                            width: 360,
+                            width: masterWidth,
                             child: _buildTabletNotificationList(
                               context,
                               activeItems,
