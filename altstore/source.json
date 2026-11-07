@@ -37,10 +37,10 @@
         {
           "version": "5.6.3",
           "buildVersion": "5.6.3",
-          "date": "2026-11-03",
-          "localizedDescription": "You can now search for rooms and inspect their schedules directly within the app. This update also introduces a clean design option for lessons in settings, alongside startup optimizations and bug fixes.",
-          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.6.3/UntisPlus-v5.6.3.ipa",
-          "size": 55555464,
+          "date": "2026-11-07",
+          "localizedDescription": "This update introduces a fresh Material 3 Expressive look across the app, including redesigned settings, onboarding, and timetable views. We've also enhanced tablet navigation with a new glass sidebar and fixed week swipe navigation on the 5-day timetable view.",
+          "downloadURL": "https://github.com/ninocss/UntisPlus/releases/download/v5.7.0/UntisPlus-v5.7.0.ipa",
+          "size": 55602900,
           "minOSVersion": "15.0"
         },
         {
@@ -198,8 +198,8 @@
     {
       "title": "Untis+ 5.6.3 is here",
       "identifier": "untisplus-release-5-6-3",
-      "caption": "You can now search for rooms and inspect their schedules directly within the app. This update also introduces a clean design option for lessons in settings, alongside startup optimizations and bug fixes.",
-      "date": "2026-11-03",
+      "caption": "This update introduces a fresh Material 3 Expressive look across the app, including redesigned settings, onboarding, and timetable views. We've also enhanced tablet navigation with a new glass sidebar and fixed week swipe navigation on the 5-day timetable view.",
+      "date": "2026-11-07",
       "tintColor": "4A90D9",
       "imageURL": "https://raw.githubusercontent.com/ninocss/UntisPlus/main/assets/icon.png",
       "appID": "com.ninocss.untisplus",
