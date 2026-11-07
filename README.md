@@ -23,21 +23,23 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 
 | Aspect | Specification |
 | :--- | :--- |
-| **Data Policy** | Private by default. Credentials and schedule data never leave your device. (If you use Local AI)|
+| **Data Policy** | Private by default. Credentials and schedule data never leave your device. (Zero cloud data sharing when using Local AI)|
 | **Current Version** | `5.6.3` |
 | **Target Platforms** | Android, iOS |
+| **Languages** | English, Deutsch, Español, Français |
 
 ---
 
 ## Features
 
-* **Advanced Timetable** — Fast, fluid, and optimized navigation for daily and weekly class schedules.
-* **Exam & Info Tracker** — Consolidated overview of upcoming exams and direct broadcast announcements from your school.
-* **Homework & Lesson Notes** — Seamless integration of homework and notes straight from WebUntis.
-* **Absences & Change Center** — Offline-first absence history and a deduplicated timeline of cancellations, room, teacher, subject, and time changes.
-* **Multi-Account by Design** — Account-scoped schedules, personal data, widgets, alarms, credentials, and caches.
-* **Smart Utilities** — Built-in free room finder and home screen widgets for immediate status checks.
-* **Local Intelligence** — On-device assistive AI features that manage workflows privately, without sending data to the cloud.
+* **Expressive & Adaptive Timetable** — Fluid daily and weekly views featuring the modern Material 3 Expressive design, live wave progress indicator, gesture navigation, and clear badges for substitutions and cancellations.
+* **Absences & Change Center** — Offline-first absence management and a unified, deduplicated timeline for teacher, room, subject changes, and cancellations.
+* **Exam & Homework Tracker** — Consolidated overview of upcoming exams, homework deadlines, lesson notes, and direct school broadcast announcements.
+* **Privacy-First AI Copilot** — Run local AI models directly on your device (via fllama / GGUF) with zero cloud data transmission, or connect your own API keys / custom endpoints (OpenAI, Gemini, Claude, Ollama, DeepSeek).
+* **Multi-Account by Design** — Seamlessly manage multiple student or teacher profiles with isolated credentials, caches, alarms, and widgets.
+* **Custom Home Screen Widgets** — Interactive widget editor with real-time preview, customizable themes, and quick status overviews for Android and iOS.
+* **Smart Room Finder** — Fast vacant classroom search with live period availability.
+* **Personalized & Accessible** — Multiple visual themes (Default, Manga, Glass, Cyber), dynamic Material You coloring, AMOLED dark mode, and high-contrast accessibility support.
 
 ---
 
@@ -57,8 +59,12 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 
 | Feature / Goal | Status |
 | :--- | :---: |
-| Offline-first structured cache foundation | In progress |
-| Absence overview and timetable change center | In progress |
+| Material 3 Expressive UI redesign | Completed |
+| On-device local LLM copilot | Completed |
+| Offline-first structured cache foundation | Completed |
+| Absence overview and timetable change center | Completed |
+| Full 4-locale localization (EN, DE, ES, FR) | Completed |
+| Custom home screen widget editor | Completed |
 | Feature-by-feature Riverpod migration | In progress |
 
 ---
@@ -67,14 +73,16 @@ UntisPlus is a modern, secure, and intuitive Flutter client for students and tea
 
 | Dependency | Purpose |
 | :--- | :--- |
-| **`http`** | WebUntis API communication |
-| **`flutter_secure_storage`** | Native encrypted storage for credentials and API keys |
-| **`shared_preferences`** | Non-sensitive preferences such as theme, language, and layout |
-| **`hive_ce_flutter`** | Versioned, account-scoped offline data cache |
-| **`flutter_riverpod`** | Testable dependency injection and feature state migration |
+| **`http`** & **`dio`** | WebUntis API communication and network transfers |
+| **`fllama`** | On-device LLM inference runtime for private local AI |
+| **`flutter_secure_storage`** | Native encrypted keystore/keychain storage for credentials and tokens |
+| **`cryptography`** | Client-side cryptographic primitives and secure hashing |
+| **`shared_preferences`** | User preferences such as theme, language, and layout options |
+| **`hive_ce_flutter`** | Fast, versioned, account-scoped offline cache |
+| **`flutter_riverpod`** | Reactive state management and dependency injection |
 | **`dynamic_color`** | Material You dynamic theme integration |
-| **`home_widget`** | Native Android and iOS widget connectivity |
-| **`flutter_local_notifications`** | Time-critical lesson alerts and schedule update tracking |
+| **`home_widget`** | Native Android and iOS home screen widgets |
+| **`flutter_local_notifications`** | Time-critical lesson alerts, change notifications, and reminders |
 
 ---
 
@@ -188,7 +196,7 @@ UntisPlus is an independent developer project. It is not affiliated, associated,
 
 ---
 
-Developers
+## Developers
 
-- ninocss — Founder & Developer
-- OseMine — Developer
+- [ninocss](https://github.com/ninocss) — Founder & Developer
+- [OseMine](https://github.com/OseMine) — Developer
