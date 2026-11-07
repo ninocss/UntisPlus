@@ -389,10 +389,6 @@ extension AppL10nCollections on AppL10n {
   String get settingsLessonCleanDesign => _t('settingsLessonCleanDesign');
   String get settingsLessonCleanDesignDesc =>
       _t('settingsLessonCleanDesignDesc');
-  String get settingsLessonExpressiveDesign =>
-      _t('settingsLessonExpressiveDesign');
-  String get settingsLessonExpressiveDesignDesc =>
-      _t('settingsLessonExpressiveDesignDesc');
   String get settingsLessonBlur => _t('settingsLessonBlur');
   String get settingsLessonBlurDesc => _t('settingsLessonBlurDesc');
   String get settingsLessonBlurAmount => _t('settingsLessonBlurAmount');
@@ -1318,9 +1314,9 @@ extension AppL10nCollections on AppL10n {
       'settingsLessonCleanDesign': 'Modernes Clean-Design',
       'settingsLessonCleanDesignDesc':
           'Elegantes Layout mit dezentem Fach-Wasserzeichen und aufgeräumter Info-Zeile',
-      'settingsLessonExpressiveDesign': 'Expressives Figma-Design',
+      'settingsLessonExpressiveDesign': 'Expressives Design',
       'settingsLessonExpressiveDesignDesc':
-          'Aktiviert das Design mit dynamischen Kartenformen, Timeline und animierter Wellen-Zeitanzeige aus der Figma-Preview',
+          'Aktiviert das Design mit dynamischen Kartenformen, Timeline und animierter Wellen-Zeitanzeige.',
       'settingsLessonBlur': 'Milchglas-Unschärfe (Blur)',
       'settingsLessonBlurDesc':
           'Hintergrund hinter den Stundenkarten weichzeichnen.',
@@ -2545,9 +2541,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonCleanDesign': 'Modern Clean Design',
       'settingsLessonCleanDesignDesc':
           'Sleek layout with subtle subject watermark and streamlined info line',
-      'settingsLessonExpressiveDesign': 'Expressive Figma Design',
+      'settingsLessonExpressiveDesign': 'Expressive design',
       'settingsLessonExpressiveDesignDesc':
-          'Enables the design with dynamic card shapes, timeline, and animated wave time indicator from the Figma preview',
+          'Enables the design with dynamic card shapes, timeline, and animated wave time indicator.',
       'settingsLessonBlur': 'Frosted Glass Blur',
       'settingsLessonBlurDesc':
           'Blur the wallpaper background behind lesson cards.',
@@ -3795,9 +3791,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonCleanDesign': 'Design épuré moderne',
       'settingsLessonCleanDesignDesc':
           'Mise en page élégante avec filigrane discret de la matière et ligne d\'info épurée',
-      'settingsLessonExpressiveDesign': 'Design expressif Figma',
+      'settingsLessonExpressiveDesign': 'Design expressif',
       'settingsLessonExpressiveDesignDesc':
-          'Active le design avec formes de cartes dynamiques, chronologie et indicateur temporel animé de la prévisualisation Figma',
+          'Active le design avec formes de cartes dynamiques, chronologie et indicateur temporel animé.',
       'settingsLessonBlur': 'Flou de verre (Blur)',
       'settingsLessonBlurDesc': 'Flouter l\'arrière-plan derrière les cartes.',
       'settingsLessonBlurAmount': 'Force du flou',
@@ -5048,9 +5044,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonCleanDesign': 'Diseño limpio moderno',
       'settingsLessonCleanDesignDesc':
           'Diseño elegante con marca de agua sutil de la asignatura y línea de info despejada',
-      'settingsLessonExpressiveDesign': 'Diseño expresivo Figma',
+      'settingsLessonExpressiveDesign': 'Diseño expresivo',
       'settingsLessonExpressiveDesignDesc':
-          'Activa el diseño con formas de tarjetas dinámicas, línea de tiempo e indicador de tiempo animado de la vista previa de Figma',
+          'Activa el diseño con formas de tarjetas dinámicas, línea de tiempo e indicador de tiempo animado.',
       'settingsLessonBlur': 'Desenfoque de cristal',
       'settingsLessonBlurDesc':
           'Desenfoca el fondo detrás de las tarjetas de clase.',

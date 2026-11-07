@@ -1209,5 +1209,22 @@
   "settingsAiPromptInsertVariable": "Insert variable",
   "settingsAiPrivacy": "Privacy",
   "settingsAiShareGrades": "Share grades with the AI",
-  "settingsAiShareGradesDesc": "Per-subject averages are added to the prompt. With cloud providers they leave your device."
+  "settingsAiShareGradesDesc": "Per-subject averages are added to the prompt. With cloud providers they leave your device.",
+  "settingsLessonExpressiveDesign": "Expressive design",
+  "settingsLessonExpressiveDesignDesc": "Enables the design with dynamic card shapes, timeline, and animated wave time indicator.",
+  "expressiveLessonCancelled": "Cancelled",
+  "expressiveLessonSemanticsCancelled": ", cancelled",
+  "commonRedo": "Redo",
+  "editorResetDesign": "Reset design",
+  "widgetPresetFocus": "Focus",
+  "widgetPresetAgenda": "Agenda",
+  "roomSearchPeriod": "Period {period}",
+  "@roomSearchPeriod": {
+    "placeholders": {
+      "period": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsAiMaxTokensLocalRecommended": "(Recommended: 256–512 for fast local answers and more room for timetable data)"
 }
