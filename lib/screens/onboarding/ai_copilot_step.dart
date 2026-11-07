@@ -356,7 +356,7 @@ class _AiCopilotStepState extends State<AiCopilotStep> {
 
             _buildProviderBento(
               id: 'custom',
-              title: 'Custom Endpoint',
+              title: l.settingsAiProviderCustom,
               subtitle: l.onboardingAiCustomDesc,
               icon: Icons.settings_ethernet_rounded,
               colors: colors,

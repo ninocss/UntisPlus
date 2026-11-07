@@ -1680,7 +1680,7 @@ class _SettingsAiPageState extends State<SettingsAiPage> {
                   divisions: isLocal ? 15 : 31,
                   suffix: tokens.toString(),
                   desc: isLocal
-                      ? '${l.aiTokenDesc} (Empfohlen: 256–512 für schnelle lokale Antworten und mehr Platz für Stundenplandaten)'
+                      ? '${l.aiTokenDesc} ${l.settingsAiMaxTokensLocalRecommended}'
                       : l.aiTokenDesc,
                   onChanged: (v) => setStateDialog(() => tokens = v.round()),
                   cs: cs,
