@@ -21,16 +21,23 @@ void _showLessonDetail(
 }) {
   if (lesson is! Map) return;
   unawaited(AppHaptics.confirmation());
-  final originalSubject = lesson['_subjectLong']?.toString().isNotEmpty == true
-      ? lesson['_subjectLong'].toString()
-      : (lesson['_subjectShort']?.toString().isNotEmpty == true
-            ? lesson['_subjectShort'].toString()
-            : '---');
-  final subject = _displaySubject(lesson['_subjectShort'] ?? originalSubject);
+  final originalSubject =
+      (lesson['_subjectLong']?.toString().trim().isNotEmpty == true &&
+              lesson['_subjectLong'] != '?')
+          ? lesson['_subjectLong'].toString().trim()
+          : ((lesson['_subjectShort']?.toString().trim().isNotEmpty == true &&
+                  lesson['_subjectShort'] != '?')
+              ? lesson['_subjectShort'].toString().trim()
+              : '---');
+  final subject = _displaySubject(
+    (lesson['_subjectShort']?.toString().trim().isNotEmpty == true &&
+            lesson['_subjectShort'] != '?')
+        ? lesson['_subjectShort']
+        : originalSubject,
+  );
   final subjectShort = lesson['_subjectShort']?.toString() ?? '';
-  final room = lesson['_room']?.toString().isNotEmpty == true
-      ? lesson['_room'].toString()
-      : '---';
+  final rawRoom = lesson['_room']?.toString().trim() ?? '';
+  final room = (rawRoom.isNotEmpty && rawRoom != '?') ? rawRoom : '---';
   final teacher = displayTeacherForLesson(lesson);
   final time =
       '${formatUntisTime(lesson['startTime'].toString())} – ${formatUntisTime(lesson['endTime'].toString())}';
@@ -91,7 +98,13 @@ void _showLessonDetail(
       homework: homework,
       onHideSubject: () {
         Navigator.of(context).pop();
-        _hideSubject(subjectKey);
+        final keyToHide =
+            (subjectKey.trim().isNotEmpty && subjectKey.trim() != '?')
+                ? subjectKey.trim()
+                : (originalSubject != '---' ? originalSubject : '');
+        if (keyToHide.isNotEmpty) {
+          _hideSubject(keyToHide);
+        }
       },
     ),
   );
