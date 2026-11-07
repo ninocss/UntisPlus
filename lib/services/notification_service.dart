@@ -17,6 +17,7 @@ abstract class NotificationIds {
   static const int update = 2;
   static const int dailyBriefing = 3;
   static const int importantChanges = 4;
+  static const int modelDownload = 5;
 }
 
 /// Channel identifiers for Android notification channels.
@@ -25,6 +26,7 @@ abstract class NotificationChannels {
   static const String dailyBriefing = 'daily_briefing_channel';
   static const String importantChanges = 'important_changes_channel';
   static const String updates = 'updates_channel';
+  static const String downloads = 'downloads_channel';
 }
 
 /// Persisted signature of the last iOS progressive notification content. Used
@@ -428,9 +430,91 @@ class NotificationService {
     );
   }
 
+  /// Shows or updates a progress notification for a model download.
+  Future<void> showDownloadProgressNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int progress,
+    required int maxProgress,
+    String? subText,
+    String locale = 'de',
+  }) async {
+    if (!_initialized) return;
+    final androidDetails = AndroidNotificationDetails(
+      NotificationChannels.downloads,
+      _getChannelName(locale, NotificationChannels.downloads),
+      channelDescription: _getChannelDesc(
+        locale,
+        NotificationChannels.downloads,
+      ),
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      onlyAlertOnce: true,
+      showProgress: true,
+      maxProgress: maxProgress,
+      progress: progress,
+      subText: subText,
+      category: AndroidNotificationCategory.progress,
+    );
+
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: NotificationChannels.downloads,
+        ),
+      ),
+    );
+  }
+
+  /// Shows a notification indicating a model download has finished.
+  Future<void> showDownloadCompleteNotification({
+    required int id,
+    required String title,
+    required String body,
+    String locale = 'de',
+  }) async {
+    if (!_initialized) return;
+    await cancelNotification(id);
+    final androidDetails = AndroidNotificationDetails(
+      NotificationChannels.downloads,
+      _getChannelName(locale, NotificationChannels.downloads),
+      channelDescription: _getChannelDesc(
+        locale,
+        NotificationChannels.downloads,
+      ),
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      autoCancel: true,
+      category: AndroidNotificationCategory.status,
+    );
+
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: NotificationChannels.downloads,
+        ),
+      ),
+    );
+  }
+
   /// Cancels a specific notification by ID.
   Future<void> cancelNotification(int id) async {
-    await _plugin.cancel(id: id);
+    if (_initialized) {
+      try {
+        await _plugin.cancel(id: id);
+      } catch (_) {}
+    }
     if (id == NotificationIds.currentLesson) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_progressiveSignatureKey);
@@ -496,6 +580,9 @@ class NotificationService {
     if (channelId == NotificationChannels.importantChanges) {
       return l.notificationChannelImportantChangesName;
     }
+    if (channelId == NotificationChannels.downloads) {
+      return l.settingsAiDownloadChannel;
+    }
     return l.notificationChannelUpdatesName;
   }
 
@@ -509,6 +596,9 @@ class NotificationService {
     }
     if (channelId == NotificationChannels.importantChanges) {
       return l.notificationChannelImportantChangesDesc;
+    }
+    if (channelId == NotificationChannels.downloads) {
+      return l.settingsAiDownloadChannelDesc;
     }
     return l.notificationChannelUpdatesDesc;
   }

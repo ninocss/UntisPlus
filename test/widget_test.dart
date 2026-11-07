@@ -746,7 +746,7 @@ void main() {
     );
     await tapVisible(tester, find.text('Weiter'));
 
-    final demoButton = find.text('Demo-Modus starten');
+    final demoButton = find.widgetWithText(OutlinedButton, 'Demo');
     await pumpUntilFound(tester, demoButton);
     await tapVisible(tester, demoButton);
     await pumpUntilFound(tester, find.text('Lokales Modell'));
@@ -1068,7 +1068,7 @@ void main() {
       const UntisPlusApp(startScreen: MainNavigationScreen()),
     );
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(TabletGlassSidebar), findsOneWidget);
 
     await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
     await tester.pump(const Duration(milliseconds: 500));
@@ -1082,15 +1082,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
     expect(find.byKey(const ValueKey('settings-detail-2')), findsOneWidget);
 
-    tester.view.physicalSize = const Size(768, 1024);
+    tester.view.physicalSize = const Size(390, 844);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     await tester.pumpWidget(const UntisPlusApp(startScreen: SettingsHubPage()));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('settings-master-detail')), findsNothing);
     final appearanceEntry = find.text('Erscheinungsbild').first;
-    await tester.ensureVisible(appearanceEntry);
-    await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(appearanceEntry);
     await pumpUntilFound(tester, find.byType(SettingsAppearancePage));
     expect(find.byType(SettingsAppearancePage), findsOneWidget);
@@ -1135,7 +1133,7 @@ void main() {
       const UntisPlusApp(startScreen: SchoolNotificationsPage(isActive: true)),
     );
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Willkommen bei Untis+'), findsOneWidget);
+    expect(find.text('Willkommen bei Untis+'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

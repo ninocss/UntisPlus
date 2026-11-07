@@ -427,8 +427,6 @@ class _HomeworkView extends StatefulWidget {
 }
 
 class _HomeworkViewState extends State<_HomeworkView> {
-  int _filterIndex = 0; // 0 = Alle, 1 = Offen, 2 = Bald, 3 = Erledigt
-
   @override
   void initState() {
     super.initState();
@@ -506,16 +504,6 @@ class _HomeworkViewState extends State<_HomeworkView> {
             final doneItems = allItems
                 .where((e) => e['isDone'] == true)
                 .toList();
-            final dueSoonItems = openItems.where((entry) {
-              final dueDate = int.tryParse(entry['dueDate'].toString()) ?? 0;
-              return isHomeworkDueSoon(dueDate);
-            }).toList();
-
-            final filtered = _filterIndex == 1
-                ? openItems
-                : _filterIndex == 2
-                ? dueSoonItems
-                : (_filterIndex == 3 ? doneItems : allItems);
 
             return ExpressiveRefreshIndicator(
               onRefresh: () async {
@@ -549,119 +537,90 @@ class _HomeworkViewState extends State<_HomeworkView> {
                 lessonNotesNotifier.value = res['lessonNotes']!;
               },
               child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  MediaQuery.paddingOf(context).top + 16,
-                  16,
-                  132,
-                ),
+                padding: UntisLayout.pagePadding(
+                  context,
+                  bottom: 132,
+                ).copyWith(top: MediaQuery.paddingOf(context).top + 16),
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
                 children: [
-                  _buildHomeworkSummaryCard(
-                    context,
-                    cs,
-                    openCount: openItems.length,
-                    dueSoonCount: dueSoonItems.length,
-                  ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      children: [
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterAll} (${allItems.length})',
-                          Icons.clear_all_rounded,
-                          0,
-                        ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterOpen} (${openItems.length})',
-                          Icons.radio_button_unchecked_rounded,
-                          1,
-                        ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkDueSoonFilter} (${dueSoonItems.length})',
-                          Icons.upcoming_rounded,
-                          2,
-                        ),
-                        const SizedBox(width: 8),
-                        _filterChip(
-                          context,
-                          cs,
-                          '${l.homeworkFilterDone} (${doneItems.length})',
-                          Icons.check_circle_rounded,
-                          3,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (filtered.isEmpty) ...[
-                    const SizedBox(height: 60),
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: cs.primary.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.assignment_turned_in_rounded,
-                              size: 56,
-                              color: cs.primary.withValues(alpha: 0.6),
-                            ),
+                  if (allItems.isEmpty) ...[
+                    _buildUnifiedEmptyState(
+                      context: context,
+                      icon: Icons.assignment_turned_in_rounded,
+                      title: l.homeworkNone,
+                      hint: l.homeworkNoneHint,
+                      action: TextButton.icon(
+                        onPressed: () => _showAddHomeworkDialog(context),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: Text(
+                          l.homeworkAddTitle,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l.homeworkNone,
-                            style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l.homeworkNoneHint,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ] else ...[
-                    ...filtered.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final hw = entry.value;
-                      return _springEntry(
-                        key: ValueKey('hw_${hw['id']}_$idx'),
-                        duration: Duration(
-                          milliseconds: (380 + idx * 40)
-                              .clamp(380, 580)
-                              .toInt(),
-                        ),
-                        offsetY: 24,
-                        startScale: 0.94,
-                        curve: _kSmoothBounce,
-                        child: _buildHomeworkCard(context, cs, l, hw),
-                      );
-                    }),
+                    if (openItems.isNotEmpty) ...[
+                      _sectionHeader(
+                        context,
+                        l.homeworkFilterOpen,
+                        Icons.radio_button_unchecked_rounded,
+                        count: openItems.length,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        openItems.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final hw = entry.value;
+                          return _springEntry(
+                            key: ValueKey('hw_open_${hw['id']}_$idx'),
+                            duration: Duration(
+                              milliseconds: (380 + idx * 40)
+                                  .clamp(380, 580)
+                                  .toInt(),
+                            ),
+                            offsetY: 24,
+                            startScale: 0.94,
+                            curve: _kSmoothBounce,
+                            child: _buildHomeworkCard(context, cs, l, hw),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    if (doneItems.isNotEmpty) ...[
+                      _sectionHeader(
+                        context,
+                        l.homeworkFilterDone,
+                        Icons.check_circle_rounded,
+                        count: doneItems.length,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        doneItems.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final hw = entry.value;
+                          return _springEntry(
+                            key: ValueKey('hw_done_${hw['id']}_$idx'),
+                            duration: Duration(
+                              milliseconds: (380 + idx * 40)
+                                  .clamp(380, 580)
+                                  .toInt(),
+                            ),
+                            offsetY: 24,
+                            startScale: 0.94,
+                            curve: _kSmoothBounce,
+                            child: _buildHomeworkCard(context, cs, l, hw),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -669,100 +628,6 @@ class _HomeworkViewState extends State<_HomeworkView> {
           },
         );
       },
-    );
-  }
-
-  Widget _filterChip(
-    BuildContext context,
-    ColorScheme cs,
-    String label,
-    IconData icon,
-    int index,
-  ) {
-    final selected = _filterIndex == index;
-    return _glassContainer(
-      context: context,
-      borderRadius: BorderRadius.circular(14),
-      color: selected
-          ? cs.primary
-          : cs.surfaceContainerHighest.withValues(alpha: 0.4),
-      border: Border.all(
-        color: selected ? cs.primary : cs.outlineVariant.withValues(alpha: 0.3),
-        width: 1,
-      ),
-      child: InkWell(
-        onTap: () {
-          AppHaptics.selection();
-          setState(() => _filterIndex = index);
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.outfit(
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                  fontSize: 13,
-                  color: selected ? cs.onPrimary : cs.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHomeworkSummaryCard(
-    BuildContext context,
-    ColorScheme cs, {
-    required int openCount,
-    required int dueSoonCount,
-  }) {
-    final l = appL10nFor(appLocaleNotifier.value);
-    final title = l.homeworkOpenCount(openCount);
-    final detail = dueSoonCount == 0
-        ? l.homeworkNothingDueSoon
-        : l.homeworkDueSoonCount(dueSoonCount);
-
-    return FeatureSummaryCard(
-      icon: Icons.assignment_turned_in_rounded,
-      title: Text(
-        title,
-        style: GoogleFonts.outfit(
-          fontSize: 17,
-          fontWeight: FontWeight.w900,
-          color: cs.onSurface,
-          letterSpacing: -0.3,
-        ),
-      ),
-      secondary: Row(
-        children: [
-          Icon(Icons.upcoming_rounded, size: 13, color: cs.primary),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              detail,
-              style: GoogleFonts.outfit(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurfaceVariant,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -925,28 +790,36 @@ class _HomeworkViewState extends State<_HomeworkView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (_customSubjectIcon(subject) != null)
-                              Icon(
-                                _customSubjectIcon(subject),
-                                size: 16,
-                                color: accent,
+                            Expanded(
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (_customSubjectIcon(subject) != null)
+                                    Icon(
+                                      _customSubjectIcon(subject),
+                                      size: 16,
+                                      color: accent,
+                                    ),
+                                  _chip(
+                                    _displaySubject(subject),
+                                    accent.withValues(alpha: 0.2),
+                                    accent,
+                                  ),
+                                  if (isCustom)
+                                    _chip(
+                                      l.examsOwn,
+                                      cs.tertiaryContainer,
+                                      cs.tertiary,
+                                    ),
+                                ],
                               ),
-                            _chip(
-                              _displaySubject(subject),
-                              accent.withValues(alpha: 0.2),
-                              accent,
                             ),
-                            if (isCustom) ...[
-                              const SizedBox(width: 6),
-                              _chip(
-                                l.examsOwn,
-                                cs.tertiaryContainer,
-                                cs.tertiary,
-                              ),
-                            ],
-                            const Spacer(),
-                            if (dueDateRaw.isNotEmpty)
+                            if (dueDateRaw.isNotEmpty) ...[
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 9,
@@ -986,6 +859,7 @@ class _HomeworkViewState extends State<_HomeworkView> {
                                   ],
                                 ),
                               ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -1137,6 +1011,50 @@ Future<void> _showAddExamDialog(
                   prefixIcon: Icons.label_important_rounded,
                   hintText: l.examsTypeLabel,
                 ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  for (final t in const [
+                    'Klausur',
+                    'Schulaufgabe',
+                    'Test',
+                    'Vokabeltest',
+                    'HÜ',
+                    'Mündlich',
+                  ])
+                    FilterChip(
+                      selected: typeCtrl.text == t,
+                      onSelected: (selected) => setDlg(() {
+                        typeCtrl.text = selected ? t : '';
+                      }),
+                      showCheckmark: false,
+                      shape: const StadiumBorder(),
+                      backgroundColor:
+                          cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                      selectedColor: cs.primaryContainer,
+                      side: BorderSide(
+                        color: typeCtrl.text == t
+                            ? cs.primary.withValues(alpha: 0.4)
+                            : cs.outlineVariant.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                      label: Text(
+                        t,
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          fontWeight: typeCtrl.text == t
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: typeCtrl.text == t
+                              ? cs.onPrimaryContainer
+                              : cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 24),
               _sheetSectionLabel(ctx, l.gradesDateLabel),

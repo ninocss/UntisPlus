@@ -237,6 +237,9 @@ extension AppL10nCollections on AppL10n {
     '[exams_json]': aiVar_exams_json,
     '[current_lesson]': aiVar_current_lesson,
     '[next_lesson]': aiVar_next_lesson,
+    '[homework]': aiVar_homework,
+    '[grades_summary]': aiVar_grades_summary,
+    '[next_free_day]': aiVar_next_free_day,
   };
 
   /// Copy transported to native alarm processes that can run while Flutter is
@@ -290,6 +293,11 @@ extension AppL10nCollections on AppL10n {
   String get settingsAiCompatibilityGemini =>
       _t('settingsAiCompatibilityGemini');
   String get settingsAiProviderLocal => _t('settingsAiProviderLocal');
+  String get settingsAiProviderGeminiDesc => _t('settingsAiProviderGeminiDesc');
+  String get settingsAiProviderOpenAiDesc => _t('settingsAiProviderOpenAiDesc');
+  String get settingsAiProviderMistralDesc => _t('settingsAiProviderMistralDesc');
+  String get settingsAiProviderCustomDesc => _t('settingsAiProviderCustomDesc');
+  String get settingsAiProviderLocalDesc => _t('settingsAiProviderLocalDesc');
   String get settingsAiLocalModel => _t('settingsAiLocalModel');
   String get settingsAiLocalModelDesc => _t('settingsAiLocalModelDesc');
   String get settingsAiLocalModelDownload => _t('settingsAiLocalModelDownload');
@@ -306,6 +314,12 @@ extension AppL10nCollections on AppL10n {
       _t('settingsAiLocalModelSize').replaceAll('{size}', size.toString());
   String get settingsAiLocalModelDeleteConfirm =>
       _t('settingsAiLocalModelDeleteConfirm');
+  String settingsAiDownloadRemaining(String time) =>
+      _t('settingsAiDownloadRemaining').replaceAll('{time}', time);
+  String get settingsAiDownloadComplete => _t('settingsAiDownloadComplete');
+  String get settingsAiDownloadChannel => _t('settingsAiDownloadChannel');
+  String get settingsAiDownloadChannelDesc =>
+      _t('settingsAiDownloadChannelDesc');
   String get settingsApiKey => _t('settingsApiKey');
   String get settingsApiKeyNotSet => _t('settingsApiKeyNotSet');
   String get settingsApiKeyDialogTitle => _t('settingsApiKeyDialogTitle');
@@ -375,6 +389,10 @@ extension AppL10nCollections on AppL10n {
   String get settingsLessonCleanDesign => _t('settingsLessonCleanDesign');
   String get settingsLessonCleanDesignDesc =>
       _t('settingsLessonCleanDesignDesc');
+  String get settingsLessonExpressiveDesign =>
+      _t('settingsLessonExpressiveDesign');
+  String get settingsLessonExpressiveDesignDesc =>
+      _t('settingsLessonExpressiveDesignDesc');
   String get settingsLessonBlur => _t('settingsLessonBlur');
   String get settingsLessonBlurDesc => _t('settingsLessonBlurDesc');
   String get settingsLessonBlurAmount => _t('settingsLessonBlurAmount');
@@ -751,6 +769,19 @@ extension AppL10nCollections on AppL10n {
       _t('aiNoiseLevel').replaceAll('{pct}', '${pct.round()}');
   String get aiGradientType => _t('aiGradientType');
 
+  // ── M3 Onboarding Expressive Strings ──────────────────────────────────────
+  String get loginDemoShort => _t('loginDemoShort');
+  String get loginManualShort => _t('loginManualShort');
+  String get onboardingAiGeminiDesc => _t('onboardingAiGeminiDesc');
+  String get onboardingAiLocalDesc => _t('onboardingAiLocalDesc');
+  String get onboardingAiOpenAiDesc => _t('onboardingAiOpenAiDesc');
+  String get onboardingAiCustomDesc => _t('onboardingAiCustomDesc');
+  String get onboardingAiBadgeRecommended => _t('onboardingAiBadgeRecommended');
+  String get onboardingAiBadgePrivate => _t('onboardingAiBadgePrivate');
+  String get onboardingContinueWithoutAi => _t('onboardingContinueWithoutAi');
+  String get onboardingSelectModel => _t('onboardingSelectModel');
+  String get onboardingGeminiGetApiKeyLink => _t('onboardingGeminiGetApiKeyLink');
+
   String _t(String key) =>
       (_strings[locale]?[key] ?? _strings['de']?[key] ?? key).toString();
 
@@ -853,12 +884,23 @@ extension AppL10nCollections on AppL10n {
           'Bitte gib einen Schlüssel ein oder überspringe diesen Schritt',
       'onboardingReadyTitle': 'Bereit zum Start!',
       'onboardingReadySubtitle': 'Das kannst du alles in Untis+ machen',
+      'loginDemoShort': 'Demo',
+      'loginManualShort': 'Manuell',
+      'onboardingAiGeminiDesc': 'Schnell, präzise & kostenloser API-Schlüssel',
+      'onboardingAiLocalDesc': '100% offline & auf deinem Gerät ausgeführt',
+      'onboardingAiOpenAiDesc': 'GPT-4o, GPT-4o mini mit eigenem API-Key',
+      'onboardingAiCustomDesc': 'Ollama, vLLM oder kompatible Proxies',
+      'onboardingAiBadgeRecommended': 'Empfohlen',
+      'onboardingAiBadgePrivate': 'Privat',
+      'onboardingContinueWithoutAi': 'Ohne KI fortfahren',
+      'onboardingSelectModel': 'Modell auswählen',
+      'onboardingGeminiGetApiKeyLink': 'API-Key kostenlos bei Google AI Studio holen',
       'onboardingFeatureTimetableTitle': 'Stundenplan & Kalender',
       'onboardingFeatureTimetableDesc':
           'Behalte deinen Stundenplan perfekt im Blick.',
       'onboardingFeatureExamsTitle': 'Prüfungen & Hausaufgaben',
       'onboardingFeatureExamsDesc':
-          'Verfolge deinen Lernstand, importiere Klausuren und exportiere sie als JSON.',
+          'Verfolge deinen Lernstand, behalte Hausaufgaben und Klausuren im Blick.',
       'onboardingFeatureAiTitle': 'KI-Assistent',
       'onboardingFeatureAiDesc':
           'Frag Gemini nach deinem Tag, Hausaufgaben oder Prüfungen.',
@@ -1142,14 +1184,14 @@ extension AppL10nCollections on AppL10n {
       'settingsAiProviderMistral': 'Mistral AI',
       'settingsAiProviderCustom': 'Custom Anbieter',
       'settingsAiProviderLocal': 'Lokal (On-Device)',
+      'settingsAiProviderGeminiDesc': 'Kostenlos mit Google API-Schlüssel',
+      'settingsAiProviderOpenAiDesc': 'Offizieller OpenAI API-Schlüssel (GPT-4o)',
+      'settingsAiProviderMistralDesc': 'Mistral AI Modelle & Endpunkte',
+      'settingsAiProviderCustomDesc': 'Eigener Server, Ollama oder vLLM',
+      'settingsAiProviderLocalDesc': '100% offline, privat & kostenlos',
       'settingsAiModel': 'Modell',
       'settingsAiParametersTitle': 'Parameter',
       'settingsAiParametersDesc': 'Temperatur, Token-Limit & Top P',
-      'settingsAiAdjustmentTitle': 'Anpassung',
-      'settingsAiPersonaTitle': 'Persönlichkeit',
-      'settingsAiPersonaHelpful': 'Hilfreicher Assistent',
-      'settingsAiPersonaStrict': 'Strenger Lehrer',
-      'settingsAiPersonaBuddy': 'Schul-Buddy',
       'settingsAiDataTitle': 'Daten',
       'settingsAiApiKey': 'API-Schlüssel',
       'settingsAiApiKeyNotSet': 'Nicht konfiguriert — Tippen zum Einrichten',
@@ -1180,6 +1222,11 @@ extension AppL10nCollections on AppL10n {
           'Lokales Modell konnte nicht geladen werden. Bitte lade es erneut herunter.',
       'settingsAiLocalModelSize': 'Größe: {size} GB',
       'settingsAiLocalModelDeleteConfirm': 'Modell wirklich löschen?',
+      'settingsAiDownloadRemaining': 'Noch ca. {time}',
+      'settingsAiDownloadComplete': 'Download abgeschlossen',
+      'settingsAiDownloadChannel': 'Modell-Downloads',
+      'settingsAiDownloadChannelDesc':
+          'Benachrichtigungen über den Download von lokalen KI-Modellen',
       'aiVar_today': 'Heutiges Datum in lokaler Schreibweise',
       'aiVar_today_iso': 'Heutiges Datum im Format YYYY-MM-DD',
       'aiVar_locale': 'Aktive App-Sprache (z.B. de, en)',
@@ -1271,6 +1318,9 @@ extension AppL10nCollections on AppL10n {
       'settingsLessonCleanDesign': 'Modernes Clean-Design',
       'settingsLessonCleanDesignDesc':
           'Elegantes Layout mit dezentem Fach-Wasserzeichen und aufgeräumter Info-Zeile',
+      'settingsLessonExpressiveDesign': 'Expressives Figma-Design',
+      'settingsLessonExpressiveDesignDesc':
+          'Aktiviert das Design mit dynamischen Kartenformen, Timeline und animierter Wellen-Zeitanzeige aus der Figma-Preview',
       'settingsLessonBlur': 'Milchglas-Unschärfe (Blur)',
       'settingsLessonBlurDesc':
           'Hintergrund hinter den Stundenkarten weichzeichnen.',
@@ -2081,11 +2131,22 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingGeminiEnterKeyOrSkip': 'Please enter a key or skip this step',
       'onboardingReadyTitle': 'Ready to go!',
       'onboardingReadySubtitle': 'Here is what you can do in Untis+',
+      'loginDemoShort': 'Demo',
+      'loginManualShort': 'Manual',
+      'onboardingAiGeminiDesc': 'Fast, precise & free API key',
+      'onboardingAiLocalDesc': '100% offline & runs directly on your device',
+      'onboardingAiOpenAiDesc': 'GPT-4o, GPT-4o mini with your own API key',
+      'onboardingAiCustomDesc': 'Ollama, vLLM or compatible proxies',
+      'onboardingAiBadgeRecommended': 'Recommended',
+      'onboardingAiBadgePrivate': 'Private',
+      'onboardingContinueWithoutAi': 'Continue without AI',
+      'onboardingSelectModel': 'Select model',
+      'onboardingGeminiGetApiKeyLink': 'Get free API key at Google AI Studio',
       'onboardingFeatureTimetableTitle': 'Timetable & Calendar',
       'onboardingFeatureTimetableDesc': 'View your schedule flawlessly.',
       'onboardingFeatureExamsTitle': 'Exams & Homework',
       'onboardingFeatureExamsDesc':
-          'Track progress, import exams, and export them as JSON.',
+          'Track your progress and stay on top of homework and upcoming exams.',
       'onboardingFeatureAiTitle': 'AI Assistant',
       'onboardingFeatureAiDesc':
           'Ask Gemini about your day, homework or exams.',
@@ -2348,14 +2409,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderMistral': 'Mistral AI',
       'settingsAiProviderCustom': 'Custom Provider',
       'settingsAiProviderLocal': 'Local (On-Device)',
+      'settingsAiProviderGeminiDesc': 'Free with Google API key',
+      'settingsAiProviderOpenAiDesc': 'Official OpenAI API key (GPT-4o)',
+      'settingsAiProviderMistralDesc': 'Mistral AI models & endpoints',
+      'settingsAiProviderCustomDesc': 'Self-hosted server, Ollama, or vLLM',
+      'settingsAiProviderLocalDesc': '100% offline, private & free',
       'settingsAiModel': 'Model',
       'settingsAiParametersTitle': 'Parameters',
       'settingsAiParametersDesc': 'Temperature, Token Limit & Top P',
-      'settingsAiAdjustmentTitle': 'Adjustment',
-      'settingsAiPersonaTitle': 'Persona',
-      'settingsAiPersonaHelpful': 'Helpful Assistant',
-      'settingsAiPersonaStrict': 'Strict Teacher',
-      'settingsAiPersonaBuddy': 'School Buddy',
       'settingsAiDataTitle': 'Data',
       'settingsAiApiKey': 'API Key',
       'settingsAiApiKeyNotSet': 'Not configured - tap to set up',
@@ -2386,6 +2447,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Local model could not be loaded. Please download it again.',
       'settingsAiLocalModelSize': 'Size: {size} GB',
       'settingsAiLocalModelDeleteConfirm': 'Delete this model?',
+      'settingsAiDownloadRemaining': 'About {time} remaining',
+      'settingsAiDownloadComplete': 'Download completed',
+      'settingsAiDownloadChannel': 'Model Downloads',
+      'settingsAiDownloadChannelDesc':
+          'Notifications for local AI model downloads',
       'aiVar_today': 'Today\'s date in local format',
       'aiVar_today_iso': 'Today\'s date in YYYY-MM-DD format',
       'aiVar_locale': 'Active app language (e.g. de, en)',
@@ -2479,6 +2545,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonCleanDesign': 'Modern Clean Design',
       'settingsLessonCleanDesignDesc':
           'Sleek layout with subtle subject watermark and streamlined info line',
+      'settingsLessonExpressiveDesign': 'Expressive Figma Design',
+      'settingsLessonExpressiveDesignDesc':
+          'Enables the design with dynamic card shapes, timeline, and animated wave time indicator from the Figma preview',
       'settingsLessonBlur': 'Frosted Glass Blur',
       'settingsLessonBlurDesc':
           'Blur the wallpaper background behind lesson cards.',
@@ -3294,11 +3363,22 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingGeminiEnterKeyOrSkip': 'Saisis une clé ou passe cette étape',
       'onboardingReadyTitle': 'Prêt à commencer !',
       'onboardingReadySubtitle': 'Voici ce que tu peux faire dans Untis+',
+      'loginDemoShort': 'Démo',
+      'loginManualShort': 'Manuel',
+      'onboardingAiGeminiDesc': 'Rapide, précis et clé API gratuite',
+      'onboardingAiLocalDesc': '100% hors ligne et exécuté sur ton appareil',
+      'onboardingAiOpenAiDesc': 'GPT-4o, GPT-4o mini avec ta propre clé API',
+      'onboardingAiCustomDesc': 'Ollama, vLLM ou proxys compatibles',
+      'onboardingAiBadgeRecommended': 'Recommandé',
+      'onboardingAiBadgePrivate': 'Privé',
+      'onboardingContinueWithoutAi': 'Continuer sans IA',
+      'onboardingSelectModel': 'Sélectionner un modèle',
+      'onboardingGeminiGetApiKeyLink': 'Obtenir une clé API gratuite sur Google AI Studio',
       'onboardingFeatureTimetableTitle': 'Emploi du temps & Calendrier',
       'onboardingFeatureTimetableDesc': 'Consulte ton planning sans effort.',
       'onboardingFeatureExamsTitle': 'Examens & Devoirs',
       'onboardingFeatureExamsDesc':
-          'Suis ta progression, importe des examens et exporte-les en JSON.',
+          'Suis ta progression et reste à jour sur tes devoirs et examens.',
       'onboardingFeatureAiTitle': 'Assistant IA',
       'onboardingFeatureAiDesc':
           'Demande à Gemini des infos sur ta journée, tes devoirs ou tes examens.',
@@ -3553,14 +3633,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderMistral': 'Mistral AI',
       'settingsAiProviderCustom': 'Fournisseur personnalisé',
       'settingsAiProviderLocal': 'Local (On-Device)',
+      'settingsAiProviderGeminiDesc': 'Gratuit avec une clé API Google',
+      'settingsAiProviderOpenAiDesc': 'Clé API OpenAI officielle (GPT-4o)',
+      'settingsAiProviderMistralDesc': 'Modèles et points de terminaison Mistral AI',
+      'settingsAiProviderCustomDesc': 'Serveur personnel, Ollama ou vLLM',
+      'settingsAiProviderLocalDesc': '100% hors ligne, privé et gratuit',
       'settingsAiModel': 'Modèle',
       'settingsAiParametersTitle': 'Paramètres',
       'settingsAiParametersDesc': 'Température, limite de jetons & Top P',
-      'settingsAiAdjustmentTitle': 'Ajustement',
-      'settingsAiPersonaTitle': 'Personnalité',
-      'settingsAiPersonaHelpful': 'Assistant utile',
-      'settingsAiPersonaStrict': 'Professeur strict',
-      'settingsAiPersonaBuddy': 'Copain d\'école',
       'settingsAiDataTitle': 'Données',
       'settingsAiApiKey': 'Clé API',
       'settingsAiApiKeyNotSet': 'Non configuré — appuyer pour configurer',
@@ -3591,6 +3671,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'Le modèle local n\'a pas pu être chargé. Télécharge-le à nouveau.',
       'settingsAiLocalModelSize': 'Taille : {size} Go',
       'settingsAiLocalModelDeleteConfirm': 'Supprimer ce modèle ?',
+      'settingsAiDownloadRemaining': 'Environ {time} restant',
+      'settingsAiDownloadComplete': 'Téléchargement terminé',
+      'settingsAiDownloadChannel': 'Téléchargements de modèles',
+      'settingsAiDownloadChannelDesc':
+          'Notifications pour le téléchargement de modèles IA locaux',
       'aiVar_today': 'Date d\'aujourd\'hui en format local',
       'aiVar_today_iso': 'Date d\'aujourd\'hui au format YYYY-MM-DD',
       'aiVar_locale': 'Langue active de l\'app (ex. de, en)',
@@ -3710,6 +3795,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonCleanDesign': 'Design épuré moderne',
       'settingsLessonCleanDesignDesc':
           'Mise en page élégante avec filigrane discret de la matière et ligne d\'info épurée',
+      'settingsLessonExpressiveDesign': 'Design expressif Figma',
+      'settingsLessonExpressiveDesignDesc':
+          'Active le design avec formes de cartes dynamiques, chronologie et indicateur temporel animé de la prévisualisation Figma',
       'settingsLessonBlur': 'Flou de verre (Blur)',
       'settingsLessonBlurDesc': 'Flouter l\'arrière-plan derrière les cartes.',
       'settingsLessonBlurAmount': 'Force du flou',
@@ -4526,6 +4614,17 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'onboardingGeminiEnterKeyOrSkip': 'Introduce una clave o salta este paso',
       'onboardingReadyTitle': 'Listo para empezar',
       'onboardingReadySubtitle': 'Esto es lo que puedes hacer en Untis+',
+      'loginDemoShort': 'Demo',
+      'loginManualShort': 'Manual',
+      'onboardingAiGeminiDesc': 'Rápido, preciso y clave API gratuita',
+      'onboardingAiLocalDesc': '100% sin conexión y ejecutado en tu dispositivo',
+      'onboardingAiOpenAiDesc': 'GPT-4o, GPT-4o mini con tu propia clave API',
+      'onboardingAiCustomDesc': 'Ollama, vLLM o proxies compatibles',
+      'onboardingAiBadgeRecommended': 'Recomendado',
+      'onboardingAiBadgePrivate': 'Privado',
+      'onboardingContinueWithoutAi': 'Continuar sin IA',
+      'onboardingSelectModel': 'Seleccionar modelo',
+      'onboardingGeminiGetApiKeyLink': 'Obtener clave API gratuita en Google AI Studio',
       'onboardingFeatureTimetableTitle': 'Horario y Calendario',
       'onboardingFeatureTimetableDesc':
           'Consulta tu horario sin complicaciones.',
@@ -4786,14 +4885,14 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsAiProviderMistral': 'Mistral AI',
       'settingsAiProviderCustom': 'Proveedor personalizado',
       'settingsAiProviderLocal': 'Local (On-Device)',
+      'settingsAiProviderGeminiDesc': 'Gratis con clave de API de Google',
+      'settingsAiProviderOpenAiDesc': 'Clave oficial de API de OpenAI (GPT-4o)',
+      'settingsAiProviderMistralDesc': 'Modelos y puntos de enlace de Mistral AI',
+      'settingsAiProviderCustomDesc': 'Servidor propio, Ollama o vLLM',
+      'settingsAiProviderLocalDesc': '100% sin conexión, privado y gratis',
       'settingsAiModel': 'Modelo',
       'settingsAiParametersTitle': 'Parámetros',
       'settingsAiParametersDesc': 'Temperatura, límite de tokens y Top P',
-      'settingsAiAdjustmentTitle': 'Ajuste',
-      'settingsAiPersonaTitle': 'Personalidad',
-      'settingsAiPersonaHelpful': 'Asistente útil',
-      'settingsAiPersonaStrict': 'Profesor estricto',
-      'settingsAiPersonaBuddy': 'Compañero de escuela',
       'settingsAiDataTitle': 'Datos',
       'settingsAiApiKey': 'Clave API',
       'settingsAiApiKeyNotSet': 'No configurado — toca para configurar',
@@ -4824,6 +4923,11 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
           'No se pudo cargar el modelo local. Descárgalo de nuevo.',
       'settingsAiLocalModelSize': 'Tamaño: {size} GB',
       'settingsAiLocalModelDeleteConfirm': '¿Eliminar este modelo?',
+      'settingsAiDownloadRemaining': 'Aprox. {time} restante',
+      'settingsAiDownloadComplete': 'Descarga completada',
+      'settingsAiDownloadChannel': 'Descargas de modelos',
+      'settingsAiDownloadChannelDesc':
+          'Notificaciones sobre la descarga de modelos de IA locales',
       'aiVar_today': 'Fecha de hoy en formato local',
       'aiVar_today_iso': 'Fecha de hoy en formato YYYY-MM-DD',
       'aiVar_locale': 'Idioma activo de la app (p.ej. de, en)',
@@ -4944,6 +5048,9 @@ Use "useThemeColors": true unless the prompt asks for specific colors.
       'settingsLessonCleanDesign': 'Diseño limpio moderno',
       'settingsLessonCleanDesignDesc':
           'Diseño elegante con marca de agua sutil de la asignatura y línea de info despejada',
+      'settingsLessonExpressiveDesign': 'Diseño expresivo Figma',
+      'settingsLessonExpressiveDesignDesc':
+          'Activa el diseño con formas de tarjetas dinámicas, línea de tiempo e indicador de tiempo animado de la vista previa de Figma',
       'settingsLessonBlur': 'Desenfoque de cristal',
       'settingsLessonBlurDesc':
           'Desenfoca el fondo detrás de las tarjetas de clase.',

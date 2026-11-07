@@ -124,6 +124,9 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
+    final isExpressive = _usesExpressiveComponents(context);
+    final cardRadius = BorderRadius.circular(isExpressive ? 24 : 18);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -162,60 +165,92 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
               150,
             ),
             children: [
-              _glassContainer(
-                context: context,
-                borderRadius: BorderRadius.circular(24),
-                color: cs.surfaceContainerLow.withValues(alpha: 0.62),
+              ThemedSurface(
+                borderRadius: cardRadius,
+                color: cs.surfaceContainerLow.withValues(alpha: 0.65),
                 border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.3),
+                  color: cs.outlineVariant.withValues(
+                    alpha: isExpressive ? 0.20 : 0.30,
+                  ),
+                  width: tokens.borderWidth,
                 ),
+                respectSurfaceCornerPreference: false,
+                showShadow: false,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            isInbox
-                                ? Icons.mail_outline_rounded
-                                : Icons.campaign_rounded,
-                            size: 18,
-                            color: cs.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              item.title,
-                              style: GoogleFonts.outfit(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                height: 1.2,
+                          Container(
+                            width: isExpressive ? 52 : 44,
+                            height: isExpressive ? 52 : 44,
+                            decoration: BoxDecoration(
+                              color: isInbox
+                                  ? cs.secondary.withValues(alpha: 0.16)
+                                  : cs.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(
+                                isExpressive ? 16 : 12,
                               ),
                             ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              isInbox
+                                  ? Icons.mail_rounded
+                                  : Icons.campaign_rounded,
+                              size: isExpressive ? 26 : 22,
+                              color: isInbox ? cs.secondary : cs.primary,
+                            ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          if (item.date != null)
-                            _detailInfoChip(
-                              context,
-                              _notificationDateLabel(item.date),
-                              Icons.schedule_rounded,
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.title,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.2,
+                                    color: cs.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: [
+                                    if (item.date != null)
+                                      _detailInfoChip(
+                                        context,
+                                        _notificationDateLabel(item.date),
+                                        Icons.schedule_rounded,
+                                      ),
+                                    if ((item.author ?? '').isNotEmpty)
+                                      _detailInfoChip(
+                                        context,
+                                        item.author!,
+                                        Icons.person_outline_rounded,
+                                      ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          if ((item.author ?? '').isNotEmpty)
-                            _detailInfoChip(
-                              context,
-                              item.author!,
-                              Icons.person_outline_rounded,
-                            ),
+                          ),
                         ],
                       ),
                       if (item.displayBody.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Divider(
+                          height: 1,
+                          thickness: 0.8,
+                          color: cs.outlineVariant.withValues(
+                            alpha: isExpressive ? 0.18 : 0.25,
+                          ),
+                        ),
                         const SizedBox(height: 18),
                         SelectionArea(
                           child: _InfoHtmlBody(
@@ -225,67 +260,127 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                         ),
                       ],
                       if (item.attachments.isNotEmpty) ...[
-                        const SizedBox(height: 22),
-                        Text(
-                          l.infoAttachments,
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: cs.onSurface,
+                        const SizedBox(height: 24),
+                        Divider(
+                          height: 1,
+                          thickness: 0.8,
+                          color: cs.outlineVariant.withValues(
+                            alpha: isExpressive ? 0.18 : 0.25,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
+                        _sectionHeader(
+                          context,
+                          l.infoAttachments,
+                          Icons.attach_file_rounded,
+                          count: item.attachments.length,
+                        ),
+                        const SizedBox(height: 12),
                         for (final attachment in item.attachments)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: _glassContainer(
-                              context: context,
-                              borderRadius: BorderRadius.circular(14),
+                            child: ThemedSurface(
+                              borderRadius: BorderRadius.circular(
+                                isExpressive ? 16 : 12,
+                              ),
                               color: cs.surfaceContainerHigh.withValues(
-                                alpha: 0.45,
+                                alpha: 0.50,
                               ),
                               border: Border.all(
-                                color: cs.outlineVariant.withValues(alpha: 0.3),
+                                color: cs.outlineVariant.withValues(
+                                  alpha: isExpressive ? 0.20 : 0.30,
+                                ),
+                                width: tokens.borderWidth,
                               ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () =>
-                                    _downloadAttachment(context, attachment),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 12,
+                              respectSurfaceCornerPreference: false,
+                              showShadow: false,
+                              child: Material(
+                                type: MaterialType.transparency,
+                                borderRadius: BorderRadius.circular(
+                                  isExpressive ? 16 : 12,
+                                ),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(
+                                    isExpressive ? 16 : 12,
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        _attachmentIcon(
-                                          attachment.fileExtension,
-                                        ),
-                                        size: 20,
-                                        color: cs.primary,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          attachment.name.isEmpty
-                                              ? 'Attachment'
-                                              : attachment.name,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
+                                  onTap: () =>
+                                      _downloadAttachment(context, attachment),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 38,
+                                          height: 38,
+                                          decoration: BoxDecoration(
+                                            color: cs.primaryContainer
+                                                .withValues(alpha: 0.6),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Icon(
+                                            _attachmentIcon(
+                                              attachment.fileExtension,
+                                            ),
+                                            size: 20,
+                                            color: cs.primary,
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        Icons.download_rounded,
-                                        size: 20,
-                                        color: cs.primary,
-                                      ),
-                                    ],
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                attachment.name.isEmpty
+                                                    ? 'Attachment'
+                                                    : attachment.name,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: cs.onSurface,
+                                                ),
+                                              ),
+                                              if (attachment
+                                                  .fileExtension.isNotEmpty) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  attachment.fileExtension,
+                                                  style: GoogleFonts.outfit(
+                                                    fontSize: 11.5,
+                                                    fontWeight:
+                                                        FontWeight.w600,
+                                                    color: cs.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: cs.primary.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.download_rounded,
+                                            size: 18,
+                                            color: cs.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -293,11 +388,22 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
                           ),
                       ],
                       if (item.url != null) ...[
-                        const SizedBox(height: 12),
-                        TextButton.icon(
+                        const SizedBox(height: 16),
+                        FilledButton.tonalIcon(
                           onPressed: () => _openDetailUrl(context, item.url),
-                          icon: const Icon(Icons.open_in_new_rounded),
-                          label: Text(l.infoOpenLink),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                          label: Text(
+                            l.infoOpenLink,
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -313,27 +419,31 @@ class _SchoolNotificationDetailPage extends StatelessWidget {
 
   Widget _detailInfoChip(BuildContext context, String text, IconData icon) {
     final cs = Theme.of(context).colorScheme;
-    return _glassContainer(
-      context: context,
-      borderRadius: BorderRadius.circular(999),
-      color: cs.surfaceContainerHigh.withValues(alpha: 0.55),
-      border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.25)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: cs.primary),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+    final isExpressive = _usesExpressiveComponents(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(isExpressive ? 12 : 8),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.18),
+          width: 0.8,
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: cs.onSecondaryContainer),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: cs.onSecondaryContainer,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -640,6 +640,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     pendingTimetableActionNotifier.addListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.addListener(_onHiddenSubjectsChanged);
     lessonCleanDesignNotifier.addListener(_onHiddenSubjectsChanged);
+    lessonExpressiveDesignNotifier.addListener(_onHiddenSubjectsChanged);
     glowEffectsEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.addListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.addListener(_onHiddenSubjectsChanged);
@@ -2507,6 +2508,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     pendingTimetableActionNotifier.removeListener(_onPendingTimetableAction);
     lessonCardStyleNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonCleanDesignNotifier.removeListener(_onHiddenSubjectsChanged);
+    lessonExpressiveDesignNotifier.removeListener(_onHiddenSubjectsChanged);
     glowEffectsEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurEnabledNotifier.removeListener(_onHiddenSubjectsChanged);
     lessonBlurAmountNotifier.removeListener(_onHiddenSubjectsChanged);
@@ -2905,6 +2907,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     bool useStripes = true,
     double? availableWidth,
     double? availableHeight,
+    VoidCallback? onTap,
+    VoidCallback? onLongPress,
   }) {
     return TimetableLessonCard(
       isCancelled: isCancelled,
@@ -2930,6 +2934,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       useStripes: useStripes,
       availableWidth: availableWidth,
       availableHeight: availableHeight,
+      onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 
@@ -3079,7 +3085,8 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
       ticks.add(m);
     }
 
-    final timeColWidth = 40 * _gridTextScale;
+    final isExpressive = lessonExpressiveDesignNotifier.value;
+    final timeColWidth = (isExpressive ? 48.0 : 40.0) * _gridTextScale;
     // During a week swipe, render time and date labels from the incoming
     // cached week as well. Reading the active week here made those rails lag
     // behind the cards until the snap animation had already completed.
@@ -3100,6 +3107,43 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     final mergedLessons = _mergeConsecutiveLessons(visibleLessons);
     final lessonSlots = _computeLessonSlots(mergedLessons);
 
+    final expressiveTimeSlots = <({int startMin, int endMin})>[];
+    if (isExpressive) {
+      final seenStarts = <int, int>{};
+      for (final slot in lessonSlots) {
+        final prevEnd = seenStarts[slot.startMin];
+        if (prevEnd == null || slot.endMin > prevEnd) {
+          seenStarts[slot.startMin] = slot.endMin;
+        }
+      }
+      for (final entry in seenStarts.entries) {
+        expressiveTimeSlots.add((startMin: entry.key, endMin: entry.value));
+      }
+      expressiveTimeSlots.sort((a, b) => a.startMin.compareTo(b.startMin));
+    }
+
+    double railTop = 0.0;
+    double railBottom = 0.0;
+    if (isExpressive && expressiveTimeSlots.isNotEmpty) {
+      railTop = math.max(
+        0.0,
+        (expressiveTimeSlots.first.startMin - globalMin) * pixelsPerMinute,
+      );
+      final lastEndMin = lessonSlots
+          .map((s) => s.endMin)
+          .fold(expressiveTimeSlots.last.endMin, math.max);
+      final railEnd = (lastEndMin - globalMin) * pixelsPerMinute;
+      railBottom = math.max(0.0, totalHeight - railEnd);
+      if (showNowLine) {
+        if (nowTop < railTop) {
+          railTop = math.max(0.0, nowTop - 4.0);
+        }
+        if (totalHeight - nowTop < railBottom) {
+          railBottom = math.max(0.0, totalHeight - (nowTop + 4.0));
+        }
+      }
+    }
+
     final csG = Theme.of(context).colorScheme;
     return ExpressiveRefreshIndicator(
       onRefresh: _onRefresh,
@@ -3117,7 +3161,56 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
               width: timeColWidth,
               height: totalHeight,
               child: Stack(
-                children: filteredTimeLabels.isNotEmpty
+                children: (isExpressive && expressiveTimeSlots.isNotEmpty)
+                    ? expressiveTimeSlots.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final slot = entry.value;
+                        final top =
+                            (slot.startMin - globalMin) * pixelsPerMinute;
+                        final nextStart = i + 1 < expressiveTimeSlots.length
+                            ? expressiveTimeSlots[i + 1].startMin
+                            : 99999;
+                        final gapPx =
+                            (nextStart - slot.startMin) * pixelsPerMinute;
+                        final showEndTime = gapPx >= 24.0;
+                        return Positioned(
+                          top: top + 1.0,
+                          left: 0,
+                          right: 0,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _formatMinutes(slot.startMin),
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.15,
+                                  color: csG.onSurfaceVariant,
+                                ),
+                              ),
+                              if (showEndTime) ...[
+                                const SizedBox(height: 1.5),
+                                Text(
+                                  _formatMinutes(slot.endMin),
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.0,
+                                    color: csG.onSurfaceVariant.withValues(
+                                      alpha: 0.65,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      }).toList()
+                    : filteredTimeLabels.isNotEmpty
                     ? filteredTimeLabels.map((value) {
                         final top = (value - globalMin) * pixelsPerMinute - 9;
                         return Positioned(
@@ -3158,7 +3251,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                       }).toList(),
               ),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: isExpressive ? 8.0 : 4.0),
             Expanded(
               child: SizedBox(
                 height: totalHeight,
@@ -3166,18 +3259,32 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                   builder: (context, constraints) {
                     return Stack(
                       children: [
-                        ...ticks.map((tick) {
-                          final top = (tick - globalMin) * pixelsPerMinute;
-                          return Positioned(
-                            top: top,
-                            left: 0,
-                            right: 0,
+                        if (isExpressive)
+                          Positioned(
+                            top: railTop,
+                            bottom: railBottom,
+                            left: 1.0,
+                            width: 2.0,
                             child: Container(
-                              height: 0.45,
-                              color: csG.outlineVariant.withValues(alpha: 0.28),
+                              decoration: BoxDecoration(
+                                color: csG.outlineVariant.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
-                          );
-                        }),
+                          ),
+                        if (!isExpressive)
+                          ...ticks.map((tick) {
+                            final top = (tick - globalMin) * pixelsPerMinute;
+                            return Positioned(
+                              top: top,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                height: 0.45,
+                                color: csG.outlineVariant.withValues(alpha: 0.28),
+                              ),
+                            );
+                          }),
                         ..._getHolidaysForDay(dayDate).map((holiday) {
                           final holidayStartMin = _toMinutes(800);
                           final holidayEndMin = _toMinutes(1800);
@@ -3192,7 +3299,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                   .toString();
                           return Positioned(
                             top: top,
-                            left: 2,
+                            left: isExpressive ? 12.0 : 2.0,
                             right: 2,
                             height: height,
                             child: Material(
@@ -3243,11 +3350,12 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               .clamp(28.0, 9999.0);
                           final dim = isTimetableLessonPast(dayDate: dayDate, endMin: endMin, now: now);
 
-                          const horizontalInset = 2.0;
-                          const columnGap = 4.0;
+                          final leftInset = isExpressive ? 12.0 : 2.0;
+                          const rightInset = 2.0;
+                          final columnGap = isExpressive ? 6.0 : 4.0;
                           final columns = slot.columnCount;
                           final availableWidth =
-                              constraints.maxWidth - (horizontalInset * 2);
+                              constraints.maxWidth - (leftInset + rightInset);
                           final totalGap = (columns - 1) * columnGap;
                           final rawCardWidth =
                               (availableWidth - totalGap) / columns;
@@ -3255,7 +3363,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               ? rawCardWidth
                               : 8.0;
                           final left =
-                              horizontalInset +
+                              leftInset +
                               (slot.column * (cardWidth + columnGap));
 
                           return Positioned(
@@ -3394,6 +3502,15 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       hasHomework: hasHomework,
                                       hasExam: hasExam,
                                       originalTeacher: originalTeacher,
+                                      availableWidth: cardWidth,
+                                      availableHeight: height,
+                                      onTap: () => _showLessonDetail(
+                                        context,
+                                        l,
+                                        originalTeacher: originalTeacher,
+                                      ),
+                                      onLongPress: () =>
+                                          _editLessonTemporarily(l),
                                       padding: const EdgeInsets.fromLTRB(
                                         8,
                                         5,
@@ -3419,32 +3536,40 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                         }),
                         if (showNowLine)
                           Positioned(
-                            top: nowTop - 1,
+                            top: lessonExpressiveDesignNotifier.value
+                                ? nowTop - 6
+                                : nowTop - 1,
                             left: 0,
                             right: 0,
                             child: IgnorePointer(
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 5,
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: csG.error,
-                                      shape: BoxShape.circle,
+                              child: lessonExpressiveDesignNotifier.value
+                                  ? ExpressiveNowWaveIndicator(
+                                      color: csG.primary,
+                                      height: 12,
+                                    )
+                                  : Row(
+                                      children: [
+                                        Container(
+                                          width: 5,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            color: csG.error,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Container(
+                                            height: 2,
+                                            decoration: BoxDecoration(
+                                              color: csG.error,
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Container(
-                                      height: 2,
-                                      decoration: BoxDecoration(
-                                        color: csG.error,
-                                        borderRadius: BorderRadius.circular(2),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
                           ),
                       ],
@@ -3950,6 +4075,10 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                                   hasExam: hasExam,
                                                   originalTeacher:
                                                       originalTeacher,
+                                                  onTap: () =>
+                                                      _onLessonTap(context, l),
+                                                  onLongPress: () =>
+                                                      _editLessonTemporarily(l),
                                                   padding:
                                                       const EdgeInsets.fromLTRB(
                                                         8,
@@ -3981,58 +4110,65 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                                       }),
                                       if (showNowLine && dayIndex == todayIndex)
                                         Positioned(
-                                          top: nowTop - 1.5,
+                                          top: lessonExpressiveDesignNotifier.value
+                                              ? nowTop - 6
+                                              : nowTop - 1.5,
                                           left: 0,
                                           right: 0,
                                           child: IgnorePointer(
-                                            child: Row(
-                                              children: [
-                                                Container(
-                                                  width: 5,
-                                                  height: 5,
-                                                  decoration: BoxDecoration(
-                                                    color: cs.error,
-                                                    shape: BoxShape.circle,
-                                                    boxShadow:
-                                                        _glowShadows(context, [
-                                                          BoxShadow(
-                                                            color: cs.error
-                                                                .withValues(
-                                                                  alpha: 0.35,
+                                            child: lessonExpressiveDesignNotifier.value
+                                                ? ExpressiveNowWaveIndicator(
+                                                    color: cs.primary,
+                                                    height: 12,
+                                                  )
+                                                : Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 5,
+                                                        height: 5,
+                                                        decoration: BoxDecoration(
+                                                          color: cs.error,
+                                                          shape: BoxShape.circle,
+                                                          boxShadow:
+                                                              _glowShadows(context, [
+                                                                BoxShadow(
+                                                                  color: cs.error
+                                                                      .withValues(
+                                                                        alpha: 0.35,
+                                                                      ),
+                                                                  blurRadius: 3,
+                                                                  spreadRadius: 0.5,
                                                                 ),
-                                                            blurRadius: 3,
-                                                            spreadRadius: 0.5,
-                                                          ),
-                                                        ]),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Expanded(
-                                                  child: Container(
-                                                    height: 2,
-                                                    decoration: BoxDecoration(
-                                                      color: cs.error,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            2,
-                                                          ),
-                                                      boxShadow: _glowShadows(
-                                                        context,
-                                                        [
-                                                          BoxShadow(
-                                                            color: cs.error
-                                                                .withValues(
-                                                                  alpha: 0.25,
-                                                                ),
-                                                            blurRadius: 3,
-                                                          ),
-                                                        ],
+                                                              ]),
+                                                        ),
                                                       ),
-                                                    ),
+                                                      const SizedBox(width: 6),
+                                                      Expanded(
+                                                        child: Container(
+                                                          height: 2,
+                                                          decoration: BoxDecoration(
+                                                            color: cs.error,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  2,
+                                                                ),
+                                                            boxShadow: _glowShadows(
+                                                              context,
+                                                              [
+                                                                BoxShadow(
+                                                                  color: cs.error
+                                                                      .withValues(
+                                                                        alpha: 0.25,
+                                                                      ),
+                                                                  blurRadius: 3,
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ),
-                                              ],
-                                            ),
                                           ),
                                         ),
                                     ],
@@ -5715,6 +5851,8 @@ class TimetableLessonCard extends StatelessWidget {
   final bool useStripes;
   final double? availableWidth;
   final double? availableHeight;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const TimetableLessonCard({
     super.key,
@@ -5741,10 +5879,43 @@ class TimetableLessonCard extends StatelessWidget {
     this.useStripes = true,
     this.availableWidth,
     this.availableHeight,
+    this.onTap,
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (lessonExpressiveDesignNotifier.value) {
+      final variant = ExpressiveShapeVariant.fromKey(subject);
+      final tone = ExpressiveTone.resolve(
+        customColor: fgColor,
+        isDark: isDark,
+        isCancelled: isCancelled,
+        subjectKey: subject,
+      );
+      return ExpressiveLessonCard(
+        subject: subject,
+        teacher: teacher,
+        room: room,
+        isCancelled: isCancelled,
+        isNow: isNow,
+        isSubstitution: isSubstitution,
+        hasHomework: hasHomework,
+        hasExam: hasExam,
+        isTeacherMissing: isTeacherMissing,
+        shapeVariant: variant,
+        tone: tone,
+        fgColor: fgColor,
+        bgColor: bgColor,
+        isDark: isDark,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        availableWidth: availableWidth,
+        availableHeight: availableHeight,
+        subjectIcon: subjectIcon,
+      );
+    }
+
     final tokens = untisThemeTokensOf(context);
     final isClean = lessonCleanDesignNotifier.value;
     final effectiveAccentWidthProp = isClean

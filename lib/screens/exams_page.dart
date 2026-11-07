@@ -344,90 +344,69 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                   parent: BouncingScrollPhysics(),
                 ),
                 children: [
-                  _buildExamStatsHeader(cs, l, upcoming),
                   if (_loading) ...[
                     const SizedBox(height: 140),
                     const Center(child: CircularProgressIndicator()),
                   ] else if (exams.isEmpty) ...[
-                    const SizedBox(height: 80),
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.assignment_outlined,
-                            size: 80,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.3),
+                    _buildUnifiedEmptyState(
+                      context: context,
+                      icon: Icons.assignment_outlined,
+                      title: l.examsNone,
+                      hint: l.examsNoneHint,
+                      action: TextButton.icon(
+                        onPressed: _refreshExams,
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: Text(
+                          l.reload,
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            l.examsNone,
-                            style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: cs.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            l.examsNoneHint,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton.icon(
-                            onPressed: _refreshExams,
-                            icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: Text(
-                              l.reload,
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ] else ...[
                     if (upcoming.isNotEmpty) ...[
                       _sectionHeader(
-                        cs,
+                        context,
                         l.examsUpcoming,
                         Icons.upcoming_rounded,
-                        upcoming.length,
+                        count: upcoming.length,
                       ),
                       const SizedBox(height: 8),
-                      ...upcoming.asMap().entries.map(
-                        (e) => _animatedExamCard(
-                          e.key,
-                          context,
-                          cs,
-                          e.value,
-                          true,
-                        ),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        upcoming.asMap().entries.map(
+                          (e) => _animatedExamCard(
+                            e.key,
+                            context,
+                            cs,
+                            e.value,
+                            true,
+                          ),
+                        ).toList(),
                       ),
                       const SizedBox(height: 20),
                     ],
                     if (past.isNotEmpty) ...[
                       _sectionHeader(
-                        cs,
+                        context,
                         l.examsPast,
                         Icons.history_rounded,
-                        past.length,
+                        count: past.length,
                       ),
                       const SizedBox(height: 8),
-                      ...past.asMap().entries.map(
-                        (e) => _animatedExamCard(
-                          e.key,
-                          context,
-                          cs,
-                          e.value,
-                          false,
-                        ),
+                      _buildAdaptiveCardGrid(
+                        context,
+                        past.asMap().entries.map(
+                          (e) => _animatedExamCard(
+                            e.key,
+                            context,
+                            cs,
+                            e.value,
+                            false,
+                          ),
+                        ).toList(),
                       ),
                     ],
                   ],
@@ -442,107 +421,7 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildExamStatsHeader(
-    ColorScheme cs,
-    AppL10n l,
-    List<Map<String, dynamic>> upcoming,
-  ) {
-    final count = upcoming.length;
-    final next = upcoming.isNotEmpty ? upcoming.first : null;
-    final nextSubject = next != null ? _examSubject(next) : null;
-    final nextDateStr = next != null
-        ? _formatExamDate(next['date'] ?? next['examDate'] ?? '')
-        : null;
-    final nextSubText = nextSubject != null && nextDateStr != null
-        ? l.examsUpcomingNext(nextSubject, nextDateStr)
-        : null;
-
-    return FeatureSummaryCard(
-      icon: Icons.assignment_turned_in_rounded,
-      title: Text(
-        l.examsUpcomingCount(count),
-        style: GoogleFonts.outfit(
-          fontSize: 17,
-          fontWeight: FontWeight.w900,
-          color: cs.onSurface,
-          letterSpacing: -0.3,
-        ),
-      ),
-      secondary: nextSubText == null
-          ? null
-          : Row(
-              children: [
-                Icon(Icons.near_me_rounded, size: 13, color: cs.primary),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    nextSubText,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
   final GlobalKey<_GradesTrackerPageState> _gradesTrackerKey = GlobalKey();
-
-  Widget _sectionHeader(
-    ColorScheme cs,
-    String title,
-    IconData icon, [
-    int? count,
-  ]) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: cs.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 16, color: cs.primary),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            title,
-            style: GoogleFonts.outfit(
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-              color: cs.onSurface,
-              letterSpacing: -0.2,
-            ),
-          ),
-          if (count != null) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: cs.primary,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 
   Widget _animatedExamCard(
     int index,
@@ -698,28 +577,32 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: [
-                                  if (type.isNotEmpty)
-                                    _chip(
-                                      type,
-                                      accent.withValues(alpha: 0.2),
-                                      accent,
-                                    ),
-                                  if (isCustom)
-                                    _chip(
-                                      l.examsOwn,
-                                      cs.tertiaryContainer,
-                                      cs.tertiary,
-                                    ),
-                                ],
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    if (type.isNotEmpty)
+                                      _chip(
+                                        type,
+                                        accent.withValues(alpha: 0.2),
+                                        accent,
+                                      ),
+                                    if (isCustom)
+                                      _chip(
+                                        l.examsOwn,
+                                        cs.tertiaryContainer,
+                                        cs.tertiary,
+                                      ),
+                                  ],
+                                ),
                               ),
-                              const Spacer(),
-                              if (showCountdown && daysUntil != null)
+                              if (showCountdown && daysUntil != null) ...[
+                                const SizedBox(width: 8),
                                 _countdownChip(cs, daysUntil),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -849,4 +732,32 @@ class _ExamsPageState extends State<ExamsPage> with TickerProviderStateMixin {
       ),
     );
   }
+}
+
+Widget _buildAdaptiveCardGrid(
+  BuildContext context,
+  List<Widget> cards, {
+  double spacing = 12,
+  double runSpacing = 0,
+}) {
+  if (cards.isEmpty) return const SizedBox.shrink();
+  if (!UntisLayout.isTablet(context)) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: cards,
+    );
+  }
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final itemWidth = (constraints.maxWidth - spacing) / 2;
+      return Wrap(
+        spacing: spacing,
+        runSpacing: runSpacing,
+        children: cards
+            .map((card) => SizedBox(width: itemWidth, child: card))
+            .toList(),
+      );
+    },
+  );
 }

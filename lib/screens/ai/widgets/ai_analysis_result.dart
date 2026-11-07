@@ -1,3 +1,4 @@
+// ignore_for_file: unused_element
 part of '../../../main.dart';
 
 class _AiAnalysisResult extends StatelessWidget {

@@ -85,6 +85,126 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   String? get _error => _showInbox ? _inboxError : _newsError;
   bool _refreshing = false;
   Future<void>? _reloadFuture;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  String _infoLabel(AppL10n l, String key) {
+    const labels = <String, Map<String, String>>{
+      'de': {
+        'search_hint': 'Mitteilungen & Nachrichten durchsuchen…',
+        'search_empty': 'Keine passenden Einträge gefunden',
+        'search_empty_hint': 'Versuche es mit einem anderen Suchbegriff.',
+      },
+      'en': {
+        'search_hint': 'Search notifications & messages…',
+        'search_empty': 'No matching entries found',
+        'search_empty_hint': 'Try searching with another keyword.',
+      },
+      'fr': {
+        'search_hint': 'Rechercher dans les notifications…',
+        'search_empty': 'Aucun résultat trouvé',
+        'search_empty_hint': 'Essayez avec un autre mot-clé.',
+      },
+      'es': {
+        'search_hint': 'Buscar notificaciones…',
+        'search_empty': 'No se encontraron notificaciones',
+        'search_empty_hint': 'Intenta con otro término de búsqueda.',
+      },
+    };
+    return (labels[l.locale] ?? labels['en']!)[key] ?? key;
+  }
+
+  List<_SchoolNotificationItem> _filterItems(
+    List<_SchoolNotificationItem> items,
+  ) {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return items;
+    final terms = query.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+    return items.where((item) {
+      final text =
+          '${item.title} ${item.previewBody} ${item.author ?? ''}'.toLowerCase();
+      return terms.every((term) => text.contains(term));
+    }).toList();
+  }
+
+  Widget _buildSearchBar(BuildContext context, AppL10n l) {
+    final cs = Theme.of(context).colorScheme;
+    final tokens = untisThemeTokensOf(context);
+    final isExpressive = _usesExpressiveComponents(context);
+    final double defaultRadius = isExpressive ? 28.0 : tokens.surfaceRadius;
+    final radius = BorderRadius.circular(
+      _resolvedSurfaceCornerRadius(defaultRadius),
+    );
+
+    return ThemedSurface(
+      borderRadius: radius,
+      color: isExpressive
+          ? cs.surfaceContainerHigh.withValues(alpha: 0.55)
+          : null,
+      border: Border.all(
+        color: tokens.id == AppThemeId.manga
+            ? cs.outline
+            : cs.outlineVariant.withValues(alpha: isExpressive ? 0.20 : 0.32),
+        width: tokens.borderWidth,
+      ),
+      respectSurfaceCornerPreference: false,
+      showShadow: false,
+      child: TextField(
+        key: const ValueKey('info-search-field'),
+        controller: _searchController,
+        onChanged: (value) => setState(() => _searchQuery = value),
+        textAlignVertical: TextAlignVertical.center,
+        style: GoogleFonts.outfit(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: cs.onSurface,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: false,
+          fillColor: Colors.transparent,
+          hintText: _infoLabel(l, 'search_hint'),
+          hintStyle: GoogleFonts.outfit(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.75),
+          ),
+          prefixIcon: Icon(Icons.search_rounded, size: 21, color: cs.primary),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 44,
+            minHeight: 44,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: cs.onSurfaceVariant,
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+        ),
+      ),
+    );
+  }
 
   String _messageForFailure(WebUntisFailure failure) {
     final l = appL10nFor(appLocaleNotifier.value);
@@ -555,62 +675,97 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     _SchoolNotificationItem? selected,
   ) {
     final cs = Theme.of(context).colorScheme;
+    final isExpressive = _usesExpressiveComponents(context);
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
       itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final item = items[index];
         final isSelected = item.id == selected?.id;
+        final isUnread = _showInbox && _unreadMessageIds.contains(item.id);
+        final itemRadius = BorderRadius.circular(isExpressive ? 20 : 16);
         return Material(
           color: isSelected
-              ? cs.primaryContainer.withValues(alpha: 0.72)
+              ? cs.secondaryContainer.withValues(alpha: 0.85)
               : cs.surfaceContainerLow.withValues(alpha: 0.56),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: itemRadius,
           child: InkWell(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: itemRadius,
             onTap: () {
               if (_showInbox) _markMessageOpened(item);
               setState(() => _selectedNotificationId = item.id);
             },
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: isExpressive ? 12 : 10,
+              ),
               child: Row(
                 children: [
-                  Icon(
-                    _showInbox
-                        ? Icons.mail_outline_rounded
-                        : Icons.campaign_rounded,
-                    color: isSelected ? cs.primary : cs.onSurfaceVariant,
-                  ),
-                  if (_showInbox && _unreadMessageIds.contains(item.id)) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 9,
-                      height: 9,
-                      decoration: BoxDecoration(
-                        color: cs.tertiary,
-                        shape: BoxShape.circle,
+                  Container(
+                    width: isExpressive ? 44 : 40,
+                    height: isExpressive ? 44 : 40,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? cs.primary.withValues(alpha: 0.22)
+                          : (_showInbox
+                              ? cs.secondary.withValues(alpha: 0.16)
+                              : cs.primary.withValues(alpha: 0.12)),
+                      borderRadius: BorderRadius.circular(
+                        isExpressive ? 14 : 12,
                       ),
                     ),
-                  ],
-                  const SizedBox(width: 10),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      _showInbox
+                          ? (isUnread
+                              ? Icons.mark_email_unread_rounded
+                              : Icons.mail_rounded)
+                          : Icons.campaign_rounded,
+                      color: isSelected
+                          ? cs.primary
+                          : (_showInbox ? cs.secondary : cs.primary),
+                      size: isExpressive ? 22 : 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          item.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w800,
-                            color: isSelected
-                                ? cs.onPrimaryContainer
-                                : cs.onSurface,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w700,
+                                  fontSize: 15,
+                                  color: isSelected
+                                      ? cs.onSecondaryContainer
+                                      : cs.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (isUnread) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: cs.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        if (item.body.isNotEmpty) ...[
+                        if (item.previewBody.isNotEmpty) ...[
                           const SizedBox(height: 3),
                           Text(
                             item.previewBody,
@@ -618,12 +773,39 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
                               fontSize: 12.5,
-                              color: cs.onSurfaceVariant,
+                              color: isSelected
+                                  ? cs.onSecondaryContainer.withValues(
+                                      alpha: 0.8,
+                                    )
+                                  : cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                        if (item.date != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            _formatDate(item.date),
+                            style: GoogleFonts.outfit(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected
+                                  ? cs.onSecondaryContainer.withValues(
+                                      alpha: 0.75,
+                                    )
+                                  : cs.onSurfaceVariant.withValues(alpha: 0.75),
                             ),
                           ),
                         ],
                       ],
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: isSelected
+                        ? cs.primary
+                        : cs.onSurfaceVariant.withValues(alpha: 0.6),
                   ),
                 ],
               ),
@@ -654,8 +836,14 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   Widget build(BuildContext context) {
     final l = appL10nFor(appLocaleNotifier.value);
     final cs = Theme.of(context).colorScheme;
-    final activeItems = _showInbox ? _inboxItems : _newsItems;
-    final isExpanded = UntisLayout.isExpanded(context);
+    final tokens = untisThemeTokensOf(context);
+    final isExpressive = _usesExpressiveComponents(context);
+    final rawActiveItems = _showInbox ? _inboxItems : _newsItems;
+    final activeItems = _filterItems(rawActiveItems);
+    final isExpanded = UntisLayout.isTablet(context);
+    final masterWidth = (MediaQuery.sizeOf(context).width * 0.34)
+        .clamp(280.0, 360.0)
+        .toDouble();
     final selectedItem = _selectedItem(activeItems);
 
     return Scaffold(
@@ -674,7 +862,9 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              tooltip: l.reload,
+              tooltip: _lastUpdated == null
+                  ? l.reload
+                  : '${l.reload} (${_formatDate(_lastUpdated)})',
               onPressed: _refreshing ? null : _reload,
               icon: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 180),
@@ -708,101 +898,150 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                 top: MediaQuery.paddingOf(context).top + kToolbarHeight + 16,
               ),
               children: [
-                if (_loading && activeItems.isEmpty) ...[
-                  const SizedBox(height: 140),
-                  const Center(child: CircularProgressIndicator()),
-                ] else ...[
-                  _buildInfoSummaryCard(cs, l, activeItems.length),
-                  SegmentedButton<bool>(
-                    showSelectedIcon: false,
-                    segments: [
-                      ButtonSegment<bool>(
-                        value: false,
-                        label: Text(l.start),
-                        icon: const Icon(Icons.campaign_outlined),
-                      ),
-                      ButtonSegment<bool>(
-                        value: true,
-                        label: Text(l.notifications),
-                        icon: Badge(
-                          isLabelVisible: _unreadMessageIds.isNotEmpty,
-                          label: Text('${_unreadMessageIds.length}'),
-                          child: const Icon(Icons.inbox_outlined),
+                _buildSearchBar(context, l),
+                const SizedBox(height: 12),
+                SegmentedButton<bool>(
+                  showSelectedIcon: false,
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.comfortable,
+                    shape: WidgetStateProperty.all(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          isExpressive ? 20 : 16,
                         ),
                       ),
-                    ],
-                    selected: {_showInbox},
-                    onSelectionChanged: (selection) {
-                      final showInbox = selection.first;
-                      if (showInbox == _showInbox) return;
-                      unawaited(AppHaptics.selection());
-                      setState(() {
-                        _showInbox = showInbox;
-                        _selectedNotificationId = _firstNotificationId(
-                          showInbox ? _inboxItems : _newsItems,
-                        );
-                      });
-                    },
+                    ),
+                    side: WidgetStateProperty.resolveWith((states) {
+                      return BorderSide(
+                        color: cs.outlineVariant.withValues(
+                          alpha: isExpressive ? 0.20 : 0.32,
+                        ),
+                        width: tokens.borderWidth,
+                      );
+                    }),
+                    backgroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return cs.secondaryContainer.withValues(alpha: 0.90);
+                      }
+                      return cs.surfaceContainerLow.withValues(alpha: 0.50);
+                    }),
+                    foregroundColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return cs.onSecondaryContainer;
+                      }
+                      return cs.onSurfaceVariant;
+                    }),
+                    textStyle: WidgetStateProperty.all(
+                      GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
+                  segments: [
+                    ButtonSegment<bool>(
+                      value: false,
+                      label: Text(l.start),
+                      icon: Icon(
+                        _showInbox
+                            ? Icons.campaign_outlined
+                            : Icons.campaign_rounded,
+                      ),
+                    ),
+                    ButtonSegment<bool>(
+                      value: true,
+                      label: Text(l.notifications),
+                      icon: Badge(
+                        isLabelVisible: _unreadMessageIds.isNotEmpty,
+                        label: Text('${_unreadMessageIds.length}'),
+                        child: Icon(
+                          _showInbox
+                              ? Icons.inbox_rounded
+                              : Icons.inbox_outlined,
+                        ),
+                      ),
+                    ),
+                  ],
+                  selected: {_showInbox},
+                  onSelectionChanged: (selection) {
+                    final showInbox = selection.first;
+                    if (showInbox == _showInbox) return;
+                    unawaited(AppHaptics.selection());
+                    setState(() {
+                      _showInbox = showInbox;
+                      _selectedNotificationId = _firstNotificationId(
+                        showInbox ? _inboxItems : _newsItems,
+                      );
+                    });
+                  },
+                ),
+                if (_loading && rawActiveItems.isEmpty) ...[
+                  const SizedBox(height: 100),
+                  const Center(child: CircularProgressIndicator()),
+                ] else ...[
                   if (_refreshing && activeItems.isNotEmpty)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 12),
-                      child: LinearProgressIndicator(),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: const LinearProgressIndicator(),
+                      ),
                     ),
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: _glassContainer(
-                        context: context,
-                        borderRadius: BorderRadius.circular(18),
+                      child: ThemedSurface(
+                        borderRadius: BorderRadius.circular(
+                          isExpressive ? 20 : 16,
+                        ),
                         color: cs.errorContainer.withValues(alpha: 0.55),
                         border: Border.all(
                           color: cs.error.withValues(alpha: 0.3),
+                          width: tokens.borderWidth,
                         ),
+                        respectSurfaceCornerPreference: false,
+                        showShadow: false,
                         child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Text(
-                            _error!,
-                            style: GoogleFonts.outfit(
-                              color: cs.onErrorContainer,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                color: cs.error,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: GoogleFonts.outfit(
+                                    color: cs.onErrorContainer,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   const SizedBox(height: 16),
-                  if (activeItems.isEmpty)
-                    _glassContainer(
+                  if (rawActiveItems.isEmpty)
+                    _buildUnifiedEmptyState(
                       context: context,
-                      borderRadius: BorderRadius.circular(24),
-                      color: cs.primaryContainer.withValues(alpha: 0.2),
-                      border: Border.all(
-                        color: cs.primary.withValues(alpha: 0.24),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l.infoEmpty,
-                              style: GoogleFonts.outfit(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              l.infoEmptyHint,
-                              style: GoogleFonts.outfit(
-                                color: cs.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      icon: _showInbox
+                          ? Icons.inbox_outlined
+                          : Icons.campaign_outlined,
+                      title: l.infoEmpty,
+                      hint: l.infoEmptyHint,
+                    )
+                  else if (activeItems.isEmpty)
+                    _buildUnifiedEmptyState(
+                      context: context,
+                      icon: Icons.search_off_rounded,
+                      title: _infoLabel(l, 'search_empty'),
+                      hint: _infoLabel(l, 'search_empty_hint'),
                     )
                   else if (isExpanded)
                     SizedBox(
@@ -815,7 +1054,7 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           SizedBox(
-                            width: 360,
+                            width: masterWidth,
                             child: _buildTabletNotificationList(
                               context,
                               activeItems,
@@ -827,20 +1066,35 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                             color: cs.outlineVariant.withValues(alpha: 0.45),
                           ),
                           Expanded(
-                            child: selectedItem == null
-                                ? Center(
-                                    child: Text(
-                                      l.infoEmpty,
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w700,
-                                        color: cs.onSurfaceVariant,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                isExpressive ? 24 : 16,
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: selectedItem == null
+                                    ? Center(
+                                        key: const ValueKey(
+                                          'notifications-empty-detail',
+                                        ),
+                                        child: _buildUnifiedEmptyState(
+                                          context: context,
+                                          icon: _showInbox
+                                              ? Icons.inbox_outlined
+                                              : Icons.campaign_outlined,
+                                          title: l.infoEmpty,
+                                          hint: l.infoEmptyHint,
+                                        ),
+                                      )
+                                    : KeyedSubtree(
+                                        key: ValueKey(selectedItem.id),
+                                        child: _SchoolNotificationDetailPage(
+                                          item: selectedItem,
+                                          isInbox: _showInbox,
+                                        ).buildEmbedded(context),
                                       ),
-                                    ),
-                                  )
-                                : _SchoolNotificationDetailPage(
-                                    item: selectedItem,
-                                    isInbox: _showInbox,
-                                  ).buildEmbedded(context),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -849,112 +1103,192 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
                     ...activeItems.map((item) {
                       final isUnread =
                           _showInbox && _unreadMessageIds.contains(item.id);
+                      final cardRadius = BorderRadius.circular(
+                        isExpressive ? 24 : 18,
+                      );
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: Card.filled(
+                        child: ThemedSurface(
+                          borderRadius: cardRadius,
                           color: isUnread
-                              ? cs.secondaryContainer.withValues(alpha: 0.58)
-                              : cs.surfaceContainerLow,
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            onTap: () {
-                              if (_showInbox) _markMessageOpened(item);
-                              Navigator.push(
-                                context,
-                                _buildBouncyRoute(
-                                  _SchoolNotificationDetailPage(
-                                    item: item,
-                                    isInbox: _showInbox,
+                              ? cs.secondaryContainer.withValues(alpha: 0.55)
+                              : cs.surfaceContainerLow.withValues(alpha: 0.65),
+                          border: Border.all(
+                            color: isUnread
+                                ? cs.secondary.withValues(alpha: 0.3)
+                                : cs.outlineVariant.withValues(
+                                    alpha: isExpressive ? 0.20 : 0.30,
                                   ),
-                                ),
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      if (isUnread)
-                                        Badge(
+                            width: tokens.borderWidth,
+                          ),
+                          respectSurfaceCornerPreference: false,
+                          showShadow: false,
+                          child: Material(
+                            type: MaterialType.transparency,
+                            borderRadius: cardRadius,
+                            child: InkWell(
+                              borderRadius: cardRadius,
+                              onTap: () {
+                                if (_showInbox) _markMessageOpened(item);
+                                Navigator.push(
+                                  context,
+                                  _buildBouncyRoute(
+                                    _SchoolNotificationDetailPage(
+                                      item: item,
+                                      isInbox: _showInbox,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          width: isExpressive ? 44 : 40,
+                                          height: isExpressive ? 44 : 40,
+                                          decoration: BoxDecoration(
+                                            color: _showInbox
+                                                ? (isUnread
+                                                    ? cs.secondaryContainer
+                                                    : cs.secondary.withValues(
+                                                        alpha: 0.16,
+                                                      ))
+                                                : cs.primary.withValues(
+                                                    alpha: 0.12,
+                                                  ),
+                                            borderRadius:
+                                                BorderRadius.circular(
+                                              isExpressive ? 14 : 12,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
                                           child: Icon(
-                                            Icons.mark_email_unread_outlined,
-                                            color: cs.onSecondaryContainer,
+                                            _showInbox
+                                                ? (isUnread
+                                                    ? Icons
+                                                        .mark_email_unread_rounded
+                                                    : Icons.mail_rounded)
+                                                : Icons.campaign_rounded,
+                                            color: _showInbox
+                                                ? (isUnread
+                                                    ? cs.onSecondaryContainer
+                                                    : cs.secondary)
+                                                : cs.primary,
+                                            size: isExpressive ? 22 : 20,
                                           ),
-                                        )
-                                      else
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      item.title,
+                                                      style: GoogleFonts.outfit(
+                                                        fontSize: 16.5,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        height: 1.2,
+                                                        color: cs.onSurface,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (isUnread) ...[
+                                                    const SizedBox(width: 6),
+                                                    Container(
+                                                      width: 9,
+                                                      height: 9,
+                                                      decoration:
+                                                          BoxDecoration(
+                                                        color: cs.primary,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
                                         Icon(
-                                          _showInbox
-                                              ? Icons.mail_outline_rounded
-                                              : Icons.campaign_outlined,
-                                          color: cs.primary,
+                                          Icons.chevron_right_rounded,
+                                          color: cs.onSurfaceVariant
+                                              .withValues(alpha: 0.6),
+                                          size: 20,
                                         ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          item.title,
+                                      ],
+                                    ),
+                                    if (item.previewBody.isNotEmpty) ...[
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        item.previewBody,
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: cs.onSurfaceVariant,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 6,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        if (item.date != null)
+                                          _infoChip(
+                                            context,
+                                            _formatDate(item.date),
+                                            Icons.schedule_rounded,
+                                          ),
+                                        if ((item.author ?? '').isNotEmpty)
+                                          _infoChip(
+                                            context,
+                                            item.author!,
+                                            Icons.person_outline_rounded,
+                                          ),
+                                        if (item.attachments.isNotEmpty)
+                                          _infoAttachmentSummary(
+                                            context,
+                                            item,
+                                          ),
+                                      ],
+                                    ),
+                                    if (item.url != null) ...[
+                                      const SizedBox(height: 8),
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            _openInfoUrl(context, item.url),
+                                        icon: const Icon(
+                                          Icons.open_in_new_rounded,
+                                          size: 16,
+                                        ),
+                                        label: Text(
+                                          l.infoOpenLink,
                                           style: GoogleFonts.outfit(
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.w800,
-                                            height: 1.15,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 4),
-                                      Icon(
-                                        Icons.chevron_right_rounded,
-                                        color: cs.onSurfaceVariant,
-                                      ),
                                     ],
-                                  ),
-                                  if (item.body.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      item.previewBody,
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.outfit(
-                                        color: cs.onSurfaceVariant,
-                                        height: 1.3,
-                                      ),
-                                    ),
                                   ],
-                                  const SizedBox(height: 10),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 6,
-                                    children: [
-                                      if (item.date != null)
-                                        _infoChip(
-                                          context,
-                                          _formatDate(item.date),
-                                          Icons.schedule_rounded,
-                                        ),
-                                      if ((item.author ?? '').isNotEmpty)
-                                        _infoChip(
-                                          context,
-                                          item.author!,
-                                          Icons.person_outline_rounded,
-                                        ),
-                                    ],
-                                  ),
-                                  if (item.attachments.isNotEmpty) ...[
-                                    const SizedBox(height: 10),
-                                    _infoAttachmentSummary(context, item),
-                                  ],
-                                  if (item.url != null) ...[
-                                    const SizedBox(height: 8),
-                                    TextButton.icon(
-                                      onPressed: () =>
-                                          _openInfoUrl(context, item.url),
-                                      icon: const Icon(
-                                        Icons.open_in_new_rounded,
-                                      ),
-                                      label: Text(l.infoOpenLink),
-                                    ),
-                                  ],
-                                ],
+                                ),
                               ),
                             ),
                           ),
@@ -970,47 +1304,38 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
     );
   }
 
-  Widget _buildInfoSummaryCard(ColorScheme cs, AppL10n l, int count) {
-    final subtitle = _lastUpdated == null
-        ? l.infoTitle
-        : '${l.infoUpdated}: ${_formatDate(_lastUpdated)}';
-    return FeatureSummaryCard(
-      icon: _showInbox ? Icons.mail_outline_rounded : Icons.campaign_rounded,
-      iconShadow: false,
-      title: Text(
-        count == 1 ? '1 ${l.infoTitle}' : '$count ${l.infoTitle}',
-        style: GoogleFonts.outfit(
-          fontSize: 17,
-          fontWeight: FontWeight.w900,
-          color: cs.onSurface,
-        ),
-      ),
-      secondary: Text(
-        subtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.outfit(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          color: cs.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-
   Widget _infoChip(BuildContext context, String text, IconData icon) {
     final cs = Theme.of(context).colorScheme;
-    return Chip(
-      avatar: Icon(icon, size: 16, color: cs.onSecondaryContainer),
-      label: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      side: BorderSide.none,
-      backgroundColor: cs.secondaryContainer.withValues(alpha: 0.45),
-      labelStyle: GoogleFonts.outfit(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: cs.onSecondaryContainer,
+    final isExpressive = _usesExpressiveComponents(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: cs.secondaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(isExpressive ? 12 : 8),
+        border: Border.all(
+          color: cs.outlineVariant.withValues(alpha: 0.18),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: cs.onSecondaryContainer),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 160),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: cs.onSecondaryContainer,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1021,23 +1346,39 @@ class _SchoolNotificationsPageState extends State<SchoolNotificationsPage> {
   ) {
     final cs = Theme.of(context).colorScheme;
     final l = appL10nFor(appLocaleNotifier.value);
+    final isExpressive = _usesExpressiveComponents(context);
     final ext = item.uniformAttachmentExtension;
     final label = l.infoAttachmentLabel(item.attachments.length, ext);
-    return Row(
-      children: [
-        Icon(Icons.attach_file_rounded, size: 16, color: cs.primary),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: cs.onSurfaceVariant,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.40),
+        borderRadius: BorderRadius.circular(isExpressive ? 12 : 8),
+        border: Border.all(
+          color: cs.primary.withValues(alpha: 0.20),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.attach_file_rounded, size: 14, color: cs.primary),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 180),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: cs.primary,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

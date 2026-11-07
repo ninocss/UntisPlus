@@ -29,6 +29,12 @@ import 'package:path_provider/path_provider.dart';
 import 'l10n.dart';
 import 'core/time_utils.dart';
 import 'widgets/progressive_edge_blur.dart';
+import 'widgets/expressive_lesson_card.dart';
+import 'widgets/expressive_now_wave_indicator.dart';
+import 'widgets/tablet_glass_sidebar.dart';
+export 'widgets/expressive_lesson_card.dart';
+export 'widgets/expressive_now_wave_indicator.dart';
+export 'widgets/tablet_glass_sidebar.dart';
 import 'core/settings_store.dart';
 import 'core/defensive_parsers.dart';
 import 'core/timetable_date_utils.dart';
@@ -74,7 +80,6 @@ import 'package:wishkit/l10n/generated/wishkit_localizations.dart';
 import 'package:provider/provider.dart' show ChangeNotifierProvider;
 import 'features/absences/data/absence_repository.dart';
 import 'features/absences/domain/absence.dart';
-import 'features/homework/domain/homework.dart';
 import 'features/timetable/domain/timetable_lesson_status.dart';
 import 'features/ai/domain/ai_models.dart';
 import 'features/ai/application/ai_request_coordinator.dart';
@@ -103,6 +108,12 @@ part 'core/shared_ui.dart';
 part 'core/app_state.dart';
 part 'core/custom_backgrounds.dart';
 part 'screens/onboarding_flow.dart';
+part 'screens/onboarding/onboarding_shared_widgets.dart';
+part 'screens/onboarding/welcome_hero_step.dart';
+part 'screens/onboarding/appearance_step.dart';
+part 'screens/onboarding/school_login_step.dart';
+part 'screens/onboarding/ai_copilot_step.dart';
+part 'screens/onboarding/features_ready_step.dart';
 part 'screens/weekly_timetable_page.dart';
 part 'screens/teacher_search_page.dart';
 part 'screens/room_search_page.dart';
@@ -218,12 +229,27 @@ AiGenerationSettings _currentAiGenerationSettings() {
 
 LocalModelRuntime _currentLocalModelRuntime({AiGenerationSettings? settings}) {
   final l = appL10nFor(appLocaleNotifier.value);
+  final effectiveSettings = settings ??
+      AiGenerationSettings(
+        temperature: aiTemperature,
+        maxTokens: effectiveLocalMaxTokens(
+          aiMaxTokens,
+          kLocalModelDefaultSlotContext,
+        ),
+        topP: aiTopP,
+        formatAttachmentText: (attachment) =>
+            l.aiAttachmentText(attachment.name, attachment.textExcerpt),
+        formatUnsupportedAttachment: (attachment) =>
+            l.aiAttachmentUnsupported(attachment.name, attachment.mimeType),
+      );
   return LocalModelRuntime(
-    settings: settings ?? _currentAiGenerationSettings(),
+    settings: effectiveSettings,
     isValidModel: (path) =>
         _isValidLocalModelFile(path, model: _localModelForPath(path)),
     loadErrorMessage: l.aiLocalModelLoadError,
     noReplyMessage: l.aiNoReply,
+    contextExceededMessage: l.aiContextExceededError,
+    contextSize: kLocalModelDefaultSlotContext,
   );
 }
 
@@ -554,6 +580,8 @@ void main() async {
     4,
   );
   lessonCleanDesignNotifier.value = prefs.getBool('lessonCleanDesign') ?? false;
+  lessonExpressiveDesignNotifier.value =
+      prefs.getBool('lessonExpressiveDesign') ?? false;
   glowEffectsEnabledNotifier.value =
       prefs.getBool('glowEffectsEnabled') ?? false;
   lessonBlurEnabledNotifier.value = prefs.getBool('lessonBlurEnabled') ?? false;
