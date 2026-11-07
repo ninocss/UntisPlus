@@ -3706,12 +3706,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
     }
 
     final timeColWidth = 40 * _gridTextScale;
-    const double minDayColWidth = 56.0;
     const double dayColGap = 4.0;
-    // Leave a real trailing gutter inside the horizontal viewport. Without
-    // it, the Friday column ends exactly at the clip edge on phones and its
-    // card border/shadow can be cut off.
-    const double trailingDayGridInset = 12.0;
     final visibleWeekData = <int, List<dynamic>>{
       for (final dayIndex in shownDays)
         dayIndex: wd[dayIndex] ?? const <dynamic>[],
@@ -3747,23 +3742,22 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final dayGridWidth = math.max(
-              (shownDays.length * minDayColWidth) +
-                  (dayColGap * (shownDays.length - 1)),
-              constraints.maxWidth - timeColWidth - 4 - trailingDayGridInset,
+            final effectiveDayColGap = shownDays.length > 3 ? 3.0 : dayColGap;
+            final availableDayGridWidth = math.max(
+              0.0,
+              constraints.maxWidth - timeColWidth - 4,
             );
+            final dayGridWidth = availableDayGridWidth;
             final dayColWidth =
-                (dayGridWidth - (dayColGap * (shownDays.length - 1))) /
+                (dayGridWidth - (effectiveDayColGap * (shownDays.length - 1))) /
                 shownDays.length;
 
-            // On small screens all day columns cannot fit alongside the time
-            // gutter. Keep their minimum readable width and scroll horizontally.
             return SingleChildScrollView(
               key: const ValueKey('week-grid-horizontal-scroll'),
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
+              physics: const NeverScrollableScrollPhysics(),
               child: SizedBox(
-                width: timeColWidth + 4 + dayGridWidth + trailingDayGridInset,
+                width: constraints.maxWidth,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -3855,7 +3849,7 @@ class _WeeklyTimetablePageState extends State<WeeklyTimetablePage>
                               margin: EdgeInsets.only(
                                 right: visibleIndex == shownDays.length - 1
                                     ? 0
-                                    : dayColGap,
+                                    : effectiveDayColGap,
                               ),
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
