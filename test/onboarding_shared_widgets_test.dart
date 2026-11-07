@@ -90,4 +90,46 @@ void main() {
     expect(find.text('Step Content'), findsOneWidget);
     expect(find.text('Step Footer'), findsOneWidget);
   });
+
+  testWidgets(
+    'M3StepContainer applies 28dp horizontal padding on phones and 32dp on tablets',
+    (tester) async {
+      // 1. Phone viewport (390 x 844)
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(useMaterial3: true),
+          home: const Scaffold(
+            body: M3StepContainer(
+              content: Text('Phone Content'),
+            ),
+          ),
+        ),
+      );
+
+      final phonePaddingFinder = find.ancestor(
+        of: find.text('Phone Content'),
+        matching: find.byType(Padding),
+      ).first;
+      final phonePadding = tester.widget<Padding>(phonePaddingFinder);
+      expect((phonePadding.padding as EdgeInsets).left, equals(28.0));
+      expect((phonePadding.padding as EdgeInsets).right, equals(28.0));
+
+      // 2. Tablet viewport (1024 x 768)
+      tester.view.physicalSize = const Size(1024, 768);
+      await tester.pump();
+
+      final tabletPaddingFinder = find.ancestor(
+        of: find.text('Phone Content'),
+        matching: find.byType(Padding),
+      ).first;
+      final tabletPadding = tester.widget<Padding>(tabletPaddingFinder);
+      expect((tabletPadding.padding as EdgeInsets).left, equals(32.0));
+      expect((tabletPadding.padding as EdgeInsets).right, equals(32.0));
+    },
+  );
 }

@@ -245,21 +245,30 @@ class M3StepContainer extends StatelessWidget {
   final Widget? header;
   final Widget content;
   final Widget? footer;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
 
   const M3StepContainer({
     super.key,
     this.header,
     required this.content,
     this.footer,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    this.padding,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = UntisLayout.isTablet(context);
+    final effectivePadding = padding ??
+        EdgeInsets.symmetric(
+          horizontal: isTablet ? 32 : 28,
+          vertical: 14,
+        );
+
     return SafeArea(
+      top: false,
+      bottom: true,
       child: Padding(
-        padding: padding,
+        padding: effectivePadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
